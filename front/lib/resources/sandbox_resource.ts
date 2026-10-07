@@ -458,7 +458,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * path silently serving a broken sandbox.
    */
   async requestKill(): Promise<void> {
-    await this.update({ killRequestedAt: new Date() });
+    await this.update({ killRequestedAt: new Date() }, undefined, {
+      providerId: this.providerId,
+      killRequestedAt: null,
+    });
   }
 
   async delete(
@@ -1029,7 +1032,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
             );
           }
         }
-        this.recordRunningKillIfRunning(auth, owner.sandboxType, existing);
+        const wasRunning = existing.status === "running";
+        await existing.updateStatus("deleted");
+        if (wasRunning) {
+          this.recordRunningDelta(
+            auth,
+            owner.sandboxType,
+            existing,
+            "kill",
+            -1
+          );
+        }
         effectiveStatus = "deleted";
       }
 
@@ -1274,6 +1287,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       // recoverable shape: ensureActive's pending_approval branch will wake
       // the (still-running) sandbox on the next call, idempotently.
       await sandbox.updateStatus("pending_approval");
+      this.recordRunningDelta(auth, owner.sandboxType, sandbox, "pause", -1);
 
       const sleepResult = await provider.sleep(sandbox.providerId, tracingOpts);
       if (sleepResult.isErr()) {
@@ -1287,7 +1301,6 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         return sleepResult;
       }
 
-      this.recordRunningDelta(auth, owner.sandboxType, sandbox, "pause", -1);
       logger.info(
         { sandbox: sandbox.toLogJSON() },
         "Sandbox paused for tool approval."
@@ -1603,9 +1616,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
         { sandbox: this.toLogJSON() },
-        "Sandbox not found at provider during exec — marking as deleted"
+        "Sandbox not found at provider during exec — requesting cleanup"
       );
-      await this.updateStatus("deleted");
+      await this.requestKill();
     }
 
     return result;
@@ -1638,9 +1651,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
         { sandbox: this.toLogJSON() },
-        "Sandbox not found at provider during root exec — marking as deleted"
+        "Sandbox not found at provider during root exec — requesting cleanup"
       );
-      await this.updateStatus("deleted");
+      await this.requestKill();
     }
 
     return result;
@@ -1672,9 +1685,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       if (err instanceof SandboxNotFoundError) {
         logger.error(
           { sandbox: this.toLogJSON() },
-          "Sandbox not found at provider during listFiles — marking as deleted"
+          "Sandbox not found at provider during listFiles — requesting cleanup"
         );
-        await this.updateStatus("deleted");
+        await this.requestKill();
       }
       return new Err(normalizeError(err));
     }
@@ -1706,10 +1719,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       if (err instanceof SandboxNotFoundError) {
         logger.error(
           { sandbox: this.toLogJSON() },
-          "Sandbox not found at provider during readFile, marking as deleted"
+          "Sandbox not found at provider during readFile, requesting cleanup"
         );
 
-        await this.updateStatus("deleted");
+        await this.requestKill();
       }
 
       return new Err(normalizeError(err));
@@ -1740,9 +1753,9 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     if (result.isErr() && result.error instanceof SandboxNotFoundError) {
       logger.error(
         { sandbox: this.toLogJSON() },
-        "Sandbox not found at provider during writeFile — marking as deleted"
+        "Sandbox not found at provider during writeFile — requesting cleanup"
       );
-      await this.updateStatus("deleted");
+      await this.requestKill();
     }
 
     return result;
