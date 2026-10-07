@@ -59,14 +59,14 @@ function Description({ children }: DescriptionProps) {
 }
 
 interface NameChipsProps {
-  items: { sId: string; name: string }[];
+  items: { id: string; name: string }[];
 }
 
 function NameChips({ items }: NameChipsProps) {
   return (
     <div className="flex flex-wrap gap-1">
       {items.map((item) => (
-        <Chip key={item.sId} size="xs" label={item.name} />
+        <Chip key={item.id} size="xs" label={item.name} />
       ))}
     </div>
   );
@@ -190,7 +190,12 @@ function APIKeyDetails({
               </Trans>
             </Description>
             {apiKey.spaces.length > 0 ? (
-              <NameChips items={apiKey.spaces} />
+              <NameChips
+                items={apiKey.spaces.map((space) => ({
+                  id: space.sId,
+                  name: space.name,
+                }))}
+              />
             ) : (
               <Description>
                 <Trans>No spaces</Trans>
@@ -211,6 +216,28 @@ function APIKeyDetails({
                 ? t`Create and modify resources plus workspace administration (members, analytics export)`
                 : t`Can create conversations, read agents and data sources.`}
             </Description>
+          </DetailsSection>
+
+          <DetailsSection title={t`Analytics`}>
+            {isAdmin ? (
+              <Description>
+                <Trans>This key can access all analytics.</Trans>
+              </Description>
+            ) : apiKey.analyticsGroups.length > 0 ? (
+              <>
+                <Description>
+                  <Trans>
+                    The key can read the analytics of the members of the
+                    following groups.
+                  </Trans>
+                </Description>
+                <NameChips items={apiKey.analyticsGroups} />
+              </>
+            ) : (
+              <Description>
+                <Trans>This key cannot access analytics.</Trans>
+              </Description>
+            )}
           </DetailsSection>
 
           <DetailsSection title={monthlyCapLabel}>

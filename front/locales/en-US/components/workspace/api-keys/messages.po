@@ -116,6 +116,25 @@ msgid "Can create conversations, read agents and data sources."
 msgstr "Can create conversations, read agents and data sources."
 
 #: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Analytics"
+msgstr "Analytics"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "This key can access all analytics."
+msgstr "This key can access all analytics."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "The key can read the analytics of the members of the following groups."
+msgstr "The key can read the analytics of the members of the following groups."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "This key cannot access analytics."
+msgstr "This key cannot access analytics."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Unlimited"
 msgstr "Unlimited"
@@ -262,6 +281,18 @@ msgstr "Search spaces"
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "No spaces found"
 msgstr "No spaces found"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Add Groups"
+msgstr "Add Groups"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Search groups"
+msgstr "Search groups"
+
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "No groups found"
+msgstr "No groups found"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Create"
