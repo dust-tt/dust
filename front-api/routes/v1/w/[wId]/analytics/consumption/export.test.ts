@@ -3,11 +3,13 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 const mockedSearchConsumptionAnalytics = vi.mocked(
@@ -119,6 +121,20 @@ const MOCK_ES_TOOL_DOC: AgentMessageConsumptionAnalyticsData = {
   },
 };
 
+function docWithUserGroups(
+  groupIds: string[]
+): AgentMessageConsumptionAnalyticsData {
+  return {
+    ...MOCK_ES_DOC,
+    user: {
+      id: "user-1",
+      group_ids: groupIds,
+      seat_type: "pro",
+      limit_group_id: null,
+    },
+  };
+}
+
 function mockEsSuccess(
   doc: AgentMessageConsumptionAnalyticsData = MOCK_ES_DOC
 ) {
@@ -147,6 +163,36 @@ function enableFeatureFlag() {
 function disableFeatureFlag() {
   vi.spyOn(Authenticator.prototype, "hasFeatureFlag").mockResolvedValue(false);
 }
+
+// A user-role key holding `read_analytics` on `target` only, through a regular_auto grant group.
+async function createGroupScopedKey() {
+  const { workspace, globalGroup } = await createPublicApiMockRequest({
+    role: "admin",
+  });
+  const target = await GroupFactory.regularManual(workspace, "Target");
+  const other = await GroupFactory.regularManual(workspace, "Other");
+  const grantGroup = await GroupFactory.regularAuto(workspace, "Grant");
+  await GroupPermissionResource.grant(
+    await Authenticator.internalAdminForWorkspace(workspace.sId),
+    {
+      group: grantGroup,
+      grantType: "analytics_reader",
+      resourceType: "group",
+      resourceId: target.id,
+    }
+  );
+  const key = await KeyFactory.regular([globalGroup, grantGroup]);
+  return { workspace, globalGroup, key, target, other };
+}
+
+const GROUP_SCOPE_ERROR = {
+  error: {
+    type: "workspace_auth_error",
+    message:
+      "Exporting consumption analytics requires an admin API key, or a filter on groups whose " +
+      "analytics the API key can read.",
+  },
+};
 
 function consumptionExportRequest({
   workspace,
@@ -271,12 +317,99 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "workspace_auth_error",
-        message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
+    expect(await response.json()).toEqual(GROUP_SCOPE_ERROR);
+  });
+
+  it("returns 200 for a user API key on groups it can read, listing only those groups", async () => {
+    enableFeatureFlag();
+    const { workspace, key, target, other } = await createGroupScopedKey();
+    mockEsSuccess(docWithUserGroups([other.sId, target.sId]));
+
+    const response = await consumptionExportRequest({
+      workspace,
+      key,
+      body: {
+        startDate: "2024-06-01T00:00:00Z",
+        endDate: "2024-06-15T00:00:00Z",
+        format: "ndjson",
+        filter: { groups: [target.sId], agents: ["agent-1"] },
       },
     });
+
+    expect(response.status).toBe(200);
+    const parsed = JSON.parse((await response.text()).trim());
+    expect(parsed.userGroupIds).toBe(target.sId);
+    expect(parsed.userGroupNames).toBe(target.sId);
+    expect(
+      JSON.stringify(mockedSearchConsumptionAnalytics.mock.lastCall?.[0])
+    ).toContain(`{"term":{"user.group_ids":"${target.sId}"}}`);
+  });
+
+  it("lists every group of the user for an admin API key", async () => {
+    enableFeatureFlag();
+    const { workspace, globalGroup, target, other } =
+      await createGroupScopedKey();
+    const adminKey = await KeyFactory.admin(globalGroup);
+    mockEsSuccess(docWithUserGroups([other.sId, target.sId]));
+
+    const response = await consumptionExportRequest({
+      workspace,
+      key: adminKey,
+      body: {
+        startDate: "2024-06-01T00:00:00Z",
+        endDate: "2024-06-15T00:00:00Z",
+        format: "ndjson",
+        filter: { groups: [target.sId] },
+      },
+    });
+
+    expect(response.status).toBe(200);
+    const parsed = JSON.parse((await response.text()).trim());
+    expect(parsed.userGroupIds).toBe(`${other.sId}; ${target.sId}`);
+  });
+
+  it("returns 403 for a user API key without a group filter, or with an empty group id", async () => {
+    enableFeatureFlag();
+    const { workspace, key } = await createGroupScopedKey();
+
+    for (const filter of [
+      undefined,
+      { agents: ["agent-1"] },
+      { groups: [""] },
+    ]) {
+      const response = await consumptionExportRequest({
+        workspace,
+        key,
+        body: {
+          startDate: "2024-06-01T00:00:00Z",
+          endDate: "2024-06-15T00:00:00Z",
+          filter,
+        },
+      });
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual(GROUP_SCOPE_ERROR);
+    }
+  });
+
+  it("returns 403 for a user API key when one requested group is not readable", async () => {
+    enableFeatureFlag();
+    const { workspace, key, target, other } = await createGroupScopedKey();
+    mockedSearchConsumptionAnalytics.mockClear();
+
+    const response = await consumptionExportRequest({
+      workspace,
+      key,
+      body: {
+        startDate: "2024-06-01T00:00:00Z",
+        endDate: "2024-06-15T00:00:00Z",
+        filter: { groups: [target.sId, other.sId] },
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect(await response.json()).toEqual(GROUP_SCOPE_ERROR);
+    expect(mockedSearchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
   it("returns 400 when time range exceeds 30 days", async () => {

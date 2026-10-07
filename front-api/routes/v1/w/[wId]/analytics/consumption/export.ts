@@ -1,8 +1,8 @@
+import { getConsumptionExportScope } from "@app/lib/api/analytics/consumption/export_access";
 import { streamConsumptionExport } from "@app/lib/api/analytics/consumption/export_lines";
 import logger from "@app/logger/logger";
 import { PostConsumptionExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 
@@ -23,6 +23,11 @@ const app = publicApiApp();
  *       The export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range
  *       or apply filters to reduce the number of rows if you encounter a timeout.
  *       Results are streamed, if an error occurs, an error message is appended and the stream is closed.
+ *
+ *       An admin API key can export the whole workspace. Any other API key must filter on `groups`, and
+ *       must be allowed to read the analytics of every group listed. The rows then cover the messages of
+ *       the users who were members of those groups when the message was sent, and the `userGroupIds`
+ *       and `userGroupNames` columns only list the requested groups.
  *     tags:
  *       - Analytics
  *     security:
@@ -87,7 +92,9 @@ const app = publicApiApp();
  *                     items:
  *                       type: string
  *                       maxLength: 256
- *                     description: Group IDs to filter on
+ *                     description: |
+ *                       Group IDs to filter on. Required, with at least one non-empty value, unless the
+ *                       API key has admin scope.
  *                   models:
  *                     type: array
  *                     items:
@@ -132,13 +139,14 @@ const app = publicApiApp();
  *       400:
  *         description: Invalid request body (missing fields, invalid dates, range exceeds 30 days)
  *       403:
- *         description: Requires an API key with admin scope
+ *         description: |
+ *           The workspace does not have access to the consumption export API, or the API key has no
+ *           admin scope and the export is not restricted to groups whose analytics it can read.
  *       500:
  *         description: Internal Server Error
  */
 app.post(
   "/",
-  ensureIsAdmin(),
   validate("json", PostConsumptionExportRequestSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -168,6 +176,18 @@ app.post(
     const body = ctx.req.valid("json");
     const format = body.format ?? "csv";
 
+    const scopeRes = await getConsumptionExportScope(auth, body.filter);
+    if (scopeRes.isErr()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: scopeRes.error.message,
+        },
+      });
+    }
+    const scope = scopeRes.value;
+
     const startDate = new Date(body.startDate).toISOString();
     const endDate = new Date(body.endDate).toISOString();
 
@@ -180,6 +200,7 @@ app.post(
         endDate,
         format,
         hasFilter: !!body.filter,
+        scope: scope.kind,
       },
       "Consumption export requested."
     );
@@ -192,6 +213,7 @@ app.post(
       filter: body.filter,
       format,
       signal: abortController.signal,
+      visibleGroupIds: scope.kind === "groups" ? scope.groupIds : undefined,
     });
 
     if (result.isErr()) {
