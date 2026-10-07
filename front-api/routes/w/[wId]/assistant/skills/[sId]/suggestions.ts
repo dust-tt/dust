@@ -1,7 +1,9 @@
 import { updateSkillSuggestionsState } from "@app/lib/api/skills/update_skill_suggestions_state";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type {
   GetSkillSuggestionsResponseBody,
   PatchSkillSuggestionResponseBody,
@@ -11,10 +13,12 @@ import {
   PatchSkillSuggestionRequestBodySchema,
 } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
@@ -58,7 +62,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   }
 
   if (!(await hasReinforcementEnabled(auth))) {
-    return ctx.json({ suggestions: [] });
+    return ctx.json({ suggestions: [], referencedSkills: [] });
   }
 
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
@@ -72,7 +76,32 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     }
   );
 
-  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
+  const suggestionsJSON = suggestions.map((s) => s.toJSON());
+  const referencedSkillIds = uniq(
+    suggestionsJSON
+      .filter(isEditSkillSuggestion)
+      .flatMap((s) => s.suggestion.instructionEdits ?? [])
+      .flatMap((edit) => extractUniqueSkillReferenceIds(edit.content))
+  );
+  const referencedSkills = await SkillResource.fetchByIds(
+    auth,
+    referencedSkillIds,
+    {
+      onlyActive: true,
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    }
+  );
+
+  return ctx.json({
+    suggestions: suggestionsJSON,
+    referencedSkills: referencedSkills.map((referencedSkill) => {
+      const { sId, name, icon, requestedSpaceIds } =
+        referencedSkill.toJSON(auth);
+      return { sId, name, icon, requestedSpaceIds };
+    }),
+  });
 });
 
 app.patch(

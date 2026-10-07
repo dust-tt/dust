@@ -1,6 +1,7 @@
 // Contract types and schemas for the skill suggestions endpoint
 // (`/api/w/:wId/assistant/skills/:sId/suggestions`). Used by the skill
 // suggestions route so validation has a single source of truth.
+import { SkillWithoutInstructionsAndToolsSchema } from "@app/types/assistant/skill_configuration";
 import { isString } from "@app/types/shared/utils/general";
 import {
   SKILL_SUGGESTION_KINDS,
@@ -24,8 +25,22 @@ export type GetSkillSuggestionsQuery = z.infer<
   typeof GetSkillSuggestionsQuerySchema
 >;
 
+const SuggestedSkillReferenceSchema =
+  SkillWithoutInstructionsAndToolsSchema.pick({
+    sId: true,
+    name: true,
+    icon: true,
+    requestedSpaceIds: true,
+  });
+export type SuggestedSkillReference = z.infer<
+  typeof SuggestedSkillReferenceSchema
+>;
+
 export const GetSkillSuggestionsResponseBodySchema = z.object({
   suggestions: z.array(SkillSuggestionSchema),
+  // Active skills referenced by the instruction edits of `suggestions`, so that accepting an edit
+  // can resolve them without fetching skills.
+  referencedSkills: z.array(SuggestedSkillReferenceSchema),
 });
 export type GetSkillSuggestionsResponseBody = z.infer<
   typeof GetSkillSuggestionsResponseBodySchema
