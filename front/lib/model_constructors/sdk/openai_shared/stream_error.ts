@@ -10,10 +10,19 @@ import {
   APIUserAbortError,
 } from "openai";
 
+export function isFlexUnavailableError(error: unknown): error is APIError {
+  return error instanceof APIError && error.code === "flex_unavailable";
+}
+
 // Shared by every adapter built on the `openai` SDK (Fireworks via chat
 // completions, OpenAI/xAI/Fireworks via responses). The SDK error classes and
 // the way a typed HTTP error exposes its status are identical; only the provider
 // name differs, so it is passed in.
+/**
+ * @cc [owner:philipperolet,label:error-handling] flex-unavailable-is-capacity-refusal
+ * `flex_unavailable` API errors MUST map to a Dust-attributed `rate_limit_error`, including
+ * statusless SSE errors, so expected flex capacity refusals do not count as provider failures.
+ */
 export function openaiStreamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown,
@@ -53,7 +62,7 @@ export function openaiStreamErrorToErrorEvent(
     // transient provider outage, so we attribute it to the provider but leave it
     // as a non-retryable `unknown_error` rather than a retryable `server_error`.
     // We do not inspect free-form message text to upgrade it.
-    if (error.status === undefined) {
+    if (error.status === undefined && !isFlexUnavailableError(error)) {
       return buildErrorEvent({
         errorSource: "provider",
         metadata,
@@ -64,7 +73,7 @@ export function openaiStreamErrorToErrorEvent(
     }
     return buildHttpStatusErrorEvent({
       metadata,
-      status: error.status,
+      status: isFlexUnavailableError(error) ? 429 : error.status,
       provider: providerName,
       detail: error.message,
       originalError: error,

@@ -49,6 +49,7 @@ import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_st
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
+import { isFlexUnavailableError } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
@@ -250,6 +251,11 @@ export abstract class LLM<
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
+  /**
+   * @cc [owner:philipperolet,label:logging] flex-unavailable-logs-warning
+   * `flex_unavailable` errors MUST be logged at warning level while retaining their error events
+   * and attempt telemetry for retries and diagnostics.
+   */
   private async *streamWithTracing(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
@@ -423,7 +429,11 @@ export abstract class LLM<
             ],
           });
 
-          logger.error(
+          logger[
+            isFlexUnavailableError(currentEvent.content.originalError)
+              ? "warn"
+              : "error"
+          ](
             {
               llmEventType: "error",
               router: this.router,
