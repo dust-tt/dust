@@ -22,7 +22,8 @@ be written translated. After changing strings, follow [Workflow](#workflow) and 
 | Where the text is | Use | Import |
 |---|---|---|
 | JSX children | `<Trans>Save changes</Trans>` | `import { Trans } from "@lingui/react/macro"` |
-| String props, toasts, `aria-label`, `placeholder`, zod messages built in a component | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
+| String props, toasts, `aria-label`, `placeholder` | ``const { t } = useLingui();`` then ``t`Search agents` `` | `import { useLingui } from "@lingui/react/macro"` |
+| Zod validation messages | A `use<Name>Schema` hook, see [Form schemas](#form-schemas) | `import { useLingui } from "@lingui/react/macro"` |
 | Module-level constants (labels maps, option lists) | ``msg`Admin` `` at module level, ``t(LABELS[role])`` at render | `import { msg } from "@lingui/core/macro"` |
 | Counts | ``t`${count} ${plural(count, { one: "agent", other: "agents" })}` `` or `<Plural>` | `@lingui/core/macro` / `@lingui/react/macro` |
 | Short ambiguous words | ``t({ message: "Open", context: "verb, button label" })`` | |
@@ -41,6 +42,35 @@ Rules:
   reference when the locale changes, so memos depending on it would not recompute.
 - Write English in sentence case. Do not apply CSS `uppercase`/`capitalize` to translated text.
 - Format dates and numbers with the active locale (`i18n.locale`), never a hardcoded `"en-US"`.
+
+## Form schemas
+
+A zod schema with translated messages comes from a `use<Name>Schema` hook that takes the values the
+schema depends on, calls `useLingui()`, writes its messages inline with `t`, and memoizes on `t` and
+those values. Derive the form type from the hook.
+
+```tsx
+function useComposeFormSchema({ isSubjectEditable }: { isSubjectEditable: boolean }) {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        subject: isSubjectEditable
+          ? z.string().trim().min(1, t`Subject is required.`)
+          : z.string(),
+      }),
+    [isSubjectEditable, t]
+  );
+}
+
+type ComposeFormValues = z.infer<ReturnType<typeof useComposeFormSchema>>;
+```
+
+Do not build the schema in the component body, and do not pass pre-translated strings into a
+schema factory. Only a schema that non-React code also builds (a validation helper, a test) is a
+`get<Name>Schema(..., t)` factory taking `t: (descriptor: MessageDescriptor) => string` with `msg`
+messages, as `getMCPServerFormSchema` does.
 
 ## Never translate
 

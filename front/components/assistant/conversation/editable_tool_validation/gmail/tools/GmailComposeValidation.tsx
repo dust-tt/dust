@@ -29,29 +29,33 @@ interface ComposeFormValues {
 
 type Translate = (descriptor: MessageDescriptor) => string;
 
-function getComposeFormSchema({
+function useComposeFormSchema({
   isSubjectEditable,
   isBodyEditable,
-  t,
 }: {
   isSubjectEditable: boolean;
   isBodyEditable: boolean;
-  t: Translate;
 }) {
-  return z.object({
-    subject: isSubjectEditable
-      ? z
-          .string()
-          .trim()
-          .min(1, t(msg`Subject is required.`))
-      : z.string(),
-    body: isBodyEditable
-      ? z
-          .string()
-          .trim()
-          .min(1, t(msg`Body is required.`))
-      : z.string(),
-  });
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        subject: isSubjectEditable
+          ? z
+              .string()
+              .trim()
+              .min(1, t`Subject is required.`)
+          : z.string(),
+        body: isBodyEditable
+          ? z
+              .string()
+              .trim()
+              .min(1, t`Body is required.`)
+          : z.string(),
+      }),
+    [isSubjectEditable, isBodyEditable, t]
+  );
 }
 
 // Recipient rows shown read-only, in Gmail's compose order.
@@ -153,10 +157,10 @@ export function GmailComposeValidation({
     !isReply && !!editableArguments?.includes("subject");
   const isBodyEditable = !!editableArguments?.includes("body");
 
-  const formSchema = useMemo(
-    () => getComposeFormSchema({ isSubjectEditable, isBodyEditable, t }),
-    [isSubjectEditable, isBodyEditable, t]
-  );
+  const formSchema = useComposeFormSchema({
+    isSubjectEditable,
+    isBodyEditable,
+  });
 
   const {
     control,

@@ -17,7 +17,6 @@ import {
   ThumbsUp,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import React from "react";
@@ -67,32 +66,35 @@ const feedbackBaseSchema = z.object({
   isConversationShared: z.boolean().default(true),
 });
 
-function makeFeedbackSchema(
-  showPredefinedAnswers: boolean,
-  t: (descriptor: MessageDescriptor) => string
-) {
-  return feedbackBaseSchema.superRefine((data, ctx) => {
-    if (data.thumbDirection !== "down") {
-      return;
-    }
-    const hasAnswer =
-      showPredefinedAnswers &&
-      data.selectedAnswer.length > 0 &&
-      data.selectedAnswer !== t(OTHER_ANSWER);
-    const hasContent = data.feedbackContent.trim().length > 0;
-    if (!hasAnswer && !hasContent) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: showPredefinedAnswers
-          ? t(msg`Please select a reason or describe the issue.`)
-          : t(msg`Please describe the issue.`),
-        path: ["feedbackContent"],
-      });
-    }
-  });
+function useFeedbackSchema(showPredefinedAnswers: boolean) {
+  const { t } = useLingui();
+
+  return React.useMemo(
+    () =>
+      feedbackBaseSchema.superRefine((data, ctx) => {
+        if (data.thumbDirection !== "down") {
+          return;
+        }
+        const hasAnswer =
+          showPredefinedAnswers &&
+          data.selectedAnswer.length > 0 &&
+          data.selectedAnswer !== t(OTHER_ANSWER);
+        const hasContent = data.feedbackContent.trim().length > 0;
+        if (!hasAnswer && !hasContent) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: showPredefinedAnswers
+              ? t`Please select a reason or describe the issue.`
+              : t`Please describe the issue.`,
+            path: ["feedbackContent"],
+          });
+        }
+      }),
+    [showPredefinedAnswers, t]
+  );
 }
 
-type FeedbackFormValues = z.infer<ReturnType<typeof makeFeedbackSchema>>;
+type FeedbackFormValues = z.infer<ReturnType<typeof useFeedbackSchema>>;
 
 const DEFAULT_FEEDBACK_FORM_VALUES: FeedbackFormValues = {
   thumbDirection: null,
@@ -117,8 +119,10 @@ export function FeedbackSelector({
 
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
+  const feedbackSchema = useFeedbackSchema(showPredefinedAnswers);
+
   const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(makeFeedbackSchema(showPredefinedAnswers, t)),
+    resolver: zodResolver(feedbackSchema),
     defaultValues: DEFAULT_FEEDBACK_FORM_VALUES,
   });
 

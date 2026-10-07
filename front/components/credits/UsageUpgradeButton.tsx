@@ -15,30 +15,31 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-function getRequestUpgradeFormSchema(
-  requireReason: boolean,
-  t: (descriptor: MessageDescriptor) => string
-) {
-  return z.object({
-    reason: requireReason
-      ? z
-          .string()
-          .trim()
-          .min(1, t(msg`A reason is required to submit an upgrade request.`))
-          .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
-      : z.string().trim().max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
-  });
+function useRequestUpgradeFormSchema(requireReason: boolean) {
+  const { t } = useLingui();
+
+  return useMemo(
+    () =>
+      z.object({
+        reason: requireReason
+          ? z
+              .string()
+              .trim()
+              .min(1, t`A reason is required to submit an upgrade request.`)
+              .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
+          : z.string().trim().max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
+      }),
+    [requireReason, t]
+  );
 }
 
 type RequestUpgradeFormValues = z.infer<
-  ReturnType<typeof getRequestUpgradeFormSchema>
+  ReturnType<typeof useRequestUpgradeFormSchema>
 >;
 
 type UsageUpgradeButtonVariant = "link" | "button";
@@ -69,8 +70,10 @@ export function UsageUpgradeButton({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [requested, setRequested] = useState(false);
 
+  const requestUpgradeFormSchema = useRequestUpgradeFormSchema(requireReason);
+
   const form = useForm<RequestUpgradeFormValues>({
-    resolver: zodResolver(getRequestUpgradeFormSchema(requireReason, t)),
+    resolver: zodResolver(requestUpgradeFormSchema),
     defaultValues: { reason: "" },
   });
 

@@ -24,38 +24,6 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
-interface AgentBuilderFormSchemaMessages {
-  descriptionRequired: string;
-  instructionsRequired: string;
-  maxStepsPerRunTooLow: string;
-}
-
-const getAgentSettingsSchema = (messages: AgentBuilderFormSchemaMessages) =>
-  z.object({
-    name: z.string().superRefine((value, ctx) => {
-      const error = getAgentNameFormatError(value);
-      if (error) {
-        ctx.addIssue({ code: "custom", message: error });
-      }
-    }),
-    description: z.string().min(1, messages.descriptionRequired),
-    pictureUrl: z.string().optional(),
-    scope: z.enum(["hidden", "visible"]),
-    editors: z.array(editorUserSchema),
-    slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
-    slackChannels: z.array(
-      z.object({
-        slackChannelId: z.string(),
-        slackChannelName: z.string(),
-        autoRespondWithoutMention: z.boolean().optional(),
-        autoRespondWithoutMentionSkipThreadReplies: z.boolean().optional(),
-        isPrivate: z.boolean(),
-      })
-    ),
-    tags: z.array(tagSchema),
-    ignoreCreditSpendThresholdAlert: z.boolean().default(false),
-  });
-
 const cronScheduleConfigSchema = z.object({
   type: z.literal("cron").optional(),
   cron: z.string(),
@@ -140,37 +108,58 @@ export type AgentBuilderScheduleTriggerType = z.infer<
   typeof scheduleTriggerSchema
 >;
 
-const getAgentBuilderFormSchema = (messages: AgentBuilderFormSchemaMessages) =>
-  z.object({
-    agentSettings: getAgentSettingsSchema(messages),
-    instructions: z.string().min(1, messages.instructionsRequired),
-    instructionsHtml: z.string().optional(),
-    generationSettings: generationSettingsSchema,
-    skills: z.array(skillsSchema),
-    additionalSpaces: additionalSpacesSchema,
-    actions: z.array(actionSchema),
-    triggersToCreate: z.array(triggerSchema),
-    triggersToUpdate: z.array(triggerSchema),
-    triggersToDelete: z.array(z.string()),
-    maxStepsPerRun: z.number().min(1, messages.maxStepsPerRunTooLow).default(8),
-  });
-
 export function useAgentBuilderFormSchema() {
   const { t } = useLingui();
 
   return useMemo(
     () =>
-      getAgentBuilderFormSchema({
-        descriptionRequired: t`Agent description is required`,
-        instructionsRequired: t`Instructions are required`,
-        maxStepsPerRunTooLow: t`Max steps per run must be at least 1`,
+      z.object({
+        agentSettings: z.object({
+          name: z.string().superRefine((value, ctx) => {
+            const error = getAgentNameFormatError(value);
+            if (error) {
+              ctx.addIssue({ code: "custom", message: error });
+            }
+          }),
+          description: z.string().min(1, t`Agent description is required`),
+          pictureUrl: z.string().optional(),
+          scope: z.enum(["hidden", "visible"]),
+          editors: z.array(editorUserSchema),
+          slackProvider: z.enum(["slack", "slack_bot"]).nullable(),
+          slackChannels: z.array(
+            z.object({
+              slackChannelId: z.string(),
+              slackChannelName: z.string(),
+              autoRespondWithoutMention: z.boolean().optional(),
+              autoRespondWithoutMentionSkipThreadReplies: z
+                .boolean()
+                .optional(),
+              isPrivate: z.boolean(),
+            })
+          ),
+          tags: z.array(tagSchema),
+          ignoreCreditSpendThresholdAlert: z.boolean().default(false),
+        }),
+        instructions: z.string().min(1, t`Instructions are required`),
+        instructionsHtml: z.string().optional(),
+        generationSettings: generationSettingsSchema,
+        skills: z.array(skillsSchema),
+        additionalSpaces: additionalSpacesSchema,
+        actions: z.array(actionSchema),
+        triggersToCreate: z.array(triggerSchema),
+        triggersToUpdate: z.array(triggerSchema),
+        triggersToDelete: z.array(z.string()),
+        maxStepsPerRun: z
+          .number()
+          .min(1, t`Max steps per run must be at least 1`)
+          .default(8),
       }),
     [t]
   );
 }
 
 export type AgentBuilderFormData = z.infer<
-  ReturnType<typeof getAgentBuilderFormSchema>
+  ReturnType<typeof useAgentBuilderFormSchema>
 >;
 
 export type AgentBuilderSkillsType = z.infer<typeof skillsSchema>;

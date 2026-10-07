@@ -713,6 +713,14 @@ models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST N
 Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
 server code by the `noClientImportsInServer` lint rule.
 
+@cc [owner:sfriquet,label:coding;react] translated-form-schemas-through-hooks
+Under `components/`, a zod schema with translated validation messages MUST be returned by a
+`use<Name>Schema` hook that takes the values the schema depends on as parameters, gets `t` from
+`useLingui()`, writes its messages inline with `t`, and memoizes the schema on `t` and those
+parameters. Components MUST NOT build such a schema in their body, and schema factories MUST NOT
+take pre-translated message strings. A schema that non-React code (a validation helper or a test)
+also builds is the exception: it is a factory taking `t: (descriptor: MessageDescriptor) => string`.
+
 @cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
 Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
 currencies, file sizes, hour cycles, the local time zone and string comparisons go through

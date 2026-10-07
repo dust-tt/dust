@@ -25,7 +25,7 @@ export type BuilderFlow = (typeof BUILDER_FLOWS)[number];
 export const DESCRIPTION_MAX_LENGTH = 800;
 
 export type CapabilityFormData = z.infer<
-  ReturnType<typeof getCapabilityFormSchema>
+  ReturnType<typeof useCapabilityFormSchema>
 >;
 
 export const CONFIGURATION_SHEET_PAGE_IDS = {
@@ -42,100 +42,86 @@ const TOOLS_SHEET_PAGE_IDS = {
 export type ConfigurationPagePageId =
   (typeof TOOLS_SHEET_PAGE_IDS)[keyof typeof TOOLS_SHEET_PAGE_IDS];
 
-interface CapabilityFormSchemaMessages {
-  nameRequired: string;
-  descriptionRequired: string;
-  descriptionTooLong: string;
-  sourcesRequired: string;
-  timeFrameRequired: string;
-}
-
 // TODO: merge this with MCP form schema. Right now it only validates two fields.
-const getCapabilityFormSchema = (messages: CapabilityFormSchemaMessages) =>
-  z
-    .object({
-      name: z
-        .string()
-        .min(1, messages.nameRequired)
-        .transform((val) => {
-          // Convert to lowercase and replace spaces and special chars with underscores
-          return (
-            val
-              .toLowerCase()
-              .replace(/[^a-z0-9_]/g, "_")
-              // Remove consecutive underscores
-              .replace(/_+/g, "_")
-              // Remove leading/trailing underscores
-              .replace(/^_+|_+$/g, "")
-          );
-        })
-        .default(""),
-      description: z
-        .string()
-        .min(1, messages.descriptionRequired)
-        .max(DESCRIPTION_MAX_LENGTH, messages.descriptionTooLong),
-      sources: dataSourceBuilderTreeType.refine(
-        (val) => {
-          return val.in.length > 0;
-        },
-        { message: messages.sourcesRequired }
-      ),
-      mcpServerView: z.custom<MCPServerViewType>().nullable(),
-      configuration: mcpServerConfigurationSchema,
-    })
-    .superRefine((val, ctx) => {
-      const {
-        mayRequireTimeFrameConfiguration,
-        mayRequireJsonSchemaConfiguration,
-      } = getMCPServerRequirements(val.mcpServerView);
-      const configuration = val.configuration;
-
-      if (mayRequireTimeFrameConfiguration) {
-        if (
-          configuration.timeFrame !== null &&
-          (configuration.timeFrame.duration === null ||
-            configuration.timeFrame.unit === null)
-        ) {
-          return ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["configuration.timeFrame"],
-            message: messages.timeFrameRequired,
-          });
-        }
-      }
-
-      if (
-        mayRequireJsonSchemaConfiguration &&
-        configuration._jsonSchemaString !== null
-      ) {
-        const parsedSchema = validateConfiguredJsonSchema(
-          configuration._jsonSchemaString
-        );
-
-        if (parsedSchema.isErr()) {
-          return ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ["configuration.jsonSchema"],
-            message: parsedSchema.error.message,
-          });
-        }
-      }
-
-      return true;
-    });
-
 export function useCapabilityFormSchema() {
   const { t } = useLingui();
 
   return useMemo(
     () =>
-      getCapabilityFormSchema({
-        nameRequired: t`The name cannot be empty.`,
-        descriptionRequired: t`Description is required`,
-        descriptionTooLong: t`Description should be less than ${DESCRIPTION_MAX_LENGTH} characters.`,
-        sourcesRequired: t`You must select at least one data source`,
-        timeFrameRequired: t`You must use time frame between that and that when you have required enums in mcpServerViews.`,
-      }),
+      z
+        .object({
+          name: z
+            .string()
+            .min(1, t`The name cannot be empty.`)
+            .transform((val) => {
+              // Convert to lowercase and replace spaces and special chars with underscores
+              return (
+                val
+                  .toLowerCase()
+                  .replace(/[^a-z0-9_]/g, "_")
+                  // Remove consecutive underscores
+                  .replace(/_+/g, "_")
+                  // Remove leading/trailing underscores
+                  .replace(/^_+|_+$/g, "")
+              );
+            })
+            .default(""),
+          description: z
+            .string()
+            .min(1, t`Description is required`)
+            .max(
+              DESCRIPTION_MAX_LENGTH,
+              t`Description should be less than ${DESCRIPTION_MAX_LENGTH} characters.`
+            ),
+          sources: dataSourceBuilderTreeType.refine(
+            (val) => {
+              return val.in.length > 0;
+            },
+            { message: t`You must select at least one data source` }
+          ),
+          mcpServerView: z.custom<MCPServerViewType>().nullable(),
+          configuration: mcpServerConfigurationSchema,
+        })
+        .superRefine((val, ctx) => {
+          const {
+            mayRequireTimeFrameConfiguration,
+            mayRequireJsonSchemaConfiguration,
+          } = getMCPServerRequirements(val.mcpServerView);
+          const configuration = val.configuration;
+
+          if (mayRequireTimeFrameConfiguration) {
+            if (
+              configuration.timeFrame !== null &&
+              (configuration.timeFrame.duration === null ||
+                configuration.timeFrame.unit === null)
+            ) {
+              return ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["configuration.timeFrame"],
+                message: t`You must use time frame between that and that when you have required enums in mcpServerViews.`,
+              });
+            }
+          }
+
+          if (
+            mayRequireJsonSchemaConfiguration &&
+            configuration._jsonSchemaString !== null
+          ) {
+            const parsedSchema = validateConfiguredJsonSchema(
+              configuration._jsonSchemaString
+            );
+
+            if (parsedSchema.isErr()) {
+              return ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["configuration.jsonSchema"],
+                message: parsedSchema.error.message,
+              });
+            }
+          }
+
+          return true;
+        }),
     [t]
   );
 }
