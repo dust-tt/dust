@@ -17,6 +17,7 @@ service Dfs {
   rpc List(ListRequest) returns (Page);
   rpc Read(ReadRequest) returns (ReadResponse);
   rpc ReadFiles(ReadFilesRequest) returns (ReadFilesResponse);
+  rpc Search(SearchRequest) returns (SearchResponse);
   rpc MutateBatch(MutateBatchRequest) returns (stream GroupResult);
 }
 message Empty {}
@@ -64,6 +65,44 @@ message StatRequest { repeated ObjectRef object_ids = 1; }
 message StatResult { required ObjectRef object_id = 1; optional Attr object = 2; optional ErrorDetails error = 3; }
 message StatResponse { repeated StatResult results = 1; required ReadView view = 2; }
 message ReadView { required int64 read_version = 1; required Revision authorization_view = 2; }
+// Search derives tenant and grants exclusively from the session. Fields combine with OR.
+enum SearchField { NAME = 0; CONTENT = 1; }
+enum SearchKind { FILE = 0; DIRECTORY = 1; }
+message SearchScope {
+  required ObjectRef directory_id = 1;
+  optional bool recursive = 2 [default = true];
+}
+// Filters combine with AND. MIME and size predicates select files only.
+message SearchFilter {
+  optional SearchKind kind = 1;
+  optional string name = 2;
+  optional string name_prefix = 3;
+  repeated string mime_types = 4;
+  optional uint64 min_size = 5;
+  optional uint64 max_size = 6;
+  optional Timestamp modified_after = 7;
+  optional Timestamp modified_before = 8;
+  repeated SearchXattr xattrs = 9;
+}
+// An absent value means EXISTS; a present value means byte-exact equality, including empty bytes.
+message SearchXattr { required string name = 1; optional bytes value = 2; }
+message SearchRequest {
+  required string query = 1;
+  repeated SearchField fields = 2;
+  optional SearchScope scope = 3;
+  optional SearchFilter filter = 4;
+  optional uint32 limit = 5 [default = 20];
+}
+message SearchHit {
+  required Attr object = 1;
+  required string name = 2;
+  optional string excerpt = 3;
+}
+message SearchResponse {
+  repeated SearchHit hits = 1;
+  required bool partial = 2;
+  required ReadView view = 3;
+}
 message LookupResponse { required Attr object = 1; required ReadView view = 2; }
 message Metadata {
   required Attr object = 1; required string mime_type = 2;

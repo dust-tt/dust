@@ -17,6 +17,7 @@ mod client_refresh;
 mod directory;
 mod grants;
 mod permissions;
+mod search;
 mod tree_log;
 
 // Deterministic network stalls; storage and authorization still use the real FDB fixture.
@@ -194,7 +195,9 @@ fn truncate(id: &ObjectRef, size: u64) -> Edit {
 #[test]
 fn real_fdb_contracts() -> Result<()> {
     network::run(async {
+        search::contracts().await?;
         let f = Fixture::new().await?;
+        storage::tests::retry_contracts(&f.api.0.storage).await?;
         let dir = f.create(&f.tenant.root_id, "work", true).await?;
         let id = ObjectRef::new_v4();
         let create = edit(edit::Operation::Create(CreateRequest {

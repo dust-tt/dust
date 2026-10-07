@@ -82,11 +82,41 @@ struct Budget {
 }
 struct Reservation {
     budget: Arc<Budget>,
-    bytes: usize,
+    bytes: AtomicUsize,
 }
 impl Drop for Reservation {
     fn drop(&mut self) {
-        self.budget.used.fetch_sub(self.bytes, Ordering::AcqRel);
+        self.budget
+            .used
+            .fetch_sub(self.bytes.load(Ordering::Acquire), Ordering::AcqRel);
+    }
+}
+impl Reservation {
+    /// @cc [owner:spolu,label:performance;concurrency] resident-and-peak-reservations
+    /// Only the replica's serialized refresh owner MAY resize its reservation. Growth MUST reserve
+    /// the full peak before allocation. Shrinking MUST wait until all temporary allocations are
+    /// released and retain the complete resident tree charge through its final authority reader.
+    fn resize(&self, bytes: usize) -> bool {
+        let previous = self.bytes.load(Ordering::Acquire);
+        if bytes > previous {
+            if self
+                .budget
+                .used
+                .fetch_update(Ordering::AcqRel, Ordering::Acquire, |used| {
+                    used.checked_add(bytes - previous)
+                        .filter(|next| *next <= self.budget.limit)
+                })
+                .is_err()
+            {
+                return false;
+            }
+        } else {
+            self.budget
+                .used
+                .fetch_sub(previous - bytes, Ordering::AcqRel);
+        }
+        self.bytes.store(bytes, Ordering::Release);
+        true
     }
 }
 impl Budget {
@@ -98,7 +128,7 @@ impl Budget {
             .ok()?;
         Some(Arc::new(Reservation {
             budget: self.clone(),
-            bytes,
+            bytes: AtomicUsize::new(bytes),
         }))
     }
 }
@@ -106,7 +136,7 @@ struct Entry {
     tenant: String,
     root: ObjectId,
     ready: RwLock<Option<Arc<TenantTree>>>,
-    replica: tokio::sync::Mutex<Option<Replica>>,
+    replica: tokio::sync::Mutex<Option<(Replica, Arc<Reservation>)>>,
     last_active: Mutex<Instant>,
     due: Mutex<Instant>,
     retired: Arc<AtomicBool>,
@@ -317,8 +347,13 @@ impl Manager {
             *current = None;
             return;
         }
-        if let Some(replica) = &mut *current {
-            if let Err(error) = replica.poll().await {
+        if let Some((replica, reservation)) = &mut *current {
+            if !reservation.resize(replica.poll_peak_bytes()) {
+                return;
+            }
+            let result = replica.poll().await;
+            reservation.resize(replica.tree.memory_bytes());
+            if let Err(error) = result {
                 let expired = replica
                     .tree
                     .check_proof(replica.tree.proof(), Instant::now())
@@ -331,18 +366,26 @@ impl Manager {
             }
         } else if let Some(reservation) = self.budget.reserve(self.config.tree_tenant_peak_bytes) {
             let config = self.config.feed(entry.retired.clone());
+            let started = Instant::now();
             match Replica::bootstrap_reserved(
                 storage,
                 &entry.tenant,
                 entry.root,
                 config,
-                reservation,
+                reservation.clone(),
             )
             .await
             {
                 Ok(replica) if !entry.retired.load(Ordering::Acquire) => {
+                    reservation.resize(replica.tree.memory_bytes());
+                    tracing::info!(
+                        nodes = replica.tree.len(),
+                        accounted_bytes = replica.tree.memory_bytes(),
+                        bootstrap_ms = started.elapsed().as_millis() as u64,
+                        "permission tree ready"
+                    );
                     *entry.ready.write() = Some(replica.tree.clone());
-                    *current = Some(replica);
+                    *current = Some((replica, reservation));
                 }
                 Ok(_) => {}
                 Err(error) => {

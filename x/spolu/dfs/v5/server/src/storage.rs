@@ -13,6 +13,8 @@ use tonic::Status;
 use dfs_core::storage::{self as kv, CommitError, Mutation, Rows};
 pub use dfs_core::storage::{Snapshot, WriteBatch, commit, decode, encode, failed};
 use futures::future::BoxFuture;
+#[cfg(test)]
+pub(crate) mod tests;
 
 #[derive(Args, Clone, Debug)]
 pub struct StorageConfig {
@@ -64,13 +66,13 @@ impl Storage {
         self.snapshot_at(None).await
     }
     pub async fn snapshot_at(&self, version: Option<i64>) -> Result<Arc<Snapshot>, Status> {
-        let transaction = self.db.create_trx().map_err(failed)?;
+        let transaction = self.db.create_trx().map_err(fdb_failed)?;
         transaction
             .set_option(TransactionOption::Timeout(4000))
-            .map_err(failed)?;
+            .map_err(fdb_failed)?;
         transaction
             .set_option(TransactionOption::SizeLimit(9_000_000))
-            .map_err(failed)?;
+            .map_err(fdb_failed)?;
         let read_version = if let Some(version) = version {
             if version < 0 {
                 return Err(status(ErrorCode::InvalidInput));
@@ -79,7 +81,7 @@ impl Storage {
             version
         } else {
             let _profile = Guard::new(Phase::FdbVersion);
-            transaction.get_read_version().await.map_err(failed)?
+            transaction.get_read_version().await.map_err(fdb_failed)?
         };
         Ok(Snapshot::new(Arc::new(FdbTransaction {
             transaction,
@@ -97,6 +99,11 @@ impl Storage {
             .await
             .map(|(result, _)| result)
     }
+    /// @cc [owner:spolu,label:backend;concurrency] bounded-safe-transaction-retries
+    /// Retryable FDB errors and per-attempt timeouts before commit MUST restart the entire operation
+    /// with a fresh snapshot, within the shared retry deadline.
+    /// Commit failures MAY retry only when definitely uncommitted. Application errors and unknown
+    /// commit outcomes MUST propagate. All retries MUST share the existing attempt/time bounds.
     pub async fn transact_versioned<T, F, Fut>(&self, mut operation: F) -> Result<(T, i64), Status>
     where
         F: FnMut(Arc<Snapshot>) -> Fut,
@@ -105,9 +112,29 @@ impl Storage {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         for attempt in 0..1024 {
             let transaction_time = Guard::new(Phase::FdbTransaction);
-            let snapshot = self.snapshot().await?;
-            let (batch, result) = operation(snapshot.clone()).await?;
-            batch.apply(&snapshot)?;
+            let prepared = async {
+                let snapshot = self.snapshot().await?;
+                let (batch, result) = operation(snapshot.clone()).await?;
+                batch.apply(&snapshot)?;
+                Ok::<_, Status>((snapshot, result))
+            }
+            .await;
+            let (snapshot, result) = match prepared {
+                Ok(prepared) => prepared,
+                Err(error)
+                    if retryable_read(&error)
+                        && attempt < 1023
+                        && std::time::Instant::now() < deadline =>
+                {
+                    drop(transaction_time);
+                    let jitter = 1 + (uuid::Uuid::new_v4().as_u128() % 8) as u64;
+                    let delay = (10u64 << attempt.min(5)).min(250) + jitter;
+                    let _backoff = Guard::new(Phase::FdbRetry);
+                    tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
+                    continue;
+                }
+                Err(error) => return Err(error),
+            };
             let outcome = commit(snapshot).await;
             drop(transaction_time);
             match outcome {
@@ -156,9 +183,13 @@ impl kv::Transaction for FdbTransaction {
                 .get(&self.key(key), true)
                 .await
                 .map(|v| v.map(|v| Bytes::copy_from_slice(&v)))
-                .map_err(failed)
+                .map_err(fdb_failed)
         })
     }
+    /// @cc [owner:spolu,label:performance;backend] bounded-range-pages
+    /// Range reads MUST request the caller's positive row limit with a bounded byte target, rather
+    /// than restarting adaptive iteration at its smallest batch for every short transaction.
+    /// Callers MUST still honor the returned more flag because a byte limit may shorten a page.
     fn range<'a>(
         &'a self,
         start: &'a [u8],
@@ -166,15 +197,20 @@ impl kv::Transaction for FdbTransaction {
         limit: usize,
     ) -> BoxFuture<'a, Result<(Rows, bool), Status>> {
         Box::pin(async move {
+            if limit == 0 {
+                return Err(status(ErrorCode::InvalidInput));
+            }
             let _profile = Guard::new(Phase::FdbRange);
             let (start, end) = (self.key(start), self.key(end));
             let mut options = RangeOption::from((start.as_slice(), end.as_slice()));
             options.limit = Some(limit);
+            options.mode = foundationdb::options::StreamingMode::Exact;
+            options.target_bytes = 1024 * 1024;
             let rows = self
                 .transaction
                 .get_range(&options, 1, false)
                 .await
-                .map_err(failed)?;
+                .map_err(fdb_failed)?;
             Ok((
                 rows.iter()
                     .map(|r| {
@@ -191,7 +227,7 @@ impl kv::Transaction for FdbTransaction {
     fn conflict(&self, start: &[u8], end: &[u8]) -> Result<(), Status> {
         self.transaction
             .add_conflict_range(&self.key(start), &self.key(end), ConflictRangeType::Read)
-            .map_err(failed)
+            .map_err(fdb_failed)
     }
     fn mutate(&self, mutation: &Mutation) -> Result<(), Status> {
         mutation.validate(self.prefix.len())?;
@@ -265,4 +301,18 @@ fn commit_error(error: FdbError) -> CommitError {
         code: error.code(),
         definitely_uncommitted: error.is_retryable_not_committed(),
     }
+}
+
+fn fdb_failed(error: FdbError) -> Status {
+    tracing::debug!(fdb_code = error.code(), "FDB operation failed");
+    let mut status = status(ErrorCode::Unavailable);
+    // Retain the typed cause locally without exposing backend details over gRPC.
+    status.set_source(Arc::new(error));
+    status
+}
+
+fn retryable_read(error: &Status) -> bool {
+    std::error::Error::source(error)
+        .and_then(|source| source.downcast_ref::<FdbError>())
+        .is_some_and(|error| error.is_retryable_not_committed() || error.code() == 1031)
 }

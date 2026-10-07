@@ -58,6 +58,7 @@ impl Edit {
     /// and separate mutable state; files retain their single-record encoding. Existing directory
     /// metadata edits MUST first read the mutable state with conflicts to preserve untouched fields.
     pub fn record(&mut self, keys: &Keys, record: &Record) -> Result<()> {
+        self.search_pending(keys, &record.object.id)?;
         if let Some(parent) = &record.parent {
             self.batch.increment(keys.listing_version(&parent.id)?);
         }
@@ -93,6 +94,7 @@ impl Edit {
     /// record or mutable state. Counter bumps MUST be deduplicated within the transaction.
     fn membership(&mut self, keys: &Keys, parent: &Record) -> Result<()> {
         let id = &parent.object.id;
+        self.search_pending(keys, id)?;
         self.batch.increment(keys.membership_version(id)?);
         self.batch.increment(keys.listing_version(id)?);
         self.batch.increment(keys.authorization_version());
@@ -104,6 +106,15 @@ impl Edit {
             model::ordered_time(model::now()?)?,
         );
         Ok(())
+    }
+    /// @cc [owner:spolu,label:backend;concurrency] atomic-search-obligation
+    /// Every searchable metadata/content change and deletion MUST replace the object's pending
+    /// token in its filesystem transaction. Blind replacement MUST preserve independent siblings.
+    pub fn search_pending(&mut self, keys: &Keys, id: &ObjectRef) -> Result<()> {
+        self.put(
+            keys.pending_object(id)?,
+            encode(&crate::search::Pending::new()?)?,
+        )
     }
     pub fn grant(
         &mut self,
@@ -454,6 +465,7 @@ impl View {
         self.empty_directory(record).await?;
         let mut edit = Edit::new();
         edit.delete(self.keys.object(&record.object.id)?)?;
+        edit.search_pending(&self.keys, &record.object.id)?;
         edit.tree.insert(record.object.id);
         edit.delete(self.keys.metadata(&record.object.id)?)?;
         if record.object.directory {

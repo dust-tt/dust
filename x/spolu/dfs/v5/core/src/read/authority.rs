@@ -70,10 +70,28 @@ impl Authority {
         ids: Vec<ObjectId>,
         grants: &[crate::tree::GrantId],
     ) -> Result<Vec<ObjectId>> {
+        self.filter_scoped_candidates(ids, grants, None)
+    }
+    pub fn filter_scoped_candidates(
+        &self,
+        ids: Vec<ObjectId>,
+        grants: &[crate::tree::GrantId],
+        scope: Option<(ObjectId, bool)>,
+    ) -> Result<Vec<ObjectId>> {
         if ids.len() > crate::tree::MAX_AUTH_BATCH {
             return Err(status(ErrorCode::InvalidInput));
         }
-        let allowed = self.filter(&ids, grants)?;
+        let allowed = if scope.is_none() {
+            self.filter(&ids, grants)?
+        } else {
+            match self
+                .tree
+                .authorize_scoped(&ids, grants, scope, Instant::now())
+            {
+                Ok((proof, decisions)) if self.same_generation(proof) => decisions,
+                _ => return self.invalidate(),
+            }
+        };
         Ok(ids
             .into_iter()
             .zip(allowed)
@@ -128,16 +146,44 @@ impl View {
     /// under one generation for the whole bounded candidate batch. Unknown candidates MUST be
     /// excluded. Without a usable tree, each proof MUST use this single fresh FDB snapshot.
     pub async fn filter_search_candidates(&self, ids: Vec<ObjectId>) -> Result<Vec<ObjectId>> {
+        self.filter_scoped_search_candidates(ids, None).await
+    }
+    pub async fn filter_scoped_search_candidates(
+        &self,
+        ids: Vec<ObjectId>,
+        scope: Option<(ObjectId, bool)>,
+    ) -> Result<Vec<ObjectId>> {
         if ids.len() > crate::tree::MAX_AUTH_BATCH {
             return Err(status(ErrorCode::InvalidInput));
         }
         if let Some(authority) = &self.authority {
-            return authority.filter_candidates(ids, &self.grants);
+            return authority.filter_scoped_candidates(ids, &self.grants, scope);
         }
         stream::iter(ids)
             .map(|id| async move {
                 match self.stat(&ObjectRef::Object(id)).await {
-                    Ok(_) => Ok(Some(id)),
+                    Ok(_) => {
+                        if let Some((directory, recursive)) = scope {
+                            if id == directory {
+                                return Ok(None);
+                            }
+                            let mut record = self.core(&ObjectRef::Object(id)).await?;
+                            for _ in 0..crate::tree::MAX_DEPTH {
+                                let Some(parent) = record.parent else {
+                                    return Ok(None);
+                                };
+                                if parent.id == ObjectRef::Object(directory) {
+                                    return Ok(Some(id));
+                                }
+                                if !recursive {
+                                    return Ok(None);
+                                }
+                                record = self.core(&parent.id).await?;
+                            }
+                            return Err(status(ErrorCode::Unavailable));
+                        }
+                        Ok(Some(id))
+                    }
                     Err(error) if dfs_protocol::error::code(&error) == ErrorCode::NotFound => {
                         Ok(None)
                     }

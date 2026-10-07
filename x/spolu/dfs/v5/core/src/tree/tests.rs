@@ -269,3 +269,30 @@ fn full_intervals_advance_freshness_but_only_changes_advance_generation() -> Res
     assert!(tree.check_proof(changed, deadline).is_ok());
     Ok(())
 }
+
+#[test]
+fn search_scope_and_grants_share_one_generation() -> Result<(), Error> {
+    let f = Fixture::new()?;
+    let now = Instant::now();
+    let proof = Proof {
+        incarnation: ObjectId::new_v4(),
+        generation: 0,
+        read_version: 1,
+        poll_started: now,
+    };
+    let tree = TenantTree::new(f.tree, proof, Duration::from_secs(30))?;
+    let ids = [f.root, f.left, f.right, f.file, ObjectId::new_v4()];
+    let (_, allowed) = tree.authorize_scoped(&ids, &[GrantId(7)], Some((f.left, true)), now)?;
+    assert_eq!(allowed, vec![false, false, false, true, false]);
+    let (_, allowed) = tree.authorize_scoped(&ids, &[GrantId(7)], Some((f.root, false)), now)?;
+    assert_eq!(allowed, vec![false, true, false, false, false]);
+    let (_, allowed) = tree.authorize_scoped(&ids, &[GrantId(9)], Some((f.left, true)), now)?;
+    assert_eq!(allowed, vec![false; 5]);
+    let (_, allowed) = tree.authorize_scoped(&ids, &[GrantId(7)], Some((f.file, true)), now)?;
+    assert_eq!(allowed, vec![false; 5]);
+    assert_eq!(
+        tree.authorize_scoped(&ids, &[GrantId(7)], None, now + Duration::from_secs(31)),
+        Err(Error::Stale)
+    );
+    Ok(())
+}

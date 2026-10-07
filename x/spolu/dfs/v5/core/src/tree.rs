@@ -522,6 +522,19 @@ impl TenantTree {
         session_grants: &[GrantId],
         now: Instant,
     ) -> Result<(Proof, Vec<bool>), Error> {
+        self.authorize_scoped(ids, session_grants, None, now)
+    }
+
+    /// @cc [owner:spolu,label:security;concurrency] scoped-search-generation
+    /// Scope and grants MUST be evaluated under the same published generation. The scope itself
+    /// and unknown objects MUST be excluded. No ancestor paths MAY be retained per object.
+    pub fn authorize_scoped(
+        &self,
+        ids: &[ObjectId],
+        session_grants: &[GrantId],
+        scope: Option<(ObjectId, bool)>,
+        now: Instant,
+    ) -> Result<(Proof, Vec<bool>), Error> {
         if ids.len() > MAX_AUTH_BATCH
             || session_grants.len() > dfs_protocol::MAX_GRANTS
             || !session_grants.windows(2).all(|v| v[0] < v[1])
@@ -532,7 +545,35 @@ impl TenantTree {
         self.fresh(state.proof, now)?;
         let decisions = ids
             .iter()
-            .map(|id| state.tree.allows(*id, session_grants))
+            .map(|id| {
+                state.tree.allows(*id, session_grants)
+                    && scope.is_none_or(|(directory, recursive)| {
+                        let tree = &state.tree;
+                        let Some(&target) = tree.index.get(&directory) else {
+                            return false;
+                        };
+                        let Some(&slot) = tree.index.get(id) else {
+                            return false;
+                        };
+                        if slot == target || tree.kinds[target as usize] != DIRECTORY {
+                            return false;
+                        }
+                        let mut parent = tree.parents[slot as usize];
+                        for _ in 0..MAX_DEPTH {
+                            if parent == NONE {
+                                return false;
+                            }
+                            if parent == target {
+                                return true;
+                            }
+                            if !recursive {
+                                return false;
+                            }
+                            parent = tree.parents[parent as usize];
+                        }
+                        false
+                    })
+            })
             .collect();
         Ok((state.proof, decisions))
     }
@@ -571,6 +612,12 @@ impl TenantTree {
     }
     pub fn memory_bytes(&self) -> usize {
         self.state.read().tree.memory_bytes()
+    }
+    pub fn len(&self) -> usize {
+        self.state.read().tree.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.state.read().tree.is_empty()
     }
     pub fn proof(&self) -> Proof {
         self.state.read().proof

@@ -84,6 +84,7 @@ pub(super) async fn contracts() -> Result<()> {
     generation_change_retries_the_entire_read().await?;
     generation_change_discards_prepared_mutations().await?;
     eviction_retains_reservations_until_readers_release().await?;
+    multiple_tenants_release_unused_bootstrap_reservations().await?;
     Ok(())
 }
 async fn stale_grants_and_whole_operation_fallback() -> Result<()> {
@@ -316,9 +317,13 @@ async fn generation_change_discards_prepared_mutations() -> Result<()> {
 }
 
 async fn eviction_retains_reservations_until_readers_release() -> Result<()> {
-    let f = Fixture::with_permissions(config()).await?;
+    let mut limits = config();
+    limits.tree_memory_bytes = (limits.tree_tenant_peak_bytes * 16).div_ceil(15);
+    let f = Fixture::with_permissions(limits).await?;
     let owner = ids(&f, &["owner"]).await?;
-    drop(warm(&f, &[f.tenant.root_id.real()?], &owner, &[true]).await?);
+    let first = warm(&f, &[f.tenant.root_id.real()?], &owner, &[true]).await?;
+    let resident = first.memory_bytes();
+    drop(first);
     let pinned = f
         .api
         .0
@@ -353,23 +358,52 @@ async fn eviction_retains_reservations_until_readers_release() -> Result<()> {
         .close_session(request(&f.owner.session_key, Empty {})?)
         .await?;
     wait_for(|| f.api.0.permissions.tree(&f.tenant.tenant_id).is_none()).await?;
-    assert_eq!(
-        f.api.0.permissions.reserved_bytes(),
-        config().tree_tenant_peak_bytes
-    );
+    assert_eq!(f.api.0.permissions.reserved_bytes(), resident);
     assert!(
         f.api.0.permissions.pin(&second.tenant_id).is_none(),
         "an in-flight authority keeps its reservation after eviction"
     );
     drop(pinned);
     wait_for(|| f.api.0.permissions.pin(&second.tenant_id).is_some()).await?;
-    assert_eq!(
-        f.api.0.permissions.reserved_bytes(),
-        config().tree_tenant_peak_bytes
-    );
+    let second_resident = f
+        .api
+        .0
+        .permissions
+        .tree(&second.tenant_id)
+        .context("second tree")?
+        .memory_bytes();
+    wait_for(|| f.api.0.permissions.reserved_bytes() == second_resident).await?;
     f.api
         .close_session(request(&reader.session_key, Empty {})?)
         .await?;
     wait_for(|| f.api.0.permissions.reserved_bytes() == 0).await?;
+    Ok(())
+}
+
+async fn multiple_tenants_release_unused_bootstrap_reservations() -> Result<()> {
+    let f = Fixture::with_permissions(config()).await?;
+    let mut tenants = vec![f.tenant.tenant_id.clone()];
+    for index in 0..2 {
+        let tenant = f
+            .api
+            .create_tenant(request(
+                &"ab".repeat(32),
+                CreateTenantRequest {
+                    tenant_id: format!("resident-{index}"),
+                    root_grants: vec!["owner".into()],
+                },
+            )?)
+            .await?
+            .into_inner();
+        Fixture::session(&f.api, &tenant, &["owner"]).await?;
+        tenants.push(tenant.tenant_id);
+    }
+    wait_for(|| {
+        tenants
+            .iter()
+            .all(|tenant| f.api.0.permissions.pin(tenant).is_some())
+    })
+    .await?;
+    assert!(f.api.0.permissions.reserved_bytes() < config().tree_memory_bytes);
     Ok(())
 }

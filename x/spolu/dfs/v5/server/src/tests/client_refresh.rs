@@ -64,6 +64,47 @@ pub(super) fn contracts(endpoint: &str, key: &str, tenant: &Tenant, state: &Stat
     revoked_creation(endpoint, tenant, &directory.id, &observer)?;
     group_capacity(endpoint, key, &directory.id, &observer, state)?;
     delayed_commit_reply(endpoint, key, &directory.id, &observer, state)?;
+    delayed_prerequisite(endpoint, key, &directory.id, &observer, state)?;
+    Ok(())
+}
+
+fn delayed_prerequisite(
+    endpoint: &str,
+    key: &str,
+    parent: &ObjectRef,
+    observer: &BlockingClient,
+    state: &State,
+) -> Result<()> {
+    let file = observer
+        .create(create(parent, "delayed-prerequisite", false))?
+        .object
+        .context("file")?;
+    let client = CachedClient::connect(endpoint, key, CacheConfig::default())?;
+    let pause = Arc::new(Pause {
+        entered: Default::default(),
+        release: Semaphore::new(0),
+    });
+    state.pauses.lock().insert(file.id, pause.clone());
+    let outcome = (|| -> Result<()> {
+        client.write(write(&file.id, 0, b"first", false))?;
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()?
+            .block_on(async {
+                tokio::time::timeout(Duration::from_secs(3), pause.entered.notified()).await
+            })?;
+        client.write(write(&file.id, 5, b"second", false))?;
+        std::thread::sleep(Duration::from_millis(350));
+        client.check_error(&file.id)?;
+        assert_eq!(calls(&client, "writeback.dispatch_expired"), 0);
+        Ok(())
+    })();
+    state.pauses.lock().remove(&file.id);
+    pause.release.add_permits(1);
+    outcome?;
+    client.fsync(object(&file.id))?;
+    assert_eq!(observer.read(read(&file.id))?.data, b"firstsecond");
+    assert_eq!(calls(&client, "writeback.dispatch_expired"), 0);
     Ok(())
 }
 

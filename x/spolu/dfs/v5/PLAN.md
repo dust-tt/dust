@@ -1,5 +1,78 @@
 # v5 implementation and measurements
 
+## Search and durable tree warmup
+
+- [x] Add generic gRPC Search for files and directories, with name/content selection, typed filters,
+      subtree scope and bounded top-k results. Do not add GetIndexStatus.
+- [x] Persist coalesced indexing obligations atomically in FDB; implement resumable ES indexing and
+      backfill, conditional publication, revision validation, and shared RAM/FDB authorization.
+- [x] Verify real ES/FDB behavior for directories, scope, moves without descendant reindexing,
+      revocation, stale content, deletion, tenant isolation, retries, and index rebuilds.
+- [x] Benchmark search locally and on GCP and check filesystem performance for regressions.
+- [ ] Populate two persistent GCP tenants with 1M and 10M files, plus realistic directory
+      depth and grants. Preserve existing fixture data and record actual counts and storage usage.
+- [ ] Measure permission-tree bootstrap from those FDB tenants with empty server memory, recording
+      wall time, FDB work, final tree size, process RSS and peak memory. Synthetic builder timing is
+      not evidence for this requirement. Verify authorization after every bootstrap.
+- [ ] Document reproducible commands, raw report locations, identities and limitations.
+
+The user cancelled the 100M benchmark for now. The current goal covers only 1M and 10M population,
+warmup and persistent serving. No 100M population was started. Older synthetic 100M results remain
+historical evidence; they are not an FDB bootstrap measurement.
+
+Search is implemented and passes real ES/FDB checks locally and on GCP. Local runs now cover
+failed ES bulk publication, superseded queue completion and index deletion/rebuild races. Publication
+uses a unique alias per ES incarnation with `require_alias=true`; this prevents late bulk requests
+from recreating an unmapped index. The derived schema is now `dfs-v5-es-2`. The API has no status RPC.
+[Measurements](bench/SEARCH.md) retain raw local/GCP search and full filesystem results. The
+completed local/GCP Search run `f` has matching source identity and includes both publication
+and safe pre-commit FDB retry fixes.
+
+The first durable GCP population contains 1,000,000 files + 10,000 directories + root. A new
+process bootstrapped its 1,010,001 permission nodes from FDB in 15.688 s, with 86.85 MiB tree accounting,
+101.23 MiB final RSS and 118.19 MiB peak RSS. Exact count and sampled owner/empty-grant checks passed.
+This is an actual FDB-to-RAM measurement, not the earlier synthetic builder test. Raw reports are
+under `/var/log/dfs-bench/v5/scale-20261007-a`; FDB/OS caches were retained.
+
+The 10M loader hit an FDB read timeout after earlier `process_behind` failures exposed missing read
+retries. Typed pre-commit errors now use fresh-snapshot bounded retries; unknown commits remain
+non-replayable. Tests verify that writes from a failed preparation disappear and the retry commits
+once. The loader's durable 16-way partitioning is separate from its new eight-transaction concurrency
+limit, allowing safe resumption with less backend pressure. The updated runtime passed GCP
+tests/clippy/mounted and Search checks. Report `scale-20261007-b` repeated the 1M warmup in 17.537 s.
+Its 10M loader was deliberately stopped after 2.1M inserted files when stronger public-RPC validation
+found a fixture-only child-index encoding bug: it wrote tagged 17-byte references, while lookup/list
+require raw 16-byte UUIDs. Normal filesystem creation already uses the correct representation.
+The loader is fixed and now verifies actual lookup and root listing before reporting success.
+Its offline repair checks the original manifest and exact deterministic key/value, changes only the
+legacy encoding, and accepts already-correct rows without rewriting them. The local 10,100-row repair
+and repeat passed; real gRPC checks passed on repaired and newly seeded tenants for file bytes,
+namespace links, metadata, inherited/explicit grants, empty grants and cross-tenant isolation.
+Runtime h passed the GCP full filesystem benchmark and repaired all 1,010,000 existing 1M child rows
+and 2,286,240 partial-10M child rows. Second repair scans changed zero rows. Report `scale-20261007-c`
+then verified the repaired 1M tree: 15.759 s bootstrap, 86.85 MiB accounted, 99.01 MiB final RSS and
+116.34 MiB peak RSS, with exactly 1,010,001 nodes and all 748 permission samples passing.
+The 10M loader added another 200K files before exhausting its bounded retries on FDB process_behind.
+The driver now resumes only terminal typed 1031/1037 failures from atomic cursors, lowers concurrency
+and waits 30–60 seconds, with an eight-attempt bound and retained failure logs. Other failures stop.
+The replacement `dfs-v5-resume-20261007-i` unit resumes only 1M/10M in report `scale-20261007-c` and
+retains the measured Rust binaries. Do not replace binaries while this job is running.
+The 10M fixture, its actual warmup, and live persistent service verification remain unfinished.
+GCP filesystem run `f` stopped at drain with one expired client dependency. The client now excludes
+actual prerequisite RPC intervals from its 200 ms buffering clock, counting overlaps once and
+retaining queued/local time. A 350 ms stalled-prerequisite test, the full local suite, strict clippy
+and mounted checks pass. Local full filesystem run `g` passed all 24 checks, content hashes and cleanup: 5.789 s untar,
+zero drain and zero dispatch expirations. GCP runtime h passed all 24 checks, hash passes and cleanup:
+15.779 s untar, 25 ms drain, zero dispatch expirations and 360.52 MiB peak accounted client memory.
+Search and filesystem tables retain the measured performance caveats; no blanket absence of slowdown
+is claimed under background indexing.
+The earlier follow-up unit `dfs-v5-finalize-20261007-g` was stopped with the old loader. Runtime h
+includes the client correction. Its state and logs are under `/var/log/dfs-bench/v5/finalize-20261007-h`.
+After both selected populations and measured warmups pass, the resume unit starts the persistent
+server and runs `gcp/verify_scale.py` against the real API. Starting a unit is not completion evidence.
+`gcp/serve_scale.py` prepares the service only after the selected measurements pass and keeps credentials
+in private files. The workload VM and existing FDB configuration are unchanged.
+
 Objective: implement every behavior in [DESIGN.md](DESIGN.md), validate with real FoundationDB and
 mounted FUSE, run the untar and full jd benchmark locally and on the existing dust-dev fixture,
 and record comparable result tables with source/binary identities and configuration.

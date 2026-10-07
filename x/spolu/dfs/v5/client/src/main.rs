@@ -49,6 +49,7 @@ enum Method {
     Validate,
     GetMetadata,
     ReadFiles,
+    Search,
 }
 fn main() -> Result<()> {
     let config = Config::parse();
@@ -101,6 +102,7 @@ fn main() -> Result<()> {
         Method::Validate => call!(validate, ValidateRequest),
         Method::GetMetadata => call!(get_metadata, ObjectRequest),
         Method::ReadFiles => call!(read_files, ReadFilesRequest),
+        Method::Search => call!(search, SearchRequest),
     };
     match config.output {
         Some(path) => write_private(&path, &result)?,

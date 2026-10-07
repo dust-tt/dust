@@ -272,6 +272,17 @@ fn changes(group: MutationGroup) -> Result<Vec<Change>> {
 }
 #[tonic::async_trait]
 impl Dfs for Api {
+    async fn search(&self, request: Request<SearchRequest>) -> Result<Response<SearchResponse>> {
+        self.call(move |state| async move {
+            let session = state.sessions.get(&request).await?;
+            let search = state
+                .search
+                .get()
+                .ok_or_else(|| status(ErrorCode::Unavailable))?;
+            search.objects(&state, &session, request.into_inner()).await
+        })
+        .await
+    }
     async fn create_tenant(
         &self,
         request: Request<CreateTenantRequest>,

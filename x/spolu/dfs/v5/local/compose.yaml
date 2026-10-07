@@ -1,5 +1,21 @@
 name: dfs-v5
 services:
+  es:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    mem_limit: 3g
+    ports:
+      - "127.0.0.1:${DFS_V5_ES_PORT:-19205}:9200"
+    volumes:
+      - es-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' >/dev/null"]
+      interval: 3s
+      timeout: 3s
+      retries: 60
   fdb:
     image: foundationdb/foundationdb:7.3.69
     environment:
@@ -22,6 +38,8 @@ services:
       FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
       DFS_FDB_CLUSTER_FILE: /var/fdb/fdb.cluster
       DFS_FDB_PREFIX: dfs-v5-local
+      DFS_ES_URL: http://es:9200
+      DFS_ES_INDEX: dfs-v5-local
       RUSTC_WRAPPER: ""
       CARGO_TARGET_DIR: /target
       CARGO_PROFILE_DEV_DEBUG: "0"
@@ -41,6 +59,7 @@ services:
       fdb:
         condition: service_healthy
 volumes:
+  es-data:
   fdb-data:
   target:
   cargo:

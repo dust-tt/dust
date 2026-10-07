@@ -5,6 +5,8 @@ use memory::object_weight;
 use std::collections::{BTreeMap, BTreeSet};
 use tokio::sync::{OwnedSemaphorePermit, watch};
 mod refresh;
+#[cfg(test)]
+mod tests;
 
 const MAX_GROUP_COST: usize = 900_000;
 const MAX_WRITE: usize = 256 * 1024;
@@ -18,6 +20,7 @@ struct Operation {
 struct Receipt {
     id: u64,
     result: watch::Sender<Option<std::result::Result<(), ErrorCode>>>,
+    submitted: std::sync::OnceLock<Instant>,
     completed: std::sync::OnceLock<Instant>,
 }
 impl Receipt {
@@ -25,6 +28,7 @@ impl Receipt {
         Arc::new(Self {
             id,
             result: watch::channel(None).0,
+            submitted: Default::default(),
             completed: Default::default(),
         })
     }
@@ -75,6 +79,14 @@ struct Dirty {
     _refresh_memory: Option<OwnedSemaphorePermit>,
 }
 impl Group {
+    /// @cc [owner:spolu,label:performance;concurrency] client-controlled-buffering-clock
+    /// The dispatch deadline MUST exclude only actual prerequisite RPC wait intervals after this
+    /// group's acceptance. Overlapping intervals MUST count once. Queued prerequisite time and
+    /// local scheduling MUST remain charged; coalescing MUST NOT reset acceptance time.
+    fn buffered_for(&self, now: Instant) -> Duration {
+        buffered_for(self.accepted, now, &self.dependencies)
+    }
+
     /// @cc [owner:spolu,label:concurrency;performance] primary-refresh-dispatch-pause
     /// Metadata refresh MAY pause edits to its primary object or a replaced object. Refreshing a
     /// membership-only parent MUST NOT block independent child groups or consume their deadlines.
@@ -1191,9 +1203,8 @@ impl Inner {
                 .values()
                 .filter(|group| {
                     !group.inflight
-                        && now
-                            >= group.accepted
-                                + Duration::from_millis(self.config.max_write_delay_ms)
+                        && group.buffered_for(now)
+                            >= Duration::from_millis(self.config.max_write_delay_ms)
                 })
                 .map(|group| {
                     let reason = if group.refreshing() {
@@ -1251,6 +1262,7 @@ impl Inner {
         let mut permit = None;
         let mut failed;
         let mut groups = Vec::new();
+        let mut receipts = Vec::new();
         {
             let mut pending = self.pending.lock();
             let (selected, rejected) =
@@ -1293,6 +1305,7 @@ impl Inner {
                     false,
                 );
                 group.dispatched = Some(dispatched);
+                receipts.push(group.receipt.clone());
                 groups.push(MutationGroup {
                     id: group.id,
                     edits: group.operations.iter().map(|e| e.rpc.clone()).collect(),
@@ -1311,6 +1324,10 @@ impl Inner {
             let _permit = permit;
             let ids: BTreeSet<_> = groups.iter().map(|g| g.id).collect();
             let exchange = async {
+                let submitted = Instant::now();
+                for receipt in &receipts {
+                    let _ = receipt.submitted.set(submitted);
+                }
                 if let Ok(mut stream) = inner.rpc.mutate_batch(MutateBatchRequest { groups }).await
                 {
                     loop {
@@ -1345,6 +1362,7 @@ impl Inner {
     /// Membership-only parents omitted from the response MUST lose cached attribute validity;
     /// invalidation MUST preserve pending edits and separately confirmed name bindings.
     fn finish(&self, id: u64, result: std::result::Result<Mutation, ErrorCode>) {
+        let received = Instant::now();
         let mut pending = self.pending.lock();
         let Some(group) = pending.groups.remove(&id) else {
             return;
@@ -1369,7 +1387,6 @@ impl Inner {
                 fences.record(*id, mutation.commit_version);
             }
         }
-        let received = Instant::now();
         let sent = group.dispatched.unwrap_or(group.accepted);
         let canonical: HashMap<_, _> = result
             .as_ref()
@@ -1479,12 +1496,32 @@ impl Inner {
                 );
             }
         }
-        let _ = group.receipt.completed.set(Instant::now());
+        let _ = group.receipt.completed.set(received);
         group.receipt.result.send_replace(Some(result.map(|_| ())));
         drop(group);
         drop(pending);
         self.changed.notify_one();
     }
+}
+
+fn buffered_for(accepted: Instant, now: Instant, dependencies: &[Arc<Receipt>]) -> Duration {
+    let mut intervals: Vec<_> = dependencies
+        .iter()
+        .filter_map(|receipt| {
+            let start = receipt.submitted.get().copied()?.max(accepted);
+            let end = receipt.completed.get().copied().unwrap_or(now).min(now);
+            (end > start).then_some((start, end))
+        })
+        .collect();
+    intervals.sort_unstable();
+    let mut through = accepted;
+    let mut waiting = Duration::ZERO;
+    for (start, end) in intervals {
+        waiting += end.saturating_duration_since(start.max(through));
+        through = through.max(end);
+    }
+    now.saturating_duration_since(accepted)
+        .saturating_sub(waiting)
 }
 
 fn timestamp() -> Result<Timestamp> {

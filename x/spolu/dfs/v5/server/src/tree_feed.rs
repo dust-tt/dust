@@ -77,6 +77,18 @@ pub struct Replica {
     config: Config,
 }
 impl Replica {
+    /// @cc [owner:spolu,label:performance;concurrency] poll-reservation-bound
+    /// The reservation MUST cover resident and replacement buffers plus the full staged interval.
+    /// Hydration accounts at least 192 bytes per node and four per grant; publication accounts 512
+    /// per node and sixteen per grant, so four staging budgets cover its preparation. The configured
+    /// ceiling remains enforced by publish_bounded before allocation.
+    pub(crate) fn poll_peak_bytes(&self) -> usize {
+        self.tree
+            .memory_bytes()
+            .saturating_mul(3)
+            .saturating_add(self.config.staging_bytes.saturating_mul(5))
+            .min(self.config.tenant_peak_bytes)
+    }
     /// @cc [owner:spolu,label:security;backend] scalable-bootstrap-reconciliation
     /// Base pages MUST use short independent snapshots and hydrate grants in their page's snapshot.
     /// A complete feed interval MUST be merged between pages from a cursor captured before the base

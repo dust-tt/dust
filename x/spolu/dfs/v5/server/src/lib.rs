@@ -8,6 +8,7 @@ use dfs_core::model;
 use dfs_core::mutation;
 pub mod network;
 pub mod permissions;
+pub mod search;
 use dfs_core::profile;
 use dfs_core::read;
 pub mod storage;
@@ -16,6 +17,7 @@ pub mod tree_feed;
 pub mod tree_gc;
 
 pub struct State {
+    pub search: std::sync::OnceLock<Arc<search::Search>>,
     pub storage: storage::Storage,
     server_hash: [u8; 32],
     incarnation: dfs_protocol::Revision,
@@ -59,6 +61,7 @@ impl State {
             "invalid server key"
         );
         let state = Arc::new(Self {
+            search: Default::default(),
             permissions: permissions::Manager::new(permission_config)?,
             storage,
             server_hash: auth::hash(server_key),
@@ -84,6 +87,9 @@ impl State {
         Ok(state)
     }
     pub async fn drain(&self) -> anyhow::Result<()> {
+        if let Some(search) = self.search.get() {
+            search.stop().await?;
+        }
         self.permissions.stop();
         let _batches = self.batches.acquire_many(32).await?;
         let _mutations = self.mutations.acquire_many(1024).await?;

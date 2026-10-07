@@ -40,6 +40,8 @@ struct Config {
     tree_gc: dfs_server_v5::tree_gc::Config,
     #[command(flatten)]
     permissions: dfs_server_v5::permissions::Config,
+    #[command(flatten)]
+    search: dfs_server_v5::search::SearchConfig,
 }
 fn main() -> Result<()> {
     dfs_server_v5::network::run(run())
@@ -76,6 +78,14 @@ async fn run() -> Result<()> {
         )))?;
     }
     let listener = TcpListener::bind(config.listen).await?;
+    if config.search.es_url.is_some() {
+        let search = dfs_server_v5::search::Search::open(config.search)?;
+        state
+            .search
+            .set(search.clone())
+            .map_err(|_| anyhow::anyhow!("search already configured"))?;
+        search.start(&state).await?;
+    }
     let mut interrupt = signal(SignalKind::interrupt())?;
     let mut terminate = signal(SignalKind::terminate())?;
     let (stop, stopped) = tokio::sync::oneshot::channel();

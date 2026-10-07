@@ -50,6 +50,11 @@ both capacities before acknowledgment; exhausted envelope capacity bypasses coal
 groups. Batching retains one envelope reservation and releases the extras. No mutation response
 contains file content.
 
+Prerequisite receipts retain submission/completion timestamps to distinguish server waits from the
+client's 200 ms buffering allowance. The dispatcher unions their wait intervals with at most one
+temporary interval per admitted group (hard cap 4096), within the fixed scheduler reserve. Overlap
+counts once; queued prerequisites and local scheduling still consume the buffering allowance.
+
 `dfs_memory_metrics` reports retained reservations, their observed peak, the configured limit,
 the fixed transient reservation, and scratch use/peak. The accounted peak includes the entire
 96 MiB reserve even when scratch is idle. Mounted tests assert both limits, exercise deferred

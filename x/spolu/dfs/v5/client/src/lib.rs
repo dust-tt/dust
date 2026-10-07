@@ -173,6 +173,7 @@ methods! {
     validate: ValidateRequest => ValidateResponse,
     get_metadata: ObjectRequest => Metadata,
     read_files: ReadFilesRequest => ReadFilesResponse,
+    search: SearchRequest => SearchResponse,
     list: ListRequest => Page,
 }
 

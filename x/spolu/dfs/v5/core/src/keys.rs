@@ -34,8 +34,23 @@ impl Keys {
     pub fn object(&self, id: &ObjectRef) -> Result<Vec<u8>, Status> {
         self.object_family(1, id)
     }
+    pub fn objects(&self) -> Vec<u8> {
+        self.family(1)
+    }
+    pub fn search_pending(&self) -> Vec<u8> {
+        self.family(30)
+    }
+    pub fn pending_object(&self, id: &ObjectRef) -> Result<Vec<u8>, Status> {
+        self.object_family(30, id)
+    }
+    pub fn search_meta(&self) -> Vec<u8> {
+        self.family(31)
+    }
     pub fn children(&self, parent: &ObjectRef) -> Result<Vec<u8>, Status> {
         self.object_family(2, parent)
+    }
+    pub fn all_children(&self) -> Vec<u8> {
+        self.family(2)
     }
     pub fn child(&self, parent: &ObjectRef, name: &str) -> Result<Vec<u8>, Status> {
         let mut key = self.children(parent)?;

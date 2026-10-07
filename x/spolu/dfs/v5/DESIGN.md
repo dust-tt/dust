@@ -4,7 +4,7 @@ Proposal: a FUSE client that amortizes filesystem work, a small transactional FD
 complete in-memory authorization tree for each active tenant. Tenant affinity keeps requests near
 their tree. One server owns all active tenants in the first implementation.
 
-The RAM tree answers permissions for both filesystem requests and future search-result filtering. It
+The RAM tree answers permissions for both filesystem requests and Search result filtering. It
 continuously follows an FDB-backed `TreeUpdateLog`. FDB remains the durable authority; the tree is
 an explicitly bounded-stale materialized view, with a freshness gate rather than best-effort
 invalidation. File contents and ordinary metadata remain in FDB.
@@ -42,7 +42,7 @@ Application -> kernel FUSE -> mount/client -> gRPC -> filesystem core -> FDB ada
                                            tenant RAM tree <-------- TreeUpdateLog
                                                   ^
                                                   |
-                                      future search candidate filtering
+                                      Search candidate filtering
 ```
 
 | Component | Owns |
@@ -408,6 +408,14 @@ Reserve these peaks before starting. Enforce a configured aggregate server tree 
 staging limits. If a full tenant cannot fit, use FDB authorization or reject admission; never serve
 a partial tree as complete. Evict an entire idle tenant, not arbitrary ancestors of active trees.
 
+The server reserves the configured tenant peak before bootstrap, then releases unused capacity once
+the builder is gone and retains the resident tree charge. Each poll temporarily expands that
+reservation to its conservative update peak. In-flight authority references retain the resident
+charge after eviction. This lets several resident tenants share the aggregate budget without each
+holding its maximum bootstrap allowance permanently. A new bootstrap still needs its whole peak
+available; activate selected tenants in ascending size. The current 1M/10M fixture uses a 28 GiB
+aggregate / 24 GiB per-tenant peak budget; the 100M fixture is deferred.
+
 ## TreeUpdateLog
 
 ### Latest-state index and atomic publication
@@ -564,7 +572,7 @@ separately with `DFS_AUTH_TREE_POLL_MS`, default `250`; require positive values 
 smaller than S. The 30-second setting is the maximum accepted age of the permission view, not a
 30-second polling interval. Do not lengthen content/metadata cache TTLs or write buffering to match
 it. Ordinary content freshness has W + C = 1 second of client-added delay; permission-dependent
-visibility, including `/shared` and future search filtering, additionally depends on S.
+visibility, including `/shared` and Search filtering, additionally depends on S.
 
 After a committed grant revocation, a server may use its prior tree for up to S, and a client may
 retain an already authorized result for up to C: the configured permission allowance is therefore up
@@ -599,7 +607,7 @@ An FDB outage stops successful polls. Existing RAM permissions expire after S; c
 then requests fail instead of extending stale access indefinitely. Permission changes discovered
 after a write was optimistically accepted can cause deferred write failure, reported at fsync.
 
-## Future search filtering
+## Search filtering
 
 Search produces candidate UUIDs within an already authenticated tenant. Filter candidates in bounded
 batches against one fresh tree generation and the session grant set, using the same authorization
@@ -614,7 +622,10 @@ an alternative permission authority.
 
 The search index may lag content independently. This tree solves permission filtering and object
 liveness within its freshness budget, not search indexing, ranking, path reconstruction, or exact
-global hit counts. No search engine or indexing pipeline is introduced by this proposal.
+global hit counts. [SEARCH.md](SEARCH.md) defines the added generic gRPC Search API, ES documents
+for files and directories, atomic FDB indexing obligations, and revision validation. Scope and
+permissions use one tree generation; directories match their own names and metadata. There is no
+GetIndexStatus RPC. [Search measurements](bench/SEARCH.md) report the local and GCP runs.
 
 ## Validation and measurements
 
