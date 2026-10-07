@@ -1634,7 +1634,7 @@
             "required": false,
             "description": "Cursor value (message rank) from a previous response to fetch the next page of messages.",
             "schema": {
-              "type": "string"
+              "type": "integer"
             }
           }
         ],
