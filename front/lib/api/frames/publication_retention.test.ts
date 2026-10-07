@@ -213,6 +213,30 @@ describe("purgeStaleFramePublications", () => {
     expect(await functionRowCount(auth, frame, active)).toBe(1);
   });
 
+  it("keeps the newest publication of a Frame with no active publication", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const space = await SpaceFactory.project(workspace);
+    const frame = await createTestFrameFile(auth, { space });
+    const older = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 30,
+    });
+    const newest = await storeTestFramePublication(auth, frame, {
+      publishedDaysAgo: 20,
+    });
+
+    const result = await purgeStaleFramePublications(auth, {
+      frame,
+      retentionMs: RETENTION_MS,
+    });
+
+    expect(result.deletedPublicationCount).toBe(1);
+    expect(hasUiBundle(workspace.sId, frame, older)).toBe(false);
+    expect(hasUiBundle(workspace.sId, frame, newest)).toBe(true);
+    expect(await publicationRowIds(frame)).toEqual([newest]);
+  });
+
   it("purges a stale publish that failed before writing any object", async () => {
     const { active, auth, frame } = await setupFrame();
     fileStorageMock.setFileSaveFails(() => true);

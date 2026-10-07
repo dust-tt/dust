@@ -224,3 +224,60 @@ describe("moveCanonicalFile on a Frames v2 package folder", () => {
     );
   });
 });
+
+describe("a Frames v2 manifest on its own", () => {
+  async function setupManifest() {
+    const c = await setupFrameSourceStorageTest();
+    mockStorageCopies();
+    const manifestPath = `${c.sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`;
+    const fsResult = await DustFileSystem.forAgentLoop(c.auth, {
+      conversation: c.conversation,
+      scopedPaths: [manifestPath],
+    });
+    assert(fsResult.isOk(), "Test file system should be available");
+
+    return { c, dustFs: fsResult.value, manifestPath };
+  }
+
+  async function expectFrameUntouched(
+    c: Awaited<ReturnType<typeof setupFrameSourceStorageTest>>
+  ) {
+    expect(getPrivateUploadBucket().copyFile).not.toHaveBeenCalled();
+    const reloaded = await FileResource.fetchById(c.auth, c.frame.sId);
+    assert(reloaded);
+    expect(reloaded.toScopedPath(c.auth)).toBe(
+      `conversation-${c.conversation.sId}/Status/${FRAME_MANIFEST_FILE}`
+    );
+    expect(reloaded.useCaseMetadata?.activePublicationId).toBe("publication-1");
+  }
+
+  it("refuses to move it out of its folder", async () => {
+    const { c, dustFs, manifestPath } = await setupManifest();
+
+    const moved = await moveCanonicalFile(
+      c.auth,
+      dustFs,
+      manifestPath,
+      `conversation-${c.conversation.sId}/${FRAME_MANIFEST_FILE}`
+    );
+
+    assert(moved.isErr());
+    expect(moved.error.code).toBe("invalid_path");
+    await expectFrameUntouched(c);
+  });
+
+  it("refuses to rename it", async () => {
+    const { c, dustFs, manifestPath } = await setupManifest();
+
+    const renamed = await renameCanonicalFile(
+      c.auth,
+      dustFs,
+      manifestPath,
+      "manifest_backup.json"
+    );
+
+    assert(renamed.isErr());
+    expect(renamed.error.code).toBe("invalid_path");
+    await expectFrameUntouched(c);
+  });
+});
