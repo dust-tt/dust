@@ -20,6 +20,7 @@ export { messageSignaturePayload } from "@app/lib/markdown/dfm/signatures";
 export type { DfmMessagePart } from "@app/lib/markdown/dfm/suggestions";
 export {
   readMessageSuggestions,
+  SUGGESTION_LANGUAGE,
   suggestionBlock,
 } from "@app/lib/markdown/dfm/suggestions";
 export type {
