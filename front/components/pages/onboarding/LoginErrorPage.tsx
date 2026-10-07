@@ -1,26 +1,50 @@
 import config from "@app/lib/api/config";
 import { LinkWrapper, useSearchParam } from "@app/lib/platform";
 import { Button, DustLogoSquare, Icon, LogIn01, Page } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
-function getErrorMessage(domain: string | null, reason: string | null) {
+interface LoginErrorMessageProps {
+  domain: string | null;
+  reason: string | null;
+}
+
+function LoginErrorMessage({ domain, reason }: LoginErrorMessageProps) {
+  const { t } = useLingui();
+
   const headerNode = (
     <Page.Header
-      title={<span className="text-primary-50">We couldn't log you in.</span>}
+      title={
+        <span className="text-primary-50">
+          <Trans>We couldn't log you in.</Trans>
+        </span>
+      }
     />
   );
 
   if (domain || reason === "invalid_domain") {
+    const emailDomain = `@${domain}`;
     return (
       <>
         {headerNode}
         <p className={defaultErrorMessageClassName}>
-          The domain {domain ? `@${domain}` : ""} attached to your email address
-          is not authorized to join this workspace.
+          {domain ? (
+            <Trans>
+              The domain {emailDomain} attached to your email address is not
+              authorized to join this workspace.
+            </Trans>
+          ) : (
+            <Trans>
+              The domain attached to your email address is not authorized to
+              join this workspace.
+            </Trans>
+          )}
           <br />
-          Please contact your workspace admin to get access or contact us at
-          support@dust.tt for assistance.
+          <Trans>
+            Please contact your workspace admin to get access or contact us at
+            support@dust.tt for assistance.
+          </Trans>
         </p>
       </>
     );
@@ -32,12 +56,17 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            Oops! Looks like you're not authorized to access this application
-            yet.
+            <Trans>
+              Oops! Looks like you're not authorized to access this application
+              yet.
+            </Trans>
             <br />
-            To gain access, please ask your workspace administrator to add you
-            or, your domain. <br />
-            Need more help? Email us at support@dust.tt.
+            <Trans>
+              To gain access, please ask your workspace administrator to add you
+              or your domain.
+            </Trans>
+            <br />
+            <Trans>Need more help? Email us at support@dust.tt.</Trans>
           </p>
         </>
       );
@@ -49,9 +78,11 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            Unfortunately, we cannot provide access to Dust at this time.
+            <Trans>
+              Unfortunately, we cannot provide access to Dust at this time.
+            </Trans>
             <br />
-            Have a nice day.
+            <Trans>Have a nice day.</Trans>
           </p>
         </>
       );
@@ -62,27 +93,31 @@ function getErrorMessage(domain: string | null, reason: string | null) {
           <Page.Header
             title={
               <span className="text-primary-50">
-                Keep an eye
-                <br />
-                on your inbox!
+                <Trans>
+                  Keep an eye
+                  <br />
+                  on your inbox!
+                </Trans>
               </span>
             }
           />
           <p className={defaultErrorMessageClassName}>
-            For your security, we need to verify your email address.
+            <Trans>
+              For your security, we need to verify your email address.
+            </Trans>
             <br />
-            Check your inbox for a verification email.
+            <Trans>Check your inbox for a verification email.</Trans>
           </p>
           <p className="text-sm font-normal italic text-primary-300">
-            Not seeing it?
+            <Trans>Not seeing it?</Trans>
             <br />
-            Check your spam folder.
+            <Trans>Check your spam folder.</Trans>
           </p>
 
           <Button
             variant="outline"
             size="sm"
-            label="Sign in"
+            label={t`Sign in`}
             icon={LogIn01}
             onClick={() => {
               window.location.href = `${config.getApiBaseUrl()}/api/workos/login?returnTo=/api/login`;
@@ -96,12 +131,14 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            The invitation is no longer valid.
+            <Trans>The invitation is no longer valid.</Trans>
             <br />
-            To gain access, please ask your workspace administrator to add you
-            or.
+            <Trans>
+              To gain access, please ask your workspace administrator to add
+              you.
+            </Trans>
             <br />
-            Need more help? Email us at support@dust.tt.
+            <Trans>Need more help? Email us at support@dust.tt.</Trans>
           </p>
         </>
       );
@@ -111,13 +148,17 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            It looks like there's a mismatch between the invitation and the
-            email address provided.
+            <Trans>
+              It looks like there's a mismatch between the invitation and the
+              email address provided.
+            </Trans>
             <br />
-            Please verify your email or contact your workspace administrator for
-            assistance.
+            <Trans>
+              Please verify your email or contact your workspace administrator
+              for assistance.
+            </Trans>
             <br />
-            Need more help? Email us at support@dust.tt.
+            <Trans>Need more help? Email us at support@dust.tt.</Trans>
           </p>
         </>
       );
@@ -127,11 +168,13 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            Your access to the workspace has expired!
+            <Trans>Your access to the workspace has expired!</Trans>
             <br />
-            Contact your workspace administrator to update your role.
+            <Trans>
+              Contact your workspace administrator to update your role.
+            </Trans>
             <br />
-            Need more help? Email us at support@dust.tt.
+            <Trans>Need more help? Email us at support@dust.tt.</Trans>
           </p>
         </>
       );
@@ -141,7 +184,7 @@ function getErrorMessage(domain: string | null, reason: string | null) {
         <>
           {headerNode}
           <p className={defaultErrorMessageClassName}>
-            Please contact us at support@dust.tt for assistance.
+            <Trans>Please contact us at support@dust.tt for assistance.</Trans>
           </p>
         </>
       );
@@ -149,9 +192,9 @@ function getErrorMessage(domain: string | null, reason: string | null) {
 }
 
 export function LoginErrorPage() {
+  const { t } = useLingui();
   const domain = useSearchParam("domain");
   const reason = useSearchParam("reason");
-  const errorMessage = getErrorMessage(domain, reason);
 
   return (
     <>
@@ -161,10 +204,10 @@ export function LoginErrorPage() {
           <div className="flex flex-col items-center gap-6 text-center">
             <Icon visual={DustLogoSquare} size="lg" />
             <div className="flex flex-col items-center gap-6">
-              {errorMessage}
+              <LoginErrorMessage domain={domain} reason={reason} />
             </div>
             <LinkWrapper href="/">
-              <Button variant="primary" label="Back to homepage" size="sm" />
+              <Button variant="primary" label={t`Back to homepage`} size="sm" />
             </LinkWrapper>
           </div>
         </div>

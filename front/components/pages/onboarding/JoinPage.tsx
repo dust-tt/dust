@@ -13,6 +13,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
 export function JoinPage() {
@@ -20,6 +21,7 @@ export function JoinPage() {
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
   const formatErrorDescription = useFormatErrorDescription();
+  const { t } = useLingui();
 
   const {
     joinData,
@@ -55,10 +57,12 @@ export function JoinPage() {
                 className="text-warning-400"
               />
               <p className="heading-xl leading-7 text-foreground">
-                Something went wrong
+                <Trans>Something went wrong</Trans>
               </p>
               <p className="copy-sm leading-tight text-muted-foreground">
-                We couldn't load the invitation. Please try again.
+                <Trans>
+                  We couldn't load the invitation. Please try again.
+                </Trans>
               </p>
               <p className="copy-xs font-mono text-muted-foreground">
                 {errorMessage}
@@ -66,7 +70,7 @@ export function JoinPage() {
             </div>
             <Button
               variant="outline"
-              label="Retry"
+              label={t`Retry`}
               onClick={() => void mutateJoinData()}
             />
           </div>
@@ -85,40 +89,49 @@ export function JoinPage() {
   }
 
   const { onboardingType, signInUrl, userExists, workspace } = joinData;
+  const workspaceName = workspace.name;
 
   return (
     <OnboardingLayout owner={workspace}>
       <div className="flex h-full flex-col gap-8 pt-4 md:justify-center md:pt-0">
         <DustLogoSquare className="-ml-11 h-10 w-32" />
-        <Page.Header title={`Hello there!`} />
+        <Page.Header title={t`Hello there!`} />
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
-            <p>Welcome aboard!</p>
+            <p>
+              <Trans>Welcome aboard!</Trans>
+            </p>
             {onboardingType === "domain_conversation_link" ? (
               <p>
-                Please log in or sign up with your company email to access this
-                conversation.
+                <Trans>
+                  Please log in or sign up with your company email to access
+                  this conversation.
+                </Trans>
               </p>
             ) : (
               <p>
-                You've been invited to join{" "}
-                <strong>{workspace.name}'s workspace on Dust</strong>.
+                <Trans>
+                  You've been invited to join{" "}
+                  <strong>{workspaceName}'s workspace on Dust</strong>.
+                </Trans>
               </p>
             )}
           </div>
 
           <p>
-            Dust is a platform giving you access to the best AI agents. It's
-            easy to use and it's a great place for teams to collaborate. Learn
-            more about Dust on{" "}
-            <Hoverable
-              href="https://dust.tt"
-              variant="highlight"
-              target="_blank"
-            >
-              our website
-            </Hoverable>
-            .
+            <Trans>
+              Dust is a platform giving you access to the best AI agents. It's
+              easy to use and it's a great place for teams to collaborate. Learn
+              more about Dust on{" "}
+              <Hoverable
+                href="https://dust.tt"
+                variant="highlight"
+                target="_blank"
+              >
+                our website
+              </Hoverable>
+              .
+            </Trans>
           </p>
         </div>
 
@@ -126,22 +139,24 @@ export function JoinPage() {
           <Button
             variant="primary"
             size="sm"
-            label={userExists ? "Sign in" : "Sign up"}
+            label={userExists ? t`Sign in` : t`Sign up`}
             icon={LogIn01}
             onClick={() => (window.location.href = signInUrl)}
           />
         </div>
         <div className="flex flex-col gap-3 pb-20">
           <p>
-            By signing up, you accept Dust's{" "}
-            <Hoverable
-              href="https://dust.tt/terms"
-              variant="highlight"
-              target="_blank"
-            >
-              terms and conditions
-            </Hoverable>
-            .
+            <Trans>
+              By signing up, you accept Dust's{" "}
+              <Hoverable
+                href="https://dust.tt/terms"
+                variant="highlight"
+                target="_blank"
+              >
+                terms and conditions
+              </Hoverable>
+              .
+            </Trans>
           </p>
         </div>
       </div>
