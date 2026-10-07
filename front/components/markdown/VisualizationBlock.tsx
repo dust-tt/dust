@@ -1,6 +1,7 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import type { LightWorkspaceType } from "@app/types/user";
 import { MarkdownContentContext } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useContext, useMemo } from "react";
 import { visit } from "unist-util-visit";
 
@@ -32,7 +33,7 @@ export function VisualizationBlock({
       customRenderer?.visualization ||
       (() => (
         <div className="pb-2 pt-4 font-medium text-warning">
-          Visualization not available
+          <Trans>Visualization not available</Trans>
         </div>
       ))
     );

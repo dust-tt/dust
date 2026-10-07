@@ -9,6 +9,7 @@ import {
 } from "@app/types/resources_icon_names";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ActionCardBlock, Avatar } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { visit } from "unist-util-visit";
@@ -76,7 +77,8 @@ function ActionCard({
   isLastMessage = true,
   onSend,
 }: ActionCardProps) {
-  const applyLabel = cta ?? "Accept";
+  const { t } = useLingui();
+  const applyLabel = cta ?? t`Accept`;
   const [status, setStatus] = useState<ActionCardStatus>("active");
 
   const resolvedIconName: InternalAllowedIconType | CustomResourceIconType =
@@ -124,7 +126,7 @@ function ActionCard({
           }
           collapsibleLabel={collapsibleContent ? collapsibleLabel : undefined}
           applyLabel={applyLabel}
-          rejectLabel={dismiss ?? "Dismiss"}
+          rejectLabel={dismiss ?? t`Dismiss`}
           acceptedTitle={title}
           rejectedTitle={title}
           visual={visual}

@@ -10,6 +10,7 @@ import {
   Icon,
   PuzzlePiece01,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps, ReactNode } from "react";
 
 export const DEFAULT_SUGGESTION_VISUAL = (
@@ -52,12 +53,13 @@ export function ConversationalSuggestionCard({
   onReject,
   onPreview,
   secondaryAction,
-  acceptLabel = "Allow",
-  rejectLabel = "Decline",
+  acceptLabel,
+  rejectLabel,
   disabled = false,
   isAccepting = false,
   isDeclining = false,
 }: ConversationalSuggestionCardProps) {
+  const { t } = useLingui();
   const hasActions = !!onAccept && !!onReject;
 
   return (
@@ -90,7 +92,7 @@ export function ConversationalSuggestionCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  label="View in builder"
+                  label={t`View in builder`}
                   onClick={onPreview}
                 />
               )}
@@ -99,7 +101,7 @@ export function ConversationalSuggestionCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    label={rejectLabel}
+                    label={rejectLabel ?? t`Decline`}
                     onClick={onReject}
                     disabled={disabled}
                     isLoading={isDeclining}
@@ -107,7 +109,7 @@ export function ConversationalSuggestionCard({
                   <Button
                     variant="highlight"
                     size="sm"
-                    label={acceptLabel}
+                    label={acceptLabel ?? t`Allow`}
                     onClick={onAccept}
                     disabled={disabled}
                     isLoading={isAccepting}
@@ -153,10 +155,12 @@ export function ConversationalSuggestionCard({
  * viewer cannot access, so its title and analysis are never shown.
  */
 export function RestrictedSuggestionCard() {
+  const { t } = useLingui();
+
   return (
     <ConversationalSuggestionCard
-      title="Suggested changes"
-      analysis="The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it."
+      title={t`Suggested changes`}
+      analysis={t`The agent has made a suggestion to improve an agent or a skill but you don't have the permissions to read it.`}
     />
   );
 }

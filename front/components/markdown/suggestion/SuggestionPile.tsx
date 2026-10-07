@@ -22,7 +22,6 @@ import {
   useSuggestionBatches,
 } from "@app/hooks/useSuggestionBatches";
 import type { SuggestionBatchReviewState } from "@app/types/api/assistant/suggestion_batches";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -35,15 +34,12 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { cloneElement, useState } from "react";
 
 const ENTRY_VISUAL = cloneElement(DEFAULT_SUGGESTION_VISUAL, { size: "xs" });
-
-function formatEditCount(count: number): string {
-  return `${count} edit${pluralize(count)}`;
-}
 
 // Same text colors as the state chips, so outcome counts read like the chips listed below them.
 const OUTCOME_TEXT_CLASS_NAMES: Record<
@@ -54,6 +50,20 @@ const OUTCOME_TEXT_CLASS_NAMES: Record<
   warning: "text-warning-700",
   primary: "text-primary-700",
 };
+
+function formatOutcomeCount(
+  state: "approved" | "rejected" | "outdated",
+  count: number
+): MessageDescriptor {
+  switch (state) {
+    case "approved":
+      return msg`${plural(count, { one: "# accepted", other: "# accepted" })}`;
+    case "rejected":
+      return msg`${plural(count, { one: "# declined", other: "# declined" })}`;
+    case "outdated":
+      return msg`${plural(count, { one: "# outdated", other: "# outdated" })}`;
+  }
+}
 
 // E.g. "3 accepted, 1 declined", leaving out outcomes nobody got.
 function formatReviewOutcomes(
@@ -70,7 +80,7 @@ function formatReviewOutcomes(
       <span key={state}>
         {index > 0 && ", "}
         <span className={OUTCOME_TEXT_CLASS_NAMES[chip.color]}>
-          {count} {t(chip.label).toLowerCase()}
+          {t(formatOutcomeCount(state, count))}
         </span>
       </span>
     ));
@@ -114,6 +124,8 @@ function SuggestionPileSummaryCard({
   showBatchState = false,
   actions,
 }: SuggestionPileSummaryCardProps) {
+  const { t } = useLingui();
+
   return (
     <Card
       variant="secondary"
@@ -132,7 +144,7 @@ function SuggestionPileSummaryCard({
             <li key={batch.id} className="flex min-w-0 items-center gap-2">
               {ENTRY_VISUAL}
               <span className="truncate text-sm text-muted-foreground">
-                {getBatchSuggestionTitle(batch)}
+                {getBatchSuggestionTitle(batch, t)}
               </span>
               {showBatchState && <SuggestionStateChip state={batch.state} />}
             </li>
@@ -159,12 +171,14 @@ function SuggestionPileRecapActions({
   onAcceptAll,
   onRejectAll,
 }: SuggestionPileRecapActionsProps) {
+  const { t } = useLingui();
+
   return (
     <div className="flex items-center gap-2">
       <Button
         variant="ghost-secondary"
         size="sm"
-        label="Reject all"
+        label={t`Reject all`}
         onClick={onRejectAll}
         disabled={isBusy}
         isLoading={bulkState === "rejected"}
@@ -173,7 +187,7 @@ function SuggestionPileRecapActions({
         <Button
           variant="outline"
           size="sm"
-          label="Allow all"
+          label={t`Allow all`}
           onClick={onAcceptAll}
           disabled={isBusy}
           isLoading={bulkState === "approved"}
@@ -181,7 +195,7 @@ function SuggestionPileRecapActions({
         <Button
           variant="highlight"
           size="sm"
-          label="Review"
+          label={t({ message: "Review", context: "verb, button label" })}
           onClick={onReview}
           disabled={isBusy}
         />
@@ -282,6 +296,13 @@ export function ConversationSuggestionPile({
     void review(state, batch);
   };
 
+  const reviewedCount = pileBatches.length;
+  const pendingCount = pendingBatches.length;
+  const reviewedTitle = t`${plural(reviewedCount, {
+    one: "# edit reviewed",
+    other: "# edits reviewed",
+  })}`;
+
   // Only the front card is interactive; the ones behind it are drawn as decorative layers.
   if (pendingBatches.length === 0) {
     return (
@@ -289,8 +310,7 @@ export function ConversationSuggestionPile({
         <SuggestionPileSummaryCard
           title={
             <>
-              {formatEditCount(pileBatches.length)} reviewed ·{" "}
-              {formatReviewOutcomes(pileBatches, t)}
+              {reviewedTitle} · {formatReviewOutcomes(pileBatches, t)}
             </>
           }
           recap={recap}
@@ -306,7 +326,10 @@ export function ConversationSuggestionPile({
     return (
       <ActionCardStack cardCount={pendingBatches.length + 1}>
         <SuggestionPileSummaryCard
-          title={`${formatEditCount(pendingBatches.length)} ready for your review`}
+          title={t`${plural(pendingCount, {
+            one: "# edit ready for your review",
+            other: "# edits ready for your review",
+          })}`}
           recap={recap}
           batches={pendingBatches}
           actions={
@@ -331,6 +354,8 @@ export function ConversationSuggestionPile({
 
   const batch = pendingBatches[0];
   const cardState = inFlight?.batchId === batch.id ? inFlight.state : null;
+  const editNumber = pileBatches.indexOf(batch) + 1;
+  const editTotal = pileBatches.length;
   return (
     <ActionCardStack cardCount={pendingBatches.length}>
       <PendingBatchSuggestionCard
@@ -342,12 +367,12 @@ export function ConversationSuggestionPile({
         disabled={isBusy}
         isAccepting={cardState === "approved"}
         isDeclining={cardState === "rejected"}
-        titleAside={`Edit ${pileBatches.indexOf(batch) + 1} of ${pileBatches.length}`}
+        titleAside={t`Edit ${editNumber} of ${editTotal}`}
         secondaryAction={
           <Button
             variant="ghost-secondary"
             size="sm"
-            label="Allow remaining"
+            label={t`Allow remaining`}
             onClick={() => bulkReview("approved", "allow_remaining")}
             disabled={isBusy}
             isLoading={bulkState === "approved"}
