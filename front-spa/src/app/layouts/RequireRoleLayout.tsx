@@ -1,5 +1,5 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
-import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import AccessDeniedPage from "@dust-tt/front/components/pages/AccessDeniedPage";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import { isAdmin, isManager, type RoleType } from "@dust-tt/front/types/user";
 import { Outlet } from "react-router-dom";
@@ -15,7 +15,7 @@ export function RequireRoleLayout({ requiredRole }: RequireRoleProps) {
     requiredRole === "admin" ? isAdmin(workspace) : isManager(workspace);
 
   if (!hasRequiredRole) {
-    return <Custom404 />;
+    return <AccessDeniedPage />;
   }
 
   return (

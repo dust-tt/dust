@@ -13,6 +13,20 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/components/pages/AccessDeniedPage.tsx
+msgid "You don't have access to this page"
+msgstr "You don't have access to this page"
+
+#: front/components/pages/AccessDeniedPage.tsx
+msgid "Ask a workspace admin for access."
+msgstr "Ask a workspace admin for access."
+
+#: front/components/pages/AccessDeniedPage.tsx
+#: front/components/pages/Custom404.tsx
+#: front/components/pages/MaintenancePage.tsx
+msgid "Back to homepage"
+msgstr "Back to homepage"
+
 #: front/components/pages/Custom404.tsx
 msgid "404: Page not found"
 msgstr "404: Page not found"
@@ -20,11 +34,6 @@ msgstr "404: Page not found"
 #: front/components/pages/Custom404.tsx
 msgid "Looks like this page took an unscheduled coffee break."
 msgstr "Looks like this page took an unscheduled coffee break."
-
-#: front/components/pages/Custom404.tsx
-#: front/components/pages/MaintenancePage.tsx
-msgid "Back to homepage"
-msgstr "Back to homepage"
 
 #: front/components/pages/MaintenancePage.tsx
 msgid "Service relocation in progress"

@@ -1,5 +1,5 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
-import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import AccessDeniedPage from "@dust-tt/front/components/pages/AccessDeniedPage";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import { hasGroupManagementScope } from "@dust-tt/front/types/api/auth_context";
 import { isManager } from "@dust-tt/front/types/user";
@@ -86,7 +86,7 @@ function PeopleRoute() {
     (!featureFlags.includes("group_management") ||
       !hasGroupManagementScope(groupManagement?.read_usage))
   ) {
-    return <Custom404 />;
+    return <AccessDeniedPage />;
   }
   return (
     <AdminLayout>
@@ -108,7 +108,7 @@ function CreditsRoute() {
     !featureFlags.includes("group_management") ||
     !hasGroupManagementScope(groupManagement?.read_usage)
   ) {
-    return <Custom404 />;
+    return <AccessDeniedPage />;
   }
   return (
     <AdminLayout>

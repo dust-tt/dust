@@ -1,5 +1,5 @@
 import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
-import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import AccessDeniedPage from "@dust-tt/front/components/pages/AccessDeniedPage";
 import { useWorkspacePermissions } from "@dust-tt/front/lib/swr/permissions.js";
 import type {
   ConcreteResourceType,
@@ -21,7 +21,7 @@ export function RequirePermissionLayout({
   const hasRequiredPermission = hasPermission(verb, resourceType);
 
   if (!hasRequiredPermission) {
-    return <Custom404 />;
+    return <AccessDeniedPage />;
   }
 
   return (
