@@ -152,8 +152,8 @@ msgid "{displayName} is unstable right now. You may want to select another model
 msgstr "{displayName} est instable en ce moment. Vous pouvez sélectionner un autre modèle."
 
 #: front/components/model_picker/modelPickerUtils.ts
-msgid "Preferred model for {tierName} is unstable. Using {replacementModelName} temporarily."
-msgstr "Le modèle préféré pour {tierName} est instable. {replacementModelName} est utilisé temporairement."
+msgid "The usual model for {tierName} is having issues. You're on {replacementModelName} until it's back."
+msgstr "Le modèle habituel pour {tierName} rencontre des problèmes. Vous êtes sur {replacementModelName} jusqu’à son retour."
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model name followed by its reasoning effort"

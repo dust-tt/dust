@@ -10,6 +10,7 @@ import type {
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   AUTO_MODELS_DOC_URL,
+  formatModelEffortLabel,
   getModelLockTooltip,
   getTierFallbackMessage,
   getTierLockReason,
@@ -186,7 +187,11 @@ export function ModelPickerContent({
             ? getTierFallbackMessage(
                 t,
                 t(tier.name),
-                fallbackResolution.displayName
+                formatModelEffortLabel(
+                  t,
+                  fallbackResolution.displayName,
+                  fallbackResolution.reasoningEffort
+                )
               )
             : undefined;
         return (

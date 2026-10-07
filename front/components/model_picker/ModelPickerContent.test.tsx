@@ -82,7 +82,7 @@ describe("ModelPickerContent", () => {
 
     expect(
       await screen.findAllByText(
-        /Preferred model for Standard is unstable\. Using GPT-5 temporarily\./
+        /The usual model for Standard is having issues\. You're on GPT-5 Medium until it's back\./
       )
     ).not.toHaveLength(0);
   });
@@ -95,7 +95,7 @@ describe("ModelPickerContent", () => {
     await user.hover(standard);
 
     expect(
-      screen.queryByText(/Preferred model for Standard is unstable/)
+      screen.queryByText(/The usual model for Standard is having issues/)
     ).not.toBeInTheDocument();
   });
 });
