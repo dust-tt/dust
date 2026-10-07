@@ -24,6 +24,7 @@ import {
   TabsTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 interface ConversationFilesPanelProps {
@@ -35,6 +36,7 @@ export function ConversationFilesPanel({
   conversation,
   owner,
 }: ConversationFilesPanelProps) {
+  const { t } = useLingui();
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
 
   const [activeTab, setActiveTab] = useState("files");
@@ -127,14 +129,14 @@ export function ConversationFilesPanel({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to download the file.",
-          description: "An error occurred while downloading. Please try again.",
+          title: t`Failed to download the file.`,
+          description: t`An error occurred while downloading. Please try again.`,
         });
       } finally {
         isDownloadingRef.current = false;
       }
     },
-    [openFile, owner, sendNotification]
+    [openFile, owner, sendNotification, t]
   );
 
   const fileRows = useMemo(
@@ -168,7 +170,7 @@ export function ConversationFilesPanel({
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <span className="text-sm font-semibold text-foreground">
-                Working Files
+                <Trans>Working files</Trans>
               </span>
               <Button
                 variant="ghost"
@@ -195,8 +197,8 @@ export function ConversationFilesPanel({
           <AppLayoutTitle>
             <div className="flex h-full items-center justify-between">
               <TabsList border={false}>
-                <TabsTrigger value="files" label="Working Files" />
-                <TabsTrigger value="sandbox" label="Mounted Files" />
+                <TabsTrigger value="files" label={t`Working files`} />
+                <TabsTrigger value="sandbox" label={t`Mounted files`} />
               </TabsList>
               <div className="flex items-center gap-2">
                 {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}

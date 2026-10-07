@@ -217,7 +217,7 @@ describe("FrameRenderer", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Switch to Code" }));
+    fireEvent.click(screen.getByRole("button", { name: "Switch to code" }));
 
     await waitFor(() => {
       expect(container).toHaveTextContent(
@@ -225,7 +225,7 @@ describe("FrameRenderer", () => {
       );
     });
     expect(
-      screen.getByRole("button", { name: "Switch to Rendering" })
+      screen.getByRole("button", { name: "Switch to rendering" })
     ).toBeInTheDocument();
   });
 

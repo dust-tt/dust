@@ -2,6 +2,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { AlertCircle, ContentMessage } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface UnsupportedContentRendererProps {
   contentType: string;
@@ -12,6 +13,7 @@ export function UnsupportedContentRenderer({
   contentType,
   fileName,
 }: UnsupportedContentRendererProps) {
+  const { t } = useLingui();
   const { closePanel } = useConversationSidePanelContext();
 
   return (
@@ -23,18 +25,26 @@ export function UnsupportedContentRenderer({
           <ContentMessage
             icon={AlertCircle}
             size="md"
-            title="Unsupported Content Type"
+            title={t`Unsupported content type`}
             variant="warning"
           >
             <div className="space-y-2">
-              <p>This content type is not yet supported in the Frame drawer.</p>
+              <p>
+                <Trans>
+                  This content type is not yet supported in the Frame drawer.
+                </Trans>
+              </p>
               <div className="text-xs opacity-75">
                 <p>
-                  <strong>Content Type:</strong> {contentType}
+                  <Trans>
+                    <strong>Content type:</strong> {contentType}
+                  </Trans>
                 </p>
                 {fileName && (
                   <p>
-                    <strong>File:</strong> {fileName}
+                    <Trans>
+                      <strong>File:</strong> {fileName}
+                    </Trans>
                   </p>
                 )}
               </div>

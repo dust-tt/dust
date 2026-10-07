@@ -39,28 +39,37 @@ import {
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 /** The confirm copy for each deletable entry kind, or null for kinds that cannot be deleted. */
 export function getDeletePrompt(
   entry: FileExplorerEntry
-): { title: string; message: string } | null {
+): { title: MessageDescriptor; message: MessageDescriptor } | null {
   switch (entry.kind) {
-    case "frame_package":
+    case "frame_package": {
+      const fileName = entry.fileName;
       return {
-        title: "Delete Frame?",
-        message: `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
+        title: msg`Delete Frame?`,
+        message: msg`Are you sure you want to delete the Frame "${fileName}"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone.`,
       };
-    case "folder":
+    }
+    case "folder": {
+      const name = entry.name;
       return {
-        title: "Delete folder?",
-        message: `Are you sure you want to delete "${entry.name}" and all its contents? This action cannot be undone.`,
+        title: msg`Delete folder?`,
+        message: msg`Are you sure you want to delete "${name}" and all its contents? This action cannot be undone.`,
       };
-    case "file":
+    }
+    case "file": {
+      const fileName = entry.fileName;
       return {
-        title: "Delete file?",
-        message: `Are you sure you want to delete "${entry.fileName}"? This action cannot be undone.`,
+        title: msg`Delete file?`,
+        message: msg`Are you sure you want to delete "${fileName}"? This action cannot be undone.`,
       };
+    }
     default:
       return null;
   }
@@ -75,6 +84,7 @@ export function ConversationFileExplorer({
   conversation,
   owner,
 }: ConversationFileExplorerProps) {
+  const { t } = useLingui();
   const { closePanel, openPanel } = useConversationSidePanelContext();
   const { hasFeature } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
@@ -166,7 +176,7 @@ export function ConversationFileExplorer({
       const pinned = isPinned(entry.path);
       const items: FileExplorerMenuAction[] = [
         {
-          label: pinned ? "Unpin from banner" : "Pin as Pod banner",
+          label: pinned ? t`Unpin from banner` : t`Pin as Pod banner`,
           icon: Pin02,
           onClick: (e) => {
             e.stopPropagation();
@@ -177,7 +187,7 @@ export function ConversationFileExplorer({
 
       const asTab = isFileTab(entry.path);
       items.push({
-        label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
+        label: asTab ? t`Remove from Pod tabs` : t`Add as Pod tab`,
         icon: LayoutAlt02,
         onClick: (e) => {
           e.stopPropagation();
@@ -204,6 +214,7 @@ export function ConversationFileExplorer({
       isFileTab,
       isPinned,
       removeFileTab,
+      t,
       togglePin,
     ]
   );
@@ -249,8 +260,9 @@ export function ConversationFileExplorer({
       }
 
       const confirmed = await confirm({
-        ...prompt,
-        validateLabel: "Delete",
+        title: t(prompt.title),
+        message: t(prompt.message),
+        validateLabel: t`Delete`,
         validateVariant: "warning",
       });
       if (confirmed) {
@@ -262,7 +274,7 @@ export function ConversationFileExplorer({
         }
       }
     },
-    [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles]
+    [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles, t]
   );
 
   // Files, folders and Frame packages all rename through the same canonical-path endpoint; a
@@ -297,7 +309,7 @@ export function ConversationFileExplorer({
       <AppLayoutTitle>
         <div className="flex h-full items-center justify-between gap-2">
           <span className="text-sm text-foreground">
-            {isPod ? "Files" : "Conversation files"}
+            {isPod ? t`Files` : t`Conversation files`}
           </span>
           <Button
             variant="ghost"

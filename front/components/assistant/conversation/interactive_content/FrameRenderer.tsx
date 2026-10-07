@@ -50,6 +50,7 @@ import {
   Tooltip,
   UploadCloud02,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import {
   useCallback,
   useContext,
@@ -78,6 +79,7 @@ export function FrameRenderer({
   contentHash,
   renderMode,
 }: FrameRendererProps) {
+  const { t } = useLingui();
   const { vizUrl } = useAuth();
   const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
@@ -339,22 +341,27 @@ export function FrameRenderer({
       return;
     }
 
+    const podName = projectInfo?.name ?? t`Pod`;
     const confirmed = await confirm({
       title: (
-        <>
-          Save to <strong>{projectInfo?.name ?? "Pod"}</strong>?
-        </>
+        <Trans>
+          Save to <strong>{podName}</strong>?
+        </Trans>
       ),
       message: (
         <>
           <div>
-            The Frame will be part of the Pod knowledge, and be able to be
-            edited by any Pod member.
+            <Trans>
+              The Frame will be part of the Pod knowledge, and be able to be
+              edited by any Pod member.
+            </Trans>
           </div>
-          <div>This action cannot be undone.</div>
+          <div>
+            <Trans>This action cannot be undone.</Trans>
+          </div>
         </>
       ),
-      validateLabel: "Save",
+      validateLabel: t`Save`,
       validateVariant: "primary",
     });
     if (!confirmed) {
@@ -373,23 +380,23 @@ export function FrameRenderer({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to save to Pod",
+          title: t`Failed to save to Pod`,
           error: errorData,
         });
         return;
       }
       sendNotification({
         type: "success",
-        title: "Saved to Pod",
-        description: `Frame saved to "${projectInfo?.name ?? "Pod"}".`,
+        title: t`Saved to Pod`,
+        description: t`Frame saved to "${podName}".`,
       });
       // Invalidate file metadata so parent and this component get updated projectId.
       await mutateFileMetadata();
     } catch (e) {
       sendNotification({
         type: "error",
-        title: "Failed to save to Pod",
-        description: e instanceof Error ? e.message : "An error occurred",
+        title: t`Failed to save to Pod`,
+        description: e instanceof Error ? e.message : t`An error occurred`,
       });
     } finally {
       setIsSavingToProject(false);
@@ -403,20 +410,24 @@ export function FrameRenderer({
     projectInfo?.name,
     sendNotification,
     sendApiErrorNotification,
+    t,
   ]);
 
   if (error) {
+    const errorMessage = error.message;
     return (
       <div className="flex h-panel flex-col">
         <ConversationSidePanelHeader onClose={onClosePanel} />
         <CenteredState>
           <p className="text-warning-500">
-            Error loading file: {error.message}
+            <Trans>Error loading file: {errorMessage}</Trans>
           </p>
         </CenteredState>
       </div>
     );
   }
+
+  const savePodName = projectInfo?.name ?? t`unknown Pod`;
 
   return (
     <div className="flex h-panel flex-col">
@@ -426,7 +437,7 @@ export function FrameRenderer({
             <Button
               icon={showCode ? Eye : Terminal}
               onClick={() => setShowCode(!showCode)}
-              tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+              tooltip={showCode ? t`Switch to rendering` : t`Switch to code`}
               variant="ghost"
             />
             {hasFrameFunctions && <FrameBetaChip />}
@@ -477,8 +488,8 @@ export function FrameRenderer({
                 icon={CheckCircle}
                 variant="ghost"
                 disabled={true}
-                label={isMobile ? undefined : "Saved"}
-                tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+                label={isMobile ? undefined : t`Saved`}
+                tooltip={t`Saved in "${savePodName}"`}
               />
             )}
             {projectSaveState === "supported" && (
@@ -486,10 +497,14 @@ export function FrameRenderer({
                 icon={UploadCloud02}
                 variant="ghost"
                 label={
-                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
+                  isMobile
+                    ? undefined
+                    : isSavingToProject
+                      ? t`Saving…`
+                      : t`Save`
                 }
                 isLoading={isSavingToProject}
-                tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
+                tooltip={t`Save to "${savePodName}"`}
                 onClick={handleSaveToProject}
               />
             )}
@@ -550,7 +565,7 @@ export function FrameRenderer({
                 <div
                   className="absolute inset-0 z-10 cursor-wait"
                   aria-busy="true"
-                  aria-label="Publishing your changes..."
+                  aria-label={t`Publishing your changes...`}
                 />
               )}
             </div>
@@ -594,7 +609,9 @@ function FrameCodeView({ code, hasError, isLoading }: FrameCodeViewProps) {
   if (hasError) {
     return (
       <CenteredState>
-        <p className="text-warning-500">Error loading the Frame source.</p>
+        <p className="text-warning-500">
+          <Trans>Error loading the Frame source.</Trans>
+        </p>
       </CenteredState>
     );
   }
@@ -630,12 +647,15 @@ function PreviewActionButtons({
   shareUrl,
   reloadFile,
 }: PreviewActionButtonsProps) {
+  const { t } = useLingui();
   const clientType = useClientType();
   return (
     <div className="fixed bottom-5 right-5 flex flex-col gap-1 rounded-lg bg-background p-1 shadow-md">
       {clientType !== "extension" && (
         <Tooltip
-          label={`${isFullScreen ? "Exit" : "Go to"} full screen mode`}
+          label={
+            isFullScreen ? t`Exit full screen mode` : t`Go to full screen mode`
+          }
           side="left"
           tooltipTriggerAsChild
           trigger={
@@ -650,12 +670,12 @@ function PreviewActionButtons({
       )}
       {clientType !== "extension" && (
         <Tooltip
-          label="Open in a new tab"
+          label={t`Open in a new tab`}
           side="left"
           tooltipTriggerAsChild
           trigger={
             <Button
-              aria-label="Open in a new tab"
+              aria-label={t`Open in a new tab`}
               icon={LinkExternal01}
               variant="ghost"
               size="xs"
@@ -671,8 +691,8 @@ function PreviewActionButtons({
         <Tooltip
           label={
             hasPreviousVersion
-              ? "Revert the last change"
-              : "No previous version"
+              ? t`Revert the last change`
+              : t`No previous version`
           }
           side="left"
           tooltipTriggerAsChild
@@ -688,7 +708,7 @@ function PreviewActionButtons({
         />
       )}
       <Tooltip
-        label="Reload the file"
+        label={t`Reload the file`}
         side="left"
         tooltipTriggerAsChild
         trigger={

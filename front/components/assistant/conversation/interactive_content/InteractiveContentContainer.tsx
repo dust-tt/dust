@@ -13,6 +13,7 @@ import {
 } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface InteractiveContentContainerProps {
@@ -53,7 +54,9 @@ export function InteractiveContentContainer({
           <ConversationSidePanelHeader onClose={closePanel} />
           <CenteredState>
             <Spinner size="sm" />
-            <span>Loading frame...</span>
+            <span>
+              <Trans>Loading Frame...</Trans>
+            </span>
           </CenteredState>
         </div>
       );
@@ -64,7 +67,9 @@ export function InteractiveContentContainer({
         <div className="flex h-full flex-col">
           <ConversationSidePanelHeader onClose={closePanel} />
           <CenteredState>
-            <p className="text-warning-500">Error loading file metadata</p>
+            <p className="text-warning-500">
+              <Trans>Error loading file metadata</Trans>
+            </p>
           </CenteredState>
         </div>
       );

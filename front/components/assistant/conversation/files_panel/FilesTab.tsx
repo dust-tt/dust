@@ -20,7 +20,7 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 interface FilesTabProps {
@@ -69,7 +69,9 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
   if (rows.length === 0) {
     return (
       <div className="p-4 text-sm text-muted-foreground">
-        Conversation attachments & generated content will appear here.
+        <Trans>
+          Conversation attachments & generated content will appear here.
+        </Trans>
       </div>
     );
   }
@@ -80,7 +82,7 @@ export function FilesTab({ isLoading, owner, rows }: FilesTabProps) {
         <div className="shrink-0 px-4 pt-4">
           <SearchInput
             name="file-search"
-            placeholder="Search files..."
+            placeholder={t`Search files...`}
             value={search}
             onChange={setSearch}
           />
@@ -113,6 +115,7 @@ function FileCards({
   rows: ConversationAttachmentRow[];
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   return (
     <CardGrid>
       {rows.map((row) => {
@@ -149,7 +152,7 @@ function FileCards({
                     {row.isInProjectContext && (
                       <Tooltip
                         tooltipTriggerAsChild
-                        label="Saved to Pod"
+                        label={t`Saved to Pod`}
                         trigger={
                           <span className="inline-flex">
                             <Icon visual={SpaceClosed} size="md" />
@@ -194,7 +197,7 @@ function FileCards({
                   {row.isInProjectContext && (
                     <Tooltip
                       tooltipTriggerAsChild
-                      label="Saved to Pod"
+                      label={t`Saved to Pod`}
                       trigger={
                         <span className="inline-flex">
                           <Icon

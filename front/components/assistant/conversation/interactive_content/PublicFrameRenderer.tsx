@@ -9,6 +9,7 @@ import type {
   WorkspaceUserIdentity,
 } from "@app/types/assistant/visualization";
 import { Spinner } from "@dust-tt/sparkle";
+import { Trans } from "@lingui/react/macro";
 import { useCookies } from "react-cookie";
 
 interface PublicFrameRendererProps {
@@ -117,7 +118,9 @@ export function PublicFrameRenderer({
     return (
       <CenteredState>
         <Spinner size="sm" />
-        <span>Loading the frame...</span>
+        <span>
+          <Trans>Loading the Frame...</Trans>
+        </span>
       </CenteredState>
     );
   }
@@ -125,7 +128,9 @@ export function PublicFrameRenderer({
   if (error) {
     return (
       <CenteredState>
-        <p className="text-warning-500">Error loading the frame: {error}</p>
+        <p className="text-warning-500">
+          <Trans>Error loading the Frame: {error}</Trans>
+        </p>
       </CenteredState>
     );
   }

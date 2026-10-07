@@ -1,0 +1,136 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 11:11+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Delete Frame?"
+msgstr "Delete Frame?"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Are you sure you want to delete the Frame \"{fileName}\"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone."
+msgstr "Are you sure you want to delete the Frame \"{fileName}\"? Its source, functions, databases and share links will be permanently removed. This action cannot be undone."
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Delete folder?"
+msgstr "Delete folder?"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Are you sure you want to delete \"{name}\" and all its contents? This action cannot be undone."
+msgstr "Are you sure you want to delete \"{name}\" and all its contents? This action cannot be undone."
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Delete file?"
+msgstr "Delete file?"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Are you sure you want to delete \"{fileName}\"? This action cannot be undone."
+msgstr "Are you sure you want to delete \"{fileName}\"? This action cannot be undone."
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Unpin from banner"
+msgstr "Unpin from banner"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Pin as Pod banner"
+msgstr "Pin as Pod banner"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Remove from Pod tabs"
+msgstr "Remove from Pod tabs"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Add as Pod tab"
+msgstr "Add as Pod tab"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Files"
+msgstr "Files"
+
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+msgid "Conversation files"
+msgstr "Conversation files"
+
+#: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
+msgid "Failed to download the file."
+msgstr "Failed to download the file."
+
+#: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
+msgid "An error occurred while downloading. Please try again."
+msgstr "An error occurred while downloading. Please try again."
+
+#: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
+msgid "Working files"
+msgstr "Working files"
+
+#: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
+msgid "Mounted files"
+msgstr "Mounted files"
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "This file path could not be resolved."
+msgstr "This file path could not be resolved."
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "This file is no longer available."
+msgstr "This file is no longer available."
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "Revert"
+msgstr "Revert"
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgctxt "action"
+msgid "Download"
+msgstr "Download"
+
+#: front/components/assistant/conversation/files_panel/FilesTab.tsx
+msgid "Conversation attachments & generated content will appear here."
+msgstr "Conversation attachments & generated content will appear here."
+
+#: front/components/assistant/conversation/files_panel/FilesTab.tsx
+#: front/components/assistant/conversation/files_panel/SandboxTab.tsx
+msgid "Search files..."
+msgstr "Search files..."
+
+#: front/components/assistant/conversation/files_panel/FilesTab.tsx
+msgid "Saved to Pod"
+msgstr "Saved to Pod"
+
+#: front/components/assistant/conversation/files_panel/SandboxStatusChip.tsx
+msgid "Computer running"
+msgstr "Computer running"
+
+#: front/components/assistant/conversation/files_panel/SandboxStatusChip.tsx
+msgid "Computer sleeping"
+msgstr "Computer sleeping"
+
+#: front/components/assistant/conversation/files_panel/SandboxStatusChip.tsx
+msgid "Waiting for approval"
+msgstr "Waiting for approval"
+
+#: front/components/assistant/conversation/files_panel/SandboxStatusChip.tsx
+msgid "Computer expired"
+msgstr "Computer expired"
+
+#: front/components/assistant/conversation/files_panel/SandboxTab.tsx
+msgid "No files in the Computer yet."
+msgstr "No files in the Computer yet."
