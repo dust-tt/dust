@@ -1,13 +1,6 @@
 import type { AdminSettingEntry } from "@app/lib/admin/adminSearchTypes";
-import { messages as defaultLocaleMessages } from "@app/locales/en-US.catalog";
-import { DEFAULT_LOCALE } from "@app/types/locale";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import type { MessageDescriptor } from "@lingui/core";
-import { setupI18n } from "@lingui/core";
-
-const defaultLocaleI18n = setupI18n({
-  locale: DEFAULT_LOCALE,
-  messages: { [DEFAULT_LOCALE]: defaultLocaleMessages },
-});
 
 const norm = (s: string) =>
   s
