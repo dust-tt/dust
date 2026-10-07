@@ -110,7 +110,6 @@ function buildWebCrawlerConfig(
 ): WebCrawlerConfigurationType {
   return {
     url: validatedUrl.standardized,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     maxPageToCrawl: state.maxPages || WEBCRAWLER_MAX_PAGES,
     depth: state.depth,
     crawlMode: state.crawlMode,

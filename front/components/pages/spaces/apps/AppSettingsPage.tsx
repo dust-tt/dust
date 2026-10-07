@@ -49,7 +49,6 @@ export function AppSettingsPage() {
   useEffect(() => {
     if (app) {
       setAppName(app.name);
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       setAppDescription(app.description || "");
     }
   }, [app]);

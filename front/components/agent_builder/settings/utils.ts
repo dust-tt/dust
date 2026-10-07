@@ -116,7 +116,6 @@ export async function fetchWithErr<T>(
         if (isAPIErrorResponse(errorData)) {
           return new Err(errorData.error);
         }
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         errorMessage = errorData.error || errorText;
       } catch {
         errorMessage = errorText;

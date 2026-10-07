@@ -444,7 +444,6 @@ export const SpaceDataSourceViewContentList = ({
 
   const rows: RowData[] = useMemo(
     () =>
-      // eslint-disable-next-line react-hooks/refs
       childrenNodes?.map((contentNode) => ({
         ...contentNode,
         icon: getVisualForDataSourceViewContentNode(contentNode),

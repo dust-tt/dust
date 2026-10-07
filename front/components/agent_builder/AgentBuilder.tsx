@@ -422,7 +422,6 @@ function AgentBuilderForm({
       }
 
       const createdAgent = result.value;
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const isCreatingNew = duplicateAgentId || !agentConfiguration;
 
       trackSave({
@@ -821,7 +820,6 @@ function AgentBuilderContent({
                 />
               ) : null
             }
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
             isTriggersLoading={isTriggersLoading}
             initialRequestedSpaceIds={agentConfiguration?.requestedSpaceIds}

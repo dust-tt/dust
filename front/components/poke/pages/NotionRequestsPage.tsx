@@ -115,9 +115,7 @@ export function NotionRequestsPage() {
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorData.error?.connectors_error?.message ||
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             errorData.error?.message ||
             "Failed to execute request"
         );

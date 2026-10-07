@@ -151,7 +151,6 @@ export default function Chat({
       const parsed = responseFormat.trim()
         ? JSON.parse(responseFormat)
         : undefined;
-      // eslint-disable-next-line no-unused-expressions
       parsed
         ? (b.config.response_format = parsed)
         : delete b.config.response_format;
@@ -282,7 +281,6 @@ export default function Chat({
             <Input
               spellCheck={false}
               readOnly={readOnly}
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={block.spec.max_tokens || ""}
               onChange={(e) => handleMaxTokensChange(e.target.value)}
             />
@@ -298,7 +296,6 @@ export default function Chat({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
-                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {(block.spec.stop || ([] as string[])).map(
                     (stop: string, i: number) => (
                       <div

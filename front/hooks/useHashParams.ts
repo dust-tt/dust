@@ -151,6 +151,5 @@ export const useHashParam = (
 
   // Uses `||` intentionally: empty string falls back to defaultValue, matching
   // the behavior where "" triggers searchParams.delete(key) in the effect.
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return [innerValue.val || defaultValue, setValue];
 };

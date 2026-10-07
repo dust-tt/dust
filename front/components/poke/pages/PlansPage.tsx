@@ -175,7 +175,6 @@ export function PlansPage() {
       <div>
         <NewPlanWarningDialog
           onConfirm={() => createNewPlan()}
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           disabled={editingPlan?.isNewPlan || !!editingPlan}
         />
       </div>

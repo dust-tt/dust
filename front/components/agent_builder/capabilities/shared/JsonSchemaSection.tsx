@@ -68,7 +68,6 @@ export function JsonSchemaSection({
       }
 
       const data = await res.json();
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const schemaObject = data.schema || null;
       const schemaString = schemaObject
         ? JSON.stringify(schemaObject, null, 2)

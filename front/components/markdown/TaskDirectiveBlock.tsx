@@ -541,7 +541,6 @@ export function taskDirective() {
         return;
       }
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const data = node.data || (node.data = {});
       data.hName = "project_task";
       data.hProperties = {

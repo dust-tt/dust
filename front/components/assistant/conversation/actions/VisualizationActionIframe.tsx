@@ -573,7 +573,6 @@ function useVisualizationDataHandler({
           title: t`Export failed`,
           type: "error",
           description:
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             data.errorMessage ||
             t`An error occurred while exporting the content.`,
         });

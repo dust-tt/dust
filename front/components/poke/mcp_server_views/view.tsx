@@ -103,7 +103,6 @@ export function ViewMCPServerViewTable({
                     <PokeTableHead>Edited At</PokeTableHead>
                     <PokeTableCell>
                       {formatTimestampToFriendlyDate(
-                        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                         mcpServerView.editedByUser.editedAt || 0
                       )}
                     </PokeTableCell>
