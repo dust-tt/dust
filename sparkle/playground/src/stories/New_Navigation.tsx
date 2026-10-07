@@ -26,6 +26,7 @@ import {
   Edit04,
   Eye,
   File02,
+  Folder,
   Heart,
   Icon,
   Inbox01,
@@ -71,8 +72,14 @@ import {
   useMemo,
   useState,
   type ComponentType,
+  type ReactNode,
 } from "react";
 
+import type {
+  WorkspaceLocation,
+  PodWorkspacePanel,
+  PodWorkspacePanelControls,
+} from "../components/pod-workspace/model";
 import type { RequestsTab } from "../components/RequestsView";
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import {
@@ -188,7 +195,35 @@ function getSpaceActivity(space: Space) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-function NewNavigation() {
+function NewNavigation({
+  initialPods,
+  renderPod,
+  renderPodPanel,
+  renderFiles,
+  renderFilesNavigation,
+  initialWorkspacePanel,
+}: {
+  initialPods?: Space[];
+  initialWorkspacePanel?: PodWorkspacePanel;
+  renderFiles?: (
+    location: WorkspaceLocation,
+    onFolderChange: (folderId: string | null) => void,
+    openPanel: (panel: PodWorkspacePanel) => void
+  ) => ReactNode;
+  renderFilesNavigation?: (
+    location: WorkspaceLocation | null,
+    onNavigate: (location: WorkspaceLocation) => void
+  ) => ReactNode;
+  renderPod?: (
+    space: Space,
+    openPanel: (panel: PodWorkspacePanel) => void
+  ) => ReactNode;
+  renderPodPanel?: (
+    space: Space | null,
+    panel: PodWorkspacePanel,
+    controls: PodWorkspacePanelControls
+  ) => ReactNode;
+} = {}) {
   // ── Bootstrap state ───────────────────────────────────────────────────────
   const [user, setUser] = useState<User | null>(null);
   const [greeting, setGreeting] = useState<string>("");
@@ -204,7 +239,7 @@ function NewNavigation() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
   useEffect(() => {
-    const u = getRandomUsers(1)[0];
+    const u = initialPods ? mockUsers[0] : getRandomUsers(1)[0];
     setUser(u);
     const agentCount = Math.floor(Math.random() * 5) + 1;
     const peopleCount = Math.floor(Math.random() * 5) + 1;
@@ -218,10 +253,13 @@ function NewNavigation() {
         data: d,
       })),
     ]);
-    const randomSpaces = getRandomSpaces(Math.floor(Math.random() * 7) + 3);
+    const randomSpaces =
+      initialPods ?? getRandomSpaces(Math.floor(Math.random() * 7) + 3);
     setSpaces(randomSpaces);
     setStarredSpaceIds(
-      new Set(randomSpaces.slice(0, 2).map((space) => space.id))
+      new Set(
+        randomSpaces.slice(0, initialPods ? 1 : 2).map((space) => space.id)
+      )
     );
     const conversations = createConversationsWithMessages(u.id);
     setConversationsWithMessages(conversations);
@@ -238,6 +276,7 @@ function NewNavigation() {
   // ── Navigation state ──────────────────────────────────────────────────────
   // P2 selection: what's shown in the "level 1" panel
   type P2View =
+    | ({ kind: "workspaceFiles" } & WorkspaceLocation)
     | { kind: "welcome" }
     | { kind: "inboxAlt" }
     | { kind: "requests" }
@@ -249,7 +288,11 @@ function NewNavigation() {
     | { kind: "templates" }
     | { kind: "build"; section: BuildSection };
 
-  const [p2View, setP2View] = useState<P2View>({ kind: "inboxAlt" });
+  const [p2View, setP2View] = useState<P2View>(() =>
+    initialPods?.[0]
+      ? { kind: "space", spaceId: initialPods[0].id }
+      : { kind: "inboxAlt" }
+  );
 
   // P3: conversation from a space (level 2), a file opened from a pod's
   // files screen, or a side panel opened from the level-1 conversation.
@@ -257,12 +300,19 @@ function NewNavigation() {
     | { kind: "conversation"; conversationId: string }
     | { kind: "request"; requestId: string }
     | { kind: "newConversation"; podName?: string }
+    | { kind: "podPanel"; panel: PodWorkspacePanel }
     | SidePanelView;
 
-  const [p3View, setP3View] = useState<P3View | null>(null);
+  const [p3View, setP3View] = useState<P3View | null>(() =>
+    initialWorkspacePanel
+      ? { kind: "podPanel", panel: initialWorkspacePanel }
+      : null
+  );
 
   // P4: side panel opened from a level-2 conversation.
-  const [p4View, setP4View] = useState<SidePanelView | null>(null);
+  const [p4View, setP4View] = useState<
+    SidePanelView | { kind: "podPanel"; panel: PodWorkspacePanel } | null
+  >(null);
 
   const openNewConversation = (podName?: string) => {
     setP3View({ kind: "newConversation", podName });
@@ -1114,6 +1164,7 @@ function NewNavigation() {
   };
 
   const p2Label = (() => {
+    if (p2View.kind === "workspaceFiles") return p2View.scope;
     if (p2View.kind === "build")
       return BUILD_SECTION_DISPLAY[p2View.section].label;
     if (p2View.kind === "inboxAlt") return "Inbox";
@@ -1129,6 +1180,26 @@ function NewNavigation() {
   })();
 
   const p2Content = (() => {
+    if (p2View.kind === "workspaceFiles" && renderFiles) {
+      return renderFiles(
+        p2View,
+        (folderId) => {
+          setP2View({ ...p2View, folderId });
+          setP3View(null);
+          setP4View(null);
+        },
+        (panel) => {
+          setP3View({ kind: "podPanel", panel });
+          setP4View(null);
+        }
+      );
+    }
+    if (podContext?.variant === "shared" && renderPod) {
+      return renderPod(podContext.space, (panel) => {
+        setP3View({ kind: "podPanel", panel });
+        setP4View(null);
+      });
+    }
     if (p2View.kind === "build") {
       if (p2View.section === "agents")
         return <ManageAgentsView currentUserId={user.id} />;
@@ -1379,25 +1450,44 @@ function NewNavigation() {
   const p3Label =
     p3View === null
       ? "Panel 3"
-      : p3View.kind === "conversation"
-        ? (p3Conversation?.title ?? "Conversation")
-        : p3View.kind === "request"
-          ? (p3Request?.title ?? "Request")
-          : p3View.kind === "newConversation"
-            ? "New conversation"
-            : sidePanelLabel(p3View);
+      : p3View.kind === "podPanel"
+        ? p3View.panel.label
+        : p3View.kind === "conversation"
+          ? (p3Conversation?.title ?? "Conversation")
+          : p3View.kind === "request"
+            ? (p3Request?.title ?? "Request")
+            : p3View.kind === "newConversation"
+              ? "New conversation"
+              : sidePanelLabel(p3View);
 
   const p3SizingType: PanelSizingType =
     p3View === null
       ? "secondary"
-      : p3View.kind === "conversation" ||
-          p3View.kind === "request" ||
-          p3View.kind === "newConversation"
-        ? "default"
-        : sidePanelSizing(p3View);
+      : p3View.kind === "podPanel"
+        ? p3View.panel.sizingType
+        : p3View.kind === "conversation" ||
+            p3View.kind === "request" ||
+            p3View.kind === "newConversation"
+          ? "default"
+          : sidePanelSizing(p3View);
 
   const p3Content = (() => {
     if (!p3View) return null;
+    if (p3View.kind === "podPanel") {
+      if (!renderPodPanel) return null;
+      return renderPodPanel(podContext?.space ?? null, p3View.panel, {
+        openPrimaryPanel: (panel) => setP3View({ kind: "podPanel", panel }),
+        openPanel: (panel) => setP4View({ kind: "podPanel", panel }),
+        replacePanel: (panel) => {
+          setP3View({ kind: "podPanel", panel });
+          setP4View(null);
+        },
+        closePanel: () => {
+          setP3View(null);
+          setP4View(null);
+        },
+      });
+    }
     if (p3View.kind === "newConversation")
       return <NewConversation greeting={greeting} podName={p3View.podName} />;
     if (p3View.kind === "request") {
@@ -1428,14 +1518,33 @@ function NewNavigation() {
     return renderSidePanel(p3View, setP3View, selectedConversation);
   })();
 
-  const p4Label = p4View === null ? "Attachment" : sidePanelLabel(p4View);
+  const p4Label =
+    p4View === null
+      ? "Attachment"
+      : p4View.kind === "podPanel"
+        ? p4View.panel.label
+        : sidePanelLabel(p4View);
 
   const p4SizingType: PanelSizingType =
-    p4View === null ? "secondary" : sidePanelSizing(p4View);
+    p4View === null
+      ? "secondary"
+      : p4View.kind === "podPanel"
+        ? p4View.panel.sizingType
+        : sidePanelSizing(p4View);
 
-  const p4Content = p4View
-    ? renderSidePanel(p4View, setP4View, p3Conversation)
-    : null;
+  const p4Content = (() => {
+    if (!p4View) return null;
+    if (p4View.kind === "podPanel") {
+      if (!renderPodPanel) return null;
+      return renderPodPanel(podContext?.space ?? null, p4View.panel, {
+        openPrimaryPanel: (panel) => setP3View({ kind: "podPanel", panel }),
+        openPanel: (panel) => setP4View({ kind: "podPanel", panel }),
+        replacePanel: (panel) => setP4View({ kind: "podPanel", panel }),
+        closePanel: () => setP4View(null),
+      });
+    }
+    return renderSidePanel(p4View, setP4View, p3Conversation);
+  })();
 
   // ── Panel top bars ────────────────────────────────────────────────────────
   // `target` is the slot the side panel opens into (P3 for the level-1
@@ -1617,6 +1726,26 @@ function NewNavigation() {
   })();
 
   const p2TopBarLeft = (() => {
+    if (p2View.kind === "workspaceFiles")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Files", icon: Folder }, { label: p2View.scope }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
+    if (podContext?.variant === "shared" && renderPod) {
+      return (
+        <Breadcrumbs
+          items={[
+            { label: "Pods", icon: Cube01 },
+            { label: podContext.space.name },
+          ]}
+          size="sm"
+          className="text-foreground"
+        />
+      );
+    }
     if (p2View.kind === "build") {
       const section = BUILD_SECTION_DISPLAY[p2View.section];
       return (
@@ -1709,6 +1838,7 @@ function NewNavigation() {
   })();
 
   const p2TopBarRight = (() => {
+    if (podContext?.variant === "shared" && renderPod) return null;
     if (p2View.kind === "conversation") return conversationActionsFor("p3");
     if (podContext) return podTopBarRight;
     return null;
@@ -1762,7 +1892,7 @@ function NewNavigation() {
   );
 
   // ── Sidebar (Nav) content ─────────────────────────────────────────────────
-  const navContent = (
+  const navContent = (onNavClose: () => void) => (
     <div className="flex min-h-0 flex-1 flex-col bg-app-background">
       {/* ── Chat tab ── */}
       {activeTab === "chat" && (
@@ -1952,6 +2082,25 @@ function NewNavigation() {
                 )}
               </NavigationListCollapsibleSection>
             </NavigationList>
+            {renderFiles && (
+              <NavigationList className="mx-sidebar-side-spacing mt-4 flex-shrink-0">
+                <NavigationListCollapsibleSection
+                  label="Files"
+                  type="collapse"
+                  defaultOpen={true}
+                >
+                  {renderFilesNavigation?.(
+                    p2View.kind === "workspaceFiles" ? p2View : null,
+                    (location) => {
+                      setP2View({ kind: "workspaceFiles", ...location });
+                      setP3View(null);
+                      setP4View(null);
+                      onNavClose();
+                    }
+                  )}
+                </NavigationListCollapsibleSection>
+              </NavigationList>
+            )}
           </ScrollArea>
         </div>
       )}
@@ -1996,7 +2145,7 @@ function NewNavigation() {
                   {user.firstName}
                 </span>
                 <span className="-mt-0.5 w-full truncate text-sm text-muted-foreground">
-                  ACME
+                  {initialPods ? "Dust" : "ACME"}
                 </span>
               </div>
             </div>
@@ -2069,7 +2218,7 @@ function NewNavigation() {
         <PanelLayoutNav topBarLeft={navTopBar}>
           {(onNavClose) => (
             <div className="flex min-h-0 flex-1 flex-col" onClick={onNavClose}>
-              {navContent}
+              {navContent(onNavClose)}
             </div>
           )}
         </PanelLayoutNav>
@@ -2092,7 +2241,11 @@ function NewNavigation() {
           label={p3Label}
           sizingType={p3SizingType}
           // Any file view gets fullscreen, wherever it was opened from.
-          fullscreenEnabled={isFileView(p3View)}
+          fullscreenEnabled={
+            p3View?.kind === "podPanel"
+              ? p3View.panel.fullscreenEnabled
+              : isFileView(p3View)
+          }
           isOpen={p3View !== null}
           onClose={() => {
             setP3View(null);
@@ -2108,7 +2261,11 @@ function NewNavigation() {
         <PanelLayoutPanel
           label={p4Label}
           sizingType={p4SizingType}
-          fullscreenEnabled={isFileView(p4View)}
+          fullscreenEnabled={
+            p4View?.kind === "podPanel"
+              ? p4View.panel.fullscreenEnabled
+              : isFileView(p4View)
+          }
           isOpen={p4View !== null}
           onClose={() => setP4View(null)}
           topBarLeft={p4TopBarLeft}
