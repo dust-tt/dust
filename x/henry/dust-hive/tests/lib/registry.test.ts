@@ -87,13 +87,12 @@ describe("registry", () => {
   });
 
   describe("WARM_SERVICES", () => {
-    it("excludes sparkle, sdk, viz, storybook, sqlite-worker and collab from warm services", () => {
+    it("excludes sparkle, sdk, viz, storybook and sqlite-worker from warm services", () => {
       expect(WARM_SERVICES).not.toContain("sparkle");
       expect(WARM_SERVICES).not.toContain("sdk");
       expect(WARM_SERVICES).not.toContain("viz");
       expect(WARM_SERVICES).not.toContain("storybook");
       expect(WARM_SERVICES).not.toContain("sqlite-worker");
-      expect(WARM_SERVICES).not.toContain("collab");
     });
 
     it("includes all other services", () => {
@@ -106,10 +105,11 @@ describe("registry", () => {
       expect(WARM_SERVICES).toContain("front-workers");
       expect(WARM_SERVICES).toContain("front-spa-poke");
       expect(WARM_SERVICES).toContain("front-spa-app");
+      expect(WARM_SERVICES).toContain("collab");
     });
 
-    it("has 9 services (all except sparkle, sdk, viz, storybook, sqlite-worker, collab)", () => {
-      expect(WARM_SERVICES).toHaveLength(9);
+    it("has 10 services (all except sparkle, sdk, viz, storybook, sqlite-worker)", () => {
+      expect(WARM_SERVICES).toHaveLength(10);
     });
   });
 

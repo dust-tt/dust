@@ -216,6 +216,7 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
       startService(env, "front-workers"),
       startService(env, "front-spa-poke"),
       startService(env, "front-spa-app"),
+      startService(env, "collab"),
     ]);
   } else {
     // Not first warm - start remaining services in parallel
@@ -227,6 +228,7 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
         startService(env, "front-workers"),
         startService(env, "front-spa-poke"),
         startService(env, "front-spa-app"),
+        startService(env, "collab"),
       ]),
       isTemporalRunning(),
     ]);
@@ -265,6 +267,7 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
   console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);
   console.log(`  Front poke:  http://localhost:${env.ports.frontSpaPoke}`);
+  console.log(`  Collab:      http://localhost:${env.ports.collab}`);
   if (!noForward) {
     console.log();
     console.log(`  Forwarded:   ports ${FORWARDER_PORTS.join(", ")} → env (for OAuth)`);

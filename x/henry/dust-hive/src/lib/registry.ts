@@ -198,8 +198,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    // The co-edition live session server, reached through the proxy's /collab route. Started on
-    // demand: only co-edition work needs it.
+    // The co-edition live session server, reached through the proxy's /collab route.
     buildCommand: (env) =>
       `COLLAB_HOSTNAME=localhost COLLAB_PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
     readinessCheck: {
@@ -221,16 +220,15 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, viz, storybook, sqlite-worker
-// and collab which start at spawn/manually).
+// Services to start during warm (all services except sparkle, SDK, viz, storybook and
+// sqlite-worker which start at spawn/manually).
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
   (service) =>
     service !== "sparkle" &&
     service !== "sdk" &&
     service !== "viz" &&
     service !== "storybook" &&
-    service !== "sqlite-worker" &&
-    service !== "collab"
+    service !== "sqlite-worker"
 );
 
 // Build the full shell command for a service
