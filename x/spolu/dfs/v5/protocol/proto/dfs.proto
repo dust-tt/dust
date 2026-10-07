@@ -1,0 +1,137 @@
+syntax = "proto2";
+package dfs.v5;
+
+// Authentication is a bearer key in authorization metadata. Filesystem RPCs derive tenant and
+// grants from the session. Tenant/grant administration uses tenant or server authority.
+service Dfs {
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+  rpc CurrentSession(Empty) returns (Session);
+  rpc CloseSession(Empty) returns (Empty);
+  rpc ListGrants(ListGrantsRequest) returns (GrantPage);
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Attr);
+  rpc Stat(StatRequest) returns (StatResponse);
+  rpc Validate(ValidateRequest) returns (ValidateResponse);
+  rpc GetMetadata(ObjectRequest) returns (Metadata);
+  rpc Lookup(LookupRequest) returns (LookupResponse);
+  rpc List(ListRequest) returns (Page);
+  rpc Read(ReadRequest) returns (ReadResponse);
+  rpc ReadFiles(ReadFilesRequest) returns (ReadFilesResponse);
+  rpc MutateBatch(MutateBatchRequest) returns (stream GroupResult);
+}
+message Empty {}
+message Timestamp { required int64 seconds = 1; required uint32 nanos = 2; }
+// Parent links remain private. IDs also accept root/shared for projected directories on reads.
+message Attr {
+  required ObjectRef id = 1;
+  required bool directory = 2;
+  required uint64 size = 3;
+  required uint32 mode = 7;
+  optional Timestamp atime = 8;
+  optional Timestamp mtime = 9;
+  optional Timestamp ctime = 10;
+  required Revision revision = 11;
+  required int64 read_version = 12;
+}
+// Membership-only parents are omitted; clients invalidate their cached attributes after commit.
+message Mutation { optional Attr object = 1; repeated Attr related = 2; required int64 commit_version = 3; }
+message Entry { required string name = 1; optional Attr object = 2; }
+// The token covers membership, child attributes and the authorization view. Projections have none.
+message Page {
+  repeated Entry entries = 1;
+  optional string next_after = 2;
+  required bytes listing_token = 3;
+  required ReadView view = 4;
+}
+message CreateTenantRequest { required string tenant_id = 1; repeated string root_grants = 2; }
+message Tenant { required string tenant_id = 1; required ObjectRef root_id = 2; required string tenant_key = 3; }
+message CreateSessionRequest { required string tenant_id = 1; repeated string grants = 2; }
+message Session {
+  required string id = 1; required string tenant_id = 2; repeated string grants = 3;
+  required string session_key = 4; required uint64 expires_at = 5; required ObjectRef root_id = 6;
+}
+message ListGrantsRequest {
+  required string tenant_id = 1; required ObjectRef object_id = 2; optional string after = 3; required uint32 limit = 4;
+}
+message GrantPage { repeated string grants = 1; optional string next_after = 2; }
+message GrantChange { required string grant = 1; required bool attached = 2; }
+message UpdateGrantsRequest {
+  required string tenant_id = 1; required ObjectRef object_id = 2;
+  repeated GrantChange changes = 4;
+}
+message ObjectRequest { required ObjectRef object_id = 1; }
+message StatRequest { repeated ObjectRef object_ids = 1; }
+message StatResult { required ObjectRef object_id = 1; optional Attr object = 2; optional ErrorDetails error = 3; }
+message StatResponse { repeated StatResult results = 1; required ReadView view = 2; }
+message ReadView { required int64 read_version = 1; required Revision authorization_view = 2; }
+message LookupResponse { required Attr object = 1; required ReadView view = 2; }
+message Metadata {
+  required Attr object = 1; required string mime_type = 2;
+  map<string, bytes> xattrs = 3; required ReadView view = 4;
+}
+message FileCheck { required ObjectRef object_id = 1; required Revision revision = 2; }
+message DirectoryCheck { required ObjectRef object_id = 1; required bytes listing_token = 2; }
+message ValidationCheck { oneof check { FileCheck file = 1; DirectoryCheck directory = 2; } }
+message ValidateRequest { repeated ValidationCheck checks = 1; }
+enum ValidationOutcome { UNCHANGED = 0; CHANGED = 1; DENIED = 2; MISSING = 3; ERROR = 4; }
+message ValidationResult { required ValidationOutcome outcome = 1; optional ErrorDetails error = 2; }
+message ValidateResponse { repeated ValidationResult results = 1; required ReadView view = 2; }
+message ReadFilesRequest { repeated ObjectRef object_ids = 1; }
+message FileResult {
+  required ObjectRef object_id = 1; optional Attr object = 2;
+  optional bytes data = 3; optional ErrorDetails error = 4;
+}
+message ReadFilesResponse {
+  repeated FileResult results = 1; repeated ObjectRef omitted_ids = 2; required ReadView view = 3;
+}
+message LookupRequest { required ObjectRef parent_id = 1; required string name = 2; }
+message ListRequest { required ObjectRef directory_id = 1; optional string after = 2; required uint32 limit = 3; }
+message CreateRequest {
+  required ObjectRef parent_id = 1; required string name = 2;
+  required bool directory = 4; optional string mime_type = 5; required uint32 mode = 6;
+  map<string, bytes> xattrs = 7;
+  required ObjectRef object_id = 8;
+}
+message XattrChange { required string name = 1; optional bytes value = 2; }
+// A size patch is truncate. All requested changes are accepted as one coherent state.
+message UpdateRequest {
+  required ObjectRef object_id = 1;
+  optional string mime_type = 3; repeated XattrChange xattrs = 4;
+  optional uint32 mode = 5; optional Timestamp atime = 6; optional Timestamp mtime = 7; optional uint64 size = 8;
+}
+// Rename atomically changes both parents and the moved object, including any replacement.
+message RenameRequest {
+  required ObjectRef object_id = 1; required ObjectRef parent_id = 2; required string name = 3; required bool replace = 4;
+
+}
+message RemoveRequest { required ObjectRef object_id = 1; required bool directory = 2; }
+message ReadRequest { required ObjectRef object_id = 1; required uint64 offset = 2; required uint32 length = 3; required Revision revision = 4; }
+message ReadResponse { required bytes data = 1; required Attr object = 2; required ReadView view = 3; }
+message WriteRequest {
+  required ObjectRef object_id = 1; required uint64 offset = 3; required bytes data = 4; required bool append = 5;
+}
+// Groups are independently atomic. Clients submit dependent groups only after prerequisites commit.
+message Edit {
+  oneof operation {
+    CreateRequest create = 1; UpdateRequest update = 2; WriteRequest write = 3;
+    RenameRequest rename = 4; RemoveRequest remove = 5;
+  }
+}
+message MutationGroup { required uint64 id = 1; repeated Edit edits = 2; }
+message MutateBatchRequest { repeated MutationGroup groups = 1; }
+message GroupResult { required uint64 id = 1; optional Mutation mutation = 2; optional ErrorDetails error = 3; }
+// Stable details for filesystem errno mapping; public messages never include private state.
+enum ErrorCode {
+  INTERNAL = 0; INVALID_INPUT = 1; NOT_FOUND = 2; FORBIDDEN = 3; UNAUTHENTICATED = 4;
+   ALREADY_EXISTS = 6; NOT_DIRECTORY = 7; IS_DIRECTORY = 8;
+  NOT_EMPTY = 9; CAPACITY = 10; UNAVAILABLE = 11; UNSUPPORTED = 12; NAME_TOO_LONG = 13;
+  STALE_VIEW = 14;
+}
+message ErrorDetails { required ErrorCode code = 1; }
+
+// References are binary UUIDv4 identities or explicit virtual-directory tags.
+message ObjectRef {
+  oneof value { bytes id = 1; bool root = 2; bool shared = 3; }
+}
+// Empty means no revision precondition; populated revisions are exactly 16 bytes.
+message Revision { optional bytes value = 1; }

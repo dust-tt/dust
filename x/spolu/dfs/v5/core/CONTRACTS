@@ -1,0 +1,13 @@
+@cc [owner:spolu,label:architecture] core-transport-independence
+Filesystem and permission semantics MUST NOT depend on gRPC dispatch, FUSE or a specific durable KV
+implementation. Storage adapters MUST preserve the transaction and snapshot guarantees of the core.
+
+@cc [owner:spolu,label:security;concurrency] complete-permission-view
+Only complete tenant trees MAY authorize requests. Publication MUST apply an entire completed feed
+interval atomically. Failed/partial polls MUST NOT advance the cursor or renew its age proof. Every
+permission batch MUST use one tree generation and reject stale views, missing nodes and cycles.
+
+@cc [owner:spolu,label:performance] compact-permission-state
+Resident tree topology MUST use dense u32 slots and shared explicit grant sets. UUIDs MUST remain
+binary. Parent paths and inherited permissions MUST NOT be materialized per descendant. Search
+candidate filtering MUST use the same permission evaluator as filesystem authorization.

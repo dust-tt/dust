@@ -73,8 +73,9 @@ allocation. Validate UUID version/variant and exact length at ingress. Format he
 checks collisions. IDs are never deliberately reused.
 
 Use the same representation for parent IDs, directory-entry values, grant indexes, cache keys,
-pending edits and server records. Decode generated protobuf byte fields into typed IDs once at the
-boundary; do not retain a `Vec<u8>` or `String` per internal ID. Revisions are fixed 16-byte values
+pending edits and server records. Bind protobuf reference/revision messages to typed prost values;
+required fields keep their Rust representation inline. Do not retain a `Vec<u8>` or `String` per
+internal ID. Revisions are fixed 16-byte values
 too. Root and `/shared` projections use an explicit tagged reference, not magic strings or UUIDs.
 
 V4 already writes binary UUIDs in FDB keys. V5 also removes textual UUIDs from record values and
@@ -96,8 +97,9 @@ dictionary is separate from object identity allocation; object IDs remain indepe
 Start with one FUSE receiving thread. Cache hits and immediately admissible local edits run inline,
 without entering an async runtime or handing work to another thread. If a callback would block on an
 RPC, capacity, another fetch, or fsync, defer it to a bounded worker pool before any mutation takes
-effect. Do not rerun a callback after it has changed state. Flush/release keep their ordering and do
-not trigger a mount-wide drain.
+effect. Do not rerun a callback after it has changed state. Use one receiving thread, at most eight
+deferred workers, and at most 64 running/queued callbacks; charge captured arguments to the shared
+budget. Flush/release keep their ordering and do not trigger a mount-wide drain.
 
 Use direct I/O, zero kernel entry/attribute TTLs, and no kernel writeback or directory caching.
 Perform mode checks in the mount, using live cached attributes, rather than `DefaultPermissions`.
@@ -131,8 +133,15 @@ Listing validation accepts only real-directory tokens. Virtual root and `/shared
 
 Each page is a coherent FDB snapshot, but traversal across pages does not promise one long-lived
 snapshot. Local namespace overlays and generations fence every install/revalidation. Keep v4's
-listing-race stabilization: await captured in-flight namespace edits when needed, retain queued
-edits, and never force unrelated files to publish just to refresh a directory.
+listing-race stabilization: await captured in-flight namespace edits with dispatch enabled, then
+pause only for the final snapshot after those groups finish. Retain queued edits in the overlay,
+and never force unrelated files to publish just to refresh a directory. Readdir cursor suffixes
+reuse the covering cached page with its original token and expiry.
+
+Fence page read versions against locally committed changes to their directory and returned objects.
+Keep at most 4,096 commit records under a 2 MiB shared-budget reservation; discarded records advance
+a conservative global floor before removal. This preserves coherence after attribute eviction
+without making an unchanged directory chase every unrelated commit in the mount.
 
 ### Content locality
 
@@ -143,12 +152,20 @@ edits, and never force unrelated files to publish just to refresh a directory.
   Random access reduces speculative read-ahead. Demand bytes always take priority.
 - `ReadFiles` returns each file's canonical attributes/revision with its content from one FDB
   snapshot. Installing the pair together prevents bytes being associated with older metadata.
-  Range reads retain explicit expected-revision checks.
+  Content fills cap any installed attributes at their existing metadata deadline; fetching bytes
+  does not renew authorization. Range reads retain explicit expected-revision checks.
 - Retain clean blocks beyond metadata expiry, but serve them only under freshly authorized matching
   metadata. `Validate` can renew cached file metadata and matching blocks without downloading them.
   A changed revision invalidates old blocks. A read must never splice revisions.
 - Deduplicate concurrent fetches, cancel unnecessary speculative work, and measure prefetched bytes
   consumed versus evicted. No recursive directory or content prefetch chains.
+
+Initially, sibling bytes travel in the demand file's `ReadFiles` RPC. Skip busy/dirty siblings using
+nonblocking per-object gates, and cancel the request with its demand operation. Two whole-file slots
+remain reserved through decoded-reply installation, within the shared large-RPC limit. Speculative
+cache admission cannot evict demand entries and leaves at least 4 MiB of shared capacity free.
+Consumption metrics count a prefetched block's bytes once when first used; unused bytes are counted
+when the last retained block reference is dropped.
 
 Enforce one 512 MiB accounted client memory cap per mount, configurable downward. Include the entire
 client read cache (clean file blocks, prefetched content, attributes and directory listings), dirty
@@ -158,6 +175,17 @@ Keep v4's 96 MiB transient I/O/scheduler reserve inside this cap; at the default
 reservations through the last reader, including after eviction. Bound RPC buffers and concurrent
 work against the transient reserve. This is an accounted memory cap; allocator/runtime overhead
 still needs RSS measurement.
+
+The 96 MiB reserve contains a 52 MiB scratch semaphore, 36 MiB for four bounded RPC decoders, and
+8 MiB for fixed receiver/scheduler bookkeeping. Foreground operations and page-prefetch tasks reserve
+6 MiB before execution. FUSE retains another 4 MiB for directory staging or 1 MiB for other callbacks
+through reply delivery. Scratch shortage defers before effects. See [MEMORY.md](MEMORY.md) for the
+allocation lifetimes and progress bound; expose accounted and scratch peaks alongside measured RSS.
+
+Cache and inode indexes use ordered maps that release nodes as entries disappear. Gate keys and
+weak slots retain their own shared-budget reservations. Payload accounting uses allocated vector
+and string capacities, and includes sparse index nodes; retired writeback queues have one entry per
+live dirty object and shed excess capacity as they drain.
 
 When capacity is exhausted, evict clean entries, then apply backpressure before acknowledging more
 writes. Never silently evict acknowledged dirty data. Prefetch uses spare clean-cache capacity; it
@@ -175,6 +203,10 @@ accepted edit's deadline when more writes arrive. Enforce the configured maximum
 delay W (200 ms by default) from acknowledgment to dispatch, including time waiting in client queues.
 Admission accounts for queued/in-flight bytes, group slots, and prerequisite progress before
 acknowledging RAM acceptance.
+Before accepting a third dependent group, wait for its captured prerequisites to progress; keep
+shallow create/write coalescing and independent sibling groups concurrent. Directory removal waits
+for its captured child edits before acceptance, so slow child deletion commits cannot consume the
+removal's entire buffering allowance. Membership-only parent overlaps do not serialize siblings.
 Prioritize the earliest deadline over further batching or speculative work. If a known-unsubmitted
 edit cannot be dispatched by its deadline, fail it explicitly through the deferred-error path;
 never extend its deadline or silently leave it queued. Already submitted RPCs retain their normal
@@ -229,6 +261,10 @@ compares the listing counter and authorization generation, rechecks access, and 
 cached listing's covered names and child attributes; it does not validate descendant listings.
 Perform all revision/counter reads at one fresh FDB read version and permission checks against one
 fresh-enough tree generation. File revisions alone cannot prove permission after ancestor changes.
+When the RAM view is unavailable, authoritative FDB checks use a separate epoch read from the same
+snapshot, combined with the server incarnation. Namespace/grant edits increment it atomically;
+child attribute edits increment listing counters. Fallback and RAM proof identifiers use distinct
+domains, so switching permission paths invalidates retained listing tokens.
 
 `Unchanged` renews the matching cached view from this request's send time, subject to session expiry,
 local generations and known commit-version floors. It never validates unpublished local edits.
@@ -273,7 +309,16 @@ for listing counters; sibling creates do not read-modify-write the same parent s
 attribute change bumps its parent's listing counter. If a child's namespace changes its directory
 attributes, also invalidate the listing in which that directory appears; do not recursively update
 ancestor timestamps. Deduplicate counter bumps within a group. Complete attributes are assembled
-from one FDB snapshot.
+from one FDB snapshot. A directory's public revision combines a base revision with a separate
+membership counter; listing counters also cover child attributes and are not public revisions.
+Explicit directory metadata edits conflict-read the complete attributes, write a new base revision,
+and clear membership time/counter. The next membership event supersedes explicit utimes; independent
+membership events between metadata edits combine by maximum using an ordered 12-byte timestamp.
+
+Mutation replies return the edited object's canonical attributes and commit version. They omit
+membership-only parent attributes: reading atomic parent fields before commit would make sibling
+creates conflict. The client invalidates these parents' attributes without renewing their TTL and
+fetches them on demand; it retains separately committed name bindings and pending local edits.
 
 The compact authorization records are separate from ordinary metadata. Content writes, chmod,
 timestamps, MIME/xattrs and same-parent name changes do not emit tree updates: they do not change
@@ -285,17 +330,26 @@ delimiters, not these textual separators.
 
 | Key | Value / purpose |
 | --- | --- |
-| `object/<id16>` | Ordinary metadata, binary parent ID/name, revision. |
+| `object/<id16>` | Small attributes, binary parent ID/name, revision. |
+| `metadata/<id16>` | MIME/xattrs, read separately from ordinary traversal. |
 | `child/<parent16>/<name>` | Binary child ID. |
 | `block/<id16>/<index8>` | Sparse content block. |
-| `directory-time/<id16>`, `listing-version/<id16>` | Conflict-avoiding directory bookkeeping. |
+| `directory-state/<id16>` | Explicit metadata's base revision and mtime/ctime. |
+| `directory-time/<id16>`, `membership-version/<id16>` | Atomic maximum time and membership counter. |
+| `listing-version/<id16>` | Atomic counter covering membership and child attributes. |
 | `grant-name/<name>`, `grant-id/<id4>` | Durable grant dictionary. |
 | `object-grant/<object16>/<grant4>` | Explicit attachment; inherited grants are not materialized. |
-| `grant-object/<grant4>/<object16>` | Reverse index used by `/shared` and administration. |
+| `grant-object/<grant4>/<object16>` | Numeric reverse index used by `/shared`. |
+| `object-grant-name/<object16>/<name>` | Administration-only name index preserving lexical pagination. |
 | `tree-node/<object16>` | Parent ID, kind, has-grants/deleted flags, latest 10-byte update stamp. |
 | `tree-update/<stamp10>/<object16>` | Latest parent/kind/has-grants/deleted image for this object. |
 | `tree-deleted/<stamp10>/<object16>` | Tombstone GC index; present only for deleted objects. |
 | `tree-control` | Format/incarnation and minimum resumable FDB version. |
+| `tree-deleted-count` | Tracked tombstone admission and GC count. |
+| `authorization-epoch` | Atomic namespace/grant epoch for listing validation on the FDB fallback. |
+
+The control state uses separate incarnation and resume-floor keys so GC can atomically maximize
+the floor. A global tenant-name registry supports bounded GC discovery even with no active sessions.
 
 Tree records contain no names, content, xattrs, or accumulated inherited permissions. Grant sets are
 hydrated from `object-grant` at the same snapshot as the node/log row, only when `has_grants` is
@@ -441,6 +495,13 @@ selected tombstones. The floor update and deletions commit together. A configure
 advance the floor sooner: that explicitly invalidates lagging consumers and builders. GC continues
 for disconnected tenants too. If its ceiling cannot be maintained, apply backpressure rather than
 silently dropping required tombstones.
+
+The initial hard ceiling uses a conflict-tracked tombstone count per tenant. Deletions and GC can
+therefore conflict and retry even when they affect different objects. This count never orders the
+feed; ordinary creates, moves without replacement, and content edits do not read it. Start with
+1,000,000 tombstones or 512 MiB of accounted tombstone storage, whichever is smaller. Collect toward
+90% of that limit to leave headroom between sweeps. All limits, retention and GC cadence are
+configurable; no stale consumer may pin this space indefinitely.
 
 A consumer whose V is below the floor rebuilds. It must never interpret an empty scan after a long
 absence as proof that its old tree is current. No disconnected server may pin retention forever. The
