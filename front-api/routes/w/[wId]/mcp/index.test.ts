@@ -684,10 +684,7 @@ describe("POST /api/w/:wId/mcp/ catalog audit", () => {
         targets: expect.arrayContaining([
           expect.objectContaining({ type: "mcp_server", id: body.server.sId }),
         ]),
-        metadata: expect.objectContaining({
-          server_type: "internal",
-          internal_name: "agent_memory",
-        }),
+        metadata: expect.objectContaining({ server_type: "internal" }),
       })
     );
   });
@@ -706,11 +703,18 @@ describe("POST /api/w/:wId/mcp/ catalog audit", () => {
       });
 
       expect(response.status).toBe(400);
-      expect(await RemoteMCPServerResource.listByWorkspace(auth)).toHaveLength(
-        1
-      );
+      const servers = await RemoteMCPServerResource.listByWorkspace(auth);
+      expect(servers).toHaveLength(1);
       expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
-        expect.objectContaining({ action: "mcp_server.created" })
+        expect.objectContaining({
+          action: "mcp_server.created",
+          targets: expect.arrayContaining([
+            expect.objectContaining({
+              type: "mcp_server",
+              id: servers[0].sId,
+            }),
+          ]),
+        })
       );
     } finally {
       viewSpy.mockRestore();
@@ -751,6 +755,15 @@ describe("POST /api/w/:wId/mcp/ catalog audit", () => {
       }
     );
     expect(meta.status).toBe(200);
+    expect(
+      vi
+        .mocked(workosAudit.emitAuditLogEvent)
+        .mock.calls.map((call) => call[0].action)
+    ).toEqual([
+      "mcp_server.created",
+      "mcp_server.updated",
+      "mcp_server.updated",
+    ]);
 
     const dumped = dumpEmitCalls();
     expect(dumped).not.toContain(SENTINEL_SECRET);

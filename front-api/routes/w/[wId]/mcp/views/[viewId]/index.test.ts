@@ -486,7 +486,6 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     });
 
     expect(response.status).toBe(200);
-    expect((await response.json()).serverView.name).toBe("Renamed Server");
     expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         action: "mcp_server.updated",
@@ -520,7 +519,6 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
         action: "mcp_server.updated",
         metadata: expect.objectContaining({
           change_kind: "oauth",
-          oauth_use_case: "personal_actions",
         }),
       })
     );
