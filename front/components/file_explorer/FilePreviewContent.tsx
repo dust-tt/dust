@@ -20,6 +20,7 @@ import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
+import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -346,18 +347,22 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
     owner,
     filePath: editor.path,
   });
-  const commentInputExtensions = useMemo(
-    () => [
+  const commentInputExtensions = useMemo(() => {
+    // Suggestions rank the conversation's participants, or the pod's members, first.
+    const scope = parseCanonicalScopedPath(editor.path)?.scope;
+    return [
       MentionExtension.configure({
         owner,
         suggestion: createMentionSuggestion({
           owner,
+          conversationId:
+            scope?.kind === "canonical-conversation" ? scope.id : null,
+          spaceId: scope?.kind === "canonical-pod" ? scope.id : undefined,
           select: { agents: true, users: true },
         }),
       }),
-    ],
-    [owner]
-  );
+    ];
+  }, [owner, editor.path]);
 
   return (
     <Document
