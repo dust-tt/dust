@@ -78,10 +78,8 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   // resolved locale.
   useEffect(() => {
     let isCurrent = true;
-    Promise.all([
-      loadUiCatalog(locale),
-      preloadSparkleLocale(getSparkleLocale(locale)),
-    ])
+    const sparkleLocale = getSparkleLocale(locale);
+    Promise.all([loadUiCatalog(locale), preloadSparkleLocale(sparkleLocale)])
       .then(([messages]) => {
         if (isCurrent) {
           setFormatLocale(formatLocale);
