@@ -16,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -39,6 +40,7 @@ export function ManagePodGroupsPanel({
   pod,
   onSuccess,
 }: ManagePodGroupsPanelProps) {
+  const { t } = useLingui();
   const [isSaving, setIsSaving] = useState(false);
   const doUpdateSpace = useUpdateSpace({ owner });
 
@@ -110,7 +112,7 @@ export function ManagePodGroupsPanel({
               <Button
                 size="xs"
                 variant={isEditor ? "highlight" : "outline"}
-                label={isEditor ? "Editor" : "Set as editor"}
+                label={isEditor ? t`Editor` : t`Set as editor`}
                 icon={isEditor ? Check : undefined}
                 onClick={(e) => {
                   toggleEditor(sId);
@@ -122,7 +124,7 @@ export function ManagePodGroupsPanel({
         },
       },
     ];
-  }, [selectedGroupIds, editorGroupIds, toggleEditor]);
+  }, [selectedGroupIds, editorGroupIds, toggleEditor, t]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -140,8 +142,8 @@ export function ManagePodGroupsPanel({
         editorGroupIds: Array.from(editorGroupIds),
       },
       {
-        title: "Successfully updated Pod groups",
-        description: "The groups with access to this Pod were updated.",
+        title: t`Successfully updated Pod groups`,
+        description: t`The groups with access to this Pod were updated.`,
       }
     );
 
@@ -153,11 +155,13 @@ export function ManagePodGroupsPanel({
     setIsSaving(false);
   };
 
+  const podName = pod.name;
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && setIsOpen(false)}>
       <SheetContent size="lg" side="right">
         <SheetHeader>
-          <SheetTitle>{`Manage Groups of ${pod.name}`}</SheetTitle>
+          <SheetTitle>{t`Manage groups of ${podName}`}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <GroupSelectionTable
@@ -169,12 +173,12 @@ export function ManagePodGroupsPanel({
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: () => setIsOpen(false),
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "highlight",
             onClick: handleSave,
             disabled: isSaving,

@@ -34,6 +34,8 @@ import {
   PopoverTrigger,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { DragEvent } from "react";
 import { useMemo, useState } from "react";
 
@@ -58,6 +60,7 @@ export function PodTabsCustomizationSection({
   tabsOrder,
   isEditor,
 }: PodTabsCustomizationSectionProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const displayFramePackages = hasFeature("frames_v2");
 
@@ -182,8 +185,11 @@ export function PodTabsCustomizationSection({
       icon={Plus}
       tooltip={
         atTabLimit
-          ? `A pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`
-          : "Add file to Tabs"
+          ? t`A Pod can have at most ${plural(MAX_POD_FILE_TABS, {
+              one: "# custom tab",
+              other: "# custom tabs",
+            })}.`
+          : t`Add file to Tabs`
       }
       disabled={atTabLimit}
     />
@@ -191,10 +197,14 @@ export function PodTabsCustomizationSection({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <h3 className="heading-lg">Pod Customization</h3>
+      <h3 className="heading-lg">
+        <Trans>Pod customization</Trans>
+      </h3>
       <div className="flex w-full flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h4 className="heading-base flex-1">Tabs</h4>
+          <h4 className="heading-base flex-1">
+            <Trans>Tabs</Trans>
+          </h4>
           {isEditor && orderedFileTabs.length > 0 && (
             <AddPodFileMenu
               files={addableFiles}
@@ -204,13 +214,15 @@ export function PodTabsCustomizationSection({
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          Files pinned to this Pod&apos;s Tabs. Drag to reorder, or pick a
-          custom icon.
+          <Trans>
+            Files pinned to this Pod&apos;s Tabs. Drag to reorder, or pick a
+            custom icon.
+          </Trans>
         </p>
         {orderedFileTabs.length === 0 ? (
           isEditor ? (
             <EmptyCTA
-              message="No files in the Tabs yet."
+              message={t`No files in the Tabs yet.`}
               action={
                 <AddPodFileMenu
                   files={addableFiles}
@@ -219,7 +231,7 @@ export function PodTabsCustomizationSection({
                     <Button
                       variant="highlight"
                       icon={Plus}
-                      label="Add file"
+                      label={t`Add file`}
                       disabled={atTabLimit}
                     />
                   }
@@ -228,7 +240,7 @@ export function PodTabsCustomizationSection({
             />
           ) : (
             <p className="text-sm text-muted-foreground">
-              No files in the Tabs yet.
+              <Trans>No files in the Tabs yet.</Trans>
             </p>
           )
         ) : (
@@ -241,6 +253,7 @@ export function PodTabsCustomizationSection({
               const isPickerOpen = iconPickerPath === tab.path;
               const isEditingTitle = editingTitlePath === tab.path;
               const canDrag = isEditor && !isEditingTitle;
+              const filePath = getScopedRelativePath(tab.path);
               const isFileMissing =
                 !isPodFilesLoading && !podFilePaths.has(tab.path);
 
@@ -306,7 +319,7 @@ export function PodTabsCustomizationSection({
                             size="xs"
                             variant="outline"
                             icon={IconComponent}
-                            tooltip="Change icon"
+                            tooltip={t`Change icon`}
                           />
                         </PopoverTrigger>
                         <PopoverContent
@@ -370,7 +383,7 @@ export function PodTabsCustomizationSection({
                       <Chip
                         size="xs"
                         color="warning"
-                        label={`File ${getScopedRelativePath(tab.path)} missing or renamed`}
+                        label={t`File ${filePath} missing or renamed`}
                       />
                     )}
                     {isEditor && (
@@ -378,7 +391,7 @@ export function PodTabsCustomizationSection({
                         size="xs"
                         variant="ghost-secondary"
                         icon={XClose}
-                        tooltip="Remove from Tabs"
+                        tooltip={t`Remove from Tabs`}
                         onClick={() =>
                           void removeFileTab(tab.path, {
                             fileName: tab.title,
