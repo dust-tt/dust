@@ -5,6 +5,7 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
+  COMMENT_MARK_NAME,
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
@@ -64,6 +65,29 @@ export function dfmToYDoc(source: string): Result<LiveDocument, string> {
   return new Ok({ doc, comments: getDocumentJSONComments(content) });
 }
 
+const withoutOrphanAnchors = (
+  content: JSONContent,
+  threadIds: Set<string>
+): JSONContent => {
+  const { marks, content: children, ...node } = content;
+  const kept = marks?.filter(
+    (mark) =>
+      mark.type !== COMMENT_MARK_NAME || threadIds.has(String(mark.attrs?.id))
+  );
+  return {
+    ...node,
+    ...(kept && kept.length > 0 && { marks: kept }),
+    ...(children && {
+      content: children.map((child) => withoutOrphanAnchors(child, threadIds)),
+    }),
+  };
+};
+
+/**
+ * @cc [owner:tdraier,label:product] co-edition-orphan-anchors-dropped
+ * `yDocToDfm` MUST write without the comment marks whose id has no thread in `comments`, so a
+ * mark left without its thread, by an undo or a failed comment command, never blocks a save.
+ */
 export function yDocToDfm({
   doc,
   comments,
@@ -84,5 +108,9 @@ export function yDocToDfm({
   } catch {
     return new Err("The live document has an unreadable body.");
   }
-  return saveDfm(envelope.data, withDocumentJSONComments(content, comments));
+  const threadIds = new Set(comments.map(({ id }) => id));
+  return saveDfm(
+    envelope.data,
+    withDocumentJSONComments(withoutOrphanAnchors(content, threadIds), comments)
+  );
 }
