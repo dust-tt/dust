@@ -38,8 +38,8 @@ msgid "{usedCredits} of {limitCredits} used on your current plan"
 msgstr "{usedCredits} sur {limitCredits} utilisés avec votre forfait actuel"
 
 #: front/components/app/CreditUsage.tsx
-msgid "Resets {resetDay}"
-msgstr "Réinitialisation {resetDay}"
+msgid "{resetDayKind, select, relative {Resets {resetDay}} weekday {Resets on {resetDay}} other {Resets on {resetDay}}}"
+msgstr "{resetDayKind, select, relative {Réinitialisation {resetDay}} weekday {Réinitialisation {resetDay}} other {Réinitialisation le {resetDay}}}"
 
 #: front/components/app/CreditUsage.tsx
 msgid "Resets on a rolling {windowDays}-day basis"

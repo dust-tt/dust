@@ -41,8 +41,12 @@ export function formatCreditsPrecise(credits: number): string {
   return formatNumber(credits, { maximumFractionDigits: 6 });
 }
 
+export function roundCredits(credits: number): number {
+  return Math.round(credits * 10) / 10;
+}
+
 export function formatCreditValue(credits: number, t: Translate): string {
-  const displayedCredits = Math.round(credits * 10) / 10;
+  const displayedCredits = roundCredits(credits);
   const formattedCredits = formatCredits(credits);
   return t(
     msg`${plural(displayedCredits, {
@@ -71,18 +75,25 @@ export function formatMicroUsdCompact(microUsd: number): string {
   });
 }
 
-// Relative UTC day label for a reset/refill date: "today", "tomorrow", a
-// weekday within the week ("on Monday"), or the calendar date beyond that
-// ("on Oct 6"). Shared by the fair-use and premium-usage reset copy.
+// Relative UTC day of a reset/refill date: "today" or "tomorrow", a weekday within the week
+// ("Monday"), or the calendar date beyond that ("Oct 6"). `kind` lets the caller's message choose
+// the words around the day ("Resets today", "Resets on Monday"). Shared by the fair-use and
+// premium-usage reset copy.
+export interface RelativeResetDay {
+  kind: "relative" | "weekday" | "date";
+  day: string;
+}
+
 /**
  * @cc [owner:sfriquet,label:product] reset-day-in-ui-locale
- * The day label MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
+ * The day MUST be formatted in the UI locale (`getActiveLocale`), passed explicitly to the
  * formatters, and MUST NOT fall back to the default locale of `lib/i18n/format.ts`, which is the
  * browser's when the `localisation` flag is off: a French browser MUST then get "tomorrow", not
- * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`, and the "on …" phrases from the
- * `t` passed by the caller.
+ * "demain". "today" and "tomorrow" MUST come from `numeric: "auto"`. The words around the day
+ * ("on …") MUST NOT be part of `day`: callers write them in the message embedding it, selected on
+ * `kind`.
  */
-export function formatRelativeResetDay(isoDate: string, t: Translate): string {
+export function formatRelativeResetDay(isoDate: string): RelativeResetDay {
   const resetAt = new Date(isoDate);
   const now = new Date();
   const resetDayMs = Date.UTC(
@@ -100,27 +111,30 @@ export function formatRelativeResetDay(isoDate: string, t: Translate): string {
   const locale = getActiveLocale();
 
   if (delayDays < 2) {
-    return formatRelativeTime(
-      Math.max(delayDays, 0),
-      "day",
-      { numeric: "auto" },
-      locale
-    );
+    return {
+      kind: "relative",
+      day: formatRelativeTime(
+        Math.max(delayDays, 0),
+        "day",
+        { numeric: "auto" },
+        locale
+      ),
+    };
   }
   if (delayDays < 7) {
-    const weekday = formatDate(
-      resetAt,
-      { weekday: "long", timeZone: "UTC" },
-      locale
-    );
-    return t(msg`on ${weekday}`);
+    return {
+      kind: "weekday",
+      day: formatDate(resetAt, { weekday: "long", timeZone: "UTC" }, locale),
+    };
   }
-  const date = formatDate(
-    resetAt,
-    { month: "short", day: "numeric", timeZone: "UTC" },
-    locale
-  );
-  return t(msg`on ${date}`);
+  return {
+    kind: "date",
+    day: formatDate(
+      resetAt,
+      { month: "short", day: "numeric", timeZone: "UTC" },
+      locale
+    ),
+  };
 }
 
 // Browser display only: tolerates an unrecognized timeframe (the server may

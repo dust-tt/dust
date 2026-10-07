@@ -1,6 +1,9 @@
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { prefersTwentyFourHourTime } from "@app/lib/i18n/format";
-import { formatWakeUpTimeOfDay } from "@app/lib/utils/wakeup_description";
+import {
+  formatWakeUpTimeOfDay,
+  rewordEnglishCronDescription,
+} from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { MessageDescriptor } from "@lingui/core";
@@ -22,7 +25,8 @@ type Translate = (descriptor: MessageDescriptor) => string;
  * @cc [owner:sfriquet,label:product] wakeup-schedule-in-ui-locale
  * Cron schedules MUST be described by cronstrue in the language of the UI locale
  * (`getActiveLocale`), and the one-shot "at …" phrase MUST come from the `t` passed by the caller,
- * so the phrase matches the language of the surrounding UI text.
+ * so the phrase matches the language of the surrounding UI text. The English rewording of
+ * cronstrue's output MUST only apply when that language is English.
  */
 export function describeWakeUpSchedule(
   wakeUp: Pick<WakeUpType, "scheduleConfig">,
@@ -35,19 +39,15 @@ export function describeWakeUpSchedule(
       return t(msg`at ${time}`);
     }
     case "cron": {
+      const language = getActiveLocale().split("-")[0];
       let description = cronstrue.toString(config.cron, {
-        locale: getActiveLocale().split("-")[0],
+        locale: language,
         verbose: false,
         use24HourTimeFormat: prefersTwentyFourHourTime(),
       });
-      // cronstrue renders DOM steps as ", every N days in a month", which
-      // reads awkwardly. Reword to natural English; "every 2" becomes
-      // "every other".
-      description = description.replace(
-        /, every (\d+) days in a month/,
-        (_, n: string) =>
-          n === "2" ? ", every other day" : `, every ${n} days`
-      );
+      if (language === "en") {
+        description = rewordEnglishCronDescription(description);
+      }
       // Lowercase the first character so the phrase reads naturally after
       // the wake-up reason ("{reason} at 09:00, only on Monday").
       return description.charAt(0).toLowerCase() + description.slice(1);

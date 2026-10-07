@@ -14,16 +14,24 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/lib/client/calendar_date.ts
-msgid "{day} at {time}"
-msgstr "{day} à {time}"
+msgid "Invalid date"
+msgstr "Date non valide"
 
 #: front/lib/client/calendar_date.ts
 msgid "Last {weekday}"
 msgstr "{weekday} dernier"
 
 #: front/lib/client/calendar_date.ts
+msgid "{day} at {time}"
+msgstr "{day} à {time}"
+
+#: front/lib/client/calendar_date.ts
 msgid "Last {weekday} at {time}"
 msgstr "{weekday} dernier à {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "{weekday} at {time}"
+msgstr "{weekday} à {time}"
 
 #: front/lib/client/credits.ts
 msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
@@ -32,14 +40,6 @@ msgstr "{displayedCredits, plural, one {{formattedCredits} crédit} other {{form
 #: front/lib/client/credits.ts
 msgid "{callCount, plural, one {# use} other {# uses}}"
 msgstr "{callCount, plural, one {# utilisation} other {# utilisations}}"
-
-#: front/lib/client/credits.ts
-msgid "on {weekday}"
-msgstr "{weekday}"
-
-#: front/lib/client/credits.ts
-msgid "on {date}"
-msgstr "le {date}"
 
 #: front/lib/client/greetings.ts
 msgid "What’s next, {name}?"

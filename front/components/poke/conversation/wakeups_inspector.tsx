@@ -1,5 +1,6 @@
 import { describeWakeUpSchedule } from "@app/lib/client/wakeup_schedule";
 import { formatDateTime } from "@app/lib/i18n/format";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import { usePokeConversationWakeUps } from "@app/poke/swr/conversation_wakeups";
 import type { WakeUpStatus, WakeUpType } from "@app/types/assistant/wakeups";
@@ -12,7 +13,6 @@ import {
   CollapsibleTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps } from "react";
 
 type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
@@ -62,7 +62,6 @@ interface WakeUpEntryProps {
 }
 
 function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
-  const { t } = useLingui();
   // Only a still-scheduled wake-up has a firing ahead of it; for terminal ones the cron parser
   // would happily keep projecting future dates that will never happen.
   const nextFireAt =
@@ -82,7 +81,10 @@ function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
           size="mini"
         />
       </div>
-      <WakeUpField label="schedule" value={describeWakeUpSchedule(wakeUp, t)} />
+      <WakeUpField
+        label="schedule"
+        value={describeWakeUpSchedule(wakeUp, defaultLocaleI18n.t)}
+      />
       {wakeUp.scheduleConfig.type === "cron" && (
         <>
           <WakeUpField label="cron" value={wakeUp.scheduleConfig.cron} mono />

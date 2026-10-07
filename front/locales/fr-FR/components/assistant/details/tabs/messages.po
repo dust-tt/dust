@@ -89,10 +89,6 @@ msgid "No memories yet."
 msgstr "Aucune mémoire pour l’instant."
 
 #: front/components/assistant/details/tabs/AgentTriggersTab.tsx
-msgid "Runs {schedule}."
-msgstr "Exécution : {schedule}."
-
-#: front/components/assistant/details/tabs/AgentTriggersTab.tsx
 msgid "Triggered by {event} events."
 msgstr "Déclenché par les événements {event}."
 

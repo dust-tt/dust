@@ -54,3 +54,11 @@ export function formatWakeUpSidebarLabel(
   }
   return formatWakeUpTimeOfDay(timestamp);
 }
+
+// cronstrue renders DOM steps as ", every N days in a month", which reads
+// awkwardly. Reword to natural English; "every 2" becomes "every other".
+export function rewordEnglishCronDescription(description: string): string {
+  return description.replace(/, every (\d+) days in a month/, (_, n: string) =>
+    n === "2" ? ", every other day" : `, every ${n} days`
+  );
+}

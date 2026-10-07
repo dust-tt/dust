@@ -2,6 +2,7 @@ import { InvocationMCPActions } from "@app/components/poke/frames/functions/mcp_
 import { PokeJsonBlock } from "@app/components/poke/sandbox_functions/json_block";
 import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
 import { formatCalendarDateTime } from "@app/lib/client/calendar_date";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import {
   usePokeSandboxFunctionInvocation,
   usePokeSandboxFunctionInvocations,
@@ -26,7 +27,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -214,7 +214,6 @@ function InvocationRow({
   owner,
   frameId,
 }: InvocationRowProps) {
-  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
 
   const {
@@ -236,7 +235,10 @@ function InvocationRow({
       <CollapsibleTrigger>
         <div className="my-2 flex w-full items-center justify-between gap-4">
           <span className="text-sm">
-            {formatCalendarDateTime(new Date(invocation.createdAt), t)}
+            {formatCalendarDateTime(
+              new Date(invocation.createdAt),
+              defaultLocaleI18n.t
+            )}
           </span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{invocation.user ?? "—"}</span>

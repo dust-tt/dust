@@ -1,6 +1,7 @@
 import {
   formatCalendarDate,
   formatCalendarDateTime,
+  getCalendarDay,
 } from "@app/lib/client/calendar_date";
 import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
@@ -76,6 +77,21 @@ describe("formatCalendarDate", () => {
   });
 });
 
+describe("getCalendarDay", () => {
+  it.each([
+    [new Date(2026, 8, 9, 9, 30, 0), "relative", "yesterday"],
+    [new Date(2026, 8, 6, 15, 0, 0), "lastWeekday", "Sunday"],
+    [new Date(2026, 8, 16, 15, 0, 0), "weekday", "Wednesday"],
+    [new Date(2026, 8, 2, 15, 0, 0), "date", "09/02/2026"],
+  ])("labels %s as %s %s", (date, kind, day) => {
+    expect(getCalendarDay(date)).toEqual({ kind, day });
+  });
+
+  it("returns null for an invalid date", () => {
+    expect(getCalendarDay(Number.NaN)).toBeNull();
+  });
+});
+
 describe("formatCalendarDateTime", () => {
   it("labels a time today as 'Today at ...'", () => {
     const today = new Date(2026, 8, 10, 9, 30, 0);
@@ -140,6 +156,13 @@ describe("formatCalendarDateTime", () => {
 
   it("renders an invalid date like moment instead of throwing", () => {
     expect(formatCalendarDateTime(Number.NaN, translate)).toBe("Invalid date");
+  });
+
+  it("translates the invalid date label", async () => {
+    await activateUiLocale("fr-FR");
+    expect(formatCalendarDateTime(Number.NaN, translate)).toBe(
+      "Date non valide"
+    );
   });
 });
 

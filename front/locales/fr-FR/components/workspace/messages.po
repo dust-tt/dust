@@ -1182,8 +1182,8 @@ msgid "Fair-use credits usage"
 msgstr "Utilisation des crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{usedLabel} of {limitLabel} used"
-msgstr "{usedLabel} utilisés sur {limitLabel}"
+msgid "{limitCreditCount, plural, one {{usedLabel} of {limitLabel} credit used} other {{usedLabel} of {limitLabel} credits used}}"
+msgstr "{limitCreditCount, plural, one {{usedLabel} sur {limitLabel} crédit utilisé} other {{usedLabel} sur {limitLabel} crédits utilisés}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Unblock"

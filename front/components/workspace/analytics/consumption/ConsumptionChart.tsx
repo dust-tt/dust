@@ -23,13 +23,13 @@ import type {
 import {
   formatCredits,
   formatCreditsCompact,
-  formatCreditValue,
+  roundCredits,
 } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { ButtonsSwitch, ButtonsSwitchList, cn } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -59,11 +59,23 @@ const PARTIAL_BUCKET_LABELS: Record<ConsumptionGranularity, MessageDescriptor> =
 
 const PARTIAL_TOTAL_LABELS: Record<
   ConsumptionGranularity,
-  (total: string) => MessageDescriptor
+  (total: string, creditCount: number) => MessageDescriptor
 > = {
-  day: (total) => msg`${total} so far today`,
-  week: (total) => msg`${total} so far this week`,
-  month: (total) => msg`${total} so far this month`,
+  day: (total, creditCount) =>
+    msg`${plural(creditCount, {
+      one: `${total} credit so far today`,
+      other: `${total} credits so far today`,
+    })}`,
+  week: (total, creditCount) =>
+    msg`${plural(creditCount, {
+      one: `${total} credit so far this week`,
+      other: `${total} credits so far this week`,
+    })}`,
+  month: (total, creditCount) =>
+    msg`${plural(creditCount, {
+      one: `${total} credit so far this month`,
+      other: `${total} credits so far this month`,
+    })}`,
 };
 
 // Renders the reference line's label as a pill with the same fill as the
@@ -233,7 +245,8 @@ function ConsumptionDailyTooltip({
     .sort((a, b) => b.credits - a.credits);
 
   const totalCredits = rows.reduce((sum, row) => sum + row.credits, 0);
-  const total = formatCreditValue(totalCredits, t);
+  const total = formatCredits(totalCredits);
+  const creditCount = roundCredits(totalCredits);
   const isPartial = datum.timestamp === partialTimestamp;
   const { activeUsers } = datum;
 
@@ -264,8 +277,11 @@ function ConsumptionDailyTooltip({
       ]}
       footer={
         isPartial
-          ? t(PARTIAL_TOTAL_LABELS[granularity](total))
-          : t`${total} total`
+          ? t(PARTIAL_TOTAL_LABELS[granularity](total, creditCount))
+          : t`${plural(creditCount, {
+              one: `${total} credit total`,
+              other: `${total} credits total`,
+            })}`
       }
       separatorAfterKey="activeUsers"
     />

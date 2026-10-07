@@ -1,4 +1,4 @@
-import { useDescribeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/useDescribeScheduleConfig";
+import { describeScheduleConfig } from "@app/components/agent_builder/triggers/schedule/describeScheduleConfig";
 import { TriggerStatusChip } from "@app/components/triggers/TriggerStatusChip";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -6,10 +6,7 @@ import {
   useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  ScheduleConfig,
-  TriggerType,
-} from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import {
   assertNever,
   assertNeverAndIgnore,
@@ -49,14 +46,11 @@ function getTriggerIcon(trigger: TriggerType) {
 
 function getTriggerDescription(
   trigger: TriggerType,
-  describeScheduleConfig: (config: ScheduleConfig) => string,
   t: (descriptor: MessageDescriptor) => string
 ): string {
   switch (trigger.kind) {
-    case "schedule": {
-      const schedule = describeScheduleConfig(trigger.configuration);
-      return schedule ? t(msg`Runs ${schedule}.`) : "";
-    }
+    case "schedule":
+      return describeScheduleConfig(trigger.configuration, t);
     case "webhook": {
       const event = trigger.configuration.event;
       return event
@@ -83,7 +77,6 @@ export function AgentTriggersTab({
   onAddTrigger,
 }: AgentTriggersTabProps) {
   const { t } = useLingui();
-  const describeScheduleConfig = useDescribeScheduleConfig();
   const { triggers, isTriggersLoading } = useAgentTriggers({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
@@ -167,16 +160,10 @@ export function AgentTriggersTab({
               label={trigger.name}
               description={
                 trigger.status === "enabled" ? (
-                  getTriggerDescription(trigger, describeScheduleConfig, t)
+                  getTriggerDescription(trigger, t)
                 ) : (
                   <div className="flex flex-col items-start gap-1">
-                    <span>
-                      {getTriggerDescription(
-                        trigger,
-                        describeScheduleConfig,
-                        t
-                      )}
-                    </span>
+                    <span>{getTriggerDescription(trigger, t)}</span>
                     <TriggerStatusChip status={trigger.status} />
                   </div>
                 )
