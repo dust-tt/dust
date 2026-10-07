@@ -592,3 +592,161 @@ msgstr "Code: {code}"
 #: front/lib/api_error_messages.ts
 msgid "Message: {rawMessage}"
 msgstr "Message: {rawMessage}"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed."
+msgstr "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Confluence Domain.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Domain."
+msgstr "You cannot select another Confluence Domain.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Domain."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select pages"
+msgstr "Select pages"
+
+#: front/lib/connector_providers_ui.ts
+msgid "External files and content behind links are not indexed."
+msgstr "External files and content behind links are not indexed."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Notion Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr "You cannot select another Notion Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Synchronized content"
+msgstr "Synchronized content"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing."
+msgstr "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Google Drive Domain.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong shared Drive."
+msgstr "You cannot select another Google Drive Domain.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong shared Drive."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select folders and files"
+msgstr "Select folders and files"
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+msgstr "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Slack Team.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Team."
+msgstr "You cannot select another Slack Team.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Team."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select channels"
+msgstr "Select channels"
+
+#: front/lib/connector_providers_ui.ts
+msgid "N/A"
+msgstr "N/A"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories."
+msgstr "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another GitHub Organization.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app."
+msgstr "You cannot select another GitHub Organization.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Authorized content"
+msgstr "Authorized content"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
+msgstr "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Intercom Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr "You cannot select another Intercom Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced."
+msgstr "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft account.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong account."
+msgstr "You cannot select another Microsoft account.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong account."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select the folder to enable file synchronization."
+msgstr "Select the folder to enable file synchronization."
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+msgstr "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot must be enabled in organization settings."
+msgstr "Bot must be enabled in organization settings."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft tenant.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong tenant."
+msgstr "You cannot select another Microsoft tenant.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong tenant."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot configuration"
+msgstr "Bot configuration"
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the URL. Please add a new Public URL instead."
+msgstr "You cannot change the URL. Please add a new Public URL instead."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Snowflake account. Please add a new Snowflake connection instead."
+msgstr "You cannot change the Snowflake account. Please add a new Snowflake connection instead."
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select tables"
+msgstr "Select tables"
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index the content accessible to the authorized account only. Attachments are not indexed."
+msgstr "Dust will index the content accessible to the authorized account only. Attachments are not indexed."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Zendesk Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr "You cannot select another Zendesk Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the BigQuery project. Please add a new BigQuery connection instead."
+msgstr "You cannot change the BigQuery project. Please add a new BigQuery connection instead."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead."
+msgstr "You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead."
+
+#: front/lib/connector_providers_ui.ts
+msgid "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile."
+msgstr "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Gong account. Please add a new Gong connection instead."
+msgstr "You cannot change the Gong account. Please add a new Gong connection instead."
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
+msgstr "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
