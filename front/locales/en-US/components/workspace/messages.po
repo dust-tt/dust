@@ -909,6 +909,14 @@ msgstr "Browser Extension Tools"
 msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
 msgstr "Whether the Dust browser extension is allowed to list and read browser tabs."
 
+#: front/components/workspace/GroupLimitUsageCell.tsx
+msgid "Group limit usage"
+msgstr "Group limit usage"
+
+#: front/components/workspace/GroupLimitUsageCell.tsx
+msgid "{usedLabel} of {limitLabel} credits used"
+msgstr "{usedLabel} of {limitLabel} credits used"
+
 #: front/components/workspace/GroupSeatPickerDropdown.tsx
 msgid "Remove group seat"
 msgstr "Remove group seat"
@@ -946,8 +954,16 @@ msgid "Granted seat"
 msgstr "Granted seat"
 
 #: front/components/workspace/GroupsUsageTable.tsx
+msgid "Limit per member"
+msgstr "Limit per member"
+
+#: front/components/workspace/GroupsUsageTable.tsx
 msgid "Spend limit"
 msgstr "Spend limit"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Group limit"
+msgstr "Group limit"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
@@ -957,6 +973,10 @@ msgstr "Models tier"
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
 msgstr "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "A group limit is shared by the members who draw from the group."
+msgstr "A group limit is shared by the members who draw from the group."
 
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Limit"

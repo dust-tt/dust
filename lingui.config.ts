@@ -12,9 +12,10 @@ const MACRO_IMPORT_REGEX = /from ["']@lingui\/(?:core|react)\/macro["']/;
 /**
  * @cc [owner:sfriquet,label:architecture] one-catalog-per-directory
  * Every directory under `SOURCE_DIRECTORIES` with a non-test source file importing a Lingui macro
- * MUST have its own catalog at `front/locales/{locale}/<directory relative to front>/messages.po`,
- * extracted from the files directly in that directory only, so that changes in different
- * directories never edit the same catalog.
+ * MUST be configured as its own catalog at
+ * `front/locales/{locale}/<directory relative to front>/messages.po`, extracted from the files
+ * directly in that directory only, so that changes in different directories never edit the same
+ * catalog.
  */
 function listTranslatedDirectories(directory: string): string[] {
   const entries = readdirSync(path.join(__dirname, directory), {

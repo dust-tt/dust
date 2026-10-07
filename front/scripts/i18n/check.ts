@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import logger from "@app/logger/logger";
 import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
@@ -26,7 +26,7 @@ function listPoFiles(directory: string): string[] {
 }
 
 async function listStaleCatalogs(): Promise<string[]> {
-  execSync("npx lingui extract --clean", { cwd: FRONT_DIR, stdio: "ignore" });
+  execSync("npm run i18n:extract", { cwd: FRONT_DIR, stdio: "ignore" });
   const changedOrUntracked = [
     "git diff --name-only -- locales",
     "git ls-files --others --exclude-standard -- locales",
@@ -53,6 +53,9 @@ async function listStaleCatalogs(): Promise<string[]> {
 async function listUntranslatedMessages(locale: string): Promise<string[]> {
   const untranslated: string[] = [];
   for (const filename of await listCatalogPaths(locale)) {
+    if (!existsSync(filename)) {
+      continue;
+    }
     const catalog = await formatter().parse(readFileSync(filename, "utf8"), {
       locale,
       sourceLocale: DEFAULT_LOCALE,
@@ -69,7 +72,7 @@ async function listUntranslatedMessages(locale: string): Promise<string[]> {
 
 /**
  * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-stale-or-missing
- * The check MUST exit non-zero when running `lingui extract --clean` leaves any file under `locales/`
+ * The check MUST exit non-zero when running `npm run i18n:extract` leaves any file under `locales/`
  * modified or untracked, when a `.po` file under `locales/` belongs to no catalog of
  * `lingui.config.ts`, or when any non-obsolete message of any catalog of a `CATALOG_LOCALES` entry
  * other than `DEFAULT_LOCALE` has an empty translation.
