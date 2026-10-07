@@ -447,6 +447,14 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "edit_document": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "read_document": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "reply_to_comment": {
       "freeUsage": true,
       "toolCostCategory": "basic",
@@ -2887,6 +2895,8 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "documents": {
     "add_comment": "never_ask",
+    "edit_document": "never_ask",
+    "read_document": "never_ask",
     "reply_to_comment": "never_ask",
   },
   "exa_people_and_company": {
