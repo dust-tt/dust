@@ -191,7 +191,7 @@ msgstr "Précédent"
 
 #: front/components/file_explorer/FilePreviewDialog.tsx
 msgid "Next"
-msgstr "Prochain"
+msgstr "Suivant"
 
 #: front/components/file_explorer/FilePreviewDialog.tsx
 msgid "Save"
@@ -274,7 +274,7 @@ msgstr "Renommer la Frame"
 
 #: front/components/file_explorer/RenameFileDialog.tsx
 msgid "Enter new name..."
-msgstr "Saisissez le nouveau nom..."
+msgstr "Saisissez le nouveau nom…"
 
 #: front/components/file_explorer/RenameFileDialog.tsx
 msgid "Enter new file name..."

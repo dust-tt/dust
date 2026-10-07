@@ -1171,7 +1171,7 @@ msgstr "Messages premium"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Resets on a rolling {windowDays}-day basis"
-msgstr "Réinitialisé sur une période glissante de {windowDays} jours"
+msgstr "Réinitialisation sur une période glissante de {windowDays} jours"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Premium message usage"

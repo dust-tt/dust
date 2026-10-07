@@ -94,7 +94,7 @@ export const AGENT_SEARCH_TABS = [
   },
   {
     id: "archived",
-    label: msg`Archived`,
+    label: msg({ message: "Archived", context: "agent filter" }),
     filters: { status: ["archived"] },
   },
 ] satisfies {

@@ -78,7 +78,7 @@ msgstr "Par"
 
 #: front/components/actions/mcp/AdminActionsList.tsx
 msgid "Last updated"
-msgstr "Dernière modification"
+msgstr "Dernière mise à jour"
 
 #: front/components/actions/mcp/AdminActionsList.tsx
 msgid "You don’t have any tools yet."
@@ -131,11 +131,11 @@ msgstr "Type de connexion"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Customize scopes ({enabledOptionalScopeCount}/{optionalScopeCount} optional enabled)"
-msgstr "Personnaliser les portées ({enabledOptionalScopeCount}/{optionalScopeCount} optionnelles activées)"
+msgstr "Personnaliser les périmètres ({enabledOptionalScopeCount}/{optionalScopeCount} optionnels activés)"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Customize scopes"
-msgstr "Personnaliser les portées"
+msgstr "Personnaliser les périmètres"
 
 #: front/components/actions/mcp/MCPServerAuthConnection.tsx
 msgid "Questions? Read <0>our guide</0> on {toolName}."
@@ -236,7 +236,7 @@ msgstr "Ces outils ne sont disponibles que pour les utilisateurs des espaces sé
 
 #: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
 msgid "These tools are accessible to everyone in the workspace."
-msgstr "Ces outils sont accessibles à tout le monde dans le workspace."
+msgstr "Ces outils sont accessibles à tous les membres du workspace."
 
 #: front/components/actions/mcp/MCPServerDetailsAvailability.tsx
 msgid "Search a space"

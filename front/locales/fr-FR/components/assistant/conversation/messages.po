@@ -461,7 +461,7 @@ msgstr "Nom du Pod"
 
 #: front/components/assistant/conversation/CreatePodModal.tsx
 msgid "Enter Pod name"
-msgstr "Saisir le nom du Pod"
+msgstr "Saisissez le nom du Pod"
 
 #: front/components/assistant/conversation/CreatePodModal.tsx
 msgid "A Pod or space with this name already exists."
@@ -473,7 +473,7 @@ msgstr "Accès"
 
 #: front/components/assistant/conversation/CreatePodModal.tsx
 msgid "Anyone in the workspace can find and join the Pod."
-msgstr "Tout membre du workspace peut trouver et rejoindre le Pod."
+msgstr "Tous les membres du workspace peuvent trouver et rejoindre le Pod."
 
 #: front/components/assistant/conversation/CreatePodModal.tsx
 msgid "Only invited members can access the Pod."
@@ -926,8 +926,9 @@ msgid "Older"
 msgstr "Plus anciennes"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "Pod status"
 msgid "Archived"
-msgstr "Archivées"
+msgstr "Archivé"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgctxt "button label"
@@ -952,11 +953,11 @@ msgstr "Options des conversations"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Show triggered"
-msgstr "Afficher les conversations auto"
+msgstr "Afficher les conversations déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Hide triggered"
-msgstr "Masquer les conversations auto"
+msgstr "Masquer les conversations déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Conversations successfully deleted"

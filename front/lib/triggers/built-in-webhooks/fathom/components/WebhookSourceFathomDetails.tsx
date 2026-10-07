@@ -69,7 +69,11 @@ export function WebhookSourceFathomDetails({
             <Chip label={t`Transcript`} size="xs" color="success" />
           )}
           {include_summary && (
-            <Chip label={t`Summary`} size="xs" color="success" />
+            <Chip
+              label={t({ message: "Summary", context: "meeting summary" })}
+              size="xs"
+              color="success"
+            />
           )}
           {include_action_items && (
             <Chip label={t`Action items`} size="xs" color="success" />

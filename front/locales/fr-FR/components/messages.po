@@ -586,7 +586,7 @@ msgstr "Les clés API sont gérées par les administrateurs du workspace."
 
 #: front/components/ViewFolderAPIModal.tsx
 msgid "Handle API keys with care as they provide access to your company data."
-msgstr "Manipulez les clés API avec précaution, car elles donnent accès aux données de votre entreprise."
+msgstr "Manipulez les clés API avec précaution : elles donnent accès aux données de votre entreprise."
 
 #: front/components/ViewFolderAPIModal.tsx
 msgid "Documentation"

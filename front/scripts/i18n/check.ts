@@ -70,12 +70,45 @@ async function listUntranslatedMessages(locale: string): Promise<string[]> {
   return untranslated;
 }
 
+async function listConflictingTranslations(locale: string) {
+  const translationsById = new Map<
+    string,
+    { message?: string; context?: string; translations: Record<string, string> }
+  >();
+  for (const catalog of await getCatalogs(getConfig({ cwd: FRONT_DIR }))) {
+    const filename = path.relative(FRONT_DIR, catalog.getFilename(locale));
+    for (const [id, entry] of Object.entries(
+      (await catalog.read(locale)) ?? {}
+    )) {
+      if (entry.obsolete || !entry.translation) {
+        continue;
+      }
+      const translations = translationsById.get(id) ?? {
+        message: entry.message,
+        context: entry.context,
+        translations: {},
+      };
+      translations.translations[filename] = entry.translation;
+      translationsById.set(id, translations);
+    }
+  }
+  return [...translationsById.values()].filter(
+    ({ translations }) => new Set(Object.values(translations)).size > 1
+  );
+}
+
 /**
  * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-stale-or-missing
  * The check MUST exit non-zero when running `npm run i18n:extract` leaves any file under `locales/`
  * modified or untracked, when a `.po` file under `locales/` belongs to no catalog of
  * `lingui.config.ts`, or when any non-obsolete message of any catalog of a `CATALOG_LOCALES` entry
  * other than `DEFAULT_LOCALE` has an empty translation.
+ */
+/**
+ * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-conflicting-translations
+ * The check MUST exit non-zero when two catalogs of `lingui.config.ts` for the same
+ * `CATALOG_LOCALES` entry hold the same non-obsolete message (same `msgid` and `msgctxt`) with
+ * different non-empty translations.
  */
 async function main() {
   const staleCatalogs = await listStaleCatalogs();
@@ -102,6 +135,21 @@ async function main() {
     }
   }
   if (hasMissingTranslations) {
+    process.exit(1);
+  }
+
+  let hasConflictingTranslations = false;
+  for (const locale of CATALOG_LOCALES) {
+    const conflicts = await listConflictingTranslations(locale);
+    if (conflicts.length > 0) {
+      hasConflictingTranslations = true;
+      logger.error(
+        { locale, conflicts },
+        "Conflicting translations: translate a message the same way in every catalog, or give messages with different meanings a Lingui `context`."
+      );
+    }
+  }
+  if (hasConflictingTranslations) {
     process.exit(1);
   }
 

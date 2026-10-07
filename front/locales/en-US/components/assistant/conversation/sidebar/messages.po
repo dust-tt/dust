@@ -18,6 +18,7 @@ msgid "No description"
 msgstr "No description"
 
 #: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgctxt "Pod status"
 msgid "Archived"
 msgstr "Archived"
 

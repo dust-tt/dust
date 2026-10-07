@@ -173,5 +173,6 @@ msgid "Workspace"
 msgstr "Workspace"
 
 #: front/components/assistant/manager/agentFilter.ts
+msgctxt "agent filter"
 msgid "Archived"
 msgstr "Archivés"

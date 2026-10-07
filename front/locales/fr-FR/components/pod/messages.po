@@ -27,7 +27,7 @@ msgstr "Modifier le nom du Pod"
 
 #: front/components/pod/EditPodTitleDialog.tsx
 msgid "Enter new name..."
-msgstr "Saisir un nouveau nom..."
+msgstr "Saisissez le nouveau nom…"
 
 #: front/components/pod/EditPodTitleDialog.tsx
 msgid "A Pod or space with this name already exists."

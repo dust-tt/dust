@@ -331,6 +331,7 @@ msgid "once"
 msgstr "once"
 
 #: front/components/me/UserWakeUpsTable.tsx
+msgctxt "next run, table column header"
 msgid "Next"
 msgstr "Next"
 

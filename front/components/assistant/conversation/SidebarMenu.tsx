@@ -172,7 +172,11 @@ function SearchPodItem({
       }}
       suffix={
         isArchived ? (
-          <Chip size="mini" color="primary" label={t`Archived`} />
+          <Chip
+            size="mini"
+            color="primary"
+            label={t({ message: "Archived", context: "Pod status" })}
+          />
         ) : undefined
       }
     />

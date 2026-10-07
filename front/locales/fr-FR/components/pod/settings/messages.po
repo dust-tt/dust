@@ -253,7 +253,7 @@ msgstr "Notifications"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "Warning"
-msgstr "Attention"
+msgstr "Avertissement"
 
 #: front/components/pod/settings/PodSettingsCustomizationTab.tsx
 msgid "@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?"
@@ -353,7 +353,7 @@ msgstr "Saisissez le nom du Pod"
 
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
 msgid "A Pod or space with this name already exists."
-msgstr "Un Pod ou un espace porte déjà ce nom."
+msgstr "Un Pod ou un espace portant ce nom existe déjà."
 
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
 msgid "Description"

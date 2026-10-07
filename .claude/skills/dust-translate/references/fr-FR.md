@@ -38,6 +38,8 @@
 | email | e-mail | |
 | settings | paramètres | |
 | sign in | se connecter | |
+| scope (OAuth, API key) | périmètre | Never « portée » |
+| client ID, client secret | ID client, secret client | Keep the provider’s English label only inside quoted UI paths |
 | favorite, starred | favori | Never « étoile », even for starred items |
 | programmatic usage | utilisation via l’API | Never "programmatique": reword around "via l’API" |
 | programmatic credits | crédits API | |

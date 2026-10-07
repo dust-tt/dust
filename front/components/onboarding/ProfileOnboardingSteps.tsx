@@ -43,11 +43,11 @@ const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
 const JOB_TYPE_LABELS: Record<JobType, MessageDescriptor> = {
   customer_success: msg`Customer Success`,
   customer_support: msg`Customer Support`,
-  data: msg`Data`,
+  data: msg({ message: "Data", context: "job function" }),
   design: msg`Design`,
   engineering: msg`Engineering`,
   finance: msg`Finance`,
-  it: msg`IT`,
+  it: msg({ message: "IT", context: "job function" }),
   people: msg`People (HR)`,
   legal: msg`Legal`,
   marketing: msg`Marketing`,

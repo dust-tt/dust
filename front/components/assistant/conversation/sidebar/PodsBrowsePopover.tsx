@@ -58,7 +58,11 @@ function PodBrowseItem({ pod, onClick }: PodBrowseItemProps) {
         <div className="flex flex-row items-center justify-between gap-1.5">
           <div className="truncate text-sm">{pod.name}</div>
           {pod.archivedAt && (
-            <Chip size="mini" color="primary" label={t`Archived`} />
+            <Chip
+              size="mini"
+              color="primary"
+              label={t({ message: "Archived", context: "Pod status" })}
+            />
           )}
         </div>
         <Tooltip
