@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import type { FeatureFlagCondition } from "@app/lib/feature_flag_conditions";
 import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { defineCachedResourceList } from "@app/lib/resources/cached_resource_store";
@@ -17,12 +18,13 @@ const listAllQuery = new RequestCachedQuery<
   GlobalFeatureFlagResource[]
 >();
 
-const GLOBAL_FEATURE_FLAG_CACHE_VERSION = 1;
+const GLOBAL_FEATURE_FLAG_CACHE_VERSION = 2;
 
 type CachedGlobalFeatureFlagData = {
   id: ModelId;
   name: WhitelistableFeature;
   rolloutPercentage: number;
+  conditions: string[];
   createdAt: number;
   updatedAt: number;
 };
@@ -65,6 +67,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
         id: flag.id,
         name: flag.name,
         rolloutPercentage: flag.rolloutPercentage,
+        conditions: flag.conditions,
         createdAt: flag.createdAt.getTime(),
         updatedAt: flag.updatedAt.getTime(),
       })),
@@ -75,6 +78,7 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
             id: flag.id,
             name: flag.name,
             rolloutPercentage: flag.rolloutPercentage,
+            conditions: flag.conditions,
             createdAt: new Date(flag.createdAt),
             updatedAt: new Date(flag.updatedAt),
           })
@@ -89,7 +93,8 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
 
   static async setRolloutPercentage(
     name: WhitelistableFeature,
-    rolloutPercentage: number
+    rolloutPercentage: number,
+    conditions: FeatureFlagCondition[] = []
   ): Promise<void> {
     if (rolloutPercentage < 0 || rolloutPercentage > 100) {
       throw new Error(
@@ -100,7 +105,11 @@ export class GlobalFeatureFlagResource extends BaseResource<GlobalFeatureFlagMod
     if (rolloutPercentage === 0) {
       await GlobalFeatureFlagModel.destroy({ where: { name } });
     } else {
-      await GlobalFeatureFlagModel.upsert({ name, rolloutPercentage });
+      await GlobalFeatureFlagModel.upsert({
+        name,
+        rolloutPercentage,
+        conditions,
+      });
     }
     await GlobalFeatureFlagResource.store.invalidate("all");
   }

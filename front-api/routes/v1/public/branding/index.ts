@@ -6,7 +6,7 @@ import {
   buildBrandingAssetStoragePath,
   isBrandingAssetName,
 } from "@app/lib/api/workspace_branding";
-import { getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import { getFeatureFlagsForContext } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -82,9 +82,10 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
     return redirectToDefaultAsset(ctx, asset);
   }
 
-  const featureFlags = await getFeatureFlagsForWorkspace(
-    renderLightWorkspaceType({ workspace })
-  );
+  const featureFlags = await getFeatureFlagsForContext({
+    workspace: renderLightWorkspaceType({ workspace }),
+    plan: null,
+  });
   if (!featureFlags.includes("whitelabel_frames")) {
     return redirectToDefaultAsset(ctx, asset);
   }

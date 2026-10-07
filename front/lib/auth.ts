@@ -13,6 +13,8 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
+import type { FeatureFlagContext } from "@app/lib/feature_flag_conditions";
+import { meetsFeatureFlagConditions } from "@app/lib/feature_flag_conditions";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
@@ -1502,7 +1504,10 @@ export class Authenticator {
   }
 
   getFeatureFlags(): Promise<WhitelistableFeature[]> {
-    return getFeatureFlagsForWorkspace(this.getNonNullableWorkspace());
+    return getFeatureFlagsForContext({
+      workspace: this.getNonNullableWorkspace(),
+      plan: this.plan(),
+    });
   }
 
   async hasFeatureFlag(flag: WhitelistableFeature): Promise<boolean> {
@@ -2124,9 +2129,17 @@ export async function prodAPICredentialsForOwner(
   };
 }
 
-export async function getFeatureFlagsForWorkspace(
-  workspace: LightWorkspaceType
+/**
+ * @cc [owner:adrsimon,label:product] global-flag-conditions
+ * A global flag applies to a workspace only if every one of its `conditions` holds for `context`
+ * and the workspace falls in its rollout percentage. A condition name unknown to the code counts as
+ * not holding. Workspace-level flags apply regardless of conditions.
+ */
+export async function getFeatureFlagsForContext(
+  context: FeatureFlagContext
 ): Promise<WhitelistableFeature[]> {
+  const { workspace } = context;
+
   if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
     return [...WHITELISTABLE_FEATURES];
   }
@@ -2149,6 +2162,7 @@ export async function getFeatureFlagsForWorkspace(
 
     if (
       !workspaceFlagNames.has(globalFlagName) &&
+      meetsFeatureFlagConditions(globalFlag.conditions, context) &&
       GlobalFeatureFlagResource.isInRollout(
         workspace.id,
         globalFlag.rolloutPercentage
@@ -2164,7 +2178,7 @@ export async function getFeatureFlagsForWorkspace(
 export function getFeatureFlags(
   auth: Authenticator
 ): Promise<WhitelistableFeature[]> {
-  return getFeatureFlagsForWorkspace(auth.getNonNullableWorkspace());
+  return auth.getFeatureFlags();
 }
 
 export async function hasFeatureFlag(

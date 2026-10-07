@@ -96,6 +96,58 @@ describe("getFeatureFlags with global flags", () => {
     }
   });
 
+  it("global flag applies only to workspaces meeting all its conditions", async () => {
+    const enterpriseWorkspace = await WorkspaceFactory.enterprise();
+    const proWorkspace = await WorkspaceFactory.basic();
+
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      100,
+      ["enterprise_plan"]
+    );
+
+    const enterpriseFlags = await getFeatureFlags(
+      await Authenticator.internalAdminForWorkspace(enterpriseWorkspace.sId)
+    );
+    const proFlags = await getFeatureFlags(
+      await Authenticator.internalAdminForWorkspace(proWorkspace.sId)
+    );
+    expect(enterpriseFlags).toContain("dummy_feature_for_flag_testing");
+    expect(proFlags).not.toContain("dummy_feature_for_flag_testing");
+  });
+
+  it("global flag with an unknown condition applies to no workspace", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await GlobalFeatureFlagModel.create({
+      name: "dummy_feature_for_flag_testing",
+      rolloutPercentage: 100,
+      conditions: ["legacy_pro_plan", "removed_condition"],
+    });
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).not.toContain("dummy_feature_for_flag_testing");
+  });
+
+  it("workspace flag applies regardless of global flag conditions", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    await FeatureFlagResource.enable(
+      workspace,
+      "dummy_feature_for_flag_testing"
+    );
+    await GlobalFeatureFlagResource.setRolloutPercentage(
+      "dummy_feature_for_flag_testing",
+      100,
+      ["enterprise_plan"]
+    );
+
+    const flags = await getFeatureFlags(auth);
+    expect(flags).toContain("dummy_feature_for_flag_testing");
+  });
+
   it("global flags and workspace flags are merged", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
