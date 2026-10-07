@@ -1,4 +1,5 @@
 import { Err, Ok } from "@app/types/shared/result";
+import { randomUUID } from "crypto";
 
 type StoredCredential = {
   provider: string;
@@ -9,7 +10,6 @@ type StoredCredential = {
 // and deleted, so tests observe the stored secrets instead of mock call arguments.
 export class InMemoryOAuthAPI {
   static readonly credentials = new Map<string, StoredCredential>();
-  private static nextId = 0;
 
   static reset() {
     InMemoryOAuthAPI.credentials.clear();
@@ -22,8 +22,8 @@ export class InMemoryOAuthAPI {
     provider: string;
     credentials: unknown;
   }) {
-    InMemoryOAuthAPI.nextId += 1;
-    const credentialId = `cred-${provider}-${InMemoryOAuthAPI.nextId}`;
+    // Unique across runs: callers may cache secrets in Redis keyed by credential id.
+    const credentialId = `cred-${provider}-${randomUUID()}`;
     InMemoryOAuthAPI.credentials.set(credentialId, {
       provider,
       content: credentials,
