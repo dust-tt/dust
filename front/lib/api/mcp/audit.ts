@@ -8,8 +8,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 
-// Callers may pass a full server JSON, which carries redacted credentials.
-// Only sId and name are read, so a spread of that object cannot reach WorkOS.
 type MCPServerAuditTarget = { sId: string; name: string };
 
 export type MCPServerCredentialsChange = {
@@ -21,6 +19,12 @@ export type MCPServerOAuthSettings = {
   useCase: MCPOAuthUseCase | null;
   scope: string | null;
 };
+
+function pickMCPServerAuditTarget(
+  server: MCPServerAuditTarget
+): MCPServerAuditTarget {
+  return { sId: server.sId, name: server.name };
+}
 
 export function getMCPServerOAuthSettings(
   view: Pick<MCPServerViewResource, "oAuthUseCase" | "oauthScope">
@@ -43,17 +47,17 @@ export function emitMCPServerCredentialsUpdatedAuditLog(
     return;
   }
 
-  const { sId, name } = server;
+  const target = pickMCPServerAuditTarget(server);
   void emitAuditLogEvent({
     auth,
     action: "mcp_server.credentials_updated",
     targets: [
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      buildAuditLogTarget("mcp_server", { sId, name }),
+      buildAuditLogTarget("mcp_server", target),
     ],
     context: getAuditLogContext(auth),
     metadata: {
-      server_type: getServerTypeAndIdFromSId(sId).serverType,
+      server_type: getServerTypeAndIdFromSId(target.sId).serverType,
       shared_secret_updated: String(change.sharedSecret),
       custom_headers_updated: String(change.customHeaders),
     },
@@ -78,17 +82,17 @@ export function emitMCPServerOAuthSettingsUpdatedAuditLog(
     return;
   }
 
-  const { sId, name } = server;
+  const target = pickMCPServerAuditTarget(server);
   void emitAuditLogEvent({
     auth,
     action: "mcp_server.oauth_settings_updated",
     targets: [
       buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-      buildAuditLogTarget("mcp_server", { sId, name }),
+      buildAuditLogTarget("mcp_server", target),
     ],
     context: getAuditLogContext(auth),
     metadata: {
-      server_type: getServerTypeAndIdFromSId(sId).serverType,
+      server_type: getServerTypeAndIdFromSId(target.sId).serverType,
       previous_oauth_use_case: before.useCase ?? "none",
       new_oauth_use_case: after.useCase ?? "none",
       oauth_scope_changed: String(before.scope !== after.scope),
