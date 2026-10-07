@@ -239,6 +239,107 @@
     },
     {
       "files": [
+        "front/components/**/*.{ts,tsx}",
+        "front/hooks/**/*.{ts,tsx}",
+        "front/lib/swr/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "dust/noRawErrorMessageInUi": "error"
+      }
+    },
+    {
+      "files": [
+        "front/components/poke/**",
+        "front/**/*.test.{ts,tsx}",
+        "front/**/*.stories.tsx"
+      ],
+      "rules": {
+        "dust/noRawErrorMessageInUi": "off"
+      }
+    },
+    {
+      "files": [
+        "front/components/UserMenu.tsx",
+        "front/components/actions/mcp/MCPServerDetails.tsx",
+        "front/components/actions/mcp/MCPServerSettings.tsx",
+        "front/components/actions/mcp/create/ConnectMCPServerDialog.tsx",
+        "front/components/actions/mcp/create/CreateMCPServerDialog.tsx",
+        "front/components/actions/mcp/create/SnowflakeKeypairCredentialForm.tsx",
+        "front/components/actions/mcp/forms/submitCreateMCPServerDialogForm.ts",
+        "front/components/agent_builder/AgentBuilder.tsx",
+        "front/components/agent_builder/SidekickPanelContext.tsx",
+        "front/components/agent_builder/hooks/useAgentPreview.ts",
+        "front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx",
+        "front/components/agent_builder/settings/AgentBuilderNameSection.tsx",
+        "front/components/agent_builder/settings/utils.ts",
+        "front/components/agent_builder/submitAgentBuilderForm.ts",
+        "front/components/agent_builder/triggers/TriggerFilterRenderer.tsx",
+        "front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx",
+        "front/components/agent_builder/types.ts",
+        "front/components/assistant/conversation/AgentMessage.tsx",
+        "front/components/assistant/conversation/ConversationContainer.tsx",
+        "front/components/assistant/conversation/ConversationViewer.tsx",
+        "front/components/assistant/conversation/actions/VisualizationActionIframe.tsx",
+        "front/components/assistant/details/AgentDetailsButtonBar.tsx",
+        "front/components/credits/UsageUpgradeButton.tsx",
+        "front/components/data_source/ConnectorPermissionsModal.tsx",
+        "front/components/file_explorer/useMarkdownFileEditor.ts",
+        "front/components/pages/oauth/OAuthFinalizePage.tsx",
+        "front/components/pages/oauth/OAuthSetupRedirectPage.tsx",
+        "front/components/pages/onboarding/JoinPage.tsx",
+        "front/components/pages/onboarding/VerifyPage.tsx",
+        "front/components/pod/PodFileTabPreview.tsx",
+        "front/components/pod/PodPageContent.tsx",
+        "front/components/sandbox/DomainInputForm.tsx",
+        "front/components/sandbox/SandboxEnvVarsSection.tsx",
+        "front/components/skill_builder/SkillBuilder.tsx",
+        "front/components/skill_builder/SkillBuilderUserFacingDescriptionSection.tsx",
+        "front/components/skill_builder/submitSkillBuilderForm.ts",
+        "front/components/skill_builder/utils.ts",
+        "front/components/spaces/AddConnectionMenu.tsx",
+        "front/components/spaces/AdvancedNotionManagement.tsx",
+        "front/components/spaces/EditSpaceManagedDatasourcesViews.tsx",
+        "front/components/spaces/websites/SpaceWebsiteModal.tsx",
+        "front/components/triggers/CreateWebhookSourceWithProviderForm.tsx",
+        "front/components/triggers/WebhookSourceSheet.tsx",
+        "front/components/workspace/DustMcpServerSettingsSheet.tsx",
+        "front/components/workspace/settings/BotToggle.tsx",
+        "front/hooks/conversations/useCompactConversation.ts",
+        "front/hooks/useAnalyticsConversation.ts",
+        "front/hooks/useAuditLogsToggle.ts",
+        "front/hooks/useAwuPurchase.ts",
+        "front/hooks/useChangeMembersRoles.ts",
+        "front/hooks/useCreateConversationWithMessage.ts",
+        "front/hooks/useFileUploaderService.ts",
+        "front/hooks/useGoTemplateFromSearchParam.ts",
+        "front/hooks/usePokeProductionChecks.ts",
+        "front/hooks/useSubmitMessage.ts",
+        "front/hooks/useToolFileUpload.ts",
+        "front/hooks/useWorkspaceDefaultAgent.ts",
+        "front/hooks/useWorkspaceSubscriptionCancellation.ts",
+        "front/hooks/useYAMLUpload.ts",
+        "front/lib/swr/agent_memories.ts",
+        "front/lib/swr/agent_triggers.ts",
+        "front/lib/swr/assistants.ts",
+        "front/lib/swr/credits.ts",
+        "front/lib/swr/data_classification_labels.ts",
+        "front/lib/swr/discovery.ts",
+        "front/lib/swr/files.ts",
+        "front/lib/swr/github_connection.ts",
+        "front/lib/swr/groups.ts",
+        "front/lib/swr/mcp_servers.ts",
+        "front/lib/swr/memberships.ts",
+        "front/lib/swr/notifications.ts",
+        "front/lib/swr/tags.ts",
+        "front/lib/swr/wakeups.ts",
+        "front/lib/swr/workspaces.ts"
+      ],
+      "rules": {
+        "dust/noRawErrorMessageInUi": "off"
+      }
+    },
+    {
+      "files": [
         "marketing/pages/**/*.{js,jsx,ts,tsx}"
       ],
       "rules": {

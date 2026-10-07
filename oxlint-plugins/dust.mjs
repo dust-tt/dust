@@ -362,6 +362,30 @@ const noStringConcatInJsx = {
   },
 };
 
+// See [ui-errors-through-format-error] in front/CONTRACTS. `<...State>.error.message` is a
+// react-hook-form field error, built on the client, so it is not flagged.
+const noRawErrorMessageInUi = {
+  create(context) {
+    return {
+      MemberExpression(node) {
+        const errorAccess = node.object;
+        if (
+          memberName(node) !== "message" ||
+          memberName(errorAccess) !== "error" ||
+          /State$/.test(context.sourceCode.getText(errorAccess.object))
+        ) {
+          return;
+        }
+        report(
+          context,
+          node,
+          "Don't show `error.message` directly: use `useSendApiErrorNotification` from @app/hooks/useNotification, or `formatError` from @app/lib/api_error_messages (CONTRACTS [ui-errors-through-format-error])."
+        );
+      },
+    };
+  },
+};
+
 const tooLongIndexName = {
   create(context) {
     return {
@@ -552,6 +576,7 @@ export default {
     noNextImports,
     noSparkleClassInFront,
     noStringConcatInJsx,
+    noRawErrorMessageInUi,
     tooLongIndexName,
     noSequelizeDataTypesImport,
     noInlineSuccessResponseBody,

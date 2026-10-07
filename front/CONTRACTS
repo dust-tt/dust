@@ -779,3 +779,18 @@ notifications MUST import from `front/lib/notifications/triggers/`, and modules 
 
 Rationale: workflow definitions render translated text with Lingui macros and `.po` catalogs that
 only the front-api bundle compiles; Temporal workers and tsx scripts crash when loading them.
+
+@cc [owner:Nils-Fedrigo,label:error-handling;react] ui-errors-through-format-error
+UI code (`components/`, `hooks/`, `lib/swr/`) MUST NOT show an error's `message` directly
+(`err.error.message`, `result.error.message`, `error.message`, ...) in toasts, inline errors or any
+other user-visible text. Error toasts MUST be sent with `useSendApiErrorNotification` from
+`hooks/useNotification.ts` (description = translated error type, raw code and message under
+"Details"); other displays MUST use the `description` of `formatError` from
+`lib/api_error_messages.ts`.
+
+Exceptions: Poke (`components/poke/**`, not translated) and client-side validation messages
+(react-hook-form `fieldState.error.message`).
+
+The `dust/noRawErrorMessageInUi` oxlint rule enforces the `<x>.error.message` shape. The files that
+turn it off in `.oxlintrc.json` are a migration baseline: remove a file from the list once it is
+migrated, and never add one.
