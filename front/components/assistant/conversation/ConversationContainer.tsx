@@ -359,7 +359,6 @@ export function ConversationContainerVirtuoso({
     goToDiscover,
     goToHome,
     inputBarRef,
-    isOpeningDiscover,
     isScrollLocked,
     pullProgress,
     scrollerRef,
@@ -492,10 +491,7 @@ export function ConversationContainerVirtuoso({
                   workspaceId={owner.sId}
                   pullProgress={pullProgress}
                 >
-                  <DiscoverButton
-                    onClick={goToDiscover}
-                    isOpening={isOpeningDiscover}
-                  />
+                  <DiscoverButton onClick={goToDiscover} />
                 </DiscoverButtonTeaser>
               </div>
             </div>

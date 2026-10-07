@@ -17,10 +17,6 @@ msgstr ""
 msgid "Discover skills and agents"
 msgstr "Découvrir des compétences et des agents"
 
-#: front/components/assistant/conversation/discover/DiscoverButton.tsx
-msgid "Opening Discover"
-msgstr "Ouverture de la page Découvrir"
-
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgctxt "catalog filter"
 msgid "All"
