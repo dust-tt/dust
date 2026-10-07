@@ -371,22 +371,12 @@ msgid "No locations found - make sure you follow the instructions in the guide."
 msgstr "No locations found - make sure you follow the instructions in the guide."
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to create connection: cannot verify those credentials."
-msgstr "Failed to create connection: cannot verify those credentials."
+msgid "Failed to create BigQuery connection"
+msgstr "Failed to create BigQuery connection"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-msgid "Failed to create BigQuery connection: {errorMessage}"
-msgstr "Failed to create BigQuery connection: {errorMessage}"
-
-#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to update connection: cannot verify those credentials."
-msgstr "Failed to update connection: cannot verify those credentials."
-
-#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
-msgid "Failed to update BigQuery connection: {errorMessage}"
-msgstr "Failed to update BigQuery connection: {errorMessage}"
+msgid "Failed to update BigQuery connection"
+msgstr "Failed to update BigQuery connection"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Connection error"
@@ -413,16 +403,16 @@ msgid "{tableCount, plural, one {# table} other {# tables}}"
 msgstr "{tableCount, plural, one {# table} other {# tables}}"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
+msgid "Failed to create Snowflake connection"
+msgstr "Failed to create Snowflake connection"
+
+#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
 msgstr "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to create Snowflake connection: {errorMessage}"
-msgstr "Failed to create Snowflake connection: {errorMessage}"
-
-#: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
-msgid "Failed to update Snowflake connection: {errorMessage}"
-msgstr "Failed to update Snowflake connection: {errorMessage}"
+msgid "Failed to update Snowflake connection"
+msgstr "Failed to update Snowflake connection"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Snowflake credentials"
@@ -957,6 +947,10 @@ msgid "Send"
 msgstr "Send"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
+msgid "Failed to setup private integration"
+msgstr "Failed to setup private integration"
+
+#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Failed to fetch webhook configuration"
 msgstr "Failed to fetch webhook configuration"
 
@@ -965,24 +959,12 @@ msgid "An error occurred"
 msgstr "An error occurred"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to create credential"
-msgstr "Failed to create credential"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to set connector configuration"
-msgstr "Failed to set connector configuration"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Private integration setup successfully"
 msgstr "Private integration setup successfully"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Your Notion connector will now use the private integration token."
 msgstr "Your Notion connector will now use the private integration token."
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "Failed to setup private integration"
-msgstr "Failed to setup private integration"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Setup Notion private integration"
@@ -1154,7 +1136,6 @@ msgid "Failed to edit Zendesk configuration"
 msgstr "Failed to edit Zendesk configuration"
 
 #: front/components/data_source/ZendeskConfigView.tsx
-#: front/components/data_source/ZendeskCustomTagFilters.tsx
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 msgid "An unknown error occurred"
 msgstr "An unknown error occurred"

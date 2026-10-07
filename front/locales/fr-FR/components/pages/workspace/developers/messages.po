@@ -54,10 +54,6 @@ msgid "Error creating API key"
 msgstr "Erreur lors de la création de la clé API"
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
-msgid "Unknown error"
-msgstr "Erreur inconnue"
-
-#: front/components/pages/workspace/developers/APIKeysPage.tsx
 msgid "Monthly cap updated"
 msgstr "Plafond mensuel mis à jour"
 
@@ -255,10 +251,6 @@ msgstr "La valeur du secret a bien été enregistrée de façon sécurisée."
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Error saving secret"
 msgstr "Erreur lors de l’enregistrement du secret"
-
-#: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "An error occurred while saving the secret value: {errorMessage}"
-msgstr "Une erreur s’est produite lors de l’enregistrement de la valeur du secret : {errorMessage}"
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 msgid "Secret deleted"

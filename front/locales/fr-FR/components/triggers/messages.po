@@ -319,18 +319,6 @@ msgid "{providerName} source"
 msgstr "Source {providerName}"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to add to space"
-msgstr "Impossible d’ajouter à l’espace"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to remove from space"
-msgstr "Impossible de retirer de l’espace"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Failed to update webhook source view"
-msgstr "Impossible de mettre à jour la vue de la source de webhook"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
 msgid "{webhookSourceName} updated"
 msgstr "{webhookSourceName} mis à jour"
 
@@ -341,10 +329,6 @@ msgstr "Vos modifications ont été enregistrées."
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Failed to save changes"
 msgstr "Impossible d’enregistrer les modifications"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "An error occurred while saving changes."
-msgstr "Une erreur s’est produite lors de l’enregistrement des modifications."
 
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "invalid"

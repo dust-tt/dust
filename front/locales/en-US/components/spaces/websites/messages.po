@@ -183,10 +183,6 @@ msgid "Error creating website"
 msgstr "Error creating website"
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
-msgid "An error occurred"
-msgstr "An error occurred"
-
-#: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Error deleting website"
 msgstr "Error deleting website"
 

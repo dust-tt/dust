@@ -419,12 +419,6 @@ msgid "Are you sure you want to remove them?"
 msgstr "Voulez-vous vraiment les retirer ?"
 
 #: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
-#: front/components/spaces/SpaceDataSourceViewContentList.tsx
-#: front/components/spaces/SpaceSearchLayout.tsx
-msgid "An unknown error {errorMessage} occurred while adding data to space."
-msgstr "Une erreur inconnue {errorMessage} s’est produite lors de l’ajout de données à l’espace."
-
-#: front/components/spaces/EditSpaceManagedDatasourcesViews.tsx
 msgid "Error adding data to space"
 msgstr "Erreur lors de l’ajout de données à l’espace"
 
@@ -643,10 +637,6 @@ msgid "Error saving app"
 msgstr "Erreur lors de l’enregistrement de l’app"
 
 #: front/components/spaces/SpaceCreateAppModal.tsx
-msgid "Error: {errorMessage}"
-msgstr "Erreur : {errorMessage}"
-
-#: front/components/spaces/SpaceCreateAppModal.tsx
 msgid "Create a new app"
 msgstr "Créer une nouvelle app"
 
@@ -682,6 +672,11 @@ msgstr "Erreur lors de l’ajout de données à l’espace"
 #: front/components/spaces/SpaceSearchLayout.tsx
 msgid "Data added to space"
 msgstr "Données ajoutées à l’espace"
+
+#: front/components/spaces/SpaceDataSourceViewContentList.tsx
+#: front/components/spaces/SpaceSearchLayout.tsx
+msgid "An unknown error {errorMessage} occurred while adding data to space."
+msgstr "Une erreur inconnue {errorMessage} s’est produite lors de l’ajout de données à l’espace."
 
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 msgid "Manage data"

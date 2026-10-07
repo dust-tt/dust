@@ -30,10 +30,6 @@ msgid "Failed to enable {name}."
 msgstr "Impossible d’activer {name}."
 
 #: front/components/workspace/settings/BotToggle.tsx
-msgid "Could not create a new {name} data source."
-msgstr "Impossible de créer une nouvelle source de données {name}."
-
-#: front/components/workspace/settings/BotToggle.tsx
 msgid "Failed to reconnect {name}."
 msgstr "Impossible de reconnecter {name}."
 

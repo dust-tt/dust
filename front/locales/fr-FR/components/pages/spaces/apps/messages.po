@@ -24,12 +24,12 @@ msgid "Are you sure you want to delete this app?"
 msgstr "Voulez-vous vraiment supprimer cette app ?"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
-msgid "Failed to delete the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
-msgstr "Impossible de supprimer l’app (contactez support@dust.tt pour obtenir de l’aide) (erreur interne : type={errorType} message={errorMessage})"
+msgid "Failed to delete the app"
+msgstr "Impossible de supprimer l’app"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
-msgid "Failed to update the app (contact support@dust.tt for assistance) (internal error: type={errorType} message={errorMessage})"
-msgstr "Impossible de mettre à jour l’app (contactez support@dust.tt pour obtenir de l’aide) (erreur interne : type={errorType} message={errorMessage})"
+msgid "Failed to update the app"
+msgstr "Impossible de mettre à jour l’app"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "App name"
