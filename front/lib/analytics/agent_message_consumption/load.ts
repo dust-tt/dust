@@ -1,5 +1,8 @@
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
-import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
+import {
+  canEnableSkill,
+  getEnabledSkillIdsFromAction,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
 import { listAgenticAncestors } from "@app/lib/api/assistant/conversation/agentic_ancestors";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
@@ -285,9 +288,11 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
       agentMessage.agentMessageModelId,
     ]));
+  // Outputs are only read to find enabled skills. Loading them all would not scale: a message can
+  // make thousands of tool calls from a sandbox.
   const actionsWithOutputs =
     await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-      actions,
+      actions: actions.filter(canEnableSkill),
       ignoreContent: false,
     });
   const enabledSkillIdsByActionId = new Map(
