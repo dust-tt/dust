@@ -98,3 +98,25 @@ export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
 export type LiveCommentServerMessage = z.infer<
   typeof liveCommentServerMessageSchema
 >;
+
+/** What the collab server reports of a live document an agent wants to change. */
+export const liveSourceReadResponseSchema = z.discriminatedUnion("open", [
+  z.object({ open: z.literal(false) }),
+  z.object({ open: z.literal(true), source: z.string() }),
+]);
+
+export type LiveSourceReadResponse = z.infer<
+  typeof liveSourceReadResponseSchema
+>;
+
+export const LIVE_SOURCE_WRITE_RESULTS = [
+  "written",
+  "changed",
+  "closed",
+  "busy",
+] as const;
+
+/** How long a write may wait for its turn on the collab server, kept below its caller's timeout. */
+export const LIVE_SOURCE_WRITE_WAIT_MS = 5 * 1000;
+
+export type LiveSourceWriteResult = (typeof LIVE_SOURCE_WRITE_RESULTS)[number];
