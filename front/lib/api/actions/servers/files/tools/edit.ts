@@ -38,7 +38,9 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
  * A Markdown file a live session holds MUST be edited through `editAgentDocument`, never by
  * writing the file, with its rules and refusals; a collab server failure MUST refuse the edit
  * rather than write the file. Without a session, or for a file `editAgentDocument` cannot read
- * by its name, it MUST return null so the file is edited as before.
+ * by its name, it MUST return null so the file is edited as before. A session opening between
+ * the check and the write is not covered until the new file system marks open files in their
+ * metadata.
  */
 async function editLiveMarkdown(
   auth: Authenticator,
@@ -55,6 +57,9 @@ async function editLiveMarkdown(
 ): Promise<ToolHandlerResult | null> {
   // Checked here as well as in `editAgentDocument`: a closed file keeps the plain string replace,
   // not `edit_document`'s rules.
+  // TODO(co-edition): a session opening between this check and the plain write loads the file
+  // before the write, and its checkpoints then conflict with it. Fixed once the new file system
+  // marks open files in their metadata.
   const live = await getLiveSessionPath(auth, path);
   if (live.isErr()) {
     return live;
