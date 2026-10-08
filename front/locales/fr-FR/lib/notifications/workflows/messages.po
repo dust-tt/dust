@@ -13,6 +13,30 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/lib/notifications/workflows/access-request.ts
+msgid "[Dust] {requesterName} requests access to the {resourceName} connection"
+msgstr "[Dust] {requesterName} demande l’accès à la connexion {resourceName}"
+
+#: front/lib/notifications/workflows/access-request.ts
+msgid "{requesterName} ({requesterEmail}) sent you a request regarding access to the {resourceName} connection:"
+msgstr "{requesterName} ({requesterEmail}) vous a envoyé une demande d’accès à la connexion {resourceName} :"
+
+#: front/lib/notifications/workflows/access-request.ts
+msgid "[Dust] {requesterName} requests access to the {resourceName} tools"
+msgstr "[Dust] {requesterName} demande l’accès aux outils {resourceName}"
+
+#: front/lib/notifications/workflows/access-request.ts
+msgid "{requesterName} ({requesterEmail}) sent you a request regarding access to the {resourceName} tools:"
+msgstr "{requesterName} ({requesterEmail}) vous a envoyé une demande d’accès aux outils {resourceName} :"
+
+#: front/lib/notifications/workflows/access-request.ts
+msgid "To answer, write to {requesterEmail}."
+msgstr "Pour répondre, écrivez à {requesterEmail}."
+
+#: front/lib/notifications/workflows/access-request.ts
+msgid "Reply to {requesterName}"
+msgstr "Répondre à {requesterName}"
+
 #: front/lib/notifications/workflows/agent-message-feedback.ts
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "Someone"
@@ -173,6 +197,34 @@ msgstr "Résumé non généré en raison de la politique de conservation des don
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "Summary not generated due to data retention policy on agents in this conversation."
 msgstr "Résumé non généré en raison de la politique de conservation des données appliquée aux agents de cette conversation."
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "Your Dust login code"
+msgstr "Votre code de connexion Dust"
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "{sharedByName} shared a frame with you on Dust."
+msgstr "{sharedByName} a partagé une Frame avec vous sur Dust."
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "{expiresInMinutes, plural, one {The code expires in # minute.} other {The code expires in # minutes.}} Didn't request it? Ignore this email."
+msgstr "{expiresInMinutes, plural, one {Le code expire dans # minute.} other {Le code expire dans # minutes.}} Vous ne l’avez pas demandé ? Ignorez cet e-mail."
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "Your login code:"
+msgstr "Votre code de connexion :"
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "{sharedByName} shared a frame with you"
+msgstr "{sharedByName} a partagé une Frame avec vous"
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "{sharedByName} is sharing a frame with you on Dust."
+msgstr "{sharedByName} partage une Frame avec vous sur Dust."
+
+#: front/lib/notifications/workflows/frame-sharing.ts
+msgid "View frame"
+msgstr "Voir la Frame"
 
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"
@@ -453,3 +505,35 @@ msgstr "Une fois 100 % atteints, vous ne pourrez plus exécuter d’agents tant
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "Go to workspace"
 msgstr "Accéder au workspace"
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "[Dust] Reminder: you're invited to join {workspaceName}"
+msgstr "[Dust] Rappel : vous êtes invité à rejoindre {workspaceName}"
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "You were invited to join the {workspaceName} workspace on Dust and haven't accepted the invitation yet."
+msgstr "Vous avez été invité à rejoindre le workspace {workspaceName} sur Dust et n’avez pas encore accepté l’invitation."
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "[Dust] {inviterName} invited you to join {workspaceName}"
+msgstr "[Dust] {inviterName} vous invite à rejoindre {workspaceName}"
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "{inviterName} invited you to join the {workspaceName} workspace on Dust."
+msgstr "{inviterName} vous invite à rejoindre le workspace {workspaceName} sur Dust."
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "[Dust] You're invited to join {workspaceName}"
+msgstr "[Dust] Vous êtes invité à rejoindre {workspaceName}"
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "You were invited to join the {workspaceName} workspace on Dust."
+msgstr "Vous avez été invité à rejoindre le workspace {workspaceName} sur Dust."
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "If you weren't expecting this invitation, you can ignore this email."
+msgstr "Si vous n’attendiez pas cette invitation, vous pouvez ignorer cet e-mail."
+
+#: front/lib/notifications/workflows/workspace-invitation.ts
+msgid "Accept the invitation"
+msgstr "Accepter l’invitation"
