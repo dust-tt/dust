@@ -17,6 +17,11 @@ export interface DocumentProps {
   className?: string;
   /** Optional container for the comments' tooltips. Defaults to the enclosing sheet or body. */
   mountPortalContainer?: HTMLElement;
+  /**
+   * Where the comments button and the live status show, such as the host's header bar. Without
+   * it they show above the document.
+   */
+  headerControlsContainer?: HTMLElement | null;
   readOnly?: boolean;
   /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */
   autosaveDebounceMs?: number;

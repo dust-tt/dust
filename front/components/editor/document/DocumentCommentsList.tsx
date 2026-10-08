@@ -261,11 +261,13 @@ export const DocumentCommentsList = ({
 interface DocumentCommentsToggleProps {
   listId: string;
   comments: DocumentCommentsController;
+  size: "xs" | "sm";
 }
 
 export const DocumentCommentsToggle = ({
   listId,
   comments,
+  size,
 }: DocumentCommentsToggleProps) => {
   const { t } = useLingui();
   const unresolvedCount = comments.unresolved.length;
@@ -274,7 +276,7 @@ export const DocumentCommentsToggle = ({
       ref={comments.toggleRef}
       type="button"
       variant={comments.listOpen ? "primary" : "ghost"}
-      size="xs"
+      size={size}
       icon={MessageCircle01}
       label={unresolvedCount > 0 ? String(unresolvedCount) : undefined}
       tooltip={t`All comments`}

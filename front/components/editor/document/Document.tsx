@@ -27,6 +27,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
 const LiveDocument = lazy(
@@ -169,6 +170,7 @@ export const DocumentView = ({
   initialContent,
   className,
   mountPortalContainer,
+  headerControlsContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
@@ -234,11 +236,31 @@ export const DocumentView = ({
     );
   }
 
+  const headerControls = (
+    <>
+      {liveView && <DocumentLiveStatus status={liveView.status} />}
+      {showCommentsToggle && (
+        <DocumentCommentsToggle
+          listId={listId}
+          comments={comments}
+          size={headerControlsContainer ? "sm" : "xs"}
+        />
+      )}
+    </>
+  );
+
   return (
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
+      {headerControlsContainer &&
+        createPortal(
+          <div className="flex items-center gap-2.5 text-muted-foreground copy-xs">
+            {headerControls}
+          </div>,
+          headerControlsContainer
+        )}
       <div
         ref={contentRef}
         className={cn(
@@ -254,10 +276,7 @@ export const DocumentView = ({
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
         >
-          {liveView && <DocumentLiveStatus status={liveView.status} />}
-          {showCommentsToggle && (
-            <DocumentCommentsToggle listId={listId} comments={comments} />
-          )}
+          {!headerControlsContainer && headerControls}
         </DocumentStatus>
         {editor && showCommentsToggle && (
           <DocumentCommentsList

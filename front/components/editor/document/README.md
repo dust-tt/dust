@@ -19,6 +19,9 @@ open another file. `onSave` receives the DFM source to persist and resolves `Ok`
 stored, or `Err` with a message. Without `onSave`, or with `readOnly`, the document is
 read-only. Hosts apply their authorization through `readOnly`.
 
+The comments button and, for a live document, the connection status show above the document.
+Pass `headerControlsContainer`, such as an element in the host's header bar, to show them there.
+
 Changes save after three idle seconds, or at once with Cmd/Ctrl+S. One save runs at a time.
 Failed saves keep the draft and pause automatic retries until Retry or Cmd/Ctrl+S. Undoing back
 to the saved content clears the error without a request.

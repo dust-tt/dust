@@ -353,7 +353,7 @@ export function ConversationSidePanelProvider({
       currentParamsRef.current = params;
       setCurrentPanel(params.type);
       setData(panelDataKey(params));
-      // Only FrameRenderer can leave full screen, so a panel of another type would otherwise be
+      // Only panels with useSidePanelFullScreen can leave full screen, so another one would be
       // stranded at 100% with the nav bar hidden. Same-type shows keep it, so a refreshing Frame
       // does not drop out.
       if (previous && previous.type !== params.type) {

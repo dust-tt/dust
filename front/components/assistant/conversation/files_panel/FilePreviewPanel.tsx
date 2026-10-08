@@ -1,9 +1,11 @@
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import {
   parseFilePreviewData,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
@@ -17,6 +19,7 @@ import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useClientType } from "@app/lib/context/clientType";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -25,13 +28,23 @@ import {
   getFileViewUrl,
   useFileMetadata,
 } from "@app/lib/swr/files";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, cn, Download01, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  Download01,
+  Icon,
+  Maximize01,
+  Minimize01,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useState } from "react";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
@@ -43,7 +56,13 @@ export function FilePreviewPanel({
   owner,
 }: FilePreviewPanelProps) {
   const { t } = useLingui();
-  const { data, closePanel } = useConversationSidePanelContext();
+  const { data } = useConversationSidePanelContext();
+  const { isFullScreen, enterFullScreen, exitFullScreen, closePanel } =
+    useSidePanelFullScreen(DEFAULT_RIGHT_PANEL_SIZE);
+  const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const [documentControls, setDocumentControls] =
+    useState<HTMLDivElement | null>(null);
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
 
@@ -178,7 +197,7 @@ export function FilePreviewPanel({
           </span>
           {markdown.richEditor && <CoEditionBadge />}
         </div>
-        <div className="ml-2 flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1 pl-2">
           {markdown.canEdit && !markdown.richEditor && (
             <>
               <MarkdownFilePreviewViewModeSwitch
@@ -206,6 +225,7 @@ export function FilePreviewPanel({
               )}
             </>
           )}
+          <div ref={setDocumentControls} className="flex empty:hidden" />
           <Button
             variant="ghost"
             size="sm"
@@ -215,6 +235,19 @@ export function FilePreviewPanel({
             target="_blank"
             rel="noopener noreferrer"
           />
+          {!isMobile && clientType !== "extension" && (
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={isFullScreen ? Minimize01 : Maximize01}
+              tooltip={
+                isFullScreen
+                  ? t`Exit full screen mode`
+                  : t`Go to full screen mode`
+              }
+              onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          )}
         </div>
       </ConversationSidePanelHeader>
       <div
@@ -234,6 +267,7 @@ export function FilePreviewPanel({
           fileUrl={urls.baseUrl}
           isFullWidth
           markdown={markdown}
+          markdownHeaderControlsContainer={documentControls}
           owner={owner}
           preview={preview}
         />

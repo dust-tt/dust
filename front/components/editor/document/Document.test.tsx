@@ -482,6 +482,29 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 
+  it("shows the comments button in the host's container when given one", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    render(
+      <Document
+        initialContent={SOURCE}
+        headerControlsContainer={container}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByRole("complementary", { name: "Comments" }).dataset.state
+    ).toBe("open");
+    container.remove();
+  });
+
   it("renders the host's avatars only for threads on screen", async () => {
     render(
       <Document
