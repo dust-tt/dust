@@ -757,8 +757,6 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  // Reads several metadata keys in one query. Returns a Map keyed by metadata key, omitting keys
-  // that have no value.
   async getMetadataValues(
     keys: string[],
     workspaceModelId?: ModelId | null
