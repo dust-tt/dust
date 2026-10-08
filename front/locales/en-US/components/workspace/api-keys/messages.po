@@ -42,43 +42,87 @@ msgstr "Workspace ID"
 msgid "API Key"
 msgstr "API Key"
 
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgctxt "API key status"
-msgid "Active"
-msgstr "Active"
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "Close"
+msgstr "Close"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Capped"
-msgstr "Capped"
+msgid "Unknown creator"
+msgstr "Unknown creator"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgctxt "API key status"
-msgid "Revoked"
-msgstr "Revoked"
+msgid "Unnamed"
+msgstr "Unnamed"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Read-only"
-msgstr "Read-only"
+msgid "Status"
+msgstr "Status"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Read & write"
-msgstr "Read & write"
+msgid "Key"
+msgstr "Key"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgctxt "API key details section, creation date"
+msgid "Created"
+msgstr "Created"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "{createdOn} by {creator}"
+msgstr "{createdOn} by {creator}"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Admin"
-msgstr "Admin"
+msgid "Last used"
+msgstr "Last used"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "No access"
-msgstr "No access"
+msgid "Never"
+msgstr "Never"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unknown"
-msgstr "Unknown"
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Spaces"
+msgstr "Spaces"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "The key can read everything workspace members can, including open spaces and Company Data. It can read and write in the spaces below."
+msgstr "The key can read everything workspace members can, including open spaces and Company Data. It can read and write in the spaces below."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "No spaces"
 msgstr "No spaces"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Access scope"
+msgstr "Access scope"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Create and modify resources plus workspace administration (members, analytics export)"
+msgstr "Create and modify resources plus workspace administration (members, analytics export)"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Can create conversations, read agents and data sources."
+msgstr "Can create conversations, read agents and data sources."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unlimited"
+msgstr "Unlimited"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "Credits used"
+msgstr "Credits used"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Spaces: {spaceList}"
@@ -89,41 +133,8 @@ msgid "{creditsLabel}/unlimited"
 msgstr "{creditsLabel}/unlimited"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unlimited"
-msgstr "Unlimited"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Never"
-msgstr "Never"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unknown creator"
-msgstr "Unknown creator"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Edit monthly cap"
 msgstr "Edit monthly cap"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unnamed"
-msgstr "Unnamed"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Scope"
-msgstr "Scope"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Key"
-msgstr "Key"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Spaces"
-msgstr "Spaces"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Credits"
-msgstr "Credits"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Credits cap"
@@ -134,12 +145,12 @@ msgid "Monthly cap"
 msgstr "Monthly cap"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Last used"
-msgstr "Last used"
+msgid "Scope"
+msgstr "Scope"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Status"
-msgstr "Status"
+msgid "Credits"
+msgstr "Credits"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Revoke API key"
@@ -253,20 +264,42 @@ msgid "No spaces found"
 msgstr "No spaces found"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Access scope"
-msgstr "Access scope"
-
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Can create conversations, read agents and data sources."
-msgstr "Can create conversations, read agents and data sources."
-
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Create and modify resources plus workspace administration (members, analytics export)"
-msgstr "Create and modify resources plus workspace administration (members, analytics export)"
-
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Create"
 msgstr "Create"
+
+#: front/components/workspace/api-keys/utils.ts
+msgctxt "API key status"
+msgid "Active"
+msgstr "Active"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Capped"
+msgstr "Capped"
+
+#: front/components/workspace/api-keys/utils.ts
+msgctxt "API key status"
+msgid "Revoked"
+msgstr "Revoked"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Read-only"
+msgstr "Read-only"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Read & write"
+msgstr "Read & write"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Admin"
+msgstr "Admin"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "No access"
+msgstr "No access"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Unknown"
+msgstr "Unknown"
 
 #: front/components/workspace/api-keys/utils.ts
 msgid "Monthly cap must be a positive number"
