@@ -82,6 +82,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import logger from "@app/logger/logger";
 import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -155,6 +156,19 @@ app.get("/", ensureIsAdmin(), async (ctx) => {
       },
     });
   }
+
+  void emitAnalyticsExportedEvent(auth, {
+    exportName: "analytics_table",
+    dataset: q.data.table,
+    format: q.data.format ?? "csv",
+    fileName:
+      q.data.format === "json"
+        ? undefined
+        : `dust_${q.data.table}_${q.data.startDate}_${q.data.endDate}.csv`,
+    rowCount: result.value.rows.length,
+    period: { start: q.data.startDate, end: q.data.endDate },
+    query: { timezone: q.data.timezone ?? "UTC" },
+  });
 
   if (q.data.format === "json") {
     return ctx.json(result.value.rows);

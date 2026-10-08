@@ -1,3 +1,4 @@
+import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import {
   ElasticsearchError,
   searchConsumptionAnalytics,
@@ -10,11 +11,21 @@ import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockedSearchConsumptionAnalytics = vi.mocked(
   searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>
 );
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
@@ -25,6 +36,8 @@ vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
   const mod = await orig();
   return { ...mod, resolveDimensionLabels: vi.fn(async () => new Map()) };
 });
+
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 
 const MOCK_ES_DOC: AgentMessageConsumptionAnalyticsData = {
   workspace_id: "ws-1",
@@ -219,6 +232,11 @@ function consumptionExportRequest({
 }
 
 describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
+  beforeEach(() => {
+    vi.mocked(emitAuditLogEvent).mockClear();
+    vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
+  });
+
   it("returns 200 CSV for admin API key with feature flag", async () => {
     enableFeatureFlag();
     mockEsSuccess(MOCK_ES_TOOL_DOC);
@@ -248,6 +266,19 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(headers).toContain("creditsAction");
     expect(headers).not.toContain("creditsDirect");
     expect(row.split(",")[headers.indexOf("creditsAction")]).toBe("1.23");
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "analytics.exported",
+        metadata: expect.objectContaining({
+          export_name: "consumption_lines",
+          format: "csv",
+          file_name:
+            "dust_consumption_2024-06-01T00:00:00.000Z_2024-06-15T00:00:00.000Z.csv",
+          period_start: "2024-06-01T00:00:00.000Z",
+          period_end: "2024-06-15T00:00:00.000Z",
+        }),
+      })
+    );
   });
 
   it("returns 200 NDJSON when format=ndjson", async () => {
@@ -274,6 +305,15 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(parsed.conversationId).toBe("conv-1");
     expect(parsed.creditsAction).toBe(1.23);
     expect(parsed).not.toHaveProperty("creditsDirect");
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "analytics.exported",
+        metadata: expect.objectContaining({
+          export_name: "consumption_lines",
+          format: "ndjson",
+        }),
+      })
+    );
   });
 
   it("returns 403 when feature flag is not enabled", async () => {
@@ -299,6 +339,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
           "The workspace does not have access to the consumption export API.",
       },
     });
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 403 for read-only API key", async () => {
@@ -318,6 +359,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual(GROUP_SCOPE_ERROR);
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 200 for a user API key on groups it can read, listing only those groups", async () => {
