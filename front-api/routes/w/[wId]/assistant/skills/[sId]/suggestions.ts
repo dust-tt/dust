@@ -3,7 +3,6 @@ import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregat
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
-import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import type {
   GetSkillSuggestionsResponseBody,
   PatchSkillSuggestionResponseBody,
@@ -13,7 +12,6 @@ import {
   PatchSkillSuggestionRequestBodySchema,
 } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
-import { isEditSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -76,16 +74,9 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     }
   );
 
-  const suggestionsJSON = suggestions.map((s) => s.toJSON());
-  const referencedSkillIds = uniq(
-    suggestionsJSON
-      .filter(isEditSkillSuggestion)
-      .flatMap((s) => s.suggestion.instructionEdits ?? [])
-      .flatMap((edit) => extractUniqueSkillReferenceIds(edit.content))
-  );
   const referencedSkills = await SkillResource.fetchByIds(
     auth,
-    referencedSkillIds,
+    uniq(suggestions.flatMap((s) => s.getReferencedSkillIds())),
     {
       onlyActive: true,
       withInstructions: false,
@@ -95,7 +86,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   );
 
   return ctx.json({
-    suggestions: suggestionsJSON,
+    suggestions: suggestions.map((s) => s.toJSON()),
     referencedSkills: referencedSkills.map((referencedSkill) => {
       const { sId, name, icon, requestedSpaceIds } =
         referencedSkill.toJSON(auth);
