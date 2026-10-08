@@ -1,14 +1,10 @@
 import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
-import {
-  getSlackClient,
-  getSlackUserInfoMemoized,
-} from "@connectors/connectors/slack/lib/slack_client";
+import { getSlackUserInfoMemoized } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
 import logger from "@connectors/logger/logger";
-import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { cacheWithRedisResult } from "@connectors/types";
 import type { SupportedLocale } from "@connectors/types/locale";
 import { DEFAULT_LOCALE, isSupportedLocale } from "@connectors/types/locale";
@@ -68,19 +64,61 @@ const getDustLocalesMemoized = cacheWithRedisResult<
 );
 
 /**
- * Returns the `I18n` to write to this Slack user, or in the workspace locale when `slackUserInfo`
- * is `null` or a bot (Slack workflows, channel-wide messages).
+ * Who a Slack message is written to: a Slack user, with their info when the caller already fetched
+ * it, or `null` for text with no single human recipient (Slack workflows, channel-wide messages).
+ */
+type SlackLocaleRecipient =
+  | { slackUserId: string | null | undefined; slackClient: WebClient }
+  | {
+      slackUserId: string | null | undefined;
+      slackUserInfo: SlackUserInfo | null;
+    }
+  | null;
+
+async function getRecipientSlackUserInfo(
+  connector: ConnectorResource,
+  recipient: SlackLocaleRecipient
+): Promise<SlackUserInfo | null> {
+  if (!recipient) {
+    return null;
+  }
+  if ("slackUserInfo" in recipient) {
+    return recipient.slackUserInfo;
+  }
+  const { slackUserId, slackClient } = recipient;
+  if (!slackUserId) {
+    return null;
+  }
+  try {
+    return await getSlackUserInfoMemoized(
+      connector.id,
+      slackClient,
+      slackUserId
+    );
+  } catch (error) {
+    // Slack Web API errors: write in the workspace locale rather than not at all.
+    logger.warn(
+      { connectorId: connector.id, slackUserId, error },
+      "Failed to get Slack user info to pick their locale"
+    );
+    return null;
+  }
+}
+
+/**
+ * Returns the `I18n` to write to `recipient`. Falls back to the workspace locale when there is no
+ * recipient, when it is a bot, or when it cannot be fetched from Slack.
  */
 export async function getSlackI18nForUser(
   connector: ConnectorResource,
-  slackUserId: string | null,
-  slackUserInfo: SlackUserInfo | null
+  recipient: SlackLocaleRecipient
 ): Promise<I18n> {
+  const slackUserInfo = await getRecipientSlackUserInfo(connector, recipient);
   const human = slackUserInfo && !slackUserInfo.is_bot ? slackUserInfo : null;
 
   const dustLocalesRes = await getDustLocalesMemoized(connector, {
     email: human?.email ?? null,
-    slackUserId: human ? slackUserId : null,
+    slackUserId: human ? (recipient?.slackUserId ?? null) : null,
   });
   if (dustLocalesRes.isErr()) {
     logger.warn(
@@ -95,52 +133,4 @@ export async function getSlackI18nForUser(
       slackLocale: human?.locale,
     })
   );
-}
-
-/**
- * Same as `getSlackI18nForUser` when only the Slack user id is known. Falls back to the workspace
- * locale when the user cannot be fetched from Slack.
- */
-export async function getSlackI18nForUserId(
-  connector: ConnectorResource,
-  slackClient: WebClient,
-  slackUserId: string | undefined
-): Promise<I18n> {
-  let slackUserInfo: SlackUserInfo | null = null;
-  if (slackUserId) {
-    try {
-      slackUserInfo = await getSlackUserInfoMemoized(
-        connector.id,
-        slackClient,
-        slackUserId
-      );
-    } catch (error) {
-      // Slack Web API errors: write in the workspace locale rather than not at all.
-      logger.warn(
-        { connectorId: connector.id, slackUserId, error },
-        "Failed to get Slack user info to pick their locale"
-      );
-    }
-  }
-  return getSlackI18nForUser(connector, slackUserId ?? null, slackUserInfo);
-}
-
-/**
- * Same as `getSlackI18nForUserId` from a Slack team id, for interaction payloads. Returns the
- * default locale when the team has no active Slack bot configuration.
- */
-export async function getSlackI18nForTeamUser(
-  slackTeamId: string,
-  slackUserId: string
-): Promise<I18n> {
-  const slackConfig =
-    await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
-  const connector = slackConfig
-    ? await ConnectorResource.fetchById(slackConfig.connectorId)
-    : null;
-  if (!connector) {
-    return getSlackI18n(DEFAULT_LOCALE);
-  }
-  const slackClient = await getSlackClient(connector.id);
-  return getSlackI18nForUserId(connector, slackClient, slackUserId);
 }

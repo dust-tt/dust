@@ -14,10 +14,10 @@ import {
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
-  getSlackClientForTeam,
+  getSlackConnectorForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
-import { getSlackI18nForTeamUser } from "@connectors/connectors/slack/lib/user_locale";
+import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -463,13 +463,16 @@ const _webhookSlackBotInteractionsAPIHandler = async (
 
         if (payload.trigger_id) {
           try {
+            const { connector, slackClient } = await getSlackConnectorForTeam(
+              payload.team.id
+            );
             // Open the feedback modal
             await openFeedbackModal({
-              i18n: await getSlackI18nForTeamUser(
-                payload.team.id,
-                payload.user.id
-              ),
-              slackClient: await getSlackClientForTeam(payload.team.id),
+              i18n: await getSlackI18nForUser(connector, {
+                slackUserId: payload.user.id,
+                slackClient,
+              }),
+              slackClient,
               triggerId: payload.trigger_id,
               conversationId,
               messageId,

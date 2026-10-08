@@ -33,7 +33,7 @@ vi.mock(
       await import("@connectors/connectors/slack/lib/i18n");
     return {
       ...(await importOriginal()),
-      getSlackI18nForUserId: vi.fn(async () => getSlackI18n("en-US")),
+      getSlackI18nForUser: vi.fn(async () => getSlackI18n("en-US")),
     };
   }
 );

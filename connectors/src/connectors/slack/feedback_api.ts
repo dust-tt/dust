@@ -128,11 +128,10 @@ export async function submitFeedbackToAPI({
     // Update the Slack message to show feedback has been submitted
     // Using response_url works for both regular and ephemeral messages
     try {
-      const i18n = await getSlackI18nForUser(
-        connector,
+      const i18n = await getSlackI18nForUser(connector, {
         slackUserId,
-        slackUserInfo
-      );
+        slackUserInfo,
+      });
       await fetch(responseUrl, {
         method: "POST",
         headers: {
