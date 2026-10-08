@@ -2,6 +2,7 @@ import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configur
 import { buildToolConfigurationsFromRawTools } from "@app/lib/actions/mcp_actions";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
+  INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import type { PublishFrameFromSourceResult } from "@app/lib/api/frames/publish_from_source";
@@ -13,8 +14,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-
-const FRAME_PUBLISH_BILLING_SERVER_NAME = "interactive_content";
 
 // The legacy Frame tools already carry the Frame prices: creating is "advanced", editing and
 // publishing are "basic".
@@ -53,7 +52,7 @@ export async function recordFramePublishAction(
     parentActionId: string;
     publication: PublishFrameFromSourceResult;
   }
-): Promise<Result<AgentMCPActionResource, Error>> {
+): Promise<Result<void, Error>> {
   const parentAction = await AgentMCPActionResource.fetchById(
     auth,
     parentActionId
@@ -64,7 +63,7 @@ export async function recordFramePublishAction(
 
   const view = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
     auth,
-    FRAME_PUBLISH_BILLING_SERVER_NAME
+    INTERACTIVE_CONTENT_SERVER_NAME
   );
   if (!view) {
     return new Err(
@@ -89,7 +88,7 @@ export async function recordFramePublishAction(
     return new Err(new Error(`Tool ${toolName} is disabled.`));
   }
 
-  const action = await createMCPAction(auth, {
+  await createMCPAction(auth, {
     actionConfiguration,
     agentMessage: { agentMessageId: parentAction.agentMessageId },
     augmentedInputs: {
@@ -109,5 +108,5 @@ export async function recordFramePublishAction(
     },
   });
 
-  return new Ok(action);
+  return new Ok(undefined);
 }
