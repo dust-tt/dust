@@ -1,5 +1,8 @@
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { normalizeEgressPolicyDomains } from "@app/types/sandbox/egress_policy";
+import {
+  EgressPolicyDomainError,
+  normalizeEgressPolicyDomains,
+} from "@app/types/sandbox/egress_policy";
 import type { SandboxEnvVarKind } from "@app/types/sandbox/env_var";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -142,7 +145,7 @@ export function areAllowedDomainsEqual(
 // allowlist normalizer accepts those, so HTTPS secrets add the rule here.
 export function normalizeHttpsSecretAllowedDomains(
   values: string[]
-): Result<string[], Error> {
+): Result<string[], EgressPolicyDomainError> {
   const normalized = normalizeEgressPolicyDomains(values);
   if (normalized.isErr()) {
     return normalized;
@@ -151,9 +154,7 @@ export function normalizeHttpsSecretAllowedDomains(
   for (const domain of normalized.value) {
     if (!domain.startsWith("*.") && domain.split(".").length < 2) {
       return new Err(
-        new Error(
-          `${domain}: HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com.`
-        )
+        new EgressPolicyDomainError("https_secret_single_label", domain)
       );
     }
   }

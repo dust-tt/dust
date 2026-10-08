@@ -1,5 +1,6 @@
 import { DomainInputForm } from "@app/components/sandbox/DomainInputForm";
-import { render, screen, waitFor } from "@testing-library/react";
+import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,6 +39,16 @@ describe("DomainInputForm", () => {
     await userEvent.type(screen.getByRole("textbox"), "bad*domain");
     expect(screen.getByText(/Wildcards must use the form/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Add domain" })).toBeDisabled();
+  });
+
+  it("translates the normalization error in French", async () => {
+    const messages = await loadCatalog("fr-FR");
+    act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
+    setup();
+    await userEvent.type(screen.getByRole("textbox"), "127.0.0.1");
+    expect(
+      screen.getByText("Les adresses IP ne sont pas prises en charge.")
+    ).toBeInTheDocument();
   });
 
   it("shows the caller's duplicate message and blocks submit", async () => {

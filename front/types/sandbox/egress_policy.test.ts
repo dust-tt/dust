@@ -58,6 +58,39 @@ describe("egress policy domain validation", () => {
     }
   });
 
+  it("returns a stable code for each rejection", () => {
+    for (const [domain, code] of [
+      [" ", "empty"],
+      [`${"a".repeat(250)}.com`, "too_long"],
+      ["127.0.0.1", "ip_address"],
+      ["bad domain", "invalid_format"],
+      ["github.123", "tld_without_letter"],
+      ["*.com", "wildcard_without_suffix"],
+      ["*github.com", "invalid_wildcard"],
+    ]) {
+      const result = normalizeEgressPolicyDomain(domain);
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.code).toBe(code);
+        expect(result.error.domain).toBeUndefined();
+      }
+    }
+  });
+
+  it("prefixes the message with the rejected domain in a list", () => {
+    const result = normalizeEgressPolicyDomains(["api.github.com", "10.0.0.1"]);
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("ip_address");
+      expect(result.error.domain).toBe("10.0.0.1");
+      expect(result.error.message).toBe(
+        "10.0.0.1: IP addresses are not supported."
+      );
+    }
+  });
+
   it("parses and normalizes policy objects", () => {
     const result = parseEgressPolicy({
       allowedDomains: ["API.GitHub.COM", "*.GitHub.COM"],

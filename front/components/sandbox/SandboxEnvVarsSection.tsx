@@ -1,3 +1,4 @@
+import { getEgressPolicyDomainErrorMessage } from "@app/components/sandbox/egress_policy_domain_error";
 import {
   ENV_VAR_NAME_SUFFIX_REGEX,
   envVarPrefixForKind,
@@ -164,8 +165,9 @@ function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
             ctx.addIssue({
               code: "custom",
               path: ["allowedDomainsText"],
-              // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
-              message: normalizedDomains.error.message,
+              message: t(
+                getEgressPolicyDomainErrorMessage(normalizedDomains.error)
+              ),
             });
           }
           return;
@@ -335,8 +337,10 @@ export function SandboxEnvVarsSection({
     const normalizedDomains =
       normalizeHttpsSecretAllowedDomains(allowedDomains);
     if (normalizedDomains.isErr()) {
-      // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
-      return { message: normalizedDomains.error.message, isError: true };
+      return {
+        message: t(getEgressPolicyDomainErrorMessage(normalizedDomains.error)),
+        isError: true,
+      };
     }
 
     return {
@@ -364,8 +368,7 @@ export function SandboxEnvVarsSection({
       : null;
   const domainsDialogMessage =
     domainsDialogNormalized?.isErr() === true
-      ? // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
-        domainsDialogNormalized.error.message
+      ? t(getEgressPolicyDomainErrorMessage(domainsDialogNormalized.error))
       : domainsDialogSavedDomains !== null
         ? savedAsMessage(domainsDialogSavedDomains)
         : allowedDomainsHelperText;
