@@ -177,8 +177,11 @@ export type DataSourceFileType =
   | "md"
   | "png"
   | "frame"
+  | "website"
+  | "database"
   | "agent"
-  | "skill";
+  | "skill"
+  | "tool";
 
 export type DataSourceSource = "pod" | "company";
 

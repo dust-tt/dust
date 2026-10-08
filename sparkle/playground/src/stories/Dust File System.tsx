@@ -76,6 +76,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { ToolDetailsSheet } from "../components/BuildDetails";
 import {
   BUILD_SECTIONS,
   type BuildSection,
@@ -96,12 +97,14 @@ import {
 import { ConversationView } from "../components/ConversationView";
 import type { PodDestination } from "../components/CreateRoomDialog";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
+import type { CreatableFileType } from "../components/FilesBrowser";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxAltView } from "../components/InboxAltView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import { ManageAgentsView } from "../components/ManageAgentsView";
 import { ManageSkillsView } from "../components/ManageSkillsView";
 import { ManageToolsView } from "../components/ManageToolsView";
+import type { InputBarAttachment } from "../components/InputBar";
 import { NewConversation } from "../components/NewConversation";
 import {
   PanelLayout,
@@ -122,6 +125,9 @@ import {
   buildWorkspace,
   canDropInto,
   type Conversation,
+  createManagedAgent,
+  createManagedSkill,
+  createMockTool,
   type DataSource,
   type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
@@ -153,7 +159,9 @@ import {
 } from "../data";
 import {
   getDataSourceIcon,
+  getFileTypeLabel,
   getFolderPath,
+  getIconForFileType,
   getItemLocations,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
@@ -193,6 +201,16 @@ function getSpaceActivity(space: Space) {
   const c = space.id.charCodeAt(space.id.length - 1);
   const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
   return { count, hasActivity: count ? true : c % 2 !== 0 };
+}
+
+/** A file as the input bar holds it, when a conversation is started on one. */
+function fileAttachment(file: DataSource): InputBarAttachment {
+  return {
+    id: file.id,
+    label: file.fileName,
+    tooltip: file.fileName,
+    visual: getDataSourceIcon(file),
+  };
 }
 
 /** The collaborators strip: a few of the workspace's agents, and some people. */
@@ -235,7 +253,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // ── Navigation state ──────────────────────────────────────────────────────
   // P2 selection: what's shown in the "level 1" panel
   type P2View =
-    | { kind: "welcome" }
+    /** The new-conversation screen, holding the file it was started on. */
+    | { kind: "welcome"; attachment?: InputBarAttachment }
     | { kind: "inboxAlt" }
     | { kind: "files" }
     | { kind: "requests" }
@@ -264,6 +283,22 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
 
   const openNewConversation = (podName?: string) => {
     setP3View({ kind: "newConversation", podName });
+    setP4View(null);
+  };
+
+  /** The sidebar's New button: a conversation about nothing in particular. */
+  const startNewConversation = () => {
+    setP2View({ kind: "welcome" });
+    setP3View(null);
+    setP4View(null);
+  };
+
+  /** The same screen, with a file from the Hub already in hand. Kept apart
+   *  from `startNewConversation` so neither takes an optional argument an
+   *  `onClick` could fill with its event. */
+  const startConversationOn = (file: DataSource) => {
+    setP2View({ kind: "welcome", attachment: fileAttachment(file) });
+    setP3View(null);
     setP4View(null);
   };
 
@@ -363,6 +398,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   const [createPodParentId, setCreatePodParentId] = useState<string | null>(
     null
   );
+  /** A tool opens in its own sheet rather than a panel, the way Build shows it. */
+  const [detailedToolId, setDetailedToolId] = useState<string | null>(null);
   /** A Pod is being dragged over the sidebar's Pod list. */
   const [isPodDropHovered, setIsPodDropHovered] = useState(false);
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
@@ -991,6 +1028,69 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     setIsCreateRoomDialogOpen(true);
   }, []);
 
+  /** A Pod folder stands for a Pod: opening it leaves Files for that Pod. */
+  const handleOpenPod = useCallback((folder: DataSource) => {
+    if (!folder.refId) {
+      return;
+    }
+    setP2View({ kind: "space", spaceId: folder.refId });
+    setP3View(null);
+    setP4View(null);
+  }, []);
+
+  /** An agent or a skill file opens where it is edited, which is its Build
+   *  detail panel rather than a document preview. */
+  const handleEditBuildItem = useCallback((file: DataSource) => {
+    setP3View(fileSidePanelView(file));
+    setP4View(null);
+  }, []);
+
+  /**
+   * The create menu, for everything that is a file of its own. An agent, a
+   * skill and a tool are made in Build and filed here, so creating one makes
+   * the Build item first and files what it stands for; a website and a
+   * database are nothing but files. Either way the new file opens straight
+   * away, since an untitled empty one is only worth making to work on it.
+   */
+  const handleCreateFile = useCallback(
+    (fileType: CreatableFileType, parentId: string | null) => {
+      const name = `Untitled ${getFileTypeLabel(fileType)}`;
+      const refId =
+        fileType === "agent"
+          ? createManagedAgent(name, user.id).id
+          : fileType === "skill"
+            ? createManagedSkill(name, user.id).id
+            : fileType === "tool"
+              ? createMockTool(name, user.id).id
+              : undefined;
+
+      const file: DataSource = {
+        id: `fs-created-${fileType}-${Date.now()}`,
+        kind: "file",
+        fileName: `${name}.${fileType}`,
+        parentId,
+        // A new file belongs to the drive it was made in.
+        source:
+          (parentId ? filesById.get(parentId)?.source : undefined) ?? "company",
+        fileType,
+        refId,
+        createdBy: user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        icon: getIconForFileType(fileType),
+      };
+      setFiles((prev) => [...prev, file]);
+
+      if (fileType === "tool") {
+        setDetailedToolId(refId ?? null);
+        return;
+      }
+      setP3View(fileSidePanelView(file));
+      setP4View(null);
+    },
+    [filesById, user.id]
+  );
+
   const handleRoomNameNext = (
     name: string,
     isPublic: boolean,
@@ -1317,10 +1417,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           onSearchTextChange={setFilesSearchText}
           onMoveFile={handleMoveFile}
           onCreatePod={handleCreatePodIn}
+          onCreateFile={handleCreateFile}
           onFileOpen={(dataSource) => {
             setP3View(fileSidePanelView(dataSource));
             setP4View(null);
           }}
+          onStartConversation={startConversationOn}
+          onOpenPod={handleOpenPod}
+          onEditBuildItem={handleEditBuildItem}
         />
       );
     if (p2View.kind === "requests")
@@ -1512,7 +1616,16 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
         />
       );
     // welcome
-    return <NewConversation greeting={greeting} />;
+    return (
+      <NewConversation
+        greeting={greeting}
+        attachments={
+          p2View.kind === "welcome" && p2View.attachment
+            ? [p2View.attachment]
+            : undefined
+        }
+      />
+    );
   })();
 
   // ── P3 / P4 content ───────────────────────────────────────────────────────
@@ -1958,11 +2071,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                 icon={MessageCircle01}
                 label="New"
                 className="shrink-0"
-                onClick={() => {
-                  setP2View({ kind: "welcome" });
-                  setP3View(null);
-                  setP4View(null);
-                }}
+                onClick={startNewConversation}
               />
             </div>
 
@@ -2374,6 +2483,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
         destinations={podDestinations}
         defaultDestinationId={createPodParentId}
         onNext={handleRoomNameNext}
+      />
+      <ToolDetailsSheet
+        toolId={detailedToolId}
+        onClose={() => setDetailedToolId(null)}
       />
       <Dialog
         open={selectedTemplateForBuilder !== null}

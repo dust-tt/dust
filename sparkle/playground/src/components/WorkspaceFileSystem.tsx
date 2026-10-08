@@ -28,7 +28,11 @@ import {
   readDragId,
 } from "../data/fileMoves";
 import type { DataSource } from "../data/types";
-import { FilesBrowser, type FilesBrowserDnd } from "./FilesBrowser";
+import {
+  type CreatableFileType,
+  FilesBrowser,
+  type FilesBrowserDnd,
+} from "./FilesBrowser";
 import { TreeDnd } from "./TreeDnd";
 
 // The workspace file system as a single panel split in two: a folder tree on
@@ -53,9 +57,15 @@ interface WorkspaceFileSystemProps {
   /** The same items by id, for the drop checks `dragover` runs constantly. */
   filesById: Map<string, DataSource>;
   onFileOpen: (dataSource: DataSource) => void;
+  /** Row menu: what each item leads to away from the Hub. */
+  onStartConversation: (dataSource: DataSource) => void;
+  onOpenPod: (dataSource: DataSource) => void;
+  onEditBuildItem: (dataSource: DataSource) => void;
   onMoveFile: (draggedId: string, targetFolderId: string | null) => void;
   /** Opens the Pod creation dialog on the given folder. */
   onCreatePod: (parentId: string | null) => void;
+  /** Creates a file of the given type in the given folder, and opens it. */
+  onCreateFile: (fileType: CreatableFileType, parentId: string | null) => void;
   /** Controlled: the search input lives in the screen's header, not here. */
   searchText: string;
   onSearchTextChange: (text: string) => void;
@@ -66,8 +76,12 @@ export function WorkspaceFileSystem({
   filesByParentId,
   filesById,
   onFileOpen,
+  onStartConversation,
+  onOpenPod,
+  onEditBuildItem,
   onMoveFile,
   onCreatePod,
+  onCreateFile,
   searchText,
   onSearchTextChange,
 }: WorkspaceFileSystemProps) {
@@ -327,8 +341,12 @@ export function WorkspaceFileSystem({
           currentFolderId={currentFolderId}
           onCurrentFolderIdChange={setCurrentFolderId}
           onFileOpen={onFileOpen}
+          onStartConversation={onStartConversation}
+          onOpenPod={onOpenPod}
+          onEditBuildItem={onEditBuildItem}
           onDeleteFile={() => {}}
           onCreatePod={() => onCreatePod(currentFolderId)}
+          onCreateFile={(fileType) => onCreateFile(fileType, currentFolderId)}
           dnd={browserDnd}
           emptyMessage="No files in this workspace yet."
         />

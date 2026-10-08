@@ -33,6 +33,7 @@ import { type ComponentType, useRef, useState } from "react";
 
 import type { Agent } from "../data/types";
 import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
+import type { InputBarAttachment } from "./InputBar";
 import { InputBar } from "./InputBar";
 
 // Mirrors front's new-conversation screen behind `discovery_homepage`: a home
@@ -585,9 +586,16 @@ interface NewConversationProps {
   greeting: string;
   /** Inside a pod, Discover leads with what that pod uses. */
   podName?: string;
+  /** What the conversation starts with in hand, e.g. a file it was started on
+   *  from the Hub. */
+  attachments?: InputBarAttachment[];
 }
 
-export function NewConversation({ greeting, podName }: NewConversationProps) {
+export function NewConversation({
+  greeting,
+  podName,
+  attachments,
+}: NewConversationProps) {
   const [tab, setTab] = useState<DiscoverTab>("Discover");
   const discoverRef = useRef<HTMLDivElement>(null);
 
@@ -633,6 +641,7 @@ export function NewConversation({ greeting, podName }: NewConversationProps) {
           placeholder="What are we working on?"
           className="w-full max-w-4xl"
           isFloating={false}
+          attachments={attachments}
         />
         <HomepageUseCases podName={podName} />
         <div className="flex flex-1 items-end justify-center pb-6 pt-4">

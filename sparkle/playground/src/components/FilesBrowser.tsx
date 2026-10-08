@@ -8,6 +8,7 @@ import {
   CheckDone01,
   CloudArrowLeftRight,
   Cube01,
+  Database01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -17,14 +18,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Edit04,
   EmptyCTA,
   File02,
   Folder,
+  Globe01,
   Icon,
   List,
+  MessagePlusCircle,
   Plus,
   SearchInput,
   Table,
@@ -35,6 +41,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   type ComponentType,
   type DragEvent,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -46,11 +53,12 @@ import {
   getDataSourceIcon,
   getDataSourcesInFolderTree,
   getFolderPath,
+  getIconForFileType,
   getItemTypeLabel,
   isDataSourceFolder,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
-import { indexFilesById } from "../data/fileMoves";
+import { indexFilesById, isPodFolder } from "../data/fileMoves";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";
@@ -91,9 +99,17 @@ interface FilesBrowserProps {
   /** Folder navigation + breadcrumbs; off for flat lists (conversations). */
   foldersEnabled?: boolean;
   emptyMessage?: string;
+  /** Opens a conversation with the row in hand. Offered on every row. */
+  onStartConversation?: (dataSource: DataSource) => void;
+  /** Opens the Pod a Pod folder stands for. */
+  onOpenPod?: (dataSource: DataSource) => void;
+  /** Opens what an agent or skill file stands for, where it can be edited. */
+  onEditBuildItem?: (dataSource: DataSource) => void;
   onAddFileToTopbar?: (fileId: string) => void;
   /** Adds a "Pod" entry to the create menu, creating it in the open folder. */
   onCreatePod?: () => void;
+  /** Adds the entries that make a file of their own, in the open folder. */
+  onCreateFile?: (fileType: CreatableFileType) => void;
   dnd?: FilesBrowserDnd;
   /** Controlled search/folder (pod: steered by universal search + reveal). */
   searchText?: string;
@@ -117,6 +133,23 @@ interface FilesBrowserProps {
   onClearRevealedFile?: () => void;
 }
 
+/** The file types the create menu can make, as opposed to the ones that only
+ *  ever arrive by upload or sync. */
+export type CreatableFileType =
+  | "website"
+  | "database"
+  | "agent"
+  | "skill"
+  | "tool";
+
+/** The file types that stand for something Build owns, and what editing it is
+ *  called. Everything else is just a file. */
+const BUILD_ITEM_LABELS: Record<string, string | undefined> = {
+  agent: "Edit Agent",
+  skill: "Edit Skill",
+  tool: "Edit Tool",
+};
+
 const formatDate = (date: Date): string =>
   date.toLocaleDateString("en-US", {
     month: "short",
@@ -124,30 +157,71 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
-function CreateFilesMenu({ onCreatePod }: { onCreatePod?: () => void }) {
+function CreateFilesMenu({
+  onCreatePod,
+  onCreateFile,
+}: {
+  onCreatePod?: () => void;
+  onCreateFile?: (fileType: CreatableFileType) => void;
+}) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="primary" icon={Plus} label="Create" isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem icon={File02} label="Doc" onClick={() => {}} />
-        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
-        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
-        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
-        {onCreatePod && (
-          <DropdownMenuItem icon={Cube01} label="Pod" onClick={onCreatePod} />
-        )}
         <DropdownMenuItem
           icon={UploadCloud02}
-          label="Upload File"
+          label="Upload"
           onClick={() => {}}
         />
         <DropdownMenuItem
           icon={CloudArrowLeftRight}
-          label="From Company data"
+          label="Cloud data"
           onClick={() => {}}
         />
+        {onCreateFile && (
+          <DropdownMenuItem
+            icon={getIconForFileType("website")}
+            label="Website"
+            onClick={() => onCreateFile("website")}
+          />
+        )}
+        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
+        {onCreatePod && (
+          <DropdownMenuItem icon={Cube01} label="Pod" onClick={onCreatePod} />
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Document" />
+        <DropdownMenuItem icon={File02} label="Text" onClick={() => {}} />
+        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
+        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
+        {onCreateFile && (
+          <>
+            <DropdownMenuItem
+              icon={getIconForFileType("database")}
+              label="Database"
+              onClick={() => onCreateFile("database")}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel label="Run" />
+            <DropdownMenuItem
+              icon={getIconForFileType("agent")}
+              label="Agent"
+              onClick={() => onCreateFile("agent")}
+            />
+            <DropdownMenuItem
+              icon={getIconForFileType("skill")}
+              label="Skill"
+              onClick={() => onCreateFile("skill")}
+            />
+            <DropdownMenuItem
+              icon={getIconForFileType("tool")}
+              label="Tool"
+              onClick={() => onCreateFile("tool")}
+            />
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -159,8 +233,12 @@ export function FilesBrowser({
   onDeleteFile,
   foldersEnabled = true,
   emptyMessage = "No files yet.",
+  onStartConversation,
+  onOpenPod,
+  onEditBuildItem,
   onAddFileToTopbar,
   onCreatePod,
+  onCreateFile,
   dnd,
   searchText: controlledSearchText,
   onSearchTextChange,
@@ -277,6 +355,69 @@ export function FilesBrowser({
   ]);
 
   // ── Table rows ────────────────────────────────────────────────────────────
+  /** What a row offers, from its "..." button and from right-clicking it
+   *  alike — the two are the same menu. */
+  const rowMenuItems = useCallback(
+    (dataSource: DataSource) => {
+      // What the row stands for elsewhere in the workspace, and so what there
+      // is to open: a Pod, or an agent or skill that Build owns.
+      const buildItemLabel = dataSource.refId
+        ? BUILD_ITEM_LABELS[dataSource.fileType ?? ""]
+        : undefined;
+
+      return [
+        ...(onStartConversation
+          ? [
+              {
+                kind: "item" as const,
+                label: "Start a conversation",
+                icon: MessagePlusCircle,
+                onClick: () => onStartConversation(dataSource),
+              },
+            ]
+          : []),
+        ...(onOpenPod && isPodFolder(dataSource)
+          ? [
+              {
+                kind: "item" as const,
+                label: "Open Pod",
+                icon: Cube01,
+                onClick: () => onOpenPod(dataSource),
+              },
+            ]
+          : []),
+        ...(onEditBuildItem && buildItemLabel
+          ? [
+              {
+                kind: "item" as const,
+                label: buildItemLabel,
+                icon: Edit04,
+                onClick: () => onEditBuildItem(dataSource),
+              },
+            ]
+          : []),
+        ...(onAddFileToTopbar && dataSource.kind === "file"
+          ? [
+              {
+                kind: "item" as const,
+                label: "Add to Topbar",
+                icon: File02,
+                onClick: () => onAddFileToTopbar(dataSource.id),
+              },
+            ]
+          : []),
+        {
+          kind: "item" as const,
+          label: "Delete",
+          icon: Trash01,
+          variant: "warning" as const,
+          onClick: () => setDeleteFileId(dataSource.id),
+        },
+      ];
+    },
+    [onAddFileToTopbar, onEditBuildItem, onOpenPod, onStartConversation]
+  );
+
   const visibleItems = useMemo(
     () =>
       sortDataSourcesForDisplay(
@@ -303,6 +444,8 @@ export function FilesBrowser({
     return base.map((dataSource) => {
       const item = {
         ...dataSource,
+        // Right-clicking a row opens what its "..." button holds.
+        menuItems: rowMenuItems(dataSource),
         onClick: () => {
           if (isDataSourceFolder(dataSource)) {
             setCurrentFolderId(dataSource.id);
@@ -364,6 +507,7 @@ export function FilesBrowser({
     onClearRevealedFile,
     onFileOpen,
     revealedFileId,
+    rowMenuItems,
     searchScope,
     searchText,
     setCurrentFolderId,
@@ -493,33 +637,12 @@ export function FilesBrowser({
         meta: {
           className: "w-12",
         },
-        cell: (info) => {
-          const dataSource = info.row.original;
-          const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
-              ? [
-                  {
-                    kind: "item" as const,
-                    label: "Add to Topbar",
-                    icon: File02,
-                    onClick: () => onAddFileToTopbar(dataSource.id),
-                  },
-                ]
-              : []),
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning" as const,
-              onClick: () => setDeleteFileId(dataSource.id),
-            },
-          ];
-
-          return <DataTable.MoreButton menuItems={menuItems} />;
-        },
+        cell: (info) => (
+          <DataTable.MoreButton menuItems={rowMenuItems(info.row.original)} />
+        ),
       },
     ],
-    [onAddFileToTopbar]
+    [rowMenuItems]
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -527,7 +650,12 @@ export function FilesBrowser({
     return (
       <EmptyCTA
         message={emptyMessage}
-        action={<CreateFilesMenu onCreatePod={onCreatePod} />}
+        action={
+          <CreateFilesMenu
+            onCreatePod={onCreatePod}
+            onCreateFile={onCreateFile}
+          />
+        }
       />
     );
   }
@@ -603,7 +731,10 @@ export function FilesBrowser({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <CreateFilesMenu onCreatePod={onCreatePod} />
+          <CreateFilesMenu
+            onCreatePod={onCreatePod}
+            onCreateFile={onCreateFile}
+          />
         </div>
       </div>
 

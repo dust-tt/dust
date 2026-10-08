@@ -1,8 +1,10 @@
 import {
   ActionFrame,
   Cube01,
+  Database01,
   File06,
   Folder,
+  Globe01,
   GooglePdfLogo,
   HardDrive,
   Image01,
@@ -12,6 +14,7 @@ import {
   MicrosoftWordLogo,
   PuzzlePiece01,
   Robot,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
 import React from "react";
 
@@ -301,6 +304,10 @@ export function getIconForFileType(
       return MicrosoftExcelLogo;
     case "frame":
       return ActionFrame;
+    case "website":
+      return Globe01;
+    case "database":
+      return Database01;
     case "pptx":
       return MicrosoftPowerpointLogo;
     case "txt":
@@ -312,6 +319,8 @@ export function getIconForFileType(
       return Robot;
     case "skill":
       return PuzzlePiece01;
+    case "tool":
+      return ShapesPlus;
     default:
       return GooglePdfLogo;
   }
@@ -619,8 +628,11 @@ export function getDataSourceIcon(
 
 const NAMED_FILE_TYPE_LABELS: Partial<Record<DataSourceFileType, string>> = {
   frame: "Frame",
+  website: "Website",
+  database: "Database",
   agent: "Agent",
   skill: "Skill",
+  tool: "Tool",
 };
 
 export function getFileTypeLabel(fileType: DataSourceFileType): string {
