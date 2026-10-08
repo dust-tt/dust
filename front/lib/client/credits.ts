@@ -67,6 +67,34 @@ export function formatAvgCreditValue(credits: number, t: Translate): string {
   );
 }
 
+export function formatCreditPerMessageValue(
+  credits: number,
+  t: Translate
+): string {
+  const displayedCredits = roundCredits(credits);
+  const formattedCredits = formatCredits(credits);
+  return t(
+    msg`${plural(displayedCredits, {
+      one: `${formattedCredits} credit / message`,
+      other: `${formattedCredits} credits / message`,
+    })}`
+  );
+}
+
+export function formatAvgCreditPerMessageValue(
+  credits: number,
+  t: Translate
+): string {
+  const displayedCredits = roundCredits(credits);
+  const formattedCredits = formatAvgCredits(credits);
+  return t(
+    msg`${plural(displayedCredits, {
+      one: `${formattedCredits} credit / message`,
+      other: `${formattedCredits} credits / message`,
+    })}`
+  );
+}
+
 export function toolUsageLabel(callCount: number, t: Translate): string {
   return t(msg`${plural(callCount, { one: "# use", other: "# uses" })}`);
 }

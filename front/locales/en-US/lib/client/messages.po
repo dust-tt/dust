@@ -38,6 +38,10 @@ msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{format
 msgstr "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
 
 #: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+
+#: front/lib/client/credits.ts
 msgid "{callCount, plural, one {# use} other {# uses}}"
 msgstr "{callCount, plural, one {# use} other {# uses}}"
 

@@ -1,6 +1,7 @@
 import { getModelLogoByModelId } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import {
+  formatCreditPerMessageValue,
   formatCreditsCompact,
   formatCreditValue,
 } from "@app/lib/client/credits";
@@ -113,14 +114,14 @@ export function CreditsCell({
   const { t } = useLingui();
   const showAvg = messageCount !== undefined && messageCount > 0;
   const averageCredits = showAvg
-    ? formatCreditValue(credits / messageCount, t)
+    ? formatCreditPerMessageValue(credits / messageCount, t)
     : null;
   return (
     <Tooltip
       label={
         <div className="flex flex-col">
           <span>{formatCreditValue(credits, t)}</span>
-          {showAvg && <span>{t`${averageCredits} / message`}</span>}
+          {showAvg && <span>{averageCredits}</span>}
         </div>
       }
       tooltipTriggerAsChild

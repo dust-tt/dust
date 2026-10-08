@@ -7,6 +7,7 @@ import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consum
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
+  formatAvgCreditPerMessageValue,
   formatAvgCreditValue,
   formatCredits,
   formatCreditValue,
@@ -135,7 +136,7 @@ export function ConsumptionSummaryView({
   const averageCost =
     averageCostPerMessage === null
       ? null
-      : formatAvgCreditValue(averageCostPerMessage, t);
+      : formatAvgCreditPerMessageValue(averageCostPerMessage, t);
   const topAgentShare =
     topAgent && totalCredits > 0
       ? Math.round((topAgent.credits / totalCredits) * 100)
@@ -169,7 +170,7 @@ export function ConsumptionSummaryView({
         <SummaryCard
           label={t(MESSAGE_COUNT_LABEL)}
           value={formatNumber(messageCount)}
-          hint={averageCost === null ? null : t`${averageCost} / message`}
+          hint={averageCost}
         />
         <SummaryCard
           label={t`Top agent`}

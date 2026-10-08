@@ -106,7 +106,7 @@ export function getCalendarDay(date: Date | number): CalendarDay | null {
  * Labels returned by `formatCalendarDate` and `formatCalendarDateTime` are standalone labels and
  * MUST start with an uppercase letter when they start with a letter, in every locale. Callers MUST
  * NOT insert them inside a sentence; a sentence built around a day MUST use `getCalendarDay`, whose
- * `day` stays lowercase.
+ * `day` keeps the locale's own casing ("yesterday", "Sunday", "dimanche").
  */
 export function formatCalendarDate(date: Date | number, t: Translate): string {
   const calendarDay = getCalendarDay(date);

@@ -303,10 +303,6 @@ msgid "{usedPercentage}% of {capCredits} cap"
 msgstr "{usedPercentage} % du plafond de {capCredits}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{averageCost} / message"
-msgstr "{averageCost} / message"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Top agent"
 msgstr "Agent principal"
 

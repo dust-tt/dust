@@ -3,8 +3,10 @@ import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import type { MessageDescriptor } from "@lingui/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  formatAvgCreditPerMessageValue,
   formatAvgCredits,
   formatAvgCreditValue,
+  formatCreditPerMessageValue,
   formatRelativeResetDay,
 } from "./credits";
 
@@ -45,6 +47,37 @@ describe("formatAvgCreditValue", () => {
       expect(credits.map((c) => formatAvgCreditValue(c, translate))).toEqual(
         expected
       );
+    }
+  );
+});
+
+describe("credits per message values", () => {
+  afterEach(() => {
+    setFormatLocale(undefined);
+  });
+
+  it.each([
+    [
+      "en-US",
+      ["1 credit / message", "1.5 credits / message"],
+      ["1.0 credit / message", "1.5 credits / message"],
+    ],
+    [
+      "fr-FR",
+      ["1 crédit / message", "1,5 crédit / message"],
+      ["1,0 crédit / message", "1,5 crédit / message"],
+    ],
+  ] as const)(
+    "pluralizes the whole label on the displayed value in %s",
+    async (locale, expected, expectedAvg) => {
+      setFormatLocale(locale);
+      i18n.loadAndActivate({ locale, messages: await loadCatalog(locale) });
+      expect(
+        [1, 1.46].map((c) => formatCreditPerMessageValue(c, translate))
+      ).toEqual(expected);
+      expect(
+        [1, 1.46].map((c) => formatAvgCreditPerMessageValue(c, translate))
+      ).toEqual(expectedAvg);
     }
   );
 });
