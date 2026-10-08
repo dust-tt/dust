@@ -23,6 +23,14 @@ export type PokeListGroupPermissions = {
   groupPermissions: PokeGroupPermissionType[];
 };
 
+// Resource types whose instances poke can address by sId to list the grants that apply to them.
+export const POKE_GROUP_PERMISSION_RESOURCE_TYPES = [
+  "space",
+  "skill",
+] as const satisfies readonly GroupPermissionResourceType[];
+export type PokeGroupPermissionResourceType =
+  (typeof POKE_GROUP_PERMISSION_RESOURCE_TYPES)[number];
+
 // Resolve the group referenced by each grant (one batched fetch) and serialize. Grants whose group
 // cannot be resolved are dropped rather than surfaced without a link target.
 async function serializeGroupPermissions(
