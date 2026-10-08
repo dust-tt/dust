@@ -533,8 +533,8 @@ msgid "Dust builds a personal memory from your conversations and uses it to tail
 msgstr "Dust constitue une mémoire personnelle à partir de vos conversations et l’utilise pour adapter ses prochaines réponses."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
-msgstr "Le contenu de votre mémoire enregistrée peut apparaître dans les réponses envoyées vers Slack et d’autres intégrations externes."
+msgid "Agents may use your memory when answering, so people who see their responses, for example in Slack, could see or infer some of it."
+msgstr "Les agents peuvent utiliser votre mémoire pour répondre : les personnes qui voient leurs réponses, par exemple dans Slack, pourraient donc en voir ou en deviner une partie."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"

@@ -835,8 +835,9 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               className="rounded-2xl p-4"
             >
               <Trans>
-                The content of your saved memory may appear in responses sent to
-                Slack and other external integrations.
+                Agents may use your memory when answering, so people who see
+                their responses, for example in Slack, could see or infer some
+                of it.
               </Trans>
             </ContentMessageInline>
           )}
