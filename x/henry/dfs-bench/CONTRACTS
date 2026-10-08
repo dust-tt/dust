@@ -22,3 +22,8 @@ longer than 3 hours: our sandbox reaper does not manage them.
 Scripts MUST act only as the dust-dev service account, through the gcloud config and per-run
 kubeconfig under `.state/`. They MUST NOT read or modify the user's own gcloud config,
 application default credentials or kubeconfig, which hold production access.
+
+@cc [owner:fontanierh,label:testing] comparable-results
+Every result file MUST record the scenario, the corpus (kind, and for jd its manifest sha256) and
+each mount's freshness budget. Rounds MUST only be compared when these match: the scatter corpus
+and jd's corpus stress a mount differently.

@@ -1,13 +1,16 @@
 // Runs one benchmark round against an implementation deployed on a bench cluster. Invoked by
 // bin/bench, which sets DFS_BENCH_STATE, RUN_ID, IMPL and the E2B / kubectl environment.
 //
-// Round (2 sandboxes, A and B, same tenant):
-//   1. A untars a seeded corpus into the mount, then drains its writeback.
+// Scenario `basic` (2 sandboxes, A and B, same tenant, in a new directory per round):
+//   0. Both time round trips to the in-cluster echo service: the network floor of an RPC.
+//   1. A untars a corpus into the mount (jd's by default), then drains its writeback.
 //   2. B reads the whole tree back through its own mount and compares digests with A's native copy.
 //   3. Freshness: A creates files, B polls for them; latency vs the 1 s bound.
 // A round is valid only if every mount exits cleanly with no dropped ops and no missed windows.
 
+import { execFile } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { promisify } from "node:util";
 import { Sandbox } from "e2b";
 
 import { henryImpl, type MountSpec } from "./impls.ts";
@@ -20,12 +23,16 @@ const MAX_ROUND_MS = 3 * 3600_000;
 const MOUNT_POINT = "/mnt/dfs";
 const BINARY = "/usr/local/bin/dfs-client";
 const WORKLOAD = "/opt/fsbench.py";
+const JD_GENERATE = "/opt/jd_generate.py";
+const CORPUS = process.env.BENCH_CORPUS ?? "jd";
 const FILES = Number(process.env.BENCH_FILES ?? "10000");
 const FRESH_COUNT = Number(process.env.BENCH_FRESH_COUNT ?? "50");
 
 const stateDir = required("DFS_BENCH_STATE");
 const runId = required("RUN_ID");
 const implName = required("IMPL");
+const scenario = required("SCENARIO");
+const echoEndpoint = required("ECHO_ENDPOINT");
 const benchDir = new URL("..", import.meta.url).pathname;
 
 function required(name: string): string {
@@ -68,6 +75,63 @@ async function workload(sandbox: Sandbox, args: string): Promise<Record<string, 
   return JSON.parse(stdout.trim().split("\n").pop() ?? "{}");
 }
 
+// FDB's own view while a workload runs: `status json` every 2 s through kubectl (bin/bench set
+// KUBECONFIG). Keeps the worst values seen and every `performance_limited_by` reason.
+interface FdbSample {
+  latency_probe?: Record<string, number>;
+  qos?: {
+    performance_limited_by?: { name?: string };
+    worst_queue_bytes_storage_server?: number;
+    worst_queue_bytes_log_server?: number;
+    worst_durability_lag_storage_server?: { seconds?: number };
+  };
+}
+
+async function fdbStatus(): Promise<FdbSample> {
+  const pods = await promisify(execFile)("kubectl", [
+    "-n", "fdb", "get", "pod", "-l", "foundationdb.org/fdb-process-class=stateless", "-o", "name",
+  ]);
+  const pod = pods.stdout.trim().split("\n")[0];
+  const status = await promisify(execFile)(
+    "kubectl",
+    ["-n", "fdb", "exec", pod, "-c", "foundationdb", "--", "fdbcli", "-C", "/var/dynamic-conf/fdb.cluster",
+      "--exec", "status json", "--timeout", "10"],
+    { maxBuffer: 64 << 20 }
+  );
+  return (JSON.parse(status.stdout) as { cluster: FdbSample }).cluster;
+}
+
+function sampleFdb(): () => Promise<Record<string, unknown>> {
+  const samples: FdbSample[] = [];
+  let running = true;
+  const loop = (async () => {
+    while (running) {
+      const started = Date.now();
+      try {
+        samples.push(await fdbStatus());
+      } catch (error) {
+        log(`fdb status failed: ${String(error).slice(0, 200)}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, Math.max(0, 2000 - (Date.now() - started))));
+    }
+  })();
+  return async () => {
+    running = false;
+    await loop;
+    const max = (pick: (s: FdbSample) => number | undefined) =>
+      Math.max(0, ...samples.map(pick).filter((v): v is number => typeof v === "number"));
+    return {
+      samples: samples.length,
+      limited_by: [...new Set(samples.map((s) => s.qos?.performance_limited_by?.name).filter(Boolean))],
+      max_commit_probe_seconds: max((s) => s.latency_probe?.commit_seconds),
+      max_grv_probe_seconds: max((s) => s.latency_probe?.transaction_start_seconds),
+      max_log_queue_bytes: max((s) => s.qos?.worst_queue_bytes_log_server),
+      max_storage_queue_bytes: max((s) => s.qos?.worst_queue_bytes_storage_server),
+      max_storage_durability_lag_seconds: max((s) => s.qos?.worst_durability_lag_storage_server?.seconds),
+    };
+  };
+}
+
 interface Mounted {
   sandbox: Sandbox;
   pid: number;
@@ -104,7 +168,7 @@ async function unmount(mounted: Mounted, spec: MountSpec): Promise<Record<string
     })
     .filter((row) => row && (row.message === spec.totalsMessage || row.fields?.message === spec.totalsMessage))
     .pop();
-  return { exitCode, totals: totals ?? null };
+  return { sandbox: mounted.sandbox.sandboxId, exitCode, totals: totals ?? null };
 }
 
 function cleanCommit(result: Record<string, unknown>): boolean {
@@ -114,9 +178,16 @@ function cleanCommit(result: Record<string, unknown>): boolean {
 }
 
 async function main(): Promise<void> {
+  if (scenario !== "basic") {
+    throw new Error(`unknown scenario ${scenario}`);
+  }
+  if (CORPUS !== "jd" && CORPUS !== "scatter") {
+    throw new Error(`unknown corpus ${CORPUS}`);
+  }
   const impl = loadImpl();
   const startedAt = new Date();
-  log(`run ${runId}: ${implName} at ${impl.endpoint}, ${FILES} files`);
+  const roundDir = `${MOUNT_POINT}/rounds/${startedAt.toISOString().replace(/[:.]/g, "-")}`;
+  log(`run ${runId}: ${implName} at ${impl.endpoint}, scenario ${scenario}, ${CORPUS} corpus`);
 
   const sandboxes = await Promise.all(
     ["a", "b"].map(() =>
@@ -143,27 +214,43 @@ async function main(): Promise<void> {
 
     const binary = new Blob([readFileSync(impl.mount.binaryPath)]);
     const script = readFileSync(`${benchDir}/workloads/fsbench.py`, "utf8");
+    const generator = readFileSync(`${benchDir}/../../jd/filesystem-benchmark/generate.py`, "utf8");
     await Promise.all(
       sandboxes.map(async (s) => {
         await s.files.write("/tmp/dfs-client", binary);
         await s.files.write("/tmp/fsbench.py", script);
-        await root(s, `install -m 755 /tmp/dfs-client ${BINARY} && install -m 644 /tmp/fsbench.py ${WORKLOAD}`);
+        await s.files.write("/tmp/jd_generate.py", generator);
+        await root(
+          s,
+          `install -m 755 /tmp/dfs-client ${BINARY} && install -m 644 /tmp/fsbench.py ${WORKLOAD} && install -m 644 /tmp/jd_generate.py ${JD_GENERATE}`
+        );
       })
+    );
+
+    const network = await Promise.all(sandboxes.map((s) => workload(s, `rtt --addr ${echoEndpoint}`)));
+    log(
+      `echo rtt p50 ${network.map((n) => Number(n.p50_ms).toFixed(2)).join(" / ")} ms, ` +
+        `throughput ${network.map((n) => Number(n.echo_mb_per_second).toFixed(0)).join(" / ")} MB/s`
     );
 
     const mounts = await Promise.all(sandboxes.map((s) => mount(s, impl.mount)));
     log("mounted on both sandboxes");
 
-    const corpus = await workload(a, `corpus --out /tmp/corpus.tar --files ${FILES}`);
-    const untar = await workload(a, `untar --archive /tmp/corpus.tar --target ${MOUNT_POINT}/untar`);
+    const corpus = await workload(a, `corpus --kind ${CORPUS} --out /tmp/corpus.tar --files ${FILES}`);
+    log(`corpus ${corpus.kind}: ${corpus.files} files, ${(Number(corpus.bytes) / 1e6).toFixed(0)} MB`);
+    const idleFdb = await fdbStatus();
+    const stopSampling = sampleFdb();
+    const untar = await workload(a, `untar --archive /tmp/corpus.tar --target ${roundDir}/untar`);
+    const untarFdb = await stopSampling();
+    log(`fdb during untar: ${JSON.stringify(untarFdb)}`);
     log(`untar ${Number(untar.untar_seconds).toFixed(2)}s (+${Number(untar.drain_seconds).toFixed(2)}s drain)`);
 
     await new Promise((resolve) => setTimeout(resolve, 1500));
-    const readBack = await workload(b, `digest --root ${MOUNT_POINT}/untar`);
+    const readBack = await workload(b, `digest --root ${roundDir}/untar`);
     const validated = readBack.digest === untar.native_digest;
     log(`read back on B ${Number(readBack.seconds).toFixed(2)}s, ${validated ? "matches" : "DIFFERS"}`);
 
-    const freshDir = `${MOUNT_POINT}/fresh`;
+    const freshDir = `${roundDir}/fresh`;
     let readerReady: () => void = () => {};
     const ready = new Promise<void>((resolve) => {
       readerReady = resolve;
@@ -189,13 +276,18 @@ async function main(): Promise<void> {
     const result = {
       run_id: runId,
       impl: implName,
+      scenario,
+      round_dir: roundDir,
       image: impl.image,
       endpoint: impl.endpoint,
       template: TEMPLATE,
       started_at: startedAt.toISOString(),
       finished_at: new Date().toISOString(),
       valid,
+      budget: (clients[0]?.totals as { budget?: unknown } | null)?.budget ?? null,
+      network,
       corpus,
+      fdb: { idle_latency_probe: idleFdb.latency_probe ?? null, during_untar: untarFdb },
       untar,
       read_back: { ...readBack, validated },
       freshness,

@@ -1,17 +1,41 @@
 #!/usr/bin/env bash
-# Usage: bin/bench <impl> [run_id]. Runs one benchmark round (see orchestrator/bench.ts) against an
-# implementation deployed with impls/<impl>/deploy, then uploads the results to GCS.
-# Env: BENCH_FILES (default 10000), BENCH_FRESH_COUNT (default 50).
+# Usage: bin/bench <impl> [scenario] [run_id]. Runs one benchmark round (see orchestrator/bench.ts)
+# against an implementation deployed with impls/<impl>/deploy, then uploads the results to GCS.
+# Scenarios: basic (default). Env: BENCH_CORPUS (jd, default, or scatter), BENCH_FILES (scatter
+# only, default 10000), BENCH_FRESH_COUNT (default 50).
 source "$(dirname "$0")/lib.sh"
 require_dust_dev
 
 IMPL="${1:?impl required, e.g. henry}"
-RUN_ID="${2:-$(current_run)}"
+SCENARIO="${2:-basic}"
+RUN_ID="${3:-$(current_run)}"
 fetch_credentials "$RUN_ID"
 load_e2b_env
 
+log "deploying the echo service"
+kubectl apply -f "$BENCH_DIR/k8s/echo.yaml" >/dev/null
+kubectl -n bench rollout status deploy/echo --timeout=5m >/dev/null
+ip=""
+for _ in $(seq 60); do
+  ip="$(kubectl -n bench get svc echo -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  [[ -n "$ip" ]] && break
+  sleep 5
+done
+[[ -n "$ip" ]] || die "echo load balancer has no IP"
+# A new load balancer gets its IP before it forwards traffic; wait for a real round trip.
+echo_answers() {
+  python3 -I -c 'import socket, sys; s = socket.create_connection((sys.argv[1], 7500), timeout=3); s.settimeout(3); s.sendall(b"x"); assert s.recv(1) == b"x"' \
+    "$ip" 2>/dev/null
+}
+for _ in $(seq 60); do
+  echo_answers && break
+  sleep 5
+done
+echo_answers || die "echo load balancer at $ip does not answer"
+export ECHO_ENDPOINT="$ip:7500"
+
 [[ -d "$BENCH_DIR/orchestrator/node_modules" ]] || npm --prefix "$BENCH_DIR/orchestrator" install --silent
-export DFS_BENCH_STATE="$STATE_DIR" RUN_ID IMPL
+export DFS_BENCH_STATE="$STATE_DIR" RUN_ID IMPL SCENARIO
 result="$(node "$BENCH_DIR/orchestrator/bench.ts")"
 gcloud storage cp -q "$result" "gs://$BUCKET/runs/$RUN_ID/results/" >/dev/null
 log "uploaded to gs://$BUCKET/runs/$RUN_ID/results/$(basename "$result")"
