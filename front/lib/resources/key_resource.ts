@@ -8,7 +8,8 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
+import type { ApiKeySpendCapStatus } from "@app/lib/spend_limits/api_key_cap_status";
+import { getApiKeysSpendCapStatuses } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -374,7 +375,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     requestingUserModelId: ModelId,
     spaces: SpaceType[],
     analyticsGroups: LightGroupType[],
-    isSpendCapped: boolean
+    { isSpendCapped, monthlyUsageMicroUsd }: ApiKeySpendCapStatus
   ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
@@ -404,6 +405,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
+      monthlyUsageMicroUsd,
       isSpendCapped,
     };
   }
@@ -557,22 +559,19 @@ export class KeyResource extends BaseResource<KeyModel> {
     keys: KeyResource[],
     requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const [
-      spacesByKeyModelId,
-      analyticsGroupsByKeyModelId,
-      spendCappedByModelId,
-    ] = await Promise.all([
-      this.listSpacesByKeyModelId(auth, keys),
-      this.listAnalyticsGroupsByKeyModelId(auth, keys),
-      getApiKeysSpendCappedByModelId(auth, keys),
-    ]);
+    const [spacesByKeyModelId, analyticsGroupsByKeyModelId, spendCapStatuses] =
+      await Promise.all([
+        this.listSpacesByKeyModelId(auth, keys),
+        this.listAnalyticsGroupsByKeyModelId(auth, keys),
+        getApiKeysSpendCapStatuses(auth, keys),
+      ]);
 
-    return keys.map((key) =>
+    return keys.map((key, i) =>
       key.toJSON(
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
         analyticsGroupsByKeyModelId.get(key.id) ?? [],
-        spendCappedByModelId.get(key.id) ?? false
+        spendCapStatuses[i]
       )
     );
   }

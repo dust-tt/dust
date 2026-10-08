@@ -17,5 +17,7 @@ export type KeyType = {
   role: RoleType;
   monthlyCapMicroUsd: number | null;
   monthlyCapAwuCredits: number | null;
+  // Legacy plans only: rolling 30-day usage counted against `monthlyCapMicroUsd`.
+  monthlyUsageMicroUsd: number | null;
   isSpendCapped: boolean;
 };

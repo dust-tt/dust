@@ -130,9 +130,24 @@ interface APIKeyRowData {
   status: APIKeyStatus;
   credits: number | null;
   monthlyCap: string | null;
+  monthlyCapTooltip: string | null;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
   onClick: () => void;
+}
+
+function formatMicroUsd(microUsd: number): string {
+  return formatCurrency(microUsd / 1_000_000, "USD");
+}
+
+function formatLegacyUsage(key: KeyType): { used: string; cap: string } | null {
+  if (key.monthlyCapMicroUsd === null || key.monthlyUsageMicroUsd === null) {
+    return null;
+  }
+  return {
+    used: formatMicroUsd(key.monthlyUsageMicroUsd),
+    cap: formatMicroUsd(key.monthlyCapMicroUsd),
+  };
 }
 
 function formatMonthlyCap({
@@ -152,7 +167,7 @@ function formatMonthlyCap({
   if (showLegacyUsdMonthlyCap) {
     return key.monthlyCapMicroUsd === null
       ? null
-      : formatCurrency(key.monthlyCapMicroUsd / 1_000_000, "USD");
+      : formatMicroUsd(key.monthlyCapMicroUsd);
   }
   return "—";
 }
@@ -268,15 +283,17 @@ function CreditsCellContent({ credits, monthlyCap }: CreditsCellContentProps) {
 
 interface MonthlyCapCellProps {
   monthlyCap: string | null;
+  tooltip: string | null;
 }
 
-function MonthlyCapCell({ monthlyCap }: MonthlyCapCellProps) {
+function MonthlyCapCell({ monthlyCap, tooltip }: MonthlyCapCellProps) {
   const { t } = useLingui();
 
   return (
     <DataTable.BasicCellContent
       className="tabular-nums"
       label={monthlyCap ?? t`Unlimited`}
+      tooltip={tooltip ?? undefined}
     />
   );
 }
@@ -455,7 +472,10 @@ function buildColumns({
         headerAlign: "left",
       },
       cell: (info) => (
-        <MonthlyCapCell monthlyCap={info.row.original.monthlyCap} />
+        <MonthlyCapCell
+          monthlyCap={info.row.original.monthlyCap}
+          tooltip={info.row.original.monthlyCapTooltip}
+        />
       ),
     },
     {
@@ -625,6 +645,20 @@ export function APIKeysTable({
           (consumption !== undefined ||
             (!hasMoreConsumptionRows && !consumptionError));
         const credits = consumption?.credits ?? (isConsumptionKnown ? 0 : null);
+        let monthlyCap = formatMonthlyCap({
+          key,
+          showLegacyUsdMonthlyCap,
+          showCreditMonthlyCap,
+        });
+        let monthlyCapTooltip: string | null = null;
+        const legacyUsage = showLegacyUsdMonthlyCap
+          ? formatLegacyUsage(key)
+          : null;
+        if (legacyUsage) {
+          const { used, cap } = legacyUsage;
+          monthlyCap = `${used} / ${cap}`;
+          monthlyCapTooltip = t`${used} used of ${cap} over the last 30 days`;
+        }
         const menuItems: MenuItem[] =
           key.status === "active"
             ? [
@@ -649,11 +683,8 @@ export function APIKeysTable({
           secret: key.secret,
           status,
           credits,
-          monthlyCap: formatMonthlyCap({
-            key,
-            showLegacyUsdMonthlyCap,
-            showCreditMonthlyCap,
-          }),
+          monthlyCap,
+          monthlyCapTooltip,
           lastUsedAt: key.lastUsedAt,
           menuItems,
           onClick: () => setDetailsKeyModelId(key.id),

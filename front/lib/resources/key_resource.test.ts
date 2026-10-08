@@ -95,6 +95,7 @@ vi.mock("@app/lib/utils/cache", () => ({
     ),
 }));
 
+import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import {
@@ -106,6 +107,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { redisMock } from "@app/tests/utils/mocks/redis";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -312,6 +314,83 @@ describe("KeyResource", () => {
       );
 
       expect(json.spaces).toEqual([]);
+    });
+
+    async function makeLegacyCappedKey({
+      capMicroUsd,
+      usageMicroUsd,
+    }: {
+      capMicroUsd: number;
+      usageMicroUsd: number;
+    }) {
+      const key = await KeyFactory.regular(globalGroup);
+      await key.updateMonthlyCap({ monthlyCapMicroUsd: capMicroUsd });
+      await runOnRedis({ origin: "key_usage_tracking" }, (client) =>
+        client.set(`key-usage:${key.id}`, usageMicroUsd.toString())
+      );
+      return key;
+    }
+
+    it("returns a legacy key's usage against its USD cap", async () => {
+      const key = await makeLegacyCappedKey({
+        capMicroUsd: 50_000_000,
+        usageMicroUsd: 39_000_000,
+      });
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.monthlyUsageMicroUsd).toBe(39_000_000);
+      expect(json.isSpendCapped).toBe(false);
+    });
+
+    it("marks a legacy key capped once its usage reaches the cap", async () => {
+      const key = await makeLegacyCappedKey({
+        capMicroUsd: 10_000_000,
+        usageMicroUsd: 10_000_000,
+      });
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.monthlyUsageMicroUsd).toBe(10_000_000);
+      expect(json.isSpendCapped).toBe(true);
+    });
+
+    it("leaves usage unknown for a legacy key without a cap", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.monthlyUsageMicroUsd).toBeNull();
+      expect(json.isSpendCapped).toBe(false);
+    });
+
+    it("leaves usage unknown when the usage tally can't be read", async () => {
+      const key = await KeyFactory.regular(globalGroup);
+      await key.updateMonthlyCap({ monthlyCapMicroUsd: 10_000_000 });
+      vi.mocked(
+        redisMock.streamClient.get as (key: string) => Promise<string | null>
+      ).mockRejectedValueOnce(new Error("redis down"));
+
+      const [json] = await KeyResource.toJSONWithSpaces(
+        authenticator,
+        [key],
+        authenticator.getNonNullableUser().id
+      );
+
+      expect(json.monthlyUsageMicroUsd).toBeNull();
+      expect(json.isSpendCapped).toBe(false);
     });
   });
 

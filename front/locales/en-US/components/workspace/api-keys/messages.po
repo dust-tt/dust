@@ -152,6 +152,10 @@ msgid "{creditsLabel}/unlimited"
 msgstr "{creditsLabel}/unlimited"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "{used} used of {cap} over the last 30 days"
+msgstr "{used} used of {cap} over the last 30 days"
+
+#: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Edit monthly cap"
 msgstr "Edit monthly cap"
 
