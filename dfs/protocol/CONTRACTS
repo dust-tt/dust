@@ -159,9 +159,9 @@ permitted authorization replicas MAY expose older versions after newer ones.
 @cc [owner:spolu,label:api;backend] dfs-read-view-snapshots
 For reads, `store_version` MUST identify the supplying store snapshot; for mutations it MUST
 identify the successful commit, or the checked snapshot when no stored changes occur. `auth_version`
-MUST identify the permission/topology state used for authorization. `Attr.view` MUST match its
-enclosing response view when present. The two fields MUST NOT promise a common snapshot,
-RAM-tree application of a mutation, or replace per-object attribute/content versions.
+MUST identify the permission/topology state used for authorization. Each returned `Attr.view` MUST
+identify that object's data and authorization snapshots. The two fields MUST NOT promise a common
+snapshot, RAM-tree application of a mutation, or replace per-object attribute/content versions.
 
 @cc [owner:spolu,label:security;backend] dfs-authorization-version-ordering
 Authorization versions MUST use one tenant-wide ordering across instances, restarts, tree rebuilds,
@@ -378,10 +378,11 @@ indexes MUST NOT store session-specific paths; those MUST be resolved authoritat
 
 @cc [owner:spolu,label:api;performance] dfs-search-results
 Search MUST return at most limit hits and expose no public cursor, score, or total-hit count. Hit
-names MUST be basenames, not canonical paths. File excerpts MUST be at most 512 characters and MUST
-be absent for directories. Evaluation MUST be bounded to 4,096 candidates, ten seconds of retrieval,
-and a 1 MiB response. `partial` MUST indicate bounded evaluation, not indexing freshness. Backend
-failures MUST be errors, not successful empty results.
+names MUST be basenames, not canonical paths. All returned hit attributes MUST carry the same
+`Attr.view` for the request; `SearchResults` MUST NOT contain a separate view. File excerpts MUST be
+at most 512 characters and MUST be absent for directories. Evaluation MUST be bounded to 4,096
+candidates, ten seconds of retrieval, and a 1 MiB response. `partial` MUST indicate bounded
+evaluation, not indexing freshness. Backend failures MUST be errors, not successful empty results.
 
 @cc [owner:spolu,label:api;error-handling] dfs-error-details
 RPC failures MUST carry a gRPC status with protobuf `ErrorDetails { code }` in its details. Batch

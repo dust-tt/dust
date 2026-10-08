@@ -148,11 +148,11 @@ freshness bound.
 
 For reads, `store_version` identifies the store snapshot supplying the response. For mutations, it
 identifies the successful commit. `Attr.view` carries both versions with an individual object's
-attributes and matches the enclosing response's `view` when present. `auth_version`
-identifies the permission and topology state used to authorize the operation, whether served from
-the RAM tree or the store fallback. The two fields do not promise a common snapshot, and a mutation
-response does not imply the RAM tree has applied that mutation yet. Neither field replaces
-`attr_version` or `content_version` for detecting changes to an object's attributes or contents.
+attributes. `auth_version` identifies the permission and topology state used to authorize the
+operation, whether served from the RAM tree or the store fallback. The two fields do not promise a
+common snapshot, and a mutation response does not imply the RAM tree has applied that mutation yet.
+Neither field replaces `attr_version` or `content_version` for detecting changes to an object's
+attributes or contents.
 
 Authorization versions must use one tenant-wide ordering across server instances, restarts, tree
 rebuilds, and store fallback. A process-local counter that resets on restart, or unrelated counters
@@ -858,10 +858,9 @@ SearchXattr {
 **Returns**
 
 ```text
-SearchResponse {
+SearchResults {
   hits: SearchHit[]              // At most limit hits.
   partial: bool                 // Whether bounded evaluation stopped before finishing.
-  view: ReadView
 }
 
 SearchHit {
@@ -870,6 +869,9 @@ SearchHit {
   excerpt?: string              // File excerpt, at most 512 characters; absent for directories.
 }
 ```
+
+Each hit carries its read view in `object.view`. All returned attributes share the same view for
+the request; the results have no separate view.
 
 An empty or whitespace-only query searches metadata only. Nonempty text matches any normalized
 token in the selected fields, combined with OR. Content-only selection excludes directories.
