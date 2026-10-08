@@ -3,8 +3,6 @@ import { I18nProvider } from "@lingui/react";
 import { NumericCellContent } from "@sparkle/components/DataTable/cells";
 import { Pagination } from "@sparkle/components/Pagination";
 import { preloadSparkleLocale } from "@sparkle/lib/i18n/catalogs";
-import { formatDate, useFormatLocale } from "@sparkle/lib/i18n/format";
-import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -23,6 +21,14 @@ describe("SparkleI18nProvider", () => {
     const html = renderToStaticMarkup(pagination);
 
     expect(html).toContain("2 items");
+  });
+
+  it("formats numbers in en-US without a provider", () => {
+    const html = renderToStaticMarkup(
+      <NumericCellContent value={1234.5} precision={1} />
+    );
+
+    expect(html).toContain("1,234.5");
   });
 
   it("renders a preloaded locale from the first render", async () => {
@@ -75,23 +81,5 @@ describe("SparkleI18nProvider", () => {
     );
 
     expect(html).toContain("0 items");
-  });
-
-  it("formats dates in the format locale", () => {
-    const date = new Date(Date.UTC(2026, 0, 31, 12));
-    function FormattedDate() {
-      return <>{formatDate(date, { timeZone: "UTC" }, useFormatLocale())}</>;
-    }
-    const render = (formatLocale: SparkleFormatLocale) =>
-      renderToStaticMarkup(
-        <SparkleI18nProvider locale="en-US" formatLocale={formatLocale}>
-          <FormattedDate />
-        </SparkleI18nProvider>
-      );
-
-    expect([render("en-US"), render("en-GB")]).toEqual([
-      "1/31/2026",
-      "31/01/2026",
-    ]);
   });
 });

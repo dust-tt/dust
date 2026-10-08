@@ -371,7 +371,7 @@ type ChipColorType = (typeof CHIP_COLORS)[number];
 interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The number to display; `null`/`undefined` show `placeholder`. */
   value: number | null | undefined;
-  /** BCP 47 locale for digit grouping and decimals. Defaults to the `SparkleI18nProvider` format locale. */
+  /** BCP 47 locale for digit grouping and decimals. Defaults to `useFormatLocale()` (`en-US` without a `SparkleI18nProvider`). */
   locale?: string;
   /** Fixed number of fraction digits. Keep it constant within a column. */
   precision?: number;

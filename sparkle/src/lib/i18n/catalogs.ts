@@ -58,6 +58,7 @@ export async function loadSparkleI18n(
   return i18n;
 }
 
+// Returns nothing so that consumers can't get, and mutate, sparkle's `I18n` instances.
 export async function preloadSparkleLocale(
   locale: SparkleCatalogLocale
 ): Promise<void> {

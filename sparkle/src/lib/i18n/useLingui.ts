@@ -1,6 +1,9 @@
 import type { I18nContext } from "@lingui/react";
 import { sourceLocaleI18n } from "@sparkle/lib/i18n/catalogs";
-import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
+import {
+  SPARKLE_SOURCE_LOCALE,
+  type SparkleFormatLocale,
+} from "@sparkle/lib/i18n/locales";
 import { createContext, useContext } from "react";
 
 interface SparkleI18nContextValue extends I18nContext {
@@ -13,12 +16,14 @@ interface SparkleI18nContextValue extends I18nContext {
 // locale with `SparkleI18nProvider`. If it shared the consumer's `i18n` instance, sparkle's catalogs
 // and locale changes would leak into the app (and the reverse).
 //
+// Without a provider (e.g. on the marketing site), sparkle renders and formats in the source locale.
+//
 // Passing `sourceLocaleI18n.t` unbound is safe: Lingui's `I18n` constructor sets
 // `this.t = this._.bind(this)`.
 export const SparkleI18nContext = createContext<SparkleI18nContextValue>({
   i18n: sourceLocaleI18n,
   _: sourceLocaleI18n.t,
-  formatLocale: undefined,
+  formatLocale: SPARKLE_SOURCE_LOCALE,
 });
 
 export function useLingui(): SparkleI18nContextValue {
