@@ -25,6 +25,11 @@ msgstr "Archiver le Pod ?"
 msgid "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
 msgstr "Vous ne pourrez plus créer de conversations dans ce Pod, et il sera masqué dans la barre latérale. Les déclencheurs qui ciblent ce Pod seront désactivés. Les agents pourront toutefois continuer à utiliser son contenu existant. Désarchivez-le pour en rétablir l’accès."
 
+#: front/hooks/useArchivePod.tsx
+msgctxt "button label"
+msgid "Archive"
+msgstr "Archiver"
+
 #: front/hooks/useAuditLogsToggle.ts
 msgid "Failed to update the audit logs setting"
 msgstr "Impossible de mettre à jour le paramètre des journaux d’audit"
