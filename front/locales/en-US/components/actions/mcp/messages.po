@@ -179,6 +179,11 @@ msgid "Failed to save changes"
 msgstr "Failed to save changes"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header values are hidden once saved: re-enter every header value to update headers."
+msgstr "Header values are hidden once saved: re-enter every header value to update headers."
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "This action will delete the tool's existing copies"
 msgstr "This action will delete the tool's existing copies"
 

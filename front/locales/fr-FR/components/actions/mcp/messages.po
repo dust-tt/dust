@@ -179,6 +179,11 @@ msgid "Failed to save changes"
 msgstr "Impossible d’enregistrer les modifications"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header values are hidden once saved: re-enter every header value to update headers."
+msgstr "Les valeurs des en-têtes sont masquées une fois enregistrées : saisissez à nouveau chaque valeur pour mettre à jour les en-têtes."
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "This action will delete the tool's existing copies"
 msgstr "Cette action supprimera les copies existantes de l’outil"
 

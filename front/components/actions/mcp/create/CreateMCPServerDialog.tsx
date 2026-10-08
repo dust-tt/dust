@@ -599,14 +599,12 @@ export function CreateMCPServerDialog({
       setIsOpen(false);
       resetState();
     } catch (err) {
-      const e = normalizeError(err);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to add the tool`,
-        description: e.message,
+        error: err,
       });
       datadogLogger.error(
-        { workspaceId: owner.sId, err: e },
+        { workspaceId: owner.sId, err: normalizeError(err) },
         "Unexpected error in handleCreateServerAndSubmitStaticCredentials"
       );
     } finally {

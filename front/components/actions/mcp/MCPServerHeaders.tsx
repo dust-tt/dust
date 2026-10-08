@@ -1,10 +1,7 @@
 import { WebCrawlerHeaderRedactedValue } from "@app/types/connectors/webcrawler";
-import {
-  hasRedactedHeaderValue,
-  REDACTED_HEADER_VALUES_ERROR_MESSAGE,
-} from "@app/types/shared/utils/http_headers";
+import { hasRedactedHeaderValue } from "@app/types/shared/utils/http_headers";
 import { Button, Input, XClose } from "@dust-tt/sparkle";
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
 type FormWithCustomHeaders = {
@@ -35,7 +32,10 @@ export function MCPServerHeaders() {
     <div className="flex w-full flex-col">
       {hasRedactedValues && (
         <p className="mb-3 text-sm text-muted-foreground">
-          {REDACTED_HEADER_VALUES_ERROR_MESSAGE}
+          <Trans>
+            Header values are hidden once saved: re-enter every header value to
+            update headers.
+          </Trans>
         </p>
       )}
       <div className="flex flex-col gap-4">

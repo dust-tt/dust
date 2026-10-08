@@ -34,10 +34,7 @@ import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import datadogLogger from "@app/logger/datadogLogger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
-import {
-  hasRedactedHeaderValue,
-  REDACTED_HEADER_VALUES_ERROR_MESSAGE,
-} from "@app/types/shared/utils/http_headers";
+import { hasRedactedHeaderValue } from "@app/types/shared/utils/http_headers";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import { Avatar, buttonVariants, Icon, LinkExternal01 } from "@dust-tt/sparkle";
@@ -371,7 +368,7 @@ export function MCPServerDetails({
             sendNotification({
               type: "error",
               title: t`Failed to save changes`,
-              description: REDACTED_HEADER_VALUES_ERROR_MESSAGE,
+              description: t`Header values are hidden once saved: re-enter every header value to update headers.`,
             });
             success = false;
             return;
