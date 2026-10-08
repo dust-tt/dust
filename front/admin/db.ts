@@ -74,6 +74,7 @@ import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { TagModel } from "@app/lib/models/tags";
 import { WorkspaceSensitivityLabelConfigModel } from "@app/lib/models/workspace_sensitivity_label_config";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { AcademyChapterVisitModel } from "@app/lib/resources/storage/models/academy_chapter_visit";
 import { AcademyQuizAttemptModel } from "@app/lib/resources/storage/models/academy_quiz_attempt";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -156,6 +157,8 @@ import { WorkspacePlanLimitOverrideModel } from "@app/lib/resources/storage/mode
 import { WorkspaceSeatLimitModel } from "@app/lib/resources/storage/models/workspace_seat_limit";
 import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import { isDevelopment, isTest } from "@app/types/shared/env";
+import type { QueryOptions, TableName } from "sequelize";
+import { QueryTypes } from "sequelize";
 
 /**
  * Loads all Sequelize models, useful for some tests
@@ -299,12 +302,40 @@ export function loadAllModels() {
   ];
 }
 
+// `Model.sync` only reads index names from `showIndex`, but Sequelize's Postgres parser of that
+// query crashes on covering indexes (`INCLUDE (...)` columns, e.g.
+// agent_sc_te_workspace_step_content_action). List names only so sync can diff indexes.
+function patchShowIndexForCoveringIndexes() {
+  frontSequelize.getQueryInterface().showIndex = (
+    tableName: TableName,
+    options?: QueryOptions
+  ) =>
+    // oxlint-disable-next-line dust/noRawSql -- catalog query replacing Sequelize's showIndex
+    frontSequelize.query(
+      "SELECT indexname AS name FROM pg_indexes WHERE schemaname = :schema AND tablename = :table",
+      {
+        ...options,
+        type: QueryTypes.SELECT,
+        replacements: {
+          schema:
+            typeof tableName === "string"
+              ? "public"
+              : (tableName.schema ?? "public"),
+          table:
+            typeof tableName === "string" ? tableName : tableName.tableName,
+        },
+      }
+    );
+}
+
 async function main() {
   if (!isDevelopment() && !isTest()) {
     throw new Error(
       "This script should only be run in development or test mode"
     );
   }
+
+  patchShowIndexForCoveringIndexes();
 
   for (const model of loadAllModels()) {
     await model.sync({ alter: true });
