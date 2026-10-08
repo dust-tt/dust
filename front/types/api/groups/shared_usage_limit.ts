@@ -20,3 +20,16 @@ export type SharedUsageLimitWithUsage = {
 export type GetGroupsUsageResponseBody = {
   groups: SharedUsageLimitWithUsage[];
 };
+
+export type SharedUsageLimitOverlap = {
+  groupId: string;
+  name: string;
+  position: number;
+  limitAwuCredits: number;
+  poolCapAwuCredits: number | null;
+  sharedMemberCount: number | null;
+};
+
+export type GetSharedUsageLimitOverlapsResponseBody = {
+  groups: SharedUsageLimitOverlap[];
+};
