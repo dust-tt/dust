@@ -1,5 +1,6 @@
 import { getConsumptionExportScope } from "@app/lib/api/analytics/consumption/export_access";
 import { streamConsumptionExport } from "@app/lib/api/analytics/consumption/export_lines";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import logger from "@app/logger/logger";
 import { PostConsumptionExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -243,12 +244,21 @@ app.post(
     const contentType =
       format === "ndjson" ? "application/x-ndjson" : "text/csv";
     const ext = format === "ndjson" ? "ndjson" : "csv";
+    const fileName = `dust_consumption_${startDate}_${endDate}.${ext}`;
+
+    void emitAnalyticsExportedEvent(auth, {
+      exportName: "consumption_lines",
+      format,
+      fileName,
+      period: { start: startDate, end: endDate },
+      query: {
+        scope: scope.kind,
+        hasFilter: !!body.filter,
+      },
+    });
 
     ctx.header("Content-Type", contentType);
-    ctx.header(
-      "Content-Disposition",
-      `attachment; filename="dust_consumption_${startDate}_${endDate}.${ext}"`
-    );
+    ctx.header("Content-Disposition", `attachment; filename="${fileName}"`);
     return ctx.body(monitored);
   }
 );

@@ -17,7 +17,7 @@ export type AnalyticsExportName =
 
 export type AnalyticsExportParams = {
   exportName: AnalyticsExportName;
-  format: "csv" | "json";
+  format: "csv" | "json" | "ndjson";
   dataset?: string;
   fileName?: string;
   rowCount?: number;
@@ -32,8 +32,11 @@ export type AnalyticsExportParams = {
  * `personal_credit_usage`, `poke_credit_usage`, `programmatic_cost`,
  * `workspace_usage_legacy`) MUST invoke this after the downloadable payload is produced and
  * before the response returns. That includes workspace AWU/credit-usage CSV, personal
- * my-usage CSV (`front-api/routes/w/[wId]/credits/my-usage-analytics.ts`), and poke
- * credit-usage CSV (`front-api/routes/poke/workspaces/[wId]/analytics/awu-usage-analytics.ts`).
+ * my-usage CSV (`front-api/routes/w/[wId]/credits/my-usage-analytics.ts`), poke
+ * credit-usage CSV (`front-api/routes/poke/workspaces/[wId]/analytics/awu-usage-analytics.ts`),
+ * workspace consumption download (`front-api/routes/w/[wId]/analytics/consumption/export-raw.ts`),
+ * and public API consumption export
+ * (`front-api/routes/v1/w/[wId]/analytics/consumption/export.ts`).
  * Interactive in-app JSON chart/API responses (for example AWU/credit-usage `format=json` and
  * automations `format=json`) MUST NOT call it. Schedule/status-only handlers MUST NOT call it.
  */
