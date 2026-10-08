@@ -21,7 +21,7 @@ const MAX_EXTRACTED_TEXT_CHARS = 100_000;
 
 /**
  * Uploads a PDF to the Dust file API and fetches the server-extracted text.
- * Returns the file ID, path, name, and extracted text, or null on failure.
+ * Returns the path, name, and extracted text, or null on failure.
  */
 async function uploadPdf(
   workspaceId: string,
@@ -30,7 +30,6 @@ async function uploadPdf(
   mimeType: string,
   pageUrl: string
 ): Promise<{
-  fileId: string;
   path: string | null;
   fileName: string;
   extractedText: string | null;
@@ -112,7 +111,6 @@ async function uploadPdf(
     }
 
     return {
-      fileId: file.sId,
       path: uploaded.data.file.path,
       fileName,
       extractedText,
@@ -188,7 +186,7 @@ export async function takeScreenshotOrAttachFileTool({
           );
           if (data?.path) {
             // The MCP SDK strips non-standard fields from resource objects during
-            // parsing. We store Dust-specific fields (path, fileId, title, etc.) in _meta
+            // parsing. We store Dust-specific fields (path, title, etc.) in _meta
             // so they survive the MCP protocol round-trip. The server will move
             // them back to the root level in mcp_actions.ts (tryCallMCPTool).
             const resource = {
@@ -199,23 +197,6 @@ export async function takeScreenshotOrAttachFileTool({
                 path: data.path,
                 title: data.fileName,
                 contentType: mimeType,
-              },
-            };
-            results.push({ type: "resource" as const, resource });
-            continue;
-          }
-          if (data) {
-            const resource = {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: `/api/w/${workspaceId}/files/${data.fileId}`,
-              text: data.extractedText ?? `PDF from ${url}`,
-              _meta: {
-                fileId: data.fileId,
-                title: data.fileName,
-                contentType: mimeType,
-                snippet: data.extractedText
-                  ? data.extractedText.slice(0, 500)
-                  : null,
               },
             };
             results.push({ type: "resource" as const, resource });
