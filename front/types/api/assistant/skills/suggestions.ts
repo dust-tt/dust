@@ -25,22 +25,11 @@ export type GetSkillSuggestionsQuery = z.infer<
   typeof GetSkillSuggestionsQuerySchema
 >;
 
-const SuggestedSkillReferenceSchema =
-  SkillWithoutInstructionsAndToolsSchema.pick({
-    sId: true,
-    name: true,
-    icon: true,
-    requestedSpaceIds: true,
-  });
-export type SuggestedSkillReference = z.infer<
-  typeof SuggestedSkillReferenceSchema
->;
-
 export const GetSkillSuggestionsResponseBodySchema = z.object({
   suggestions: z.array(SkillSuggestionSchema),
   // Active skills referenced by the instruction edits of `suggestions`, so that accepting an edit
   // can resolve them without fetching skills.
-  referencedSkills: z.array(SuggestedSkillReferenceSchema),
+  referencedSkills: z.array(SkillWithoutInstructionsAndToolsSchema),
 });
 export type GetSkillSuggestionsResponseBody = z.infer<
   typeof GetSkillSuggestionsResponseBodySchema

@@ -88,9 +88,13 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   return ctx.json({
     suggestions: suggestions.map((s) => s.toJSON()),
     referencedSkills: referencedSkills.map((referencedSkill) => {
-      const { sId, name, icon, requestedSpaceIds } =
-        referencedSkill.toJSON(auth);
-      return { sId, name, icon, requestedSpaceIds };
+      const {
+        instructions,
+        instructionsHtml,
+        tools,
+        ...referencedSkillWithoutInstructionsAndTools
+      } = referencedSkill.toJSON(auth);
+      return referencedSkillWithoutInstructionsAndTools;
     }),
   });
 });

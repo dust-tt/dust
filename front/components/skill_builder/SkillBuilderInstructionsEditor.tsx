@@ -34,7 +34,6 @@ import {
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
-import type { SuggestedSkillReference } from "@app/types/api/assistant/skills/suggestions";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
@@ -207,7 +206,7 @@ function toAttachedKnowledge(
 }
 
 function toReferencedSkill(
-  skill: SuggestedSkillReference
+  skill: SlashCommandSkillSuggestion
 ): ReferencedSkillFormData {
   return {
     id: skill.sId,
