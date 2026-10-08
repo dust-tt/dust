@@ -28,13 +28,13 @@ service Dfs {
   rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
 
   // Requires an active session key.
-  rpc Stat(StatRequest) returns (StatBatch);
+  rpc Stat(StatRequest) returns (AttrBatch);
 
   // Requires an active session key.
-  rpc Lookup(LookupRequest) returns (LookupResponse);
+  rpc Lookup(LookupRequest) returns (AttrBatch);
 
   // Requires an active session key.
-  rpc List(ListRequest) returns (Page);
+  rpc List(ListRequest) returns (EntryPage);
 
   // Requires an active session key.
   rpc Read(ReadRequest) returns (ReadData);
@@ -185,25 +185,29 @@ message StatRequest {
   optional bool include_metadata = 2 [default = false];
 }
 
-// Each successful result carries its read view in object.view.
-message StatBatch {
-  repeated StatResult results = 1;
+// @cc [owner:spolu,label:api] dfs-attr-batch-results
+// Successful Stat and Lookup calls MUST return one result per input in input order. Each result
+// MUST contain exactly one of object or error. Missing or inaccessible objects MUST NOT prevent
+// other results. Successful results MUST carry their read view in object.view; the batch MUST NOT
+// contain a separate view. Encoded batches MUST fit 4 MiB; exceeding the budget MUST fail the RPC
+// with CAPACITY. Requested metadata MUST NOT be silently omitted from successful results.
+message AttrBatch {
+  repeated AttrResult results = 1;
 }
 
-message StatResult {
-  required ObjectRef object_id = 1;
-  optional Attr object = 2;
-  optional ErrorDetails error = 3;
+message AttrResult {
+  optional Attr object = 1;
+  optional ErrorDetails error = 2;
 }
 
 message LookupRequest {
-  required ObjectRef parent_id = 1;
-  required string name = 2;
+  repeated LookupTarget targets = 1;
+  optional bool include_metadata = 2 [default = false];
 }
 
-message LookupResponse {
-  required Attr object = 1;
-  required ReadView view = 2;
+message LookupTarget {
+  required ObjectRef parent_id = 1;
+  required string name = 2;
 }
 
 message ListRequest {
@@ -212,10 +216,9 @@ message ListRequest {
   required uint32 limit = 3;
 }
 
-message Page {
+message EntryPage {
   repeated Entry entries = 1;
   optional string next_after = 2;
-  required ReadView view = 3;
 }
 
 message Entry {
@@ -242,7 +245,6 @@ message ReadFilesRequest {
 message FilesBatch {
   repeated FileResult results = 1;
   repeated ObjectId omitted_ids = 2;
-  required ReadView view = 3;
 }
 
 message FileResult {

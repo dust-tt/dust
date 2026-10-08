@@ -73,8 +73,8 @@ parent's real ID. The stored tenant root, when accessible, also has `parent: roo
 
 Optional `metadata` contains creation time, full path, MIME type, and xattrs; absence means metadata
 was not fetched, while a present metadata object with an empty xattr map means it was fetched and no
-xattrs exist. `Stat(include_metadata=true)` populates this field. Other responses omit it unless
-explicitly specified.
+xattrs exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. Other responses
+omit it unless explicitly specified.
 
 `full_path` is required whenever extended metadata is returned. It starts with `/`, uses `/` between
 basenames, and has no trailing slash except for `/` itself. It is relative to the session's virtual
@@ -412,18 +412,19 @@ StatRequest {
 **Returns**
 
 ```text
-StatBatch {
-  results: StatResult[]          // One result per input, in the same order.
+AttrBatch {
+  results: AttrResult[]          // One result per input, in the same order.
 }
 
-StatResult {
-  object_id: ObjectRef           // The requested reference.
+AttrResult {
   object?: Attr                  // Present on success.
   error?: ErrorDetails           // Present on failure, instead of object.
 }
 ```
 
-Each successful result carries its read view in `object.view`; the batch has no separate view.
+Results correspond to inputs by position, including repeated inputs. Each successful result
+identifies the object in `object.id` and carries its read view in `object.view`; the batch has no
+separate view.
 An individual missing or inaccessible object does not prevent results for the other IDs. With
 `include_metadata=true`, each successful result populates `object.metadata`, including its
 session-specific full path, from the same FDB snapshot as its attributes. Virtual projections return
@@ -437,12 +438,17 @@ result when requested.
 
 ### Lookup
 
-Resolves one immediate child by name.
+Resolves a batch of immediate children by parent and name, optionally including extended metadata.
 
 **Arguments**
 
 ```text
 LookupRequest {
+  targets: LookupTarget[]       // From 1 to 256 parent/name pairs.
+  include_metadata?: bool       // Defaults to false; true includes ExtendedMetadata.
+}
+
+LookupTarget {
   parent_id: ObjectRef           // Real directory, virtual root, or virtual shared.
   name: string                  // Child basename, not a path.
 }
@@ -451,14 +457,15 @@ LookupRequest {
 **Returns**
 
 ```text
-LookupResponse {
-  object: Attr
-  view: ReadView
+AttrBatch {
+  results: AttrResult[]          // One result per target, in the same order.
 }
 ```
 
-A missing or inaccessible child fails with `NOT_FOUND`. For a real parent, the caller must have
-access to that directory.
+Each target is resolved independently. A missing or inaccessible child produces `NOT_FOUND` in its
+result without preventing other results. For each real parent, the caller must have access to that
+directory. Results use the same attribute/error shape, per-object read views, metadata option, and
+4 MiB response budget as `Stat`.
 
 ### List
 
@@ -477,10 +484,9 @@ ListRequest {
 **Returns**
 
 ```text
-Page {
+EntryPage {
   entries: Entry[]
   next_after?: string            // Absent when listing is complete.
-  view: ReadView
 }
 
 Entry {
@@ -497,11 +503,11 @@ Clients refresh cached pages through `List`. A directory's `Attr.content_version
 `Stat`, identifies changes to its entry names and object IDs; `Validate` can check that version and
 renew access to bindings cached at that version. An unchanged directory version does not validate
 the child attributes embedded in an old page; those require separate checks or a refetch. Each
-fetched page includes current child attributes and a `ReadView` for that request. Pages are
-independently refreshed; traversal across pages does not promise a single snapshot, and validation
-does not retroactively make independently fetched pages coherent. The same refresh behavior applies
-to real directories and virtual projections. There is no separate listing token or version
-precondition on `List`.
+fetched page includes current child attributes sharing the same `Attr.view` for that request; the
+page has no separate view. Pages are independently refreshed; traversal across pages does not promise
+a single snapshot, and validation does not retroactively make independently fetched pages coherent.
+The same refresh behavior applies to real directories and virtual projections. There is no separate
+listing token or version precondition on `List`.
 
 Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes readable
 entry points with a matching explicit ALLOW using names suffixed with `--<object-id>`, allowing
@@ -558,7 +564,6 @@ ReadFilesRequest {
 FilesBatch {
   results: FileResult[]          // Returned results preserve relative input order.
   omitted_ids: ObjectId[]        // Files excluded because they would exceed the reply budget.
-  view: ReadView
 }
 
 FileResult {
@@ -571,7 +576,8 @@ FileResult {
 
 Each input has either a result or an omitted ID. Files larger than 1 MiB receive an individual
 `CAPACITY` error. Otherwise, files that cannot fit in the 4 MiB reply budget are omitted without
-being downloaded. Attributes and contents share one FDB snapshot.
+being downloaded. Attributes and contents share one FDB snapshot. All returned attributes carry
+the same `object.view`; the batch has no separate view.
 
 ### Validate
 

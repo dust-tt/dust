@@ -203,22 +203,21 @@ changes, including DENY, MUST remain subject to the authorization freshness boun
 immediate revocation.
 
 @cc [owner:spolu,label:api] dfs-stat-results
-`Stat` MUST accept 1–256 references and return a `StatBatch` containing exactly one `StatResult` per
-input in input order. Each result MUST echo the reference and contain exactly one of `object` or
-`error`. Successful results MUST carry their read view in `object.view`; the batch MUST NOT contain
-a separate view. A missing or inaccessible object MUST NOT prevent other results. The encoded
-response MUST fit 4 MiB; metadata that would exceed the budget MUST fail the RPC with `CAPACITY`,
-allowing a retry with fewer IDs, and MUST NOT be silently omitted from a successful result.
+`Stat` MUST accept 1–256 references and return an `AttrBatch`. Results MUST correspond to inputs by
+position, including repeated references; successful results MUST identify the object in `Attr.id`.
 
 @cc [owner:spolu,label:api;backend] dfs-stat-metadata
-`Stat(include_metadata=true)` MUST populate each successful object's extended metadata, including
-full path, from the same FDB snapshot as its attributes. False or omitted MUST omit metadata while
-leaving it covered by `attr_version`. Virtual metadata MUST use `inode/directory`, an empty xattr
-map, `created=0`, and `/` or `/shared` as appropriate.
+`Stat` and `Lookup` with `include_metadata=true` MUST populate each successful object's extended
+metadata, including full path, from the same FDB snapshot as its attributes. False or omitted MUST
+omit metadata while leaving it covered by `attr_version`. Virtual metadata MUST use
+`inode/directory`, an empty xattr map, `created=0`, and `/` or `/shared` as appropriate.
 
 @cc [owner:spolu,label:api;security] dfs-lookup
-`Lookup` MUST resolve one immediate child basename, not a path. A missing or inaccessible child MUST
-fail with `NOT_FOUND`. A real parent MUST be accessible to the caller.
+`Lookup` MUST accept 1–256 parent/name pairs and return an `AttrBatch` with exactly one result per
+pair in input order. Each name MUST be an immediate child basename, not a path. A missing or
+inaccessible child MUST produce a per-result `NOT_FOUND` without preventing other results. Each real
+parent MUST be accessible to the caller. Results MUST obey the same attribute/error shape, per-object
+read views, metadata rules, and 4 MiB response budget as `Stat`.
 
 @cc [owner:spolu,label:api] dfs-list-pagination
 `List` MUST return immediate children with current attributes, obey a required limit of 1–4,096
@@ -230,9 +229,10 @@ page. Ordinary directories MUST be ordered by basename; shared MUST use object-I
 Clients MUST refresh pages through `List`, without a separate listing token or version precondition.
 A directory content version obtained through `Stat` and checked through `Validate` MAY renew access
 to bindings cached at that version, but MUST NOT validate cached child attributes or contents. Those
-MUST be checked separately or refetched. Every page MUST carry its request's `ReadView`; independent
-pages MUST NOT promise one snapshot, even after validation. These rules MUST apply to real and
-virtual directories alike.
+MUST be checked separately or refetched. All attributes returned in an `EntryPage` MUST carry the
+same `Attr.view` for that request; the page MUST NOT contain a separate view. Independent pages MUST
+NOT promise one snapshot, even after validation. These rules MUST apply to real and virtual
+directories alike.
 
 @cc [owner:spolu,label:api;security] dfs-virtual-listings
 Virtual root MUST expose visible top-level entries plus shared. Virtual shared MUST expose readable
@@ -257,8 +257,9 @@ changes MUST NOT fail this precondition; returned attributes MUST reflect the cu
 `ReadFiles` MUST accept 1–256 real IDs and account for each input with either a result or an omitted
 ID. Results MUST preserve relative input order. Success MUST include attributes and whole-file data,
 including present empty bytes for an empty file, with no error; failure MUST contain an error
-instead of attributes/data. Attributes and contents MUST share one FDB snapshot. Files over 1 MiB
-MUST receive individual `CAPACITY` errors; other files that cannot fit the 4 MiB reply MUST be
+instead of attributes/data. Attributes and contents MUST share one FDB snapshot. All returned
+attributes MUST carry the same `Attr.view`; the batch MUST NOT contain a separate view. Files over
+1 MiB MUST receive individual `CAPACITY` errors; other files that cannot fit the 4 MiB reply MUST be
 omitted without being downloaded.
 
 @cc [owner:spolu,label:api] dfs-validate-input

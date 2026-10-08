@@ -174,6 +174,51 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
 }
 
 #[test]
+fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()> {
+    let request = rpc::LookupRequest {
+        targets: vec![
+            rpc::LookupTarget {
+                parent_id: ObjectRef::Root,
+                name: "shared".into(),
+            },
+            rpc::LookupTarget {
+                parent_id: ObjectRef::Object(ID.parse()?),
+                name: "missing".into(),
+            },
+        ],
+        include_metadata: None,
+    };
+    assert_eq!(
+        rpc::LookupRequest::decode(request.encode_to_vec().as_slice())?,
+        request
+    );
+    let response: rpc::AttrBatch = serde_json::from_value(json!({
+        "results": [
+            {"object": {
+                "id": ObjectRef::Shared,
+                "parent": ObjectRef::Root,
+                "directory": true,
+                "size": 0,
+                "mode": 0o500,
+                "attr_version": 1,
+                "content_version": 1,
+                "view": {"store_version": 123, "auth_version": 120}
+            }},
+            {"error": {"code": rpc::ErrorCode::NotFound as i32}}
+        ]
+    }))?;
+    assert_eq!(
+        rpc::AttrBatch::decode(response.encode_to_vec().as_slice())?,
+        response
+    );
+    assert_eq!(
+        serde_json::from_value::<rpc::AttrBatch>(serde_json::to_value(&response)?)?,
+        response
+    );
+    Ok(())
+}
+
+#[test]
 fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
     let parent_id = ObjectId::new_v7();
     let request: rpc::ApplyRequest = serde_json::from_value(json!({
