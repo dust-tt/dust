@@ -1,5 +1,6 @@
 export { default as AdomikLogo } from "./Adomik";
 export { default as Ai21Logo } from "./Ai21";
+export { default as AirbyteLogo } from "./Airbyte";
 export { default as AirtableLogo } from "./Airtable";
 export { default as AmplitudeLogo } from "./Amplitude";
 export { default as AnthropicLogo } from "./Anthropic";

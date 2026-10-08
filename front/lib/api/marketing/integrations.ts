@@ -180,6 +180,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   "superhuman docs (coda)": "productivity",
   pandadoc: "productivity",
   "pandadoc (europe)": "productivity",
+  airbyte: "data",
 };
 
 // Category mapping for connectors

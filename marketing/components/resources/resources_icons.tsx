@@ -2,6 +2,7 @@ import type { Avatar, Icon } from "@dust-tt/sparkle";
 import {
   ActionFrame,
   ActionIcons,
+  AirbyteLogo,
   AmplitudeLogo,
   Announcement01,
   ApifyLogo,
@@ -164,6 +165,7 @@ export const InternalActionIcons = {
   ActionSpeakIcon: MessageSmileCircle,
   ActionTableIcon: Table,
   ActionTimeIcon: Clock,
+  AirbyteLogo,
   AmplitudeLogo,
   ApifyLogo,
   AsanaLogo,
