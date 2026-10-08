@@ -25,6 +25,7 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { isJobType } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
 import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -38,10 +39,7 @@ import type {
   UserType,
 } from "@app/types/user";
 import type { UserProfileType } from "@app/types/user_profile";
-import {
-  USER_JOB_TITLE_METADATA_KEY,
-  USER_PRONOUNS_METADATA_KEY,
-} from "@app/types/user_profile";
+import { USER_PRONOUNS_METADATA_KEY } from "@app/types/user_profile";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import chunk from "lodash/chunk";
 import escape from "lodash/escape";
@@ -814,32 +812,29 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async getProfile(): Promise<UserProfileType> {
-    const [pronouns, jobTitle] = await Promise.all([
+    const [pronouns, jobType] = await Promise.all([
       this.getMetadata(USER_PRONOUNS_METADATA_KEY),
-      this.getMetadata(USER_JOB_TITLE_METADATA_KEY),
+      this.getMetadata("job_type"),
     ]);
     return {
       pronouns: pronouns?.value ?? null,
-      jobTitle: jobTitle?.value ?? null,
+      jobType: isJobType(jobType?.value) ? jobType.value : null,
     };
   }
 
   /**
-   * @cc [owner:aubin-tchoi,label:product;backend] update-profile-partial
-   * Fields set to `undefined` MUST be left unchanged, and fields set to `null` MUST be cleared.
-   * Values are stored as global user metadata, shared across all workspaces of the user.
+   * @cc [owner:aubin-tchoi,label:product;backend] update-pronouns
+   * Pronouns are stored as global user metadata, shared across all workspaces of the user;
+   * `null` MUST clear them.
    */
-  async updateProfile(profile: Partial<UserProfileType>): Promise<void> {
-    const entries: [string, string | null | undefined][] = [
-      [USER_PRONOUNS_METADATA_KEY, profile.pronouns],
-      [USER_JOB_TITLE_METADATA_KEY, profile.jobTitle],
-    ];
-    for (const [key, value] of entries) {
-      if (value === null) {
-        await this.deleteMetadata({ key, workspaceId: null });
-      } else if (value !== undefined) {
-        await this.setMetadata(key, value);
-      }
+  async updatePronouns(pronouns: string | null): Promise<void> {
+    if (pronouns === null) {
+      await this.deleteMetadata({
+        key: USER_PRONOUNS_METADATA_KEY,
+        workspaceId: null,
+      });
+    } else {
+      await this.setMetadata(USER_PRONOUNS_METADATA_KEY, pronouns);
     }
   }
 
