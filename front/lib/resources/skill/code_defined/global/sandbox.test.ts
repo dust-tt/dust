@@ -49,6 +49,23 @@ describe("sandboxSkill", () => {
     expect(instructions).toContain("Never use `dsbx frame`");
   });
 
+  it("tells agents to edit open Markdown documents with the edit tools only under co_edition", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const exception = "Markdown documents are the exception";
+
+    const without = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+    expect(without).not.toContain(exception);
+
+    await FeatureFlagFactory.basic(auth, "co_edition");
+    const withCoEdition = await sandboxSkill.fetchInstructions(auth, {
+      spaceIds: [],
+    });
+    expect(withCoEdition).toContain(exception);
+    expect(withCoEdition).toContain("`files__edit`");
+  });
+
   it("allows the Frames CLI without Frame function guidance under Frames v2 alone", async () => {
     const { authenticator: auth } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "frames_v2");

@@ -4,7 +4,12 @@ import type {
   ToolHandlerExtra,
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CREATE_CONTENT_MAX_BYTES,
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import {
   getDustFileSystemForAgentLoop,
   requireAgentLoopConversation,
@@ -12,15 +17,23 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { fetchLiveSource } from "@app/lib/api/collab/live_source";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
   isInteractiveContentType,
+  isMarkdownContentType,
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] files-create-live-markdown
+ * An existing Markdown file a live session holds MUST NOT be overwritten: the call MUST be refused,
+ * pointing to the files edit tool, and a collab server failure MUST refuse it too.
+ */
 export async function createHandler(
   {
     path,
@@ -58,6 +71,36 @@ export async function createHandler(
       isFrameSourceOverwrite = true;
       // Keep the frame content type on the mount so the file stays recognized as a Frame.
       writeContentType = statResult.value.contentType;
+    }
+  }
+
+  // Overwriting a Markdown document open in a live session would skip the people editing it, and
+  // the session's next checkpoint would conflict with the file.
+  if (
+    statResult.isOk() &&
+    statResult.value !== null &&
+    isMarkdownContentType(stripMimeParameters(statResult.value.contentType))
+  ) {
+    const live = await fetchLiveSource(
+      auth,
+      // Without a trailing slash, which names the same file.
+      (DustFileSystem.normalizeScopedPath(path) ?? path).replace(/\/$/, "")
+    );
+    if (live.isErr()) {
+      return new Err(
+        new MCPError(live.error.message, {
+          tracked: live.error.code === "unavailable",
+        })
+      );
+    }
+    if (live.value.open) {
+      return new Err(
+        new MCPError(
+          `\`${path}\` is open in the document editor and cannot be overwritten. Change it with ` +
+            `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\` instead.`,
+          { tracked: false }
+        )
+      );
     }
   }
 
