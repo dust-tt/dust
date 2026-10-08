@@ -15,7 +15,7 @@ export type LLMAttemptOutcome = "success" | "error" | "success_without_usage";
 export type LLMAttemptOutcomeTelemetry =
   | {
       outcome: "error";
-      errorType: LLMErrorType;
+      errorType: LLMErrorType | "flex_unavailable";
       errorSource: ErrorSource;
     }
   | {

@@ -256,6 +256,11 @@ export abstract class LLM<
    * `flex_unavailable` errors MUST be logged at warning level while retaining their error events
    * and attempt telemetry for retries and diagnostics.
    */
+  /**
+   * @cc [owner:philipperolet,label:logging] flex-unavailable-telemetry-type
+   * `flex_unavailable` SDK errors MUST use `flex_unavailable` as their error type in attempt
+   * metrics and top-level logs. Other errors MUST retain their existing LLM error type.
+   */
   private async *streamWithTracing(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
@@ -410,7 +415,12 @@ export abstract class LLM<
         });
 
         if (currentEvent.type === "error") {
-          const errorType = currentEvent.content.type;
+          const isFlexUnavailable = isFlexUnavailableError(
+            currentEvent.content.originalError
+          );
+          const errorType = isFlexUnavailable
+            ? "flex_unavailable"
+            : currentEvent.content.type;
           const errorSource = currentEvent.content.errorSource;
 
           this.emitStreamAttemptTelemetry({
@@ -429,11 +439,7 @@ export abstract class LLM<
             ],
           });
 
-          logger[
-            isFlexUnavailableError(currentEvent.content.originalError)
-              ? "warn"
-              : "error"
-          ](
+          logger[isFlexUnavailable ? "warn" : "error"](
             {
               llmEventType: "error",
               router: this.router,
