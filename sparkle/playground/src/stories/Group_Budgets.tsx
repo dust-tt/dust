@@ -2,15 +2,14 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpRight,
-  Avatar,
   BarChart01,
   Button,
-  CheckboxWithText,
   Chip,
   Clock,
   CoinsStacked01,
   ContentMessage,
   CreditCard01,
+  DataTable,
   Cube01,
   Dialog,
   DialogContainer,
@@ -19,6 +18,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
   InfoCircle,
   Input,
   NavigationList,
@@ -26,7 +29,9 @@ import {
   NavigationListLabel,
   Notification,
   Plus,
+  ProgressBar,
   PuzzlePiece01,
+  SearchInput,
   ShieldTick,
   Tabs,
   TabsContent,
@@ -37,6 +42,7 @@ import {
   Users01,
   useSendNotification,
 } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
 // Credit rules per group, edited in one modal with two tabs (Figma 153:7731):
@@ -61,7 +67,32 @@ interface Group {
   memberLimit: number | null;
   // Credits the group's members already spent this cycle.
   used: number;
+  // Highest model tier the group's members can use, or "none" to inherit the
+  // workspace setting.
+  modelTier: ModelTier;
 }
+
+// Same options as front's group picker (getGroupModelTierOptions).
+type ModelTier = "none" | "cost_efficient" | "balanced" | "premium" | "ultra";
+const MODEL_TIER_OPTIONS: {
+  value: ModelTier;
+  label: string;
+  description?: string;
+}[] = [
+  { value: "none", label: "Inherited from workspace" },
+  { value: "cost_efficient", label: "Up to Basic" },
+  { value: "balanced", label: "Up to Standard", description: "Includes Basic" },
+  {
+    value: "premium",
+    label: "Up to Premium",
+    description: "Includes Basic and Standard",
+  },
+  {
+    value: "ultra",
+    label: "Up to Ultra",
+    description: "Includes Basic, Standard, and Premium",
+  },
+];
 
 // Mock workspace: 25 groups, 100 users. Group counts per user:
 // 60 users in 1 group, 25 in 2, 6 in 3, 3 in 4, 3 in 5, 2 in 6, 1 in 10
@@ -103,6 +134,13 @@ const BUDGETS: Record<string, { budget: number; used: number }> = {
   Sales: { budget: 80, used: 71 },
   Product: { budget: 50, used: 18 },
   Contractors: { budget: 20, used: 16 },
+};
+
+const MODEL_TIERS_BY_GROUP: Record<string, string> = {
+  Engineering: "ultra",
+  Research: "premium",
+  Contractors: "cost_efficient",
+  Support: "balanced",
 };
 
 const FIRST_NAMES = [
@@ -190,6 +228,7 @@ function buildWorkspace(): Group[] {
     members: members[i],
     budget: BUDGETS[name]?.budget ?? null,
     memberLimit: i % 4 === 3 ? null : 200,
+    modelTier: (MODEL_TIERS_BY_GROUP[name] ?? "none") as ModelTier,
     used: BUDGETS[name]?.used ?? Math.round(rand() * 40),
   }));
   const ranked = Object.keys(BUDGETS).map((n) =>
@@ -206,12 +245,6 @@ function sharedMembers(a: Group, b: Group) {
 
 function plural(n: number, one: string, many: string) {
   return `${n} ${n === 1 ? one : many}`;
-}
-
-function ordinal(n: number) {
-  const s = ["th", "st", "nd", "rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 // Groups with a budget first (ranked, in this order), then the others.
@@ -274,6 +307,7 @@ function CreditsPage() {
   // Array order = budget priority (groups with a budget first).
   const [groups, setGroups] = useState<Group[]>(INITIAL_GROUPS);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const editing = groups.find((g) => g.id === editingId) ?? null;
 
@@ -333,14 +367,30 @@ function CreditsPage() {
           </TabsList>
         </Tabs>
 
+        {/* Same pattern as the Members tab in front (UsageMembersSection). */}
+        <SearchInput
+          name="search"
+          placeholder="Search groups"
+          value={search}
+          onChange={setSearch}
+          className="w-full"
+        />
+
         <p className="copy-sm text-muted-foreground">
-          A limit per member caps what each member can spend. A group budget
-          caps what a group's members spend together. When someone is in several
-          groups, their highest limit per member applies, along with the budget
-          of their highest-priority group.
+          A group budget caps what a group's members spend together. A limit per
+          member caps each member, unless they have a personal limit.
         </p>
 
-        <GroupsTable groups={groups} onOpen={setEditingId} />
+        <GroupsTable
+          groups={groups}
+          search={search}
+          onOpen={setEditingId}
+          onModelTierChange={(groupId, modelTier) =>
+            setGroups((gs) =>
+              gs.map((g) => (g.id === groupId ? { ...g, modelTier } : g))
+            )
+          }
+        />
       </div>
 
       <SpendRulesDialog
@@ -375,24 +425,115 @@ function StatCard({
 // Groups table: read-only
 // ---------------------------------------------------------------------------
 
+const formatCredits = (n: number) =>
+  n.toLocaleString(undefined, { maximumFractionDigits: 1 });
+
+// Same bar as the Members tab's "Pool usage" column in front
+// (PoolCreditUsageBar in MembersUsageTable.tsx): used on the left, max on the
+// right, muted fill, amber at the limit, red over it.
+function GroupBudgetBar({ used, budget }: { used: number; budget: number }) {
+  const isOver = used > budget;
+  const isAt = budget > 0 && used === budget;
+  const percentage =
+    budget > 0 ? Math.min(100, (used / budget) * 100) : used > 0 ? 100 : 0;
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex justify-between text-xs tabular-nums text-foreground">
+        <span>{formatCredits(used)}</span>
+        <span>{formatCredits(budget)}</span>
+      </div>
+      <div className="flex h-3 w-full items-center">
+        <ProgressBar
+          aria-label="Group budget usage"
+          aria-valuenow={percentage}
+          aria-valuetext={`${formatCredits(used)} of ${formatCredits(budget)} credits used`}
+          className="h-1 w-full gap-px"
+          variant="transparent"
+          values={[
+            {
+              value: percentage,
+              className: isOver
+                ? "bg-red-500"
+                : isAt
+                  ? "bg-warning-500"
+                  : "bg-muted-foreground",
+            },
+            { value: 100 - percentage, className: "bg-muted-background" },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Same menu as front's ModelTierPickerDropdown, with a ghost trigger.
+function ModelTierPicker({
+  value,
+  onChange,
+}: {
+  value: ModelTier;
+  onChange: (tier: ModelTier) => void;
+}) {
+  const selected = MODEL_TIER_OPTIONS.find((o) => o.value === value)!;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost-secondary"
+          size="sm"
+          isSelect
+          label={selected.label}
+          className="min-w-48 justify-between"
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width)">
+        {MODEL_TIER_OPTIONS.map((option) => (
+          <DropdownMenuCheckboxItem
+            key={option.value}
+            label={option.label}
+            description={option.description}
+            checked={value === option.value}
+            onCheckedChange={(checked) => {
+              if (checked) {
+                onChange(option.value);
+              }
+            }}
+            onSelect={(event) => event.preventDefault()}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 function GroupsTable({
   groups,
+  search,
   onOpen,
+  onModelTierChange,
 }: {
   groups: Group[];
+  search: string;
   onOpen: (id: string) => void;
+  onModelTierChange: (groupId: string, modelTier: ModelTier) => void;
 }) {
   const rankedCount = groups.filter((g) => g.budget !== null).length;
-  const th = "heading-xs py-2 px-2 text-left text-foreground";
+  // Ranks come from the full list, so filtering never renumbers groups.
+  const rows = groups
+    .map((g, i) => ({ g, rank: i < rankedCount ? i + 1 : null }))
+    .filter(({ g }) =>
+      g.name.toLowerCase().includes(search.trim().toLowerCase())
+    );
+  const th = "heading-xs whitespace-nowrap py-2 px-2 text-left text-foreground";
   return (
     <table className="w-full table-fixed">
       <thead>
         <tr className="border-b border-border">
-          <th className={`${th} w-12`}>#</th>
-          <th className={`${th} w-[22%]`}>Group</th>
-          <th className={`${th} w-[18%]`}>Group budget</th>
+          <th className={`${th} w-12`} aria-label="Order" />
+          <th className={`${th} w-[19%]`}>Group</th>
+          <th className={`${th} w-[25%]`}>Group budget</th>
           <th className={`${th} w-[11%]`}>Members</th>
-          <th className={`${th} w-[18%]`}>Limit per member</th>
+          <th className={`${th} w-[15%]`}>Limit per member</th>
           <th className={th}>
             <span className="flex items-center gap-1">
               Models tier
@@ -402,7 +543,17 @@ function GroupsTable({
         </tr>
       </thead>
       <tbody>
-        {groups.map((g, i) => (
+        {rows.length === 0 && (
+          <tr>
+            <td
+              colSpan={6}
+              className="copy-sm px-2 py-8 text-center text-muted-foreground"
+            >
+              No groups match "{search.trim()}".
+            </td>
+          </tr>
+        )}
+        {rows.map(({ g, rank }) => (
           <tr
             key={g.id}
             data-group-row={g.id}
@@ -410,7 +561,7 @@ function GroupsTable({
             className="cursor-pointer border-b border-border hover:bg-muted-background"
           >
             <td className="copy-sm px-2 py-3 font-medium tabular-nums text-muted-foreground">
-              {i < rankedCount ? i + 1 : ""}
+              {rank ?? ""}
             </td>
             <td className="px-2 py-3">
               <span className="copy-sm flex items-center gap-2 font-medium text-foreground">
@@ -418,16 +569,13 @@ function GroupsTable({
                 {g.name}
               </span>
             </td>
-            <td className="copy-sm px-2 py-3 tabular-nums text-foreground">
+            <td className="copy-sm px-2 py-3 text-foreground">
               {g.budget === null ? (
                 "-"
               ) : (
-                <span>
-                  {g.used}{" "}
-                  <span className="text-muted-foreground">
-                    / {g.budget} credits
-                  </span>
-                </span>
+                <div className="w-full pr-10">
+                  <GroupBudgetBar used={g.used} budget={g.budget} />
+                </div>
               )}
             </td>
             <td className="copy-sm px-2 py-3 text-foreground">
@@ -437,11 +585,9 @@ function GroupsTable({
               {g.memberLimit === null ? "-" : `${g.memberLimit} credits`}
             </td>
             <td className="px-2 py-2" onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="ghost-secondary"
-                size="sm"
-                isSelect
-                label="Inherited from workspace"
+              <ModelTierPicker
+                value={g.modelTier}
+                onChange={(tier) => onModelTierChange(g.id, tier)}
               />
             </td>
           </tr>
@@ -457,22 +603,6 @@ function GroupsTable({
 
 const toDraft = (n: number | null) => (n === null ? "" : String(n));
 const fromDraft = (s: string) => (s === "" ? null : Number(s));
-
-function GripIcon() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 16 16"
-      fill="currentColor"
-      aria-hidden
-    >
-      {[4, 8, 12].map((y) =>
-        [6, 10].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.2" />)
-      )}
-    </svg>
-  );
-}
 
 function RuleField({
   label,
@@ -537,15 +667,6 @@ function SpendRulesDialog({
   // budget change on this group, which is applied on top).
   const [order, setOrder] = useState<string[]>([]);
   const [onlyShared, setOnlyShared] = useState(true);
-  // Group card to point at when arriving on Priority from a chip.
-  const [focusId, setFocusId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!focusId) {
-      return;
-    }
-    const t = window.setTimeout(() => setFocusId(null), 2400);
-    return () => window.clearTimeout(t);
-  }, [focusId]);
 
   useEffect(() => {
     setTab("limits");
@@ -585,7 +706,11 @@ function SpendRulesDialog({
     draftLimit !== group.memberLimit ||
     orderChanged;
 
-  const draftGroup: Group = { ...group, budget: draftBudget };
+  const draftGroup: Group = {
+    ...group,
+    budget: draftBudget,
+    memberLimit: draftLimit,
+  };
   const byId = new Map(
     groups.map((g) => [g.id, g.id === group.id ? draftGroup : g])
   );
@@ -608,12 +733,13 @@ function SpendRulesDialog({
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent size="lg" height="lg">
+      <DialogContent size="xl">
         <DialogHeader>
           <DialogTitle>Edit credit rules for {group.name}</DialogTitle>
           <DialogDescription>
-            Set how many credits {group.name} can spend each month, and which
-            budget applies to members in several groups.
+            Set {group.name}
+            {group.name.endsWith("s") ? "'" : "'s"} monthly budget and the order
+            in which group budgets apply.
           </DialogDescription>
         </DialogHeader>
         <Tabs
@@ -626,37 +752,45 @@ function SpendRulesDialog({
           <div className="flex-none px-5 pt-4">
             <TabsList>
               <TabsTrigger value="limits" label="Limits" />
-              <TabsTrigger value="priority" label="Priority" />
+              <TabsTrigger value="priority" label="Order" />
             </TabsList>
           </div>
           <DialogContainer>
-            <TabsContent value="limits" className="block pt-1">
-              <LimitsTab
-                group={group}
-                groups={groups}
-                budget={budget}
-                setBudget={setBudget}
-                memberLimit={memberLimit}
-                setMemberLimit={setMemberLimit}
-                draftBudget={draftBudget}
-                ranked={ranked}
-                onOpenPriority={(id) => {
-                  setFocusId(id);
-                  setTab("priority");
-                }}
-              />
-            </TabsContent>
-            <TabsContent value="priority" className="block pt-1">
-              <PriorityTab
-                group={draftGroup}
-                ranked={ranked}
-                isRanked={draftBudget !== null}
-                onlyShared={onlyShared}
-                setOnlyShared={setOnlyShared}
-                onMove={moveVisible}
-                focusId={focusId}
-              />
-            </TabsContent>
+            {/* Both tabs share one grid cell and stay mounted, so the modal keeps
+                the height of the taller one when switching. */}
+            <div className="grid">
+              <TabsContent
+                value="limits"
+                forceMount
+                className="col-start-1 row-start-1 block pt-1 data-[state=inactive]:invisible"
+              >
+                <LimitsTab
+                  group={group}
+                  groups={groups}
+                  budget={budget}
+                  setBudget={setBudget}
+                  memberLimit={memberLimit}
+                  setMemberLimit={setMemberLimit}
+                  draftBudget={draftBudget}
+                  ranked={ranked}
+                  onReviewOrder={() => setTab("priority")}
+                />
+              </TabsContent>
+              <TabsContent
+                value="priority"
+                forceMount
+                className="col-start-1 row-start-1 block pt-1 data-[state=inactive]:invisible"
+              >
+                <PriorityTab
+                  group={draftGroup}
+                  ranked={ranked}
+                  isRanked={draftBudget !== null}
+                  onlyShared={onlyShared}
+                  setOnlyShared={setOnlyShared}
+                  onMove={moveVisible}
+                />
+              </TabsContent>
+            </div>
           </DialogContainer>
         </Tabs>
         <DialogFooter
@@ -695,12 +829,12 @@ function LimitsTab({
   setMemberLimit,
   draftBudget,
   ranked,
-  onOpenPriority,
+  onReviewOrder,
 }: {
   group: Group;
   groups: Group[];
   ranked: Group[];
-  onOpenPriority: (groupId: string) => void;
+  onReviewOrder: () => void;
   budget: string;
   setBudget: (v: string) => void;
   memberLimit: string;
@@ -720,7 +854,6 @@ function LimitsTab({
       shared: sharedMembers(group, o),
     }))
     .filter((o) => o.shared.length > 0);
-  const sharedPeople = [...new Set(higher.flatMap((o) => o.shared))];
 
   return (
     <div className="flex flex-col gap-6">
@@ -734,7 +867,7 @@ function LimitsTab({
             ? `Members have already used ${group.used} credits this cycle, so they'll be blocked until the next one. Set a higher budget to avoid this.`
             : `Shared by all members. ${group.used} credits used so far this cycle.`
         }
-        messageStatus={blocksNow ? "error" : "info"}
+        messageStatus={blocksNow ? "error" : "default"}
       />
       <RuleField
         label="Limit per member"
@@ -745,52 +878,23 @@ function LimitsTab({
         messageStatus="default"
       />
 
-      <div className="flex flex-col gap-3 border-t border-border pt-5">
-        <div className="flex flex-col gap-1">
-          <span className="heading-sm text-foreground">
-            {higher.length === 0
-              ? `No higher-priority group shares members with ${group.name}`
-              : `${higher.length} higher-priority ${higher.length === 1 ? "group shares" : "groups share"} members with ${group.name}`}
+      {higher.length > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-highlight-100 bg-highlight-50 px-4 py-3 dark:border-highlight-100-night dark:bg-highlight-50-night">
+          <span className="copy-sm min-w-0 flex-1 text-highlight-800">
+            {group.name} shares members with{" "}
+            {plural(higher.length, "group", "groups")} whose budget applies
+            first.
           </span>
-          {higher.length === 0 && (
-            <span className="copy-xs text-muted-foreground">
-              All of {group.name}'s members use this budget.
-            </span>
-          )}
+          {/* Same placement as a ContentMessage action. */}
+          <Button
+            variant="ghost"
+            size="xs"
+            label="Review"
+            className="shrink-0"
+            onClick={onReviewOrder}
+          />
         </div>
-        {higher.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {higher.map((o) => (
-              <Chip
-                key={o.group.id}
-                size="xs"
-                color="highlight"
-                label={`${o.rank}. ${o.group.name} · ${plural(o.shared.length, "member", "members")}`}
-                onClick={() => onOpenPriority(o.group.id)}
-              />
-            ))}
-          </div>
-        )}
-        {sharedPeople.length > 0 && (
-          <div className="flex items-center gap-2">
-            <Avatar.Stack
-              size="sm"
-              nbVisibleItems={8}
-              hasMagnifier={false}
-              avatars={sharedPeople.map((name) => ({
-                name,
-                isRounded: true,
-              }))}
-            />
-            <span className="copy-xs truncate text-muted-foreground">
-              {plural(sharedPeople.length, "member", "members")}:{" "}
-              {sharedPeople.slice(0, 3).join(", ")}
-              {sharedPeople.length > 3 &&
-                ` and ${sharedPeople.length - 3} more`}
-            </span>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
@@ -799,6 +903,124 @@ function LimitsTab({
 // Tab 2: Priority
 // ---------------------------------------------------------------------------
 
+// Extends DataTable's base row shape (rows are not clickable here).
+interface OrderRow {
+  onClick?: () => void;
+  id: string;
+  rank: number;
+  name: string;
+  isMe: boolean;
+  budget: number | null;
+  memberLimit: number | null;
+  shared: number | null;
+  index: number;
+}
+
+function orderColumns(
+  visibleIds: string[],
+  count: number,
+  onMove: (visibleIds: string[], from: number, to: number) => void
+): ColumnDef<OrderRow>[] {
+  return [
+    {
+      id: "rank",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-8" },
+      cell: ({ row }) => (
+        <DataTable.BasicCellContent
+          label={String(row.original.rank)}
+          className="text-muted-foreground"
+        />
+      ),
+    },
+    {
+      id: "name",
+      header: "Group",
+      enableSorting: false,
+      cell: ({ row }) => (
+        <DataTable.CellContent>
+          <span className="flex items-center gap-2">
+            {row.original.name}
+            {row.original.isMe && (
+              <Chip size="mini" color="highlight" label="This group" />
+            )}
+          </span>
+        </DataTable.CellContent>
+      ),
+    },
+    {
+      id: "budget",
+      header: "Group budget",
+      enableSorting: false,
+      meta: { className: "w-32" },
+      cell: ({ row }) => (
+        <DataTable.BasicCellContent label={`${row.original.budget} credits`} />
+      ),
+    },
+    {
+      id: "memberLimit",
+      header: "Limit per member",
+      enableSorting: false,
+      meta: { className: "w-36" },
+      cell: ({ row }) => (
+        <DataTable.BasicCellContent
+          label={
+            row.original.memberLimit === null
+              ? "-"
+              : `${row.original.memberLimit} credits`
+          }
+        />
+      ),
+    },
+    {
+      id: "shared",
+      header: "Shared members",
+      enableSorting: false,
+      meta: { className: "w-36" },
+      cell: ({ row }) => (
+        <DataTable.BasicCellContent
+          label={
+            row.original.shared === null ? "-" : String(row.original.shared)
+          }
+        />
+      ),
+    },
+    {
+      id: "move",
+      header: "",
+      enableSorting: false,
+      meta: { className: "w-16" },
+      cell: ({ row }) => (
+        <DataTable.CellContent>
+          <div className="flex">
+            <Button
+              variant="ghost-secondary"
+              size="xs"
+              icon={ArrowUp}
+              tooltip="Move up"
+              disabled={row.original.index === 0}
+              onClick={() =>
+                onMove(visibleIds, row.original.index, row.original.index - 1)
+              }
+            />
+            <Button
+              variant="ghost-secondary"
+              size="xs"
+              icon={ArrowDown}
+              tooltip="Move down"
+              disabled={row.original.index === count - 1}
+              onClick={() =>
+                onMove(visibleIds, row.original.index, row.original.index + 1)
+              }
+            />
+          </div>
+        </DataTable.CellContent>
+      ),
+    },
+  ];
+}
+
 function PriorityTab({
   group,
   ranked,
@@ -806,41 +1028,43 @@ function PriorityTab({
   onlyShared,
   setOnlyShared,
   onMove,
-  focusId,
 }: {
   group: Group;
   ranked: Group[];
-  focusId: string | null;
   isRanked: boolean;
   onlyShared: boolean;
   setOnlyShared: (v: boolean) => void;
   onMove: (visibleIds: string[], from: number, to: number) => void;
 }) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-
   const visible = ranked.filter(
     (g) =>
       !onlyShared || g.id === group.id || sharedMembers(group, g).length > 0
   );
   const visibleIds = visible.map((g) => g.id);
-  const endDrag = () => {
-    setDragIndex(null);
-    setOverIndex(null);
-  };
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="copy-sm text-muted-foreground">
-        When someone is in several of these groups, the highest group's budget
-        applies. Drag groups to reorder them.
-      </p>
       <div className="flex items-center justify-between">
-        <CheckboxWithText
-          text={`Only show groups that share members with ${group.name}`}
-          checked={onlyShared}
-          onCheckedChange={(v) => setOnlyShared(v === true)}
-        />
+        {/* Same chips as front's filter summary (FilterSummaryChips): an
+            active filter can be removed; once removed it stays as a faded
+            preset that re-applies it on click. */}
+        <Chip
+          size="xs"
+          color={onlyShared ? "highlight" : "primary"}
+          className={[
+            "max-w-full border border-dashed transition duration-200 motion-reduce:transition-none",
+            onlyShared
+              ? "border-transparent"
+              : "border-primary-300 opacity-70 hover:opacity-100",
+          ].join(" ")}
+          icon={onlyShared ? undefined : Plus}
+          onClick={onlyShared ? undefined : () => setOnlyShared(true)}
+          onRemove={onlyShared ? () => setOnlyShared(false) : undefined}
+        >
+          <span className="min-w-0 truncate text-xs font-medium">
+            Shares members with <span className="font-bold">{group.name}</span>
+          </span>
+        </Chip>
         <span className="copy-xs text-muted-foreground">
           {visible.length} of {ranked.length} groups
         </span>
@@ -848,8 +1072,8 @@ function PriorityTab({
 
       {!isRanked && (
         <ContentMessage variant="blue" size="lg" icon={InfoCircle}>
-          {group.name} isn't in this list because it has no group budget. Add
-          one in Limits to set its priority.
+          {group.name} isn't in the order because it has no group budget. Add
+          one in Limits to place it.
         </ContentMessage>
       )}
 
@@ -858,117 +1082,25 @@ function PriorityTab({
           No group with a budget shares members with {group.name}.
         </div>
       ) : (
-        <ol className="flex flex-col gap-2">
-          {visible.map((g, i) => {
-            const isMe = g.id === group.id;
-            const isFocused = focusId === g.id;
-            const shared = isMe ? 0 : sharedMembers(group, g).length;
-            const rank = ranked.indexOf(g) + 1;
-            const isDropTarget =
-              dragIndex !== null && overIndex === i && dragIndex !== i;
-            return (
-              <li
-                key={g.id}
-                ref={(el) => {
-                  if (el && isFocused) {
-                    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
-                  }
-                }}
-                onDragOver={(e) => {
-                  if (dragIndex === null) {
-                    return;
-                  }
-                  e.preventDefault();
-                  setOverIndex(i);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (dragIndex !== null) {
-                    onMove(visibleIds, dragIndex, i);
-                  }
-                  endDrag();
-                }}
-                className={[
-                  "flex items-center gap-2 rounded-xl border px-2 py-2",
-                  isMe
-                    ? "border-highlight-300 bg-highlight-50 dark:bg-highlight-50-night"
-                    : "border-border bg-background",
-                  isDropTarget || isFocused ? "ring-2 ring-highlight" : "",
-                  "transition-shadow duration-500",
-                  dragIndex === i ? "opacity-40" : "",
-                ].join(" ")}
-              >
-                <button
-                  type="button"
-                  draggable
-                  aria-label={`Reorder ${g.name}. Press the up or down arrow to move it.`}
-                  title="Drag to reorder"
-                  onDragStart={(e) => {
-                    setDragIndex(i);
-                    e.dataTransfer.effectAllowed = "move";
-                    const row = e.currentTarget.closest("li");
-                    if (row) {
-                      e.dataTransfer.setDragImage(row, 16, 20);
-                    }
-                  }}
-                  onDragEnd={endDrag}
-                  onKeyDown={(e) => {
-                    if (e.key === "ArrowUp") {
-                      e.preventDefault();
-                      onMove(visibleIds, i, i - 1);
-                    } else if (e.key === "ArrowDown") {
-                      e.preventDefault();
-                      onMove(visibleIds, i, i + 1);
-                    }
-                  }}
-                  className="flex h-7 w-7 shrink-0 cursor-grab items-center justify-center rounded-lg text-muted-foreground hover:bg-muted-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-highlight active:cursor-grabbing"
-                >
-                  <GripIcon />
-                </button>
-                <span className="copy-sm w-6 shrink-0 text-center font-medium tabular-nums text-muted-foreground">
-                  {rank}
-                </span>
-                <div className="flex min-w-0 flex-1 flex-col">
-                  <span className="copy-sm flex items-center gap-2 font-medium text-foreground">
-                    {g.name}
-                    {isMe && (
-                      <Chip size="mini" color="highlight" label="This group" />
-                    )}
-                  </span>
-                  <span className="copy-xs text-muted-foreground">
-                    {isMe
-                      ? `${g.budget} credits/month`
-                      : `${g.budget} credits/month · ${shared === 0 ? "no shared members" : plural(shared, "shared member", "shared members")}`}
-                  </span>
-                </div>
-                <div className="flex shrink-0">
-                  <Button
-                    variant="ghost-secondary"
-                    size="xs"
-                    icon={ArrowUp}
-                    tooltip="Move up"
-                    disabled={i === 0}
-                    onClick={() => onMove(visibleIds, i, i - 1)}
-                  />
-                  <Button
-                    variant="ghost-secondary"
-                    size="xs"
-                    icon={ArrowDown}
-                    tooltip="Move down"
-                    disabled={i === visible.length - 1}
-                    onClick={() => onMove(visibleIds, i, i + 1)}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      )}
-      {isRanked && (
-        <p className="copy-xs text-muted-foreground">
-          {group.name} is {ordinal(ranked.indexOf(group) + 1)} of{" "}
-          {ranked.length}.
-        </p>
+        <DataTable
+          data={visible.map((g, i): OrderRow => ({
+            id: g.id,
+            rank: ranked.indexOf(g) + 1,
+            name: g.name,
+            isMe: g.id === group.id,
+            budget: g.budget,
+            memberLimit: g.memberLimit,
+            shared: g.id === group.id ? null : sharedMembers(group, g).length,
+            index: i,
+          }))}
+          columns={orderColumns(visibleIds, visible.length, onMove)}
+          getRowId={(row) => row.id}
+          density="compact"
+          // Scroll inside the table so the modal keeps its height, even with
+          // every group shown.
+          maxHeight="max-h-52"
+          stickyHeader
+        />
       )}
     </div>
   );
