@@ -5,6 +5,7 @@ import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { formatDateTime, formatNumber } from "@app/lib/i18n/format";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { formatDurationMs } from "@app/lib/utils/timestamps";
 import { usePokeLLMTrace } from "@app/poke/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { isString } from "@app/types/shared/utils/general";
@@ -19,12 +20,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-
-function formatDuration(durationMs: number) {
-  return durationMs >= 1000
-    ? `${(durationMs / 1000).toFixed(1)}s`
-    : `${durationMs}ms`;
-}
 
 function formatTokenUsage({
   inputTokens,
@@ -121,7 +116,7 @@ export function LLMTracePage() {
           />
           <Chip
             color="info"
-            label={`Duration: ${formatDuration(trace.metadata.durationMs)}`}
+            label={`Duration: ${formatDurationMs(trace.metadata.durationMs)}`}
             size="sm"
           />
           {trace.output?.tokenUsage && (

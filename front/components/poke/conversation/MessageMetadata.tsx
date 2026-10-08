@@ -3,12 +3,6 @@ import type { ComponentProps, ReactNode } from "react";
 
 export type ChipColor = NonNullable<ComponentProps<typeof Chip>["color"]>;
 
-export function formatDurationMs(durationMs: number) {
-  return durationMs >= 1000
-    ? `${(durationMs / 1000).toFixed(1)}s`
-    : `${durationMs}ms`;
-}
-
 interface StatusBadgeProps {
   label: string;
   color: ChipColor;

@@ -1,6 +1,6 @@
 import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
-import { formatDurationMs } from "@app/components/poke/conversation/MessageMetadata";
 import { formatTime } from "@app/lib/i18n/format";
+import { formatDurationMs } from "@app/lib/utils/timestamps";
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
