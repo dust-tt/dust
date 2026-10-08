@@ -182,16 +182,25 @@ export function usePatchUser() {
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
-  const patchUser = async (
-    firstName: string,
-    lastName: string,
-    notifySuccess: boolean,
-    jobType?: JobType,
-    imageUrl?: string | null,
-    favoritePlatforms?: FavoritePlatform[],
-    emailProvider?: EmailProviderType,
-    workspaceId?: string
-  ) => {
+  const patchUser = async ({
+    firstName,
+    lastName,
+    notifySuccess,
+    jobType,
+    imageUrl,
+    favoritePlatforms,
+    emailProvider,
+    workspaceId,
+  }: {
+    firstName: string;
+    lastName: string;
+    notifySuccess: boolean;
+    jobType?: JobType;
+    imageUrl?: string | null;
+    favoritePlatforms?: FavoritePlatform[];
+    emailProvider?: EmailProviderType;
+    workspaceId?: string;
+  }) => {
     const res = await clientFetch("/api/user", {
       method: "PATCH",
       headers: {
