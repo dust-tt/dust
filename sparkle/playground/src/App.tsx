@@ -9,6 +9,12 @@ import {
   Moon01,
   Sun,
 } from "@dust-tt/sparkle";
+import {
+  SPARKLE_FORMAT_LOCALES,
+  type SparkleCatalogLocale,
+  type SparkleFormatLocale,
+  SparkleI18nProvider,
+} from "@sparkle/lib/i18n";
 import { useEffect, useState } from "react";
 
 // Automatically discover all story files
@@ -29,14 +35,41 @@ const stories = Object.entries(storyModules)
 type Theme = "light" | "dark";
 const THEME_STORAGE_KEY = "sparkle-playground-theme";
 
+const LOCALE_STORAGE_KEY = "sparkle-playground-locale";
+// Mirrors front's `LOCALE_LABELS` and `CATALOG_LOCALE_BY_LOCALE`: `en-GB` formats the UK way but
+// renders the `en-US` catalog.
+const LOCALE_LABELS: Record<SparkleFormatLocale, string> = {
+  "en-US": "English (US)",
+  "en-GB": "English (UK)",
+  "fr-FR": "Français",
+};
+const CATALOG_LOCALE_BY_LOCALE: Record<
+  SparkleFormatLocale,
+  SparkleCatalogLocale
+> = {
+  "en-US": "en-US",
+  "en-GB": "en-US",
+  "fr-FR": "fr-FR",
+};
+
+function isSparkleFormatLocale(
+  value: string | null,
+): value is SparkleFormatLocale {
+  return SPARKLE_FORMAT_LOCALES.some((locale) => locale === value);
+}
+
 function StoryList({
   onSelectStory,
   theme,
   setTheme,
+  locale,
+  setLocale,
 }: {
   onSelectStory: (name: string) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
+  locale: SparkleFormatLocale;
+  setLocale: (locale: SparkleFormatLocale) => void;
 }) {
   return (
     <div className="flex min-h-screen items-start justify-center bg-background pt-6">
@@ -46,29 +79,50 @@ function StoryList({
           <p className="text-base text-muted-foreground">
             Select a playground to explore
           </p>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                variant="outline"
-                isSelect
-                icon={theme === "dark" ? Moon01 : Sun}
-                label={theme === "dark" ? "Dark" : "Light"}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                icon={Sun}
-                label="Light"
-                onClick={() => setTheme("light")}
-              />
-              <DropdownMenuItem
-                icon={Moon01}
-                label="Dark"
-                onClick={() => setTheme("dark")}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isSelect
+                  label={LOCALE_LABELS[locale]}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {SPARKLE_FORMAT_LOCALES.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    label={LOCALE_LABELS[option]}
+                    onClick={() => setLocale(option)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  isSelect
+                  icon={theme === "dark" ? Moon01 : Sun}
+                  label={theme === "dark" ? "Dark" : "Light"}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="Light"
+                  onClick={() => setTheme("light")}
+                />
+                <DropdownMenuItem
+                  icon={Moon01}
+                  label="Dark"
+                  onClick={() => setTheme("dark")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
         <ListGroup>
           {stories.map((story, index) => (
@@ -96,6 +150,19 @@ function App() {
       ? "dark"
       : "light";
   });
+
+  const [locale, setLocale] = useState<SparkleFormatLocale>(() => {
+    if (typeof window === "undefined") {
+      return "en-US";
+    }
+    const storedLocale = localStorage.getItem(LOCALE_STORAGE_KEY);
+    return isSparkleFormatLocale(storedLocale) ? storedLocale : "en-US";
+  });
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
+  }, [locale]);
 
   useEffect(() => {
     const isDark = theme === "dark";
@@ -140,20 +207,28 @@ function App() {
     setCurrentStory(name);
   };
 
-  if (currentStory) {
-    const story = stories.find((s) => s.name === currentStory);
-    if (story) {
-      const StoryComponent = story.component;
-      return <StoryComponent />;
-    }
-  }
+  const story = currentStory
+    ? stories.find((s) => s.name === currentStory)
+    : undefined;
+  const StoryComponent = story?.component;
 
   return (
-    <StoryList
-      onSelectStory={handleSelectStory}
-      theme={theme}
-      setTheme={setTheme}
-    />
+    <SparkleI18nProvider
+      locale={CATALOG_LOCALE_BY_LOCALE[locale]}
+      formatLocale={locale}
+    >
+      {StoryComponent ? (
+        <StoryComponent />
+      ) : (
+        <StoryList
+          onSelectStory={handleSelectStory}
+          theme={theme}
+          setTheme={setTheme}
+          locale={locale}
+          setLocale={setLocale}
+        />
+      )}
+    </SparkleI18nProvider>
   );
 }
 
