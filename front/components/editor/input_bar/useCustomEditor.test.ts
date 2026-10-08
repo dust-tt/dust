@@ -278,10 +278,12 @@ describe("useCustomEditor placeholder override", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   interface EditorHookProps {
@@ -333,13 +335,13 @@ describe("useCustomEditor placeholder override", () => {
     expect(getPlaceholderText(editor)).toBe("A");
 
     act(() => {
-      vi.runAllTimers();
+      vi.advanceTimersByTime(1000);
     });
 
     expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
   });
 
-  it("swaps the placeholder instantly when not animated", () => {
+  it("fades to the new placeholder when not animated", () => {
     const { editor, result, rerender } = renderEditorHook();
 
     rerender({
@@ -347,13 +349,41 @@ describe("useCustomEditor placeholder override", () => {
       animatePlaceholder: true,
     });
     act(() => {
-      vi.runAllTimers();
+      vi.advanceTimersByTime(1000);
     });
 
     rerender({ placeholderOverride: null });
 
+    expect(editor.view.dom.className).toContain("animate-out");
+    expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
+
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(editor.view.dom.className).toContain("animate-in");
     expect(result.current.editor).toBe(editor);
     expect(getPlaceholderText(editor)).toBe("Get work done");
+
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+
+    expect(editor.view.dom.className).not.toContain("animate-");
+  });
+
+  it("rolls the default placeholder every 15 seconds", () => {
+    const { editor, result } = renderEditorHook();
+
+    act(() => {
+      vi.advanceTimersByTime(15_000);
+    });
+    act(() => {
+      vi.advanceTimersByTime(150);
+    });
+
+    expect(result.current.editor).toBe(editor);
+    expect(getPlaceholderText(editor)).toBe("Ask anything");
   });
 
   it("preserves content and selection across placeholder changes", () => {
