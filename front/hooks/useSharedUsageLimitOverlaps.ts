@@ -1,4 +1,4 @@
-import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSharedUsageLimitOverlapsResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
@@ -40,7 +40,8 @@ export function useSharedUsageLimitOverlaps({
   );
 
   return {
-    overlaps: data?.groups ?? null,
+    overlaps: data?.groups ?? emptyArray(),
+    hasLoadedOverlaps: data !== undefined,
     isOverlapsLoading: !error && !data && !disabled,
     isOverlapsError: !!error,
   };

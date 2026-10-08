@@ -175,7 +175,7 @@ function useGroupBudgetOrderDraft(
   draft: GroupUsageDraft,
   isEnabled: boolean
 ) {
-  const { overlaps, isOverlapsLoading, isOverlapsError } =
+  const { overlaps, hasLoadedOverlaps, isOverlapsLoading, isOverlapsError } =
     useSharedUsageLimitOverlaps({
       owner,
       groupId: group.groupId,
@@ -190,13 +190,13 @@ function useGroupBudgetOrderDraft(
     ? draft.memberLimitResult.awuCredits
     : group.poolCapAwuCredits;
   const baseOrder = getBaseBudgetOrder(
-    (overlaps ?? []).map((overlap) => overlap.groupId),
+    overlaps.map((overlap) => overlap.groupId),
     group.groupId,
     budgetAwuCredits !== null
   );
   const order = applyBudgetOrderMoves(movedOrder, baseOrder);
   const overlapByGroupId = new Map(
-    (overlaps ?? []).map((overlap) => [overlap.groupId, overlap])
+    overlaps.map((overlap) => [overlap.groupId, overlap])
   );
 
   const rows: GroupBudgetOrderRow[] = order.map((groupId, index) => {
@@ -218,7 +218,7 @@ function useGroupBudgetOrderDraft(
     rows,
     order,
     baseOrder,
-    isOrderChanged: overlaps !== null && !isSameBudgetOrder(order, baseOrder),
+    isOrderChanged: hasLoadedOverlaps && !isSameBudgetOrder(order, baseOrder),
     isOverlapsLoading,
     isOverlapsError,
     moveGroup: (

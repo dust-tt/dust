@@ -977,10 +977,6 @@ msgid "Whether the Dust browser extension is allowed to list and read browser ta
 msgstr "Indique si l’extension de navigateur Dust peut lister et lire les onglets du navigateur."
 
 #: front/components/workspace/GroupBudgetOrderTab.tsx
-msgid "{amount} credits"
-msgstr "{amount} crédits"
-
-#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Group"

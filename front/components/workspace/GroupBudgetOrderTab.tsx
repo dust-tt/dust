@@ -1,4 +1,4 @@
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCreditValue } from "@app/lib/client/credits";
 import {
   ArrowDown,
   ArrowUp,
@@ -71,13 +71,8 @@ export function GroupBudgetOrderTab({
     isLast: index === visibleRows.length - 1,
   }));
 
-  const formatAmount = (awuCredits: number | null) => {
-    if (awuCredits === null) {
-      return "-";
-    }
-    const amount = formatCredits(awuCredits);
-    return t`${amount} credits`;
-  };
+  const formatAmount = (awuCredits: number | null) =>
+    awuCredits === null ? "-" : formatCreditValue(awuCredits, t);
 
   const columns: ColumnDef<GroupBudgetOrderRowData, string>[] = [
     {
