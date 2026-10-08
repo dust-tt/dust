@@ -95,7 +95,7 @@ export function SkillDetailsPage() {
           <GroupPermissionsDataTable
             owner={owner}
             resourceType="skill"
-            resourceId={skill.id}
+            resourceId={skill.sId}
           />
         </div>
       </div>
