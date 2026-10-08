@@ -20,6 +20,7 @@ import {
   getLiveSessionPath,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { editAgentDocument } from "@app/lib/api/files/dfm_agent_documents";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -32,8 +33,9 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
 /**
  * @cc [owner:PopDaph,label:product;concurrency] files-create-live-markdown
- * An existing Markdown file a live session holds MUST NOT be overwritten: the call MUST be refused,
- * pointing to the files edit tool, and a collab server failure MUST refuse it too.
+ * An existing Markdown file a live session holds MUST NOT be overwritten: an empty body MUST be
+ * filled through `editAgentDocument`, any other call MUST be refused, pointing to the files edit
+ * tool, and a collab server failure MUST refuse it too.
  */
 export async function createHandler(
   {
@@ -87,6 +89,32 @@ export async function createHandler(
       return live;
     }
     if (live.value !== null) {
+      // An empty open document, as people create before asking an agent to write it, is filled
+      // through the session: `files__edit` cannot target empty text.
+      const filled = await editAgentDocument(auth, dustFs, {
+        scopedPath: live.value,
+        oldString: "",
+        newString: content,
+        expectedReplacements: 1,
+      });
+      if (filled.isOk()) {
+        return new Ok([
+          {
+            type: "text",
+            text: `Wrote \`${path}\`, open in a live session.`,
+          },
+        ]);
+      }
+      if (
+        filled.error.code !== "string_not_found" &&
+        filled.error.code !== "not_markdown"
+      ) {
+        return new Err(
+          new MCPError(filled.error.message, {
+            tracked: filled.error.code === "storage_failed",
+          })
+        );
+      }
       return new Err(
         new MCPError(
           `\`${path}\` is open in the document editor and cannot be overwritten. Change it with ` +
