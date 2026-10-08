@@ -494,7 +494,7 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(text).not.toContain("source message");
   });
 
-  it("should mention the conversation title tool in conversation prompts", () => {
+  it("should mention the conversation title and mark-read tools in conversation prompts", () => {
     const params = {
       userMessage: userMessage1,
       agentConfiguration: withoutModel(agentConfig1),
@@ -519,6 +519,12 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     );
     expect(conversationText).toContain(
       "common_utilities__set_conversation_title"
+    );
+    expect(conversationText).toContain(
+      "common_utilities__mark_conversation_read"
+    );
+    expect(conversationText).toContain(
+      "When clearing unread conversations, finishing inbox triage"
     );
   });
 

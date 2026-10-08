@@ -8,7 +8,7 @@ import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Get the common_utilities MCP server (random numbers, timers, etc.).
+ * Get the common_utilities MCP server (conversation helpers, random numbers, timers, etc.).
  */
 export async function getCommonUtilitiesServer(
   auth: Authenticator,
@@ -41,7 +41,7 @@ export async function getCommonUtilitiesServer(
     description:
       commonUtilitiesViewJSON.description ??
       commonUtilitiesViewJSON.server.description ??
-      "Common utilities such as random numbers and timers.",
+      "Conversation helpers (titles, mark read), random numbers, timers, and other common utilities.",
     dataSources: null,
     tables: null,
     childAgentId: null,
