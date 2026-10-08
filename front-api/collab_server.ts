@@ -35,7 +35,20 @@ function assertDevelopmentOnly() {
   }
 }
 
+/**
+ * @cc [owner:tdraier,label:product;concurrency] collab-server-internal-secret
+ * The server MUST refuse to start without `COLLAB_INTERNAL_SECRET`: front reports every document
+ * closed when it has no collab server configured, so a server front cannot ask MUST hold no
+ * session.
+ */
+function assertInternalSecret() {
+  if (!config.getCollabServerInternalSecret()) {
+    throw new Error("The collab server needs COLLAB_INTERNAL_SECRET.");
+  }
+}
+
 assertDevelopmentOnly();
+assertInternalSecret();
 setupGlobalErrorHandler(logger);
 
 const port = config.getCollabServerPort();

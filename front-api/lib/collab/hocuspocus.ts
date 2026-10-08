@@ -487,12 +487,14 @@ export async function readLiveSource(
  * `replaceYDocContent` as a change from `file`, replace the session's threads with the ones it
  * returns, send them to every connection when they changed, and store the document so the
  * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
- * MUST be able to write. It MUST take its turn among the document's comment commands, answering
- * `closed` if the document unloaded meanwhile, and a write that fails MUST NOT hold the later ones.
- * A write whose turn has not come within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never
- * apply, so its caller never retries a change that lands later; so MUST a write once
- * `checkpointAllDocuments` was called. Nothing may run between the comparison with `base` and the
- * change, so no edit can slip between them.
+ * MUST be able to write, and the session's storage MUST have revisions, since without them its
+ * checkpoints could not be conditional; otherwise the write MUST fail and change nothing. It MUST
+ * take its turn among the document's comment commands, answering `closed` if the document unloaded
+ * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
+ * within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
+ * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
+ * Nothing may run between the comparison with `base` and the change, so no edit can slip between
+ * them.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -510,6 +512,11 @@ export async function writeLiveSource(
     return new Ok("busy");
   }
   const { document, session } = open;
+  if (session.checkpoint.revision === undefined) {
+    return new Err(
+      "This document's storage does not support safe changes yet."
+    );
+  }
 
   let turn: "waiting" | "taken" | "expired" = "waiting";
   const write = (): Result<LiveSourceWriteResult, string> => {

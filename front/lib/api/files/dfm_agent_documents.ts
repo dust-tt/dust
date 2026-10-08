@@ -1,7 +1,7 @@
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DfmStoredDocumentError } from "@app/lib/api/files/dfm_stored_documents";
 import {
-  readStoredDocument,
+  readCurrentDocumentSource,
   writeDocumentChange,
 } from "@app/lib/api/files/dfm_stored_documents";
 import type { Authenticator } from "@app/lib/auth";
@@ -115,20 +115,14 @@ function anchorIds(body: string): string[] | null {
  * @cc [owner:tdraier,label:product] dfm-agent-document-read
  * Reading MUST return the full DFM source of the document that `editAgentDocument` matches
  * against, front matter, comment anchors and annotations block included, as
- * `readStoredDocument` returns it.
+ * `readCurrentDocumentSource` returns it: the live session's while one holds the document.
  */
 export async function readAgentDocument(
+  auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
-  // TODO(YJS): when a live session holds this document, read it from the collab service
-  // (`GET /internal/documents/read`) instead: the file lags the session until its next
-  // checkpoint, and `editAgentDocument` would then match against the session's text.
-  const read = await readStoredDocument(dustFs, scopedPath);
-  if (read.isErr()) {
-    return read;
-  }
-  return new Ok({ source: read.value.text });
+  return readCurrentDocumentSource(auth, dustFs, scopedPath);
 }
 
 /**
@@ -163,11 +157,8 @@ export async function editAgentDocument(
     DfmAgentDocumentError | DfmStoredDocumentError
   >
 > {
-  // TODO(YJS): when a live session holds this document, send the edit to the collab service
-  // (`POST /internal/documents/edit`) instead of writing the file, so it reaches open editors as
-  // one Yjs transaction with the agent's cursor. Decide under the per-file lock, so a session
-  // opening while this write is in flight cannot miss it, and pass an idempotency key so a
-  // retried tool call is applied once.
+  // TODO(co-edition): pass an idempotency key so a retried tool call is applied once, and show
+  // the agent's cursor on the range it changed.
   return writeDocumentChange(
     auth,
     dustFs,

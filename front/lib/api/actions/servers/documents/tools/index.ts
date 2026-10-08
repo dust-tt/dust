@@ -116,7 +116,7 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       return dustFs;
     }
 
-    const read = await readAgentDocument(dustFs.value, path);
+    const read = await readAgentDocument(auth, dustFs.value, path);
     if (read.isErr()) {
       return new Err(
         new MCPError(read.error.message, {
