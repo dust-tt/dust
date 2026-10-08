@@ -5,7 +5,6 @@ import {
   SEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { updateAnalyticsFeedback } from "@app/lib/analytics/feedback";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
@@ -247,9 +246,7 @@ export async function storeAgentAnalytics(
         internalMCPServerName: action.internalMCPServerName,
         mcpServerId: action.mcpServerId,
         status: action.status,
-        toolName: getToolNameFromFunctionCallName(
-          actionResource.functionCallName
-        ),
+        toolName: action.toolName,
       };
     }),
     contextOrigin,

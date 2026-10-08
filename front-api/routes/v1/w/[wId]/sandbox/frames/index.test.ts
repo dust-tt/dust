@@ -1,8 +1,12 @@
 // Legacy Frame publishing runs esbuild, whose TextEncoder invariant requires Node rather than jsdom.
 // @vitest-environment node
 
+import { generateSandboxExecToken } from "@app/lib/api/sandbox/access_tokens";
+import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -149,6 +153,53 @@ async function setupLegacyFrame() {
   );
 
   return { ...context, frame, sourcePath };
+}
+
+// The shared token context signs a mock action that is never persisted. Billing records the publish
+// under its parent `sandbox` action, so these tests sign a token for a real one.
+async function withPersistedSandboxAction(
+  context: Awaited<ReturnType<typeof createSandboxTokenTestContext>>
+) {
+  const { action: parentAction } = await AgentMCPActionFactory.create(
+    context.auth,
+    {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessage.agentMessageId,
+      status: "running",
+      functionCallName: "sandbox__bash",
+      toolName: "bash",
+      mcpServerName: "sandbox",
+    }
+  );
+  const token = await generateSandboxExecToken(context.auth, {
+    agentConfiguration: context.agentConfig,
+    agentMessage: context.agentMessage,
+    conversation: context.conversation,
+    sandbox: context.sandbox,
+    execId: `test-exec-${parentAction.sId}`,
+    sandboxAction: parentAction.toJSON(),
+  });
+
+  return { parentAction, token };
+}
+
+async function listFramePublishActions(
+  context: Awaited<ReturnType<typeof createSandboxTokenTestContext>>,
+  parentActionId: string
+) {
+  const actions = await AgentMCPActionResource.listByAgentMessageIds(
+    context.auth,
+    [context.agentMessage.agentMessageId]
+  );
+  return actions
+    .filter(
+      (action) =>
+        action.stepContext.sandboxChildActionInfo?.parentActionId ===
+        parentActionId
+    )
+    .map((action) => action.toJSON())
+    .sort((a, b) => a.id - b.id);
 }
 
 beforeEach(() => {
@@ -395,5 +446,83 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+});
+
+describe("POST /api/v1/w/[wId]/sandbox/frames/publish billing", () => {
+  it("charges a new v2 Frame as a create and its republish as an edit", async () => {
+    const context = await setup({ registered: false });
+    const { parentAction, token } = await withPersistedSandboxAction(context);
+
+    const first = await requestFramePublish(
+      context.workspace.sId,
+      token,
+      context.manifestPath
+    );
+    expect(first.status).toBe(200);
+    const second = await requestFramePublish(
+      context.workspace.sId,
+      token,
+      context.manifestPath
+    );
+    expect(second.status).toBe(200);
+
+    const actions = await listFramePublishActions(context, parentAction.sId);
+    expect(actions).toMatchObject([
+      {
+        internalMCPServerName: "interactive_content",
+        toolName: "create_interactive_content_file",
+        status: "succeeded",
+      },
+      {
+        internalMCPServerName: "interactive_content",
+        toolName: "publish_interactive_content_file",
+        status: "succeeded",
+      },
+    ]);
+
+    const billingPlan = buildAgentMessageBillingPlan({
+      actions,
+      contextOrigin: "web",
+      runUsages: [],
+    });
+    expect(billingPlan.tools.map((line) => line.billedCredits)).toEqual([3, 1]);
+  });
+
+  it("charges a legacy Frame publish as an edit", async () => {
+    const context = await setupLegacyFrame();
+    const { parentAction, token } = await withPersistedSandboxAction(context);
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      token,
+      context.sourcePath
+    );
+    expect(response.status).toBe(200);
+
+    const actions = await listFramePublishActions(context, parentAction.sId);
+    expect(actions).toMatchObject([
+      {
+        internalMCPServerName: "interactive_content",
+        toolName: "publish_interactive_content_file",
+        status: "succeeded",
+      },
+    ]);
+  });
+
+  it("does not charge a failed publish", async () => {
+    const context = await setup();
+    const { parentAction, token } = await withPersistedSandboxAction(context);
+
+    const response = await requestFramePublish(
+      context.workspace.sId,
+      token,
+      context.manifestPath.replace(`/${FRAME_MANIFEST_FILE}`, "/Other.tsx")
+    );
+    expect(response.status).toBe(400);
+
+    expect(await listFramePublishActions(context, parentAction.sId)).toEqual(
+      []
+    );
   });
 });
