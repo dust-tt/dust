@@ -209,6 +209,14 @@ msgid "Explore"
 msgstr "Explore"
 
 #: front/components/UserMenu.tsx
+msgid "Help"
+msgstr "Help"
+
+#: front/components/UserMenu.tsx
+msgid "Help on how to use Dust"
+msgstr "Help on how to use Dust"
+
+#: front/components/UserMenu.tsx
 msgid "Success !"
 msgstr "Success !"
 
@@ -231,10 +239,6 @@ msgstr "Open user menu"
 #: front/components/UserMenu.tsx
 msgid "Workspace"
 msgstr "Workspace"
-
-#: front/components/UserMenu.tsx
-msgid "Help"
-msgstr "Help"
 
 #: front/components/UserMenu.tsx
 msgid "Learn about Dust"

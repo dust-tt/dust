@@ -1,4 +1,6 @@
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 
 // sId of the code-defined `conversationalBuildingSkill` (server-side, not importable here).
 export const CONVERSATIONAL_BUILDING_SKILL_ID = "conversational-building";
@@ -11,11 +13,17 @@ export function isConversationalBuildingTarget(
   return value === "agent" || value === "skill";
 }
 
-// Text appended after the skill tag when prefilling the composer from ?create=.
+// Composer prefill for ?create=, referencing the building skill through its serialized tag.
 export function getConversationalBuildingCreatePrompt(
-  target: ConversationalBuildingTarget
-): string {
-  return `to help me create a new ${target}`;
+  target: ConversationalBuildingTarget,
+  skillTag: string
+): MessageDescriptor {
+  switch (target) {
+    case "agent":
+      return msg`Use ${skillTag} to help me create a new agent`;
+    case "skill":
+      return msg`Use ${skillTag} to help me create a new skill`;
+  }
 }
 
 // New conversation prefilled with the building skill and a prompt to create an agent or skill.

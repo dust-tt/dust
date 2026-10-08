@@ -524,6 +524,10 @@ msgstr "Impossible de vérifier quels utilisateurs sont déjà membres"
 msgid "New notification"
 msgstr "Nouvelle notification"
 
+#: front/hooks/useSkillFromSearchParam.ts
+msgid "Use {skillTag} for this request:"
+msgstr "Utilisez {skillTag} pour cette demande :"
+
 #: front/hooks/useSkillMenuItems.ts
 msgctxt "verb, menu item"
 msgid "Edit"

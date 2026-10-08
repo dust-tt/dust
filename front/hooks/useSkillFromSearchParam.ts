@@ -6,6 +6,7 @@ import {
 } from "@app/lib/skills/conversational_building";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import { useLingui } from "@lingui/react/macro";
 import { useContext, useEffect } from "react";
 
 /**
@@ -18,6 +19,7 @@ export function useSkillFromSearchParam(workspaceId: string) {
   const skillId = useSearchParam("skill");
   const create = useSearchParam("create");
   const { setPendingInputText } = useContext(InputBarContext);
+  const { t } = useLingui();
 
   const { skill } = useSkill({
     workspaceId,
@@ -37,8 +39,8 @@ export function useSkillFromSearchParam(workspaceId: string) {
     });
     setPendingInputText(
       isConversationalBuildingTarget(create)
-        ? `Use ${skillTag} ${getConversationalBuildingCreatePrompt(create)}`
-        : `Use ${skillTag} for this request: `,
+        ? t(getConversationalBuildingCreatePrompt(create, skillTag))
+        : `${t`Use ${skillTag} for this request:`} `,
       { replace: true }
     );
 
@@ -53,5 +55,5 @@ export function useSkillFromSearchParam(workspaceId: string) {
         `${window.location.pathname}${queryString ? `?${queryString}` : ""}${window.location.hash}`
       );
     }
-  }, [skill, create, setPendingInputText]);
+  }, [skill, create, setPendingInputText, t]);
 }
