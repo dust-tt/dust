@@ -822,11 +822,6 @@ export class UserResource extends BaseResource<UserModel> {
     };
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:product;backend] update-pronouns
-   * Pronouns are stored as global user metadata, shared across all workspaces of the user;
-   * `null` MUST clear them.
-   */
   async updatePronouns(pronouns: string | null): Promise<void> {
     if (pronouns === null) {
       await this.deleteMetadata({
