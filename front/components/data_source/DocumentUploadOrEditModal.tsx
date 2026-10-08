@@ -315,14 +315,19 @@ export const DocumentUploadOrEditModal = ({
         }));
         setHasChanged(true);
       } catch (error) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Error uploading file`,
-          description: error instanceof Error ? error.message : String(error),
+          error,
         });
       }
     },
-    [fileUploaderService, sendNotification, setDocumentState, t]
+    [
+      fileUploaderService,
+      sendApiErrorNotification,
+      sendNotification,
+      setDocumentState,
+      t,
+    ]
   );
 
   // Effect: Set the document state when the document is loaded

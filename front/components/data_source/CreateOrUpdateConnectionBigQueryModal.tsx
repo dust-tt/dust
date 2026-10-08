@@ -42,7 +42,6 @@ import {
 } from "@dust-tt/sparkle";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
-import { fromError } from "zod-validation-error";
 
 type CreateOrUpdateConnectionBigQueryModalProps = {
   owner: WorkspaceType;
@@ -101,10 +100,16 @@ export function CreateOrUpdateConnectionBigQueryModal({
             : null,
         };
       } else {
+        const fields = r.error.issues
+          .map((issue) => issue.path.join("."))
+          .filter((path) => path.length > 0)
+          .join(", ");
         return {
           credentials: credentialsObject,
           valid: false,
-          errorMessage: fromError(r.error).toString(),
+          errorMessage: fields
+            ? t`Missing or invalid fields: ${fields}.`
+            : t`The service account JSON must be an object.`,
         };
       }
     } catch {

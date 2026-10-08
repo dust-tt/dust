@@ -62,17 +62,19 @@ export function SetupNotionPrivateIntegrationModal({
         );
 
         if (!response.ok) {
-          throw new Error(t`Failed to fetch webhook configuration`);
+          sendApiErrorNotification({
+            title: t`Failed to fetch webhook configuration`,
+            error: await response.json(),
+          });
+          return;
         }
 
         const data: GetNotionWebhookConfigResponseBody = await response.json();
         setWebhookConfig(data);
       } catch (err) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to fetch webhook configuration`,
-          description:
-            err instanceof Error ? err.message : t`An error occurred`,
+          error: err,
         });
       } finally {
         setIsLoadingWebhookConfig(false);
@@ -80,7 +82,7 @@ export function SetupNotionPrivateIntegrationModal({
     };
 
     void fetchWebhookConfig();
-  }, [isOpen, owner.sId, dataSource.sId, sendNotification, t]);
+  }, [isOpen, owner.sId, dataSource.sId, sendApiErrorNotification, t]);
 
   const handleSave = async () => {
     setIsLoading(true);

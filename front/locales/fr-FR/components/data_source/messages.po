@@ -363,6 +363,14 @@ msgid "All fields must have a value"
 msgstr "Tous les champs doivent être renseignés"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Missing or invalid fields: {fields}."
+msgstr "Champs manquants ou invalides : {fields}."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "The service account JSON must be an object."
+msgstr "Le JSON du compte de service doit être un objet."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Invalid JSON"
 msgstr "JSON invalide"
 
@@ -955,10 +963,6 @@ msgid "Failed to fetch webhook configuration"
 msgstr "Impossible de récupérer la configuration du webhook"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "An error occurred"
-msgstr "Une erreur s’est produite"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Private integration setup successfully"
 msgstr "Intégration privée configurée"
 
@@ -1134,11 +1138,6 @@ msgstr "{retentionDays, plural, one {La durée de conservation est désormais de
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 msgid "Failed to edit Zendesk configuration"
 msgstr "Impossible de modifier la configuration Zendesk"
-
-#: front/components/data_source/ZendeskConfigView.tsx
-#: front/components/data_source/ZendeskRateLimitConfig.tsx
-msgid "An unknown error occurred"
-msgstr "Une erreur inconnue s’est produite"
 
 #: front/components/data_source/ZendeskConfigView.tsx
 msgid "Invalid retention period"
