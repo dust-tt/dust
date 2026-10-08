@@ -1,5 +1,5 @@
 import type {
-  DustMcpServerRedirectUriErrorCode,
+  DustMcpServerAllowedRedirectUrisErrorCode,
   DustMcpServerSettings,
 } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import {
@@ -29,11 +29,12 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
 
 const REDIRECT_URI_ERROR_MESSAGES: Record<
-  DustMcpServerRedirectUriErrorCode,
+  DustMcpServerAllowedRedirectUrisErrorCode,
   MessageDescriptor
 > = {
   empty_redirect_uri: msg`Redirect URI cannot be empty.`,
   missing_scheme: msg`Redirect URI must include a scheme (for example http://, https://, or cursor://).`,
+  duplicate_redirect_uri: msg`This redirect URI is already in the list.`,
 };
 
 interface DustMcpServerSettingsSheetProps {
@@ -81,7 +82,7 @@ export function DustMcpServerSettingsSheet({
     redirectUriValidation?.isErr() === true
       ? t(REDIRECT_URI_ERROR_MESSAGES[redirectUriValidation.error.code])
       : isDuplicateRedirectUri
-        ? t`This redirect URI is already in the list.`
+        ? t(REDIRECT_URI_ERROR_MESSAGES.duplicate_redirect_uri)
         : normalizedRedirectUri
           ? t`Will be saved as ${normalizedRedirectUri}.`
           : t`Use a full redirect URI such as https://example.com/oauth/callback.`;

@@ -57,4 +57,15 @@ describe("DustMcpServerSettingsSheet", () => {
       )
     ).toBeDefined();
   });
+
+  it("translates the duplicate redirect URI error in fr-FR", async () => {
+    const messages = await loadCatalog("fr-FR");
+    act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
+    renderSheet();
+    typeRedirectUri("http://localhost:*");
+
+    expect(
+      screen.getByText("Cette URI de redirection figure déjà dans la liste.")
+    ).toBeDefined();
+  });
 });
