@@ -48,7 +48,7 @@ msgstr "Retirer"
 
 #: src/components/ComposerInput.tsx
 msgid "Get work done"
-msgstr "Au travail"
+msgstr "Que souhaitez-vous accomplir ?"
 
 #: src/components/ConversationListItem.tsx
 msgid "{mentionCount, plural, one {# Mention} other {# Mentions}}"
