@@ -375,10 +375,14 @@ msgid "Create"
 msgstr "Créer"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
+#: front/components/spaces/SpaceActionsList.tsx
+#: front/components/spaces/SpaceAppsList.tsx
 #: front/components/spaces/SpaceCategoriesList.tsx
 #: front/components/spaces/SpaceCreateAppModal.tsx
 #: front/components/spaces/SpaceDataSourceViewContentList.tsx
 #: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceResourcesList.tsx
+#: front/components/spaces/SpaceTriggersList.tsx
 msgid "Name"
 msgstr "Nom"
 
@@ -562,6 +566,14 @@ msgid "Restricted access"
 msgstr "Accès restreint"
 
 #: front/components/spaces/SpaceActionsList.tsx
+#: front/components/spaces/SpaceAppsList.tsx
+#: front/components/spaces/SpaceCreateAppModal.tsx
+#: front/components/spaces/SpaceFolderModal.tsx
+#: front/components/spaces/SpaceTriggersList.tsx
+msgid "Description"
+msgstr "Description"
+
+#: front/components/spaces/SpaceActionsList.tsx
 msgid "Remove tools from space"
 msgstr "Retirer les outils de l’espace"
 
@@ -643,12 +655,6 @@ msgstr "Créer une nouvelle app"
 #: front/components/spaces/SpaceCreateAppModal.tsx
 msgid "Must be unique and only use alphanumeric, - or _ characters."
 msgstr "Doit être unique et n’utiliser que des caractères alphanumériques, - ou _."
-
-#: front/components/spaces/SpaceCreateAppModal.tsx
-#: front/components/spaces/SpaceFolderModal.tsx
-#: front/components/spaces/SpaceTriggersList.tsx
-msgid "Description"
-msgstr "Description"
 
 #: front/components/spaces/SpaceCreateAppModal.tsx
 msgid "This description guides agents in understanding how to use your app effectively and determines its relevance in responding to user inquiries."

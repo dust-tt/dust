@@ -82,8 +82,8 @@ msgid "Total credits"
 msgstr "Total credits"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-msgid "vs prev"
-msgstr "vs prev"
+msgid "Vs prev"
+msgstr "Vs prev"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Add to filters"

@@ -81,6 +81,7 @@ export function SecretSection({
     {
       id: "name",
       accessorKey: "name",
+      header: t`Name`,
       cell: ({ row }) => (
         <DataTable.CellContent icon={KeyIcon}>
           <div className="flex flex-col gap-1">
