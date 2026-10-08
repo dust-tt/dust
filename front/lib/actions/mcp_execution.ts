@@ -228,7 +228,8 @@ export async function processToolNotification(
 async function fetchToolGeneratedFile(
   auth: Authenticator,
   fileId: string,
-  toolConfiguration: LightMCPToolConfigurationType
+  toolConfiguration: LightMCPToolConfigurationType,
+  localLogger: Logger
 ): Promise<FileResource | null> {
   const file = await FileResource.fetchById(auth, fileId);
   if (!file) {
@@ -238,6 +239,16 @@ async function fetchToolGeneratedFile(
   if (isLightServerSideMCPToolConfiguration(toolConfiguration)) {
     return file;
   }
+
+  // TODO: remove the client-side file id path once no extension below 0.1.19 is in use OR no
+  // more occurrence of this log.
+  localLogger.info(
+    {
+      toolName: toolConfiguration.name,
+      serverName: toolConfiguration.mcpServerName,
+    },
+    "Client-side MCP tool returned a file id"
+  );
 
   if (!isConversationFileUseCase(file.useCase)) {
     return null;
@@ -370,7 +381,8 @@ export async function processToolResults(
             const file = await fetchToolGeneratedFile(
               auth,
               block.resource.fileId,
-              toolConfiguration
+              toolConfiguration,
+              localLogger
             );
             const conversation = isAgentLoopRunContext(runContext)
               ? runContext.conversation

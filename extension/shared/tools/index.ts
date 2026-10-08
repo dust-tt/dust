@@ -1,7 +1,9 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   buildTools,
   type ClientToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { Err } from "@app/types/shared/result";
 
 import type { CaptureService } from "@extension/shared/services/capture";
 import { attachTabsTextTool } from "@extension/shared/tools/attachPageTextTool";
@@ -42,12 +44,19 @@ export function registerAllTools(
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
     [ATTACH_TABS_TEXT_TOOL_NAME]: (params) =>
       attachTabsTextTool({ ...params, captureService }),
-    [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: (params) =>
-      takeScreenshotOrAttachFileTool({
+    [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: async (params, extra) => {
+      const conversationId = extra._meta?.conversationId;
+      if (typeof conversationId !== "string") {
+        return new Err(new MCPError("Missing conversation id."));
+      }
+
+      return takeScreenshotOrAttachFileTool({
         ...params,
         captureService,
         workspaceId,
-      }),
+        conversationId,
+      });
+    },
     [LIST_BROWSER_TABS_TOOL_NAME]: () => listBrowserTabsTool(),
     [SWITCH_TO_BROWSER_TAB_TOOL_NAME]: (params) => switchBrowserTabTool(params),
     [CLOSE_BROWSER_TAB_TOOL_NAME]: (params) => closeBrowserTabTool(params),
