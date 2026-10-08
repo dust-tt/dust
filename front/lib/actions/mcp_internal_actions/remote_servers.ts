@@ -6070,6 +6070,247 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10049,
+    name: "Airbyte",
+    description:
+      "Airbyte tools to deploy and manage Airbyte Cloud connectors, connections and sync jobs, and to query the data synced through them.",
+    url: "https://mcp.airbyte.com/mcp",
+    icon: "AirbyteLogo",
+    documentationUrl: "https://docs.airbyte.com/platform/airbyte-mcp/install",
+    connectionInstructions:
+      "Airbyte uses OAuth with dynamic client registration. Sign in with your Airbyte Cloud account to connect. Your organization must be enrolled in the Airbyte MCP beta, and an organization admin must enable the context layer for tools that read data through connectors.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_default_cloud_context: "never_ask",
+      list_cloud_workspaces: "never_ask",
+      describe_cloud_workspace: "never_ask",
+      list_cloud_organizations: "never_ask",
+      describe_cloud_organization: "never_ask",
+      get_cloud_organization_billing_status: "never_ask",
+      list_cloud_connectors: "never_ask",
+      describe_cloud_connector: "never_ask",
+      check_cloud_connector: "never_ask",
+      list_cloud_connections: "never_ask",
+      describe_cloud_connection: "never_ask",
+      get_connection_artifact: "never_ask",
+      list_cloud_sync_jobs: "never_ask",
+      get_cloud_sync_status: "never_ask",
+      get_cloud_sync_logs: "never_ask",
+      get_cloud_search_status: "never_ask",
+      execute_external_sql_query: "never_ask",
+      execute_external_search_query: "never_ask",
+      list_custom_source_definitions: "never_ask",
+      get_custom_source_definition: "never_ask",
+      get_connector_builder_draft_manifest: "never_ask",
+      list_connectors: "never_ask",
+      get_connector_info: "never_ask",
+      get_connector_version_history: "never_ask",
+      get_api_docs_urls: "never_ask",
+      get_agent_skill_docs: "never_ask",
+      search_airbyte_knowledge_sources: "never_ask",
+      deploy_connector_to_cloud: "high",
+      deploy_noop_destination_to_cloud: "high",
+      create_connection_on_cloud: "high",
+      run_cloud_sync: "high",
+      cancel_cloud_sync: "high",
+      set_default_cloud_workspace: "high",
+      rename_cloud_connector: "high",
+      update_cloud_connector_config: "high",
+      rename_cloud_connection: "high",
+      set_cloud_connection_table_prefix: "high",
+      set_cloud_connection_selected_streams: "high",
+      update_cloud_connection: "high",
+      publish_custom_source_definition: "high",
+      update_custom_source_definition: "high",
+      permanently_delete_custom_source_definition: "high",
+      permanently_delete_cloud_connector: "high",
+      permanently_delete_cloud_connection: "high",
+      execute_external_api_query: "high",
+    },
+    toolDisplayLabels: {
+      get_default_cloud_context: {
+        running: "Getting the default context on Airbyte",
+        done: "Got the default context on Airbyte",
+      },
+      list_cloud_workspaces: {
+        running: "Listing workspaces on Airbyte",
+        done: "Listed workspaces on Airbyte",
+      },
+      describe_cloud_workspace: {
+        running: "Getting workspace details on Airbyte",
+        done: "Got workspace details on Airbyte",
+      },
+      list_cloud_organizations: {
+        running: "Listing organizations on Airbyte",
+        done: "Listed organizations on Airbyte",
+      },
+      describe_cloud_organization: {
+        running: "Getting organization details on Airbyte",
+        done: "Got organization details on Airbyte",
+      },
+      get_cloud_organization_billing_status: {
+        running: "Getting billing status on Airbyte",
+        done: "Got billing status on Airbyte",
+      },
+      list_cloud_connectors: {
+        running: "Listing connectors on Airbyte",
+        done: "Listed connectors on Airbyte",
+      },
+      describe_cloud_connector: {
+        running: "Getting connector details on Airbyte",
+        done: "Got connector details on Airbyte",
+      },
+      check_cloud_connector: {
+        running: "Checking a connector on Airbyte",
+        done: "Checked a connector on Airbyte",
+      },
+      list_cloud_connections: {
+        running: "Listing connections on Airbyte",
+        done: "Listed connections on Airbyte",
+      },
+      describe_cloud_connection: {
+        running: "Getting connection details on Airbyte",
+        done: "Got connection details on Airbyte",
+      },
+      get_connection_artifact: {
+        running: "Getting a connection artifact from Airbyte",
+        done: "Got a connection artifact from Airbyte",
+      },
+      list_cloud_sync_jobs: {
+        running: "Listing sync jobs on Airbyte",
+        done: "Listed sync jobs on Airbyte",
+      },
+      get_cloud_sync_status: {
+        running: "Getting sync status on Airbyte",
+        done: "Got sync status on Airbyte",
+      },
+      get_cloud_sync_logs: {
+        running: "Getting sync logs from Airbyte",
+        done: "Got sync logs from Airbyte",
+      },
+      get_cloud_search_status: {
+        running: "Getting search indexing status on Airbyte",
+        done: "Got search indexing status on Airbyte",
+      },
+      execute_external_sql_query: {
+        running: "Running a SQL query on Airbyte",
+        done: "Ran a SQL query on Airbyte",
+      },
+      execute_external_search_query: {
+        running: "Searching synced data on Airbyte",
+        done: "Searched synced data on Airbyte",
+      },
+      list_custom_source_definitions: {
+        running: "Listing custom sources on Airbyte",
+        done: "Listed custom sources on Airbyte",
+      },
+      get_custom_source_definition: {
+        running: "Getting a custom source on Airbyte",
+        done: "Got a custom source on Airbyte",
+      },
+      get_connector_builder_draft_manifest: {
+        running: "Getting a draft manifest on Airbyte",
+        done: "Got a draft manifest on Airbyte",
+      },
+      list_connectors: {
+        running: "Listing available connectors on Airbyte",
+        done: "Listed available connectors on Airbyte",
+      },
+      get_connector_info: {
+        running: "Getting connector info on Airbyte",
+        done: "Got connector info on Airbyte",
+      },
+      get_connector_version_history: {
+        running: "Getting connector version history on Airbyte",
+        done: "Got connector version history on Airbyte",
+      },
+      get_api_docs_urls: {
+        running: "Getting API docs links on Airbyte",
+        done: "Got API docs links on Airbyte",
+      },
+      get_agent_skill_docs: {
+        running: "Getting skill docs on Airbyte",
+        done: "Got skill docs on Airbyte",
+      },
+      search_airbyte_knowledge_sources: {
+        running: "Searching Airbyte documentation",
+        done: "Searched Airbyte documentation",
+      },
+      deploy_connector_to_cloud: {
+        running: "Deploying a connector on Airbyte",
+        done: "Deployed a connector on Airbyte",
+      },
+      deploy_noop_destination_to_cloud: {
+        running: "Deploying a test destination on Airbyte",
+        done: "Deployed a test destination on Airbyte",
+      },
+      create_connection_on_cloud: {
+        running: "Creating a connection on Airbyte",
+        done: "Created a connection on Airbyte",
+      },
+      run_cloud_sync: {
+        running: "Running a sync on Airbyte",
+        done: "Ran a sync on Airbyte",
+      },
+      cancel_cloud_sync: {
+        running: "Canceling a sync on Airbyte",
+        done: "Canceled a sync on Airbyte",
+      },
+      set_default_cloud_workspace: {
+        running: "Setting the default workspace on Airbyte",
+        done: "Set the default workspace on Airbyte",
+      },
+      rename_cloud_connector: {
+        running: "Renaming a connector on Airbyte",
+        done: "Renamed a connector on Airbyte",
+      },
+      update_cloud_connector_config: {
+        running: "Updating a connector configuration on Airbyte",
+        done: "Updated a connector configuration on Airbyte",
+      },
+      rename_cloud_connection: {
+        running: "Renaming a connection on Airbyte",
+        done: "Renamed a connection on Airbyte",
+      },
+      set_cloud_connection_table_prefix: {
+        running: "Setting a table prefix on Airbyte",
+        done: "Set a table prefix on Airbyte",
+      },
+      set_cloud_connection_selected_streams: {
+        running: "Setting selected streams on Airbyte",
+        done: "Set selected streams on Airbyte",
+      },
+      update_cloud_connection: {
+        running: "Updating a connection on Airbyte",
+        done: "Updated a connection on Airbyte",
+      },
+      publish_custom_source_definition: {
+        running: "Publishing a custom source on Airbyte",
+        done: "Published a custom source on Airbyte",
+      },
+      update_custom_source_definition: {
+        running: "Updating a custom source on Airbyte",
+        done: "Updated a custom source on Airbyte",
+      },
+      permanently_delete_custom_source_definition: {
+        running: "Deleting a custom source on Airbyte",
+        done: "Deleted a custom source on Airbyte",
+      },
+      permanently_delete_cloud_connector: {
+        running: "Deleting a connector on Airbyte",
+        done: "Deleted a connector on Airbyte",
+      },
+      permanently_delete_cloud_connection: {
+        running: "Deleting a connection on Airbyte",
+        done: "Deleted a connection on Airbyte",
+      },
+      execute_external_api_query: {
+        running: "Querying an external API on Airbyte",
+        done: "Queried an external API on Airbyte",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
