@@ -26,8 +26,8 @@ describe("services", () => {
       expect(ALL_SERVICES).not.toContain("front" as ServiceName);
     });
 
-    it("has 15 services total", () => {
-      expect(ALL_SERVICES).toHaveLength(15);
+    it("has 16 services total", () => {
+      expect(ALL_SERVICES).toHaveLength(16);
     });
 
     it("has sdk as first service (start order)", () => {

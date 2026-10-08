@@ -18,6 +18,7 @@ export const ALL_SERVICES = [
   "viz",
   "storybook",
   "sqlite-worker",
+  "dfs",
   "collab",
 ] as const;
 
