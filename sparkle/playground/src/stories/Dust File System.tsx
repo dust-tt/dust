@@ -1091,7 +1091,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
         id: `file-${file.id}`,
         group: ROOT_FOLDER_LABEL,
         label: file.fileName,
-        description: getFolderPath(filesById, file.id)
+        // From the parent: the walk starts at a folder, and a file is not one.
+        description: getFolderPath(filesById, file.parentId)
           .map((folder) => folder.fileName)
           .join(" / "),
         icon: getDataSourceIcon(file),

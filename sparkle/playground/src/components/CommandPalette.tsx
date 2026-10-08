@@ -112,13 +112,13 @@ export function CommandPalette({
 
   // Opening is what resets the palette, not closing: clearing on close would
   // wipe the list while the dialog is still animating out.
-  const wasOpen = useRef(isOpen);
-  if (isOpen && !wasOpen.current) {
-    setQuery("");
-    setSelectedFilter(ALL_FILTER);
-    setSelectedIndex(0);
-  }
-  wasOpen.current = isOpen;
+  useEffect(() => {
+    if (isOpen) {
+      setQuery("");
+      setSelectedFilter(ALL_FILTER);
+      setSelectedIndex(0);
+    }
+  }, [isOpen]);
 
   const trimmedQuery = query.trim();
   const isSearching = trimmedQuery.length >= MIN_QUERY_LENGTH;
