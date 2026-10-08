@@ -1,11 +1,12 @@
 import type { I18nContext } from "@lingui/react";
 import { sourceLocaleI18n } from "@sparkle/lib/i18n/catalogs";
+import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { createContext, useContext } from "react";
 
 interface SparkleI18nContextValue extends I18nContext {
   // Kept out of `i18n`: Lingui picks plural forms with the locales it formats with, which must stay
   // the catalog's (e.g. `en-GB` renders the `en-US` catalog with English plural rules).
-  formatLocale: string | undefined;
+  formatLocale: SparkleFormatLocale | undefined;
 }
 
 // Sparkle's own context, independent of the consumer's `I18nProvider`: the consumer picks sparkle's

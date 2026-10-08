@@ -4,6 +4,7 @@ import { NumericCellContent } from "@sparkle/components/DataTable/cells";
 import { Pagination } from "@sparkle/components/Pagination";
 import { preloadSparkleLocale } from "@sparkle/lib/i18n/catalogs";
 import { formatDate, useFormatLocale } from "@sparkle/lib/i18n/format";
+import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -81,7 +82,7 @@ describe("SparkleI18nProvider", () => {
     function FormattedDate() {
       return <>{formatDate(date, { timeZone: "UTC" }, useFormatLocale())}</>;
     }
-    const render = (formatLocale: string) =>
+    const render = (formatLocale: SparkleFormatLocale) =>
       renderToStaticMarkup(
         <SparkleI18nProvider locale="en-US" formatLocale={formatLocale}>
           <FormattedDate />

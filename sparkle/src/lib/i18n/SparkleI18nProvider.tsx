@@ -3,14 +3,18 @@ import {
   loadSparkleI18n,
   sourceLocaleI18n,
 } from "@sparkle/lib/i18n/catalogs";
-import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
+import type {
+  SparkleCatalogLocale,
+  SparkleFormatLocale,
+} from "@sparkle/lib/i18n/locales";
 import { SparkleI18nContext } from "@sparkle/lib/i18n/useLingui";
 import { reportToDatadog } from "@sparkle/lib/reportToDatadog";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface SparkleI18nProviderProps {
   locale: SparkleCatalogLocale;
-  formatLocale?: string;
+  /** Locale to format numbers and dates in, the browser's when `undefined`. */
+  formatLocale?: SparkleFormatLocale;
   children: React.ReactNode;
 }
 

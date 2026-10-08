@@ -1,7 +1,9 @@
+import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { useLingui } from "@sparkle/lib/i18n/useLingui";
 
-// Mirrors `front/lib/i18n/format.ts`. Sparkle has no global format locale: components read the one
-// of their `SparkleI18nProvider` with `useFormatLocale` and pass it explicitly.
+// Mirrors the date, time, number and relative time functions of `front/lib/i18n/format.ts`. Sparkle
+// has no global format locale: components read the one of their `SparkleI18nProvider` with
+// `useFormatLocale` and pass it explicitly.
 
 /**
  * @cc [owner:ykmsd,label:product] sparkle-format-locale-resolution
@@ -14,6 +16,14 @@ export function formatDate(
   locale?: string
 ): string {
   return new Date(date).toLocaleDateString(locale, options);
+}
+
+export function formatTime(
+  date: Date | number | string,
+  options?: Intl.DateTimeFormatOptions,
+  locale?: string
+): string {
+  return new Date(date).toLocaleTimeString(locale, options);
 }
 
 export function formatDateTime(
@@ -46,6 +56,6 @@ export function formatRelativeTime(
  * `useFormatLocale` MUST return the `formatLocale` of the closest `SparkleI18nProvider`, and
  * `undefined` (formatting in the runtime's default locale) when it has none or there is no provider.
  */
-export function useFormatLocale(): string | undefined {
+export function useFormatLocale(): SparkleFormatLocale | undefined {
   return useLingui().formatLocale;
 }
