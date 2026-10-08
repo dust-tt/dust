@@ -9,12 +9,11 @@ export function CoEditionBadge() {
       tooltipTriggerAsChild
       label={t`This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it.`}
       trigger={
-        <span className="flex min-w-0">
+        <span className="shrink-0">
           <Chip
             size="mini"
-            className="min-w-0"
             color="info"
-            label={t`Co-edition · Unstable alpha · Dust only`}
+            label={t`Co-edition · Unstable alpha`}
           />
         </span>
       }
