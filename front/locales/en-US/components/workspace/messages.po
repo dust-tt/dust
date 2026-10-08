@@ -910,6 +910,7 @@ msgstr "{usedCreditCount, plural, one {Shared by all members. {usedCredits} cred
 #: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MembersUsageTable.tsx
 msgid "Group budget"
 msgstr "Group budget"
 
@@ -922,7 +923,6 @@ msgid "Granted seat"
 msgstr "Granted seat"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "Limit per member"
 msgstr "Limit per member"
@@ -1021,6 +1021,14 @@ msgid "Members"
 msgstr "Members"
 
 #: front/components/workspace/GroupsUsageTable.tsx
+msgid "Consuming the group budget ahead of the billing cycle's pace"
+msgstr "Consuming the group budget ahead of the billing cycle's pace"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets."
+msgstr "At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets."
+
+#: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models tier"
 msgstr "Models tier"
@@ -1078,6 +1086,18 @@ msgstr "Select all {totalCount, plural, one {# member} other {# members}}"
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Edit spend limit"
 msgstr "Edit spend limit"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Another group"
+msgstr "Another group"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used"
+msgstr "{percent}% used"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used, {days, plural, one {resets in # day} other {resets in # days}}"
+msgstr "{percent}% used, {days, plural, one {resets in # day} other {resets in # days}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "This user will switch to annual billing at the end of the billing period ({changeDate})"
@@ -1262,12 +1282,12 @@ msgid "Upgrade seat"
 msgstr "Upgrade seat"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-msgstr "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-
-#: front/components/workspace/MembersUsageTable.tsx
 msgid "Consuming credits ahead of the billing cycle's pace"
 msgstr "Consuming credits ahead of the billing cycle's pace"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
+msgstr "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models"

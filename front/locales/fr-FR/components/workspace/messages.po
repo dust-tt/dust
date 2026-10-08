@@ -910,6 +910,7 @@ msgstr "{usedCreditCount, plural, one {Partagé par tous les membres. {usedCredi
 #: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
+#: front/components/workspace/MembersUsageTable.tsx
 msgid "Group budget"
 msgstr "Budget du groupe"
 
@@ -922,7 +923,6 @@ msgid "Granted seat"
 msgstr "Siège attribué"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "Limit per member"
 msgstr "Limite par membre"
@@ -1021,6 +1021,14 @@ msgid "Members"
 msgstr "Membres"
 
 #: front/components/workspace/GroupsUsageTable.tsx
+msgid "Consuming the group budget ahead of the billing cycle's pace"
+msgstr "Consomme le budget du groupe plus vite que le rythme du cycle de facturation"
+
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets."
+msgstr "À ce rythme, ce groupe utilisera tout son budget avant la fin du cycle et ses membres perdront l’accès à Dust jusqu’à la réinitialisation."
+
+#: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models tier"
 msgstr "Niveau de modèles"
@@ -1078,6 +1086,18 @@ msgstr "{totalCount, plural, one {Sélectionner # membre} other {Sélectionner l
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Edit spend limit"
 msgstr "Modifier la limite de dépenses"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Another group"
+msgstr "Un autre groupe"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used"
+msgstr "{percent} % utilisé"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "{percent}% used, {days, plural, one {resets in # day} other {resets in # days}}"
+msgstr "{percent} % utilisé, {days, plural, one {réinitialisation dans # jour} other {réinitialisation dans # jours}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "This user will switch to annual billing at the end of the billing period ({changeDate})"
@@ -1262,12 +1282,12 @@ msgid "Upgrade seat"
 msgstr "Passer à un siège supérieur"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-msgstr "À ce rythme, cet utilisateur atteindra sa limite avant la fin du cycle et perdra l’accès à Dust jusqu’à la réinitialisation."
-
-#: front/components/workspace/MembersUsageTable.tsx
 msgid "Consuming credits ahead of the billing cycle's pace"
 msgstr "Consomme des crédits plus vite que le rythme du cycle de facturation"
+
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
+msgstr "À ce rythme, cet utilisateur atteindra sa limite avant la fin du cycle et perdra l’accès à Dust jusqu’à la réinitialisation."
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models"

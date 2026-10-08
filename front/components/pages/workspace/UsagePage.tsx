@@ -26,6 +26,7 @@ import { UsageMembersSection } from "@app/components/workspace/UsageMembersSecti
 import { CreditPoolCards } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
+import { useSharedUsageLimitGroupColumn } from "@app/hooks/useGroupsUsage";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
@@ -189,6 +190,7 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const groupSeatProvisioningEnabled = hasFeature("group_seat_provisioning");
+  const groupBudgetsEnabled = hasFeature("group_limits");
   // A cancelled subscription already has its end date scheduled with
   // Metronome; scheduling a seat change on top of it can land past that end
   // date and get rejected. Block seat changes until the subscription is
@@ -422,6 +424,16 @@ export function UsagePage() {
     groupId: groupFilter ?? undefined,
     // Only the Members tab renders this data — skip the fetch (and its Metronome
     // per-user credit read) while another tab is active.
+    disabled: usageTab !== "members",
+  });
+
+  const {
+    showSharedUsageLimitGroupColumn,
+    sharedUsageLimitUsageByGroupId,
+    isSharedUsageLimitUsageLoading,
+  } = useSharedUsageLimitGroupColumn({
+    owner,
+    enabled: groupBudgetsEnabled,
     disabled: usageTab !== "members",
   });
 
@@ -942,6 +954,10 @@ export function UsagePage() {
       sorting={effectiveSorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
+      showSharedUsageLimitGroupColumn={showSharedUsageLimitGroupColumn}
+      sharedUsageLimitUsageByGroupId={sharedUsageLimitUsageByGroupId}
+      isSharedUsageLimitUsageLoading={isSharedUsageLimitUsageLoading}
+      creditsResetAt={creditsResetAt}
       enableSelection
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
@@ -1260,7 +1276,7 @@ export function UsagePage() {
                   owner={owner}
                   showSpendLimitColumn
                   showModelTiersColumn={isWorkspaceAdmin}
-                  showSharedUsageLimitColumn={hasFeature("group_limits")}
+                  showSharedUsageLimitColumn={groupBudgetsEnabled}
                   canEditSharedUsageLimit
                   seatOptions={
                     isWorkspaceAdmin &&

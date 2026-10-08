@@ -6,6 +6,7 @@ import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
 import { UsageMembersSection } from "@app/components/workspace/UsageMembersSection";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/WorkspaceDefaultLimitInput";
+import { useSharedUsageLimitGroupColumn } from "@app/hooks/useGroupsUsage";
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -103,6 +104,7 @@ export function GroupManagerUsagePage() {
   const sort = effectiveSorting[0];
   const {
     membersUsage,
+    creditsResetAt,
     totalMembersUsage,
     isMembersUsageLoading,
     isMembersUsageRefreshing,
@@ -122,6 +124,15 @@ export function GroupManagerUsagePage() {
     disabled: tab !== "members" || membersTab !== "members",
   });
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
+  const {
+    showSharedUsageLimitGroupColumn,
+    sharedUsageLimitUsageByGroupId,
+    isSharedUsageLimitUsageLoading,
+  } = useSharedUsageLimitGroupColumn({
+    owner,
+    enabled: isCreditPriced && hasFeature("group_limits"),
+    disabled: tab !== "members" || membersTab !== "members",
+  });
   const canHandleRequests = isCreditPriced && editableGroupIds.size > 0;
   const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
     useUpgradeRequests({
@@ -221,6 +232,16 @@ export function GroupManagerUsagePage() {
                     showSeatAndCredits={isCreditPriced}
                     showSeatActions={false}
                     showGroupsColumn={visibleGroups.length > 0}
+                    showSharedUsageLimitGroupColumn={
+                      showSharedUsageLimitGroupColumn
+                    }
+                    sharedUsageLimitUsageByGroupId={
+                      sharedUsageLimitUsageByGroupId
+                    }
+                    isSharedUsageLimitUsageLoading={
+                      isSharedUsageLimitUsageLoading
+                    }
+                    creditsResetAt={creditsResetAt}
                     onChangeSeat={NOOP_MEMBER_ACTION}
                     onRemoveSeat={NOOP_MEMBER_ACTION}
                     onEditSpendLimit={setSelectedMember}

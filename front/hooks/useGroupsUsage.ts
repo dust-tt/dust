@@ -35,3 +35,25 @@ export function useGroupsUsage({
     isGroupsUsageError: !!error,
   };
 }
+
+export function useSharedUsageLimitGroupColumn({
+  owner,
+  enabled,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  enabled: boolean;
+  disabled: boolean;
+}) {
+  const { usageByGroupId, isGroupsUsageLoading, isGroupsUsageError } =
+    useGroupsUsage({
+      owner,
+      disabled: !enabled || disabled,
+    });
+
+  return {
+    showSharedUsageLimitGroupColumn: enabled && !isGroupsUsageError,
+    sharedUsageLimitUsageByGroupId: usageByGroupId,
+    isSharedUsageLimitUsageLoading: isGroupsUsageLoading,
+  };
+}

@@ -84,3 +84,21 @@ export async function resolveSpendLimitCycleBounds(
   const { cycleStart, cycleEnd } = periodResult.value;
   return makeSpendLimitCycleWindowBounds(cycleStart, cycleEnd);
 }
+
+// The workspace's current Metronome contract billing period, or null when it
+// cannot be resolved (no contract, or a Metronome failure).
+export async function resolveMetronomeCycle(
+  workspace: LightWorkspaceType
+): Promise<BillingCycle | null> {
+  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
+    workspace.sId
+  );
+  if (periodResult.isErr()) {
+    logger.warn(
+      { err: periodResult.error, workspaceId: workspace.sId },
+      "[SpendLimitCycle] Failed to resolve billing period"
+    );
+    return null;
+  }
+  return periodResult.value;
+}

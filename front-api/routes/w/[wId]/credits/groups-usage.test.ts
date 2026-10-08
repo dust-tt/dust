@@ -2,7 +2,6 @@ import {
   makeSharedUsageLimitAwuCreditsRateLimitKeyForGroup,
   makeSpendLimitCycleWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
-import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
 import {
   ElasticsearchError,
   searchConsumptionAnalytics,
@@ -11,13 +10,17 @@ import { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
-import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import {
+  resolveMetronomeCycle,
+  resolveSpendLimitCycleBounds,
+} from "@app/lib/spend_limits/cycle";
 import {
   expireRateLimiterKey,
   getFixedWindowCount,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
+import { makeBillingCycle } from "@app/tests/utils/BillingCycleFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
@@ -45,26 +48,16 @@ vi.mock(import("@app/lib/metronome/seat_types"), async (importOriginal) => ({
 
 vi.mock(import("@app/lib/spend_limits/cycle"), async (importOriginal) => ({
   ...(await importOriginal()),
+  resolveMetronomeCycle: vi.fn(),
   resolveSpendLimitCycleBounds: vi.fn(),
 }));
-
-vi.mock(
-  import("@app/lib/api/credits/members_usage"),
-  async (importOriginal) => ({
-    ...(await importOriginal()),
-    resolveMetronomeCycle: vi.fn(),
-  })
-);
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (importOriginal) => ({
   ...(await importOriginal()),
   searchConsumptionAnalytics: vi.fn(),
 }));
 
-const CYCLE = {
-  cycleStart: new Date("2026-10-01T00:00:00Z"),
-  cycleEnd: new Date("2026-11-01T00:00:00Z"),
-};
+const CYCLE = makeBillingCycle();
 
 const BOUNDS = makeSpendLimitCycleWindowBounds(
   CYCLE.cycleStart,
@@ -202,9 +195,20 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
           groupId: engineering.sId,
           limitAwuCredits: 10_000,
           usedAwuCredits: 2_500,
+          usageTarget: "on_target",
         },
-        { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 500 },
-        { groupId: support.sId, limitAwuCredits: 3_000, usedAwuCredits: 0 },
+        {
+          groupId: sales.sId,
+          limitAwuCredits: 6_000,
+          usedAwuCredits: 500,
+          usageTarget: "on_target",
+        },
+        {
+          groupId: support.sId,
+          limitAwuCredits: 3_000,
+          usedAwuCredits: 0,
+          usageTarget: "on_target",
+        },
       ],
     });
   });
@@ -261,6 +265,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
           groupId: engineering.sId,
           limitAwuCredits: 10_000,
           usedAwuCredits: 0,
+          usageTarget: "on_target",
         },
       ],
     });
@@ -289,10 +294,46 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
           groupId: engineering.sId,
           limitAwuCredits: 10_000,
           usedAwuCredits: 0,
+          usageTarget: null,
         },
       ],
     });
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
+  });
+
+  it("reports each limited group's pace against the billing cycle", async () => {
+    const workspace = await sharedUsageLimitsWorkspace();
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    const sales = await makeLimitedGroup(workspace, "Sales", {
+      awuCredits: 10_000,
+      priority: 2,
+    });
+    const support = await makeLimitedGroup(workspace, "Support", {
+      awuCredits: 10_000,
+      priority: 3,
+    });
+    await setCounter(workspace, engineering, 500_000_000);
+    await setCounter(workspace, sales, 2_500_000_000);
+    await setCounter(workspace, support, 6_000_000_000);
+    vi.mocked(resolveMetronomeCycle).mockResolvedValue(
+      makeBillingCycle({ elapsedDays: 3, remainingDays: 27 })
+    );
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    const { groups } = await response.json();
+    expect(
+      groups.map(({ usageTarget }: { usageTarget: string }) => usageTarget)
+    ).toEqual(["on_target", "elevated", "critical"]);
   });
 
   it("reports every limited group to a workspace manager", async () => {
@@ -320,8 +361,14 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
           groupId: engineering.sId,
           limitAwuCredits: 10_000,
           usedAwuCredits: 0,
+          usageTarget: "on_target",
         },
-        { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 0 },
+        {
+          groupId: sales.sId,
+          limitAwuCredits: 6_000,
+          usedAwuCredits: 0,
+          usageTarget: "on_target",
+        },
       ],
     });
   });
@@ -362,6 +409,7 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
           groupId: engineering.sId,
           limitAwuCredits: 10_000,
           usedAwuCredits: 0,
+          usageTarget: "on_target",
         },
       ],
     });

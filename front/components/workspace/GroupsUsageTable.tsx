@@ -6,6 +6,7 @@ import { EditGroupUsageDialog } from "@app/components/workspace/EditGroupUsageDi
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { SharedUsageLimitCell } from "@app/components/workspace/SharedUsageLimitCell";
+import { UsagePaceIcon } from "@app/components/workspace/UsagePaceIcon";
 import { useGroupsUsage } from "@app/hooks/useGroupsUsage";
 import { formatCredits } from "@app/lib/client/credits";
 import { useGroups } from "@app/lib/swr/groups";
@@ -180,6 +181,28 @@ export function GroupsUsageTable({
                     usage={info.row.original.sharedUsageLimitUsage}
                   />
                 ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+            {
+              id: "sharedUsageLimitPace",
+              header: "",
+              meta: {
+                className: "hidden @3xl:table-cell @3xl:w-16",
+                headerAlign: "center",
+              },
+              cell: (info: GroupInfo) => (
+                <DataTable.CellContent className="justify-center">
+                  <UsagePaceIcon
+                    usageTarget={
+                      info.row.original.sharedUsageLimitUsage?.usageTarget
+                    }
+                    labels={{
+                      elevated: t`Consuming the group budget ahead of the billing cycle's pace`,
+                      critical: t`At this rate, this group will use its whole budget before the cycle ends and its members will lose access to Dust until it resets.`,
+                    }}
+                  />
+                </DataTable.CellContent>
+              ),
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
           ]

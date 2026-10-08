@@ -10,7 +10,7 @@ import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 
 interface SharedUsageLimitCellProps {
-  usage: SharedUsageLimitWithUsage | undefined;
+  usage: Omit<SharedUsageLimitWithUsage, "usageTarget"> | undefined;
 }
 
 export function SharedUsageLimitCell({ usage }: SharedUsageLimitCellProps) {

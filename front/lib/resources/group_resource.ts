@@ -36,9 +36,11 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type {
   SharedUsageLimitOverlap,
   SharedUsageLimitWithUsage,
+  VisibleMemberSharedUsageLimitGroup,
 } from "@app/types/api/groups/shared_usage_limit";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
@@ -3683,14 +3685,21 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   toSharedUsageLimitJSON({
     usedAwuCredits,
+    usageTarget,
   }: {
     usedAwuCredits: number;
+    usageTarget: CreditUsageTarget | null;
   }): SharedUsageLimitWithUsage {
     return {
       groupId: this.sId,
       limitAwuCredits: this.sharedUsageLimitAwuCredits ?? 0,
       usedAwuCredits,
+      usageTarget,
     };
+  }
+
+  toMemberSharedUsageLimitGroupJSON(): VisibleMemberSharedUsageLimitGroup {
+    return { kind: "visible", groupId: this.sId, name: this.name };
   }
 
   toSharedUsageLimitOverlapJSON({

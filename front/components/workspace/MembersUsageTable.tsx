@@ -15,6 +15,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import { UsagePaceIcon } from "@app/components/workspace/UsagePaceIcon";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
@@ -42,6 +43,10 @@ import type { ModelsTierDefinition } from "@app/lib/model_tiers/allowed_tiers";
 import { getMaxTierName } from "@app/lib/model_tiers/tier_order";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
+import type {
+  MemberSharedUsageLimitGroup,
+  SharedUsageLimitWithUsage,
+} from "@app/types/api/groups/shared_usage_limit";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { MembershipSeatType } from "@app/types/memberships";
 import {
@@ -51,9 +56,9 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
-  AlertCircle,
   Button,
   Chip,
   Clock,
@@ -95,6 +100,10 @@ const EMPTY_GROUP_MODEL_TIERS_BY_GROUP_ID: Record<string, ModelsTierName[]> =
   {};
 const EMPTY_WORKSPACE_ALLOWED_MODEL_TIERS: ModelsTierName[] = [];
 const EMPTY_GROUP_NAME_TO_ID = new Map<string, string>();
+const EMPTY_SHARED_USAGE_LIMIT_USAGE_BY_GROUP_ID = new Map<
+  string,
+  SharedUsageLimitWithUsage
+>();
 const EMPTY_MODEL_TIER_DEFINITION_BY_NAME = new Map<
   ModelsTierName,
   ModelsTierDefinition
@@ -120,6 +129,10 @@ type RowData = {
   spendLimitAwuCredits: number | null;
   spendLimitSource: EffectiveSpendLimitSource;
   spendLimitGroupName: string | null;
+  sharedUsageLimitGroupName: string | null;
+  sharedUsageLimitGroupTooltip: string | null;
+  sharedUsageLimitGroupUsageTarget: CreditUsageTarget | null;
+  isSharedUsageLimitGroupUsageLoading: boolean;
   poolCapOverrideExpiresAt: string | null;
   poolCapOverridePreviousAwuCredits: number | null;
   scheduledSeatType: MembershipSeatType | null;
@@ -148,6 +161,57 @@ function getSeatName(seatType: MembershipSeatType, t: Translate): string {
     : seatTypeDisplayName(seatType, t);
 }
 
+function getSharedUsageLimitGroupName(
+  sharedUsageLimitGroup: MemberSharedUsageLimitGroup | null | undefined,
+  t: Translate
+): string | null {
+  if (!sharedUsageLimitGroup) {
+    return null;
+  }
+  switch (sharedUsageLimitGroup.kind) {
+    case "visible":
+      return sharedUsageLimitGroup.name;
+    case "hidden":
+      return t(msg`Another group`);
+    default:
+      assertNeverAndIgnore(sharedUsageLimitGroup);
+      return null;
+  }
+}
+
+function getSharedUsageLimitGroupTooltip({
+  usage,
+  creditsResetAt,
+  t,
+}: {
+  usage: SharedUsageLimitWithUsage | undefined;
+  creditsResetAt: string | null;
+  t: Translate;
+}): string | null {
+  if (!usage) {
+    return null;
+  }
+  const { usedAwuCredits, limitAwuCredits } = usage;
+  const percent =
+    limitAwuCredits > 0
+      ? Math.floor((usedAwuCredits / limitAwuCredits) * 100)
+      : usedAwuCredits > 0
+        ? 100
+        : 0;
+  const days = creditsResetAt
+    ? Math.ceil((new Date(creditsResetAt).getTime() - Date.now()) / ONE_DAY_MS)
+    : 0;
+  if (days < 1) {
+    return t(msg`${percent}% used`);
+  }
+  return t(
+    msg`${percent}% used, ${plural(days, {
+      one: "resets in # day",
+      other: "resets in # days",
+    })}`
+  );
+}
+
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
@@ -158,6 +222,7 @@ function MemberUsageSkeletonCell({
     case "name":
       return <MemberNameSkeleton rowIndex={rowIndex} />;
     case "groups":
+    case "sharedUsageLimitGroup":
     case "modelTiers":
       return <LoadingBlock className="h-3 w-28 max-w-full" />;
     case "seatType":
@@ -705,6 +770,51 @@ function buildGroupsColumn(t: Translate): ColumnDef<RowData, string> {
   };
 }
 
+function buildSharedUsageLimitGroupColumn(
+  t: Translate
+): ColumnDef<RowData, string> {
+  return {
+    id: "sharedUsageLimitGroup" as const,
+    header: t(msg`Group budget`),
+    enableSorting: false,
+    accessorFn: (row) => row.sharedUsageLimitGroupName ?? "",
+    cell: (info: Info) => {
+      const {
+        sharedUsageLimitGroupName,
+        sharedUsageLimitGroupTooltip,
+        sharedUsageLimitGroupUsageTarget,
+        isSharedUsageLimitGroupUsageLoading,
+      } = info.row.original;
+      const name = (
+        <span className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="truncate">{sharedUsageLimitGroupName ?? "-"}</span>
+          {isSharedUsageLimitGroupUsageLoading ? (
+            <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
+          ) : (
+            <UsagePaceIcon usageTarget={sharedUsageLimitGroupUsageTarget} />
+          )}
+        </span>
+      );
+      return (
+        <DataTable.CellContent>
+          {sharedUsageLimitGroupTooltip ? (
+            <Tooltip
+              tooltipTriggerAsChild
+              label={sharedUsageLimitGroupTooltip}
+              trigger={name}
+            />
+          ) : (
+            name
+          )}
+        </DataTable.CellContent>
+      );
+    },
+    meta: {
+      className: "hidden @5xl:table-cell @5xl:w-40",
+    },
+  };
+}
+
 function buildSeatsIconColumn(t: Translate): ColumnDef<RowData, string> {
   return {
     id: "seatsIcon" as const,
@@ -1184,33 +1294,18 @@ function buildOffPaceColumn(t: Translate): ColumnDef<RowData, string> {
         );
       }
 
-      if (
-        overallUsageTarget !== "elevated" &&
-        overallUsageTarget !== "critical"
-      ) {
-        return <DataTable.CellContent className="justify-center" />;
-      }
-      const isCritical = overallUsageTarget === "critical";
       return (
         <DataTable.CellContent className="justify-center">
-          <Tooltip
-            tooltipTriggerAsChild
-            label={
-              isCritical
-                ? t(
-                    msg`At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets.`
-                  )
-                : t(msg`Consuming credits ahead of the billing cycle's pace`)
-            }
-            trigger={
-              <span className="flex cursor-default items-center justify-center">
-                <Icon
-                  visual={AlertCircle}
-                  size="sm"
-                  className={isCritical ? "text-red-500" : "text-warning-500"}
-                />
-              </span>
-            }
+          <UsagePaceIcon
+            usageTarget={overallUsageTarget}
+            labels={{
+              elevated: t(
+                msg`Consuming credits ahead of the billing cycle's pace`
+              ),
+              critical: t(
+                msg`At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets.`
+              ),
+            }}
           />
         </DataTable.CellContent>
       );
@@ -1330,6 +1425,7 @@ function buildCreditPlanColumns({
 function buildColumns({
   enableSelection,
   showGroupsColumn,
+  showSharedUsageLimitGroupColumn,
   showModelTiersColumn,
   showSeatAndCredits,
   hasPool,
@@ -1341,6 +1437,7 @@ function buildColumns({
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
+  showSharedUsageLimitGroupColumn: boolean;
   showModelTiersColumn: boolean;
   showSeatAndCredits: boolean;
   hasPool: boolean;
@@ -1354,6 +1451,9 @@ function buildColumns({
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [buildGroupsColumn(t)] : []),
+    ...(showSharedUsageLimitGroupColumn
+      ? [buildSharedUsageLimitGroupColumn(t)]
+      : []),
     ...(showModelTiersColumn
       ? [buildModelTiersColumn(t, !showSeatAndCredits)]
       : []),
@@ -1418,6 +1518,11 @@ interface MembersUsageTableProps {
   sorting: SortingState;
   setSorting: (sorting: SortingState) => void;
   showGroupsColumn?: boolean;
+  // Only when group budgets are enabled for the workspace.
+  showSharedUsageLimitGroupColumn?: boolean;
+  sharedUsageLimitUsageByGroupId?: Map<string, SharedUsageLimitWithUsage>;
+  isSharedUsageLimitUsageLoading?: boolean;
+  creditsResetAt?: string | null;
   enableSelection?: boolean;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
@@ -1458,6 +1563,10 @@ export function MembersUsageTable({
   sorting,
   setSorting,
   showGroupsColumn = false,
+  showSharedUsageLimitGroupColumn = false,
+  sharedUsageLimitUsageByGroupId = EMPTY_SHARED_USAGE_LIMIT_USAGE_BY_GROUP_ID,
+  isSharedUsageLimitUsageLoading = false,
+  creditsResetAt = null,
   enableSelection = false,
   rowSelection,
   onRowSelectionChange,
@@ -1495,6 +1604,29 @@ export function MembersUsageTable({
           spendLimitAwuCredits: m.spendLimitAwuCredits,
           spendLimitSource: m.spendLimitSource,
           spendLimitGroupName: m.spendLimitGroupName,
+          sharedUsageLimitGroupName: getSharedUsageLimitGroupName(
+            m.sharedUsageLimitGroup,
+            t
+          ),
+          sharedUsageLimitGroupTooltip:
+            m.sharedUsageLimitGroup?.kind === "visible"
+              ? getSharedUsageLimitGroupTooltip({
+                  usage: sharedUsageLimitUsageByGroupId.get(
+                    m.sharedUsageLimitGroup.groupId
+                  ),
+                  creditsResetAt,
+                  t,
+                })
+              : null,
+          sharedUsageLimitGroupUsageTarget:
+            m.sharedUsageLimitGroup?.kind === "visible"
+              ? (sharedUsageLimitUsageByGroupId.get(
+                  m.sharedUsageLimitGroup.groupId
+                )?.usageTarget ?? null)
+              : null,
+          isSharedUsageLimitGroupUsageLoading:
+            isSharedUsageLimitUsageLoading &&
+            m.sharedUsageLimitGroup?.kind === "visible",
           poolCapOverrideExpiresAt: m.poolCapOverrideExpiresAt,
           poolCapOverridePreviousAwuCredits:
             m.poolCapOverridePreviousAwuCredits,
@@ -1599,6 +1731,9 @@ export function MembersUsageTable({
       }),
     [
       members,
+      sharedUsageLimitUsageByGroupId,
+      isSharedUsageLimitUsageLoading,
+      creditsResetAt,
       totalAllowedUsagePendingMemberIds,
       seatChangePendingMemberIds,
       isSeatBased,
@@ -1648,6 +1783,7 @@ export function MembersUsageTable({
       buildColumns({
         enableSelection,
         showGroupsColumn,
+        showSharedUsageLimitGroupColumn,
         showModelTiersColumn,
         showSeatAndCredits,
         hasPool,
@@ -1660,6 +1796,7 @@ export function MembersUsageTable({
     [
       enableSelection,
       showGroupsColumn,
+      showSharedUsageLimitGroupColumn,
       showModelTiersColumn,
       showSeatAndCredits,
       hasPool,

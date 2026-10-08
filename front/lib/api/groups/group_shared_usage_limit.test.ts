@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/assistant/rate_limits";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { isUserBlocked } from "@app/lib/api/credits/access_control";
-import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
 import {
   ElasticsearchError,
   searchConsumptionAnalytics,
@@ -26,7 +25,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import {
+  resolveMetronomeCycle,
+  resolveSpendLimitCycleBounds,
+} from "@app/lib/spend_limits/cycle";
 import {
   expireRateLimiterKey,
   getFixedWindowCount,
@@ -73,6 +75,7 @@ vi.mock(import("@app/lib/api/audit/workos_audit"), async (importOriginal) => ({
 
 vi.mock(import("@app/lib/spend_limits/cycle"), async (importOriginal) => ({
   ...(await importOriginal()),
+  resolveMetronomeCycle: vi.fn(),
   resolveSpendLimitCycleBounds: vi.fn(),
 }));
 
@@ -80,14 +83,6 @@ vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
   return { ...mod, searchConsumptionAnalytics: vi.fn() };
 });
-
-vi.mock(
-  import("@app/lib/api/credits/members_usage"),
-  async (importOriginal) => ({
-    ...(await importOriginal()),
-    resolveMetronomeCycle: vi.fn(),
-  })
-);
 
 const AUDIT_CONTEXT = { location: "127.0.0.1" };
 
