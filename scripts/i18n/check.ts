@@ -8,16 +8,13 @@ import { formatter } from "@lingui/format-po";
 
 // Connectors cannot import front: it keeps a copy of the locales, checked below.
 import * as connectorsLocales from "../../connectors/src/types/locale";
+import logger from "../../front/logger/logger";
 import * as frontLocales from "../../front/types/locale";
 import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../../front/types/locale";
 
 const ROOT_DIR = path.resolve(__dirname, "../..");
 // The `locales/` directories of every catalog in `lingui.config.ts`, relative to the repository root.
 const LOCALES_DIRS = ["front/locales", "connectors/locales"];
-
-function reportError(details: Record<string, unknown>, message: string) {
-  console.error(`${message}\n${JSON.stringify(details, null, 2)}`);
-}
 
 async function listCatalogPaths(locale: string): Promise<string[]> {
   const catalogs = await getCatalogs(getConfig({ cwd: ROOT_DIR }));
@@ -154,7 +151,7 @@ function listDriftedConnectorsLocales(): string[] {
 async function main() {
   const driftedLocales = listDriftedConnectorsLocales();
   if (driftedLocales.length > 0) {
-    reportError(
+    logger.error(
       { driftedLocales },
       "`connectors/src/types/locale.ts` differs from `front/types/locale.ts`: copy the front values."
     );
@@ -163,7 +160,7 @@ async function main() {
 
   const staleCatalogs = await listStaleCatalogs();
   if (staleCatalogs.length > 0) {
-    reportError(
+    logger.error(
       { staleCatalogs },
       "Translation catalogs are out of date: run `npm run i18n:extract` at the repository root and commit the result."
     );
@@ -178,7 +175,7 @@ async function main() {
     const untranslated = await listUntranslatedMessages(locale);
     if (untranslated.length > 0) {
       hasMissingTranslations = true;
-      reportError(
+      logger.error(
         { locale, untranslated },
         "Missing translations: fill every empty `msgstr` of the catalogs."
       );
@@ -193,7 +190,7 @@ async function main() {
     const conflicts = await listConflictingTranslations(locale);
     if (conflicts.length > 0) {
       hasConflictingTranslations = true;
-      reportError(
+      logger.error(
         { locale, conflicts },
         "Conflicting translations: translate a message the same way in every catalog, or give messages with different meanings a Lingui `context`."
       );
@@ -203,7 +200,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("Translation catalogs are up to date and complete.");
+  logger.info({}, "Translation catalogs are up to date and complete.");
 }
 
 void main();
