@@ -39,9 +39,7 @@ function membersResponse(
   auth: Authenticator,
   { members, total }: { members: UserTypeWithWorkspace[]; total: number }
 ) {
-  // Non manager callers receive only minimal
-  // essential user data (LightUserType).
-  // oxlint-disable-next-line dust/noDirectRoleCheck -- selects the response shape, does not gate access
+  // oxlint-disable-next-line dust/noDirectRoleCheck -- non-managers receive only minimal essential user data (LightUserType)
   if (auth.isManager()) {
     return ctx.json({ members, total });
   }
