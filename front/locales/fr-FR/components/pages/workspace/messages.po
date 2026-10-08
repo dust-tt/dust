@@ -32,6 +32,11 @@ msgid "Slack workflows"
 msgstr "Workflows Slack"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"
 msgstr "Consommation"
 
@@ -42,11 +47,6 @@ msgstr "Exporter"
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Ask @analyst"
 msgstr "Demander à @analyst"
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
-msgid "Analytics"
-msgstr "Statistiques"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Explore"
