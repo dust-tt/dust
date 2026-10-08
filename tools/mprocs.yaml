@@ -55,6 +55,8 @@ procs:
       # Guard: throw if anything tries to load `next` at runtime.
       NODE_OPTIONS: "--require=./forbid-next.cjs"
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
+      COLLAB_INTERNAL_URL: "http://localhost:3013"
+      COLLAB_INTERNAL_SECRET: "dev-collab-secret"
     shell: |
       echo "Waiting for sdks-js to compile..."
       echo "Expecting file: $READY_FILE"
@@ -64,12 +66,14 @@ procs:
 
   # collab: co-edition live session server (dev only), reached by front-spa through
   # VITE_DUST_COLLAB_URL. In a workspace with co_edition, Markdown files wait on it to be editable.
+  # front-api-hono and front-workers reach it through COLLAB_INTERNAL_URL with the same secret.
   collab:
     cwd: "<CONFIG_DIR>/../front-api"
     env:
       NODE_ENV: "development"
       COLLAB_HOSTNAME: "localhost"
       COLLAB_PORT: "3013"
+      COLLAB_INTERNAL_SECRET: "dev-collab-secret"
       READY_FILE: "../sdks/js/dist/client.esm.js.map"
     shell: |
       echo "Waiting for sdks-js to compile..."
@@ -79,6 +83,9 @@ procs:
 
   front-workers:
     cwd: "<CONFIG_DIR>/.."
+    env:
+      COLLAB_INTERNAL_URL: "http://localhost:3013"
+      COLLAB_INTERNAL_SECRET: "dev-collab-secret"
     shell: "bash tools/wait-for-front-api.sh"
 
   connectors:
