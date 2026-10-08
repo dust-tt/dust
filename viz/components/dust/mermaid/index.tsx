@@ -113,7 +113,7 @@ export function Mermaid({ chart, className }: MermaidProps) {
         role="alert"
         className={cn(
           "overflow-auto rounded-lg border border-destructive p-3 text-xs text-destructive",
-          className,
+          className
         )}
       >
         {state.message}

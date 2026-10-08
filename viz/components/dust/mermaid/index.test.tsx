@@ -34,7 +34,7 @@ describe("Mermaid", () => {
     await screen.findByTestId("diagram");
     expect(mermaidMock.render).toHaveBeenCalledWith(
       expect.stringMatching(/^mermaid-/),
-      "flowchart LR\n A --> B",
+      "flowchart LR\n A --> B"
     );
   });
 
@@ -43,7 +43,7 @@ describe("Mermaid", () => {
 
     await screen.findByTestId("diagram");
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
-      expect.objectContaining({ securityLevel: "strict" }),
+      expect.objectContaining({ securityLevel: "strict" })
     );
   });
 
@@ -69,7 +69,7 @@ describe("Mermaid", () => {
     expect(mermaidMock.initialize).toHaveBeenCalledWith(
       expect.objectContaining({
         themeVariables: expect.objectContaining({ background }),
-      }),
+      })
     );
   });
 });
