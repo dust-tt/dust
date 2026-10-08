@@ -27,6 +27,7 @@ function agent(
     lastMentionedAt: null,
     status: "active",
     triggers: [],
+    hasPendingWakeUp: false,
     ...overrides,
   };
 }
@@ -305,18 +306,16 @@ describe("evaluateAgentArchivalEligibility", () => {
     });
   });
 
-  it("does not exempt an agent that only has pending wake-ups", () => {
-    // A wake-up continues one conversation rather than driving the agent, so it is not in the
-    // snapshot at all.
+  it("exempts an agent with a pending wake-up, however inactive", () => {
     expect(
       evaluateAgentArchivalEligibility({
         agent: agent({
           lastMentionedAt: daysBeforeEvaluation(31),
-          triggers: [],
+          hasPendingWakeUp: true,
         }),
         cutoffAt: CUTOFF_30_DAYS,
       })
-    ).toEqual({ eligible: true });
+    ).toEqual({ eligible: false, reason: "pending_wake_up" });
   });
 
   it("excludes agents that are not active", () => {

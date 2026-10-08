@@ -8,6 +8,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
+import { ACTIVE_WAKE_UP_STATUSES } from "@app/types/assistant/wakeups";
 
 /**
  * A workspace's agents the rules clear for archival: candidates from the mentions query, rules
@@ -92,11 +94,17 @@ export async function fetchArchivableAgents(
   });
 
   const agentIds = idleAgents.map(({ agentId }) => agentId);
-  const [agents, triggersByAgentId] = await Promise.all([
+  const [agents, triggersByAgentId, pendingWakeUps] = await Promise.all([
     AgentResource.fetchByIds(auth, agentIds),
     listTriggersByAgentId(auth, agentIds),
+    WakeUpResource.listByAgentConfigurationIds(auth, agentIds, {
+      status: ACTIVE_WAKE_UP_STATUSES,
+    }),
   ]);
   const agentsById = new Map(agents.map((agent) => [agent.sId, agent]));
+  const agentIdsWithPendingWakeUp = new Set(
+    pendingWakeUps.map(({ agentConfigurationId }) => agentConfigurationId)
+  );
 
   const eligible: ArchivableAgent[] = [];
   const skipped: AgentArchivalSkip[] = [];
@@ -117,6 +125,7 @@ export async function fetchArchivableAgents(
         lastMentionedAt,
         status: agent.status,
         triggers: triggersByAgentId.get(agentId) ?? [],
+        hasPendingWakeUp: agentIdsWithPendingWakeUp.has(agentId),
       },
       cutoffAt,
     });

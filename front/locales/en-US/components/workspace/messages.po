@@ -38,8 +38,8 @@ msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAY
 msgstr "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-msgid "Nothing is archived until you have seen the count. Agents with a schedule are excluded."
-msgstr "Nothing is archived until you have seen the count. Agents with a schedule are excluded."
+msgid "Nothing is archived until you have seen the count. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Nothing is archived until you have seen the count. Agents with a schedule or a pending wake-up are excluded."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 msgid "{eligibleCount, plural, one {# agent would be archived} other {# agents would be archived}}"
@@ -58,8 +58,8 @@ msgid "No agent has gone unmentioned since {cutoffDate}."
 msgstr "No agent has gone unmentioned since {cutoffDate}."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-msgid "{activeScheduleCount, plural, one {# agent with a schedule.} other {# agents with a schedule.}} Agents with a schedule are excluded from archival."
-msgstr "{activeScheduleCount, plural, one {# agent with a schedule.} other {# agents with a schedule.}} Agents with a schedule are excluded from archival."
+msgid "{protectedCount, plural, one {# agent with a schedule or a pending wake-up.} other {# agents with a schedule or a pending wake-up.}} Agents with a schedule or a pending wake-up are excluded from archival."
+msgstr "{protectedCount, plural, one {# agent with a schedule or a pending wake-up.} other {# agents with a schedule or a pending wake-up.}} Agents with a schedule or a pending wake-up are excluded from archival."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 msgid "Archiving will cancel their pending runs and suspend their editors' access. It can be undone one agent at a time."
