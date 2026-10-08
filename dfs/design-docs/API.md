@@ -184,9 +184,10 @@ DenyGrant {
 
 ALLOW requires a nonempty subject. DENY has no subject and applies to every session. A grant must
 select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0o5`, `r--=0o4`,
-and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid.
+and `-w-=0o2`. Zero is valid and leaves permission bits unchanged; bits outside `0o7` are invalid.
 `Attr.mode` encodes the session's resulting effective grant permissions in the POSIX owner bits by
 shifting this triplet left by six bits.
+JSON DENY payloads containing a subject are rejected rather than silently applied to everyone.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
 At each object, remove inherited permissions covered by any DENY grants attached there, then add

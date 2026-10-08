@@ -314,6 +314,12 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
         serde_json::to_value(&deny)?,
         json!({"kind": {"Deny": {"mode": 2}}})
     );
+    assert!(
+        serde_json::from_value::<rpc::Grant>(json!({
+            "kind": {"Deny": {"subject": "u:spolu@dust.tt", "mode": 2}}
+        }))
+        .is_err()
+    );
     for grant in [&allow, &deny] {
         assert_eq!(
             rpc::Grant::decode(grant.encode_to_vec().as_slice())?,

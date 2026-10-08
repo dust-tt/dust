@@ -19,7 +19,8 @@ Tenant-key administration MUST NOT be restricted by object grants.
 
 @cc [owner:spolu,label:api;security] dfs-grant-shape
 Each `Grant` MUST select exactly one ALLOW or DENY variant. ALLOW MUST contain a nonempty subject
-and a mode; DENY MUST contain only a mode and apply to every session. Subjects MUST be matched
+and a mode; DENY MUST contain only a mode and apply to every session. JSON DENY payloads MUST reject
+a subject rather than silently interpret the rule as applying to everyone. Subjects MUST be matched
 exactly and case-sensitively against the tenant-key holder's asserted session subjects. The server
 MUST NOT resolve group membership or infer additional subjects from strings such as
 `u:spolu@dust.tt` or `g:engineering`.
