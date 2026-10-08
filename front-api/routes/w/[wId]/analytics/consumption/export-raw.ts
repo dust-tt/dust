@@ -10,7 +10,7 @@ import {
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureCanReadAnalyticsOfAllGroups } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -28,7 +28,7 @@ const DownloadParamsSchema = z.object({
 /** @ignoreswagger */
 app.post(
   "/status",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("json", ConsumptionExportBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -49,7 +49,7 @@ app.post(
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("json", ConsumptionExportBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");
@@ -87,7 +87,7 @@ app.post(
 /** @ignoreswagger */
 app.get(
   "/:name/download",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("param", DownloadParamsSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
