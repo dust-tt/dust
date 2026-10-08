@@ -20,7 +20,10 @@ export function sharedUsageLimitErrorToApiError(
     case "invalid_order":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "invalid_shared_usage_limit_order",
+          message: error.message,
+        },
       };
     case "order_changed":
       return {

@@ -249,6 +249,9 @@ describe("PUT /api/w/[wId]/groups/shared_usage_limit_priorities", () => {
     });
 
     expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe(
+      "invalid_shared_usage_limit_order"
+    );
   });
 
   it("returns 403 when shared usage limits are not enabled", async () => {
