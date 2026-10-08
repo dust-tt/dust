@@ -109,6 +109,7 @@ export const INTERNAL_LIVE_SOURCE_WRITE_PATH = "/internal/documents/write";
 
 export const liveSourceReadRequestSchema = z.object({
   workspaceId: z.string().min(1),
+  userId: z.string().min(1).optional(),
   canonicalPath: z.string().min(1),
 });
 
