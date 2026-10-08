@@ -5,6 +5,7 @@
 # Requirements:
 # * process-compose (`brew install f1bonacc1/tap/process-compose`)
 # * cargo-watch (`cargo install cargo-watch`)  -- live reload for Rust services
+# * FoundationDB client library for dfs-api (`tools/install-fdb-client.sh`)
 set -euo pipefail
 
 # Where this script lives (absolute path).
@@ -37,6 +38,12 @@ fi
 if ! command -v cargo-watch >/dev/null 2>&1; then
   echo "cargo-watch is not installed."
   echo "Install it with: cargo install cargo-watch"
+  exit 1
+fi
+
+if ! "$SCRIPT_DIR/install-fdb-client.sh" --check; then
+  echo "The FoundationDB client library (needed by dfs-api) is not installed."
+  echo "Install it with: tools/install-fdb-client.sh"
   exit 1
 fi
 

@@ -9,10 +9,11 @@
 # Requirements:
 # * process-compose (`brew install f1bonacc1/tap/process-compose`)
 # * cargo-watch     (`cargo install cargo-watch`)  -- live reload for Rust services
+# * FoundationDB client library for dfs-api (`tools/install-fdb-client.sh`)
 #
 # Namespace ordering (lower = more visible in TUI):
 #   00-front    — main app: API, workers, connectors, SPAs
-#   20-core     — Rust services (core-api, sqlite-workers, oauth)
+#   20-core     — Rust services (core-api, sqlite-workers, oauth, dfs-api)
 #   40-sdk      — build watchers (sparkle, sdks-js) — readiness gates for 00-front
 #   90-optional — disabled-by-default extras
 #   99-infra    — Docker infrastructure (postgres, redis, elasticsearch, qdrant, fdb, temporal)
@@ -189,6 +190,19 @@ processes:
       backoff_seconds: 5
     depends_on:
       infra-db:
+        condition: process_healthy
+
+  dfs-api:
+    command: "cargo watch -x run"
+    working_dir: "${DUST_DEV_ROOT}/dfs/server"
+    namespace: 20-core
+    environment:
+      - "CARGO_TERM_COLOR=always"
+    availability:
+      restart: on_failure
+      backoff_seconds: 5
+    depends_on:
+      infra-fdb:
         condition: process_healthy
 
   oauth:

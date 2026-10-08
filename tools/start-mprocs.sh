@@ -12,6 +12,12 @@ if [ ! -f /.dockerenv ]; then
   fi
 fi
 
+if ! "$SCRIPT_DIR"/install-fdb-client.sh --check; then
+  echo "The FoundationDB client library (needed by dfs-api) is not installed."
+  echo "Install it with: tools/install-fdb-client.sh"
+  exit 1
+fi
+
 # Source and install the correct node version using nvm.
 # If DUST_NODE_VERSION is set (e.g. via `source scripts/try-node24.sh`), use that version
 # instead of the .nvmrc default.
