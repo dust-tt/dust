@@ -1,3 +1,4 @@
 .state/
 terraform/.terraform/
 terraform/.terraform.lock.hcl
+orchestrator/node_modules/

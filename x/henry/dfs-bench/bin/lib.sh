@@ -6,7 +6,10 @@ STATE_DIR="$BENCH_DIR/.state"
 PROJECT="dust-dev"
 REGION="us-central1"
 BUCKET="dust-dev-dfs-bench"
+REGISTRY="$REGION-docker.pkg.dev/$PROJECT/dfs-bench"
 FDB_OPERATOR_VERSION="v2.37.0"
+# Must match the FDB cluster version in k8s/fdb-cluster.yaml.
+FDB_VERSION="7.3.69"
 # Clusters older than this are torn down by bin/sweep.
 MAX_RUN_AGE_HOURS=6
 # E2B sandboxes are not reaped by our infra: short timeout, renewed by the orchestrator, hard cap.
@@ -61,6 +64,20 @@ fetch_credentials() {
     --region "$REGION" --project "$PROJECT" >/dev/null
 }
 
+# Docker with its own config dir, authenticated to the registry as the dust-dev service account.
+# Credentials are written to that config directly: `docker login` would put them in the macOS
+# keychain, shared with the user's Docker. Plugins and contexts are shared.
+use_docker() {
+  export DOCKER_CONFIG="$STATE_DIR/docker"
+  mkdir -p "$DOCKER_CONFIG"
+  [[ -e "$DOCKER_CONFIG/cli-plugins" ]] || ln -s "$HOME/.docker/cli-plugins" "$DOCKER_CONFIG/cli-plugins"
+  [[ -e "$DOCKER_CONFIG/contexts" ]] || ln -s "$HOME/.docker/contexts" "$DOCKER_CONFIG/contexts"
+  local auth
+  auth="$(printf '_json_key:%s' "$(cat "$SA_KEY")" | base64 | tr -d '\n')"
+  (umask 077 && jq -n --arg host "$REGION-docker.pkg.dev" --arg auth "$auth" \
+    '{auths: {($host): {auth: $auth}}}' >"$DOCKER_CONFIG/config.json")
+}
+
 tf() {
   terraform -chdir="$BENCH_DIR/terraform" "$@"
 }
@@ -72,13 +89,15 @@ tf_init() {
     -backend-config="prefix=runs/$run_id/tfstate" >/dev/null
 }
 
-# --- E2B (US cluster, shared with dev). Needs E2B_API_KEY and E2B_DOMAIN. ---
+# --- E2B (e2b.dev, us-central1). Credentials from .state/e2b.env, else the environment. ---
 
 load_e2b_env() {
-  if [[ -z "${E2B_API_KEY:-}" || -z "${E2B_DOMAIN:-}" ]] && [[ -f "$HOME/.dust-hive/config.env" ]]; then
-    eval "$(grep -E '^(export )?E2B_(API_KEY|DOMAIN)=' "$HOME/.dust-hive/config.env")"
+  if [[ -f "$STATE_DIR/e2b.env" ]]; then
+    set -a
+    source "$STATE_DIR/e2b.env"
+    set +a
   fi
-  [[ -n "${E2B_API_KEY:-}" && -n "${E2B_DOMAIN:-}" ]] || die "E2B_API_KEY and E2B_DOMAIN must be set"
+  [[ -n "${E2B_API_KEY:-}" && -n "${E2B_DOMAIN:-}" ]] || die "set E2B_API_KEY and E2B_DOMAIN in $STATE_DIR/e2b.env"
   export E2B_API_KEY E2B_DOMAIN
 }
 

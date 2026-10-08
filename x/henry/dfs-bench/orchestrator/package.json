@@ -1,0 +1,8 @@
+{
+  "name": "@dust-tt/dfs-bench-orchestrator",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "e2b": "2.13.0"
+  }
+}
