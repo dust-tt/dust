@@ -26,7 +26,7 @@ Attr {
   parent: ObjectRef              // Visible parent; root is its own parent.
   directory: bool
   size: uint64                   // Logical file size; zero for directories.
-  mode: uint32                   // POSIX mode bits, restricted to 0o7777.
+  mode: uint32                   // POSIX owner rwx bits, restricted to 0o700.
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
@@ -54,6 +54,11 @@ ErrorDetails {
 
 Empty {}
 ```
+
+`Attr.mode` supports only owner read (`0o400`), write (`0o200`), and execute (`0o100`) permissions.
+Group, other, special, and file-type bits are always zero. For example, owner read/write is `0o600`
+and owner read/write/execute is `0o700`. Create and update operations reject modes containing bits
+outside `0o700` with `INVALID_INPUT`.
 
 All timestamps, including session expiration and search time bounds, use this millisecond format.
 Precision is one millisecond, and dates before the Unix epoch are not representable. Zero denotes
@@ -178,7 +183,7 @@ DenyGrant {
 ALLOW requires a nonempty subject. DENY has no subject and applies to every session. A grant must
 select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0o5`, `r--=0o4`,
 and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid. These masks are
-distinct from `Attr.mode`, which retains the file's POSIX mode bits restricted to `0o7777`.
+distinct from `Attr.mode`, which retains the file's POSIX mode bits restricted to `0o700`.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
 At each object, combine the modes of all ALLOW grants whose subjects match the session, then remove

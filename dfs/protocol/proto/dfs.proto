@@ -2,7 +2,7 @@ syntax = "proto2";
 
 package dfs.v1;
 
-// Behavioral requirements and validation limits are specified in ../CONTRACTS.
+// Additional behavioral requirements and validation limits are specified in ../CONTRACTS.
 // All calls are unary and authenticate with authorization: Bearer <key> metadata.
 // Session-key calls derive their tenant and subjects exclusively from the authenticated session.
 service Dfs {
@@ -71,6 +71,9 @@ message Attr {
   required ObjectRef parent = 2;
   required bool directory = 3;
   required uint64 size = 4;
+  // @cc [owner:spolu,label:api] dfs-attribute-mode
+  // Mode MUST contain only POSIX owner permissions: r=0o400, w=0o200, x=0o100. Group, other,
+  // special, and file-type bits MUST be zero; the allowed mask is 0o700.
   required uint32 mode = 5;
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
@@ -106,13 +109,18 @@ message Grant {
 message AllowGrant {
   // An exact session subject, such as u:spolu@dust.tt or g:engineering.
   required string subject = 1;
-  // Permissions to add: r=4, w=2, x=1; only bits in 0o7 are permitted.
+  // @cc [owner:spolu,label:api] dfs-allow-mode
+  // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. Matching ALLOW modes MUST add
+  // these permissions; zero MUST leave permission bits unchanged. Other bits MUST fail with
+  // INVALID_INPUT.
   required uint32 mode = 2;
 }
 
 message DenyGrant {
-  // Permissions to remove for every subject: r=4, w=2, x=1; only bits in 0o7 are permitted.
-  // Mode 0o2 removes writes; 0o7 removes all access until a deeper ALLOW restores it.
+  // @cc [owner:spolu,label:api] dfs-deny-mode
+  // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. DENY modes MUST remove these
+  // permissions for every subject; zero MUST leave permission bits unchanged. Other bits MUST
+  // fail with INVALID_INPUT.
   required uint32 mode = 1;
 }
 
@@ -301,6 +309,9 @@ message CreateOperation {
   required ObjectId object_id = 3;
   required bool directory = 4;
   optional string mime_type = 5;
+  // @cc [owner:spolu,label:api] dfs-create-mode
+  // Mode MUST use the owner permission bits specified by Attr.mode. Bits outside 0o700 MUST
+  // fail with INVALID_INPUT.
   required uint32 mode = 6;
   map<string, bytes> xattrs = 7;
 }
@@ -309,6 +320,9 @@ message UpdateOperation {
   required ObjectId object_id = 1;
   optional string mime_type = 2;
   repeated XattrChange xattrs = 3;
+  // @cc [owner:spolu,label:api] dfs-update-mode
+  // A supplied mode MUST use the owner permission bits specified by Attr.mode; bits outside
+  // 0o700 MUST fail with INVALID_INPUT. Omission MUST preserve the stored mode.
   optional uint32 mode = 4;
   optional uint64 atime = 5;
   optional uint64 mtime = 6;

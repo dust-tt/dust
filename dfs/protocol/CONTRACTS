@@ -20,11 +20,10 @@ grants.
 
 @cc [owner:spolu,label:api;security] dfs-grant-shape
 Each `Grant` MUST select exactly one ALLOW or DENY variant. ALLOW MUST contain a nonempty subject
-and a mode; DENY MUST contain only a mode and apply to every session. Modes MUST use r=4, w=2, x=1,
-with no bits outside `0o7`; zero MUST be a no-op. Subjects MUST be matched exactly and
-case-sensitively against the tenant-key holder's asserted session subjects. The server MUST NOT
-resolve group membership or infer additional subjects from strings such as `u:spolu@dust.tt` or
-`g:engineering`.
+and a mode; DENY MUST contain only a mode and apply to every session. Subjects MUST be matched
+exactly and case-sensitively against the tenant-key holder's asserted session subjects. The server
+MUST NOT resolve group membership or infer additional subjects from strings such as
+`u:spolu@dust.tt` or `g:engineering`.
 
 @cc [owner:spolu,label:security] dfs-grant-inheritance
 Effective permissions MUST start at zero and be evaluated along the real ancestor chain from tenant
@@ -78,7 +77,7 @@ epoch; omission of an optional timestamp MUST remain distinct from zero.
 Tenant IDs MUST contain 1–256 UTF-8 bytes; subjects MUST contain 1–1,024 UTF-8 bytes. Basenames MUST
 contain 1–255 UTF-8 bytes, exclude `/` and NUL, and differ from `.` and `..`. MIME types MUST be
 valid and at most 255 bytes. Xattr names MUST contain 1–255 bytes without NUL, and combined xattr
-key/value bytes MUST NOT exceed 32 KiB. POSIX modes MUST contain only bits in `0o7777`.
+key/value bytes MUST NOT exceed 32 KiB.
 
 @cc [owner:spolu,label:api] dfs-attribute-shape
 `Attr.size` MUST be the logical file size and MUST be zero for directories. `Attr.metadata` MUST be

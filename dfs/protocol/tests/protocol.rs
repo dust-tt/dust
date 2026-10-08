@@ -142,7 +142,7 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
         parent: ObjectRef::Root,
         directory: true,
         size: 0,
-        mode: 0o755,
+        mode: 0o700,
         atime: Some(0),
         mtime: None,
         ctime: None,
