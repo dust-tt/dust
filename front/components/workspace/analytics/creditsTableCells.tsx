@@ -95,7 +95,7 @@ export function CostShareCell({ share }: { share: number }) {
   return (
     <div className="flex items-center gap-2">
       <ProgressBar className="w-24" percentage={percentage} />
-      <span className="w-8 text-right text-xs text-muted-foreground tabular-nums">
+      <span className="w-10 text-right text-xs text-muted-foreground tabular-nums">
         {formatNumber(percentage / 100, { style: "percent" })}
       </span>
     </div>
