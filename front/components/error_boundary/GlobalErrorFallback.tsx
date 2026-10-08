@@ -3,9 +3,13 @@ import { Trans, useLingui } from "@lingui/react/macro";
 
 interface GlobalErrorFallbackProps {
   message?: string;
+  details?: string;
 }
 
-export function GlobalErrorFallback({ message }: GlobalErrorFallbackProps) {
+export function GlobalErrorFallback({
+  message,
+  details,
+}: GlobalErrorFallbackProps) {
   const { t } = useLingui();
 
   return (
@@ -19,6 +23,11 @@ export function GlobalErrorFallback({ message }: GlobalErrorFallbackProps) {
           <p className="copy-sm text-muted-foreground">
             {message ?? t`An unexpected error occurred. Please try again.`}
           </p>
+          {details && (
+            <p className="copy-xs whitespace-pre-line font-mono text-muted-foreground">
+              {details}
+            </p>
+          )}
         </div>
         <div>
           <Button

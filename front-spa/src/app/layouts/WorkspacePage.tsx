@@ -1,13 +1,19 @@
-import { UserLocaleSync } from "@dust-tt/front/components/app/UserLocaleSync";
+import {
+  LocaleSync,
+  UserLocaleSync,
+} from "@dust-tt/front/components/app/UserLocaleSync";
 import { ProfileOnboardingDialog } from "@dust-tt/front/components/onboarding/ProfileOnboardingDialog";
 import { AppAuthContextLayout } from "@dust-tt/front/components/sparkle/AppAuthContextLayout";
 import { computeIsMetronomeCheckout } from "@dust-tt/front/lib/client/subscription";
-import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
+import {
+  useAuthContext,
+  useNoWorkspaceUserLocale,
+} from "@dust-tt/front/lib/swr/workspaces";
 import { isAPIErrorResponse } from "@dust-tt/front/types/error";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
 import { useRequiredPathParam } from "@spa/lib/platform";
-import { type ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
 import { Navigate, Outlet, useLocation, useMatches } from "react-router-dom";
 
 function useIsRequireCanUseProduct(): boolean {
@@ -28,6 +34,12 @@ interface WorkspacePageProps {
  * When the auth context loads, the startup loading screen MUST stay visible until `UserLocaleSync`
  * reports ready, so the workspace is never shown in a locale it is about to switch away from.
  */
+/**
+ * @cc [owner:sfriquet,label:product] auth-error-in-no-workspace-locale
+ * When the auth context fails, the error page MUST render under `LocaleSync` with the `userLocale`
+ * of `useNoWorkspaceUserLocale`, nothing MUST render while that locale is loading, and the startup
+ * loading screen MUST stay visible until `LocaleSync` reports ready.
+ */
 export function WorkspacePage({ children }: WorkspacePageProps) {
   const wId = useRequiredPathParam("wId");
   const isRequireCanUseProduct = useIsRequireCanUseProduct();
@@ -36,16 +48,11 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
     workspaceId: wId,
   });
 
+  const { userLocale, hasLocalisation, isUserLocaleLoading } =
+    useNoWorkspaceUserLocale({ disabled: !authContextError });
+
   const signalAppReady = useAppReadyContext();
   const location = useLocation();
-
-  // Signal that the app is ready on error. Otherwise `UserLocaleSync` signals it once the user
-  // locale is active, which dismisses the loading screen.
-  useEffect(() => {
-    if (authContextError) {
-      signalAppReady();
-    }
-  }, [authContextError, signalAppReady]);
 
   if (
     isAPIErrorResponse(authContextError) &&
@@ -59,7 +66,19 @@ export function WorkspacePage({ children }: WorkspacePageProps) {
   }
 
   if (authContextError) {
-    return <AuthErrorPage error={authContextError} />;
+    if (isUserLocaleLoading) {
+      return null;
+    }
+
+    return (
+      <>
+        <LocaleSync userLocale={userLocale} onReady={signalAppReady} />
+        <AuthErrorPage
+          error={authContextError}
+          hasLocalisation={hasLocalisation}
+        />
+      </>
+    );
   }
 
   // Return null while loading - the loading screen handles the loading state

@@ -23,7 +23,7 @@ export function PokePage({ children }: PokeLayoutProps) {
   }, [isAuthenticated, authContext, authContextError, signalAppReady]);
 
   if (authContextError) {
-    return <AuthErrorPage error={authContextError} />;
+    return <AuthErrorPage error={authContextError} hasLocalisation={false} />;
   }
 
   if (!isAuthenticated || !authContext) {

@@ -6,6 +6,7 @@ import type { LocaleOverride } from "@app/lib/i18n/locale_override";
 import { useLocaleOverride } from "@app/lib/i18n/locale_override";
 import { getSparkleLocale } from "@app/lib/i18n/sparkle_locale";
 import logger from "@app/logger/logger";
+import type { SupportedLocale } from "@app/types/locale";
 import { DEFAULT_LOCALE, PSEUDO_LOCALE } from "@app/types/locale";
 import { preloadSparkleLocale } from "@dust-tt/sparkle/i18n";
 import type { Messages } from "@lingui/core";
@@ -22,25 +23,24 @@ async function loadUiCatalog(locale: LocaleOverride): Promise<Messages> {
   return pseudoLocalizeMessages(await loadCatalog(DEFAULT_LOCALE));
 }
 
-interface UserLocaleSyncProps {
+interface LocaleSyncProps {
+  userLocale: SupportedLocale | null;
   onReady?: () => void;
 }
 
 /**
  * @cc [owner:sfriquet,label:product] active-locale-follows-user-locale
  * Once its catalog has loaded, the active UI locale MUST be the locale override of
- * `useLocaleOverride` when non-null, whether or not the `localisation` flag is enabled. Otherwise
- * it MUST be `DEFAULT_LOCALE` when the `localisation` flag is disabled, and the `userLocale` of
- * `useUserLocale` otherwise. While the catalog loads or after it failed to load,
+ * `useLocaleOverride` when non-null. Otherwise it MUST be `userLocale` when non-null, and
+ * `DEFAULT_LOCALE` otherwise. While the catalog loads or after it failed to load,
  * `locale-switch-never-blocks-rendering` applies.
  */
 /**
  * @cc [owner:sfriquet,label:product] format-locale-follows-user-locale
  * Once the catalog of the resolved locale has loaded, the format locale set with `setFormatLocale`
  * MUST be `DEFAULT_LOCALE` when the locale override is `PSEUDO_LOCALE`, and the locale override
- * when it is another non-null locale. Otherwise it MUST be `undefined` (the browser's
- * locale) when the `localisation` flag is disabled, and the `userLocale` of `useUserLocale`
- * otherwise. It MUST be set before the UI locale is activated.
+ * when it is another non-null locale. Otherwise it MUST be `userLocale` when non-null, and
+ * `undefined` (the browser's locale) otherwise. It MUST be set before the UI locale is activated.
  */
 /**
  * @cc [owner:sfriquet,label:product;react] locale-switch-never-blocks-rendering
@@ -61,18 +61,13 @@ interface UserLocaleSyncProps {
  * `onReady` MUST be called once the catalog load of the resolved locale settles, whether it
  * succeeded or failed, and MUST NOT be called for a load whose locale is no longer the resolved one.
  */
-export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
-  const owner = useWorkspace();
-  const { hasFeature } = useFeatureFlags();
-  const hasLocalisation = hasFeature("localisation");
-  const { userLocale } = useUserLocale({ owner });
+export function LocaleSync({ userLocale, onReady }: LocaleSyncProps) {
   const localeOverride = useLocaleOverride();
-  const locale =
-    localeOverride ?? (hasLocalisation ? userLocale : DEFAULT_LOCALE);
+  const locale = localeOverride ?? userLocale ?? DEFAULT_LOCALE;
   const formatLocale =
     localeOverride === PSEUDO_LOCALE
       ? DEFAULT_LOCALE
-      : (localeOverride ?? (hasLocalisation ? userLocale : undefined));
+      : (localeOverride ?? userLocale ?? undefined);
 
   // Syncs the format locale, the external Lingui instance and the document language with the
   // resolved locale.
@@ -101,4 +96,27 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   }, [locale, formatLocale, onReady]);
 
   return null;
+}
+
+interface UserLocaleSyncProps {
+  onReady?: () => void;
+}
+
+/**
+ * @cc [owner:sfriquet,label:product] user-locale-behind-localisation-flag
+ * The `userLocale` passed to `LocaleSync` MUST be the `userLocale` of `useUserLocale` when the
+ * `localisation` flag of the current workspace is enabled, and `null` otherwise.
+ */
+export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
+  const owner = useWorkspace();
+  const { hasFeature } = useFeatureFlags();
+  const hasLocalisation = hasFeature("localisation");
+  const { userLocale } = useUserLocale({ owner });
+
+  return (
+    <LocaleSync
+      userLocale={hasLocalisation ? userLocale : null}
+      onReady={onReady}
+    />
+  );
 }

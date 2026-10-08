@@ -16,6 +16,7 @@ import type {
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { DUST_HAS_SESSION, hasSessionIndicator } from "@app/lib/cookies";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetMetronomeInvoiceLinesResponseBody,
@@ -28,6 +29,7 @@ import type {
   GetSubscriptionStatusResponseBody,
 } from "@app/lib/resources/subscription_resource";
 import type { GetJoinResponseBody } from "@app/lib/signup";
+import { nonRedirectingFetcher } from "@app/lib/swr/fetcher";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   GetNoWorkspaceAuthContextResponseType,
@@ -51,6 +53,7 @@ import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCookies } from "react-cookie";
 import type { Fetcher } from "swr";
 
 export function isCellRedirectError(data: unknown): data is APIErrorResponse & {
@@ -568,6 +571,38 @@ export function useAuthContext(
     isAuthContextLoading: isFetching || !!cellRedirect,
     authContextError: error,
     mutateAuthContext: mutate,
+  };
+}
+
+/**
+ * @cc [owner:sfriquet,label:product;react] no-workspace-user-locale
+ * `userLocale` MUST be the `locale` of the no-workspace auth context, and `null` when it has none,
+ * when the request fails, or when `disabled` is set or there is no session indicator cookie (no
+ * request is made then). `hasLocalisation` MUST be `userLocale !== null`. A `not_authenticated`
+ * response MUST NOT redirect to login, and a failed request MUST NOT be retried.
+ * `isUserLocaleLoading` MUST be true only while the request is in flight.
+ */
+export function useNoWorkspaceUserLocale({
+  disabled,
+}: { disabled?: boolean } = {}) {
+  const [cookies] = useCookies([DUST_HAS_SESSION]);
+  const isDisabled =
+    disabled || !hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+  const authContextFetcher: Fetcher<GetNoWorkspaceAuthContextResponseType> =
+    nonRedirectingFetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    "/api/auth-context",
+    authContextFetcher,
+    { disabled: isDisabled, shouldRetryOnError: false }
+  );
+
+  const userLocale = data?.locale ?? null;
+
+  return {
+    userLocale,
+    hasLocalisation: userLocale !== null,
+    isUserLocaleLoading: !isDisabled && !data && !error,
   };
 }
 

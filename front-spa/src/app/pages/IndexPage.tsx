@@ -69,7 +69,7 @@ export function IndexPage() {
   ]);
 
   if (authContextError) {
-    return <AuthErrorPage error={authContextError} />;
+    return <AuthErrorPage error={authContextError} hasLocalisation={false} />;
   }
 
   // The static loading screen in index.html handles the initial loading state

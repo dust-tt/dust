@@ -30,7 +30,7 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
   }, [isAuthenticated, authContext, authContextError, signalAppReady]);
 
   if (authContextError) {
-    return <AuthErrorPage error={authContextError} />;
+    return <AuthErrorPage error={authContextError} hasLocalisation={false} />;
   }
 
   if (!isAuthenticated || !authContext) {

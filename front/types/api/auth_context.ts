@@ -24,6 +24,7 @@ export type GroupManagementAccess = {
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserType;
   defaultWorkspaceId: string | null;
+  locale?: SupportedLocale;
 };
 
 export type GetWorkspaceAuthContextResponseType = {
