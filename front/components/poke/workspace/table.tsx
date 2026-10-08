@@ -162,6 +162,10 @@ export function WorkspaceInfoTable({
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
+              <PokeTableCell>Locale</PokeTableCell>
+              <PokeTableCell>{owner.locale}</PokeTableCell>
+            </PokeTableRow>
+            <PokeTableRow>
               <PokeTableCell>Members count</PokeTableCell>
               <PokeTableCell>
                 {`${membersCount} active, ${inactiveMembersCount} inactive`}
