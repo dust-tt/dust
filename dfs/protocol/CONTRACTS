@@ -159,7 +159,7 @@ permitted authorization replicas MAY expose older versions after newer ones.
 For reads, `store_version` MUST identify the supplying store snapshot; for mutations it MUST
 identify the successful commit, or the checked snapshot when no stored changes occur. `auth_version`
 MUST identify the permission/topology state used for authorization. `Attr.view` MUST match its
-enclosing response or mutation view when present. The two fields MUST NOT promise a common snapshot,
+enclosing response view when present. The two fields MUST NOT promise a common snapshot,
 RAM-tree application of a mutation, or replace per-object attribute/content versions.
 
 @cc [owner:spolu,label:security;backend] dfs-authorization-version-ordering
@@ -244,10 +244,11 @@ objects.
 @cc [owner:spolu,label:api;backend] dfs-read-range
 `Read` MUST return at most the requested length, limited to 1 MiB, from the zero-based byte offset.
 Reads MUST stop at EOF and return empty bytes at or beyond EOF. Directories MUST fail with
-`IS_DIRECTORY`. Returned bytes and attributes MUST share the same snapshot.
+`IS_DIRECTORY`. Returned bytes and attributes MUST share the same snapshot, identified by
+`Read.object.view`.
 
 @cc [owner:spolu,label:api] dfs-read-precondition
-An omitted `Read.content_version` MUST impose no precondition. A supplied zero MUST fail with
+An omitted `ReadRequest.content_version` MUST impose no precondition. A supplied zero MUST fail with
 `INVALID_INPUT`, and a mismatched positive version MUST fail with `STALE_VIEW`. Metadata-only
 changes MUST NOT fail this precondition; returned attributes MUST reflect the current read snapshot.
 
@@ -298,15 +299,16 @@ as isolated operation errors. No result MUST be returned before commit.
 `Apply` MUST return exactly one `OperationResult` per input in request order, containing exactly one
 of `mutation` or `error`. Successful removal MUST still contain `mutation`. Returned attributes MUST
 reflect final committed state; objects removed later in the batch MUST have no returned attributes.
-`Mutation.related` MUST contain other returned objects affected by the operation. Parents changed
-only by membership and associated version bookkeeping MAY be omitted; clients MUST invalidate those
-parents' attributes and listing pages. Attribute/content versions MUST advance atomically with their
-corresponding changes.
+`Mutation.related` MUST contain other returned objects affected by the operation. Unless required by
+the operation, parents changed only by membership and associated version bookkeeping MAY be omitted;
+clients MUST invalidate those parents' attributes and listing pages. Attribute/content versions MUST
+advance atomically with their corresponding changes.
 
 @cc [owner:spolu,label:api;backend] dfs-apply-view
-Every successful `Apply` result MUST carry the same `Mutation.view`, with the batch commit version
-and authorization-state version used by the committed attempt. If no stored changes occur, the store
-version MUST be the snapshot checked by that attempt.
+Every `Attr` returned in `Mutation.object` or `Mutation.related` across an `OperationBatch` MUST
+carry the same `Attr.view`, with the batch commit version and authorization-state version used by
+the committed attempt. If no stored changes occur, the store version MUST be the snapshot checked
+by that attempt. A mutation returning no attributes MUST NOT carry a separate view.
 
 @cc [owner:spolu,label:concurrency] dfs-apply-disconnection
 Accepted `Apply` work MUST continue after disconnection. A lost response MUST NOT imply failure;

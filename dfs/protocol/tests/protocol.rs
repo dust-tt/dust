@@ -175,10 +175,11 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
 
 #[test]
 fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
+    let parent_id = ObjectId::new_v7();
     let request: rpc::ApplyRequest = serde_json::from_value(json!({
         "operations": [
             {"operation": {"Create": {
-                "parent_id": ID, "object_id": ID, "name": "file"
+                "parent_id": parent_id, "object_id": ID, "name": "file"
             }}},
             {"operation": {"Write": {"object_id": ID, "data": [0, 255]}}},
             {"operation": {"Remove": {"object_id": ID, "directory": false}}}
@@ -189,20 +190,38 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
         rpc::ApplyRequest::decode(request.encode_to_vec().as_slice())?,
         request
     );
-    let response: rpc::ApplyResponse = serde_json::from_value(json!({
+    let response: rpc::OperationBatch = serde_json::from_value(json!({
         "results": [
             {"error": {"code": rpc::ErrorCode::AlreadyExists as i32}},
-            {"mutation": {"view": {"store_version": 123, "auth_version": 120}}},
-            {"mutation": {"view": {"store_version": 123, "auth_version": 120}}}
+            {"mutation": {}},
+            {"mutation": {"related": [{
+                "id": parent_id,
+                "parent": ObjectRef::Root,
+                "directory": true,
+                "size": 0,
+                "mode": 0o700,
+                "attr_version": 2,
+                "content_version": 2,
+                "view": {"store_version": 123, "auth_version": 120}
+            }]}}
         ]
     }))?;
     assert_eq!(response.results.len(), 3);
+    let removal = response.results[2]
+        .mutation
+        .as_ref()
+        .context("missing removal mutation")?;
+    assert_eq!(removal.object, None);
+    assert_eq!(removal.related.len(), 1);
+    assert_eq!(removal.related[0].id, ObjectRef::Object(parent_id));
+    assert_eq!(removal.related[0].view.store_version, 123);
+    assert_eq!(removal.related[0].view.auth_version, 120);
     assert_eq!(
-        rpc::ApplyResponse::decode(response.encode_to_vec().as_slice())?,
+        rpc::OperationBatch::decode(response.encode_to_vec().as_slice())?,
         response
     );
     assert_eq!(
-        serde_json::from_value::<rpc::ApplyResponse>(serde_json::to_value(&response)?)?,
+        serde_json::from_value::<rpc::OperationBatch>(serde_json::to_value(&response)?)?,
         response
     );
     Ok(())

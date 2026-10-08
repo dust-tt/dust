@@ -37,16 +37,16 @@ service Dfs {
   rpc List(ListRequest) returns (Page);
 
   // Requires an active session key.
-  rpc Read(ReadRequest) returns (ReadResponse);
+  rpc Read(ReadRequest) returns (.dfs.v1.Read);
 
   // Requires an active session key.
-  rpc ReadFiles(ReadFilesRequest) returns (ReadFilesResponse);
+  rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
   // Requires an active session key.
-  rpc Validate(ValidateRequest) returns (ValidateResponse);
+  rpc Validate(ValidateRequest) returns (ValidationBatch);
 
   // Requires an active session key.
-  rpc Apply(ApplyRequest) returns (ApplyResponse);
+  rpc Apply(ApplyRequest) returns (OperationBatch);
 
   // Requires an active session key.
   rpc Search(SearchRequest) returns (SearchResponse);
@@ -229,17 +229,16 @@ message ReadRequest {
   optional uint64 content_version = 4;
 }
 
-message ReadResponse {
+message Read {
   required bytes data = 1;
   required Attr object = 2;
-  required ReadView view = 3;
 }
 
 message ReadFilesRequest {
   repeated ObjectId object_ids = 1;
 }
 
-message ReadFilesResponse {
+message FilesBatch {
   repeated FileResult results = 1;
   repeated ObjectId omitted_ids = 2;
   required ReadView view = 3;
@@ -262,7 +261,7 @@ message VersionCheck {
   optional uint64 content_version = 3;
 }
 
-message ValidateResponse {
+message ValidationBatch {
   repeated ValidationResult results = 1;
   required ReadView view = 2;
 }
@@ -294,7 +293,7 @@ message Operation {
   }
 }
 
-message ApplyResponse {
+message OperationBatch {
   repeated OperationResult results = 1;
 }
 
@@ -305,8 +304,10 @@ message OperationResult {
 
 message Mutation {
   optional Attr object = 1;
+  // @cc [owner:spolu,label:api;backend] dfs-removal-parent-attributes
+  // For a successful removal, related MUST include the removed object's parent's final Attr
+  // unless that parent is also removed later in the Apply batch.
   repeated Attr related = 2;
-  required ReadView view = 3;
 }
 
 message CreateOperation {

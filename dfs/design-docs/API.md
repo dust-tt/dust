@@ -148,7 +148,7 @@ freshness bound.
 
 For reads, `store_version` identifies the store snapshot supplying the response. For mutations, it
 identifies the successful commit. `Attr.view` carries both versions with an individual object's
-attributes and matches the enclosing response or mutation's `view` when present. `auth_version`
+attributes and matches the enclosing response's `view` when present. `auth_version`
 identifies the permission and topology state used to authorize the operation, whether served from
 the RAM tree or the store fallback. The two fields do not promise a common snapshot, and a mutation
 response does not imply the RAM tree has applied that mutation yet. Neither field replaces
@@ -522,10 +522,9 @@ ReadRequest {
 **Returns**
 
 ```text
-ReadResponse {
+Read {
   data: bytes
   object: Attr                   // Attributes from the same snapshot as data.
-  view: ReadView
 }
 ```
 
@@ -533,7 +532,7 @@ Reads stop at EOF and may return fewer bytes than requested. An offset at or bey
 empty data. A supplied content version must be positive; zero fails with `INVALID_INPUT`. A
 mismatched content version fails with `STALE_VIEW`; a directory fails with `IS_DIRECTORY`.
 Metadata-only changes do not fail the content precondition; returned attributes reflect the read's
-current snapshot.
+current snapshot, identified by `object.view`.
 
 ### ReadFiles
 
@@ -550,7 +549,7 @@ ReadFilesRequest {
 **Returns**
 
 ```text
-ReadFilesResponse {
+FilesBatch {
   results: FileResult[]          // Returned results preserve relative input order.
   omitted_ids: ObjectId[]        // Files excluded because they would exceed the reply budget.
   view: ReadView
@@ -594,7 +593,7 @@ rejects the request with `INVALID_INPUT`.
 **Returns**
 
 ```text
-ValidateResponse {
+ValidationBatch {
   results: ValidationResult[]    // One result per check, in the same order.
   view: ReadView
 }
@@ -653,7 +652,7 @@ Operation = create(CreateOperation)
 **Returns**
 
 ```text
-ApplyResponse {
+OperationBatch {
   results: OperationResult[]     // Exactly one result per operation, in request order.
 }
 
@@ -665,7 +664,6 @@ OperationResult {
 Mutation {
   object?: Attr                  // Primary object, if it survives the complete request.
   related: Attr[]                // Other returned objects affected by the operation.
-  view: ReadView                 // Shared by every successful result in this request.
 }
 ```
 
@@ -680,14 +678,17 @@ operations commit together. Storage or commit failures affect the entire transac
 cannot be reported as isolated operation failures. No results are returned before commit.
 
 Returned attributes reflect the final committed state, rather than an intermediate state after
-each operation. Removed objects have no returned attributes. Parents changed only by listing
-membership and its associated version bookkeeping may be omitted; clients must invalidate their
-cached attributes and listing pages. Attribute and content versions follow the shared rules above
-and advance atomically with their corresponding changes.
+each operation. Removed objects have no returned attributes. Removal returns the surviving parent's
+attributes in `mutation.related`. Other operations may omit parents changed only by listing
+membership and its associated version bookkeeping; clients must invalidate omitted parents' cached
+attributes and listing pages. Attribute and content versions follow the shared rules above and
+advance atomically with their corresponding changes.
 
-Every successful result carries the same `mutation.view`: `store_version` is the batch's commit
-version, and `auth_version` is the authorization-state version used by the committed attempt. For
-an attempt with no stored changes, `store_version` is the snapshot version checked by that attempt.
+Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
+same `Attr.view`: `store_version` is the batch's commit version, and `auth_version` is the
+authorization-state version used by the committed attempt. For an attempt with no stored changes,
+`store_version` is the snapshot version checked by that attempt. A successful mutation returning no
+attributes carries no view.
 
 Accepted work continues after disconnection, so a lost response does not prove a mutation failed.
 The request has no idempotency key; callers must not blindly replay operations with uncertain outcomes.
@@ -794,8 +795,10 @@ RemoveOperation {
 }
 ```
 
-**Successful result:** `mutation` is present, with no `object` attributes. Nonempty directories fail
-with `NOT_EMPTY`; recursive deletion requires explicitly removing descendants first.
+**Successful result:** `mutation` is present, with no `object` attributes. Its `related` field
+includes the parent's final attributes, including `view`, unless that parent is also removed later
+in the batch. Nonempty directories fail with `NOT_EMPTY`; recursive deletion requires explicitly
+removing descendants first.
 
 ## Search
 
