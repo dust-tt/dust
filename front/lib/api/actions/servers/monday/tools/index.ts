@@ -24,6 +24,7 @@ import {
   getGroupDetails,
   getItemDetails,
   getItemsByColumnValue,
+  getItemUpdates,
   getSubitemValues,
   getUserDetails,
   moveItemToBoard,
@@ -35,6 +36,10 @@ import {
 } from "@app/lib/api/actions/servers/monday/helpers";
 import { MONDAY_TOOLS_METADATA } from "@app/lib/api/actions/servers/monday/metadata";
 import { Err, Ok } from "@app/types/shared/result";
+import { pluralize } from "@app/types/shared/utils/string_utils";
+
+const DEFAULT_UPDATES_LIMIT = 25;
+const DEFAULT_UPDATES_PAGE = 1;
 
 const handlers: ToolHandlers<typeof MONDAY_TOOLS_METADATA> = {
   get_boards: async (_params, { authInfo }) => {
@@ -258,6 +263,33 @@ const handlers: ToolHandlers<typeof MONDAY_TOOLS_METADATA> = {
     return new Ok([
       { type: "text" as const, text: "Subitems retrieved successfully" },
       { type: "text" as const, text: JSON.stringify(subitems, null, 2) },
+    ]);
+  },
+
+  get_updates: async ({ itemId, limit, page }, { authInfo }) => {
+    const accessToken = authInfo?.token;
+
+    if (!accessToken) {
+      return new Err(
+        new MCPError("No Monday.com access token found", { tracked: false })
+      );
+    }
+
+    const updates = await getItemUpdates(
+      accessToken,
+      itemId,
+      limit ?? DEFAULT_UPDATES_LIMIT,
+      page ?? DEFAULT_UPDATES_PAGE
+    );
+    if (!updates) {
+      return new Err(new MCPError("Item not found", { tracked: false }));
+    }
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Retrieved ${updates.length} update${pluralize(updates.length)}`,
+      },
+      { type: "text" as const, text: JSON.stringify(updates, null, 2) },
     ]);
   },
 

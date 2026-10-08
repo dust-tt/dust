@@ -45,6 +45,21 @@ interface MondayColumnValue {
   text?: string;
 }
 
+interface MondayUpdateReply {
+  id: string;
+  text_body: string;
+  created_at: string;
+  creator: {
+    id: string;
+    name: string;
+  } | null;
+}
+
+interface MondayUpdate extends MondayUpdateReply {
+  updated_at: string;
+  replies: MondayUpdateReply[];
+}
+
 interface MondayUser {
   id: string;
   name: string;
@@ -630,6 +645,56 @@ export const createUpdate = async (
 
   const data = await makeGraphQLRequest(accessToken, query, { itemId, body });
   return data.create_update;
+};
+
+/**
+ * @cc [owner:thomasc2a,label:mcp] item-not-found-vs-no-updates
+ * MUST return `null` when the Monday API response contains no item for `itemId`, and an empty
+ * array when the item is returned without updates on the requested page. Request failures (HTTP
+ * errors such as 401/403, or GraphQL errors) MUST be thrown, never turned into `null` or `[]`.
+ */
+export const getItemUpdates = async (
+  accessToken: string,
+  itemId: string,
+  limit: number,
+  page: number
+): Promise<MondayUpdate[] | null> => {
+  const query = `
+    query GetItemUpdates($itemId: ID!, $limit: Int!, $page: Int!) {
+      items(ids: [$itemId]) {
+        updates(limit: $limit, page: $page) {
+          id
+          text_body
+          created_at
+          updated_at
+          creator {
+            id
+            name
+          }
+          replies {
+            id
+            text_body
+            created_at
+            creator {
+              id
+              name
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const data = await makeGraphQLRequest(accessToken, query, {
+    itemId,
+    limit,
+    page,
+  });
+  const item = data.items?.[0];
+  if (!item) {
+    return null;
+  }
+  return item.updates ?? [];
 };
 
 export const deleteItem = async (
