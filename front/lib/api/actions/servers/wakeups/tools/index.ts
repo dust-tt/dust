@@ -4,10 +4,10 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import type { ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { WAKEUPS_TOOLS_METADATA } from "@app/lib/api/actions/servers/wakeups/metadata";
+import { getConversationUserTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
-import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import { Err, Ok } from "@app/types/shared/result";
@@ -91,20 +91,6 @@ function parseWhen(when: string):
   return null;
 }
 
-function getUserTimezone(toolContext?: ToolContext): string | null {
-  if (!isAgentLoopRunContext(toolContext?.runContext)) {
-    return null;
-  }
-
-  const content = toolContext?.runContext?.conversation?.content;
-  if (!content) {
-    return null;
-  }
-
-  const userMessage = content.flat().findLast(isUserMessageType);
-  return userMessage?.context.timezone ?? null;
-}
-
 function renderScheduleConfig(wakeUp: WakeUpType): string {
   switch (wakeUp.scheduleConfig.type) {
     case "one_shot":
@@ -169,7 +155,8 @@ export function createWakeupsTools(
 
       let cronTimezone: string | null = null;
       if (parsed.kind === "cron") {
-        cronTimezone = timezone ?? getUserTimezone(toolContext);
+        cronTimezone =
+          timezone ?? (await getConversationUserTimezone(toolContext));
         if (!cronTimezone) {
           return new Err(
             new MCPError(

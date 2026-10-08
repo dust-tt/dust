@@ -1,9 +1,8 @@
 import type { ToolContext } from "@app/lib/actions/types";
 import {
-  isAgentLoopRunContext,
-  isSandboxFunctionRunContext,
-} from "@app/lib/actions/types";
-import { isValidTimezone } from "@app/lib/api/timezone";
+  getConversationUserTimezone,
+  isValidTimezone,
+} from "@app/lib/api/timezone";
 import {
   ONE_MINUTE_MS,
   resolveCalendarDate,
@@ -177,40 +176,7 @@ export function normalizeTimezone(
 export async function getUserTimezone(
   toolContext?: ToolContext
 ): Promise<string | null> {
-  if (isAgentLoopRunContext(toolContext?.runContext)) {
-    const content = toolContext?.runContext?.conversation?.content;
-    if (!content) {
-      return null;
-    }
-
-    for (let i = content.length - 1; i >= 0; i--) {
-      const contentBlock = content[i];
-      if (Array.isArray(contentBlock)) {
-        const userMessage = contentBlock.find(
-          (msg) =>
-            msg.type === "user_message" &&
-            "context" in msg &&
-            msg.context &&
-            "timezone" in msg.context
-        );
-        if (
-          userMessage &&
-          "context" in userMessage &&
-          userMessage.context &&
-          "timezone" in userMessage.context
-        ) {
-          return normalizeTimezone(userMessage.context.timezone);
-        }
-      }
-    }
-  }
-
-  if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-    const context = await toolContext.runContext.invocation.getContext();
-    return normalizeTimezone(context?.timezone);
-  }
-
-  return null;
+  return normalizeTimezone(await getConversationUserTimezone(toolContext));
 }
 
 export function isGoogleCalendarEvent(
