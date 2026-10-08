@@ -130,7 +130,7 @@ msgstr "Tags"
 
 #: front/components/assistant/manager/AgentSearchTable.tsx
 msgid "Last edited"
-msgstr "Dernière modification"
+msgstr "Modifié le"
 
 #: front/components/assistant/manager/AgentSearchTable.tsx
 msgid "Loading agents"

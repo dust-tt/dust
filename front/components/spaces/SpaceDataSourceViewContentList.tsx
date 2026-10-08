@@ -167,7 +167,7 @@ const getTableColumns = ({
     accessorKey: "lastUpdatedAt",
     enableSorting: true,
     meta: {
-      className: "w-24",
+      className: "w-44",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent

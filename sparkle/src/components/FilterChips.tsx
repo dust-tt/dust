@@ -91,6 +91,11 @@ interface FilterChipsProps<T extends string> {
  * (e.g. "Featured", "Research").
  * @summary Single-select category filter chips.
  */
+/**
+ * @cc [owner:sfriquet,label:product] single-line-chips
+ * Chips MUST stay on a single line. When they do not fit the container's width, the row MUST
+ * scroll horizontally instead of wrapping onto a new line.
+ */
 export function FilterChips<T extends string>({
   filters,
   onFilterClick,
@@ -126,7 +131,7 @@ export function FilterChips<T extends string>({
   );
 
   return (
-    <div className="flex flex-row flex-wrap gap-2">
+    <div className="flex flex-row gap-2 overflow-x-auto scrollbar-hide">
       {filters.map((filterName) => (
         <FilterChip
           key={filterName}

@@ -187,6 +187,7 @@ export function AutoJoinToggle({
                   })}`
                 : t`Allow your team members to access your Dust workspace when they authenticate with verified accounts.`
             }
+            className="max-sm:flex-col max-sm:items-start"
             action={
               <div className="flex justify-end">
                 {isMultiDomain ? (

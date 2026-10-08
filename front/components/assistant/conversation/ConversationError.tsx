@@ -84,7 +84,7 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
   const { t } = useLingui();
 
   return (
-    <div className="flex h-dvh flex-col items-center justify-center gap-3">
+    <div className="flex h-dvh flex-col items-center justify-center gap-3 px-4">
       {icon && <Icon visual={icon} className="text-info-400" size="lg" />}
       <p className="heading-xl text-center text-foreground">{title}</p>
       <div className="copy-sm text-center text-muted-foreground">

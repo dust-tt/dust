@@ -448,7 +448,7 @@ function buildColumns({
             meta: {
               className: cn(
                 COLLAPSED_COLUMN_CLASSES,
-                "@xs:w-36 @xs:max-w-none @xs:px-2"
+                "@xs:w-52 @xs:max-w-none @xs:px-2"
               ),
               headerAlign: "left",
             },
@@ -1020,7 +1020,7 @@ export function ConsumptionAttributionTableView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">
           <Trans>Attribution</Trans>
         </h3>
