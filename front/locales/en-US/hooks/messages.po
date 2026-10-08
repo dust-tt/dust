@@ -218,6 +218,14 @@ msgid "Audio attachments require voice transcription, which is unavailable in th
 msgstr "Audio attachments require voice transcription, which is unavailable in this workspace. Upload a text transcript instead."
 
 #: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload the preview of {maybeTruncatedFilename}"
+msgstr "Failed to upload the preview of {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload {maybeTruncatedFilename}"
+msgstr "Failed to upload {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
 msgid "Failed to upload file preview"
 msgstr "Failed to upload file preview"
 
@@ -649,10 +657,6 @@ msgstr "Failed to update the workspace default agent"
 #: front/hooks/useWorkspaceLocale.ts
 msgid "Failed to update the workspace language"
 msgstr "Failed to update the workspace language"
-
-#: front/hooks/useWorkspaceLocale.ts
-msgid "Could not update the workspace language."
-msgstr "Could not update the workspace language."
 
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
 msgid "Your subscription will end at the end of the current period."

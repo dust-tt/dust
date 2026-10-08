@@ -218,6 +218,14 @@ msgid "Audio attachments require voice transcription, which is unavailable in th
 msgstr "Les pièces jointes audio nécessitent la transcription vocale, qui n’est pas disponible dans ce workspace. Importez plutôt une transcription texte."
 
 #: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload the preview of {maybeTruncatedFilename}"
+msgstr "Impossible d’importer l’aperçu de {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload {maybeTruncatedFilename}"
+msgstr "Impossible d’importer {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
 msgid "Failed to upload file preview"
 msgstr "Impossible d’importer l’aperçu du fichier"
 
@@ -649,10 +657,6 @@ msgstr "Impossible de mettre à jour l’agent par défaut du workspace"
 #: front/hooks/useWorkspaceLocale.ts
 msgid "Failed to update the workspace language"
 msgstr "Impossible de mettre à jour la langue du workspace"
-
-#: front/hooks/useWorkspaceLocale.ts
-msgid "Could not update the workspace language."
-msgstr "Impossible de mettre à jour la langue du workspace."
 
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
 msgid "Your subscription will end at the end of the current period."

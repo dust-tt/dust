@@ -1,5 +1,6 @@
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
@@ -36,9 +37,7 @@ export function useConversationExternalNotificationsToggle({
       });
 
       if (!res.ok) {
-        throw new Error(
-          "Failed to update conversation email and Slack notifications setting"
-        );
+        throw await getErrorFromResponse(res);
       }
       await mutateAuthContext();
       return true;

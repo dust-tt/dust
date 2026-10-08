@@ -1,8 +1,6 @@
-import {
-  useSendApiErrorNotification,
-  useSendNotification,
-} from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { SupportedLocale } from "@app/types/locale";
 import type { WorkspaceType } from "@app/types/user";
@@ -16,7 +14,6 @@ interface UseWorkspaceLocaleProps {
 export function useWorkspaceLocale({ owner }: UseWorkspaceLocaleProps) {
   const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
@@ -34,10 +31,9 @@ export function useWorkspaceLocale({ owner }: UseWorkspaceLocaleProps) {
       });
 
       if (!res.ok) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to update the workspace language`,
-          description: t`Could not update the workspace language.`,
+          error: await getErrorFromResponse(res),
         });
         return false;
       }

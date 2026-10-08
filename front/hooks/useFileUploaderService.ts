@@ -385,7 +385,7 @@ export function useFileUploaderService({
               new FileBlobUploadError(
                 fileBlob.file,
                 undefined,
-                isAPIErrorResponse(body) ? body.error : body
+                isAPIErrorResponse(body) ? body.error : undefined
               )
             );
           }
@@ -421,20 +421,24 @@ export function useFileUploaderService({
         if (result.isErr()) {
           const uploadError = result.error;
           erroredBlobs.push(uploadError);
-          const title = previewMode
-            ? t`Failed to upload file preview`
-            : t`Failed to upload file`;
-          if (uploadError.error !== undefined) {
-            sendApiErrorNotification({ title, error: uploadError.error });
-            return;
-          }
           const maybeTruncatedFilename =
             uploadError.file.name.length > 50
               ? uploadError.file.name.slice(0, 47) + "..."
               : uploadError.file.name;
+          if (uploadError.error !== undefined) {
+            sendApiErrorNotification({
+              title: previewMode
+                ? t`Failed to upload the preview of ${maybeTruncatedFilename}`
+                : t`Failed to upload ${maybeTruncatedFilename}`,
+              error: uploadError.error,
+            });
+            return;
+          }
           sendNotification({
             type: "error",
-            title,
+            title: previewMode
+              ? t`Failed to upload file preview`
+              : t`Failed to upload file`,
             description: uploadError.message
               ? `${uploadError.message} (${maybeTruncatedFilename})`
               : t`Error uploading ${maybeTruncatedFilename}`,

@@ -1,5 +1,6 @@
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
@@ -29,7 +30,7 @@ export function useEmailAgentsToggle({ owner }: UseEmailAgentsToggleProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Email agents setting");
+        throw await getErrorFromResponse(res);
       }
       setIsEnabled(!isEnabled);
       return true;

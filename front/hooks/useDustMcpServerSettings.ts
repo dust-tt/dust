@@ -2,6 +2,7 @@ import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { DustMcpServerSettings } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import { getDustMcpServerSettingsFromMetadata } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
@@ -42,7 +43,7 @@ export function useDustMcpServerSettings({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Dust MCP server settings");
+        throw await getErrorFromResponse(res);
       }
 
       setSettings(nextSettings);
