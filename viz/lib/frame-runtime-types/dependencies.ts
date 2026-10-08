@@ -6,21 +6,9 @@ export function collectDependencyDeclarations(
   vizRoot: string,
   sourceFiles: readonly ts.SourceFile[]
 ) {
-  const repositoryRoot = path.dirname(vizRoot);
   const files = new Map<string, string>();
   const modulePaths = new Map<string, string>();
-  // Worktrees can symlink node_modules, so accept both the symlink and its real path.
-  const sourceRoots = [
-    [path.join(vizRoot, "node_modules"), "viz/node_modules"],
-    [path.join(repositoryRoot, "node_modules"), "node_modules"],
-  ].flatMap<[string, string]>(([source, target]) =>
-    fs.existsSync(source)
-      ? [
-          [source, target],
-          [fs.realpathSync(source), target],
-        ]
-      : [[source, target]]
-  );
+  const sourceRoots = dependencySourceRoots(vizRoot);
 
   for (const source of sourceFiles) {
     // Consumers supply their compiler's standard libraries and use browser globals.
@@ -53,6 +41,38 @@ export function collectDependencyDeclarations(
   }
 
   return { files, modulePaths };
+}
+
+// Worktrees can symlink node_modules or individual packages, and resolve hoisted packages from
+// any ancestor directory, so map real paths back to Viz's layout.
+function dependencySourceRoots(vizRoot: string): [string, string][] {
+  const vizModules = path.join(vizRoot, "node_modules");
+  const roots: [string, string][] = [[vizModules, "viz/node_modules"]];
+  if (fs.existsSync(vizModules)) {
+    for (const entry of fs.readdirSync(vizModules, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) {
+        roots.push([
+          fs.realpathSync(path.join(vizModules, entry.name)),
+          `viz/node_modules/${entry.name}`,
+        ]);
+      }
+    }
+  }
+  for (
+    let directory = path.dirname(vizRoot);
+    directory !== path.dirname(directory);
+    directory = path.dirname(directory)
+  ) {
+    roots.push([path.join(directory, "node_modules"), "node_modules"]);
+  }
+  return roots.flatMap<[string, string]>(([source, target]) =>
+    fs.existsSync(source)
+      ? [
+          [source, target],
+          [fs.realpathSync(source), target],
+        ]
+      : []
+  );
 }
 
 function artifactPath({
