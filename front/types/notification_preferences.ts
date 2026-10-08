@@ -145,6 +145,11 @@ export const SUBSCRIPTION_PAYMENT_FAILED_TRIGGER_ID =
   "subscription-payment-failed" as const;
 export const WORKSPACE_DATA_DELETION_TRIGGER_ID =
   "workspace-data-deletion" as const;
+export const CREDIT_USAGE_ALERT_TRIGGER_ID = "credit-usage-alert" as const;
+export const GITHUB_CONNECTION_DELETED_TRIGGER_ID =
+  "github-connection-deleted" as const;
+export const MCP_GLOBAL_SHARING_RECONFIGURATION_TRIGGER_ID =
+  "mcp-global-sharing-reconfiguration" as const;
 export const ACCESS_REQUEST_TRIGGER_ID = "access-request" as const;
 
 export const SOUND_NOTIFICATION_OPTIONS = [
