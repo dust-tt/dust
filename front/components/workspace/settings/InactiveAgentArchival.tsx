@@ -97,7 +97,7 @@ export function InactiveAgentArchival({ owner }: InactiveAgentArchivalProps) {
           <span className={cn(!isEnabled && "text-faint")}>
             <Trans>
               How long an agent has to go unmentioned before it's archived.
-              Agents with a schedule are excluded.
+              Agents with a schedule or a pending wake-up are excluded.
             </Trans>
           </span>
         }

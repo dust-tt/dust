@@ -351,5 +351,5 @@ msgid "Inactivity threshold"
 msgstr "Seuil d’inactivité"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "days unmentioned archived schedule excluded"
-msgstr "jours non mentionnés archivés planification exclus"
+msgid "days unmentioned archived schedule wake-up excluded"
+msgstr "jours non mentionnés archivés planification réveil exclus"

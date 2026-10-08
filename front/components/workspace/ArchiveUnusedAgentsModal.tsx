@@ -60,9 +60,10 @@ function ArchiveUnusedAgentsForm({
 
   const step = preview === null ? "pick" : "review";
 
-  // The server reports every reason it skipped an agent for, but a schedule is the only one that is worth showing
-  const activeScheduleCount =
-    preview?.skippedCountByReason.active_schedule ?? 0;
+  // Of every skip reason the server reports, only schedules and pending wake-ups are worth showing
+  const protectedCount =
+    (preview?.skippedCountByReason.active_schedule ?? 0) +
+    (preview?.skippedCountByReason.pending_wake_up ?? 0);
 
   const eligibleCount = preview?.eligibleCount ?? 0;
   const cutoffDate = preview
@@ -126,7 +127,7 @@ function ArchiveUnusedAgentsForm({
             <p className="text-sm text-muted-foreground">
               <Trans>
                 Nothing is archived until you have seen the count. Agents with a
-                schedule are excluded.
+                schedule or a pending wake-up are excluded.
               </Trans>
             </p>
           </div>
@@ -146,12 +147,12 @@ function ArchiveUnusedAgentsForm({
                   ? t`Nobody has mentioned them since ${cutoffDate}.`
                   : t`No agent has gone unmentioned since ${cutoffDate}.`}
               </span>
-              {activeScheduleCount > 0 && (
+              {protectedCount > 0 && (
                 <span className="text-muted-foreground">
-                  {t`${plural(activeScheduleCount, {
-                    one: "# agent with a schedule.",
-                    other: "# agents with a schedule.",
-                  })} Agents with a schedule are excluded from archival.`}
+                  {t`${plural(protectedCount, {
+                    one: "# agent with a schedule or a pending wake-up.",
+                    other: "# agents with a schedule or a pending wake-up.",
+                  })} Agents with a schedule or a pending wake-up are excluded from archival.`}
                 </span>
               )}
               {preview.eligibleCount > 0 && (

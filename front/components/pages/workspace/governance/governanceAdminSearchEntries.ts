@@ -121,7 +121,7 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
       [msg`Archive unused agents`, msg`archive them once auto`],
       [
         msg`Inactivity threshold`,
-        msg`days unmentioned archived schedule excluded`,
+        msg`days unmentioned archived schedule wake-up excluded`,
       ],
     ],
     "features"

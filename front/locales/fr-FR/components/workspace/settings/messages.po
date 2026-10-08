@@ -144,8 +144,8 @@ msgid "Inactivity threshold"
 msgstr "Seuil d’inactivité"
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
-msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule are excluded."
-msgstr "Durée pendant laquelle un agent doit rester sans mention avant d’être archivé. Les agents planifiés sont exclus."
+msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Durée pendant laquelle un agent doit rester sans mention avant d’être archivé. Les agents planifiés ou avec un réveil en attente sont exclus."
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
 msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
