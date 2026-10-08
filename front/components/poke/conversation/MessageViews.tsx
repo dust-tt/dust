@@ -1,6 +1,7 @@
 import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
 import { StatusBadge } from "@app/components/poke/conversation/MessageMetadata";
 import { formatDateTime } from "@app/lib/i18n/format";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import type {
   CompactionMessageStatus,
   CompactionMessageType,
@@ -109,6 +110,7 @@ interface ContentFragmentViewProps {
 }
 
 export const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
+  const sourceUrl = getSafeSourceUrl(message.sourceUrl);
   return (
     <div className="w-full text-sm">
       <div className="font-bold">[content_fragment] {message.title}</div>
@@ -120,10 +122,11 @@ export const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
       <div className="text-sm text-muted-foreground">
         textBytes={isFileContentFragment(message) ? message.textBytes : "N/A"}
       </div>
-      {message.sourceUrl && (
+      {sourceUrl && (
         <a
-          href={message.sourceUrl ?? ""}
+          href={sourceUrl}
           target="_blank"
+          rel="noopener noreferrer"
           className="text-highlight"
         >
           [sourceUrl]
