@@ -26,11 +26,12 @@ MUST NOT resolve group membership or infer additional subjects from strings such
 
 @cc [owner:spolu,label:security] dfs-grant-inheritance
 Effective permissions MUST start at zero and be evaluated along the real ancestor chain from tenant
-root through the target. At each object, matching ALLOW modes MUST be ORed into the inherited mode,
-then all local DENY modes MUST be removed: `(inherited | allows) & (~denies & 0o7)`. DENY MUST win
-at the same object regardless of attachment order. A deeper matching ALLOW MUST be able to restore
-permissions removed above it; evaluation MUST continue through zero inherited permissions. Direct
-IDs and `/shared` aliases MUST use the same full ancestor chain, including hidden ancestors.
+root through the target. At each object, all local DENY modes MUST first remove inherited
+permissions, then matching local ALLOW modes MUST be ORed in:
+`(inherited & (~denies & 0o7)) | allows`. Matching ALLOW MUST win over DENY at the same object
+regardless of attachment order. An ALLOW at the same object or deeper MUST be able to restore denied
+permissions; evaluation MUST continue through zero inherited permissions. Direct IDs and `/shared`
+aliases MUST use the same full ancestor chain, including hidden ancestors.
 
 @cc [owner:spolu,label:security;api] dfs-read-permissions
 `Stat`, `Read`, and `ReadFiles` MUST require r on each real target. `Lookup` MUST require x on a
@@ -245,7 +246,7 @@ objects.
 `Read` MUST return at most the requested length, limited to 1 MiB, from the zero-based byte offset.
 Reads MUST stop at EOF and return empty bytes at or beyond EOF. Directories MUST fail with
 `IS_DIRECTORY`. Returned bytes and attributes MUST share the same snapshot, identified by
-`Read.object.view`.
+`ReadData.object.view`.
 
 @cc [owner:spolu,label:api] dfs-read-precondition
 An omitted `ReadRequest.content_version` MUST impose no precondition. A supplied zero MUST fail with

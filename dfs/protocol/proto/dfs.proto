@@ -37,7 +37,7 @@ service Dfs {
   rpc List(ListRequest) returns (Page);
 
   // Requires an active session key.
-  rpc Read(ReadRequest) returns (.dfs.v1.Read);
+  rpc Read(ReadRequest) returns (ReadData);
 
   // Requires an active session key.
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
@@ -103,7 +103,7 @@ message ReadView {
 }
 
 // Exactly one rule is required. Rules inherit from root to object; a deeper ALLOW can restore bits.
-// At each object, matching ALLOW modes are added before subjectless DENY modes are removed.
+// At each object, subjectless DENY modes remove inherited bits before matching ALLOW modes are added.
 message Grant {
   oneof kind {
     AllowGrant allow = 1;
@@ -116,16 +116,17 @@ message AllowGrant {
   required string subject = 1;
   // @cc [owner:spolu,label:api] dfs-allow-mode
   // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. Matching ALLOW modes MUST add
-  // these permissions; zero MUST leave permission bits unchanged. Other bits MUST fail with
-  // INVALID_INPUT.
+  // these permissions after local DENY modes remove inherited permissions. Zero MUST leave
+  // permission bits unchanged. Other bits MUST fail with INVALID_INPUT.
   required uint32 mode = 2;
 }
 
 message DenyGrant {
   // @cc [owner:spolu,label:api] dfs-deny-mode
   // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. DENY modes MUST remove these
-  // permissions for every subject; zero MUST leave permission bits unchanged. Other bits MUST
-  // fail with INVALID_INPUT.
+  // inherited permissions for every subject before matching local ALLOW modes are added. They
+  // MUST NOT remove permissions granted by an ALLOW at the same object. Zero MUST leave
+  // permission bits unchanged. Other bits MUST fail with INVALID_INPUT.
   required uint32 mode = 1;
 }
 
@@ -229,7 +230,7 @@ message ReadRequest {
   optional uint64 content_version = 4;
 }
 
-message Read {
+message ReadData {
   required bytes data = 1;
   required Attr object = 2;
 }

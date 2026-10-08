@@ -178,7 +178,7 @@ AllowGrant {
 }
 
 DenyGrant {
-  mode: uint32                   // Permissions to remove for everyone; restricted to 0o7.
+  mode: uint32                   // Inherited permissions to remove for everyone; restricted to 0o7.
 }
 ```
 
@@ -189,21 +189,27 @@ and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid.
 shifting this triplet left by six bits.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
-At each object, combine the modes of all ALLOW grants whose subjects match the session, then remove
-the modes of all DENY grants attached there:
+At each object, remove inherited permissions covered by any DENY grants attached there, then add
+the modes of all local ALLOW grants whose subjects match the session:
 
 ```text
 effective_mode = 0
 For each object from the tenant root through the target:
   allow_mode = bitwise OR of matching ALLOW modes attached to this object
   deny_mode = bitwise OR of all DENY modes attached to this object
-  effective_mode = (effective_mode | allow_mode) & (~deny_mode & 0o7)
+  effective_mode = (effective_mode & (~deny_mode & 0o7)) | allow_mode
 ```
 
-DENY wins over ALLOW at the same object, independent of attachment order. A deeper ALLOW can restore
-permissions removed by an ancestor DENY; evaluation must continue even when the inherited mode is
-zero. An ALLOW for a different subject has no effect. Direct object IDs and `/shared` use the same
-evaluation against the real ancestor chain, including grants above the visible entry point.
+DENY removes only inherited permissions. A matching ALLOW at the same object wins over DENY,
+independent of attachment order. An ALLOW at the same object or deeper can restore denied
+permissions; evaluation must continue even when the inherited mode is zero. An ALLOW for a different
+subject has no effect. Direct object IDs and `/shared` use the same evaluation against the real
+ancestor chain, including grants above the visible entry point.
+
+For example, ALLOW `u:y r-x` on `/parent` lets Y read and traverse that directory. Attach both DENY
+`rwx` and ALLOW `u:x r-x` to `/parent/child`: the DENY clears inherited access, then the ALLOW grants
+X read/traverse access. With these grants, only sessions matching X can read the child; Y retains
+access to the parent. Descendants inherit the child's resulting permissions.
 
 For example, after ALLOW `g:engineering rwx` on `/project`, DENY `-w-` on `/project/archive` leaves
 matching sessions with `r-x`: the subtree can be read and traversed but not modified. DENY `rwx` on
@@ -522,7 +528,7 @@ ReadRequest {
 **Returns**
 
 ```text
-Read {
+ReadData {
   data: bytes
   object: Attr                   // Attributes from the same snapshot as data.
 }
