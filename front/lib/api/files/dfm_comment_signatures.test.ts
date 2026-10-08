@@ -277,4 +277,41 @@ describe("validateCommentSignatures", () => {
       { commentId: "c1", quote: "there", message: reply },
     ]);
   });
+
+  describe("quotes", () => {
+    const reply = signedMessage("c1", [TOM], {
+      author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
+      createdAt: "2026-10-05T12:05:00.000Z",
+      body: "Ping :mention[dust]{sId=dust}",
+    });
+    const withBody = (body: string) =>
+      file(TOM, reply).replace(
+        "Hi :comment-start{id=c1}there:comment-end{id=c1}",
+        body
+      );
+
+    it("quote the text as the editor shows it, across blocks", () => {
+      const result = validate(
+        file(TOM),
+        withBody(
+          "Hi :comment-start{id=c1}**there**.\n\nAnd here:comment-end{id=c1} too."
+        )
+      );
+
+      expect(result.isOk() && result.value[0].quote).toBe("there. And here");
+    });
+
+    it("return the message without a quote when the editor cannot load the file", () => {
+      const result = validate(
+        file(TOM),
+        withBody(
+          "| a | b |\n|---|---|\n| :comment-start{id=c1}1:comment-end{id=c1} | 2 |"
+        )
+      );
+
+      expect(result.isOk() && result.value).toEqual([
+        { commentId: "c1", quote: null, message: reply },
+      ]);
+    });
+  });
 });

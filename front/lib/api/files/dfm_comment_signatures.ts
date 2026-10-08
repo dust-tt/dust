@@ -1,5 +1,8 @@
 import type { KeyObject } from "node:crypto";
 import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
+import { documentSchema } from "@app/components/editor/document/content";
+import { loadDfm } from "@app/components/editor/document/dfm_persistence";
+import { getCommentedTexts } from "@app/components/editor/document/DocumentComments";
 import config from "@app/lib/api/config";
 import {
   DustFileSystem,
@@ -15,7 +18,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
 import {
-  extractAnchors,
   messageSignaturePayload,
   parseDfm,
   serializeDfm,
@@ -306,16 +308,14 @@ export interface NewCommentMessage {
   message: DfmMessage;
 }
 
-/** The anchor-free text each comment's anchors cover in `body`. */
-function commentQuotes(body: string): Map<string, string> {
-  const anchors = extractAnchors(body);
-  return anchors.isOk()
-    ? new Map(
-        anchors.value.anchors.map(({ id, start, end }) => [
-          id,
-          anchors.value.text.slice(start, end),
-        ])
-      )
+/**
+ * The text each comment's anchors cover in `source` as the editor shows it, the form live comments
+ * are quoted in, or none when the editor cannot load the file.
+ */
+function commentQuotes(source: string): Map<string, string> {
+  const loaded = loadDfm(source);
+  return loaded.isOk()
+    ? getCommentedTexts(documentSchema.nodeFromJSON(loaded.value.content))
     : new Map();
 }
 
@@ -362,7 +362,8 @@ const verifiesInPlace = (
  * signing key, verify at its place for this file. Deleting threads or the last messages of a
  * thread, changing statuses and anchors, and a source the codec cannot read MUST be accepted.
  * Validation MUST NOT change the content, and MUST return the accepted new messages, with their
- * comment and quoted text.
+ * comment and the text it covers as the editor shows it, none when the editor cannot load the
+ * file.
  */
 export function validateCommentSignatures(
   { previous, next }: { previous: string | null; next: string },
@@ -445,7 +446,7 @@ export function validateCommentSignatures(
           )
         );
       }
-      quotes ??= commentQuotes(parsed.value.body);
+      quotes ??= commentQuotes(next);
       newMessages.push({
         commentId: comment.id,
         quote: quotes.get(comment.id) ?? null,
