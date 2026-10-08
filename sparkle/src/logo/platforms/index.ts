@@ -18,6 +18,7 @@ export { default as ClayLogo } from "./Clay";
 export { default as ClickUpLogo } from "./ClickUp";
 export { default as CohereLogo } from "./Cohere";
 export { default as ConfluenceLogo } from "./Confluence";
+export { default as ContentfulLogo } from "./Contentful";
 export { default as ContentsquareLogo } from "./Contentsquare";
 export { default as CostoryLogo } from "./Costory";
 export { default as CursorLogo } from "./Cursor";
