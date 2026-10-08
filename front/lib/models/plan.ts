@@ -5,10 +5,12 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
+  PlanGatewayType,
   SubscriptionStatusType,
 } from "@app/types/plan";
 import {
   MAX_AWU_CREDITS_TIMEFRAMES,
+  PLAN_GATEWAYS,
   SUBSCRIPTION_STATUSES,
 } from "@app/types/plan";
 import type {
@@ -56,6 +58,7 @@ export class PlanModel extends BaseModel<PlanModel> {
   declare isSCIMAllowed: boolean;
   declare isAuditLogsAllowed: boolean;
   declare isByok: boolean;
+  declare gateway: PlanGatewayType | null;
   declare hasAdvancedModelAccess: boolean;
   declare maxDataSourcesCount: number;
   declare maxConnectionsCount: number;
@@ -188,6 +191,14 @@ PlanModel.init(
     isByok: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    gateway: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isIn: [PLAN_GATEWAYS],
+      },
     },
     hasAdvancedModelAccess: {
       type: DataTypes.BOOLEAN,

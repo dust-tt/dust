@@ -3,6 +3,7 @@ import {
   CREDIT_PRICED_BUSINESS_LEGACY_LARGE_PLAN_CODE,
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
   CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE,
   CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
@@ -58,6 +59,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
   // Business variant with limits permissive enough to fit any legacy PRO_* plan
@@ -97,6 +99,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 5,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
@@ -130,6 +133,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
   CREDIT_PRICED_PLANS_DATA.push({
@@ -163,6 +167,42 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
+    hasAdvancedModelAccess: false,
+  });
+  // Default enterprise plan with every model call routed through the Edgee AI gateway.
+  CREDIT_PRICED_PLANS_DATA.push({
+    code: CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE,
+    name: "Enterprise (Edgee)",
+    maxMessages: -1,
+    maxMessagesTimeframe: "lifetime",
+    maxAwuCredits: -1,
+    maxAwuCreditsTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
+    maxImagesPerWeek: -1,
+    maxUsersInWorkspace: -1,
+    maxFreeUsersInWorkspace: -1,
+    maxLifetimeFreeUsersInWorkspace: -1,
+    maxVaultsInWorkspace: 500,
+    isSlackbotAllowed: true,
+    isManagedSlackAllowed: true,
+    isManagedConfluenceAllowed: true,
+    isManagedNotionAllowed: true,
+    isManagedGoogleDriveAllowed: true,
+    isManagedGithubAllowed: true,
+    isManagedIntercomAllowed: true,
+    isManagedWebCrawlerAllowed: true,
+    isManagedSalesforceAllowed: true,
+    isSSOAllowed: true,
+    isSCIMAllowed: true,
+    isAuditLogsAllowed: true,
+    maxConnectionsCount: -1,
+    maxDataSourcesCount: -1,
+    maxDataSourcesDocumentsCount: -1,
+    maxDataSourcesDocumentsSizeMb: 2,
+    canUseProduct: true,
+    isByok: false,
+    gateway: "edgee",
     hasAdvancedModelAccess: false,
   });
   // Pilot plan: identical to the default enterprise plan, used for pilot
@@ -199,6 +239,7 @@ if (isDevelopment() || isTest()) {
     maxDataSourcesDocumentsSizeMb: 2,
     canUseProduct: true,
     isByok: false,
+    gateway: null,
     hasAdvancedModelAccess: false,
   });
 }

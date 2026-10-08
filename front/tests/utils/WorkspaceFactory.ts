@@ -3,6 +3,7 @@ import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
+  CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE,
   CREDIT_PRICED_FREE_PLAN_CODE,
   FREE_BYOK_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -36,6 +37,10 @@ export class WorkspaceFactory {
 
   static async byok(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
     return this.create(FREE_BYOK_PLAN_CODE, overrides);
+  }
+
+  static async edgee(overrides?: WorkspaceOverrides): Promise<WorkspaceType> {
+    return this.create(CREDIT_PRICED_ENTERPRISE_EDGEE_PLAN_CODE, overrides);
   }
 
   static async enterprise(
@@ -184,7 +189,7 @@ export class WorkspaceFactory {
   }
 }
 
-export type TestWorkspacePlan = "basic" | "creditPriced";
+export type TestWorkspacePlan = "basic" | "creditPriced" | "edgee";
 
 export async function workspaceForPlan(
   plan: TestWorkspacePlan
@@ -194,6 +199,8 @@ export async function workspaceForPlan(
       return WorkspaceFactory.basic();
     case "creditPriced":
       return WorkspaceFactory.creditPriced();
+    case "edgee":
+      return WorkspaceFactory.edgee();
     default:
       assertNever(plan);
   }

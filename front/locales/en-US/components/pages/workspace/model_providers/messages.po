@@ -35,6 +35,30 @@ msgstr "Cancel"
 msgid "Disable provider"
 msgstr "Disable provider"
 
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Model calls go through the Edgee organization {connectedOrganizationId}. Each member gets their own Edgee key on their first call."
+msgstr "Model calls go through the Edgee organization {connectedOrganizationId}. Each member gets their own Edgee key on their first call."
+
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Connect your Edgee organization to start using models. Each member gets their own Edgee key on their first call."
+msgstr "Connect your Edgee organization to start using models. Each member gets their own Edgee key on their first call."
+
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Edgee organization ID"
+msgstr "Edgee organization ID"
+
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Edgee personal access token"
+msgstr "Edgee personal access token"
+
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Update"
+msgstr "Update"
+
+#: front/components/pages/workspace/model_providers/EdgeeConnectionSection.tsx
+msgid "Connect"
+msgstr "Connect"
+
 #: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
 msgid "Embedding provider:"
 msgstr "Embedding provider:"

@@ -94,11 +94,20 @@ export const SUBSCRIPTION_STATUSES = [
 ] as const;
 export type SubscriptionStatusType = (typeof SUBSCRIPTION_STATUSES)[number];
 
+export const PLAN_GATEWAYS = ["edgee"] as const;
+export type PlanGatewayType = (typeof PLAN_GATEWAYS)[number];
+
+export function isPlanGateway(value: unknown): value is PlanGatewayType {
+  return PLAN_GATEWAYS.some((gateway) => gateway === value);
+}
+
 export type PlanType = {
   code: string;
   name: string;
   limits: LimitsType;
   isByok: boolean;
+  // AI gateway every model call of the workspace is routed through, `null` for direct providers.
+  gateway: PlanGatewayType | null;
   isAuditLogsAllowed: boolean;
   hasAdvancedModelAccess: boolean;
 };

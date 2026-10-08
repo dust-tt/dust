@@ -47,6 +47,7 @@ import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_res
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
 import { ProjectTaskStateResource } from "@app/lib/resources/project_task_state_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import { GatewayApiKeyResource } from "@app/lib/resources/gateway_api_key_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
@@ -755,6 +756,7 @@ export async function deleteWorkspaceActivity({
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
   await ProviderCredentialResource.deleteAllForWorkspace(auth);
+  await GatewayApiKeyResource.deleteAllForWorkspace(auth);
   await DustAppSecretModel.destroy({
     where: {
       workspaceId: workspace.id,

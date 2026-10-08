@@ -1,3 +1,4 @@
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import type { PlanType } from "@app/types/plan";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -39,7 +40,7 @@ export function isAudioTranscriptionAvailable({
   owner: LightWorkspaceType;
   plan: PlanType;
 }): boolean {
-  return !plan.isByok && isVoiceTranscriptionAllowed(owner);
+  return !usesCustomerCredentials(plan) && isVoiceTranscriptionAllowed(owner);
 }
 
 export function areEmailAgentsAllowed(owner: LightWorkspaceType): boolean {

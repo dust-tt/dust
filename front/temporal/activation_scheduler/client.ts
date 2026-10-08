@@ -1,6 +1,7 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
 import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
 import { Authenticator } from "@app/lib/auth";
+import { usesCustomerCredentials } from "@app/lib/plans/plan_gateway";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
@@ -49,10 +50,11 @@ export async function startActivationWorkspaceSchedule({
   workspaceId: string;
 }): Promise<Result<undefined, Error>> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  if (auth.plan()?.isByok) {
+  const plan = auth.plan();
+  if (plan && usesCustomerCredentials(plan)) {
     logger.info(
       { workspaceId },
-      "[ActivationScheduler] Skipping schedule for BYOK workspace."
+      "[ActivationScheduler] Skipping schedule for a BYOK or gateway workspace."
     );
     return new Ok(undefined);
   }

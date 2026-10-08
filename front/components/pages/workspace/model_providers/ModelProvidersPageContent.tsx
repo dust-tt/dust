@@ -1,4 +1,5 @@
 import { AllProvidersToggle } from "@app/components/pages/workspace/model_providers/AllProvidersToggle";
+import { EdgeeConnectionSection } from "@app/components/pages/workspace/model_providers/EdgeeConnectionSection";
 import { EmbeddingModelSelect } from "@app/components/pages/workspace/model_providers/EmbeddingModelSelect";
 import { ProvidersConfigurationList } from "@app/components/pages/workspace/model_providers/ProvidersConfigurationList";
 import { ProvidersToggleList } from "@app/components/pages/workspace/model_providers/ProvidersToggleList";
@@ -80,12 +81,14 @@ export function ModelProvidersPageContent({
 
   return (
     <div className="flex flex-col gap-8">
-      {plan.isByok ? (
+      {plan.gateway === "edgee" && <EdgeeConnectionSection owner={workspace} />}
+      {plan.gateway === null && plan.isByok && (
         <ProvidersConfigurationList
           owner={workspace}
           modelsDescriptionByProvider={modelsDescriptionByProvider}
         />
-      ) : (
+      )}
+      {plan.gateway === null && !plan.isByok && (
         <>
           <RegionalModelsOnlyToggle workspace={workspace} />
           <AllProvidersToggle

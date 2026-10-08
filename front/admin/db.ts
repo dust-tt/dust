@@ -131,6 +131,7 @@ import {
   SandboxOwnerModel,
 } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
+import { GatewayApiKeyModel } from "@app/lib/resources/storage/models/gateway_api_key";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -291,6 +292,7 @@ export function loadAllModels() {
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     SandboxEnvVarModel,
+    GatewayApiKeyModel,
     WorkspaceSeatLimitModel,
     WorkspacePlanLimitOverrideModel,
     ActivationPodModel,

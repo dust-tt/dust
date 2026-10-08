@@ -1,7 +1,10 @@
 import config from "@app/lib/api/config";
+import { getOrCreateEdgeeGatewayKey } from "@app/lib/api/edgee/gateway_keys";
 import type { Authenticator } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
+import logger from "@app/logger/logger";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
+import type { PlanGatewayType } from "@app/types/plan";
 import type {
   ApiKeyCredentialContentSchema,
   LLMCredentialsType,
@@ -116,6 +119,10 @@ export async function getLlmCredentials(
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
+  if (plan.gateway) {
+    return getGatewayLlmCredentials(auth, plan.gateway);
+  }
+
   if (!plan.isByok) {
     return dangerouslyGetDustManagedLlmCredentials();
   }
@@ -125,7 +132,7 @@ export async function getLlmCredentials(
 
   const credentials = mapOauthCredentialsToLlmCredentials(
     providerCredentials.map((cred) => ({
-      providerId: cred.providerId,
+      providerId: cred.byokProviderId,
       content: cred.credentials,
     }))
   );
@@ -142,6 +149,30 @@ export async function getLlmCredentials(
     DUST_BYOK: "true",
     ...credentials,
   };
+}
+
+async function getGatewayLlmCredentials(
+  auth: Authenticator,
+  gateway: PlanGatewayType
+): Promise<LLMCredentialsType> {
+  switch (gateway) {
+    case "edgee": {
+      const keyRes = await getOrCreateEdgeeGatewayKey(auth);
+      if (keyRes.isErr()) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            error: keyRes.error,
+          },
+          "No Edgee gateway key for the caller, model calls will be unauthenticated."
+        );
+        return {};
+      }
+      return { EDGEE_API_KEY: keyRes.value };
+    }
+    default:
+      assertNever(gateway);
+  }
 }
 
 function mapOauthCredentialsToLlmCredentials(

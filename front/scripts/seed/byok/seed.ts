@@ -39,6 +39,7 @@ const FREE_BYOK_PLAN_DATA: PlanAttributes = {
   maxDataSourcesDocumentsSizeMb: 2,
   canUseProduct: true,
   isByok: true,
+  gateway: null,
   hasAdvancedModelAccess: false,
 };
 
