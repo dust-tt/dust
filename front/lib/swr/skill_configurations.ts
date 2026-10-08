@@ -38,7 +38,6 @@ import type {
   SkillAvailability,
   SkillListItemType,
   SkillReinforcementMode,
-  SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
