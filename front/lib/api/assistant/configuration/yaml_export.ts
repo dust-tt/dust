@@ -1,3 +1,5 @@
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
@@ -14,6 +16,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -24,6 +27,30 @@ import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
+/**
+ * Fetches the data source views used by `actions`, whatever their space: this fetch checks the
+ * workspace only (see `space-verbs-checked-by-callers`).
+ */
+async function fetchActionsDataSourceViews(
+  auth: Authenticator,
+  actions: MCPServerConfigurationType[]
+): Promise<DataSourceViewResource[]> {
+  const dataSourceViewIds = actions
+    .filter(isServerSideMCPServerConfiguration)
+    .flatMap((action) => [
+      ...(action.dataSources ?? []),
+      ...(action.tables ?? []),
+    ])
+    .map((configuration) => configuration.dataSourceViewId);
+
+  return DataSourceViewResource.fetchByIds(auth, dataSourceViewIds);
+}
+
+/**
+ * @cc [owner:philipperolet,label:security;product] unreadable-space-views
+ * The export includes the agent's data source views from spaces the caller cannot read if and only
+ * if `canAdminSeePrivateEntities(auth)` is true.
+ */
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
@@ -67,7 +94,11 @@ export async function getAgentConfigurationAsYAMLConfig(
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
   const actions = await buildInitialActions({
-    dataSourceViews,
+    // `dataSourceViews` only holds views of spaces the caller can read, but an admin seeing private
+    // entities may export an agent built on other spaces.
+    dataSourceViews: seePrivateEntities
+      ? await fetchActionsDataSourceViews(auth, agentConfiguration.actions)
+      : dataSourceViews,
     actions: agentConfiguration.actions,
     mcpServerViews: mcpServerViewsJSON,
   });
