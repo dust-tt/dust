@@ -1,5 +1,5 @@
 import type { FilterSummary } from "@app/components/shared/filter_panel/filterState";
-import { Button, Chip, cn, LoadingBlock, Plus } from "@dust-tt/sparkle";
+import { Button, Chip, cn, Plus } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   AnimatePresence,
@@ -177,12 +177,6 @@ export function FilterSummaryChips<
                   </m.div>
                 ))}
               </AnimatePresence>
-              {isLoading && (
-                <>
-                  <LoadingBlock className="h-6 w-24 rounded-[9px]" />
-                  <LoadingBlock className="h-6 w-32 rounded-[9px]" />
-                </>
-              )}
               {chips.length > 0 && (
                 <m.div layout={!shouldReduceMotion} transition={transition}>
                   <Button
