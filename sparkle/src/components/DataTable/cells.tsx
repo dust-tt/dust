@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   Minus,
 } from "@sparkle/icons/v2-stroke";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import type { Column } from "@tanstack/react-table";
 import React, { type ComponentType, type ReactNode } from "react";
@@ -370,7 +371,7 @@ type ChipColorType = (typeof CHIP_COLORS)[number];
 interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
   /** The number to display; `null`/`undefined` show `placeholder`. */
   value: number | null | undefined;
-  /** BCP 47 locale for digit grouping and decimals. Defaults to the browser locale. */
+  /** BCP 47 locale for digit grouping and decimals. Defaults to the `SparkleI18nProvider` format locale. */
   locale?: string;
   /** Fixed number of fraction digits. Keep it constant within a column. */
   precision?: number;
@@ -390,14 +391,15 @@ interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
 
 function formatNumericValue(
   value: number,
-  locale: string | undefined,
+  locale: string,
   precision: number | undefined
 ) {
-  return value.toLocaleString(
-    locale,
+  return formatNumber(
+    value,
     precision === undefined
       ? undefined
-      : { minimumFractionDigits: precision, maximumFractionDigits: precision }
+      : { minimumFractionDigits: precision, maximumFractionDigits: precision },
+    locale
   );
 }
 
@@ -419,7 +421,7 @@ function formatNumericCellValue({
   placeholder,
 }: {
   value: number | null | undefined;
-  locale: string | undefined;
+  locale: string;
   precision: number | undefined;
   unit: string | undefined;
   unitPosition: "prefix" | "suffix";
@@ -482,10 +484,11 @@ export function NumericCellContent({
   ...props
 }: NumericCellContentProps) {
   const { density } = useDataTableLayout();
+  const formatLocale = useFormatLocale();
 
   const formatted = formatNumericCellValue({
     value,
-    locale,
+    locale: locale ?? formatLocale,
     precision,
     unit,
     unitPosition,

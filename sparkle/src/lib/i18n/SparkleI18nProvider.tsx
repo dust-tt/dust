@@ -10,6 +10,7 @@ import React, { useEffect, useMemo, useState } from "react";
 
 interface SparkleI18nProviderProps {
   locale: SparkleCatalogLocale;
+  formatLocale?: string;
   children: React.ReactNode;
 }
 
@@ -21,11 +22,18 @@ interface SparkleI18nProviderProps {
  * rendered locale, and a catalog that finishes loading after `locale` changed again MUST NOT be
  * rendered.
  */
+/**
+ * @cc [owner:ykmsd,label:product] sparkle-i18n-provider-follows-format-locale
+ * Sparkle components below a `SparkleI18nProvider` MUST format numbers and dates in `formatLocale`
+ * (see `sparkle-i18n-formats-in-format-locale`) as soon as they render the catalog of `locale`,
+ * and in the same render as a `formatLocale` change when that catalog was already loaded.
+ */
 export function SparkleI18nProvider({
   locale,
+  formatLocale,
   children,
 }: SparkleI18nProviderProps) {
-  const loadedI18n = getLoadedSparkleI18n(locale);
+  const loadedI18n = getLoadedSparkleI18n(locale, formatLocale);
   const [renderedI18n, setRenderedI18n] = useState(
     () => loadedI18n ?? sourceLocaleI18n
   );
@@ -40,7 +48,7 @@ export function SparkleI18nProvider({
       return;
     }
     let isCurrent = true;
-    loadSparkleI18n(locale)
+    loadSparkleI18n(locale, formatLocale)
       .then((i18n) => {
         if (isCurrent) {
           setRenderedI18n(i18n);
@@ -56,7 +64,7 @@ export function SparkleI18nProvider({
     return () => {
       isCurrent = false;
     };
-  }, [locale, loadedI18n]);
+  }, [locale, formatLocale, loadedI18n]);
 
   const context = useMemo(
     () => ({ i18n: renderedI18n, _: renderedI18n.t }),

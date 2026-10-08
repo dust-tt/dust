@@ -1,7 +1,11 @@
 import { setupI18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
+import { NumericCellContent } from "@sparkle/components/DataTable/cells";
 import { Pagination } from "@sparkle/components/Pagination";
-import { loadSparkleI18n } from "@sparkle/lib/i18n/catalogs";
+import {
+  loadSparkleI18n,
+  preloadSparkleLocale,
+} from "@sparkle/lib/i18n/catalogs";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -23,7 +27,7 @@ describe("SparkleI18nProvider", () => {
   });
 
   it("renders a preloaded locale from the first render", async () => {
-    await loadSparkleI18n("fr-FR");
+    await preloadSparkleLocale("fr-FR");
 
     // `renderToStaticMarkup` renders once, without running effects.
     const html = renderToStaticMarkup(
@@ -42,5 +46,32 @@ describe("SparkleI18nProvider", () => {
     );
 
     expect(html).toContain("2 items");
+  });
+
+  it("formats numbers in the format locale with the catalog of the locale", async () => {
+    await preloadSparkleLocale("fr-FR");
+
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        {pagination}
+        <NumericCellContent value={1234.5} precision={1} />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("2 items");
+    // `fr-FR` groups with a narrow no-break space and uses a decimal comma.
+    expect(html).toContain("1\u202f234,5");
+  });
+
+  it("formats dates in the format locale", () => {
+    const date = new Date(Date.UTC(2026, 0, 31, 12));
+    const formatDate = (formatLocale: string) =>
+      loadSparkleI18n("en-US", formatLocale).then((i18n) =>
+        i18n.date(date, { timeZone: "UTC" })
+      );
+
+    return expect(
+      Promise.all([formatDate("en-US"), formatDate("en-GB")])
+    ).resolves.toEqual(["1/31/2026", "31/01/2026"]);
   });
 });
