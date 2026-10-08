@@ -80,9 +80,11 @@ function startComment(dom: HTMLElement, editor: Editor, text: string) {
   });
 }
 
-/** The card floating over the text, or null when none shows. */
+/** The card floating over the text, or null when none shows; a closing one animates out. */
 const floatingCard = () =>
-  document.querySelector<HTMLElement>("[data-document-comment-card]");
+  document.querySelector<HTMLElement>(
+    '[data-document-comment-card][data-state="open"]'
+  );
 
 /** The comment field's own editor, once it has mounted. */
 const findCommentField = async (name: string) => {
@@ -453,7 +455,9 @@ describe("Document comments", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close comments" }));
 
-    expect(screen.queryByTestId("avatar:user:usr_daph:xxs")).toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId("avatar:user:usr_daph:xxs")).toBeNull()
+    );
   });
 
   it.each([

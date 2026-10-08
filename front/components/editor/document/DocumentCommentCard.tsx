@@ -5,12 +5,18 @@ import {
 } from "@app/components/editor/document/DocumentCommentThread";
 import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
+import {
+  presenceClass,
+  usePresence,
+} from "@app/components/editor/document/usePresence";
+import type { DfmComment } from "@app/lib/markdown/dfm";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, Extensions } from "@tiptap/core";
 import type { ReactNode, RefObject } from "react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const CARD_WIDTH_PX = 320;
+const DRAFT = "draft";
 const GAP_PX = 8;
 
 interface CardPosition {
@@ -136,32 +142,49 @@ export const DocumentCommentCard = ({
     );
   }, [editor, containerRef, anchorId, draft, layoutVersion]);
 
+  const target: typeof DRAFT | DfmComment | undefined = showsDraft
+    ? DRAFT
+    : thread;
+  const visible = useMemo(
+    () => (target && position ? { target, position } : null),
+    [target, position]
+  );
+  // Once closed, the card keeps its last thread and place while it animates out.
+  const { shown, open } = usePresence(visible);
+
   const threadId = thread?.id;
-  const positioned = position !== null;
   useEffect(() => {
-    if (positioned && threadId && focusRequest?.threadId === threadId) {
+    if (open && threadId && focusRequest?.threadId === threadId) {
       threadRef.current?.focus();
     }
-  }, [focusRequest, threadId, positioned]);
+  }, [focusRequest, threadId, open]);
 
-  if (!position || (!showsDraft && !thread)) {
+  if (!shown) {
     return null;
   }
 
+  const shownThread = shown.target === DRAFT ? undefined : shown.target;
   const canSuggest =
-    thread !== undefined &&
+    shownThread !== undefined &&
     canWrite &&
-    thread.status === "open" &&
-    suggestable.has(thread.id);
+    shownThread.status === "open" &&
+    suggestable.has(shownThread.id);
 
   return (
     <div
       data-document-comment-card=""
+      data-state={open ? "open" : "closed"}
+      aria-hidden={!open || undefined}
       className={cn(
-        "absolute z-20 flex flex-col rounded-2xl border border-border bg-background p-3 font-sans text-foreground shadow-xl antialiased print:hidden",
-        "dark:bg-muted-background"
+        "absolute z-20 flex origin-top flex-col rounded-2xl border border-border bg-background p-3 font-sans text-foreground shadow-xl antialiased print:hidden",
+        "dark:bg-muted-background",
+        presenceClass(open)
       )}
-      style={{ top: position.top, left: position.left, width: position.width }}
+      style={{
+        top: shown.position.top,
+        left: shown.position.left,
+        width: shown.position.width,
+      }}
       onKeyDown={(event) => {
         if (event.key === "Escape" && thread && !event.defaultPrevented) {
           event.preventDefault();
@@ -169,7 +192,7 @@ export const DocumentCommentCard = ({
         }
       }}
     >
-      {showsDraft ? (
+      {shown.target === DRAFT ? (
         <DocumentCommentDraftCard
           onSubmit={submitDraft}
           onCancel={cancelDraft}
@@ -178,25 +201,25 @@ export const DocumentCommentCard = ({
           mountPortalContainer={mountPortalContainer}
         />
       ) : (
-        thread && (
+        shownThread && (
           <DocumentCommentThread
-            key={thread.id}
+            key={shownThread.id}
             variant="card"
-            comment={thread}
-            quote={quotes.get(thread.id)}
+            comment={shownThread}
+            quote={quotes.get(shownThread.id)}
             active
             canWrite={canWrite}
-            isVerified={(index) => isVerified(thread.id, index)}
-            onReply={(body) => reply(thread.id, body)}
+            isVerified={(index) => isVerified(shownThread.id, index)}
+            onReply={(body) => reply(shownThread.id, body)}
             onSetResolved={async (value) => {
-              const done = await setResolved(thread.id, value, null);
+              const done = await setResolved(shownThread.id, value, null);
               if (done.isOk() && value) {
                 closeThread();
               }
               return done;
             }}
             onDelete={async () => {
-              const done = await remove(thread.id, null);
+              const done = await remove(shownThread.id, null);
               if (done.isOk()) {
                 closeThread();
               }
@@ -210,13 +233,13 @@ export const DocumentCommentCard = ({
             renderBody={renderCommentBody}
             inputExtensions={commentInputExtensions}
             onSuggest={
-              canSuggest ? () => suggestionTemplate(thread.id) : undefined
+              canSuggest ? () => suggestionTemplate(shownThread.id) : undefined
             }
             onApplySuggestion={
               canSuggest
                 ? async (suggestion) => {
                     const done = await applySuggestion(
-                      thread.id,
+                      shownThread.id,
                       suggestion,
                       null
                     );

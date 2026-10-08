@@ -1,6 +1,10 @@
 import type { RenderAuthorAvatar } from "@app/components/editor/document/DocumentCommentThread";
 import { DocumentCommentThread } from "@app/components/editor/document/DocumentCommentThread";
 import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
+import {
+  presenceClass,
+  usePresence,
+} from "@app/components/editor/document/usePresence";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import {
   Button,
@@ -93,6 +97,7 @@ export const DocumentCommentsList = ({
   const resolved = sorted.filter((comment) => comment.status === "resolved");
   const unresolvedCount = unresolved.length;
   const resolvedCount = resolved.length;
+  const { shown, open } = usePresence(listOpen || null);
 
   useEffect(() => {
     if (!listOpen || !focusRequest) {
@@ -112,7 +117,7 @@ export const DocumentCommentsList = ({
     }
   }, [listOpen, activeId]);
 
-  if (!listOpen) {
+  if (!shown) {
     return null;
   }
 
@@ -170,6 +175,8 @@ export const DocumentCommentsList = ({
         id={id}
         ref={listRef}
         aria-label={t`Comments`}
+        aria-hidden={!open || undefined}
+        data-state={open ? "open" : "closed"}
         onKeyDown={(event) => {
           if (event.key === "Escape" && !event.defaultPrevented) {
             event.preventDefault();
@@ -178,7 +185,8 @@ export const DocumentCommentsList = ({
         }}
         className={cn(
           "pointer-events-auto absolute right-0 top-2 flex max-h-[min(36rem,70vh)] w-[22.5rem] max-w-full flex-col overflow-hidden",
-          "rounded-2xl border border-border bg-background font-sans text-foreground shadow-xl antialiased dark:bg-muted-background"
+          "origin-top-right rounded-2xl border border-border bg-background font-sans text-foreground shadow-xl antialiased dark:bg-muted-background",
+          presenceClass(open)
         )}
       >
         <header className="flex shrink-0 items-center justify-between border-b border-border py-2.5 pl-4 pr-2">
