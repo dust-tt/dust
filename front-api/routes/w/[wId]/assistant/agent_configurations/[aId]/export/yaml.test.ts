@@ -68,7 +68,11 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId/export/yaml", () =
       workspace,
       project
     );
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { requestedSpaceIds: [project.id] }
+    );
     const mcpServerConfiguration =
       await AgentMCPServerConfigurationFactory.create(auth, project, {
         agent,

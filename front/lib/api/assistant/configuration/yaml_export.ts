@@ -28,8 +28,9 @@ import type { UserType } from "@app/types/user";
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
 /**
- * Fetches the data source views used by `actions`, whatever their space: this fetch checks the
- * workspace only (see `space-verbs-checked-by-callers`).
+ * Fetches the data source views used by `actions`, including those in spaces the caller cannot read:
+ * the fetch checks the workspace only. This deliberately skips the space check required by
+ * `space-verbs-checked-by-callers`, so it is only for callers allowed by `unreadable-space-views`.
  */
 async function fetchActionsDataSourceViews(
   auth: Authenticator,
@@ -48,8 +49,9 @@ async function fetchActionsDataSourceViews(
 
 /**
  * @cc [owner:philipperolet,label:security;product] unreadable-space-views
- * The export includes the agent's data source views from spaces the caller cannot read if and only
- * if `canAdminSeePrivateEntities(auth)` is true.
+ * When `canAdminSeePrivateEntities(auth)` is true, the export MUST include the data source views used
+ * by the agent's tools (`dataSources` and `tables`), whatever their space. Otherwise, it MUST NOT
+ * include views from spaces the caller cannot read.
  */
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
@@ -93,12 +95,14 @@ export async function getAgentConfigurationAsYAMLConfig(
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
+  // `dataSourceViews` only holds views of spaces the caller can read, but an admin seeing private
+  // entities may export an agent built on other spaces.
+  const agentDataSourceViews = seePrivateEntities
+    ? await fetchActionsDataSourceViews(auth, agentConfiguration.actions)
+    : dataSourceViews;
+
   const actions = await buildInitialActions({
-    // `dataSourceViews` only holds views of spaces the caller can read, but an admin seeing private
-    // entities may export an agent built on other spaces.
-    dataSourceViews: seePrivateEntities
-      ? await fetchActionsDataSourceViews(auth, agentConfiguration.actions)
-      : dataSourceViews,
+    dataSourceViews: agentDataSourceViews,
     actions: agentConfiguration.actions,
     mcpServerViews: mcpServerViewsJSON,
   });
