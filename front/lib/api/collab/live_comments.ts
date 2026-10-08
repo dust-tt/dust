@@ -1,7 +1,14 @@
 import type { LiveFile } from "@app/lib/api/collab/live_file";
-import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
+import type { LiveDocument } from "@app/lib/api/collab/ydoc";
+import { yDocToDfm } from "@app/lib/api/collab/ydoc";
+import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
+import {
+  commentQuotes,
+  signDfmCommentMessage,
+} from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { parseDfm } from "@app/lib/markdown/dfm";
 import type {
   LiveCommentCommand,
   LiveCommentErrorCode,
@@ -114,4 +121,46 @@ export async function applyLiveCommentCommand(
     default:
       assertNever(command);
   }
+}
+
+/** The text the thread's anchors cover in the live document, if it is anchored. */
+function liveQuote(live: LiveDocument, commentId: string): string | null {
+  const source = yDocToDfm(live);
+  if (source.isErr()) {
+    return null;
+  }
+  const document = parseDfm(source.value);
+  return document.isOk()
+    ? (commentQuotes(document.value.body).get(commentId) ?? null)
+    : null;
+}
+
+/**
+ * @cc [owner:tdraier,label:product] live-comment-mentions
+ * Once an `add` or a `reply` is accepted, the message it added, the thread's last in `live`, MUST
+ * be handed to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would,
+ * with as quote the text the thread's anchors cover in `live`, or the quote the `add` carries
+ * while its thread is not anchored yet. Other commands MUST NOT dispatch anything.
+ */
+export async function dispatchLiveCommentMentions(
+  file: LiveFile,
+  live: LiveDocument,
+  command: LiveCommentCommand
+): Promise<void> {
+  if (command.type !== "add" && command.type !== "reply") {
+    return;
+  }
+  const message = live.comments
+    .find(({ id }) => id === command.commentId)
+    ?.messages.at(-1);
+  if (!message) {
+    return;
+  }
+  const quote =
+    liveQuote(live, command.commentId) ??
+    (command.type === "add" ? (command.quote ?? null) : null);
+  await dispatchCommentMentions(file.auth, {
+    scopedPath: file.canonicalPath,
+    newMessages: [{ commentId: command.commentId, quote, message }],
+  });
 }

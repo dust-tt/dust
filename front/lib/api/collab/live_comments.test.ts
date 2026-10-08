@@ -1,12 +1,22 @@
 import { generateKeyPairSync } from "node:crypto";
-import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@app/lib/api/collab/live_comments";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/api/files/dfm_comment_mentions"), () => ({
+  dispatchCommentMentions: vi.fn(),
+}));
 
 const { privateKey } = generateKeyPairSync("ed25519");
 
@@ -157,5 +167,125 @@ describe("applyLiveCommentCommand", () => {
       OTHER,
     ]);
     expect(deleted.isOk() && deleted.value.comments).toEqual([OTHER]);
+  });
+});
+
+describe("dispatchLiveCommentMentions", () => {
+  const TOM = { kind: "user", id: "usr_tom", name: "Tom" } as const;
+  const SOURCE = serializeDfm({
+    frontMatter: null,
+    body: "Ship it :comment-start{id=c1}on Friday:comment-end{id=c1}.",
+    comments: [
+      {
+        id: "c1",
+        status: "open",
+        messages: [
+          { author: TOM, createdAt: "2026-10-05T12:00:00.000Z", body: "Why?" },
+          {
+            author: TOM,
+            createdAt: "2026-10-05T12:01:00.000Z",
+            body: "@dust any idea?",
+          },
+        ],
+      },
+      {
+        id: "c2",
+        status: "open",
+        messages: [
+          {
+            author: TOM,
+            createdAt: "2026-10-05T12:02:00.000Z",
+            body: "Not anchored yet.",
+          },
+        ],
+      },
+    ],
+  });
+  let file: LiveFile;
+
+  function loadLive() {
+    if (SOURCE.isErr()) {
+      throw SOURCE.error;
+    }
+    const live = dfmToYDoc(SOURCE.value);
+    if (live.isErr()) {
+      throw new Error(live.error);
+    }
+    return live.value;
+  }
+
+  beforeEach(async () => {
+    vi.mocked(dispatchCommentMentions).mockReset();
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const dustFs = await DustFileSystem.forUser(auth);
+    if (dustFs.isErr()) {
+      throw dustFs.error;
+    }
+    file = {
+      auth,
+      workspaceId: workspace.sId,
+      canonicalPath: `user-${auth.getNonNullableUser().sId}/notes.md`,
+      dustFs: dustFs.value,
+      canWrite: true,
+    };
+  });
+
+  it("dispatches a reply's message with the text its thread's anchors cover", async () => {
+    const live = loadLive();
+
+    await dispatchLiveCommentMentions(file, live, {
+      type: "reply",
+      commentId: "c1",
+      position: 1,
+      body: "@dust any idea?",
+    });
+
+    expect(dispatchCommentMentions).toHaveBeenCalledWith(file.auth, {
+      scopedPath: file.canonicalPath,
+      newMessages: [
+        {
+          commentId: "c1",
+          quote: "on Friday",
+          message: live.comments[0].messages[1],
+        },
+      ],
+    });
+  });
+
+  it("dispatches an add not anchored yet with the quote it carries", async () => {
+    const live = loadLive();
+
+    await dispatchLiveCommentMentions(file, live, {
+      type: "add",
+      commentId: "c2",
+      body: "Not anchored yet.",
+      quote: "Ship it",
+    });
+
+    expect(
+      vi.mocked(dispatchCommentMentions).mock.calls[0][1].newMessages
+    ).toEqual([
+      {
+        commentId: "c2",
+        quote: "Ship it",
+        message: live.comments[1].messages[0],
+      },
+    ]);
+  });
+
+  it("dispatches nothing for a resolve or a delete", async () => {
+    const live = loadLive();
+
+    await dispatchLiveCommentMentions(file, live, {
+      type: "resolve",
+      commentId: "c1",
+      resolved: true,
+    });
+    await dispatchLiveCommentMentions(file, live, {
+      type: "delete",
+      commentId: "c1",
+    });
+
+    expect(dispatchCommentMentions).not.toHaveBeenCalled();
   });
 });

@@ -497,10 +497,14 @@ export const useDocumentComments = ({
     };
     return {
       add: async (id, body) => {
+        const draft = documentCommentsPluginKey.getState(editor.state)?.draft;
         const created = await channel.send({
           type: "add",
           commentId: id,
           body,
+          quote: draft
+            ? editor.state.doc.textBetween(draft.from, draft.to, " ")
+            : undefined,
         });
         if (created.isErr()) {
           return new Err(liveErrorMessage(created.error));

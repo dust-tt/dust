@@ -315,6 +315,7 @@ describe("useDocumentComments", () => {
         type: "add",
         commentId: expect.any(String),
         body: "Too bold?",
+        quote: "brave",
       });
       expect(getMarkedCommentIds(editor.getJSON())).toEqual(
         new Set([command.commentId])

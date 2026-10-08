@@ -1,4 +1,7 @@
-import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@app/lib/api/collab/live_comments";
 import type {
   LiveAccessError,
   LiveCheckpoint,
@@ -141,7 +144,8 @@ export async function authenticateConnection(
  * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
  * connection of the document and the document stored, so the checkpoint writes them, through the
- * connection that last changed its text, or through the commenter's when none did. A command its
+ * connection that last changed its text, or through the commenter's when none did, and its
+ * mentions handed to `dispatchLiveCommentMentions` without waiting for them. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
  * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
  * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
@@ -384,6 +388,12 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           lastContext: file,
           lastTransactionOrigin: undefined,
         });
+        // Not awaited, as a save of the file does not wait for its mentions to be posted.
+        void dispatchLiveCommentMentions(
+          file,
+          { doc: document, comments: session.comments },
+          command
+        ).catch(logFailure);
       };
       session.commentCommands = session.commentCommands
         .then(run)

@@ -42,6 +42,8 @@ export const liveCommentCommandSchema = z.discriminatedUnion("type", [
     type: z.literal("add"),
     commentId: commentIdSchema,
     body: z.string().min(1),
+    // The text the browser anchors once the thread exists, which agents get as the quote.
+    quote: z.string().optional(),
   }),
   z.object({
     type: z.literal("reply"),
