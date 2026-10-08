@@ -2,8 +2,6 @@ import { formatNumber } from "@app/lib/i18n/format";
 import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
-type CreditLimitDescriptionStatus = "info" | "default";
-
 interface CreditLimitNumberInputProps {
   value: string;
   readOnly: boolean;
@@ -11,7 +9,7 @@ interface CreditLimitNumberInputProps {
   onChange: (cleaned: string) => void;
   suffix?: string;
   description?: string;
-  descriptionStatus?: CreditLimitDescriptionStatus;
+  descriptionStatus?: "info";
 }
 
 export function CreditLimitNumberInput({
@@ -21,7 +19,7 @@ export function CreditLimitNumberInput({
   onChange,
   suffix,
   description,
-  descriptionStatus = "default",
+  descriptionStatus,
 }: CreditLimitNumberInputProps) {
   const { t } = useLingui();
   return (
@@ -38,13 +36,7 @@ export function CreditLimitNumberInput({
       }}
       isError={validationMessage !== null}
       message={validationMessage ?? description}
-      messageStatus={
-        validationMessage !== null
-          ? "error"
-          : description !== undefined
-            ? descriptionStatus
-            : undefined
-      }
+      messageStatus={validationMessage !== null ? "error" : descriptionStatus}
       suffix={suffix ?? t`credits/month`}
       isUnit
     />
@@ -76,7 +68,7 @@ interface CreditLimitInputProps {
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   description?: string;
-  descriptionStatus?: CreditLimitDescriptionStatus;
+  descriptionStatus?: "info";
   // Small text action rendered on the opposite end of the label row (e.g. to
   // clear the field). Omit when the field has nothing to clear back to.
   action?: { label: string; onClick: () => void };

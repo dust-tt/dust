@@ -25,13 +25,11 @@ import { useMemo, useState } from "react";
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   visibleGroupIds?: ReadonlySet<string>;
-  // Rows outside this set are read-only and do not open the group dialog.
   editableGroupIds?: ReadonlySet<string>;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
   showSharedUsageLimitColumn?: boolean;
   canEditSharedUsageLimit?: boolean;
-  // When set, the group dialog lets an admin map the group to a billable seat tier.
   seatOptions?: EditGroupUsageSeatOptions;
 }
 
@@ -86,6 +84,11 @@ export function GroupsUsageTable({
   const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
   const isSharedUsageLimitShown =
     showSharedUsageLimitColumn && !isGroupsUsageError;
+  const sharedUsageLimitAccess = !isSharedUsageLimitShown
+    ? "hidden"
+    : canEditSharedUsageLimit
+      ? "editable"
+      : "readOnly";
   const isGroupDialogEnabled =
     showSpendLimitColumn && !(isSharedUsageLimitShown && isGroupsUsageLoading);
 
@@ -251,13 +254,7 @@ export function GroupsUsageTable({
         owner={owner}
         group={editedGroup}
         seatOptions={seatOptions}
-        sharedUsageLimitAccess={
-          !isSharedUsageLimitShown
-            ? "hidden"
-            : canEditSharedUsageLimit
-              ? "editable"
-              : "readOnly"
-        }
+        sharedUsageLimitAccess={sharedUsageLimitAccess}
       />
     </div>
   );

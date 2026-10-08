@@ -30,7 +30,7 @@ import {
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import { useContext, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 export interface EditGroupUsageGroup {
   groupId: string;
@@ -46,7 +46,7 @@ export interface EditGroupUsageSeatOptions {
   seatPlans: SeatPlanResponseBody;
 }
 
-export type SharedUsageLimitAccess = "hidden" | "readOnly" | "editable";
+type SharedUsageLimitAccess = "hidden" | "readOnly" | "editable";
 
 interface EditGroupUsageDialogProps {
   isOpen: boolean;
@@ -65,14 +65,22 @@ export function EditGroupUsageDialog({
   seatOptions,
   sharedUsageLimitAccess,
 }: EditGroupUsageDialogProps) {
+  const lastGroupRef = useRef<EditGroupUsageGroup | null>(null);
+  useEffect(() => {
+    if (group) {
+      lastGroupRef.current = group;
+    }
+  }, [group]);
+  const displayedGroup = group ?? lastGroupRef.current;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent size="md" className="font-sans">
-        {group && (
+        {displayedGroup && (
           <EditGroupUsageForm
-            key={group.groupId}
+            key={`${displayedGroup.groupId}:${isOpen}`}
             owner={owner}
-            group={group}
+            group={displayedGroup}
             seatOptions={seatOptions}
             sharedUsageLimitAccess={sharedUsageLimitAccess}
             onClose={onClose}
@@ -83,10 +91,8 @@ export function EditGroupUsageDialog({
   );
 }
 
-function toInputValue(awuCredits: number | null | undefined) {
-  return awuCredits === null || awuCredits === undefined
-    ? ""
-    : String(awuCredits);
+function toInputValue(awuCredits: number | null) {
+  return awuCredits === null ? "" : String(awuCredits);
 }
 
 function EditGroupUsageForm({
@@ -126,14 +132,10 @@ function EditGroupUsageForm({
     toInputValue(initialSharedLimitAwuCredits)
   );
   const [seat, setSeat] = useState(group.grantedSeatType);
-  const [reviewSeat, setReviewSeat] = useState<GroupGrantableSeatType | null>(
-    null
-  );
+  const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const groupId = group.groupId;
-  const groupName = group.name;
-  const memberCount = group.memberCount;
+  const { groupId, name: groupName, memberCount } = group;
   const isSharedLimitEditable = sharedUsageLimitAccess === "editable";
   const memberLimitResult = parseCreditsInput(memberLimitInput);
   const sharedLimitResult = parseSharedUsageLimitInput(sharedLimitInput);
@@ -152,40 +154,31 @@ function EditGroupUsageForm({
   const isChanged = memberLimitChanged || sharedLimitChanged || seatChanged;
 
   const saveChanges = async (): Promise<boolean> => {
-    const tasks: Array<() => Promise<boolean>> = [];
-    if (memberLimitChanged) {
-      tasks.push(
-        async () =>
-          (await doUpdateGroupSpendLimit({
-            groupId,
-            groupName,
-            limit: toSpendLimit(memberLimitResult.awuCredits),
-          })) !== null
-      );
-    }
-    if (sharedLimitChanged) {
-      tasks.push(() =>
-        doUpdateGroupSharedUsageLimit({
-          groupId,
-          groupName,
-          limit: toSpendLimit(sharedLimitResult.awuCredits),
-        })
-      );
-    }
-    if (seatChanged) {
-      tasks.push(
-        async () =>
-          (await doUpdateGroupGrantedSeatType({
-            groupId,
-            groupName,
-            grantedSeatType: seat,
-          })) !== null
-      );
-    }
-
     setIsSaving(true);
     try {
-      const results = await Promise.all(tasks.map((task) => task()));
+      const results = await Promise.all([
+        memberLimitChanged
+          ? doUpdateGroupSpendLimit({
+              groupId,
+              groupName,
+              limit: toSpendLimit(memberLimitResult.awuCredits),
+            }).then((body) => body !== null)
+          : true,
+        sharedLimitChanged
+          ? doUpdateGroupSharedUsageLimit({
+              groupId,
+              groupName,
+              limit: toSpendLimit(sharedLimitResult.awuCredits),
+            })
+          : true,
+        seatChanged
+          ? doUpdateGroupGrantedSeatType({
+              groupId,
+              groupName,
+              grantedSeatType: seat,
+            }).then((body) => body !== null)
+          : true,
+      ]);
       const saved = results.every(Boolean);
       if (saved) {
         onClose();
@@ -205,7 +198,7 @@ function EditGroupUsageForm({
       return;
     }
     if (seatChanged && seat !== null) {
-      setReviewSeat(seat);
+      setIsSeatReviewOpen(true);
       return;
     }
     if (seatChanged && group.grantedSeatType !== null) {
@@ -227,11 +220,15 @@ function EditGroupUsageForm({
     await saveChanges();
   };
 
-  const reviewSeatName = reviewSeat ? seatTypeDisplayName(reviewSeat, t) : null;
+  const reviewSeatName = seat ? seatTypeDisplayName(seat, t) : null;
   const removeLabel = t({
     message: "Remove",
     context: "remove a credit limit, button label",
   });
+  const removeAction = (value: string, setValue: (value: string) => void) =>
+    value !== ""
+      ? { label: removeLabel, onClick: () => setValue("") }
+      : undefined;
   const usedCredits = group.sharedUsageLimitUsage
     ? formatCredits(group.sharedUsageLimitUsage.usedAwuCredits)
     : null;
@@ -273,14 +270,7 @@ function EditGroupUsageForm({
               onChange={setSharedLimitInput}
               description={groupBudgetDescription}
               descriptionStatus="info"
-              action={
-                sharedLimitInput !== ""
-                  ? {
-                      label: removeLabel,
-                      onClick: () => setSharedLimitInput(""),
-                    }
-                  : undefined
-              }
+              action={removeAction(sharedLimitInput, setSharedLimitInput)}
             />
           )}
           <CreditLimitInput
@@ -292,14 +282,7 @@ function EditGroupUsageForm({
             }
             onChange={setMemberLimitInput}
             description={t`Caps what each member can spend.`}
-            action={
-              memberLimitInput !== ""
-                ? {
-                    label: removeLabel,
-                    onClick: () => setMemberLimitInput(""),
-                  }
-                : undefined
-            }
+            action={removeAction(memberLimitInput, setMemberLimitInput)}
           />
         </div>
       </DialogContainer>
@@ -318,17 +301,17 @@ function EditGroupUsageForm({
           onClick: handleSave,
         }}
       />
-      {reviewSeat && seatOptions && (
+      {isSeatReviewOpen && seat && seatOptions && (
         <BulkChangeSeatModal
           isOpen
-          onClose={() => setReviewSeat(null)}
+          onClose={() => setIsSeatReviewOpen(false)}
           title={t`Grant ${reviewSeatName} to ${groupName}`}
           memberCount={memberCount}
           selectedMembers={[]}
           seatPlans={seatOptions.seatPlans}
-          presetSeatType={reviewSeat}
+          presetSeatType={seat}
           onFetchPreview={() =>
-            doFetchGroupSeatMappingPreview({ groupId, seatType: reviewSeat })
+            doFetchGroupSeatMappingPreview({ groupId, seatType: seat })
           }
           onValidate={saveChanges}
         />

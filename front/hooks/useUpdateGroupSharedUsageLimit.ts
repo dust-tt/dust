@@ -1,3 +1,4 @@
+import { groupsUsageUrl } from "@app/hooks/useGroupsUsage";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -46,17 +47,17 @@ export function useUpdateGroupSharedUsageLimit({
         return false;
       }
 
-      const amount =
-        limit.kind === "limited" ? formatNumber(limit.awuCredits) : "";
+      let description = t`${groupName}'s budget has been removed.`;
+      if (limit.kind === "limited") {
+        const amount = formatNumber(limit.awuCredits);
+        description = t`${groupName}'s budget is now ${amount} credits per billing cycle.`;
+      }
       sendNotification({
         type: "success",
         title: t`Group budget updated`,
-        description:
-          limit.kind === "limited"
-            ? t`${groupName}'s budget is now ${amount} credits per billing cycle.`
-            : t`${groupName}'s budget has been removed.`,
+        description,
       });
-      await mutate(`/api/w/${owner.sId}/credits/groups-usage`);
+      await mutate(groupsUsageUrl(owner.sId));
       return true;
     },
     [owner.sId, sendApiErrorNotification, sendNotification, t]

@@ -22,16 +22,16 @@ msgid "Failed to update the group budget"
 msgstr "Failed to update the group budget"
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "Group budget updated"
-msgstr "Group budget updated"
+msgid "{groupName}'s budget has been removed."
+msgstr "{groupName}'s budget has been removed."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
 msgid "{groupName}'s budget is now {amount} credits per billing cycle."
 msgstr "{groupName}'s budget is now {amount} credits per billing cycle."
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
-msgid "{groupName}'s budget has been removed."
-msgstr "{groupName}'s budget has been removed."
+msgid "Group budget updated"
+msgstr "Group budget updated"
 
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
