@@ -13,8 +13,8 @@ export interface MarkdownRichEditor {
   mountKey: string;
   /** Scoped path of the file the editor writes. */
   path: string;
-  /** The document is edited in the live session instead of saved by this editor. */
-  live: boolean;
+  /** The live session server the document is edited in, instead of saved by this editor. */
+  liveUrl: string | undefined;
   initialContent: string;
   onSave: (content: string) => Promise<DocumentSaveResult>;
   onStateChange: (state: DocumentDraftState) => void;
@@ -23,8 +23,8 @@ export interface MarkdownRichEditor {
 interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
-  /** A live session server is reachable: the editor joins it instead of saving. */
-  live: boolean;
+  /** The live session server, when one is reachable: the editor joins it instead of saving. */
+  liveUrl: string | undefined;
   entryPath: string | undefined;
   isActive: boolean;
   /** The file text as fetched, or null while it loads. */
@@ -50,8 +50,8 @@ interface Opened {
   content: string;
   /** The file was over the preview limit at that moment; the plain editor keeps it. */
   truncated: boolean;
-  /** Live mode as it was at that moment: a draft never switches to live under the user. */
-  live: boolean;
+  /** The live session server at that moment: the editor never switches mode under the user. */
+  liveUrl: string | undefined;
 }
 
 interface Written {
@@ -84,12 +84,13 @@ function isOwnWrite(
  */
 /**
  * @cc [owner:PopDaph,label:product] live-mode-latched
- * An open editor MUST keep the live mode it opened with until the file is reopened: `live`
- * turning on MUST NOT move an open local editor, or its draft, to the live session.
+ * An open editor MUST keep the live session server it opened with, or none, until the file is
+ * reopened: `liveUrl` appearing MUST NOT move an open local editor, or its draft, to a live session,
+ * and `liveUrl` changing or disappearing MUST NOT move an open live editor.
  */
 export function useRichMarkdownEditor({
   enabled,
-  live,
+  liveUrl,
   entryPath,
   isActive,
   rawContent,
@@ -117,7 +118,7 @@ export function useRichMarkdownEditor({
   const opens = enabled && !(opened?.truncated ?? isTruncated);
   const source = rawContent ?? undefined;
   const base = opened?.content ?? null;
-  const isLive = opened?.live ?? live;
+  const openedLiveUrl = opened ? opened.liveUrl : liveUrl;
 
   // The file changed under the editor, by another writer or an agent. A clean editor reopens on
   // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
@@ -128,20 +129,20 @@ export function useRichMarkdownEditor({
       return;
     }
     if (base === null) {
-      setOpened({ content: source, truncated: isTruncated, live });
-    } else if (isLive) {
+      setOpened({ content: source, truncated: isTruncated, liveUrl });
+    } else if (openedLiveUrl !== undefined) {
       // The live session holds the document; a newer fetch of the file must not reopen it.
       return;
     } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
       // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setOpened({ content: source, truncated: false, live: false });
+      setOpened({ content: source, truncated: false, liveUrl: undefined });
     } else if (draft.dirty || draft.saving) {
       return;
     } else if (isTruncated) {
       // Reopening on cut text would save a cut file; the plain editor takes over.
-      setOpened({ content: base, truncated: true, live: false });
+      setOpened({ content: base, truncated: true, liveUrl: undefined });
     } else {
-      setOpened({ content: source, truncated: false, live: false });
+      setOpened({ content: source, truncated: false, liveUrl: undefined });
       setVersion((current) => current + 1);
     }
   }, [
@@ -152,8 +153,8 @@ export function useRichMarkdownEditor({
     draft.saving,
     isTruncated,
     entryPath,
-    isLive,
-    live,
+    openedLiveUrl,
+    liveUrl,
   ]);
 
   const save = async (content: string): Promise<DocumentSaveResult> => {
@@ -182,7 +183,7 @@ export function useRichMarkdownEditor({
       ? {
           mountKey: `${entryPath}:${version}`,
           path: entryPath,
-          live: isLive,
+          liveUrl: openedLiveUrl,
           initialContent: base ?? source,
           onSave: save,
           onStateChange: setDraft,

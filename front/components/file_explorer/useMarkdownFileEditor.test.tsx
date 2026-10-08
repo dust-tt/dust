@@ -200,7 +200,7 @@ describe("useMarkdownFileEditor", () => {
       { initialProps: params }
     );
     const firstKey = result.current.richEditor?.mountKey;
-    expect(result.current.richEditor?.live).toBe(true);
+    expect(result.current.richEditor?.liveUrl).toBe(collabUrl);
 
     rerender(revised);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
@@ -225,7 +225,24 @@ describe("useMarkdownFileEditor", () => {
 
     collabUrl = "ws://localhost/api/collab";
     rerender(params);
-    expect(result.current.richEditor?.live).toBe(false);
+    expect(result.current.richEditor?.liveUrl).toBeUndefined();
+  });
+
+  it("keeps an open live editor live when the collab URL goes away", () => {
+    flags.add("co_edition");
+    collabUrl = "ws://localhost/api/collab";
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const firstKey = result.current.richEditor?.mountKey;
+
+    collabUrl = undefined;
+    rerender(revised);
+    expect(result.current.richEditor?.liveUrl).toBe(
+      "ws://localhost/api/collab"
+    );
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
   });
 
   it("lifts the conflict once the editor is clean and reopens on the new content", async () => {

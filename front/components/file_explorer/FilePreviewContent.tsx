@@ -14,7 +14,7 @@ import {
   useSignDfmCommentMessage,
 } from "@app/hooks/useDfmCommentSignatures";
 import { useLiveTicket } from "@app/hooks/useLiveTicket";
-import { AuthContext, useCollabUrl } from "@app/lib/auth/AuthContext";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import { liveCaretColor } from "@app/lib/client/live_session";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
@@ -393,11 +393,10 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
   }, [owner, editor.path]);
 
   const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
-  const liveUrl = useCollabUrl();
   const live =
-    editor.live && liveUrl && user
+    editor.liveUrl && user
       ? {
-          url: liveUrl,
+          url: editor.liveUrl,
           documentName: toLiveDocumentName(owner.sId, editor.path),
           getTicket: getLiveTicket,
           user: {

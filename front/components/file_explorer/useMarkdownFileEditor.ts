@@ -205,7 +205,7 @@ export function useMarkdownFileEditor({
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
     enabled: hasFeature("co_edition") && canOpenEditor,
-    live: collabUrl !== undefined,
+    liveUrl: collabUrl,
     entryPath,
     isActive,
     rawContent,
