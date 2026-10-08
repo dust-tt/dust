@@ -2689,8 +2689,8 @@ const DELTA_PROCESSING_BUDGET_MS = 90 * 60 * 1000;
 /**
  * @cc [owner:philipperolet,label:backend] next-cursor-first-unprocessed
  * `nextCursor` MUST be the index of the first delta file item this call did not process, or null
- * when no item is left. When items remain at `cursor`, the call MUST process at least one of them,
- * so that the workflow's cursor loop always advances.
+ * when no item is left; skipping an item counts as processing it. When items remain at `cursor`,
+ * the call MUST process at least one of them, so that the workflow's cursor loop always advances.
  */
 export async function processDeltaChangesFromGCS({
   connectorId,
