@@ -392,7 +392,7 @@ async function announceBotJoinedPrivateChannel(
 
   if (channelInfo?.channel?.is_private) {
     // Posted to the whole channel: written in the workspace locale.
-    const i18n = await getSlackI18nForUser(connector, null);
+    const i18n = await getSlackI18nForUser(connector, slackClient, null);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",

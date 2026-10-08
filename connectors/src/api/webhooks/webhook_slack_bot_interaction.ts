@@ -468,10 +468,11 @@ const _webhookSlackBotInteractionsAPIHandler = async (
             );
             // Open the feedback modal
             await openFeedbackModal({
-              i18n: await getSlackI18nForUser(connector, {
-                slackUserId: payload.user.id,
+              i18n: await getSlackI18nForUser(
+                connector,
                 slackClient,
-              }),
+                payload.user.id
+              ),
               slackClient,
               triggerId: payload.trigger_id,
               conversationId,

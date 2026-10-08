@@ -63,32 +63,11 @@ const getDustLocalesMemoized = cacheWithRedisResult<
   { ttlMs: 10 * 60 * 1000 }
 );
 
-/**
- * Who a Slack message is written to: a Slack user, with their info when the caller already fetched
- * it, or `null` for text with no single human recipient (Slack workflows, channel-wide messages).
- */
-type SlackLocaleRecipient =
-  | { slackUserId: string | null | undefined; slackClient: WebClient }
-  | {
-      slackUserId: string | null | undefined;
-      slackUserInfo: SlackUserInfo | null;
-    }
-  | null;
-
-async function getRecipientSlackUserInfo(
+async function getSlackUserInfoOrNull(
   connector: ConnectorResource,
-  recipient: SlackLocaleRecipient
+  slackClient: WebClient,
+  slackUserId: string
 ): Promise<SlackUserInfo | null> {
-  if (!recipient) {
-    return null;
-  }
-  if ("slackUserInfo" in recipient) {
-    return recipient.slackUserInfo;
-  }
-  const { slackUserId, slackClient } = recipient;
-  if (!slackUserId) {
-    return null;
-  }
   try {
     return await getSlackUserInfoMemoized(
       connector.id,
@@ -106,19 +85,23 @@ async function getRecipientSlackUserInfo(
 }
 
 /**
- * Returns the `I18n` to write to `recipient`. Falls back to the workspace locale when there is no
- * recipient, when it is a bot, or when it cannot be fetched from Slack.
+ * Returns the `I18n` to write to this Slack user. Falls back to the workspace locale when
+ * `slackUserId` is not set (Slack workflows, channel-wide messages), is a bot, or cannot be fetched
+ * from Slack.
  */
 export async function getSlackI18nForUser(
   connector: ConnectorResource,
-  recipient: SlackLocaleRecipient
+  slackClient: WebClient,
+  slackUserId: string | null | undefined
 ): Promise<I18n> {
-  const slackUserInfo = await getRecipientSlackUserInfo(connector, recipient);
+  const slackUserInfo = slackUserId
+    ? await getSlackUserInfoOrNull(connector, slackClient, slackUserId)
+    : null;
   const human = slackUserInfo && !slackUserInfo.is_bot ? slackUserInfo : null;
 
   const dustLocalesRes = await getDustLocalesMemoized(connector, {
     email: human?.email ?? null,
-    slackUserId: human ? (recipient?.slackUserId ?? null) : null,
+    slackUserId: human ? (slackUserId ?? null) : null,
   });
   if (dustLocalesRes.isErr()) {
     logger.warn(
