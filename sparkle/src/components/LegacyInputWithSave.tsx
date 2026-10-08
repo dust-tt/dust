@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/LegacyButton";
 import { cn } from "@sparkle/lib/utils";
 import React, {
@@ -52,6 +53,7 @@ export const LegacyInputWithSave = forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const inputRef = useRef<HTMLInputElement>(null);
     useImperativeHandle(ref, () => inputRef.current!);
 
@@ -156,7 +158,7 @@ export const LegacyInputWithSave = forwardRef<
         {unit && <span className="shrink-0 text-muted-foreground">{unit}</span>}
         {showSaveButton && (
           <Button
-            label="Save"
+            label={t`Save`}
             variant="highlight"
             size="xs"
             isLoading={isSaving}

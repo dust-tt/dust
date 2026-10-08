@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { cn } from "@sparkle/lib/utils";
 import { motion, useReducedMotion } from "framer-motion";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
@@ -206,12 +207,13 @@ const EASE_OUT_QUART = "cubic-bezier(0.165, 0.84, 0.44, 1)";
  */
 export function ImageGenerationPlaceholder({
   src,
-  alt = "Generated image",
-  label = "Creating image",
+  alt,
+  label,
   size = 260,
   fill = false,
   className,
 }: ImageGenerationPlaceholderProps) {
+  const { t } = useLingui();
   const shouldReduceMotion = useReducedMotion();
   const [gridOpacity, setGridOpacity] = useState(1);
   const [imgMounted, setImgMounted] = useState(false);
@@ -224,12 +226,12 @@ export function ImageGenerationPlaceholder({
     }
     setGridOpacity(0);
     const delay = shouldReduceMotion ? 0 : 120;
-    const t = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       setImgMounted(true);
       rafRef.current = requestAnimationFrame(() => setImgOpacity(1));
     }, delay);
     return () => {
-      clearTimeout(t);
+      clearTimeout(timeoutId);
       if (rafRef.current !== null) {
         cancelAnimationFrame(rafRef.current);
       }
@@ -265,7 +267,7 @@ export function ImageGenerationPlaceholder({
             "motion-safe:animate-opacity-pulse"
           )}
         >
-          {label}
+          {label ?? t`Creating image`}
           <AnimatedDots />
         </span>
         <AnimatedGridPattern />
@@ -274,7 +276,7 @@ export function ImageGenerationPlaceholder({
       {imgMounted && src && (
         <img
           src={src}
-          alt={alt}
+          alt={alt ?? t`Generated image`}
           draggable={false}
           style={{
             position: "absolute",

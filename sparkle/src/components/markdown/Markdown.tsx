@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { Chip } from "@sparkle/components/Chip";
 import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
@@ -202,7 +203,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
     return (
       <div className="w-full">
         <Chip color="warning">
-          There was an error parsing this markdown content
+          <Trans>There was an error parsing this markdown content</Trans>
         </Chip>
         {processedContent}
       </div>

@@ -1,3 +1,4 @@
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, type ButtonProps } from "@sparkle/components/Button";
 import {
   Dialog,
@@ -298,6 +299,8 @@ function ToolbarLink({
   active,
   tooltip,
 }: ToolbarLinkProps) {
+  const { t } = useLingui();
+
   function handleDialogClick(event: React.MouseEvent<HTMLDivElement>): void {
     event.stopPropagation();
   }
@@ -317,23 +320,25 @@ function ToolbarLink({
       />
       <DialogContent onClick={handleDialogClick}>
         <DialogHeader>
-          <DialogTitle>Insert Link</DialogTitle>
+          <DialogTitle>
+            <Trans>Insert link</Trans>
+          </DialogTitle>
           <DialogDescription>
-            Add a link to your message with custom text.
+            <Trans>Add a link to your message with custom text.</Trans>
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <Input
             id="link-text"
-            label="Text"
-            placeholder="Text"
+            label={t`Text`}
+            placeholder={t`Text`}
             value={linkText}
             onChange={(event) => onLinkTextChange(event.target.value)}
           />
           <Input
             id="link-url"
-            label="Link"
-            placeholder="Link"
+            label={t`Link`}
+            placeholder={t`Link`}
             value={linkUrl}
             autoFocus
             onChange={(event) => onLinkUrlChange(event.target.value)}
@@ -341,12 +346,12 @@ function ToolbarLink({
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{
-            label: "Cancel",
+            label: t`Cancel`,
             variant: "outline",
             onClick: handleCancelClick,
           }}
           rightButtonProps={{
-            label: "Save",
+            label: t`Save`,
             variant: "highlight",
             onClick: onSubmit,
           }}

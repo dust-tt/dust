@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { CodeBlock } from "@sparkle/components/markdown/CodeBlock";
 import {
@@ -348,6 +349,7 @@ interface CodeBlockWithExtendedSupportProps {
  */
 export const CodeBlockWithExtendedSupport = memo(
   ({ children, className, inline }: CodeBlockWithExtendedSupportProps) => {
+    const { t } = useLingui();
     const validChildrenContent = String(children).trim();
     const [showMermaid, setShowMermaid] = useState<boolean>(false);
     const [isValidMermaid, setIsValidMermaid] = useState<boolean>(false);
@@ -420,14 +422,35 @@ export const CodeBlockWithExtendedSupport = memo(
               className="font-sans"
               size="xs"
               variant={"outline"}
-              label={showMermaid ? "Markdown" : "Mermaid"}
+              label={
+                showMermaid
+                  ? t({
+                      message: "Markdown",
+                      context:
+                        "button label, show the diagram's raw source code",
+                    })
+                  : t({
+                      message: "Mermaid",
+                      context: "button label, show the rendered diagram",
+                    })
+              }
               icon={showMermaid ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setShowMermaid(!showMermaid);
               }}
-              tooltip={showMermaid ? "Switch to Markdown" : "Switch to Mermaid"}
+              tooltip={
+                showMermaid
+                  ? t({
+                      message: "Switch to Markdown",
+                      context: "tooltip, show the diagram's raw source code",
+                    })
+                  : t({
+                      message: "Switch to Mermaid",
+                      context: "tooltip, show the rendered diagram",
+                    })
+              }
             />
           }
         >
@@ -452,7 +475,7 @@ export const CodeBlockWithExtendedSupport = memo(
               className="font-sans"
               size="xs"
               variant={"outline"}
-              label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
+              label={showPrettyJson ? t`Raw JSON` : t`Pretty JSON`}
               icon={showPrettyJson ? Terminal : Stars02}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
@@ -462,7 +485,15 @@ export const CodeBlockWithExtendedSupport = memo(
                 setPrettyJsonPreference(newValue);
               }}
               tooltip={
-                showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
+                showPrettyJson
+                  ? t({
+                      message: "Switch to Raw JSON",
+                      context: "tooltip, show the JSON source text",
+                    })
+                  : t({
+                      message: "Switch to Pretty View",
+                      context: "tooltip, show the JSON as a formatted tree",
+                    })
               }
             />
           }

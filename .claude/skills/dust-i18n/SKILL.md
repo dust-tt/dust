@@ -1,6 +1,6 @@
 ---
 name: dust-i18n
-description: Make front UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code, when wrapping existing strings for translation, or when reviewing UI text changes.
+description: Make front and sparkle UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code or in `sparkle/src` components, when wrapping existing strings for translation, or when reviewing UI text changes.
 ---
 
 # Translatable UI strings (Lingui)
@@ -93,11 +93,32 @@ act(() => i18n.loadAndActivate({ locale: "fr-FR", messages }));
 render(<MyComponent />);
 ```
 
+## Sparkle components
+
+Sparkle (`@dust-tt/sparkle`) is translated with the same macros and rules, but has its own Lingui
+setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
+
+- `sparkle/lingui.config.ts` resolves the macros to sparkle's own `useLingui` and `Trans`
+  (`sparkle/src/lib/i18n/`), which read sparkle's context, not the consumer's. Outside
+  `sparkle/src/lib/i18n/`, never import `useLingui`, `Trans`, `I18nProvider` or `i18n` from
+  `@lingui/react` or `@lingui/core`: they would read front's instance, which has no sparkle messages.
+- Sparkle has one catalog per locale, `sparkle/src/locales/{locale}/messages.po`, and stories
+  (`sparkle/src/stories/`) are not extracted: do not translate them.
+- For text a consumer may override, make the prop optional with no default and fall back at render:
+  ``{label ?? t`Load more`}``. A destructuring default cannot call `t`.
+- The locale comes from `SparkleI18nProvider`. Without it, sparkle renders `en-US` (marketing,
+  viz, the extension). Front mounts `SparkleLocaleProvider` (`front/components/app/`) at every app
+  root that mounts `UserLocaleSync`, and front tests already wrap in it. Sparkle's locale is a
+  catalog locale (`en-GB` renders as `en-US`).
+- `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
+  `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
+
 ## Workflow
 
 1. Wrap the strings with the macros above.
-2. From `front/`, run `npm run i18n:extract`: it updates every catalog and removes obsolete
-   messages.
+2. From `front/` (or `sparkle/` for sparkle code), run `npm run i18n:extract`: it updates every
+   catalog and removes obsolete messages.
 3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
-4. Run `npm run i18n:check` (also run in CI): it fails on stale catalogs and missing translations.
+4. Run `npm run i18n:check` from the same directory (also run in CI): it fails on stale catalogs
+   and missing translations.
 5. Commit the code and the catalogs together.

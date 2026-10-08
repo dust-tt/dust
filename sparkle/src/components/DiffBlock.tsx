@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { cva } from "class-variance-authority";
 import type { CSSProperties, ReactElement } from "react";
 import React, { useLayoutEffect, useRef, useState } from "react";
@@ -165,6 +166,7 @@ export function DiffBlock({
   isCollapsible = true,
   variant = "default",
 }: DiffBlockProps) {
+  const { t } = useLingui();
   const hasContent = changes !== undefined || children !== undefined;
 
   const {
@@ -229,7 +231,7 @@ export function DiffBlock({
             <Button
               size="xs"
               variant="outline"
-              label={isExpanded ? "Show less" : "Show more"}
+              label={isExpanded ? t`Show less` : t`Show more`}
               onClick={(e) => {
                 e.stopPropagation();
                 toggleExpanded();

@@ -1,3 +1,4 @@
+import { Trans } from "@lingui/react/macro";
 import { Spinner } from "@sparkle/components/Spinner";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -407,7 +408,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
           <div className="sticky bottom-0 left-0 right-0 flex justify-center bg-background/80 py-2 backdrop-blur-sm">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Spinner size="xs" />
-              <span>Loading more data...</span>
+              <span>
+                <Trans>Loading more data…</Trans>
+              </span>
             </div>
           </div>
         )}
