@@ -57,7 +57,7 @@ async function resolveConversationCreator(
     } else if (
       await ConversationResource.isConversationParticipant(auth, {
         conversation,
-        user: actorUser.toJSON(),
+        user: actorUser,
       })
     ) {
       relation = "participant";
