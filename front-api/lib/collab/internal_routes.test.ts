@@ -1,4 +1,5 @@
 import { checkLiveAccess } from "@app/lib/api/collab/live_file";
+import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -13,29 +14,41 @@ import {
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
 import { createHono } from "@front-api/lib/hono";
+import { unhandledErrorHandler } from "@front-api/middlewares/utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const SECRET = "collab-internal-secret";
 
-function post(
+function postRaw(
   path: string,
-  body: unknown,
+  body: string,
   authorization?: string,
   hocuspocus = createCollabHocuspocus()
 ) {
   // Mounted as the collab server mounts it.
-  const app = createHono().route(
-    COLLAB_INTERNAL_ROUTES_PREFIX,
-    createInternalDocumentsApp(hocuspocus)
-  );
+  const app = createHono()
+    .route(
+      COLLAB_INTERNAL_ROUTES_PREFIX,
+      createInternalDocumentsApp(hocuspocus)
+    )
+    .onError(unhandledErrorHandler);
   return app.request(`${COLLAB_INTERNAL_ROUTES_PREFIX}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(authorization && { Authorization: authorization }),
     },
-    body: JSON.stringify(body),
+    body,
   });
+}
+
+function post(
+  path: string,
+  body: unknown,
+  authorization?: string,
+  hocuspocus?: ReturnType<typeof createCollabHocuspocus>
+) {
+  return postRaw(path, JSON.stringify(body), authorization, hocuspocus);
 }
 
 describe("createInternalDocumentsApp", () => {
@@ -55,6 +68,19 @@ describe("createInternalDocumentsApp", () => {
     expect((await post(LIVE_SOURCE_READ_PATH, read, "Bearer ")).status).toBe(
       401
     );
+  });
+
+  it("answers a malformed body with the standard error envelope", async () => {
+    const response = await postRaw(
+      LIVE_SOURCE_READ_PATH,
+      "{",
+      `Bearer ${SECRET}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
   });
 
   it("reports a document nobody has open as closed", async () => {
@@ -101,12 +127,11 @@ describe("createInternalDocumentsApp", () => {
       throw new Error(file.error.message);
     }
     const hocuspocus = createCollabHocuspocus();
-    await hocuspocus.openDirectConnection(
-      toLiveDocumentName(workspace.sId, canonicalPath),
-      file.value
-    );
+    const name = toLiveDocumentName(workspace.sId, canonicalPath);
+    await hocuspocus.openDirectConnection(name, file.value);
     return {
       hocuspocus,
+      name,
       request: {
         workspaceId: workspace.sId,
         userId: auth.getNonNullableUser().sId,
@@ -131,6 +156,21 @@ describe("createInternalDocumentsApp", () => {
     expect(await allowed.json()).toEqual({ open: true, source: "# Notes\n" });
     expect((await readAs(undefined)).status).toBe(403);
     expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
+  });
+
+  it("refuses a read of an open document it cannot read before telling why", async () => {
+    const { hocuspocus, name, request } = await openNotes();
+    hocuspocus.documents.get(name)?.getMap(ENVELOPE_MAP_NAME).clear();
+    const readAs = (userId?: string) =>
+      post(
+        LIVE_SOURCE_READ_PATH,
+        { ...request, userId },
+        `Bearer ${SECRET}`,
+        hocuspocus
+      );
+
+    expect((await readAs(undefined)).status).toBe(403);
+    expect((await readAs(request.userId)).status).toBe(500);
   });
 
   it("answers a refused access with the error type naming why", async () => {

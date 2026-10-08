@@ -20,6 +20,7 @@ import {
 } from "./lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "./lib/collab/internal_routes";
 import { createHono } from "./lib/hono";
+import { unhandledErrorHandler } from "./middlewares/utils";
 import { healthzApp } from "./routes/healthz";
 
 /**
@@ -48,6 +49,7 @@ app.route(
   COLLAB_INTERNAL_ROUTES_PREFIX,
   createInternalDocumentsApp(hocuspocus)
 );
+app.onError(unhandledErrorHandler);
 
 // crossws types the upgraded socket as a partial WebSocket; on Node it is a full `ws` socket.
 function isWebSocketLike(socket: unknown): socket is WebSocketLike {

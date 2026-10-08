@@ -62,10 +62,10 @@ async function openLiveFileForUser({
  * Every internal route MUST answer 401 unless the request carries the configured internal secret,
  * and MUST answer 401 to every request when none is configured. A read MUST return a document's
  * source, and a write MUST be applied, only for the file `checkLiveAccess` opens for the request's
- * user, workspace and path, answering as the collab ticket route does when it refuses, and 403 for
- * an open document when the request has no user. A write whose source is larger than
- * `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused before it reaches the session, since no
- * checkpoint could write it.
+ * user, workspace and path, answering as the collab ticket route does when it refuses. A read of an
+ * open document, readable or not, MUST answer 403 when the request has no user, and a write MUST
+ * carry one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be
+ * refused before it reaches the session, since no checkpoint could write it.
  */
 export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
   const app = createHono();
@@ -83,6 +83,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
     await next();
   });
 
+  /** @ignoreswagger */
   app.post(
     LIVE_SOURCE_READ_PATH,
     validate("json", liveSourceReadRequestSchema),
@@ -93,25 +94,11 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
         hocuspocus,
         toLiveDocumentName(workspaceId, canonicalPath)
       );
-      if (read.isErr()) {
-        // TODO(co-edition): answer a distinct outcome telling the agent a person's edit cannot be
-        // saved yet, rather than an error.
-        return apiError(
-          ctx,
-          {
-            status_code: 500,
-            api_error: {
-              type: "internal_server_error",
-              message: "The live document could not be read.",
-            },
-          },
-          new Error(read.error)
-        );
-      }
-      if (!read.value.open) {
+      if (read.isOk() && !read.value.open) {
         return ctx.json<LiveSourceReadResponse>(read.value);
       }
 
+      // Open, readable or not: only a user who can open the file learns more of it.
       if (!userId) {
         return apiError(ctx, {
           status_code: 403,
@@ -130,10 +117,26 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
       if (file.isErr()) {
         return apiError(ctx, liveAccessErrorToApiError(file.error));
       }
+      if (read.isErr()) {
+        // TODO(co-edition): answer a distinct outcome telling the agent a person's edit cannot be
+        // saved yet, rather than an error.
+        return apiError(
+          ctx,
+          {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "The live document could not be read.",
+            },
+          },
+          new Error(read.error)
+        );
+      }
       return ctx.json<LiveSourceReadResponse>(read.value);
     }
   );
 
+  /** @ignoreswagger */
   app.post(
     LIVE_SOURCE_WRITE_PATH,
     validate("json", liveSourceWriteRequestSchema),

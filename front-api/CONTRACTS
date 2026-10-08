@@ -91,6 +91,14 @@ not shadow the literal-prefixed routes above it.
 Routes MUST NOT be mounted under `/api/collab`: the ingress and dust-hive's proxy send that prefix
 to the collab server (`collab_server.ts`), so such a route would never reach front-api.
 
+@cc [owner:tdraier,label:api] collab-server-internal-routes
+The collab server (`collab_server.ts`) serves its own HTTP routes, apart from front-api's route
+tree: its internal routes need the Hocuspocus instance it creates, so they MUST be built by
+`createInternalDocumentsApp` in `lib/collab/internal_routes.ts` and mounted under `/internal` by
+`collab_server.ts` only. They are an exception to `url-aligned-route-files`,
+`directory-route-mounts` and `route-mounting-is-source-of-truth`, limited to them; every other rule
+of this file applies to them.
+
 @cc [label:api] auth-at-sub-app-boundaries
 Auth middleware must be applied once at the sub-app boundary, not per-route. For `workspaceAuth`
 and `publicApiAuth`, this is the workspace sub-app's `[wId]/index.ts` mount file:
