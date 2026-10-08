@@ -132,6 +132,21 @@ msgstr "Join"
 msgid "No pending invitations found."
 msgstr "No pending invitations found."
 
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "She/Her"
+msgstr "She/Her"
+
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "He/Him"
+msgstr "He/Him"
+
+#: front/components/me/PronounPresetChips.tsx
+msgctxt "pronouns"
+msgid "They/Them"
+msgstr "They/Them"
+
 #: front/components/me/SoundNotificationPreferences.tsx
 msgid "Error updating sound notification preferences"
 msgstr "Error updating sound notification preferences"

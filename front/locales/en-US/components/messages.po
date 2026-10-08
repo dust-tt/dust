@@ -349,6 +349,14 @@ msgid "Last name is required."
 msgstr "Last name is required."
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
+msgstr "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "- Optional"
+msgstr "- Optional"
+
+#: front/components/UserSettingsPopover.tsx
 msgid "Personal Information"
 msgstr "Personal Information"
 
@@ -379,6 +387,23 @@ msgstr "First name"
 #: front/components/UserSettingsPopover.tsx
 msgid "Last name"
 msgstr "Last name"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Pronouns"
+msgstr "Pronouns"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "e.g. She/Her"
+msgstr "e.g. She/Her"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Job title"
+msgstr "Job title"
+
+#: front/components/UserSettingsPopover.tsx
+msgctxt "dropdown placeholder"
+msgid "Select"
+msgstr "Select"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Email"

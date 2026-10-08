@@ -5,10 +5,12 @@ import {
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
+import { PronounPresetChips } from "@app/components/me/PronounPresetChips";
 import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import { JOB_TYPE_LABELS } from "@app/components/onboarding/ProfileOnboardingSteps";
 import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
 import {
   CONVERSATION_FONT_LABELS,
@@ -24,6 +26,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
+import { useMemberDetails } from "@app/lib/swr/assistants";
 import {
   usePatchUser,
   usePendingInvitations,
@@ -40,11 +43,13 @@ import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
+import { JOB_TYPES } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
+import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
 import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -149,8 +154,26 @@ function getPersonalInfoSchema(t: (descriptor: MessageDescriptor) => string) {
   return z.object({
     firstName: z.string().min(1, t(msg`First name is required.`)),
     lastName: z.string().min(1, t(msg`Last name is required.`)),
+    pronouns: z
+      .string()
+      .max(
+        MAX_USER_PRONOUNS_LENGTH,
+        t(msg`Pronouns must be at most ${MAX_USER_PRONOUNS_LENGTH} characters.`)
+      ),
+    jobType: z.enum(JOB_TYPES).nullable(),
     profilePictureUrl: z.string().nullable(),
   });
+}
+
+function OptionalRowTitle({ title }: { title: string }) {
+  return (
+    <>
+      {title}{" "}
+      <span className="copy-sm text-muted-foreground">
+        <Trans>- Optional</Trans>
+      </span>
+    </>
+  );
 }
 
 type PersonalInfoType = z.infer<ReturnType<typeof getPersonalInfoSchema>>;
@@ -159,6 +182,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const { t } = useLingui();
   const personalInfoSchema = useMemo(() => getPersonalInfoSchema(t), [t]);
   const { user, isUserLoading } = useUser();
+  const { userDetails, isMembersLoading, mutateMembers } = useMemberDetails({
+    workspaceId: owner.sId,
+    userIds: user ? [user.sId] : [],
+  });
   const { patchUser } = usePatchUser();
   const isProvisioned = user?.origin === "provisioned";
   const [isUploadingImage, setIsUploadingImage] = useState(false);
@@ -175,6 +202,8 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     defaultValues: {
       firstName: user?.firstName ?? "",
       lastName: user?.lastName ?? "",
+      pronouns: userDetails?.pronouns ?? "",
+      jobType: userDetails?.jobType ?? null,
       profilePictureUrl: user?.image ?? null,
     },
   });
@@ -184,16 +213,25 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     control: form.control,
   });
   const currentImageUrl = profilePictureField.value ?? ANONYMOUS_USER_IMAGE_URL;
+  const { field: jobTypeField } = useController({
+    name: "jobType",
+    control: form.control,
+  });
+  const [portalContainer] = useState<HTMLElement | undefined>(() =>
+    typeof document !== "undefined" ? document.body : undefined
+  );
 
   useEffect(() => {
     if (user) {
       form.reset({
         firstName: user.firstName,
         lastName: user.lastName ?? "",
+        pronouns: userDetails?.pronouns ?? "",
+        jobType: userDetails?.jobType ?? null,
         profilePictureUrl: user.image ?? null,
       });
     }
-  }, [user, form]);
+  }, [user, userDetails, form]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -208,16 +246,24 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     }
   };
 
+  const { dirtyFields } = form.formState;
+
+  // Only edited optional fields are sent, so a save never overwrites values that were not loaded.
   const handleSave = async (data: PersonalInfoType) => {
     await patchUser({
       firstName: data.firstName,
       lastName: data.lastName,
       notifySuccess: true,
-      imageUrl: data.profilePictureUrl,
+      imageUrl: dirtyFields.profilePictureUrl
+        ? data.profilePictureUrl
+        : undefined,
+      pronouns: dirtyFields.pronouns ? data.pronouns : undefined,
+      jobType: dirtyFields.jobType ? (data.jobType ?? undefined) : undefined,
     });
+    await mutateMembers();
   };
 
-  if (isUserLoading) {
+  if (isUserLoading || isMembersLoading) {
     return (
       <SectionContent title={t`Personal Information`}>
         <div className="flex justify-center p-6">
@@ -318,6 +364,67 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                   }
                 />
               </div>
+            }
+          />
+
+          <SettingsList.Row
+            title={<OptionalRowTitle title={t`Pronouns`} />}
+            action={
+              <div className="flex w-64 flex-col gap-2">
+                <Input
+                  {...form.register("pronouns")}
+                  placeholder={t`e.g. She/Her`}
+                  isError={!!form.formState.errors.pronouns}
+                  message={form.formState.errors.pronouns?.message}
+                  messageStatus={
+                    form.formState.errors.pronouns ? "error" : undefined
+                  }
+                />
+                <PronounPresetChips
+                  value={form.watch("pronouns")}
+                  onSelect={(pronouns) =>
+                    form.setValue("pronouns", pronouns, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                />
+              </div>
+            }
+          />
+
+          <SettingsList.Row
+            title={<OptionalRowTitle title={t`Job title`} />}
+            action={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    label={
+                      jobTypeField.value
+                        ? t(JOB_TYPE_LABELS[jobTypeField.value])
+                        : t({
+                            message: "Select",
+                            context: "dropdown placeholder",
+                          })
+                    }
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  align="end"
+                  mountPortalContainer={portalContainer}
+                >
+                  {JOB_TYPES.map((jobType) => (
+                    <DropdownMenuItem
+                      key={jobType}
+                      label={t(JOB_TYPE_LABELS[jobType])}
+                      onClick={() => jobTypeField.onChange(jobType)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             }
           />
 
