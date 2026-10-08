@@ -1,0 +1,16 @@
+fdb-es-c deployed
+fdb-es-a tikv-es-c deployed
+deployed
+fdb-es-b deployed
+tikv-b tikv-c deployed
+deployed
+tikv-es-b deployed
+tikv-es-a deployed
+tikv-client deployed
+rocks-client deployed
+rocks deployed
+tikv-a deployed
+fdb-client deployed
+fdb-b deployed
+fdb-c deployed
+fdb-a deployed

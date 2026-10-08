@@ -1,0 +1,47 @@
+[
+  {
+    "phase": "untar",
+    "start_time": 1791304780.5565069,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "finished",
+    "time": 1791305402.681537,
+    "states": {
+      "rocks": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791304807.9139316
+        }
+      },
+      "fdb": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791305256.4873893
+        }
+      },
+      "tikv": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791305395.022274
+        }
+      }
+    }
+  }
+]

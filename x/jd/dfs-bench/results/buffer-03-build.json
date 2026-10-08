@@ -1,0 +1,14 @@
+{
+  "rocks_frontend_features": [
+    "lexical-search"
+  ],
+  "mount_features": [],
+  "distributed_features": [],
+  "source_verification": "buffer-03-source-verification.json",
+  "correctness_tests": [
+    "buffer-02-rocks-tests.log",
+    "buffer-02-fdb-tests.log",
+    "buffer-02-tikv-tests.log"
+  ],
+  "note": "Only RocksDB frontend was rebuilt with lexical-search after preflight; source is unchanged."
+}

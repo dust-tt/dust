@@ -1,0 +1,92 @@
+{
+  "rocks": {
+    "host": "dfs-clean-jd-20261006-rocks.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/dfsd-rocks",
+    "sha256": "17233205fc258f316dbb25f628e5a517f6d8bed74ab863ff3d85736bd1aae1cb",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  },
+  "fdb-a": {
+    "host": "dfs-clean-jd-20261006-fdb-a.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/dfsd-fdb",
+    "sha256": "e3cdae8e017a6dbbaf56562fce1d0880362d250ef1b780ffe79daa34992634eb",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  },
+  "tikv-a": {
+    "host": "dfs-clean-jd-20261006-tikv-a.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/dfsd-tikv",
+    "sha256": "b13fcb34428bcf8a2ef0dfca3c5ac2284554fedaae12294a9344f4a4e397e81f",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  },
+  "rocks-client": {
+    "host": "dfs-clean-jd-20261006-rocks-client.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/mount-rocks",
+    "sha256": "e30bead98faf3e07c92f65fe1fd8302ca85b05d2ae8142aaa34b262a4a48ba46",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  },
+  "fdb-client": {
+    "host": "dfs-clean-jd-20261006-fdb-client.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/mount-fdb",
+    "sha256": "4b263bcd194d343928cc05053d978c9e18233d5ca320132e3b6e60ed93bb64e8",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  },
+  "tikv-client": {
+    "host": "dfs-clean-jd-20261006-tikv-client.us-east4-a.c.dust-dev.internal",
+    "binary": "/srv/dfs/bin/mount-tikv",
+    "sha256": "3ed3c0c06a24939f0023bb2d22263aa61fdd0c7261dd20a302945a0c7866eb83",
+    "ssd": {
+      "filesystems": [
+        {
+          "target": "/srv/dfs",
+          "source": "/dev/nvme0n1",
+          "fstype": "ext4",
+          "options": "rw,noatime"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "name": "dfs-rawkv-jd-20261005-a",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-client",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-search-jd-20261002-client",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-search-jd-20261002-server",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-lance",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-lc",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-tantivy",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-tc",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261003-lance",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-tantivy-jd-20261002-client",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-tantivy-jd-20261002-server",
+    "zone": "us-central1-a"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-b",
+    "zone": "us-central1-b"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-f",
+    "zone": "us-central1-f"
+  }
+]

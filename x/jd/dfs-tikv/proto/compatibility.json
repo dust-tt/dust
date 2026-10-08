@@ -1,0 +1,5 @@
+{
+  "src/model.rs": "881a76d58f692fec9cc7ea7f15e09b3e2c855dc928c96b0f885b3bbb64829627",
+  "proto/dfs.proto": "7fe19f1b62c8ea855c84e1d69ba10baf5aab1748906d62473a7d8ba08ae0b060",
+  "src/client.rs": "424b0ae02626f1fb311d3b912a762ab73b2a610720da7ed5d3ffad199932189c"
+}

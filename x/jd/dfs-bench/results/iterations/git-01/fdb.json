@@ -1,0 +1,68 @@
+{
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791318427.350079,
+      "actual_start_time": 1791318427.3501809,
+      "end_time": 1791318821.4236503
+    },
+    "search": {
+      "target_start_time": 1791318922.7800431,
+      "actual_start_time": 1791318922.7801666,
+      "end_time": 1791318922.7806623
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "scope": "full GitHub clone attempt, validated checkout search when successful",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-01/client/clone-mount-metrics.json"
+  ],
+  "clone_mount_startup_ms": 71.85973699961323,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 128,
+    "elapsed_ms": 394073.045936,
+    "successful": false
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "search": {
+    "skipped": true,
+    "reason": "Clone failed; an incomplete checkout is not a valid search corpus."
+  },
+  "iteration": "git-01"
+}

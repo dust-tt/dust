@@ -1,0 +1,361 @@
+{"waiting": "untar", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312205.712697}
+{"phase": "untar", "start_time": 1791312231.837235, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "filesystem", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312219.0315678}
+{"waiting": "filesystem", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312230.417535}
+{"waiting": "filesystem", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312241.49982}
+{"waiting": "filesystem", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312252.618238}
+{"waiting": "filesystem", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312263.739126}
+{"waiting": "filesystem", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312274.9246678}
+{"phase": "filesystem", "start_time": 1791312301.012327, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312288.265676}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312299.652738}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312310.7399948}
+{"phase": "search", "start_time": 1791312336.868835, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312324.0960739}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791312335.263052}
+rocks {
+  "backend": "rocks",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791312231.837235,
+      "actual_start_time": 1791312231.8373284,
+      "end_time": 1791312240.7194726
+    },
+    "filesystem": {
+      "target_start_time": 1791312301.012327,
+      "actual_start_time": 1791312301.0124178,
+      "end_time": 1791312312.126801
+    },
+    "search": {
+      "target_start_time": 1791312336.868835,
+      "actual_start_time": 1791312336.8689258,
+      "end_time": 1791312336.961788
+    }
+  },
+  "settings": {
+    "backend": "rocks",
+    "endpoint": "https://10.150.0.3:7443",
+    "search_host": "10.150.0.3",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "untar_mount_startup_ms": 52.51961799876881,
+  "untar": {
+    "extraction_ms": 3118.763571,
+    "extraction_plus_sync_ms": 3410.180513,
+    "open_fsync_close_all_files_ms": 291.416942,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_untar": {
+    "wait_ms": 6.217268999535008,
+    "response": {
+      "engine": "tantivy",
+      "incomplete": false,
+      "indexed_through": {
+        "head": 10404,
+        "incarnation": "23b85c4c573b4d3c81708c7158fd530b",
+        "tenant": "bench"
+      }
+    }
+  },
+  "filesystem_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/filesystem-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "filesystem_mount_startup_ms": 83.75391499976104,
+  "filesystem_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_filesystem": {
+    "wait_ms": 7.037880001007579,
+    "response": {
+      "engine": "tantivy",
+      "incomplete": false,
+      "indexed_through": {
+        "head": 10470,
+        "incarnation": "23b85c4c573b4d3c81708c7158fd530b",
+        "tenant": "bench"
+      }
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "222318592\n",
+    "memory.peak": "476774400\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 21596596\nuser_usec 11343347\nsystem_usec 10253248\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, filesystem, search",
+  "iteration": "buffer-04"
+}
+
+fdb {
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791312231.837235,
+      "actual_start_time": 1791312231.837329,
+      "end_time": 1791312282.544759
+    },
+    "filesystem": {
+      "target_start_time": 1791312301.012327,
+      "actual_start_time": 1791312301.01242,
+      "end_time": 1791312318.2709088
+    },
+    "search": {
+      "target_start_time": 1791312336.868835,
+      "actual_start_time": 1791312336.8689454,
+      "end_time": 1791312338.6269712
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 75.95097500052361,
+  "untar": {
+    "extraction_ms": 12134.993023,
+    "extraction_plus_sync_ms": 12456.725073000001,
+    "open_fsync_close_all_files_ms": 321.73205,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_untar": {
+    "wait_ms": 47.649397998611676,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10424,
+      "source_head": 10424
+    }
+  },
+  "filesystem_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/filesystem-mount-metrics.json"
+  ],
+  "filesystem_mount_startup_ms": 567.6556400012487,
+  "filesystem_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_filesystem": {
+    "wait_ms": 39.436629000192625,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10490,
+      "source_head": 10490
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "222310400\n",
+    "memory.peak": "476475392\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 24114914\nuser_usec 12358425\nsystem_usec 11756489\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, filesystem, search",
+  "iteration": "buffer-04"
+}
+
+tikv {
+  "backend": "tikv",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791312231.837235,
+      "actual_start_time": 1791312231.8373287,
+      "end_time": 1791312280.043986
+    },
+    "filesystem": {
+      "target_start_time": 1791312301.012327,
+      "actual_start_time": 1791312301.0124817,
+      "end_time": 1791312318.0027542
+    },
+    "search": {
+      "target_start_time": 1791312336.868835,
+      "actual_start_time": 1791312336.8689282,
+      "end_time": 1791312338.5186603
+    }
+  },
+  "settings": {
+    "backend": "tikv",
+    "endpoint": "https://10.150.0.15:7443",
+    "search_host": "10.150.0.15",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 58.5326910004369,
+  "untar": {
+    "extraction_ms": 16493.701626,
+    "extraction_plus_sync_ms": 16827.896968999998,
+    "open_fsync_close_all_files_ms": 334.195343,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_untar": {
+    "wait_ms": 56.524552001064876,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10462,
+      "source_head": 10462
+    }
+  },
+  "filesystem_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-04/client/filesystem-mount-metrics.json"
+  ],
+  "filesystem_mount_startup_ms": 371.1465609994775,
+  "filesystem_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_filesystem": {
+    "wait_ms": 37.35822199996619,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10528,
+      "source_head": 10528
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "222314496\n",
+    "memory.peak": "476327936\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 24898048\nuser_usec 12796454\nsystem_usec 12101594\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, filesystem, search",
+  "iteration": "buffer-04"
+}
+

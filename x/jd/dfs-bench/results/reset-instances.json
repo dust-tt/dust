@@ -1,0 +1,80 @@
+[
+  {
+    "name": "dfs-rawkv-jd-20261005-a",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-rawkv-jd-20261005-a].\n"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-client",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-rawkv-jd-20261005-client].\n"
+  },
+  {
+    "name": "dfs-search-jd-20261002-client",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-search-jd-20261002-client].\n"
+  },
+  {
+    "name": "dfs-search-jd-20261002-server",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-search-jd-20261002-server].\n"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-lance",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-showdown-jd-20261002-lance].\n"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-lc",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-showdown-jd-20261002-lc].\n"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-tantivy",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-showdown-jd-20261002-tantivy].\n"
+  },
+  {
+    "name": "dfs-showdown-jd-20261002-tc",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-showdown-jd-20261002-tc].\n"
+  },
+  {
+    "name": "dfs-showdown-jd-20261003-lance",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-showdown-jd-20261003-lance].\n"
+  },
+  {
+    "name": "dfs-tantivy-jd-20261002-client",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-tantivy-jd-20261002-client].\n"
+  },
+  {
+    "name": "dfs-tantivy-jd-20261002-server",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-tantivy-jd-20261002-server].\n"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-b",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/instances/dfs-rawkv-jd-20261005-b].\n"
+  },
+  {
+    "name": "dfs-rawkv-jd-20261005-f",
+    "exit_code": 0,
+    "stdout": "",
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/instances/dfs-rawkv-jd-20261005-f].\n"
+  }
+]

@@ -1,0 +1,39 @@
+
+running 1 test
+test stateless_search_filters_before_pagination_and_checks_current_authority ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.27s
+
+
+running 3 tests
+test distributed_incremental_workers_reject_stale_replay_and_recover_shared_progress ... ok
+test directory_move_during_index_publication_preserves_authority_and_newer_content   ... ok
+test large_tenant_edits_index_one_document_and_become_search_visible                 ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 62.68s
+
+large tenant: created 500 files in 3.1s
+large tenant: created 1000 files in 6.1s
+large tenant: created 1500 files in 9.1s
+large tenant: created 2000 files in 12.1s
+large tenant: created 2500 files in 15.1s
+large tenant: created 3000 files in 18.1s
+large tenant: created 3500 files in 21.1s
+large tenant: created 4000 files in 24.2s
+large tenant: created 4500 files in 27.2s
+large tenant: created 5000 files in 30.3s
+large tenant: created 5500 files in 33.3s
+large tenant: created 6000 files in 36.3s
+large tenant: created 6500 files in 39.3s
+large tenant: created 7000 files in 42.3s
+large tenant: created 7500 files in 45.3s
+large tenant: created 8000 files in 48.4s
+large tenant: created 8500 files in 51.3s
+large tenant: created 9000 files in 54.3s
+large tenant: created 9500 files in 57.3s
+large tenant: created 10000 files in 60.3s
+large tenant edit: {"ack_to_index_ms":30.618751,"ack_to_verified_search_ms":51.549998,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20143,"object_writes":12,"root_cas":0,"root_reads":0,"transaction_commits":12,"transaction_conflicts":0,"transaction_snapshots":51},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20129,"object_writes":11,"root_cas":0,"root_reads":0,"transaction_commits":11,"transaction_conflicts":0,"transaction_snapshots":47},"mutation_ms":8.0677,"primary_index_operations":1,"revision":1,"through":10002}
+large tenant edit: {"ack_to_index_ms":27.771482,"ack_to_verified_search_ms":43.07192,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20157,"object_writes":13,"root_cas":0,"root_reads":0,"transaction_commits":13,"transaction_conflicts":0,"transaction_snapshots":55},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20143,"object_writes":12,"root_cas":0,"root_reads":0,"transaction_commits":12,"transaction_conflicts":0,"transaction_snapshots":51},"mutation_ms":8.87533,"primary_index_operations":1,"revision":2,"through":10003}
+large tenant edit: {"ack_to_index_ms":27.713167000000002,"ack_to_verified_search_ms":42.977832,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20171,"object_writes":14,"root_cas":0,"root_reads":0,"transaction_commits":14,"transaction_conflicts":0,"transaction_snapshots":59},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20157,"object_writes":13,"root_cas":0,"root_reads":0,"transaction_commits":13,"transaction_conflicts":0,"transaction_snapshots":55},"mutation_ms":6.319141,"primary_index_operations":1,"revision":3,"through":10004}
+large tenant edit: {"ack_to_index_ms":30.614630000000002,"ack_to_verified_search_ms":44.901094,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20185,"object_writes":15,"root_cas":0,"root_reads":0,"transaction_commits":15,"transaction_conflicts":0,"transaction_snapshots":63},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20171,"object_writes":14,"root_cas":0,"root_reads":0,"transaction_commits":14,"transaction_conflicts":0,"transaction_snapshots":59},"mutation_ms":6.979069,"primary_index_operations":1,"revision":4,"through":10005}
+large tenant edit: {"ack_to_index_ms":27.540911,"ack_to_verified_search_ms":42.521288,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20199,"object_writes":16,"root_cas":0,"root_reads":0,"transaction_commits":16,"transaction_conflicts":0,"transaction_snapshots":67},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20185,"object_writes":15,"root_cas":0,"root_reads":0,"transaction_commits":15,"transaction_conflicts":0,"transaction_snapshots":63},"mutation_ms":6.350013,"primary_index_operations":1,"revision":5,"through":10006}

@@ -1,0 +1,46 @@
+Unable to find image 'pingcap/pd:v8.5.3' locally
+v8.5.3: Pulling from pingcap/pd
+e43a6169253e: Pulling fs layer
+6bc581764e29: Pulling fs layer
+8fcf9f45a442: Pulling fs layer
+afb029be9bb0: Pulling fs layer
+16bdcded0500: Pulling fs layer
+2699677bb06e: Pulling fs layer
+df687caa4c4f: Pulling fs layer
+6bc581764e29: Download complete
+e43a6169253e: Download complete
+df687caa4c4f: Download complete
+8fcf9f45a442: Download complete
+2699677bb06e: Download complete
+16bdcded0500: Download complete
+afb029be9bb0: Download complete
+6bc581764e29: Pull complete
+df687caa4c4f: Pull complete
+2699677bb06e: Pull complete
+8fcf9f45a442: Pull complete
+afb029be9bb0: Pull complete
+16bdcded0500: Pull complete
+e43a6169253e: Pull complete
+Digest: sha256:da86403ec2c9785907d7ceaed15f1c77adad348c893a046b460104849f40800d
+Status: Downloaded newer image for pingcap/pd:v8.5.3
+cea453f0e42798afe96a33fff8975d516be40788c6c8e467737fb8084eebeebd
+Unable to find image 'pingcap/tikv:v8.5.3' locally
+v8.5.3: Pulling from pingcap/tikv
+8be45c9b4459: Pulling fs layer
+a563c0276cc9: Pulling fs layer
+0171124cd047: Pulling fs layer
+ae7dcde0738c: Pulling fs layer
+bfa58b95103a: Pulling fs layer
+ae7dcde0738c: Download complete
+0171124cd047: Download complete
+bfa58b95103a: Download complete
+a563c0276cc9: Download complete
+0171124cd047: Pull complete
+bfa58b95103a: Pull complete
+a563c0276cc9: Pull complete
+ae7dcde0738c: Pull complete
+8be45c9b4459: Download complete
+8be45c9b4459: Pull complete
+Digest: sha256:00502c3c74915577ff3a669a223a3740c3f1f7e151de745620a95a5f1450a909
+Status: Downloaded newer image for pingcap/tikv:v8.5.3
+0caf208d2ec1b0833c9f072d0f9cb3b1772d0ac8cd66e9a778bd929ed405e0c2

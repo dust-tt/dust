@@ -1,0 +1,6 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling dfs-tikv v0.1.0 (/home/dfs/dfs-tikv)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3m 43s
+  Executable tests/buffered.rs (target/release/deps/buffered-4d804d6588fb61b0)

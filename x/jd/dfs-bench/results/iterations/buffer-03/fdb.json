@@ -1,0 +1,97 @@
+{
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791311050.240078,
+      "actual_start_time": 1791311050.2401717,
+      "end_time": 1791311102.9687152
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-03/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 75.18293300017831,
+  "untar": {
+    "extraction_ms": 14790.800684,
+    "extraction_plus_sync_ms": 15102.205837,
+    "open_fsync_close_all_files_ms": 311.405153,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read-admission-check_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-03/client/read-admission-check-mount-metrics.json"
+  ],
+  "read-admission-check_mount_startup_ms": 566.260985999179,
+  "read-admission-check_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read_admission_check": {
+    "passed": true,
+    "threads": 32,
+    "outside_timed_extraction": true
+  },
+  "index_after_untar": {
+    "wait_ms": 51.0635539994837,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10678,
+      "source_head": 10678
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "222187520\n",
+    "memory.peak": "451174400\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 9142624\nuser_usec 5352890\nsystem_usec 3789733\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, durability, hashes, index catch-up",
+  "iteration": "buffer-03"
+}

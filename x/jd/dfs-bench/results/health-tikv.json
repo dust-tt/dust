@@ -1,0 +1,137 @@
+{
+  "count": 3,
+  "stores": [
+    {
+      "store": {
+        "id": 1,
+        "address": "10.150.0.15:20160",
+        "labels": [
+          {
+            "key": "zone",
+            "value": "us-east4-a"
+          }
+        ],
+        "version": "8.5.3",
+        "peer_address": "10.150.0.15:20160",
+        "status_address": "10.150.0.15:20180",
+        "git_hash": "13b9af5c34ad0dd62b5ae5ee02e05806e6d31e0b",
+        "start_timestamp": 1791296379,
+        "deploy_path": "/",
+        "last_heartbeat": 1791296419491305274,
+        "node_state": 1,
+        "state_name": "Up"
+      },
+      "status": {
+        "capacity": "368GiB",
+        "available": "345.3GiB",
+        "used_size": "3.945GiB",
+        "leader_count": 5,
+        "leader_weight": 1,
+        "leader_score": 5,
+        "leader_size": 5,
+        "region_count": 5,
+        "region_weight": 1,
+        "region_score": 9.02520147612517,
+        "region_size": 5,
+        "slow_score": 1,
+        "slow_trend": {
+          "cause_value": 250023.07,
+          "cause_rate": 0,
+          "result_value": 0,
+          "result_rate": 0
+        },
+        "start_ts": "2026-10-06T14:19:39Z",
+        "last_heartbeat_ts": "2026-10-06T14:20:19.491305274Z",
+        "uptime": "40.491305274s"
+      }
+    },
+    {
+      "store": {
+        "id": 4,
+        "address": "10.150.0.4:20160",
+        "labels": [
+          {
+            "key": "zone",
+            "value": "us-east4-c"
+          }
+        ],
+        "version": "8.5.3",
+        "peer_address": "10.150.0.4:20160",
+        "status_address": "10.150.0.4:20180",
+        "git_hash": "13b9af5c34ad0dd62b5ae5ee02e05806e6d31e0b",
+        "start_timestamp": 1791296379,
+        "deploy_path": "/",
+        "last_heartbeat": 1791296419566447497,
+        "node_state": 1,
+        "state_name": "Up"
+      },
+      "status": {
+        "capacity": "368GiB",
+        "available": "345.3GiB",
+        "used_size": "3.945GiB",
+        "leader_count": 0,
+        "leader_weight": 1,
+        "leader_score": 0,
+        "leader_size": 0,
+        "region_count": 5,
+        "region_weight": 1,
+        "region_score": 9.025010787412402,
+        "region_size": 5,
+        "slow_score": 1,
+        "slow_trend": {
+          "cause_value": 250045.86,
+          "cause_rate": 0,
+          "result_value": 0,
+          "result_rate": 0
+        },
+        "start_ts": "2026-10-06T14:19:39Z",
+        "last_heartbeat_ts": "2026-10-06T14:20:19.566447497Z",
+        "uptime": "40.566447497s"
+      }
+    },
+    {
+      "store": {
+        "id": 5,
+        "address": "10.150.0.11:20160",
+        "labels": [
+          {
+            "key": "zone",
+            "value": "us-east4-b"
+          }
+        ],
+        "version": "8.5.3",
+        "peer_address": "10.150.0.11:20160",
+        "status_address": "10.150.0.11:20180",
+        "git_hash": "13b9af5c34ad0dd62b5ae5ee02e05806e6d31e0b",
+        "start_timestamp": 1791296379,
+        "deploy_path": "/",
+        "last_heartbeat": 1791296419574925761,
+        "node_state": 1,
+        "state_name": "Up"
+      },
+      "status": {
+        "capacity": "368GiB",
+        "available": "345.3GiB",
+        "used_size": "3.945GiB",
+        "leader_count": 0,
+        "leader_weight": 1,
+        "leader_score": 0,
+        "leader_size": 0,
+        "region_count": 5,
+        "region_weight": 1,
+        "region_score": 9.025010261672923,
+        "region_size": 5,
+        "slow_score": 1,
+        "slow_trend": {
+          "cause_value": 250056.31166666668,
+          "cause_rate": 0,
+          "result_value": 0,
+          "result_rate": 0
+        },
+        "start_ts": "2026-10-06T14:19:39Z",
+        "last_heartbeat_ts": "2026-10-06T14:20:19.574925761Z",
+        "uptime": "40.574925761s"
+      }
+    }
+  ]
+}

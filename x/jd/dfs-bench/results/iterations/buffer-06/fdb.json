@@ -1,0 +1,111 @@
+{
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791314065.882171,
+      "actual_start_time": 1791314065.8822653,
+      "end_time": 1791314111.4693406
+    },
+    "filesystem": {
+      "target_start_time": 1791314135.563445,
+      "actual_start_time": 1791314135.563596,
+      "end_time": 1791314150.274143
+    },
+    "search": {
+      "target_start_time": 1791314171.482982,
+      "actual_start_time": 1791314171.4830961,
+      "end_time": 1791314173.1599903
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-06/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 73.26318600098602,
+  "untar": {
+    "extraction_ms": 11134.278194,
+    "extraction_plus_sync_ms": 11487.342713,
+    "open_fsync_close_all_files_ms": 353.064519,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_untar": {
+    "wait_ms": 52.752179002709454,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10422,
+      "source_head": 10422
+    }
+  },
+  "filesystem_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/buffer-06/client/filesystem-mount-metrics.json"
+  ],
+  "filesystem_mount_startup_ms": 558.3116939997126,
+  "filesystem_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_after_filesystem": {
+    "wait_ms": 40.840143999957945,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 10488,
+      "source_head": 10488
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "222273536\n",
+    "memory.peak": "478060544\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 22236999\nuser_usec 12207232\nsystem_usec 10029767\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, filesystem, search",
+  "iteration": "buffer-06"
+}

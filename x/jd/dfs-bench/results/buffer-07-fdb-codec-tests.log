@@ -1,0 +1,9 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.68s
+     Running tests/codec.rs (target/release/deps/codec-35af00d6ad3eb7ec)
+
+running 2 tests
+test oversized_declared_byte_length_respects_decode_limit ... ok
+test byte_encoding_preserves_existing_wire_and_storage_records ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

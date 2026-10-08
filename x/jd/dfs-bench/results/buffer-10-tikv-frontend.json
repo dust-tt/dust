@@ -1,0 +1,37 @@
+{
+  "command": [
+    "/srv/dfs/bin/dfsd-tikv",
+    "--credentials",
+    "/srv/dfs/config/credentials.json",
+    "--listen",
+    "10.150.0.15:7443",
+    "--tls-cert",
+    "/srv/dfs/config/server.crt",
+    "--tls-key",
+    "/srv/dfs/config/server.key",
+    "--search-listen",
+    "10.150.0.15:7447",
+    "--namespace",
+    "rework-buffer-10",
+    "--cache-bytes",
+    "67108864",
+    "--elasticsearch",
+    "http://10.150.0.6:9200,http://10.150.0.12:9200,http://10.150.0.16:9200",
+    "--index-tokens",
+    "/srv/dfs/config/admin.token",
+    "--pd",
+    "10.150.0.15:2379,10.150.0.11:2379,10.150.0.4:2379"
+  ],
+  "metrics": {
+    "Metrics": {
+      "live_sst_bytes": 0,
+      "pending_bytes": 0,
+      "pending_compaction_bytes": 0,
+      "persisted": 0,
+      "persistence_age_ms": 0,
+      "published": 0,
+      "retained_bytes": 0,
+      "storage_error": null
+    }
+  }
+}
