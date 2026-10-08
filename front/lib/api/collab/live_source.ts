@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import type {
   LiveSourceReadRequest,
   LiveSourceReadResponse,
@@ -98,20 +97,18 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
 
 /**
  * @cc [owner:tdraier,label:product;concurrency] live-source-read
- * A document MUST be reported closed without asking the collab server when the workspace lacks
- * `co_edition` or no collab server is configured, and when nothing listens at its address: no
- * session can be open then. It MUST be asked as `auth`'s user when it has one, since an open
- * document's source is only served to a user who can open it live; a refusal MUST be `refused`.
- * Any other failure MUST be an error, never reported closed, since the caller would write the file
- * under an open session.
+ * A document MUST be reported closed without asking the collab server only when no collab server is
+ * configured, and when nothing listens at its address: no session can be open then, since the
+ * collab server refuses to start without its internal secret. It MUST be asked whatever the
+ * workspace's `co_edition`, since a session can outlive the flag being turned off. It MUST be asked
+ * as `auth`'s user when it has one, since an open document's source is only served to a user who
+ * can open it live; a refusal MUST be `refused`. Any other failure MUST be an error, never reported
+ * closed, since the caller would write the file under an open session.
  */
 export async function fetchLiveSource(
   auth: Authenticator,
   canonicalPath: string
 ): Promise<Result<LiveSourceReadResponse, LiveSourceError>> {
-  if (!(await hasFeatureFlag(auth, "co_edition"))) {
-    return new Ok({ open: false });
-  }
   const answer = await postToCollabServer(
     LIVE_SOURCE_READ_PATH,
     {

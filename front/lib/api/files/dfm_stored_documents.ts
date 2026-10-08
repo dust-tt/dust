@@ -222,7 +222,11 @@ export async function readCurrentDocumentSource(
  * While a live session holds the document, the file MUST NOT be written: `change` MUST receive
  * the session's source, parsed, after the file's checks and its write access, and its result MUST
  * be written through the session, conditional on that source. A session that changed, closed or
- * was busy meanwhile counts as a conflict.
+ * was busy meanwhile counts as a conflict. The revision refusal applies to both paths.
+ *
+ * Known gap until the per-file lock of LIVE_SESSION.md (build step 8): a session opening between
+ * the check for one and the file write loads the file before the write, so the session misses the
+ * write and its checkpoints conflict with it.
  */
 export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
@@ -236,6 +240,16 @@ export async function writeDocumentChange<T, E extends Error>(
       return read;
     }
     const { text, revision, document, filePath } = read.value;
+
+    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
+    if (revision === undefined) {
+      return new Err(
+        new DfmStoredDocumentError(
+          "refused",
+          "This document's storage does not support safe changes yet."
+        )
+      );
+    }
 
     // TODO(co-edition): a session opening between this check and the file write below loads the
     // file before the write, and its checkpoints then conflict with it. Both should run under the
@@ -258,16 +272,6 @@ export async function writeDocumentChange<T, E extends Error>(
         return new Ok(written.value.value);
       }
       continue;
-    }
-
-    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
-    if (revision === undefined) {
-      return new Err(
-        new DfmStoredDocumentError(
-          "refused",
-          "This document's storage does not support safe changes yet."
-        )
-      );
     }
 
     const changed = await applyChange(change, { text, document, filePath });

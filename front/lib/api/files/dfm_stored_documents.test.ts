@@ -39,7 +39,7 @@ const FILE_SOURCE = "# Notes\n\nFrom the file.\n";
 const LIVE_SOURCE = "# Notes\n\nFrom the session.\n";
 const HUMAN_SOURCE = "# Notes\n\nFrom the session, typed meanwhile.\n";
 
-function stored(content: string, revision: string) {
+function stored(content: string, revision: string | undefined) {
   return new Ok({
     stream: Readable.from([Buffer.from(content, "utf8")]),
     contentType: "text/markdown",
@@ -139,6 +139,21 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
       "# Notes\n\nFrom the file.\n\nAppended.\n"
     );
     expect(revision).toBe("7");
+  });
+
+  it("refuses a storage without revisions, even while a session is open", async () => {
+    vi.mocked(readCanonicalFileContent).mockImplementation(async () =>
+      stored(FILE_SOURCE, undefined)
+    );
+    vi.mocked(fetchLiveSource).mockResolvedValue(
+      new Ok({ open: true, source: LIVE_SOURCE })
+    );
+
+    const result = await writeDocumentChange(auth, dustFs, path, appendLine);
+
+    expect(result.isErr() && result.error.code).toBe("refused");
+    expect(pushLiveSource).not.toHaveBeenCalled();
+    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
   it("writes nothing when the collab server cannot tell whether a session is open", async () => {
