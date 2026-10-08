@@ -166,12 +166,13 @@ No new permission table or budget fields are needed.
 
 ### 2. Manage assignments and discover access
 
-Extend the existing GET/PATCH `/api/w/:wId/groups/:groupId` management API with `managerIds`.
-PATCH changes only supplied fields: `managerIds` replaces the manager list, omission leaves it alone,
-and an empty list revokes all assignments. Only workspace admins and managers may change this field. Validate
-active workspace membership and apply additions/removals through the grant resource in a transaction.
+Extend the existing GET/PATCH `/api/w/:wId/groups/:groupId` management API with `managerDiff`.
+PATCH accepts one of `name`, `memberDiff`, or `managerDiff`. Each diff contains `add` and `remove`
+user ID lists, leaving unmentioned users unchanged. Only workspace admins and managers may change
+`managerDiff`. Validate active workspace membership and apply additions/removals through the grant
+resource in a transaction.
 Keep this path separate from manual membership updates so provisioned groups can also have managers.
-Save `managerIds` in its own PATCH; combining it with a name or membership change is rejected.
+Save `managerDiff` in its own PATCH; combining it with a name or membership change is rejected.
 Check all supplied fields before applying any part of a patch.
 
 Use [Authenticator](../../../front/lib/auth.ts) directly to resolve scope: workspace managers/admins

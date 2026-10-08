@@ -2216,35 +2216,20 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  /**
-   * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
-   * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
-   * MUST fail with `last_group_member`.
-   */
   async updateRegularManualGroup(
     auth: Authenticator,
-    { name, memberIds }: { name?: string; memberIds?: string[] }
+    { name }: { name: string }
   ): Promise<
     Result<
       { addedUsers: UserType[]; removedUsers: UserType[] },
-      DustError<
-        | "unauthorized"
-        | "name_conflict"
-        | "user_not_found"
-        | "user_not_member"
-        | "user_already_member"
-        | "group_not_found"
-        | "group_requirements_not_met"
-        | "last_group_member"
-        | "system_or_global_group"
-      >
+      DustError<"unauthorized" | "name_conflict" | "group_not_found">
     >
   > {
     if (!this.isRegularManual()) {
       return new Err(new DustError("group_not_found", "Group not found."));
     }
 
-    // Editing a regular_manual group (name/members) requires `write` on it
+    // Editing a regular_manual group requires `write` on it
     // (workspace admins and managers; only workspace admins for a privileged group).
     if (!auth.can("write", this)) {
       return new Err(
@@ -2257,59 +2242,23 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Checked before any mutation so a rejected update leaves both name and members untouched.
-    if (memberIds !== undefined && memberIds.length === 0) {
+    // Only check for a collision when the name actually changes, so renaming
+    // to the same name never raises a conflict against self.
+    if (
+      name !== this.name &&
+      (await GroupResource.groupExistsByName(auth, name))
+    ) {
       return new Err(
-        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
+        new DustError(
+          "name_conflict",
+          `A group named "${name}" already exists in this workspace.`
+        )
       );
     }
 
-    if (name !== undefined) {
-      // Only check for a collision when the name actually changes, so renaming
-      // to the same name never raises a conflict against self.
-      if (
-        name !== this.name &&
-        (await GroupResource.groupExistsByName(auth, name))
-      ) {
-        return new Err(
-          new DustError(
-            "name_conflict",
-            `A group named "${name}" already exists in this workspace.`
-          )
-        );
-      }
-
-      const updateRes = await this.updateName(auth, name);
-      if (updateRes.isErr()) {
-        return new Err(new DustError("unauthorized", updateRes.error.message));
-      }
-    }
-
-    if (memberIds !== undefined) {
-      return withTransaction(async (transaction) => {
-        const lockedIds = await GroupResource.lockGroupIdsForUpdate(
-          auth,
-          [this.id],
-          transaction
-        );
-        if (lockedIds.length === 0) {
-          return new Err(new DustError("group_not_found", "Group not found."));
-        }
-        const uniqueMemberIds = [...new Set(memberIds)];
-        const users = await UserResource.fetchByIds(uniqueMemberIds, {
-          transaction,
-        });
-        if (users.length !== uniqueMemberIds.length) {
-          return new Err(
-            new DustError("user_not_found", "Some users were not found.")
-          );
-        }
-
-        return this.dangerouslySetMembers(auth, {
-          users: users.map((u) => u.toJSON()),
-          transaction,
-        });
-      });
+    const updateRes = await this.updateName(auth, name);
+    if (updateRes.isErr()) {
+      return new Err(new DustError("unauthorized", updateRes.error.message));
     }
 
     return new Ok({ addedUsers: [], removedUsers: [] });
@@ -2327,7 +2276,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * @cc [owner:philipperolet,label:concurrency;backend] group-member-diff
    * Add/remove updates MUST preserve unmentioned members and serialize the membership checks
-   * and writes with full-list and other add/remove updates.
+   * and writes with other add/remove updates.
    */
   async updateRegularManualGroupMembers(
     auth: Authenticator,

@@ -799,13 +799,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   /**
    * @cc [owner:philipperolet,label:security;backend] replace-grant-users-atomically
-   * Replacing the users holding one grant MUST serialize with other changes to that grant and
+   * Updating the users holding one grant MUST serialize with other changes to that grant and
    * either apply every addition/removal or apply none. Callers MUST validate that the supplied
-   * users are active members of the workspace before invoking this method. With userIdsToRemove,
-   * users MUST be added, listed users removed, and other active workspace members preserved.
+   * users are active members of the workspace before invoking this method.
+   * Users MUST be added, listed users removed, and other active workspace members preserved.
    * Removal MUST take precedence when a user appears in both lists.
    */
-  static async replaceUsersForGrant(
+  static async updateUsersForGrant(
     auth: Authenticator,
     {
       users,
@@ -813,7 +813,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       resourceType,
       resourceId,
       userIdsToRemove,
-    }: Omit<UsersGrantSpec, "transaction"> & { userIdsToRemove?: string[] }
+    }: Omit<UsersGrantSpec, "transaction"> & { userIdsToRemove: string[] }
   ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] }> {
     return withTransaction(async (transaction) => {
       await this.getGrantLock(
@@ -843,20 +843,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         { transaction }
       );
       const requestedIds = new Set(users.map((user) => user.id));
-      if (userIdsToRemove !== undefined) {
-        const removedIds = new Set(userIdsToRemove);
-        const activeUsers = group
-          ? await group.getActiveMembers(auth, { transaction })
-          : [];
-        for (const user of activeUsers) {
-          if (!removedIds.has(user.sId)) {
-            requestedIds.add(user.id);
-          }
+      const removedIds = new Set(userIdsToRemove);
+      const activeUsers = group
+        ? await group.getActiveMembers(auth, { transaction })
+        : [];
+      for (const user of activeUsers) {
+        if (!removedIds.has(user.sId)) {
+          requestedIds.add(user.id);
         }
-        for (const user of users) {
-          if (removedIds.has(user.sId)) {
-            requestedIds.delete(user.id);
-          }
+      }
+      for (const user of users) {
+        if (removedIds.has(user.sId)) {
+          requestedIds.delete(user.id);
         }
       }
       const activeIds = new Set(

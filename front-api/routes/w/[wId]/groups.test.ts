@@ -469,7 +469,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     );
   });
 
-  it("refuses to clear all members with an empty array", async () => {
+  it("refuses to remove all members", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -483,7 +483,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     }
 
     const response = await patchGroup(workspace, group.sId, {
-      memberIds: [],
+      memberDiff: { add: [], remove: [user.sId] },
     });
 
     expect(response.status).toBe(400);
@@ -494,7 +494,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect(members.map((m) => m.sId)).toEqual([user.sId]);
   });
 
-  it("renames and sets members in a single request", async () => {
+  it("rejects mixed name and member updates before making changes", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -503,15 +503,13 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
 
     const response = await patchGroup(workspace, group.sId, {
       name: "New name",
-      memberIds: [user.sId],
+      memberDiff: { add: [user.sId], remove: [] },
     });
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.group.name).toBe("New name");
-    expect(new Set(body.members.map((m: { sId: string }) => m.sId))).toEqual(
-      new Set([user.sId])
-    );
+    expect(response.status).toBe(400);
+    const body = await (await getGroup(workspace, group.sId)).json();
+    expect(body.group.name).toBe("Old name");
+    expect(body.members).toEqual([]);
   });
 
   it("leaves members unchanged when only renaming", async () => {
@@ -607,7 +605,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     const outsider = await UserFactory.basic();
 
     const response = await patchGroup(workspace, group.sId, {
-      memberIds: [outsider.sId],
+      memberDiff: { add: [outsider.sId], remove: [] },
     });
 
     expect(response.status).toBe(404);

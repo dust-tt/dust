@@ -142,39 +142,7 @@ app.patch(
   async (ctx): HandlerResult<PatchGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");
-    const { name, memberIds, managerIds, memberDiff, managerDiff } =
-      ctx.req.valid("json");
-
-    if (
-      name === undefined &&
-      memberIds === undefined &&
-      managerIds === undefined &&
-      memberDiff === undefined &&
-      managerDiff === undefined
-    ) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: "Provide a group name, members, or managers update.",
-        },
-      });
-    }
-
-    if (
-      (memberDiff !== undefined &&
-        (name !== undefined || memberIds !== undefined)) ||
-      (managerDiff !== undefined && managerIds !== undefined)
-    ) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "Update additions and removals separately from other group changes.",
-        },
-      });
-    }
+    const update = ctx.req.valid("json");
 
     const groupRes = await GroupResource.fetchById(auth, groupId);
     if (groupRes.isErr()) {
@@ -212,23 +180,9 @@ app.patch(
     const isGroupManagementEnabled =
       await auth.hasFeatureFlag("group_management");
 
-    if (managerIds !== undefined || managerDiff !== undefined) {
-      // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
-      // a partially applied manager change (or vice versa).
-      if (
-        name !== undefined ||
-        memberIds !== undefined ||
-        memberDiff !== undefined
-      ) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Update group managers separately from the name and members.",
-          },
-        });
-      }
+    // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
+    // a partially applied manager change (or vice versa).
+    if ("managerDiff" in update) {
       if (!isManageableGroupKind(group.kind)) {
         return apiError(ctx, {
           status_code: 404,
@@ -247,8 +201,8 @@ app.patch(
       const assignment = await updateGroupManagers(
         auth,
         group,
-        managerIds ?? managerDiff?.add ?? [],
-        managerDiff?.remove
+        update.managerDiff.add,
+        update.managerDiff.remove
       );
       if (assignment.kind !== "ok") {
         return apiError(ctx, {
@@ -287,12 +241,13 @@ app.patch(
       });
     }
 
-    const updateRes = memberDiff
-      ? await group.updateRegularManualGroupMembers(auth, {
-          addUserIds: memberDiff.add,
-          removeUserIds: memberDiff.remove,
-        })
-      : await group.updateRegularManualGroup(auth, { name, memberIds });
+    const updateRes =
+      "memberDiff" in update
+        ? await group.updateRegularManualGroupMembers(auth, {
+            addUserIds: update.memberDiff.add,
+            removeUserIds: update.memberDiff.remove,
+          })
+        : await group.updateRegularManualGroup(auth, { name: update.name });
     if (updateRes.isErr()) {
       switch (updateRes.error.code) {
         case "unauthorized":
@@ -340,7 +295,7 @@ app.patch(
             },
           });
         default:
-          assertNever(updateRes.error.code);
+          assertNever(updateRes.error);
       }
     }
 

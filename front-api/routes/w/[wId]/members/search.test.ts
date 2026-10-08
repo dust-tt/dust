@@ -400,7 +400,7 @@ describe("managed People reads", () => {
     await GroupFactory.withMembers(adminAuth, other, [alice]);
     for (const group of [manual, provisioned]) {
       expect(
-        (await updateGroupManagers(adminAuth, group, [user.sId])).kind
+        (await updateGroupManagers(adminAuth, group, [user.sId], [])).kind
       ).toBe("ok");
     }
 
@@ -466,8 +466,8 @@ describe("managed People reads", () => {
       manual.sId,
     ]);
 
-    await updateGroupManagers(adminAuth, manual, []);
-    await updateGroupManagers(adminAuth, provisioned, []);
+    await updateGroupManagers(adminAuth, manual, [], [user.sId]);
+    await updateGroupManagers(adminAuth, provisioned, [], [user.sId]);
     expect((await honoApp.request(managedUrl)).status).toBe(403);
   });
 
@@ -477,7 +477,7 @@ describe("managed People reads", () => {
       workspace.sId
     );
     const group = await GroupFactory.provisioned(workspace, "Empty");
-    await updateGroupManagers(adminAuth, group, [user.sId]);
+    await updateGroupManagers(adminAuth, group, [user.sId], []);
     await FeatureFlagFactory.basic(adminAuth, "group_management");
     const response = await honoApp.request(
       searchUrl(workspace.sId, { managedOnly: "true" })

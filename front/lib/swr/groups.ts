@@ -524,12 +524,7 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
-        if (
-          update.memberIds ||
-          update.managerIds ||
-          update.memberDiff ||
-          update.managerDiff
-        ) {
+        if ("memberDiff" in update || "managerDiff" in update) {
           await invalidatePeople(owner.sId);
         }
 

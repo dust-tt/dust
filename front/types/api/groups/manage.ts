@@ -28,13 +28,11 @@ const UserIdsDiffSchema = z.object({
   remove: z.array(z.string()),
 });
 
-export const PatchGroupBodySchema = z.object({
-  name: z.string().min(1).optional(),
-  memberIds: z.array(z.string()).optional(),
-  managerIds: z.array(z.string()).optional(),
-  memberDiff: UserIdsDiffSchema.optional(),
-  managerDiff: UserIdsDiffSchema.optional(),
-});
+export const PatchGroupBodySchema = z.union([
+  z.strictObject({ name: z.string().min(1) }),
+  z.strictObject({ memberDiff: UserIdsDiffSchema }),
+  z.strictObject({ managerDiff: UserIdsDiffSchema }),
+]);
 
 export type PatchGroupBody = z.infer<typeof PatchGroupBodySchema>;
 
