@@ -96,26 +96,18 @@ export async function areGroupSharedUsageLimitsEnabled(
 
 /**
  * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-edit-rights
- * Only workspace admins and workspace managers MAY set or remove a shared usage limit. Group
- * managers' `set_usage_limits` MUST NOT grant it (it only covers the per-member limit).
+ * Only workspace admins and workspace managers MAY set or remove a shared usage limit, or read how
+ * groups with one overlap. Group managers' `set_usage_limits` MUST NOT grant it (it only covers the
+ * per-member limit).
  */
-export async function setGroupSharedUsageLimit(
-  auth: Authenticator,
-  {
-    groupId,
-    limit,
-    auditContext,
-  }: {
-    groupId: string;
-    limit: SharedUsageLimit;
-    auditContext: AuditLogContext;
-  }
-): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
+async function ensureCanManageSharedUsageLimits(
+  auth: Authenticator
+): Promise<Result<void, SharedUsageLimitError>> {
   if (!auth.isManager()) {
     return new Err(
       new SharedUsageLimitError(
         "unauthorized",
-        "Only workspace admins and managers can change shared usage limits."
+        "Only workspace admins and managers can manage shared usage limits."
       )
     );
   }
@@ -129,20 +121,13 @@ export async function setGroupSharedUsageLimit(
     );
   }
 
-  if (
-    limit.kind === "limited" &&
-    (!Number.isInteger(limit.awuCredits) ||
-      limit.awuCredits < MIN_SHARED_USAGE_LIMIT_AWU_CREDITS ||
-      limit.awuCredits > MAX_SHARED_USAGE_LIMIT_AWU_CREDITS)
-  ) {
-    return new Err(
-      new SharedUsageLimitError(
-        "invalid_threshold",
-        `awuCredits must be an integer between ${MIN_SHARED_USAGE_LIMIT_AWU_CREDITS} and ${MAX_SHARED_USAGE_LIMIT_AWU_CREDITS}`
-      )
-    );
-  }
+  return new Ok(undefined);
+}
 
+async function fetchCapEligibleGroup(
+  auth: Authenticator,
+  groupId: string
+): Promise<Result<GroupResource, SharedUsageLimitError>> {
   const groupRes = await GroupResource.fetchById(auth, groupId);
   if (groupRes.isErr()) {
     return new Err(
@@ -162,6 +147,46 @@ export async function setGroupSharedUsageLimit(
       )
     );
   }
+
+  return new Ok(group);
+}
+
+export async function setGroupSharedUsageLimit(
+  auth: Authenticator,
+  {
+    groupId,
+    limit,
+    auditContext,
+  }: {
+    groupId: string;
+    limit: SharedUsageLimit;
+    auditContext: AuditLogContext;
+  }
+): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
+  const canManage = await ensureCanManageSharedUsageLimits(auth);
+  if (canManage.isErr()) {
+    return canManage;
+  }
+
+  if (
+    limit.kind === "limited" &&
+    (!Number.isInteger(limit.awuCredits) ||
+      limit.awuCredits < MIN_SHARED_USAGE_LIMIT_AWU_CREDITS ||
+      limit.awuCredits > MAX_SHARED_USAGE_LIMIT_AWU_CREDITS)
+  ) {
+    return new Err(
+      new SharedUsageLimitError(
+        "invalid_threshold",
+        `awuCredits must be an integer between ${MIN_SHARED_USAGE_LIMIT_AWU_CREDITS} and ${MAX_SHARED_USAGE_LIMIT_AWU_CREDITS}`
+      )
+    );
+  }
+
+  const groupRes = await fetchCapEligibleGroup(auth, groupId);
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
 
   const previousAwuCredits = group.sharedUsageLimitAwuCredits;
 
@@ -188,6 +213,55 @@ export async function setGroupSharedUsageLimit(
   });
 
   return new Ok({ limit });
+}
+
+export type SharedUsageLimitOverlapWithGroup = {
+  group: GroupResource;
+  position: number;
+  sharedMemberCount: number | null;
+};
+
+/**
+ * Every group with a shared usage limit, in priority order (position 1 applies first), with the
+ * number of members it shares with the given group (`null` for the given group itself). The given
+ * group does not need a shared usage limit.
+ */
+export async function getSharedUsageLimitOverlaps(
+  auth: Authenticator,
+  { groupId }: { groupId: string }
+): Promise<Result<SharedUsageLimitOverlapWithGroup[], SharedUsageLimitError>> {
+  const canManage = await ensureCanManageSharedUsageLimits(auth);
+  if (canManage.isErr()) {
+    return canManage;
+  }
+
+  const groupRes = await fetchCapEligibleGroup(auth, groupId);
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
+
+  const limitedGroups =
+    await GroupResource.listGroupsWithSharedUsageLimit(auth);
+  const memberIdsByGroupModelId =
+    await GroupResource.getActiveMembershipsForGroups(auth, [
+      group,
+      ...limitedGroups.filter((limitedGroup) => limitedGroup.id !== group.id),
+    ]);
+  const groupMemberIds = new Set(memberIdsByGroupModelId[group.id] ?? []);
+
+  return new Ok(
+    limitedGroups.map((limitedGroup, index) => ({
+      group: limitedGroup,
+      position: index + 1,
+      sharedMemberCount:
+        limitedGroup.id === group.id
+          ? null
+          : (memberIdsByGroupModelId[limitedGroup.id] ?? []).filter((userId) =>
+              groupMemberIds.has(userId)
+            ).length,
+    }))
+  );
 }
 
 /**

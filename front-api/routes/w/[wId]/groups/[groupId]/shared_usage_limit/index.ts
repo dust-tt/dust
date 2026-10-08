@@ -1,19 +1,16 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
-import {
-  type SharedUsageLimitError,
-  setGroupSharedUsageLimit,
-} from "@app/lib/api/groups/group_shared_usage_limit";
+import { setGroupSharedUsageLimit } from "@app/lib/api/groups/group_shared_usage_limit";
 import type { PutSharedUsageLimitResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import {
   MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
   MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
 } from "@app/types/api/groups/shared_usage_limit";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { sharedUsageLimitErrorToApiError } from "@front-api/lib/api/shared_usage_limit_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import overlaps from "@front-api/routes/w/[wId]/groups/[groupId]/shared_usage_limit/overlaps";
 import { z } from "zod";
 
 const UpdateSharedUsageLimitBodySchema = z.discriminatedUnion("kind", [
@@ -32,38 +29,10 @@ const ParamsSchema = z.object({
   groupId: z.string(),
 });
 
-function sharedUsageLimitErrorToApiError(
-  error: SharedUsageLimitError
-): APIErrorWithContentfulStatusCode {
-  switch (error.type) {
-    case "group_not_found":
-      return {
-        status_code: 404,
-        api_error: { type: "group_not_found", message: error.message },
-      };
-    case "invalid_group_kind":
-    case "invalid_threshold":
-      return {
-        status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
-      };
-    case "unauthorized":
-      return {
-        status_code: 403,
-        api_error: { type: "workspace_auth_error", message: error.message },
-      };
-    case "shared_usage_limits_not_enabled":
-      return {
-        status_code: 403,
-        api_error: { type: "feature_flag_not_found", message: error.message },
-      };
-    default:
-      assertNever(error.type);
-  }
-}
-
 // Mounted at /api/w/:wId/groups/:groupId/shared_usage_limit.
 const app = workspaceApp();
+
+app.route("/overlaps", overlaps);
 
 /** @ignoreswagger */
 app.put(
