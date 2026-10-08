@@ -6,6 +6,7 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -50,6 +51,7 @@ export function usePromoteWorkspaceBrandingAsset({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const promoteAsset = useCallback(
@@ -66,8 +68,8 @@ export function usePromoteWorkspaceBrandingAsset({
       if (!res.ok) {
         sendNotification({
           type: "error",
-          title: "Failed to update branding",
-          description: "An error occurred while saving the branding asset.",
+          title: t`Failed to update branding`,
+          description: t`An error occurred while saving the branding asset.`,
         });
 
         return false;
@@ -75,7 +77,7 @@ export function usePromoteWorkspaceBrandingAsset({
 
       return true;
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, t]
   );
 
   return { promoteAsset };

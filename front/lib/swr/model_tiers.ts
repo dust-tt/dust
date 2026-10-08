@@ -22,8 +22,8 @@ import type {
   UserAllowedModelTierClearBody,
   UserAllowedModelTiersType,
 } from "@app/types/api/model_tiers";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -143,6 +143,7 @@ export function useUserAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateUserAllowedModelTiers } = useUserAllowedModelTiers({
@@ -167,7 +168,7 @@ export function useUserAllowedModelTierMutations({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to set model tier for user",
+            title: t`Failed to set model tier for user`,
             error,
           });
           return false;
@@ -176,15 +177,14 @@ export function useUserAllowedModelTierMutations({
         await mutateUserAllowedModelTiers();
         sendNotification({
           type: "success",
-          title: "Model tier updated",
-          description: "The model tier for the user has been updated.",
+          title: t`Model tier updated`,
+          description: t`The model tier for the user has been updated.`,
         });
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to set model tier for user",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to set model tier for user`,
+          error: e,
         });
         return false;
       } finally {
@@ -196,6 +196,7 @@ export function useUserAllowedModelTierMutations({
       mutateUserAllowedModelTiers,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -215,7 +216,7 @@ export function useUserAllowedModelTierMutations({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to clear model tier override for user",
+            title: t`Failed to clear model tier override for user`,
             error,
           });
           return false;
@@ -224,15 +225,14 @@ export function useUserAllowedModelTierMutations({
         await mutateUserAllowedModelTiers();
         sendNotification({
           type: "success",
-          title: "Model tier override cleared",
-          description: "The user now inherits the model tier.",
+          title: t`Model tier override cleared`,
+          description: t`The user now inherits the model tier.`,
         });
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to clear model tier override for user",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to clear model tier override for user`,
+          error: e,
         });
         return false;
       } finally {
@@ -244,6 +244,7 @@ export function useUserAllowedModelTierMutations({
       mutateUserAllowedModelTiers,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -259,6 +260,7 @@ export function useGroupAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateGroupAllowedModelTiers } = useGroupAllowedModelTiers({
@@ -283,7 +285,7 @@ export function useGroupAllowedModelTierMutations({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to set model tier for group",
+            title: t`Failed to set model tier for group`,
             error,
           });
           return false;
@@ -292,15 +294,14 @@ export function useGroupAllowedModelTierMutations({
         await mutateGroupAllowedModelTiers();
         sendNotification({
           type: "success",
-          title: "Model tier updated",
-          description: "The model tier for the group has been updated.",
+          title: t`Model tier updated`,
+          description: t`The model tier for the group has been updated.`,
         });
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to set model tier for group",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to set model tier for group`,
+          error: e,
         });
         return false;
       } finally {
@@ -312,6 +313,7 @@ export function useGroupAllowedModelTierMutations({
       mutateGroupAllowedModelTiers,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -331,7 +333,7 @@ export function useGroupAllowedModelTierMutations({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to clear model tier for group",
+            title: t`Failed to clear model tier for group`,
             error,
           });
           return false;
@@ -340,15 +342,14 @@ export function useGroupAllowedModelTierMutations({
         await mutateGroupAllowedModelTiers();
         sendNotification({
           type: "success",
-          title: "Model tier cleared",
-          description: "The group now inherits the model tier.",
+          title: t`Model tier cleared`,
+          description: t`The group now inherits the model tier.`,
         });
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to clear model tier for group",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to clear model tier for group`,
+          error: e,
         });
         return false;
       } finally {
@@ -360,6 +361,7 @@ export function useGroupAllowedModelTierMutations({
       mutateGroupAllowedModelTiers,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -375,6 +377,7 @@ export function useWorkspaceAllowedModelTierMutations({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateWorkspaceAllowedModelTiers } = useWorkspaceAllowedModelTiers({
@@ -399,7 +402,7 @@ export function useWorkspaceAllowedModelTierMutations({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to set workspace model tier",
+            title: t`Failed to set workspace model tier`,
             error,
           });
           return false;
@@ -408,15 +411,14 @@ export function useWorkspaceAllowedModelTierMutations({
         await mutateWorkspaceAllowedModelTiers();
         sendNotification({
           type: "success",
-          title: "Model tier updated",
-          description: "The model tier for the workspace has been updated.",
+          title: t`Model tier updated`,
+          description: t`The model tier for the workspace has been updated.`,
         });
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to set workspace model tier",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to set workspace model tier`,
+          error: e,
         });
         return false;
       } finally {
@@ -428,6 +430,7 @@ export function useWorkspaceAllowedModelTierMutations({
       mutateWorkspaceAllowedModelTiers,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 

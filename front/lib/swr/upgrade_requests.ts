@@ -15,6 +15,7 @@ import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -35,6 +36,7 @@ export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
 // success the usage-status read is revalidated so the banner reflects the now
 // pending request.
 export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
@@ -55,7 +57,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         // a toast.
         if (errorType !== "invalid_request_error") {
           sendApiErrorNotification({
-            title: "Failed to request an upgrade",
+            title: t`Failed to request an upgrade`,
             error: errorData,
           });
         }
@@ -65,12 +67,12 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
       await mutate();
       sendNotification({
         type: "success",
-        title: "Upgrade requested",
-        description: "Your workspace admins have been notified.",
+        title: t`Upgrade requested`,
+        description: t`Your workspace admins have been notified.`,
       });
       return new Ok(undefined);
     },
-    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return { doRequestUpgrade };
@@ -127,6 +129,8 @@ export function useResolveUpgradeRequest({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
 
@@ -162,19 +166,17 @@ export function useResolveUpgradeRequest({
           key.startsWith(upgradeRequestsUrl(workspaceId))
       );
       if (!res?.ok) {
-        const message = res
-          ? (await getErrorFromResponse(res)).message
-          : "Could not reach the server.";
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title:
             status === "approved"
-              ? "Changes saved, but approval failed"
-              : "Failed to resolve upgrade request",
-          description:
-            status === "approved"
-              ? `Your limit or seat changes were saved, but the request could not be marked approved. ${message}`
-              : message,
+              ? t`Changes saved, but approval failed`
+              : t`Failed to resolve upgrade request`,
+          error: res
+            ? await getErrorFromResponse(res)
+            : {
+                type: "unexpected_network_error",
+                message: "Could not reach the server.",
+              },
         });
         return false;
       }
@@ -190,15 +192,15 @@ export function useResolveUpgradeRequest({
         case "approved":
           sendNotification({
             type: "success",
-            title: "Upgrade request approved",
-            description: `${requesterName}'s upgrade request has been approved.`,
+            title: t`Upgrade request approved`,
+            description: t`${requesterName}'s upgrade request has been approved.`,
           });
           break;
         case "denied":
           sendNotification({
             type: "success",
-            title: "Upgrade request denied",
-            description: `${requesterName}'s upgrade request has been denied.`,
+            title: t`Upgrade request denied`,
+            description: t`${requesterName}'s upgrade request has been denied.`,
           });
           break;
         default:
@@ -206,7 +208,7 @@ export function useResolveUpgradeRequest({
       }
       return true;
     },
-    [workspaceId, sendNotification, mutate]
+    [workspaceId, sendNotification, sendApiErrorNotification, mutate, t]
   );
 
   return { doResolveUpgradeRequest };

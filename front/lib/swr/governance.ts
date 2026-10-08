@@ -9,6 +9,7 @@ import type {
 import type { GovernancePermission } from "@app/types/group_permissions";
 import { capabilityKey } from "@app/types/group_permissions";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -44,6 +45,7 @@ export function useGovernancePermissions(
 }
 
 export function useUpdateGovernancePermission(owner: LightWorkspaceType) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateGovernancePermissions } = useGovernancePermissions(owner, {
     disabled: true,
@@ -60,7 +62,7 @@ export function useUpdateGovernancePermission(owner: LightWorkspaceType) {
       if (!res.ok) {
         sendNotification({
           type: "error",
-          title: "Failed to update permission",
+          title: t`Failed to update permission`,
         });
         return false;
       }
@@ -80,6 +82,6 @@ export function useUpdateGovernancePermission(owner: LightWorkspaceType) {
 
       return true;
     },
-    [owner, mutateGovernancePermissions, sendNotification]
+    [owner, mutateGovernancePermissions, sendNotification, t]
   );
 }

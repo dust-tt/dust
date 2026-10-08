@@ -17,8 +17,8 @@ import {
 import { workspaceAuthContextUrl } from "@app/lib/swr/workspaces";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ProviderCredentialType } from "@app/types/provider_credential";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -59,6 +59,7 @@ export function useSaveProviderCredential({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -86,7 +87,7 @@ export function useSaveProviderCredential({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to save API key",
+            title: t`Failed to save API key`,
             error,
           });
           return null;
@@ -96,8 +97,8 @@ export function useSaveProviderCredential({
 
         sendNotification({
           type: "success",
-          title: "API key saved",
-          description: "Your API key has been configured successfully.",
+          title: t`API key saved`,
+          description: t`Your API key has been configured successfully.`,
         });
 
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
@@ -105,18 +106,16 @@ export function useSaveProviderCredential({
 
         return data.providerCredential;
       } catch (e) {
-        const message = normalizeError(e).message;
-        sendNotification({
-          type: "error",
-          title: "Failed to save API key",
-          description: message,
+        sendApiErrorNotification({
+          title: t`Failed to save API key`,
+          error: e,
         });
         return null;
       } finally {
         setIsSaving(false);
       }
     },
-    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return { saveProviderCredential, isSaving };
@@ -127,6 +126,7 @@ export function useDeleteProviderCredential({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -148,7 +148,7 @@ export function useDeleteProviderCredential({
         if (!response.ok) {
           const error = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to remove API key",
+            title: t`Failed to remove API key`,
             error,
           });
           return false;
@@ -156,26 +156,24 @@ export function useDeleteProviderCredential({
 
         sendNotification({
           type: "success",
-          title: "API key removed",
-          description: "The API key has been removed successfully.",
+          title: t`API key removed`,
+          description: t`The API key has been removed successfully.`,
         });
 
         await mutate(baseProviderCredentialsApiUrl(owner.sId));
         await mutate(workspaceAuthContextUrl(owner.sId));
         return true;
       } catch (e) {
-        const message = normalizeError(e).message;
-        sendNotification({
-          type: "error",
-          title: "Failed to remove API key",
-          description: message,
+        sendApiErrorNotification({
+          title: t`Failed to remove API key`,
+          error: e,
         });
         return false;
       } finally {
         setIsDeleting(false);
       }
     },
-    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return { deleteProviderCredential, isDeleting };

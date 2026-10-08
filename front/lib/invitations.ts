@@ -12,6 +12,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { isString } from "@app/types/shared/utils/general";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import type { NotificationType } from "@dust-tt/sparkle";
+import { plural, select, t } from "@lingui/core/macro";
 import { mutate } from "swr";
 
 // Matches the invitations list regardless of query params (e.g. `?includeExpired=true`).
@@ -35,11 +36,12 @@ export async function updateInvitation({
   sendApiErrorNotification: ReturnType<typeof useSendApiErrorNotification>;
   confirm?: (confirmData: ConfirmDataType) => Promise<boolean>;
 }) {
+  const { inviteEmail } = invitation;
   if (!newRole && confirm) {
     const confirmation = await confirm({
-      title: "Revoke invitation",
-      message: `Are you sure you want to revoke the invitation for ${invitation.inviteEmail}?`,
-      validateLabel: "Yes, revoke",
+      title: t`Revoke invitation`,
+      message: t`Are you sure you want to revoke the invitation for ${inviteEmail}?`,
+      validateLabel: t`Yes, revoke`,
       validateVariant: "warning",
     });
     if (!confirmation) {
@@ -65,19 +67,23 @@ export async function updateInvitation({
 
   if (!res.ok) {
     sendApiErrorNotification({
-      title: `${newRole ? "Role Update Failed" : "Revoke Failed"}`,
+      title: newRole ? t`Role update failed` : t`Revoke failed`,
       error: await res.json(),
     });
     return;
   }
 
-  const successMessage = newRole
-    ? `Invitation updated to ${newRole}`
-    : "Invitation revoked";
   sendNotification({
     type: "success",
-    title: `${newRole ? "Role updated" : "Invitation Revoked"}`,
-    description: `${successMessage} for ${invitation.inviteEmail}.`,
+    title: newRole ? t`Role updated` : t`Invitation revoked`,
+    description: newRole
+      ? t`${select(newRole, {
+          admin: `Invitation updated to admin for ${inviteEmail}.`,
+          manager: `Invitation updated to manager for ${inviteEmail}.`,
+          user: `Invitation updated to member for ${inviteEmail}.`,
+          other: `Invitation updated for ${inviteEmail}.`,
+        })}`
+      : t`Invitation revoked for ${inviteEmail}.`,
   });
   await mutateWorkspaceInvitations(owner);
 }
@@ -99,6 +105,7 @@ export async function sendInvitations({
   sendApiErrorNotification: ReturnType<typeof useSendApiErrorNotification>;
   isNewInvitation: boolean;
 }) {
+  const emailCount = emails.length;
   const body: PostInvitationRequestBody = emails.map((email) => ({
     email,
     role: invitationRole,
@@ -123,14 +130,19 @@ export async function sendInvitations({
     if (data?.error?.type === "invitation_already_sent_recently") {
       sendNotification({
         type: "error",
-        title: emails.length === 1 ? "Invite failed" : "Invites failed",
-        description:
-          (emails.length === 1 ? "This user has" : "These users have") +
-          " already been invited in the last 24 hours. Please wait before sending another invite.",
+        title: t`${plural(emailCount, {
+          one: "Invite failed",
+          other: "Invites failed",
+        })}`,
+        description: t`${plural(emailCount, {
+          one: "This user has already been invited in the last 24 hours. Please wait before sending another invite.",
+          other:
+            "These users have already been invited in the last 24 hours. Please wait before sending another invite.",
+        })}`,
       });
     }
 
-    sendApiErrorNotification({ title: "Invite failed", error: data });
+    sendApiErrorNotification({ title: t`Invite failed`, error: data });
   } else {
     const result: PostInvitationResponseBody = await res.json();
     const failures = result.filter((r) => !r.success);
@@ -138,7 +150,7 @@ export async function sendInvitations({
     if (failures.length > 0) {
       sendNotification({
         type: "error",
-        title: "Some invites failed",
+        title: t`Some invites failed`,
         description: result
           .filter((r) => r.error_message)
           .map((r) => r.error_message)
@@ -147,10 +159,16 @@ export async function sendInvitations({
     } else {
       sendNotification({
         type: "success",
-        title: "Invites sent",
+        title: t`Invites sent`,
         description: isNewInvitation
-          ? `${emails.length} new ${emails.length === 1 ? "invite" : "invites"} sent.`
-          : `Sent ${emails.length} ${emails.length === 1 ? "invite" : "invites"} again.`,
+          ? t`${plural(emailCount, {
+              one: "# new invite sent.",
+              other: "# new invites sent.",
+            })}`
+          : t`${plural(emailCount, {
+              one: "Sent # invite again.",
+              other: "Sent # invites again.",
+            })}`,
       });
     }
   }

@@ -19,7 +19,7 @@ import type {
   GetDefaultUserSpendLimitResponseBody,
   PutDefaultUserSpendLimitResponseBody,
 } from "@app/types/api/workspace/default_user_spend_limit";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -137,6 +137,7 @@ export function useUpdateUsageSettings({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(
@@ -170,7 +171,7 @@ export function useUpdateUsageSettings({
         const result = await patchCreditUsageConfiguration(workspaceId, body);
         if (!result.ok) {
           sendApiErrorNotification({
-            title: "Failed to update usage settings",
+            title: t`Failed to update usage settings`,
             error: result.error,
           });
           return false;
@@ -179,14 +180,14 @@ export function useUpdateUsageSettings({
         await mutate();
         sendNotification({
           type: "success",
-          title: "Usage settings updated",
+          title: t`Usage settings updated`,
         });
         return true;
       } finally {
         setIsUpdatingUsageSettings(false);
       }
     },
-    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return { doUpdateUsageSettings, isUpdatingUsageSettings };
@@ -228,6 +229,7 @@ export function useUpdateUsageNotifications({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRWithDefaults(
@@ -252,7 +254,7 @@ export function useUpdateUsageNotifications({
       const result = await patchCreditUsageConfiguration(workspaceId, body);
       if (!result.ok) {
         sendApiErrorNotification({
-          title: "Failed to update notification settings",
+          title: t`Failed to update notification settings`,
           error: result.error,
         });
         return false;
@@ -261,11 +263,11 @@ export function useUpdateUsageNotifications({
       await mutate();
       sendNotification({
         type: "success",
-        title: "Notification settings updated",
+        title: t`Notification settings updated`,
       });
       return true;
     },
-    [workspaceId, sendNotification, mutate, sendApiErrorNotification]
+    [workspaceId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return { doUpdateUsageNotifications };
@@ -308,6 +310,8 @@ export function useUpdateDefaultUserSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdateDefaultUserSpendLimit = useCallback(
@@ -322,11 +326,9 @@ export function useUpdateDefaultUserSpendLimit({
         });
 
         if (!res.ok) {
-          const errorData = await getErrorFromResponse(res);
-          sendNotification({
-            type: "error",
-            title: "Failed to update default spend limit",
-            description: errorData.message,
+          sendApiErrorNotification({
+            title: t`Failed to update default spend limit`,
+            error: await getErrorFromResponse(res),
           });
           return null;
         }
@@ -334,25 +336,25 @@ export function useUpdateDefaultUserSpendLimit({
         const body = PutDefaultUserSpendLimitResponseSchema.parse(
           await res.json()
         );
+        const amount = formatNumber(body.awuCredits);
         sendNotification({
           type: "success",
-          title: "Default spend limit updated",
-          description: `The default per-user spend limit has been set to ${formatNumber(body.awuCredits)} credits.`,
+          title: t`Default spend limit updated`,
+          description: t`The default per-user spend limit has been set to ${amount} credits.`,
         });
 
         await mutate(defaultUserSpendLimitUrl(workspaceId));
         await invalidateMembersUsage(workspaceId);
         return body;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update default spend limit",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to update default spend limit`,
+          error: e,
         });
         return null;
       }
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateDefaultUserSpendLimit };
@@ -400,6 +402,8 @@ export function useUpdateProgrammaticUsageLimit({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const doUpdateProgrammaticUsageLimit = useCallback(
@@ -413,11 +417,9 @@ export function useUpdateProgrammaticUsageLimit({
       });
 
       if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to update programmatic usage limit",
-          description: errorData.message,
+        sendApiErrorNotification({
+          title: t`Failed to update programmatic usage limit`,
+          error: await getErrorFromResponse(res),
         });
         return null;
       }
@@ -429,13 +431,14 @@ export function useUpdateProgrammaticUsageLimit({
       if (monthlyCapCredits === 0) {
         sendNotification({
           type: "success",
-          title: "Programmatic access disabled",
+          title: t`Programmatic access disabled`,
         });
       } else {
+        const amount = formatNumber(monthlyCapCredits);
         sendNotification({
           type: "success",
-          title: "Programmatic usage limit updated",
-          description: `Monthly limit set to ${formatNumber(monthlyCapCredits)} credits.`,
+          title: t`Programmatic usage limit updated`,
+          description: t`Monthly limit set to ${amount} credits.`,
         });
       }
 
@@ -443,7 +446,7 @@ export function useUpdateProgrammaticUsageLimit({
       await mutate(`/api/w/${workspaceId}/usage-status`);
       return body;
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateProgrammaticUsageLimit };
