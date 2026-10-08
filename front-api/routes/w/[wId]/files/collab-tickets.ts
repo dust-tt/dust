@@ -63,6 +63,14 @@ app.post(
               message: ticket.error.message,
             },
           });
+        case "read_only":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "file_read_only",
+              message: ticket.error.message,
+            },
+          });
         case "not_markdown":
           return apiError(ctx, {
             status_code: 400,

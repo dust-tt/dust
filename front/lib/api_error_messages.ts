@@ -110,6 +110,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   file_too_large: msg`The file is too large.`,
   file_type_not_supported: msg`This file type isn't supported.`,
   file_is_empty: msg`The file is empty.`,
+  file_read_only: msg`You can only read this file.`,
   run_not_found: msg`Run not found.`,
   space_already_exists: msg`A space with this name already exists.`,
   space_not_found: msg`Space not found.`,
