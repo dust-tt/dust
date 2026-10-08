@@ -37,7 +37,7 @@ export class FirefoxMcpService extends McpService {
         }
       );
 
-      registerAllTools(server, this.captureService, workspaceId);
+      registerAllTools(server, this.captureService);
 
       return server;
     } catch (error) {

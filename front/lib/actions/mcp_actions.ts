@@ -513,7 +513,6 @@ export async function* tryCallMCPTool(
   }
 
   let mcpClient;
-  let conversationId: string | undefined;
   try {
     if (isServerSideMCPToolConfiguration(toolConfiguration)) {
       const connectStarted = performance.now();
@@ -583,8 +582,6 @@ export async function* tryCallMCPTool(
       }
 
       const { conversation, agentMessage } = toolContext.runContext;
-
-      conversationId = conversation.sId;
 
       const connectionParams = makeClientSideMCPConnectionParams(
         toolConfiguration,
@@ -686,7 +683,6 @@ export async function* tryCallMCPTool(
               _meta: {
                 ...toolConfiguration.meta,
                 progressToken,
-                conversationId,
               },
             },
             CallToolResultSchema,

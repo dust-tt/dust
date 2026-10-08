@@ -1,127 +1,12 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { clientFetch } from "@app/lib/egress/client";
-import logger from "@app/logger/logger";
-import {
-  type FileUploadRequestResponseBody,
-  FileUploadedResponseBodySchema,
-} from "@app/types/api/files/upload_metadata";
 import { Err, Ok } from "@app/types/shared/result";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
   getTabNotOnDomainError,
   normalizeError,
 } from "@extension/shared/lib/utils";
 import type { CaptureService } from "@extension/shared/services/capture";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-
-// Max characters of extracted text to include inline in the tool result.
-// The full content is also indexed in the conversation JIT data source.
-const MAX_EXTRACTED_TEXT_CHARS = 100_000;
-
-/**
- * Uploads a PDF to the Dust file API and fetches the server-extracted text.
- * Returns the file ID, path, name, and extracted text, or null on failure.
- */
-async function uploadPdf(
-  workspaceId: string,
-  conversationId: string,
-  base64: string,
-  mimeType: string,
-  pageUrl: string
-): Promise<{
-  fileId: string;
-  path: string | null;
-  fileName: string;
-  extractedText: string | null;
-} | null> {
-  try {
-    const urlFilename = pageUrl.split("/").pop()?.split("?")[0];
-    const fileName = urlFilename || "document.pdf";
-
-    // Convert base64 to Blob.
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    const blob = new Blob([bytes], { type: mimeType });
-
-    // Step 1: Create the file record and get the upload URL.
-    const createRes = await clientFetch(`/api/w/${workspaceId}/files`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contentType: mimeType,
-        fileName,
-        fileSize: blob.size,
-        useCase: "conversation",
-        useCaseMetadata: { conversationId },
-      }),
-    });
-
-    if (!createRes.ok) {
-      logger.error(
-        { responseText: await createRes.text() },
-        "Failed to create the PDF file record."
-      );
-      return null;
-    }
-
-    const { file } = (await createRes.json()) as FileUploadRequestResponseBody;
-
-    // Step 2: Upload the file contentcreateServerForWorkspace. The server runs text extraction
-    // synchronously, so the processed version is ready when this resolves.
-    const formData = new FormData();
-    formData.append("file", blob, fileName);
-
-    const uploadRes = await clientFetch(file.uploadUrl, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!uploadRes.ok) {
-      logger.error(
-        { responseText: await uploadRes.text() },
-        "Failed to upload the PDF content."
-      );
-      return null;
-    }
-
-    const uploaded = FileUploadedResponseBodySchema.safeParse(
-      await uploadRes.json()
-    );
-    if (!uploaded.success) {
-      logger.error({ err: uploaded.error }, "Unexpected file upload response.");
-      return null;
-    }
-
-    // Step 3: Fetch the extracted text (processed version).
-    // The server ran OCR-enabled text extraction during upload, so it's ready now.
-    let extractedText: string | null = null;
-    try {
-      const textRes = await clientFetch(
-        `/api/w/${workspaceId}/files/${file.sId}?version=processed&action=view`
-      );
-      if (textRes.ok) {
-        const text = await textRes.text();
-        extractedText = text.slice(0, MAX_EXTRACTED_TEXT_CHARS) || null;
-      }
-    } catch (err) {
-      logger.warn({ err }, "Could not fetch the PDF extracted text.");
-    }
-
-    return {
-      fileId: file.sId,
-      path: uploaded.data.file.path,
-      fileName,
-      extractedText,
-    };
-  } catch (error) {
-    logger.error({ err: error }, "Error uploading the PDF.");
-    return null;
-  }
-}
 
 /**
  * Registers the take_screenshot_or_attach_file tool with the MCP server.
@@ -131,14 +16,10 @@ export async function takeScreenshotOrAttachFileTool({
   tabIds,
   domainToFetch,
   captureService,
-  workspaceId,
-  conversationId,
 }: {
   tabIds: number[];
   domainToFetch: string;
   captureService: CaptureService | null;
-  workspaceId: string;
-  conversationId: string;
 }): Promise<ToolHandlerResult> {
   if (!captureService) {
     return new Err(new MCPError("Capture service not available."));
@@ -179,53 +60,12 @@ export async function takeScreenshotOrAttachFileTool({
         const { base64, mimeType, url } = fileData;
 
         if (mimeType === "application/pdf") {
-          const data = await uploadPdf(
-            workspaceId,
-            conversationId,
-            base64,
-            mimeType,
-            url
-          );
-          if (data?.path) {
-            // The MCP SDK strips non-standard fields from resource objects during
-            // parsing. We store Dust-specific fields (path, fileId, title, etc.) in _meta
-            // so they survive the MCP protocol round-trip. The server will move
-            // them back to the root level in mcp_actions.ts (tryCallMCPTool).
-            const resource = {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE_PATH,
-              uri: data.path,
-              text: data.extractedText ?? `PDF from ${url}`,
-              _meta: {
-                path: data.path,
-                title: data.fileName,
-                contentType: mimeType,
-              },
-            };
-            results.push({ type: "resource" as const, resource });
-            continue;
-          }
-          if (data) {
-            const resource = {
-              mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.FILE,
-              uri: `/api/w/${workspaceId}/files/${data.fileId}`,
-              text: data.extractedText ?? `PDF from ${url}`,
-              _meta: {
-                fileId: data.fileId,
-                title: data.fileName,
-                contentType: mimeType,
-                snippet: data.extractedText
-                  ? data.extractedText.slice(0, 500)
-                  : null,
-              },
-            };
-            results.push({ type: "resource" as const, resource });
-            continue;
-          }
-          errors.push(
-            new MCPError(
-              "Failed to process the PDF. It may be too large or inaccessible."
-            )
-          );
+          const fileName =
+            url.split("/").pop()?.split("?")[0] || "document.pdf";
+          results.push({
+            type: "resource" as const,
+            resource: { uri: fileName, mimeType, blob: base64 },
+          });
           continue;
         }
 
