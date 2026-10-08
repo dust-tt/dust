@@ -49,22 +49,15 @@ import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import {
-  ActionFrame,
-  Clock,
   ContentMessage,
-  Cube01,
   Hoverable,
   InfoCircle,
-  PuzzlePiece01,
-  Robot,
-  ShapesPlus,
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { ComponentType } from "react";
 import { useState } from "react";
 
 const GOVERNANCE_TABS = ["agents", "pods", "features"] as const;
@@ -164,19 +157,16 @@ export const GovernancePage = () => {
   const agentsSections: {
     sectionId: AdminSectionId;
     label: string;
-    icon: ComponentType;
     governancePermissions: GovernancePermission[];
   }[] = [
     {
       sectionId: ADMIN_SECTION_IDS.governance.agents,
       label: t`Agents`,
-      icon: Robot,
       governancePermissions: agents,
     },
     {
       sectionId: ADMIN_SECTION_IDS.governance.skills,
       label: t`Skills`,
-      icon: PuzzlePiece01,
       governancePermissions: skills,
     },
   ];
@@ -202,7 +192,6 @@ export const GovernancePage = () => {
 
   return (
     <GovernancePageLayout>
-      {isAdmin && <WorkspaceNameEditor owner={owner} />}
       <LinkedSectionNotice>
         <Trans>
           Groups assigned here are managed in{" "}
@@ -216,8 +205,8 @@ export const GovernancePage = () => {
         onValueChange={(value) => setTab(value as GovernanceTab)}
       >
         <TabsList className="mb-6">
-          <TabsTrigger value="agents" label={t`Agents`} />
-          <TabsTrigger value="pods" label={t`Pods`} />
+          <TabsTrigger value="agents" label={t`Agents & Skills`} />
+          <TabsTrigger value="pods" label={t`Pods & Frames`} />
           <TabsTrigger value="features" label={t`Features`} />
         </TabsList>
         <TabsContent value="agents" className="flex w-full flex-col gap-8">
@@ -225,14 +214,12 @@ export const GovernancePage = () => {
             ({
               sectionId,
               label,
-              icon,
               governancePermissions: sectionPermissions,
             }) => (
               <GovernanceSettingSection
                 key={sectionId}
                 sectionId={sectionId}
                 label={label}
-                icon={icon}
                 footer={
                   sectionId === ADMIN_SECTION_IDS.governance.skills ? (
                     <SkillDiscoverabilityWarning
@@ -282,11 +269,19 @@ export const GovernancePage = () => {
           )}
         </TabsContent>
         <TabsContent value="pods" className="flex w-full flex-col gap-8">
+          {isAdmin && (
+            <GovernanceSettingSection
+              sectionId={ADMIN_SECTION_IDS.governance.pods}
+              label={t`Pods`}
+            >
+              <OpenPodPolicy owner={owner} />
+              <PodKnowledgePolicy owner={owner} />
+            </GovernanceSettingSection>
+          )}
           {(framePermissions.length > 0 || isAdmin) && (
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.frame}
               label={t`Frames`}
-              icon={ActionFrame}
             >
               {isAdmin && (
                 <InteractiveContentSharing
@@ -315,7 +310,6 @@ export const GovernancePage = () => {
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.governance.automations}
               label={t`Automations`}
-              icon={Clock}
             >
               {triggers.map((governancePermission) => (
                 <GovernanceSettingRow
@@ -333,32 +327,24 @@ export const GovernancePage = () => {
               ))}
             </GovernanceSettingSection>
           )}
-          {isAdmin && (
-            <GovernanceSettingSection
-              sectionId={ADMIN_SECTION_IDS.governance.pods}
-              label={t`Pods`}
-              icon={Cube01}
-            >
-              <OpenPodPolicy owner={owner} />
-              <PodKnowledgePolicy owner={owner} />
-            </GovernanceSettingSection>
-          )}
         </TabsContent>
         <TabsContent value="features" className="flex w-full flex-col gap-8">
           {isAdmin && (
-            <GovernanceSettingSection
-              sectionId={ADMIN_SECTION_IDS.governance.features}
-              label={t`Features`}
-              icon={ShapesPlus}
-            >
-              <WorkspaceDefaultAgentPicker owner={owner} />
-              <WorkspaceLocalePicker owner={owner} />
-              <VoiceTranscriptionToggle owner={owner} />
-              <ConversationExternalNotificationsToggle owner={owner} />
-              <PrivateConversationUrlsToggle owner={owner} />
-              <WorkspaceAnalyticsToggle owner={owner} />
-              <InactiveAgentArchival owner={owner} />
-            </GovernanceSettingSection>
+            <>
+              <WorkspaceNameEditor owner={owner} />
+              <GovernanceSettingSection
+                sectionId={ADMIN_SECTION_IDS.governance.features}
+                label={t`Features`}
+              >
+                <WorkspaceDefaultAgentPicker owner={owner} />
+                <WorkspaceLocalePicker owner={owner} />
+                <VoiceTranscriptionToggle owner={owner} />
+                <ConversationExternalNotificationsToggle owner={owner} />
+                <PrivateConversationUrlsToggle owner={owner} />
+                <WorkspaceAnalyticsToggle owner={owner} />
+                <InactiveAgentArchival owner={owner} />
+              </GovernanceSettingSection>
+            </>
           )}
         </TabsContent>
       </Tabs>

@@ -35,8 +35,12 @@ msgid "Groups assigned here are managed in <0>Members → Groups</0>"
 msgstr "Les groupes attribués ici se gèrent dans <0>Membres → Groupes</0>"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Pods"
-msgstr "Pods"
+msgid "Agents & Skills"
+msgstr "Agents & Compétences"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods & Frames"
+msgstr "Pods & Frames"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Features"
@@ -49,6 +53,10 @@ msgstr "Frames"
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Automations"
 msgstr "Automatisations"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods"
+msgstr "Pods"
 
 #: front/components/pages/workspace/governance/GovernancePageLayout.tsx
 msgid "Governance"
