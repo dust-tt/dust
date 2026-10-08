@@ -934,6 +934,11 @@ msgid "Limit per member"
 msgstr "Limite par membre"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "No limit"
+msgstr "Aucune limite"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Caps what each member can spend."
 msgstr "Plafonne ce que chaque membre peut dépenser."
 
@@ -975,10 +980,6 @@ msgstr "Groupe"
 #: front/components/workspace/UsageMembersSection.tsx
 msgid "Members"
 msgstr "Membres"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "No limit"
-msgstr "Aucune limite"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx

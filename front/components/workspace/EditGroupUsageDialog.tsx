@@ -264,7 +264,6 @@ function GroupBudgetField({
       }
       onChange={draft.setSharedLimitInput}
       description={description}
-      descriptionStatus="info"
       action={removeAction(draft.sharedLimitInput, draft.setSharedLimitInput)}
     />
   );
@@ -397,6 +396,7 @@ function EditGroupUsageForm({
                 : t(draft.memberLimitResult.message)
             }
             onChange={draft.setMemberLimitInput}
+            placeholder={t`No limit`}
             description={t`Caps what each member can spend.`}
             action={removeAction(
               draft.memberLimitInput,
