@@ -1,6 +1,4 @@
 import type { HomepageUseCaseDefinition } from "@app/lib/api/homepage_use_cases/registry";
-import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,10 +34,6 @@ const UseCasesResponseSchema = z.object({
 
 async function setupWorkspace() {
   const { workspace } = await createPrivateApiMockRequest({ role: "user" });
-  const adminAuth = await Authenticator.internalAdminForWorkspace(
-    workspace.sId
-  );
-  await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
 
   return { workspace };
 }
