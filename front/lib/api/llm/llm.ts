@@ -256,11 +256,6 @@ export abstract class LLM<
    * `flex_unavailable` errors MUST be logged at warning level while retaining their error events
    * and attempt telemetry for retries and diagnostics.
    */
-  /**
-   * @cc [owner:philipperolet,label:logging] flex-unavailable-telemetry-type
-   * `flex_unavailable` SDK errors MUST use `flex_unavailable` as their error type in attempt
-   * metrics and top-level logs. Other errors MUST retain their existing LLM error type.
-   */
   private async *streamWithTracing(
     streamParameters: LLMStreamParameters,
     metadata?: LLMStreamMetadata
