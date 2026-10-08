@@ -92,6 +92,10 @@ msgid "Last name is required"
 msgstr "Le nom est obligatoire"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters"
+msgstr "Les pronoms ne doivent pas dépasser {MAX_USER_PRONOUNS_LENGTH} caractères"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Please select your job type"
 msgstr "Veuillez sélectionner votre métier"
 
@@ -122,6 +126,18 @@ msgstr "Prénom"
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Last name"
 msgstr "Nom"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your pronouns (optional):"
+msgstr "Vos pronoms (facultatif) :"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Type your own"
+msgstr "Saisissez les vôtres"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Suggestions:"
+msgstr "Suggestions :"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Pick your role to customize your experience:"
