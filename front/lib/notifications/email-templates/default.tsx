@@ -13,6 +13,9 @@ export const DefaultEmailTemplatePropsSchema = z.object({
     name: z.string(),
   }),
   content: z.string(),
+  // Rendered large below the content, e.g. a login code.
+  highlight: z.string().optional(),
+  showNotificationPreferences: z.boolean().optional(),
   avatarUrl: z.string().optional(),
   action: z
     .object({
@@ -30,16 +33,33 @@ const DefaultEmailTemplate = ({
   name,
   workspace,
   content,
+  highlight,
+  showNotificationPreferences,
   action,
 }: DefaultEmailTemplateProps) => {
   return (
-    <EmailLayout workspace={workspace}>
+    <EmailLayout
+      workspace={workspace}
+      showNotificationPreferences={showNotificationPreferences}
+    >
       <h3>
         <EmailGreeting name={name} />
       </h3>
       {content.split("\n").map((line, index) => (
         <div key={index}>{line}</div>
       ))}
+      {highlight && (
+        <p
+          style={{
+            fontSize: "24px",
+            fontWeight: "bold",
+            letterSpacing: "4px",
+            marginBlock: "20px",
+          }}
+        >
+          {highlight}
+        </p>
+      )}
 
       {action?.label && action?.url && (
         <>
