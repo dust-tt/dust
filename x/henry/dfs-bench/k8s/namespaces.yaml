@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fdb
+---
+# DFS server replicas and the tenant-sticky router.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dfs
+---
+# Orchestrator and front simulator.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bench

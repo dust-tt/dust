@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Usage: bin/status [run_id]. Prints nodes, FDB health and bench sandboxes.
+source "$(dirname "$0")/lib.sh"
+RUN_ID="${1:-$(current_run)}"
+fetch_credentials "$RUN_ID"
+
+kubectl get nodes -L dfs-bench/role,topology.kubernetes.io/zone
+kubectl -n fdb get foundationdbcluster fdb
+POD="$(kubectl -n fdb get pods -l foundationdb.org/fdb-process-class=storage -o name | head -1)"
+kubectl -n fdb exec "$POD" -c foundationdb -- fdbcli --exec "status minimal"
+load_e2b_env
+echo "sandboxes for run $RUN_ID: $(e2b_list_bench_sandboxes "$RUN_ID" | wc -l | tr -d ' ')"

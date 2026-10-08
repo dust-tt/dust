@@ -1,0 +1,112 @@
+# FDB 7.3, triple replication over 6 hosts (2 per zone). Host is the fault domain.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fdb-kubernetes
+  namespace: fdb
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fdb-kubernetes
+  namespace: fdb
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "watch", "update", "patch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fdb-kubernetes
+  namespace: fdb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fdb-kubernetes
+subjects:
+  - kind: ServiceAccount
+    name: fdb-kubernetes
+---
+apiVersion: apps.foundationdb.org/v1beta2
+kind: FoundationDBCluster
+metadata:
+  name: fdb
+  namespace: fdb
+spec:
+  version: 7.3.69
+  automationOptions:
+    replacements:
+      enabled: true
+  faultDomain:
+    key: kubernetes.io/hostname
+    valueFrom: spec.nodeName
+  databaseConfiguration:
+    redundancy_mode: triple
+    storage_engine: ssd-redwood-1
+  labels:
+    filterOnOwnerReference: false
+    matchLabels:
+      foundationdb.org/fdb-cluster-name: fdb
+    processClassLabels:
+      - foundationdb.org/fdb-process-class
+    processGroupIDLabels:
+      - foundationdb.org/fdb-process-group-id
+  minimumUptimeSecondsForBounce: 60
+  processCounts:
+    storage: 6
+    log: 4
+    stateless: 5
+    cluster_controller: 1
+  processes:
+    general:
+      podTemplate:
+        spec:
+          serviceAccountName: fdb-kubernetes
+          nodeSelector:
+            dfs-bench/role: fdb
+          tolerations:
+            - key: dfs-bench/role
+              operator: Equal
+              value: fdb
+              effect: NoSchedule
+          containers:
+            - name: foundationdb
+              resources:
+                requests:
+                  cpu: "1500m"
+                  memory: 6Gi
+                limits:
+                  memory: 8Gi
+              securityContext:
+                runAsUser: 0
+            - name: foundationdb-kubernetes-sidecar
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 100m
+                  memory: 128Mi
+              securityContext:
+                runAsUser: 0
+      volumeClaimTemplate:
+        spec:
+          storageClassName: bench-ssd
+          resources:
+            requests:
+              storage: 100Gi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: bench-ssd
+          resources:
+            requests:
+              # pd-ssd IOPS scale with size: 500 GB gives 15k IOPS per disk.
+              storage: 500Gi
+  routing:
+    defineDNSLocalityFields: true
+  sidecarContainer:
+    enableLivenessProbe: true
+    enableReadinessProbe: false
+  useExplicitListenAddress: true
