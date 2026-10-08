@@ -1,0 +1,126 @@
+//! Optional aggregate diagnostics; disabled unless DFS_PROFILE=1.
+use std::{
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+    time::{Duration, Instant},
+};
+
+struct Metric {
+    calls: AtomicU64,
+    nanos: AtomicU64,
+    items: AtomicU64,
+    max_items: AtomicU64,
+    active: AtomicU64,
+    max_active: AtomicU64,
+}
+impl Metric {
+    const fn new() -> Self {
+        Self {
+            calls: AtomicU64::new(0),
+            nanos: AtomicU64::new(0),
+            items: AtomicU64::new(0),
+            max_items: AtomicU64::new(0),
+            active: AtomicU64::new(0),
+            max_active: AtomicU64::new(0),
+        }
+    }
+}
+macro_rules! phases {
+    ($($variant:ident => $name:literal),+ $(,)?) => {
+        #[derive(Clone, Copy)]
+        pub enum Phase { $($variant),+ }
+        const NAMES: &[&str] = &[$($name),+];
+        static METRICS: [Metric; NAMES.len()] = [const { Metric::new() }; NAMES.len()];
+    };
+}
+phases! {
+    Stat => "rpc.stat", Validate => "rpc.validate", Metadata => "rpc.get_metadata",
+    ReadFiles => "rpc.read_files", Lookup => "rpc.lookup", List => "rpc.list", Read => "rpc.read",
+    Batch => "rpc.mutate_group",
+    BatchQueue => "wait.batch", Admission => "wait.admission",
+    MutationQueue => "wait.mutation_queue",
+    BatchAdmission => "wait.batch_admission",
+    Attr => "read.object", Authorize => "read.authorize",
+    Child => "read.child", Collision => "read.collision", Block => "read.block",
+    FdbVersion => "fdb.read_version", FdbGet => "fdb.get", FdbRange => "fdb.range",
+    FdbCommit => "fdb.commit",
+    FdbTransaction => "fdb.transaction", FdbRetry => "fdb.retry_backoff",
+}
+fn enabled() -> bool {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    *ENABLED.get_or_init(|| std::env::var("DFS_PROFILE").is_ok_and(|v| v == "1"))
+}
+
+/// @cc [owner:spolu,label:performance;security] bounded-aggregate-profiling
+/// Diagnostics MUST be opt-in, bounded by fixed phase names, and contain no user data or keys.
+/// Durations include waits and overlapping work; nested/parallel phases MUST NOT be added as wall time.
+pub struct Guard {
+    phase: Phase,
+    start: Option<Instant>,
+    items: usize,
+}
+impl Guard {
+    pub fn new(phase: Phase) -> Self {
+        let start = enabled().then(Instant::now);
+        if start.is_some() {
+            let metric = &METRICS[phase as usize];
+            let active = metric.active.fetch_add(1, Ordering::Relaxed) + 1;
+            metric.max_active.fetch_max(active, Ordering::Relaxed);
+        }
+        Self {
+            phase,
+            start,
+            items: 0,
+        }
+    }
+}
+impl Drop for Guard {
+    fn drop(&mut self) {
+        if let Some(start) = self.start {
+            let metric = &METRICS[self.phase as usize];
+            metric.active.fetch_sub(1, Ordering::Relaxed);
+            metric.calls.fetch_add(1, Ordering::Relaxed);
+            metric
+                .nanos
+                .fetch_add(start.elapsed().as_nanos() as u64, Ordering::Relaxed);
+            metric.items.fetch_add(self.items as u64, Ordering::Relaxed);
+            metric
+                .max_items
+                .fetch_max(self.items as u64, Ordering::Relaxed);
+        }
+    }
+}
+pub fn record(phase: Phase, elapsed: Duration) {
+    if enabled() {
+        let metric = &METRICS[phase as usize];
+        metric.calls.fetch_add(1, Ordering::Relaxed);
+        metric
+            .nanos
+            .fetch_add(elapsed.as_nanos() as u64, Ordering::Relaxed);
+    }
+}
+pub fn report() {
+    if !enabled() {
+        return;
+    }
+    let phases: std::collections::BTreeMap<_, _> = NAMES
+        .iter()
+        .zip(&METRICS)
+        .map(|(name, metric)| {
+            (
+                *name,
+                serde_json::json!({
+                    "calls": metric.calls.load(Ordering::Relaxed),
+                    "elapsed_ms": metric.nanos.load(Ordering::Relaxed) as f64 / 1_000_000.0,
+                    "items": metric.items.load(Ordering::Relaxed),
+                    "max_items": metric.max_items.load(Ordering::Relaxed),
+                    "active": metric.active.load(Ordering::Relaxed),
+                    "max_active": metric.max_active.load(Ordering::Relaxed),
+                }),
+            )
+        })
+        .collect();
+    tracing::info!(profile = %serde_json::json!(phases), "server profile");
+}
