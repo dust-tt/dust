@@ -31,6 +31,7 @@ export const CLAUDE_FABLE_5_1_MODEL_ID = "claude-fable-5-1" as const;
 export const CLAUDE_SONNET_4_6_MODEL_ID = "claude-sonnet-4-6" as const;
 export const CLAUDE_SONNET_5_MODEL_ID = "claude-sonnet-5" as const;
 export const CLAUDE_SONNET_5_5_MODEL_ID = "claude-sonnet-5-5" as const;
+export const CLAUDE_HAIKU_5_5_MODEL_ID = "claude-haiku-5-5" as const;
 
 export const ANTHROPIC_TOKEN_COUNT_ADJUSTMENT = 1.3;
 export const CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
@@ -213,9 +214,9 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   largeModel: false,
   description:
     "Anthropic's Claude 4.5 Haiku model, cost effective and high throughput (200k context).",
-  shortDescription: "Anthropic's latest super-fast model.",
+  shortDescription: "Anthropic's super-fast model.",
   isLegacy: false,
-  isLatest: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: true,
   supportedReasoningEfforts: {
@@ -232,6 +233,49 @@ export const CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   supportsBatchProcessing: true,
   supportsToolSearch: true,
   tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": true,
+  },
+};
+// https://platform.claude.com/docs/en/models/haiku-5-5/overview (2026-10-08)
+export const CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "anthropic",
+  modelId: CLAUDE_HAIKU_5_5_MODEL_ID,
+  displayName: "Claude Haiku 5.5",
+  contextSize: 250_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: false,
+  description:
+    "Anthropic's Claude Haiku 5.5 model, the latest fast and cost-effective model for high-volume work (250k context).",
+  shortDescription: "Anthropic's latest super-fast model.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  supportsResponseFormat: true,
+  // `thinking: {type: "disabled"}` is accepted at effort `high` or below, and
+  // "none" sends no effort, so it runs at the model's `medium` default.
+  // https://platform.claude.com/docs/en/build-with-claude/effort (2026-10-08)
+  supportedReasoningEfforts: {
+    none: true,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
+  defaultReasoningEffort: "medium",
+  // Haiku 5.5 uses the Opus 4.7+ tokenizer (~30% more tokens than Haiku 4.5).
+  // Ratio: 750/555 ≈ 1.35, applied on top of the base 1.3 adjustment.
+  tokenCountAdjustment: ANTHROPIC_TOKEN_COUNT_ADJUSTMENT * 1.35,
+  supportsPromptCaching: true,
+  supportsBatchProcessing: true,
+  supportsToolSearch: true,
+  tokenizer: { type: "tiktoken", base: "anthropic_base" },
+  disablePrefill: true,
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": true,

@@ -377,6 +377,14 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
   "claude-3-5-haiku-20241022": {
     none: "cost_efficient",
   },
+  "claude-haiku-5-5": {
+    none: "cost_efficient",
+    low: "cost_efficient",
+    medium: "cost_efficient",
+    high: "cost_efficient",
+    xhigh: "balanced",
+    maximal: "balanced",
+  },
   "claude-haiku-4-5-20251001": {
     none: "cost_efficient",
     low: "cost_efficient",

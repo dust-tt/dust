@@ -1,0 +1,29 @@
+import { dropTemperature } from "@app/lib/llms/stream/types/configuration";
+import { CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+
+export function WithDustClaudeHaikuFiveDotFiveConfig<
+  TBase extends abstract new (...args: any[]) => object,
+>(Base: TBase) {
+  abstract class DustClaudeHaikuFiveDotFive extends Base {
+    static readonly displayName = "Claude Haiku 5.5";
+    static readonly description =
+      "Anthropic's Claude Haiku 5.5 model, the latest fast and cost-effective model for high-volume work (250k context).";
+    // Dust caps usable context at 250k; the model itself supports 1M.
+    static readonly contextSize = 250_000;
+    // Dust caps output at 64k; the model itself supports 128k.
+    static readonly maxOutputTokens = 64_000;
+    static readonly byok = true;
+    // Anthropic rejects an explicit temperature for this model. No
+    // `disableReasoningWhenForcingTool`: Haiku 5.5 accepts a forced
+    // `tool_choice` alongside adaptive thinking.
+    static readonly configParsers = [dropTemperature];
+
+    // Nest the legacy model config under a single `modelConfig` static (see
+    // `DustStreamEndpointConfiguration`) so consumers can retrieve the full
+    // `ModelConfigurationType` off the endpoint without spreading its fields
+    // onto the class statics.
+    static readonly modelConfig = CLAUDE_HAIKU_5_5_DEFAULT_MODEL_CONFIG;
+  }
+
+  return DustClaudeHaikuFiveDotFive;
+}

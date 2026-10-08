@@ -445,6 +445,15 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     xhigh: false,
     maximal: false,
   },
+  "claude-haiku-5-5": {
+    none: true,
+    minimal: false,
+    low: true,
+    medium: true,
+    high: true,
+    xhigh: true,
+    maximal: true,
+  },
   "claude-haiku-4-5-20251001": {
     none: true,
     minimal: false,
