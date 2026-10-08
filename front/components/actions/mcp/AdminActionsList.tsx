@@ -20,7 +20,8 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
-import { compareStrings } from "@app/lib/i18n/format";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { compareStrings, formatList } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
   useCreateInternalMCPServer,
@@ -379,11 +380,14 @@ export const AdminActionsList = ({
               <div className="flex items-center gap-2">
                 {globalSpace
                   ? t`Workspace`
-                  : info
-                      .getValue()
-                      .filter((s) => s.kind === "regular")
-                      .map((s) => s.name)
-                      .join(", ")}
+                  : formatList(
+                      info
+                        .getValue()
+                        .filter((s) => s.kind === "regular")
+                        .map((s) => s.name),
+                      { type: "conjunction" },
+                      getActiveLocale()
+                    )}
               </div>
             </DataTable.CellContent>
           );

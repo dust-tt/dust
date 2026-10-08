@@ -1,3 +1,4 @@
+import { formatCurrency } from "@app/lib/i18n/format";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 // If mention the price of the PRO plan in a few different places in the code base,
@@ -48,18 +49,14 @@ export const getPriceAsString = ({
       priceInMicroUsd: number;
     }): string => {
   if (priceInMicroUsd !== undefined) {
-    return `$${(priceInMicroUsd / 1_000_000).toFixed(2)}`;
+    return formatCurrency(priceInMicroUsd / 1_000_000, "USD", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   }
 
-  const price = (priceInCents / 100).toFixed(2);
-  switch (currency) {
-    case "usd":
-      return `$${price}`;
-    case "eur":
-      return `${price}€`;
-    case "gbp":
-      return `£${price}`;
-    default:
-      return `${price}${currency}`;
-  }
+  return formatCurrency(priceInCents / 100, currency.toUpperCase(), {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };

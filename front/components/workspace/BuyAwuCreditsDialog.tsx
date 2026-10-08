@@ -5,7 +5,7 @@ import {
 import { useAwuPurchase } from "@app/hooks/useAwuPurchase";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import type { AwuPurchaseInfo } from "@app/lib/credits/awu_purchase";
 import {
@@ -51,7 +51,8 @@ import {
   TabsTrigger,
   XCircle,
 } from "@dust-tt/sparkle";
-import { Trans, useLingui } from "@lingui/react/macro";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type PurchaseState = "idle" | "processing" | "success" | "error";
@@ -236,12 +237,25 @@ function UseCouponTab({
                   <Trans>Coupon applied!</Trans>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  <Trans>
-                    <span className="font-semibold">
-                      {bonusCreditsFormatted} credits
-                    </span>{" "}
-                    have been added to your pool.
-                  </Trans>
+                  <Plural
+                    value={bonusCredits}
+                    one={
+                      <Trans>
+                        <span className="font-semibold">
+                          {bonusCreditsFormatted} credit
+                        </span>{" "}
+                        has been added to your pool.
+                      </Trans>
+                    }
+                    other={
+                      <Trans>
+                        <span className="font-semibold">
+                          {bonusCreditsFormatted} credits
+                        </span>{" "}
+                        have been added to your pool.
+                      </Trans>
+                    }
+                  />
                 </p>
               </div>
             </div>
@@ -637,7 +651,7 @@ export function BuyAwuCreditsDialog({
                   </div>
                   {isValidAmount && (
                     <span className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Trans>{addedCreditsFormatted} credits</Trans>
+                      {formatCreditValue(addedCredits, t)}
                     </span>
                   )}
                   <div className="ml-auto flex gap-2">
@@ -843,7 +857,10 @@ export function BuyAwuCreditsDialog({
               onClick={resetModalStateAndClose}
             />
             <Button
-              label={t`Add ${addedCreditsFormatted} credits`}
+              label={t`Add ${plural(addedCredits, {
+                one: `${addedCreditsFormatted} credit`,
+                other: `${addedCreditsFormatted} credits`,
+              })}`}
               variant="primary"
               onClick={handlePurchase}
               disabled={!canPurchase}

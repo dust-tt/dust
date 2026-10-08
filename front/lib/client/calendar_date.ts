@@ -17,6 +17,7 @@ import {
   toDate,
 } from "date-fns";
 import capitalize from "lodash/capitalize";
+import upperFirst from "lodash/upperFirst";
 
 type Translate = (descriptor: MessageDescriptor) => string;
 
@@ -100,6 +101,13 @@ export function getCalendarDay(date: Date | number): CalendarDay | null {
  * be part of a `CalendarDay`'s `day`: the labels take them from the `t` passed by the caller, as one
  * message per kind of day.
  */
+/**
+ * @cc [owner:sfriquet,label:product] calendar-label-starts-uppercase
+ * Labels returned by `formatCalendarDate` and `formatCalendarDateTime` are standalone labels and
+ * MUST start with an uppercase letter when they start with a letter, in every locale. Callers MUST
+ * NOT insert them inside a sentence; a sentence built around a day MUST use `getCalendarDay`, whose
+ * `day` keeps the locale's own casing ("yesterday", "Sunday", "dimanche").
+ */
 export function formatCalendarDate(date: Date | number, t: Translate): string {
   const calendarDay = getCalendarDay(date);
   if (!calendarDay) {
@@ -111,11 +119,11 @@ export function formatCalendarDate(date: Date | number, t: Translate): string {
       return capitalize(calendarDay.day);
     case "lastWeekday": {
       const weekday = calendarDay.day;
-      return t(msg`Last ${weekday}`);
+      return upperFirst(t(msg`Last ${weekday}`));
     }
     case "weekday":
     case "date":
-      return calendarDay.day;
+      return upperFirst(calendarDay.day);
     default:
       assertNever(calendarDay.kind);
   }
@@ -149,7 +157,7 @@ export function formatCalendarDateTime(
   if (diffDays >= -6 && diffDays < -1) {
     const weekday = formatWeekday(dateObj, locale);
     const time = timeWithSeconds;
-    return t(msg`Last ${weekday} at ${time}`);
+    return upperFirst(t(msg`Last ${weekday} at ${time}`));
   }
 
   // moment's built-in future formats use LT (no seconds), unlike the overridden past ones.
@@ -166,8 +174,8 @@ export function formatCalendarDateTime(
   if (diffDays > 1 && diffDays < 7) {
     const weekday = formatWeekday(dateObj, locale);
     const time = timeWithoutSeconds;
-    return t(msg`${weekday} at ${time}`);
+    return upperFirst(t(msg`${weekday} at ${time}`));
   }
 
-  return formatDate(dateObj, NUMERIC_DATE_OPTIONS, locale);
+  return upperFirst(formatDate(dateObj, NUMERIC_DATE_OPTIONS, locale));
 }

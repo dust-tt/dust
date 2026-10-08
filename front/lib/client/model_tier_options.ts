@@ -1,3 +1,5 @@
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
@@ -31,7 +33,11 @@ function formatMaxTierDescription(
     return undefined;
   }
 
-  const tierNames = lowerTiers.map(getModelsTierDisplayName).join(", ");
+  const tierNames = formatList(
+    lowerTiers.map(getModelsTierDisplayName),
+    { type: "conjunction" },
+    getActiveLocale()
+  );
   return t(msg`Includes ${tierNames}`);
 }
 

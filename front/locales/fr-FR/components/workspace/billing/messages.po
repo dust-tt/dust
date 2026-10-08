@@ -197,7 +197,7 @@ msgstr "{maxLifetimeSeats, plural, one {Vous avez utilisé votre siège gratuit}
 
 #: front/components/workspace/billing/FreePlanSeatsSection.tsx
 msgid "{maxLifetimeSeats, plural, one {{lifetimeCount} of # free seat used} other {{lifetimeCount} of # free seats used}}"
-msgstr "{maxLifetimeSeats, plural, one {{lifetimeCount} siège gratuit utilisé sur #} other {{lifetimeCount} sièges gratuits utilisés sur #}}"
+msgstr "{lifetimeCount, plural, one {# siège gratuit utilisé sur {maxLifetimeSeats}} other {# sièges gratuits utilisés sur {maxLifetimeSeats}}}"
 
 #: front/components/workspace/billing/FreePlanSeatsSection.tsx
 msgid "Your workspace has reached its free seat limit. Upgrade a member to a Pro or Max seat on the Members page to add more, the cap lifts instantly."

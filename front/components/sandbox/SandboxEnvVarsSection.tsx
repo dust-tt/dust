@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/sandbox/env_vars";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useDeleteSandboxEnvVar,
   usePatchSandboxEnvVar,
@@ -299,11 +300,14 @@ export function SandboxEnvVarsSection({
     if (errors.value) {
       return { message: errors.value.message ?? "", isError: true };
     }
-    const valueBytes = new TextEncoder().encode(valueValue).length;
-    const maxBytes =
+    const valueBytes = formatNumber(
+      new TextEncoder().encode(valueValue).length
+    );
+    const maxBytes = formatNumber(
       kindValue === "https_secret"
         ? MAX_HTTPS_SECRET_VALUE_BYTES
-        : MAX_VALUE_BYTES;
+        : MAX_VALUE_BYTES
+    );
     return {
       message:
         kindValue === "https_secret"

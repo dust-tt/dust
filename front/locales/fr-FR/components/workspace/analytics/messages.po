@@ -224,14 +224,6 @@ msgstr "Type"
 msgid "Pool"
 msgstr "Réserve de crédits"
 
-#: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{formattedCredits} credits"
-msgstr "{formattedCredits} crédits"
-
-#: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{averageCredits} credits / message"
-msgstr "{averageCredits} crédits / message"
-
 #: front/components/workspace/analytics/sourceOriginLabels.ts
 msgid "Conversation"
 msgstr "Conversation"
