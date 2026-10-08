@@ -57,5 +57,6 @@
 | Company Data | Company Data | Space name, never translated |
 | emoji | émoji | |
 | credit usage | consommation de crédits | |
+| reasoning effort | niveau d’effort | As in Claude. Plural « niveaux d’effort ». Never « effort de raisonnement » or « niveau de raisonnement » |
 | spend-limit upgrade request | demande d’augmentation | Plan or seat upgrades stay « mise à niveau » or « passer à un forfait supérieur » |
 | job function (onboarding) | French name when one is established | « Données », « Informatique ». Keep « Customer Success » and « Revenue Operations » |

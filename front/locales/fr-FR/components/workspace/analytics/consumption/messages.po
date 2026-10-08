@@ -19,7 +19,7 @@ msgstr "Par modèle"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "By reasoning effort"
-msgstr "Par niveau de raisonnement"
+msgstr "Par niveau d’effort"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "By tools"
@@ -34,8 +34,8 @@ msgid "View all models for {selectedRowName}"
 msgstr "Voir tous les modèles pour {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
-msgid "View all reasoning effort for {selectedRowName}"
-msgstr "Voir tous les niveaux de raisonnement pour {selectedRowName}"
+msgid "View all reasoning efforts for {selectedRowName}"
+msgstr "Voir tous les niveaux d’effort pour {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "View all tools for {selectedRowName}"

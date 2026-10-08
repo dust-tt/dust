@@ -99,7 +99,7 @@ export function ConsumptionAttributionBreakdownColumnView({
   const { t } = useLingui();
   const viewAllAriaLabels: Record<BreakdownDimension, string> = {
     model: t`View all models for ${selectedRowName}`,
-    reasoning_effort: t`View all reasoning effort for ${selectedRowName}`,
+    reasoning_effort: t`View all reasoning efforts for ${selectedRowName}`,
     tool: t`View all tools for ${selectedRowName}`,
     user: t`View all members for ${selectedRowName}`,
   };
