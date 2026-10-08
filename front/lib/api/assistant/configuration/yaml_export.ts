@@ -1,3 +1,5 @@
+import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import {
   buildInitialActions,
   getAccessibleSourcesAndAppsForActions,
@@ -14,6 +16,7 @@ import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { toAgentConfigurations } from "@app/lib/resources/agent_resource_serialization";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
@@ -24,6 +27,38 @@ import type { UserType } from "@app/types/user";
 
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
+/**
+ * Fetches the data source views used by `actions` that the caller can read, or all of them for an
+ * admin seeing private entities.
+ */
+async function fetchActionsDataSourceViews(
+  auth: Authenticator,
+  actions: MCPServerConfigurationType[]
+): Promise<DataSourceViewResource[]> {
+  const dataSourceViewIds = actions
+    .filter(isServerSideMCPServerConfiguration)
+    .flatMap((action) => [
+      ...(action.dataSources ?? []),
+      ...(action.tables ?? []),
+    ])
+    .map((configuration) => configuration.dataSourceViewId);
+
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceViewIds
+  );
+  if (await canAdminSeePrivateEntities(auth)) {
+    return dataSourceViews;
+  }
+  return dataSourceViews.filter((view) => auth.can("read", view));
+}
+
+/**
+ * @cc [owner:philipperolet,label:security;product] unreadable-space-views
+ * When `canAdminSeePrivateEntities(auth)` is true, the export MUST include the data source views used
+ * by the agent's tools (`dataSources` and `tables`), whatever their space. Otherwise, it MUST NOT
+ * include views from spaces the caller cannot read.
+ */
 export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
@@ -53,8 +88,7 @@ export async function getAgentConfigurationAsYAMLConfig(
   }
   const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
-  const { dataSourceViews, mcpServerViews } =
-    await getAccessibleSourcesAndAppsForActions(auth);
+  const { mcpServerViews } = await getAccessibleSourcesAndAppsForActions(auth);
   const spaceResources = await SpaceResource.fetchByModelIds(auth, [
     ...agent.requestedSpaceModelIds(),
   ]);
@@ -65,6 +99,11 @@ export async function getAgentConfigurationAsYAMLConfig(
   }));
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
+
+  const dataSourceViews = await fetchActionsDataSourceViews(
+    auth,
+    agentConfiguration.actions
+  );
 
   const actions = await buildInitialActions({
     dataSourceViews,
