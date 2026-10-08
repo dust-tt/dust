@@ -1,3 +1,5 @@
+// Proto2 keeps required message fields as T in Prost's generated Rust types; proto3 wraps them in
+// Option<T>. Explicit optional fields preserve presence where the API needs it.
 syntax = "proto2";
 
 package dfs.v1;
