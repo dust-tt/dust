@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# One-time, persistent setup: the bucket holding Terraform state, FDB backups and results, and
-# the registry holding implementation images.
+# One-time, persistent setup: the bucket holding Terraform state, FDB backups and results, the
+# registry holding implementation images, and the E2B sandbox template.
 # Storage only, no compute. Safe to re-run.
 source "$(dirname "$0")/lib.sh"
 require_dust_dev
@@ -21,3 +21,9 @@ else
   gcloud artifacts repositories create dfs-bench --location "$REGION" --repository-format docker \
     --labels=dfs-bench=true,owner=henry
 fi
+
+# The E2B template (rebuilt on every bootstrap; cached layers make it cheap when unchanged).
+load_e2b_env
+[[ -d "$BENCH_DIR/orchestrator/node_modules" ]] || npm --prefix "$BENCH_DIR/orchestrator" install --silent
+log "building E2B template dfs-bench"
+node "$BENCH_DIR/orchestrator/template.ts"
