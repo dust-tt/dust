@@ -517,15 +517,18 @@ export function getDataSourcesInFolderTree(
   return items.filter((item) => isInFolderTree(items, item, folderId));
 }
 
+/**
+ * Takes the id index rather than the file list: the ⌘K palette asks for the
+ * path of every file it lists, and a workspace holds thousands of items.
+ */
 export function getFolderPath(
-  items: DataSource[],
+  itemsById: Map<string, DataSource>,
   folderId: string | null
 ): DataSource[] {
   if (!folderId) {
     return [];
   }
 
-  const itemsById = new Map(items.map((item) => [item.id, item]));
   const path: DataSource[] = [];
   let currentId: string | null = folderId;
 

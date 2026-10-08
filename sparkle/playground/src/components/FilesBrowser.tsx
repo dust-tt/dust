@@ -50,6 +50,7 @@ import {
   isDataSourceFolder,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
+import { indexFilesById } from "../data/fileMoves";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";
@@ -205,7 +206,7 @@ export function FilesBrowser({
 
   // ── Breadcrumbs (folders mode) ────────────────────────────────────────────
   const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
-    const path = getFolderPath(dataSources, currentFolderId);
+    const path = getFolderPath(indexFilesById(dataSources), currentFolderId);
     const isDragActive = !!dnd && dnd.draggingFileId !== null;
 
     const getDropProps = (

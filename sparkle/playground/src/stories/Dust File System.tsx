@@ -966,7 +966,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       if (!isDropTargetFolder(file) || isPodFolder(file)) {
         continue;
       }
-      const path = getFolderPath(files, file.id);
+      const path = getFolderPath(filesById, file.id);
       if (path.some(isPodFolder)) {
         continue;
       }
@@ -979,7 +979,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       });
     }
     return options;
-  }, [files]);
+  }, [files, filesById]);
 
   const addPodToSidebar = useCallback((spaceId: string) => {
     setFavoritePodIds((prev) => new Set(prev).add(spaceId));

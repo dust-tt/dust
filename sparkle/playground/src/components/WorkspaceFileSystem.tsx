@@ -123,7 +123,7 @@ export function WorkspaceFileSystem({
     if (!folderId) {
       return;
     }
-    const ancestors = getFolderPath(files, folderId)
+    const ancestors = getFolderPath(filesById, folderId)
       .slice(0, -1)
       .map((folder) => folder.id);
     if (ancestors.length > 0) {
