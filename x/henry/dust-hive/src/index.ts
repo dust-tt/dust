@@ -31,6 +31,7 @@ import { unregisterCommand } from "./commands/unregister";
 import { upCommand } from "./commands/up";
 import { urlCommand } from "./commands/url";
 import { warmCommand } from "./commands/warm";
+import { expandNegatedShortFlags } from "./lib/cli-args";
 import { ensureDirectories } from "./lib/config";
 import { logger } from "./lib/logger";
 import type { Result } from "./lib/result";
@@ -463,4 +464,4 @@ if (process.argv.length <= 2) {
   process.exit(0);
 }
 
-cli.parse();
+cli.parse(expandNegatedShortFlags(process.argv));
