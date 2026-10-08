@@ -82,7 +82,9 @@ runs:
     - name: "Configure GCP Docker Auth"
       shell: bash
       run: |
-        gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
+        gcloud auth configure-docker ${INPUTS_REGION}-docker.pkg.dev --quiet
+      env:
+        INPUTS_REGION: ${{ inputs.region }}
 
     - name: "Fetch custom models config"
       if: contains(inputs.component, 'front')
@@ -97,14 +99,27 @@ runs:
       shell: bash
       env:
         DEPOT_TOKEN: ${{ inputs.depot_region == 'eu' && inputs.depot_eu_token || inputs.depot_us_token }}
+        INPUTS_COMPONENT: ${{ inputs.component }}
+        INPUTS_DEPOT_REGION: ${{ inputs.depot_region }}
+        INPUTS_DEPOT_US_PROJECT_ID: ${{ inputs.depot_us_project_id }}
+        INPUTS_DEPOT_EU_PROJECT_ID: ${{ inputs.depot_eu_project_id }}
+        INPUTS_REGION: ${{ inputs.region }}
+        INPUTS_VIRTUOSO_LICENSE_KEY: ${{ inputs.virtuoso_license_key }}
+        INPUTS_DD_API_KEY: ${{ inputs.dd_api_key }}
+        INPUTS_DD_CLIENT_TOKEN: ${{ inputs.dd_client_token }}
+        INPUTS_CONTENTFUL_SPACE_ID: ${{ inputs.contentful_space_id }}
+        INPUTS_CONTENTFUL_ACCESS_TOKEN: ${{ inputs.contentful_access_token }}
+        INPUTS_PROJECT_ID: ${{ inputs.project_id }}
+        INPUTS_COMMIT_SHA: ${{ inputs.commit_sha }}
+        INPUTS_COMMIT_SHA_LONG: ${{ inputs.commit_sha_long }}
       run: |
-        COMPONENT="${{ inputs.component }}"
+        COMPONENT="${INPUTS_COMPONENT}"
 
         # Set depot project ID based on region
-        if [[ "${{ inputs.depot_region }}" == "us" ]]; then
-          DEPOT_PROJECT_ID="${{ inputs.depot_us_project_id }}"
+        if [[ "${INPUTS_DEPOT_REGION}" == "us" ]]; then
+          DEPOT_PROJECT_ID="${INPUTS_DEPOT_US_PROJECT_ID}"
         else
-          DEPOT_PROJECT_ID="${{ inputs.depot_eu_project_id }}"
+          DEPOT_PROJECT_ID="${INPUTS_DEPOT_EU_PROJECT_ID}"
         fi
 
         # Determine environment and base component name
@@ -119,7 +134,7 @@ runs:
           BASE_COMPONENT=${COMPONENT}
         fi
 
-        CONFIG_FILE=".github/configs/${{ inputs.region }}/.env.${ENV}"
+        CONFIG_FILE=".github/configs/${INPUTS_REGION}/.env.${ENV}"
 
         build_args=()
         while IFS='=' read -r key value; do
@@ -129,18 +144,18 @@ runs:
         [[ -n "$key" ]] && build_args+=("--build-arg" "$(echo "$key" | xargs)=$(echo "$value" | xargs)")
 
         # Only set the Virtuoso license key if provided
-        if [[ -n "${{ inputs.virtuoso_license_key }}" ]]; then
-          build_args+=("--build-arg NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=${{ inputs.virtuoso_license_key }}")
+        if [[ -n "${INPUTS_VIRTUOSO_LICENSE_KEY}" ]]; then
+          build_args+=("--build-arg NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY=${INPUTS_VIRTUOSO_LICENSE_KEY}")
         fi
 
         # Only set the Datadog API key if provided
-        if [[ -n "${{ inputs.dd_api_key }}" ]]; then
-          build_args+=("--build-arg DATADOG_API_KEY=${{ inputs.dd_api_key }}")
+        if [[ -n "${INPUTS_DD_API_KEY}" ]]; then
+          build_args+=("--build-arg DATADOG_API_KEY=${INPUTS_DD_API_KEY}")
         fi
 
         # Set the Datadog client token + service name for any front / front-edge build,
         if [[ "$BASE_COMPONENT" == "front" || "$BASE_COMPONENT" == "front-edge" ]]; then
-          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${{ inputs.dd_client_token }}")
+          build_args+=("--build-arg NEXT_PUBLIC_DATADOG_CLIENT_TOKEN=${INPUTS_DD_CLIENT_TOKEN}")
           build_args+=("--build-arg NEXT_PUBLIC_DATADOG_SERVICE=$BASE_COMPONENT")
           build_args+=("--build-arg NEXT_PUBLIC_BUILD_DATE=$(date +%s)")
           # Upload source maps for front-sse too (same image, different DD service name)
@@ -153,11 +168,11 @@ runs:
         # and for marketing / marketing-edge (which currently builds from front/ and renders
         # the same Contentful-backed pages).
         if [[ "$COMPONENT" == "front" || "$COMPONENT" == "front-edge" || "$COMPONENT" == "marketing" || "$COMPONENT" == "marketing-edge" ]]; then
-          if [[ -n "${{ inputs.contentful_space_id }}" ]]; then
-            build_args+=("--build-arg CONTENTFUL_SPACE_ID=${{ inputs.contentful_space_id }}")
+          if [[ -n "${INPUTS_CONTENTFUL_SPACE_ID}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_SPACE_ID=${INPUTS_CONTENTFUL_SPACE_ID}")
           fi
-          if [[ -n "${{ inputs.contentful_access_token }}" ]]; then
-            build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${{ inputs.contentful_access_token }}")
+          if [[ -n "${INPUTS_CONTENTFUL_ACCESS_TOKEN}" ]]; then
+            build_args+=("--build-arg CONTENTFUL_ACCESS_TOKEN=${INPUTS_CONTENTFUL_ACCESS_TOKEN}")
           fi
         fi
 
@@ -168,7 +183,7 @@ runs:
         # Apply the same sanitization Cloudflare Pages uses for branch aliases:
         # lowercase, replace non-alphanumeric with '-', collapse multiple '-', trim '-', truncate to 28 chars.
         if [[ "$COMPONENT" == "front-edge" || "$COMPONENT" == "marketing-edge" ]]; then
-          CF_BRANCH=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
+          CF_BRANCH=$(echo "${GITHUB_REF_NAME}" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g; s/--*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')
           echo "🏗️ Setting build arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt"
           build_args+=("--build-arg NEXT_PUBLIC_DUST_APP_URL=https://${CF_BRANCH}--app.preview.dust.tt")
         fi
@@ -176,9 +191,9 @@ runs:
         # Tag with latest for main branch prod builds
         LATEST_TAGS=()
         PUSH_LATEST=false
-        if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+        if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${GITHUB_REF_NAME}" == "main" ]]; then
           PUSH_LATEST=true
-          REGISTRY="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images"
+          REGISTRY="${INPUTS_REGION}-docker.pkg.dev/${INPUTS_PROJECT_ID}/dust-images"
           LATEST_TAGS+=("-t" "${REGISTRY}/${COMPONENT}:latest")
         fi
 
@@ -191,16 +206,16 @@ runs:
           # and the edge image is `front-api-edge` (parallel to `front`/`front-edge`).
           API_COMPONENT="${BASE_COMPONENT}-api${COMPONENT#${BASE_COMPONENT}}"
 
-          WORKERS_IMAGE_TAG="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}-workers:${{ inputs.commit_sha }}"
-          FRONT_API_IMAGE_TAG="${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${API_COMPONENT}:${{ inputs.commit_sha }}"
+          WORKERS_IMAGE_TAG="${INPUTS_REGION}-docker.pkg.dev/${INPUTS_PROJECT_ID}/dust-images/${COMPONENT}-workers:${INPUTS_COMMIT_SHA}"
+          FRONT_API_IMAGE_TAG="${INPUTS_REGION}-docker.pkg.dev/${INPUTS_PROJECT_ID}/dust-images/${API_COMPONENT}:${INPUTS_COMMIT_SHA}"
           WORKERS_LATEST_IMAGE_TAG=""
           FRONT_API_LATEST_IMAGE_TAG=""
 
           BAKE_OVERRIDES=(
-            --set "*.args.COMMIT_HASH=${{ inputs.commit_sha }}"
-            --set "*.args.COMMIT_HASH_LONG=${{ inputs.commit_sha_long }}"
+            --set "*.args.COMMIT_HASH=${INPUTS_COMMIT_SHA}"
+            --set "*.args.COMMIT_HASH_LONG=${INPUTS_COMMIT_SHA_LONG}"
             --set "*.args.DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust"
-            --set "*.args.DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }}"
+            --set "*.args.DD_GIT_COMMIT_SHA=${INPUTS_COMMIT_SHA_LONG}"
           )
 
           # Convert the build arguments collected above to Bake target overrides.
@@ -208,7 +223,7 @@ runs:
             BAKE_OVERRIDES+=(--set "*.args.${build_args[$i]}")
           done
 
-          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${{ github.ref_name }}" == "main" ]]; then
+          if [[ "$ENV" == "prod" && "$COMPONENT" == "$BASE_COMPONENT" && "${GITHUB_REF_NAME}" == "main" ]]; then
             WORKERS_LATEST_IMAGE_TAG="${REGISTRY}/${COMPONENT}-workers:latest"
             FRONT_API_LATEST_IMAGE_TAG="${REGISTRY}/${API_COMPONENT}:latest"
           fi
@@ -233,12 +248,12 @@ runs:
             --platform linux/amd64 \
             --provenance=false \
             -f ./dockerfiles/${BASE_COMPONENT}.Dockerfile \
-            -t ${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}:${{ inputs.commit_sha }} \
+            -t ${INPUTS_REGION}-docker.pkg.dev/${INPUTS_PROJECT_ID}/dust-images/${COMPONENT}:${INPUTS_COMMIT_SHA} \
             "${LATEST_TAGS[@]}" \
-            --build-arg COMMIT_HASH=${{ inputs.commit_sha }} \
-            --build-arg COMMIT_HASH_LONG=${{ inputs.commit_sha_long }} \
+            --build-arg COMMIT_HASH=${INPUTS_COMMIT_SHA} \
+            --build-arg COMMIT_HASH_LONG=${INPUTS_COMMIT_SHA_LONG} \
             --build-arg DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust \
-            --build-arg DD_GIT_COMMIT_SHA=${{ inputs.commit_sha_long }} \
+            --build-arg DD_GIT_COMMIT_SHA=${INPUTS_COMMIT_SHA_LONG} \
             ${build_args[@]} \
             --push \
             .
@@ -249,11 +264,11 @@ runs:
       id: current_version
       shell: bash
       run: |
-        COMPONENT="${{ inputs.component }}"
-        echo "🔍 Getting current deployed version for ${COMPONENT} in ${{ inputs.region }}..."
+        COMPONENT="${INPUTS_COMPONENT}"
+        echo "🔍 Getting current deployed version for ${COMPONENT} in ${INPUTS_REGION}..."
 
         # Get all tags, exclude the current one we're building, get the most recent
-        ALL_TAGS=$(gcloud container images list-tags "${{ inputs.region }}-docker.pkg.dev/${{ inputs.project_id }}/dust-images/${COMPONENT}" \
+        ALL_TAGS=$(gcloud container images list-tags "${INPUTS_REGION}-docker.pkg.dev/${INPUTS_PROJECT_ID}/dust-images/${COMPONENT}" \
           --limit=10 \
           --sort-by=~timestamp \
           --format="value(tags[0])" 2>/dev/null || echo "")
@@ -261,7 +276,7 @@ runs:
         # Filter out current tag and get the first remaining one
         CURRENT_TAG=""
         while IFS= read -r tag; do
-          if [ -n "$tag" ] && [ "$tag" != "${{ inputs.commit_sha }}" ]; then
+          if [ -n "$tag" ] && [ "$tag" != "${INPUTS_COMMIT_SHA}" ]; then
             CURRENT_TAG="$tag"
             break
           fi
@@ -269,21 +284,26 @@ runs:
 
         echo "Current deployed version: ${CURRENT_TAG:-'none found'}"
         echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+      env:
+        INPUTS_COMPONENT: ${{ inputs.component }}
+        INPUTS_REGION: ${{ inputs.region }}
+        INPUTS_PROJECT_ID: ${{ inputs.project_id }}
+        INPUTS_COMMIT_SHA: ${{ inputs.commit_sha }}
 
     - name: Get commit diff
       if: steps.current_version.outputs.current_tag != ''
       id: commit_info
       shell: bash
       run: |
-        CURRENT_TAG="${{ steps.current_version.outputs.current_tag }}"
-        TARGET_TAG="${{ inputs.commit_sha }}"
+        CURRENT_TAG="${STEPS_CURRENT_VERSION_OUTPUTS_CURRENT_TAG}"
+        TARGET_TAG="${INPUTS_COMMIT_SHA}"
 
         echo "📋 Getting commit diff: $CURRENT_TAG → $TARGET_TAG"
 
         # Only front changelogs credit per-commit authors, it is the deploy
         # where the whole monorepo's work ships. Everywhere else the run
         # initiator is already named in the start message.
-        if [ "${{ inputs.component }}" = "front" ]; then
+        if [ "${INPUTS_COMPONENT}" = "front" ]; then
           LOG_FORMAT="%h %s (%an)"
         else
           LOG_FORMAT="%h %s"
@@ -313,3 +333,7 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
 
         echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+      env:
+        STEPS_CURRENT_VERSION_OUTPUTS_CURRENT_TAG: ${{ steps.current_version.outputs.current_tag }}
+        INPUTS_COMMIT_SHA: ${{ inputs.commit_sha }}
+        INPUTS_COMPONENT: ${{ inputs.component }}

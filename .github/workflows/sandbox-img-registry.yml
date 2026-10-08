@@ -187,15 +187,19 @@ jobs:
             echo "## Sandbox Image Check Summary"
             echo ""
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.count.outputs.has-missing }}" == "true" ]; then
+          if [ "${STEPS_COUNT_OUTPUTS_HAS_MISSING}" == "true" ]; then
             {
-              echo "Built **${{ steps.count.outputs.planned-builds }}** image(s) across every E2B target (sequential per target)."
+              echo "Built **${STEPS_COUNT_OUTPUTS_PLANNED_BUILDS}** image(s) across every E2B target (sequential per target)."
               echo ""
               echo "### Missing by target (before build):"
               echo '```json'
-              echo '${{ steps.count.outputs.missing-summary }}'
+              echo "${STEPS_COUNT_OUTPUTS_MISSING_SUMMARY}"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "All required sandbox images already exist in every E2B target" >> "$GITHUB_STEP_SUMMARY"
           fi
+        env:
+          STEPS_COUNT_OUTPUTS_HAS_MISSING: ${{ steps.count.outputs.has-missing }}
+          STEPS_COUNT_OUTPUTS_PLANNED_BUILDS: ${{ steps.count.outputs.planned-builds }}
+          STEPS_COUNT_OUTPUTS_MISSING_SUMMARY: ${{ steps.count.outputs.missing-summary }}
