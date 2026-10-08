@@ -4,6 +4,8 @@ import React, { type ReactNode } from "react";
 interface SettingsListProps {
   children: ReactNode;
   className?: string;
+  /** Vertical row padding: comfortable (16px, default) or compact (12px). */
+  density?: "comfortable" | "compact";
 }
 
 /**
@@ -15,11 +17,18 @@ interface SettingsListProps {
  *
  * @summary Stacked list of settings rows.
  */
-export function SettingsList({ children, className }: SettingsListProps) {
+export function SettingsList({
+  children,
+  className,
+  density = "comfortable",
+}: SettingsListProps) {
   return (
     <div
       className={cn(
         "flex flex-col overflow-hidden rounded-2xl border border-border divide-y divide-border",
+        density === "compact"
+          ? "[--settings-list-row-padding:0.75rem]"
+          : "[--settings-list-row-padding:1rem]",
         className
       )}
     >
@@ -45,7 +54,7 @@ function SettingsListRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-4 px-4 py-4",
+        "flex items-center justify-between gap-4 px-4 py-[var(--settings-list-row-padding,1rem)]",
         className
       )}
     >

@@ -37,9 +37,9 @@ type Story = StoryObj<typeof meta>;
  * @summary Settings rows with toggle and input actions.
  */
 export const Default: Story = {
-  render: () => (
+  render: (args) => (
     <div className="w-full max-w-xl">
-      <SettingsList>
+      <SettingsList {...args}>
         <SettingsList.Row
           title="Upgrade request"
           description="Allow users to request plan upgrades and limit increase"
@@ -65,6 +65,18 @@ export const Default: Story = {
       </SettingsList>
     </div>
   ),
+};
+
+/**
+ * Compact rows retain the same controls with less vertical padding, for settings
+ * panels with limited height.
+ * @summary Compact settings rows.
+ */
+export const Compact: Story = {
+  ...Default,
+  args: {
+    density: "compact",
+  },
 };
 
 /**
