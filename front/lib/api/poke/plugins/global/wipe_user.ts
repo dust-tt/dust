@@ -5,12 +5,18 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { Err, Ok } from "@app/types/shared/result";
 
+/**
+ * @cc [owner:avervaet,label:product;security] refuse-non-revoked-membership
+ * The wipe MUST be refused, with no external deletion or anonymization, while the user has any
+ * membership that is not revoked (active, or scheduled to start in the future). Revoked
+ * memberships MUST NOT block the wipe.
+ */
 export const wipeUserPlugin = createPlugin({
   manifest: {
     id: "wipe-user",
     name: "Wipe User",
     description:
-      "Permanently wipe a user with no membership: removes them from Customer.io and WorkOS, " +
+      "Permanently wipe a user with no active membership: removes them from Customer.io and WorkOS, " +
       "and anonymizes their row in the front database.",
     warning:
       "Irreversible. Only the user row and its metadata are anonymized: data the user created " +
@@ -42,11 +48,13 @@ export const wipeUserPlugin = createPlugin({
       return new Err(new Error(`User ${userId} not found.`));
     }
 
+    // Revoked memberships are kept as history; they only point to the anonymized row.
     const memberships = await MembershipResource.fetchByUserIds([user.id]);
-    if (memberships.length > 0) {
+    const nonRevokedMemberships = memberships.filter((m) => !m.isRevoked());
+    if (nonRevokedMemberships.length > 0) {
       return new Err(
         new Error(
-          `User ${userId} still has ${memberships.length} membership(s), revoked ones included.`
+          `User ${userId} still has ${nonRevokedMemberships.length} active or scheduled membership(s).`
         )
       );
     }
