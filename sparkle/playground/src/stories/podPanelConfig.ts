@@ -1,7 +1,6 @@
 import {
   ActionIcons,
   MessageChatSquare,
-  CheckCircle,
   Settings01,
   File02,
   Folder,
@@ -127,7 +126,6 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
       label: "Conversations",
       icon: MessageChatSquare,
     },
-    { value: "todos", label: "Tasks", icon: CheckCircle },
     { value: "knowledge", label: "Files", icon: Folder },
   ];
 }

@@ -32,7 +32,6 @@ import {
   type NewCitationProps,
 } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
-import { TaskItem } from "./TaskItem";
 
 const INPUT_BAR_PILL_SURFACE_CLASSNAME =
   "border-[0.5px] border-border-dark bg-background dark:bg-stone-725 " +
@@ -43,22 +42,21 @@ const INPUT_BAR_PILL_HOVER_CLASSNAME =
 
 type DroppedFile = { id: string; file: File; objectUrl?: string };
 
-export type InputBarTaskCommand = {
+/** Something the conversation starts with in hand, shown as a chip above the
+ *  text area and dismissable from there. */
+export type InputBarAttachment = {
   id: string;
   label: string;
-  contextAttachments?: Array<{
-    id: string;
-    label: string;
-    tooltip?: string;
-    visual?: NewCitationProps["visual"];
-  }>;
+  tooltip?: string;
+  visual?: NewCitationProps["visual"];
 };
 
 interface InputBarProps {
   placeholder?: string;
   className?: string;
   instructionReference?: { start: number; end: number } | null;
-  taskCommand?: InputBarTaskCommand | null;
+  /** Carried in from outside, e.g. the file a conversation was started on. */
+  attachments?: InputBarAttachment[];
   variant?: "default" | "embedded";
   isFloating?: boolean;
   autoFocus?: boolean;
@@ -72,7 +70,7 @@ export function InputBar({
   placeholder = "What are we working on?",
   className,
   instructionReference,
-  taskCommand,
+  attachments,
   variant = "default",
   isFloating = true,
   autoFocus = false,
@@ -209,20 +207,10 @@ export function InputBar({
     onInstructionInserted?.();
   }, [instructionReference, onInstructionInserted]);
 
-  useEffect(() => {
-    if (!taskCommand) {
-      return;
-    }
-
-    setDismissedContextAttachmentIds(new Set());
-    richTextAreaRef.current?.setContent("Let's start working on this task.");
-  }, [taskCommand?.id, taskCommand]);
-
   const showFocusStyle = variant === "default" && (isFocused || isDragOver);
-  const visibleContextAttachments =
-    taskCommand?.contextAttachments?.filter(
-      (attachment) => !dismissedContextAttachmentIds.has(attachment.id)
-    ) ?? [];
+  const visibleContextAttachments = (attachments ?? []).filter(
+    (attachment) => !dismissedContextAttachmentIds.has(attachment.id)
+  );
 
   return (
     <div
@@ -317,26 +305,7 @@ export function InputBar({
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={handleFocus}
-          defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
-          topBar={
-            taskCommand ? (
-              <div className="w-full p-2">
-                <div className="rounded-xl bg-highlight-50 border border-highlight-100/70 px-2 pt-1 pb-0">
-                  <TaskItem
-                    id={taskCommand.id}
-                    text={taskCommand.label}
-                    isEditable={false}
-                  />
-                </div>
-              </div>
-            ) : undefined
-          }
-          topBarClassName={
-            taskCommand
-              ? "static items-stretch rounded-t-xl border-b-0 bg-transparent"
-              : undefined
-          }
           containerClassName={
             variant === "embedded"
               ? "min-h-0 rounded-none border-0 bg-transparent focus-within:ring-0 focus-within:border-0"
