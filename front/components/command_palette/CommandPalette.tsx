@@ -456,6 +456,7 @@ export function CommandPalette({
 
       <MemberDetails
         owner={owner}
+        user={user}
         userId={memberDetailsId}
         onClose={() => setMemberDetailsId(null)}
       />

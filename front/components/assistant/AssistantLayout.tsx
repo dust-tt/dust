@@ -72,6 +72,7 @@ export function AssistantLayout({
       />
       <MemberDetails
         owner={owner}
+        user={user}
         userId={userId}
         onClose={() => onOpenChangeUserModal(false)}
       />
