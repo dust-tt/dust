@@ -1,6 +1,8 @@
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { Authenticator } from "@app/lib/auth";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -112,6 +114,7 @@ async function createFramePublicationFunction({
   publicationId: string;
   userIdentity?: SandboxFunctionUserIdentityPolicy;
 }) {
+  await FramePublicationResource.makeNew(adminAuth, { frame, publicationId });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
       adminAuth,
@@ -154,6 +157,7 @@ async function setupFrameV2Function({
   userIdentity = "optional",
   addCallerToSpace = false,
   withSourcePath = userIdentity === "frame_author_required",
+  viewerTrustsPublisher = true,
 }: {
   shareScope?: FileShareScope;
   withFramesV2FeatureFlag?: boolean;
@@ -162,6 +166,7 @@ async function setupFrameV2Function({
   userIdentity?: SandboxFunctionUserIdentityPolicy;
   addCallerToSpace?: boolean;
   withSourcePath?: boolean;
+  viewerTrustsPublisher?: boolean;
 } = {}) {
   const { workspace, auth: adminAuth } = await createPrivateApiMockRequest({
     role: "admin",
@@ -224,6 +229,13 @@ async function setupFrameV2Function({
     role: "user",
     workspace,
   });
+  // The caller is not the publisher, so its calls to this durable function need trust.
+  if (viewerTrustsPublisher) {
+    await FrameTrustResource.grant(
+      await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId),
+      { frame, publisherUserModelId: adminAuth.getNonNullableUser().id }
+    );
+  }
   if (addCallerToSpace) {
     const [memberGroup] = await space.fetchRegularAutoGroups(adminAuth);
     if (!memberGroup) {
@@ -453,6 +465,24 @@ describe("POST /api/w/:wId/sandbox-functions/:functionIdOrSlug/invocations", () 
         }),
       }
     );
+  });
+
+  it("refuses a caller who doesn't trust the Frame's publisher", async () => {
+    const { workspace, frame } = await setupFrameV2Function({
+      viewerTrustsPublisher: false,
+    });
+
+    const response = await postInvocation({
+      workspaceId: workspace.sId,
+      functionIdOrSlug: `${frame.sId}/run-function`,
+      body: { input: { message: "hello" } },
+    });
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { type: "frame_trust_required" },
+    });
+    expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
 
   it("invokes a Frame from a standalone conversation", async () => {

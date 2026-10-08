@@ -1,3 +1,7 @@
+import {
+  FrameTrustCard,
+  useFrameTrustGate,
+} from "@app/components/actions/blocked/FrameTrustCard";
 import { SandboxFunctionPersonalAuthCard } from "@app/components/actions/blocked/SandboxFunctionPersonalAuthCard";
 import { SandboxFunctionToolApprovalCard } from "@app/components/actions/blocked/SandboxFunctionToolApprovalCard";
 import { useVisualizationRetry } from "@app/hooks/conversations";
@@ -993,7 +997,7 @@ export const VisualizationActionIframe = forwardRef<
       Boolean(props.frameId) && runtimeAccess.userIdentity.isWorkspaceMember,
   });
 
-  const createSandboxFunctionInvocation = useCallback(
+  const postSandboxFunctionInvocation = useCallback(
     async (
       functionIdOrSlug: string,
       input?: unknown
@@ -1059,6 +1063,39 @@ export const VisualizationActionIframe = forwardRef<
       runtimeAccess.userIdentity.isWorkspaceMember,
       workspaceId,
     ]
+  );
+
+  const { isTrustRequested, requestTrust, settleTrust } = useFrameTrustGate();
+  const { frameId } = props;
+  const canAskForTrust = viewer !== null && frameId !== undefined;
+
+  // A call refused because the viewer doesn't trust the Frame's publisher waits for their
+  // decision, then runs again once they trust them.
+  const createSandboxFunctionInvocation = useCallback(
+    async (
+      functionIdOrSlug: string,
+      input?: unknown
+    ): Promise<
+      Result<
+        PostSandboxFunctionInvocationResponseBody,
+        SandboxFunctionCallError
+      >
+    > => {
+      const result = await postSandboxFunctionInvocation(
+        functionIdOrSlug,
+        input
+      );
+      if (
+        result.isErr() &&
+        result.error.code === "frame_trust_required" &&
+        canAskForTrust &&
+        (await requestTrust())
+      ) {
+        return postSandboxFunctionInvocation(functionIdOrSlug, input);
+      }
+      return result;
+    },
+    [canAskForTrust, postSandboxFunctionInvocation, requestTrust]
   );
 
   useVisualizationDataHandler({
@@ -1167,6 +1204,15 @@ export const VisualizationActionIframe = forwardRef<
           onSettle={settleSandboxFunctionInvocation}
         />
       ))}
+      {viewer && frameId && isTrustRequested && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center overflow-auto bg-muted-foreground/75 p-4">
+          <FrameTrustCard
+            frameId={frameId}
+            owner={viewer.owner}
+            onSettle={settleTrust}
+          />
+        </div>
+      )}
       {/* Anonymous viewers cannot invoke functions, so they never reach a blocked action. */}
       {viewer && blockedActionGroup && (
         <SandboxFunctionBlockedAction

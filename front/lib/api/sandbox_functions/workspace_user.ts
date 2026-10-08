@@ -1,4 +1,8 @@
 import { canWriteFrameV2Source } from "@app/lib/api/frames/permissions";
+import {
+  canFunctionCallTools,
+  getFramePublicationTrust,
+} from "@app/lib/api/frames/publication_trust";
 import type { SandboxFunctionInvocationErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
@@ -7,10 +11,14 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 
 export type SandboxFunctionAuthorization =
   | {
@@ -48,7 +56,64 @@ export async function getAuthenticatedWorkspaceUser(
   return Authenticator.isMember(role) ? user : null;
 }
 
+/**
+ * @cc [owner:davidebbo,label:security] tool-calls-need-publisher-trust
+ * An invocation of a function that can call tools (not `fast`) MUST be refused with
+ * `frame_trust_required` unless `getFramePublicationTrust` is `trusted` for the publication the
+ * function belongs to. `fast` functions MUST NOT require trust.
+ */
 export async function authorizeSandboxFunctionInvocation(
+  auth: Authenticator,
+  {
+    userIdentity,
+    executionMode,
+    publicationId,
+    origin,
+    owner,
+  }: {
+    userIdentity: SandboxFunctionUserIdentityPolicy | null;
+    executionMode: SandboxFunctionExecutionMode;
+    publicationId: string;
+    origin: SandboxFunctionInvocationOrigin;
+    owner: {
+      kind: "frame";
+      frame: FileResource;
+      scope?: FrameSandboxScope;
+    };
+  }
+): Promise<SandboxFunctionAuthorization> {
+  const authorization = await authorizeUserIdentityPolicy(auth, {
+    userIdentity,
+    origin,
+    owner,
+  });
+  if (!authorization.authorized || !canFunctionCallTools(executionMode)) {
+    return authorization;
+  }
+
+  const trust = await getFramePublicationTrust(auth, {
+    frame: owner.frame,
+    publicationId,
+  });
+  switch (trust.status) {
+    case "trusted":
+      return authorization;
+    case "untrusted":
+      return authorizationError(
+        `${trust.publisher.fullName()} published this Frame. Trust them before its functions can use tools on your behalf.`,
+        "frame_trust_required"
+      );
+    case "untrustable":
+      return authorizationError(
+        "This Frame has no known publisher, so its functions can't use tools. Publish it again to fix this.",
+        "frame_trust_required"
+      );
+    default:
+      return assertNever(trust);
+  }
+}
+
+async function authorizeUserIdentityPolicy(
   auth: Authenticator,
   {
     userIdentity,

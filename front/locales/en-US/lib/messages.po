@@ -578,6 +578,18 @@ msgid "The frame runtime is unavailable."
 msgstr "The frame runtime is unavailable."
 
 #: front/lib/api_error_messages.ts
+msgid "You need to trust this Frame's publisher before it can use tools."
+msgstr "You need to trust this Frame's publisher before it can use tools."
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame has no publisher to trust."
+msgstr "This Frame has no publisher to trust."
+
+#: front/lib/api_error_messages.ts
+msgid "Someone else published this Frame since you opened it."
+msgstr "Someone else published this Frame since you opened it."
+
+#: front/lib/api_error_messages.ts
 msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
 msgstr "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
 

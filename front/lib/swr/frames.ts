@@ -9,6 +9,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
+import type { GetFrameTrustResponseBody } from "@app/types/api/frame_trust";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -43,6 +44,29 @@ export function useFramePermissions({
     hasFrameFunctions: data?.hasFunctions ?? false,
     isFramePermissionsLoading: !disabled && !data && !error,
     isFramePermissionsError: error,
+  };
+}
+
+export function useFrameTrust({
+  owner,
+  frameId,
+}: {
+  owner: LightWorkspaceType;
+  frameId: string;
+}) {
+  const { fetcher } = useFetcher();
+  const trustFetcher: Fetcher<GetFrameTrustResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/frames/${encodeURIComponent(frameId)}/trust`,
+    trustFetcher,
+    { revalidateOnFocus: false }
+  );
+
+  return {
+    frameTrust: data?.trust ?? null,
+    isFrameTrustLoading: !data && !error,
+    isFrameTrustError: error,
   };
 }
 

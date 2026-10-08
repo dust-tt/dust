@@ -1,6 +1,7 @@
 import { callSandboxFunction } from "@app/lib/api/sandbox_functions/call_sandbox_function";
 import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_functions/events";
 import { Authenticator } from "@app/lib/auth";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -91,6 +92,10 @@ async function makeFunction(
       spaceId: space.sId,
       activePublicationId: PUBLICATION_ID,
     },
+  });
+  await FramePublicationResource.makeNew(auth, {
+    frame,
+    publicationId: PUBLICATION_ID,
   });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(

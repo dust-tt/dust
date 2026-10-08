@@ -1,5 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -82,6 +84,8 @@ export async function createTestFrameFunction(
     space,
     activePublicationId: publicationId,
   });
+  // Publishing records `auth`'s user as the publisher, which the invocation trust check reads.
+  await FramePublicationResource.makeNew(auth, { frame, publicationId });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
       auth,
@@ -122,11 +126,13 @@ export async function makeTestFrameFunction({
   enableFramesV2Functions = enableFramesV2,
   isSuperUser = false,
   shareScope = "workspace_and_emails",
+  viewerTrustsPublisher = true,
 }: {
   enableFramesV2?: boolean;
   enableFramesV2Functions?: boolean;
   isSuperUser?: boolean;
   shareScope?: "emails_only" | "workspace_and_emails";
+  viewerTrustsPublisher?: boolean;
 } = {}) {
   // Poke frame routes authenticate via Cloudflare Access; non-poke callers keep
   // the WorkOS private-api mock.
@@ -163,6 +169,7 @@ export async function makeTestFrameFunction({
     })}Task List/${FRAME_MANIFEST_FILE}`,
   });
   await frame.setShareScope(adminAuth, shareScope);
+  await FramePublicationResource.makeNew(adminAuth, { frame, publicationId });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
       adminAuth,
@@ -203,6 +210,13 @@ export async function makeTestFrameFunction({
     role: "user",
     workspace,
   });
+  // The request user is not the publisher, so its calls to this durable function need trust.
+  if (viewerTrustsPublisher) {
+    await FrameTrustResource.grant(auth, {
+      frame,
+      publisherUserModelId: adminAuth.getNonNullableUser().id,
+    });
+  }
 
   return { adminAuth, auth, frame, sandboxFunction, space, workspace };
 }

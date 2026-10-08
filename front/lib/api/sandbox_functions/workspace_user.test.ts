@@ -1,5 +1,8 @@
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -66,6 +69,9 @@ async function createFrame(adminAuth: Authenticator, space: SpaceResource) {
   });
 }
 
+// A `fast` function never needs trust, so these cases only exercise the identity policy.
+const POLICY_ONLY = { executionMode: "fast", publicationId: "unused" } as const;
+
 describe("authorizeSandboxFunctionInvocation for Frames", () => {
   it("requires a workspace member even when identity is optional", async () => {
     const { workspace, adminAuth, space } = await setup();
@@ -77,6 +83,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     const authorization = await authorizeSandboxFunctionInvocation(
       userlessAuth,
       {
+        ...POLICY_ONLY,
         userIdentity: "optional",
         origin: "delegated",
         owner: { kind: "frame", frame },
@@ -97,6 +104,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     );
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      ...POLICY_ONLY,
       userIdentity: "workspace_user_required",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -126,6 +134,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     });
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      ...POLICY_ONLY,
       userIdentity: "optional",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -150,6 +159,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     );
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      ...POLICY_ONLY,
       userIdentity: "workspace_user_required",
       origin: "interactive_session",
       owner: {
@@ -188,6 +198,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     });
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      ...POLICY_ONLY,
       userIdentity: "frame_author_required",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -218,6 +229,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     });
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      ...POLICY_ONLY,
       userIdentity: "frame_author_required",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -244,6 +256,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     });
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      ...POLICY_ONLY,
       userIdentity: "frame_author_required",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -275,6 +288,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
     const authorization = await authorizeSandboxFunctionInvocation(
       outsiderAuth,
       {
+        ...POLICY_ONLY,
         userIdentity: "frame_author_required",
         origin: "interactive_session",
         owner: { kind: "frame", frame },
@@ -293,6 +307,7 @@ describe("authorizeSandboxFunctionInvocation across server revisions", () => {
       "future_policy" as SandboxFunctionUserIdentityPolicy;
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      ...POLICY_ONLY,
       userIdentity: persistedPolicy,
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -319,6 +334,7 @@ describe("authorizeSandboxFunctionInvocation across server revisions", () => {
       "pod_member_required" as SandboxFunctionUserIdentityPolicy;
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      ...POLICY_ONLY,
       userIdentity: retiredPolicy,
       origin: "interactive_session",
       owner: { kind: "frame", frame },
@@ -327,5 +343,111 @@ describe("authorizeSandboxFunctionInvocation across server revisions", () => {
     // The caller would have satisfied the retired policy. Rows still carrying it are denied until
     // they are republished, rather than silently falling back to a weaker check.
     expect(authorization.authorized).toBe(false);
+  });
+});
+
+describe("authorizeSandboxFunctionInvocation tool trust", () => {
+  async function setupTrust() {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    await FramePublicationResource.makeNew(adminAuth, {
+      frame,
+      publicationId: "publication-1",
+    });
+    const viewer = await makeWorkspaceMember(workspace);
+    await addToSpaceGroup(adminAuth, space, "member", viewer);
+    const viewerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      viewer.sId,
+      workspace.sId
+    );
+
+    return { workspace, adminAuth, space, frame, viewer, viewerAuth };
+  }
+
+  function authorizeDurable(
+    auth: Authenticator,
+    frame: FileResource,
+    publicationId = "publication-1"
+  ) {
+    return authorizeSandboxFunctionInvocation(auth, {
+      userIdentity: "optional",
+      executionMode: "durable",
+      publicationId,
+      origin: "interactive_session",
+      owner: { kind: "frame", frame },
+    });
+  }
+
+  it("lets the publisher invoke a function that can call tools", async () => {
+    const { adminAuth, frame } = await setupTrust();
+
+    const authorization = await authorizeDurable(adminAuth, frame);
+
+    expect(authorization.authorized).toBe(true);
+  });
+
+  it("requires another user to trust the publisher", async () => {
+    const { adminAuth, frame, viewerAuth } = await setupTrust();
+
+    expect(await authorizeDurable(viewerAuth, frame)).toMatchObject({
+      authorized: false,
+      errorCode: "frame_trust_required",
+    });
+
+    await FrameTrustResource.grant(viewerAuth, {
+      frame,
+      publisherUserModelId: adminAuth.getNonNullableUser().id,
+    });
+
+    expect((await authorizeDurable(viewerAuth, frame)).authorized).toBe(true);
+  });
+
+  it("does not require trust for a fast function", async () => {
+    const { frame, viewerAuth } = await setupTrust();
+
+    const authorization = await authorizeSandboxFunctionInvocation(viewerAuth, {
+      userIdentity: "optional",
+      executionMode: "fast",
+      publicationId: "publication-1",
+      origin: "interactive_session",
+      owner: { kind: "frame", frame },
+    });
+
+    expect(authorization.authorized).toBe(true);
+  });
+
+  it("asks again when another user publishes", async () => {
+    const { workspace, adminAuth, frame, viewerAuth } = await setupTrust();
+    await FrameTrustResource.grant(viewerAuth, {
+      frame,
+      publisherUserModelId: adminAuth.getNonNullableUser().id,
+    });
+    const coEditor = await makeWorkspaceMember(workspace);
+    const coEditorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      coEditor.sId,
+      workspace.sId
+    );
+    await FramePublicationResource.makeNew(coEditorAuth, {
+      frame,
+      publicationId: "publication-2",
+    });
+
+    expect(
+      await authorizeDurable(viewerAuth, frame, "publication-2")
+    ).toMatchObject({
+      authorized: false,
+      errorCode: "frame_trust_required",
+    });
+  });
+
+  it("refuses a publication with no known publisher", async () => {
+    const { adminAuth, frame } = await setupTrust();
+
+    expect(
+      await authorizeDurable(adminAuth, frame, "unrecorded-publication")
+    ).toMatchObject({
+      authorized: false,
+      errorCode: "frame_trust_required",
+    });
   });
 });

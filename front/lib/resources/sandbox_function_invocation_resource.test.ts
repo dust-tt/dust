@@ -9,6 +9,8 @@ import type {
 import { SANDBOX_FUNCTION_RESULT_MAX_BYTES } from "@app/lib/api/sandbox_functions/result_envelope";
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { clearStagedSandboxFunctionInvocationBlob } from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -210,6 +212,10 @@ async function setupFrameExecutionTest({
         : { spaceId: space.sId }),
       activePublicationId: publicationId,
     },
+  });
+  await FramePublicationResource.makeNew(authenticator, {
+    frame,
+    publicationId,
   });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
@@ -1066,13 +1072,19 @@ describe("SandboxFunctionInvocationResource", () => {
   );
 
   it("clears user identity when the executor differs from the invocation user", async () => {
-    const { workspace, sandbox, invocation } = await setupExecutionTest();
+    const { authenticator, workspace, sandbox, sandboxFunction, invocation } =
+      await setupExecutionTest();
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     const otherUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
       workspace.sId
     );
+    // The durable function can call tools, so a viewer other than its publisher must trust them.
+    await FrameTrustResource.grant(otherUserAuth, {
+      frame: sandboxFunction.frame,
+      publisherUserModelId: authenticator.getNonNullableUser().id,
+    });
     const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 0,
