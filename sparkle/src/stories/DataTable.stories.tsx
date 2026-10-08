@@ -30,6 +30,12 @@ import {
   MenuItem,
 } from "@sparkle/components/DataTable";
 import { Folder } from "@sparkle/icons/v2-stroke";
+import {
+  SPARKLE_FORMAT_LOCALES,
+  type SparkleCatalogLocale,
+  type SparkleFormatLocale,
+  SparkleI18nProvider,
+} from "@sparkle/lib/i18n";
 
 const meta = {
   title: "Data Display/DataTable",
@@ -1525,6 +1531,100 @@ export const ColumnTypes = () => {
       setSorting={setSorting}
       getRowLabel={(row) => row.agent}
     />
+  );
+};
+
+// Mirrors front's `CATALOG_LOCALE_BY_LOCALE`: `en-GB` formats the UK way but renders the `en-US`
+// catalog.
+const CATALOG_LOCALE_BY_FORMAT_LOCALE: Record<
+  SparkleFormatLocale,
+  SparkleCatalogLocale
+> = {
+  "en-US": "en-US",
+  "en-GB": "en-US",
+  "fr-FR": "fr-FR",
+};
+
+const localizedUsageColumns: ColumnDef<UsageRow>[] = [
+  {
+    accessorKey: "agent",
+    id: "agent",
+    header: "Agent",
+    meta: { className: "w-full", rowHeader: true },
+    cell: (info) => (
+      <DataTable.CellContent>{info.row.original.agent}</DataTable.CellContent>
+    ),
+  },
+  {
+    accessorKey: "runs",
+    id: "runs",
+    header: "Runs",
+    meta: { type: "numeric", className: "w-28" },
+    cell: (info) => (
+      <DataTable.NumericCellContent value={info.row.original.runs * 1000} />
+    ),
+  },
+  {
+    accessorKey: "costCents",
+    id: "cost",
+    header: "Cost",
+    meta: { type: "numeric", className: "w-32" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={(info.row.original.costCents * 10) / 100}
+        precision={2}
+        unit="€"
+        unitPosition="suffix"
+      />
+    ),
+  },
+  {
+    id: "runsEnUs",
+    header: "Runs (en-US prop)",
+    meta: { type: "numeric", className: "w-36" },
+    cell: (info) => (
+      <DataTable.NumericCellContent
+        value={info.row.original.runs * 1000}
+        locale="en-US"
+      />
+    ),
+  },
+];
+
+/**
+ * Without a `locale` prop, `NumericCellContent` formats in the format locale of the closest
+ * `SparkleI18nProvider`: `en-US` groups with commas (`1,234.50`), `en-GB` the same way, and `fr-FR`
+ * with narrow no-break spaces and a decimal comma (`1 234,50`). `en-GB` keeps the `en-US` catalog,
+ * so the pagination text stays English. The last column passes `locale="en-US"`, which wins over
+ * the provider.
+ * @summary Numeric cells formatted in each format locale of `SparkleI18nProvider`.
+ */
+export const FormatLocales = () => {
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 3,
+  });
+  return (
+    <div className="flex flex-col gap-8">
+      {SPARKLE_FORMAT_LOCALES.map((formatLocale) => (
+        <SparkleI18nProvider
+          key={formatLocale}
+          locale={CATALOG_LOCALE_BY_FORMAT_LOCALE[formatLocale]}
+          formatLocale={formatLocale}
+        >
+          <div className="flex flex-col gap-2">
+            <h3 className="heading-base text-foreground">{formatLocale}</h3>
+            <DataTable
+              data={usageRows}
+              columns={localizedUsageColumns}
+              pagination={pagination}
+              setPagination={setPagination}
+              getRowLabel={(row) => row.agent}
+            />
+          </div>
+        </SparkleI18nProvider>
+      ))}
+    </div>
   );
 };
 
