@@ -60,7 +60,10 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
@@ -93,7 +96,6 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -570,6 +572,7 @@ const InputBarContainer = ({
   };
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   // Context usage provides the model required by the compaction endpoint; both back the /compact
   // slash command. SWR dedupes these with the ContextUsageIndicator calls.
@@ -622,14 +625,13 @@ const InputBarContainer = ({
         // Remove the file from the uploader service
         fileUploaderService.removeFile(fileId);
       } catch (e) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to inline text`,
-          description: normalizeError(e).message,
+          error: e,
         });
       }
     },
-    [editorRef, fileUploaderService, sendNotification, t]
+    [editorRef, fileUploaderService, sendApiErrorNotification, t]
   );
 
   // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
@@ -871,10 +873,9 @@ const InputBarContainer = ({
         if (inserted && filename) {
           removePastedAttachmentChip(filename);
         }
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to attach pasted text`,
-          description: normalizeError(e).message,
+          error: e,
         });
       }
     },
@@ -923,14 +924,13 @@ const InputBarContainer = ({
   const handleSelectedSpaceIdsChangeSafely = useCallback(
     (spaceIds: string[]) => {
       void handleSelectedSpaceIdsChange(spaceIds).catch((error) => {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to update Spaces`,
-          description: normalizeError(error).message,
+          error,
         });
       });
     },
-    [handleSelectedSpaceIdsChange, sendNotification, t]
+    [handleSelectedSpaceIdsChange, sendApiErrorNotification, t]
   );
 
   useEffect(() => {
@@ -1037,10 +1037,9 @@ const InputBarContainer = ({
       }
     },
     onError: (error) => {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to transcribe voice`,
-        description: normalizeError(error).message,
+        error,
       });
     },
   });
