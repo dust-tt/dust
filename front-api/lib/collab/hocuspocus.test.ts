@@ -1090,9 +1090,10 @@ describe("recheckAllConnections", () => {
     expect(document.getConnectionsCount()).toBe(0);
   });
 
-  it("keeps checking the others when one check fails", async () => {
+  it("closes a connection it fails to check, and still checks the others", async () => {
     const hocuspocus = createCollabHocuspocus();
     const failing = await openConnection(hocuspocus);
+    const kept = await openConnection(hocuspocus);
     const revoked = await openConnection(hocuspocus);
     await FeatureFlagResource.disable(revoked.workspace, "co_edition");
     const build = Authenticator.fromUserIdAndWorkspaceId.bind(Authenticator);
@@ -1107,7 +1108,8 @@ describe("recheckAllConnections", () => {
 
     await recheckAllConnections(hocuspocus);
 
-    expect(failing.document.getConnectionsCount()).toBe(1);
+    expect(failing.document.getConnectionsCount()).toBe(0);
+    expect(kept.document.getConnectionsCount()).toBe(1);
     expect(revoked.document.getConnectionsCount()).toBe(0);
     spy.mockRestore();
   });

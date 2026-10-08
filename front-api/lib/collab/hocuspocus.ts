@@ -590,13 +590,12 @@ export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
  * The collab server MUST start a sweep every `ACCESS_RECHECK_INTERVAL_MS`, unless the previous one
  * is still running. Every WebSocket document connection of this process open when the sweep starts
  * MUST be checked again with `recheckLiveAccess`, with an Authenticator freshly built for its user
- * in this sweep, and MUST be closed when the check fails.
+ * in this sweep, and MUST be closed when the check fails or throws.
  * A failure checking one user and document MUST NOT stop the others: it is logged and their
- * connections stay open until the next sweep, an exception to `no-catching-own-errors` limited to
- * it. The returned promise MUST resolve once every connection has been checked. Its per-user and
- * per-document reads are an exception to `batch-database-queries`, limited to it: they reuse the
- * Authenticator and the file system's permission checks, which have no batch API, and run at most
- * 4 at a time.
+ * connections closed, an exception to `no-catching-own-errors` limited to it. The returned promise
+ * MUST resolve once every connection has been checked. Its per-user and per-document reads are an
+ * exception to `batch-database-queries`, limited to it: they reuse the Authenticator and the file
+ * system's permission checks, which have no batch API, and run at most 4 at a time.
  */
 export async function recheckAllConnections(
   hocuspocus: Hocuspocus<LiveFile>
@@ -641,32 +640,35 @@ export async function recheckAllConnections(
     [...groups.values()],
     async (connections) => {
       const { auth, workspaceId, canonicalPath } = connections[0].context;
+      const userId = auth.getNonNullableUser().sId;
+      const close = () => {
+        for (const connection of connections) {
+          connection.close(FORBIDDEN);
+        }
+        closed += connections.length;
+      };
       let access: Result<void, LiveAccessError>;
       try {
-        const fresh = await authenticatorFor(
-          auth.getNonNullableUser().sId,
-          workspaceId
-        );
+        const fresh = await authenticatorFor(userId, workspaceId);
         access = await recheckLiveAccess(fresh, canonicalPath);
       } catch (err) {
         failed++;
         logger.error(
-          { err: normalizeError(err), workspaceId },
-          "Collab access re-check failed"
+          { err: normalizeError(err), workspaceId, userId },
+          "Collab access re-check failed, closing its connections"
         );
+        // Access is unknown: closed, as when it is lost. The browser reconnects with a new ticket.
+        close();
         return;
       }
       if (access.isOk()) {
         return;
       }
       logger.info(
-        { workspaceId, reason: access.error.message },
+        { workspaceId, userId, reason: access.error.message },
         "Collab connection closed: access lost"
       );
-      for (const connection of connections) {
-        connection.close(FORBIDDEN);
-      }
-      closed += connections.length;
+      close();
     },
     { concurrency: 4 }
   );
