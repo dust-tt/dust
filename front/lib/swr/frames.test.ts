@@ -1,5 +1,5 @@
 import { useEditFrameText } from "@app/lib/swr/frames";
-import type { LightWorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,19 +7,7 @@ const clientFetch = vi.hoisted(() => vi.fn());
 
 vi.mock("@app/lib/egress/client", () => ({ clientFetch }));
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "workspace_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "workspace_1", role: "user" });
 
 beforeEach(() => {
   clientFetch.mockReset();

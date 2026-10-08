@@ -1,10 +1,10 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
-import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import {
   BlockedActionsProvider,
   useBlockedActionsContext,
@@ -28,19 +28,7 @@ vi.mock("@app/hooks/conversations", () => ({
   }),
 }));
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 const conversation: ConversationListItemType = {
   actionRequired: true,
