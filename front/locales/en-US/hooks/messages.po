@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useSearchMembersByEmails.ts
+msgid "We couldn't check which users are already members"
+msgstr "We couldn't check which users are already members"
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"

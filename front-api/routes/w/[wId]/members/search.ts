@@ -1,12 +1,17 @@
 import type {
   SearchMembersAdminResponseBody,
+  SearchMembersByEmailsResponseBody,
   SearchMembersResponseBody,
 } from "@app/lib/api/workspace";
 import { searchMembers } from "@app/lib/api/workspace";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { hasAnyGroupPermission } from "@app/lib/resources/group_management_access";
 import { USER_VISIBLE_GROUP_KINDS } from "@app/types/groups";
-import { ActiveRoleSchema, toLightUserWithWorkspace } from "@app/types/user";
+import {
+  ActiveRoleSchema,
+  toLightUser,
+  toLightUserWithWorkspace,
+} from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -24,6 +29,11 @@ const SearchMembersQuerySchema = z.object({
   groupKind: z.enum(USER_VISIBLE_GROUP_KINDS).optional(),
   // Restricts the results to the members holding that role.
   role: ActiveRoleSchema.optional(),
+});
+
+// Emails go in the body so they stay out of URLs and request logs.
+const SearchMembersByEmailsBodySchema = z.object({
+  emails: z.array(z.string()).min(1).max(MAX_SEARCH_EMAILS),
 });
 
 // Mounted at /api/w/:wId/members/search.
@@ -87,6 +97,29 @@ app.get(
     return ctx.json({
       members: members.map(toLightUserWithWorkspace),
       total,
+    });
+  }
+);
+
+/** @ignoreswagger */
+app.post(
+  "/",
+  validate("json", SearchMembersByEmailsBodySchema),
+  async (ctx): HandlerResult<SearchMembersByEmailsResponseBody> => {
+    const auth = ctx.get("auth");
+    const { emails } = ctx.req.valid("json");
+
+    const { members } = await searchMembers(
+      auth,
+      { searchEmails: emails },
+      { offset: 0, limit: emails.length }
+    );
+
+    return ctx.json({
+      members: members.map((m) => ({
+        ...toLightUser(m),
+        role: m.workspace.role,
+      })),
     });
   }
 );
