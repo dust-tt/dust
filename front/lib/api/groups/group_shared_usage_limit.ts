@@ -192,9 +192,7 @@ export async function setGroupSharedUsageLimit(
   }
   const group = groupRes.value;
 
-  const previousAwuCredits = group.sharedUsageLimitAwuCredits;
-
-  await group.updateSharedUsageLimit(
+  const { previousAwuCredits } = await group.updateSharedUsageLimit(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
@@ -314,9 +312,9 @@ export async function setSharedUsageLimitOrder(
       );
     }
 
-    const groupBySId = new Map(groups.map((group) => [group.sId, group]));
+    const groupById = new Map(groups.map((group) => [group.sId, group]));
     const orderedGroups = removeNulls(
-      orderedGroupIds.map((groupId) => groupBySId.get(groupId) ?? null)
+      orderedGroupIds.map((groupId) => groupById.get(groupId) ?? null)
     );
     if (
       orderedGroupIds.length !== groups.length ||

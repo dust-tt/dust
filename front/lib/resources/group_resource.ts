@@ -2542,9 +2542,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       priorities.length === orderedGroups.length,
       "Only groups with a shared usage limit can be reordered."
     );
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
-    const groupIds = orderedGroups.map((group) => group.id);
+    const groupModelIds = orderedGroups.map((group) => group.id);
     const whenClauses = orderedGroups
       .map(
         (group, index) =>
@@ -2555,11 +2555,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     await withTransaction(async (transaction) => {
       await GroupModel.update(
         { sharedUsageLimitPriority: literal('-"sharedUsageLimitPriority"') },
-        { where: { id: groupIds, workspaceId }, transaction }
+        {
+          where: { id: groupModelIds, workspaceId: workspaceModelId },
+          transaction,
+        }
       );
       await GroupModel.update(
         { sharedUsageLimitPriority: literal(`CASE "id" ${whenClauses} END`) },
-        { where: { id: groupIds, workspaceId }, transaction }
+        {
+          where: { id: groupModelIds, workspaceId: workspaceModelId },
+          transaction,
+        }
       );
     }, transaction);
   }
@@ -2568,37 +2574,53 @@ export class GroupResource extends BaseResource<GroupModel> {
    * @cc [owner:rfrenoy,label:product;backend] group-shared-usage-limit-columns-paired
    * `sharedUsageLimitAwuCredits` and `sharedUsageLimitPriority` MUST be both null or both non-null, and MUST
    * only be written by this method and `reorderSharedUsageLimitPriorities` (which only permutes existing
-   * priorities). A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
+   * priorities). Both MUST decide what to write from the row as locked in their write transaction, not
+   * from a copy read earlier. A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
    */
   async updateSharedUsageLimit(
     sharedUsageLimitAwuCredits: number | null
-  ): Promise<void> {
-    if (sharedUsageLimitAwuCredits === null) {
-      await this.update({
-        sharedUsageLimitAwuCredits: null,
-        sharedUsageLimitPriority: null,
+  ): Promise<{ previousAwuCredits: number | null }> {
+    return withTransaction(async (transaction) => {
+      const current = await GroupModel.findOne({
+        attributes: ["sharedUsageLimitAwuCredits", "sharedUsageLimitPriority"],
+        where: { id: this.id, workspaceId: this.workspaceId },
+        lock: transaction.LOCK.UPDATE,
+        transaction,
       });
-      return;
-    }
+      const previousAwuCredits = current?.sharedUsageLimitAwuCredits ?? null;
 
-    if (this.sharedUsageLimitPriority !== null) {
-      await this.update({ sharedUsageLimitAwuCredits });
-      return;
-    }
-
-    const maxPriority = await GroupModel.max<number | null, GroupModel>(
-      "sharedUsageLimitPriority",
-      {
-        where: {
-          workspaceId: this.workspaceId,
-          sharedUsageLimitPriority: { [Op.ne]: null },
-        },
+      if (sharedUsageLimitAwuCredits === null) {
+        await this.update(
+          { sharedUsageLimitAwuCredits: null, sharedUsageLimitPriority: null },
+          transaction
+        );
+        return { previousAwuCredits };
       }
-    );
 
-    await this.update({
-      sharedUsageLimitAwuCredits,
-      sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
+      if ((current?.sharedUsageLimitPriority ?? null) !== null) {
+        await this.update({ sharedUsageLimitAwuCredits }, transaction);
+        return { previousAwuCredits };
+      }
+
+      const maxPriority = await GroupModel.max<number | null, GroupModel>(
+        "sharedUsageLimitPriority",
+        {
+          where: {
+            workspaceId: this.workspaceId,
+            sharedUsageLimitPriority: { [Op.ne]: null },
+          },
+          transaction,
+        }
+      );
+
+      await this.update(
+        {
+          sharedUsageLimitAwuCredits,
+          sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
+        },
+        transaction
+      );
+      return { previousAwuCredits };
     });
   }
 
