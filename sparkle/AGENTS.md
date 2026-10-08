@@ -170,8 +170,7 @@ entry so stored payloads still resolve, and remove both on the following publish
   `npx mcp-add --type http --url "http://localhost:6006/mcp" --scope project`.
 - Curation is tag-driven: stories or files tagged `"!manifest"` are excluded (asset catalogs,
   token tables, design-review galleries, interaction tests, deprecated components). The
-  `"deprecated"` tag renders a sidebar badge. Keep meta `tags: [...]` on one line — the a11y
-  sync script parses it textually.
+  `"deprecated"` tag renders a sidebar badge.
 - Story conventions that feed the manifest: JSDoc with `@summary` on every story export,
   intent-bearing story names, args-driven CSF3 (a `render` must spread its args), `fn()` from
   `storybook/test` for callbacks, component-level JSDoc in `src/components/` (picked up by
@@ -193,21 +192,5 @@ Stories run as real browser tests (vitest browser mode + Playwright Chromium), c
 # Accessibility workflow
 
 Every story gets an axe-core Accessibility panel (a11y addon). Violations are warnings, not
-failures (`a11y: { test: "todo" }` in `.storybook/preview.ts`).
-
-Components with known violations carry an `"a11y-issues"` tag on their story meta, rendered as
-a red "A11y" sidebar badge (tag-badges addon, configured in `.storybook/manager.ts`).
-
-These tags are maintained by a script — do not add or remove them by hand:
-
-```
-npm run a11y:sync
-```
-
-It re-runs the suite in strict mode (`VITE_A11Y_STRICT=1` makes violations fail), then adds the
-tag to story files with violations and removes it from files that are now clean
-(`scripts/sync-a11y-tags.mjs`). Run it after a11y fixes and commit the diff. The prod Storybook
-only reflects the tags committed at build time, so keep them in sync.
-
-To fix a badged component: open it in Storybook, read the violations in the Accessibility
-panel, fix the component, then run the sync and commit the tag removal it produces.
+failures (`a11y: { test: "todo" }` in `.storybook/preview.ts`). To fix one, open the component in
+Storybook and read the violations in the Accessibility panel.

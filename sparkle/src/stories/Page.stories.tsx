@@ -15,7 +15,6 @@ import {
 
 const meta = {
   title: "Layout/Page",
-  tags: ["a11y-issues"],
   component: Page,
   parameters: {
     docs: {

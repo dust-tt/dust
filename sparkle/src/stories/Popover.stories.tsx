@@ -16,7 +16,6 @@ import {
 
 const meta = {
   title: "Overlays/Popover",
-  tags: ["a11y-issues"],
   component: Popover,
   parameters: {
     docs: {

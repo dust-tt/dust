@@ -213,12 +213,6 @@ export type {
   LegacyRegularButtonProps,
 } from "./LegacyButton";
 export { LegacyButton, MetaButton } from "./LegacyButton";
-export type { LegacyInputProps } from "./LegacyInput";
-export { LegacyInput } from "./LegacyInput";
-export type { LegacyInputWithSaveProps } from "./LegacyInputWithSave";
-export { LegacyInputWithSave } from "./LegacyInputWithSave";
-export type { LegacyFlexSplitButtonProps } from "./LegacySplitButton";
-export { LegacyFlexSplitButton } from "./LegacySplitButton";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
@@ -278,7 +272,6 @@ export { PriceTable } from "./PriceTable";
 export { ProgressBar } from "./ProgressBar";
 export { PuzzleSpinner } from "./PuzzleSpinner";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
-export { RainbowEffect } from "./RainbowEffect";
 export {
   ResizableHandle,
   ResizablePanel,
@@ -317,8 +310,6 @@ export type { SliderStepsProps } from "./SliderSteps";
 export { SliderSteps } from "./SliderSteps";
 export { SliderToggle } from "./SliderToggle";
 export { Spinner } from "./Spinner";
-export type { SpinnerBrandProps } from "./SpinnerBrand";
-export { SpinnerBrand } from "./SpinnerBrand";
 export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";

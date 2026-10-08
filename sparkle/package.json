@@ -23,7 +23,6 @@
     "build-storybook": "storybook build",
     "pretest:unit": "npm run i18n:compile",
     "test:unit": "vitest run --config vitest.unit.config.ts",
-    "a11y:sync": "node scripts/sync-a11y-tags.mjs",
     "watch": "npm-watch"
   },
   "watch": {

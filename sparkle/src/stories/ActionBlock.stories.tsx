@@ -12,7 +12,6 @@ import {
 
 const meta = {
   title: "Product/Conversation/ActionBlock",
-  tags: ["a11y-issues"],
   component: ActionCardBlock,
   parameters: {
     layout: "padded",

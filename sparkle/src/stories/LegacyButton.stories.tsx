@@ -22,7 +22,7 @@ const ICONS = {
 const meta = {
   title: "Actions/LegacyButton",
   component: Button,
-  tags: ["deprecated", "!manifest", "a11y-issues", "autodocs"],
+  tags: ["deprecated", "!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {

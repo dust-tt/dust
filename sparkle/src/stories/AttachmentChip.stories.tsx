@@ -26,7 +26,7 @@ const meta = {
       },
     },
   },
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
 } satisfies Meta<typeof AttachmentChip>;
 
 export default meta;

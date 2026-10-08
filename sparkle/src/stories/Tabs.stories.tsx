@@ -15,7 +15,7 @@ import {
 const meta = {
   title: "Navigation/Tabs",
   component: Tabs,
-  tags: ["a11y-issues", "autodocs"],
+  tags: ["autodocs"],
   parameters: {
     docs: {
       description: {

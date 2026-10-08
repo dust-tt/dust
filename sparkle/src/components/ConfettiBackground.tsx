@@ -54,7 +54,10 @@ export interface ConfettiBackgroundProps {
  * backdrop, switching between `confetti` and `snow` via `variant`. Use it sparingly
  * to celebrate a milestone or add seasonal ambiance, rendered inside a positioned,
  * sized container whose ref is passed to `referentSize`, kept behind content.
- * @summary Falling-particle backdrop.
+ *
+ * @deprecated Scheduled for removal, no replacement. Do not add new usages.
+ *
+ * @summary Deprecated falling-particle backdrop.
  */
 const ConfettiBackground: React.FC<ConfettiBackgroundProps> = ({
   width,

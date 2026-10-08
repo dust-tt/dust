@@ -6,10 +6,13 @@ import { ConfettiBackground } from "@sparkle/index";
 const meta = {
   title: "Effects & Motion/ConfettiBackground",
   component: ConfettiBackground,
+  tags: ["deprecated", "!manifest"],
   parameters: {
     docs: {
       description: {
-        component: `A full-bleed canvas of falling particles used as a celebratory or atmospheric backdrop. The **variant** prop switches between \`confetti\` (festive, multicolor) and \`snow\` (calm, drifting flakes), and **referentSize** takes a ref to the sizing container so the canvas matches its dimensions.
+        component: `**Deprecated — scheduled for removal, no replacement.** Kept only as a visual reference for existing product and marketing surfaces.
+
+A full-bleed canvas of falling particles used as a celebratory or atmospheric backdrop. The **variant** prop switches between \`confetti\` (festive, multicolor) and \`snow\` (calm, drifting flakes), and **referentSize** takes a ref to the sizing container so the canvas matches its dimensions.
 
 **When to use**
 - To celebrate a milestone or success moment (onboarding complete, plan upgraded).

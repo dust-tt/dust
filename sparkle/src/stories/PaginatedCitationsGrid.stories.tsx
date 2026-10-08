@@ -5,7 +5,6 @@ import { File02, PaginatedCitationsGrid } from "../index_with_tw_base";
 
 const meta = {
   title: "Product/Conversation/PaginatedCitationsGrid",
-  tags: ["a11y-issues"],
   component: PaginatedCitationsGrid,
   parameters: {
     docs: {
