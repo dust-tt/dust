@@ -52,8 +52,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import { useSWRConfig } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 const SEARCH_SKILLS_DEBOUNCE_MS = 250;
@@ -767,30 +765,6 @@ export function useSkillHistory({
     isSkillHistoryLoading: !error && !data && !disabled,
     isSkillHistoryError: error,
     mutateSkillHistory: mutate,
-  };
-}
-
-export function useSkillWithRelations(
-  owner: LightWorkspaceType,
-  options?: SWRMutationConfiguration<
-    GetSkillWithRelationsResponseBody,
-    Error,
-    string,
-    string
-  >
-) {
-  const { fetcher } = useFetcher();
-  const { trigger, isMutating } = useSWRMutation(
-    `/api/w/${owner.sId}/skills`,
-    async (url: string, { arg }: { arg: string }) => {
-      return fetcher(`${url}/${arg}?withRelations=true`);
-    },
-    options
-  );
-
-  return {
-    fetchSkillWithRelations: trigger,
-    isLoading: isMutating,
   };
 }
 
