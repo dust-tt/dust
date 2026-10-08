@@ -350,14 +350,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
-  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-28).
-  // Same rates as Sonnet 5.
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-10-08).
+  // Same rates as Sonnet 5 except cache reads, which are 0.05x base input on
+  // Sonnet 5.5 instead of the usual 0.1x.
   "claude-sonnet-5-5": {
     input: 2.0,
     output: 10.0,
     cache_creation_input_tokens: 2.5,
     long_cache_creation_input_tokens: 4.0,
-    cache_read_input_tokens: 0.2,
+    cache_read_input_tokens: 0.1,
   },
   // https://platform.claude.com/docs/en/about-claude/pricing
   "claude-sonnet-5": {
