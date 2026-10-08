@@ -142,6 +142,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   conversation_with_unavailable_agent: msg`This conversation uses an agent that is no longer available.`,
   user_already_participant: msg`You're already a participant in this conversation.`,
   message_deletion_not_authorized: msg`You aren't allowed to delete this message.`,
+  message_outdated: msg`This message has changed. Refresh the page and try again.`,
   conversation_context_usage_not_found: msg`Conversation context usage not found.`,
   mcp_auth_error: msg`The tool rejected the credentials.`,
   invalid_mcp_server_id: msg`The tool identifier is invalid.`,

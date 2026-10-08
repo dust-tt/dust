@@ -518,6 +518,10 @@ msgid "You aren't allowed to delete this message."
 msgstr "You aren't allowed to delete this message."
 
 #: front/lib/api_error_messages.ts
+msgid "This message has changed. Refresh the page and try again."
+msgstr "This message has changed. Refresh the page and try again."
+
+#: front/lib/api_error_messages.ts
 msgid "Conversation context usage not found."
 msgstr "Conversation context usage not found."
 

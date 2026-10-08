@@ -518,6 +518,10 @@ msgid "You aren't allowed to delete this message."
 msgstr "Vous n’êtes pas autorisé à supprimer ce message."
 
 #: front/lib/api_error_messages.ts
+msgid "This message has changed. Refresh the page and try again."
+msgstr "Ce message a été modifié. Actualisez la page et réessayez."
+
+#: front/lib/api_error_messages.ts
 msgid "Conversation context usage not found."
 msgstr "Utilisation du contexte de la conversation introuvable."
 

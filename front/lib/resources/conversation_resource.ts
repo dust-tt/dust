@@ -4502,6 +4502,28 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Returns the latest version of the message at `rank` if it is newer than `version`, null
+   * otherwise. Edits, retries and deletions each add a new version (a new row with its own sId) at
+   * the same rank, so a client may still hold an outdated one.
+   */
+  static async fetchNewerMessageVersion(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType,
+    { rank, version }: { rank: number; version: number }
+  ): Promise<MessageModel | null> {
+    // Served by the unique index on (workspaceId, conversationId, rank, version).
+    return MessageModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+        rank,
+        version: { [Op.gt]: version },
+      },
+      order: [["version", "DESC"]],
+    });
+  }
+
+  /**
    * @cc [owner:id13,label:security;backend] scoped-agent-message-status
    * The returned status MUST belong to the given conversation and authenticated workspace.
    */
