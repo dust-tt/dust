@@ -430,6 +430,7 @@ describe("POST /api/w/:wId/members/:uId", () => {
       "image",
       "pronouns",
       "jobType",
+      "groups",
       "revoked",
       "role",
       "startAt",
