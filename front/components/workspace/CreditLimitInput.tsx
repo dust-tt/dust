@@ -2,12 +2,16 @@ import { formatNumber } from "@app/lib/i18n/format";
 import { Button, Input, Page, Tooltip } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
+type CreditLimitDescriptionStatus = "info" | "default";
+
 interface CreditLimitNumberInputProps {
   value: string;
   readOnly: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   suffix?: string;
+  description?: string;
+  descriptionStatus?: CreditLimitDescriptionStatus;
 }
 
 export function CreditLimitNumberInput({
@@ -16,6 +20,8 @@ export function CreditLimitNumberInput({
   validationMessage,
   onChange,
   suffix,
+  description,
+  descriptionStatus = "default",
 }: CreditLimitNumberInputProps) {
   const { t } = useLingui();
   return (
@@ -31,8 +37,14 @@ export function CreditLimitNumberInput({
         onChange(e.target.value.replace(/[^\d]/g, ""));
       }}
       isError={validationMessage !== null}
-      message={validationMessage ?? undefined}
-      messageStatus={validationMessage !== null ? "error" : undefined}
+      message={validationMessage ?? description}
+      messageStatus={
+        validationMessage !== null
+          ? "error"
+          : description !== undefined
+            ? descriptionStatus
+            : undefined
+      }
       suffix={suffix ?? t`credits/month`}
       isUnit
     />
@@ -63,6 +75,8 @@ interface CreditLimitInputProps {
   isActive?: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
+  description?: string;
+  descriptionStatus?: CreditLimitDescriptionStatus;
   // Small text action rendered on the opposite end of the label row (e.g. to
   // clear the field). Omit when the field has nothing to clear back to.
   action?: { label: string; onClick: () => void };
@@ -76,6 +90,8 @@ export function CreditLimitInput({
   isActive = false,
   validationMessage,
   onChange,
+  description,
+  descriptionStatus,
   action,
 }: CreditLimitInputProps) {
   const input = (
@@ -84,6 +100,8 @@ export function CreditLimitInput({
       readOnly={readOnly}
       validationMessage={validationMessage}
       onChange={onChange}
+      description={description}
+      descriptionStatus={descriptionStatus}
     />
   );
   return (

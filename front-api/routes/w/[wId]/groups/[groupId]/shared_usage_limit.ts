@@ -1,11 +1,13 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import {
   type SharedUsageLimitError,
-  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
-  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
   setGroupSharedUsageLimit,
 } from "@app/lib/api/groups/group_shared_usage_limit";
 import type { PutSharedUsageLimitResponseBody } from "@app/types/api/groups/shared_usage_limit";
+import {
+  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+} from "@app/types/api/groups/shared_usage_limit";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";

@@ -1,13 +1,14 @@
+import type {
+  EditGroupUsageGroup,
+  EditGroupUsageSeatOptions,
+} from "@app/components/workspace/EditGroupUsageDialog";
+import { EditGroupUsageDialog } from "@app/components/workspace/EditGroupUsageDialog";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
-import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
-import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { SharedUsageLimitCell } from "@app/components/workspace/SharedUsageLimitCell";
 import { useGroupsUsage } from "@app/hooks/useGroupsUsage";
-import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
-import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
-import type { GroupGrantableSeatType } from "@app/types/groups";
+import { formatCredits } from "@app/lib/client/credits";
+import { useGroups } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
@@ -19,31 +20,22 @@ import {
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   visibleGroupIds?: ReadonlySet<string>;
+  // Rows outside this set are read-only and do not open the group dialog.
   editableGroupIds?: ReadonlySet<string>;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
-  // Admin-only: renders the "Shared usage limit" column (shared group budget) when shared usage limits are
-  // enabled for the workspace, and renames the per-member column "Limit per member".
   showSharedUsageLimitColumn?: boolean;
-  // When set (with `seatPlans` and `grantableSeatTypes`), renders the "Granted
-  // seat" column letting an admin map each group to a billable seat tier.
-  showSeatColumn?: boolean;
-  seatPlans?: SeatPlanResponseBody;
-  grantableSeatTypes?: GroupGrantableSeatType[];
+  canEditSharedUsageLimit?: boolean;
+  // When set, the group dialog lets an admin map the group to a billable seat tier.
+  seatOptions?: EditGroupUsageSeatOptions;
 }
 
-type GroupRowData = {
-  groupId: string;
-  name: string;
-  memberCount: number;
-  poolCapAwuCredits: number | null;
-  grantedSeatType: GroupGrantableSeatType | null;
-  sharedUsageLimitUsage: SharedUsageLimitWithUsage | undefined;
+type GroupRowData = EditGroupUsageGroup & {
   onClick?: () => void;
 };
 
@@ -61,13 +53,11 @@ function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
     case "memberCount":
       return <LoadingBlock className="h-3 w-8" />;
     case "cap":
-      return <LoadingBlock className="h-8 w-60 rounded-xl" />;
+      return <LoadingBlock className="h-3 w-24" />;
     case "sharedUsageLimit":
       return <LoadingBlock className="h-3 w-40" />;
     case "modelTiers":
       return <LoadingBlock className="h-8 w-48 rounded-xl" />;
-    case "grantedSeat":
-      return <LoadingBlock className="h-8 w-40 rounded-xl" />;
     default:
       return null;
   }
@@ -80,9 +70,8 @@ export function GroupsUsageTable({
   showSpendLimitColumn = true,
   showModelTiersColumn = false,
   showSharedUsageLimitColumn = false,
-  showSeatColumn = false,
-  seatPlans,
-  grantableSeatTypes,
+  canEditSharedUsageLimit = false,
+  seatOptions,
 }: GroupsUsageTableProps) {
   const { t } = useLingui();
   const { groups, isGroupsLoading } = useGroups({
@@ -94,11 +83,11 @@ export function GroupsUsageTable({
       owner,
       disabled: !showSharedUsageLimitColumn,
     });
+  const [editedGroupId, setEditedGroupId] = useState<string | null>(null);
   const isSharedUsageLimitShown =
     showSharedUsageLimitColumn && !isGroupsUsageError;
-  const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
-    workspaceId: owner.sId,
-  });
+  const isGroupDialogEnabled =
+    showSpendLimitColumn && !(isSharedUsageLimitShown && isGroupsUsageLoading);
 
   const rows: GroupRowData[] = useMemo(
     () =>
@@ -111,9 +100,21 @@ export function GroupsUsageTable({
           poolCapAwuCredits: group.poolCapAwuCredits,
           grantedSeatType: group.grantedSeatType,
           sharedUsageLimitUsage: usageByGroupId.get(group.sId),
+          onClick:
+            isGroupDialogEnabled &&
+            (!editableGroupIds || editableGroupIds.has(group.sId))
+              ? () => setEditedGroupId(group.sId)
+              : undefined,
         })),
-    [groups, visibleGroupIds, usageByGroupId]
+    [
+      groups,
+      visibleGroupIds,
+      editableGroupIds,
+      usageByGroupId,
+      isGroupDialogEnabled,
+    ]
   );
+  const editedGroup = rows.find((row) => row.groupId === editedGroupId) ?? null;
 
   const columns: ColumnDef<GroupRowData, string>[] = useMemo(
     () => [
@@ -140,54 +141,24 @@ export function GroupsUsageTable({
         ),
         enableSorting: false,
       },
-      ...(showSeatColumn &&
-      seatPlans &&
-      grantableSeatTypes &&
-      grantableSeatTypes.length > 0
-        ? [
-            {
-              id: "grantedSeat",
-              header: t`Granted seat`,
-              meta: { className: "hidden @2xl:table-cell @2xl:w-56" },
-              cell: (info: GroupInfo) => (
-                <GroupSeatPickerDropdown
-                  owner={owner}
-                  groupId={info.row.original.groupId}
-                  groupName={info.row.original.name}
-                  memberCount={info.row.original.memberCount}
-                  grantedSeatType={info.row.original.grantedSeatType}
-                  grantableSeatTypes={grantableSeatTypes}
-                  seatPlans={seatPlans}
-                />
-              ),
-              enableSorting: false,
-            } satisfies ColumnDef<GroupRowData, string>,
-          ]
-        : []),
       ...(showSpendLimitColumn
         ? [
             {
               id: "cap",
-              header: isSharedUsageLimitShown
-                ? t`Limit per member`
-                : t`Spend limit`,
-              meta: { className: "hidden @3xl:table-cell @3xl:w-64" },
-              cell: (info: GroupInfo) => (
-                <GroupSpendLimitCell
-                  group={info.row.original}
-                  disabled={
-                    editableGroupIds !== undefined &&
-                    !editableGroupIds.has(info.row.original.groupId)
-                  }
-                  onSave={async (group, limit) => {
-                    await doUpdateGroupSpendLimit({
-                      groupId: group.groupId,
-                      groupName: group.name,
-                      limit,
-                    });
-                  }}
-                />
-              ),
+              header: t`Limit per member`,
+              meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
+              cell: (info: GroupInfo) => {
+                const { poolCapAwuCredits } = info.row.original;
+                return (
+                  <DataTable.BasicCellContent
+                    label={
+                      poolCapAwuCredits === null
+                        ? t`No limit`
+                        : formatCredits(poolCapAwuCredits)
+                    }
+                  />
+                );
+              },
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
           ]
@@ -196,7 +167,7 @@ export function GroupsUsageTable({
         ? [
             {
               id: "sharedUsageLimit",
-              header: t`Shared limit`,
+              header: t`Group budget`,
               meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
               cell: (info: GroupInfo) =>
                 isGroupsUsageLoading ? (
@@ -222,10 +193,15 @@ export function GroupsUsageTable({
               ),
               meta: { className: "hidden @2xl:table-cell @2xl:w-64" },
               cell: (info: GroupInfo) => (
-                <GroupModelTierPickerDropdown
-                  owner={owner}
-                  groupId={info.row.original.groupId}
-                />
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <GroupModelTierPickerDropdown
+                    owner={owner}
+                    groupId={info.row.original.groupId}
+                  />
+                </div>
               ),
               enableSorting: false,
             } satisfies ColumnDef<GroupRowData, string>,
@@ -237,12 +213,7 @@ export function GroupsUsageTable({
       showSpendLimitColumn,
       isSharedUsageLimitShown,
       isGroupsUsageLoading,
-      editableGroupIds,
       showModelTiersColumn,
-      showSeatColumn,
-      seatPlans,
-      grantableSeatTypes,
-      doUpdateGroupSpendLimit,
       t,
     ]
   );
@@ -259,7 +230,7 @@ export function GroupsUsageTable({
             <>
               {" "}
               <Trans>
-                A shared limit caps what all the group's members spend together.
+                A group budget caps what all the group's members spend together.
               </Trans>
             </>
           )}
@@ -274,6 +245,20 @@ export function GroupsUsageTable({
       ) : (
         <DataTable filterColumn="name" data={rows} columns={columns} />
       )}
+      <EditGroupUsageDialog
+        isOpen={editedGroup !== null}
+        onClose={() => setEditedGroupId(null)}
+        owner={owner}
+        group={editedGroup}
+        seatOptions={seatOptions}
+        sharedUsageLimitAccess={
+          !isSharedUsageLimitShown
+            ? "hidden"
+            : canEditSharedUsageLimit
+              ? "editable"
+              : "readOnly"
+        }
+      />
     </div>
   );
 }

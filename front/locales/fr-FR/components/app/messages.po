@@ -458,16 +458,16 @@ msgid "You have reached your personal usage cap. Please contact your administrat
 msgstr "Vous avez atteint votre plafond d’utilisation personnel. Veuillez contacter votre administrateur pour l’augmenter."
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Shared usage limit reached"
-msgstr "Limite d’utilisation partagée atteinte"
+msgid "Group budget reached"
+msgstr "Budget du groupe atteint"
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page."
-msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Vous pouvez ajuster les limites partagées sur la page d’utilisation."
+msgid "Your group has reached its budget. You can adjust group budgets on the usage page."
+msgstr "Votre groupe a atteint son budget. Vous pouvez ajuster les budgets des groupes sur la page d’utilisation."
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
-msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Veuillez contacter les managers de votre groupe ou votre administrateur pour l’augmenter."
+msgid "Your group has reached its budget. Please contact your group managers or administrator to increase it."
+msgstr "Votre groupe a atteint son budget. Contactez les responsables de votre groupe ou votre administrateur pour l’augmenter."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Cancel"

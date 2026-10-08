@@ -1,3 +1,6 @@
+export const MIN_SHARED_USAGE_LIMIT_AWU_CREDITS = 0;
+export const MAX_SHARED_USAGE_LIMIT_AWU_CREDITS = 100_000_000;
+
 export type SharedUsageLimit =
   | { kind: "unlimited" }
   | { kind: "limited"; awuCredits: number };
