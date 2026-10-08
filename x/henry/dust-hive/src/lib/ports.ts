@@ -11,7 +11,7 @@ import { isProcessRunning, killProcess } from "./process";
 // Offsets chosen so base_port + offset resembles standard ports:
 // postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
 // qdrant: 333 -> 10333 (resembles 6333 HTTP), elasticsearch: 200 -> 10200 (resembles 9200),
-// kibana: 601 -> 10601 (resembles 5601)
+// kibana: 601 -> 10601 (resembles 5601), fdb: 500 -> 10500 (resembles 4500)
 // `front` (offset 0) is the public/main port; it now hosts the in-hive HTTP
 // proxy that routes /api/* to front-api and everything else to marketing.
 export const PORT_OFFSETS = {
@@ -33,6 +33,7 @@ export const PORT_OFFSETS = {
   qdrantGrpc: 334,
   elasticsearch: 200,
   kibana: 601,
+  fdb: 500,
   apacheTika: 998,
 } as const;
 
@@ -63,6 +64,7 @@ const PortAllocationSchema = z
     qdrantGrpc: z.number(),
     elasticsearch: z.number(),
     kibana: z.number().optional(),
+    fdb: z.number().optional(),
     apacheTika: z.number(),
   })
   .transform((data) => ({
@@ -76,6 +78,7 @@ const PortAllocationSchema = z
     frontSpaApp: data.frontSpaApp ?? data.base + PORT_OFFSETS.frontSpaApp,
     collab: data.collab ?? data.base + PORT_OFFSETS.collab,
     kibana: data.kibana ?? data.base + PORT_OFFSETS.kibana,
+    fdb: data.fdb ?? data.base + PORT_OFFSETS.fdb,
   }));
 
 export type PortAllocation = z.output<typeof PortAllocationSchema>;
@@ -102,6 +105,7 @@ export function calculatePorts(base: number): PortAllocation {
     qdrantGrpc: base + PORT_OFFSETS.qdrantGrpc,
     elasticsearch: base + PORT_OFFSETS.elasticsearch,
     kibana: base + PORT_OFFSETS.kibana,
+    fdb: base + PORT_OFFSETS.fdb,
     apacheTika: base + PORT_OFFSETS.apacheTika,
   };
   for (const port of Object.values(ports)) {
