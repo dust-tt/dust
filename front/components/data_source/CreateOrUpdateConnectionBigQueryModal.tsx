@@ -6,6 +6,8 @@ import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { ConnectorProviderConfiguration } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import { useBigQueryLocations } from "@app/lib/swr/bigquery";
 import type { PostCredentialsBody } from "@app/types/api/oauth";
 import type {
@@ -100,10 +102,16 @@ export function CreateOrUpdateConnectionBigQueryModal({
             : null,
         };
       } else {
-        const fields = r.error.issues
-          .map((issue) => issue.path.join("."))
-          .filter((path) => path.length > 0)
-          .join(", ");
+        const paths = new Set(
+          r.error.issues
+            .map((issue) => issue.path.join("."))
+            .filter((path) => path.length > 0)
+        );
+        const fields = formatList(
+          [...paths],
+          { type: "conjunction" },
+          getActiveLocale()
+        );
         return {
           credentials: credentialsObject,
           valid: false,

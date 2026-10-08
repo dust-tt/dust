@@ -71,7 +71,7 @@ describe("CreateOrUpdateConnectionBigQueryModal", () => {
 
     expect(
       screen.getByText(
-        "Missing or invalid fields: project_id, private_key_id, private_key."
+        "Missing or invalid fields: project_id, private_key_id, and private_key."
       )
     ).toBeTruthy();
     expect(screen.queryByText(/Validation error/)).toBeNull();
@@ -94,7 +94,7 @@ describe("CreateOrUpdateConnectionBigQueryModal", () => {
 
     expect(
       screen.getByText(
-        /^Champs manquants ou invalides\s: project_id, private_key_id, private_key\.$/
+        /^Champs manquants ou invalides\s: project_id, private_key_id et private_key\.$/
       )
     ).toBeTruthy();
   });
