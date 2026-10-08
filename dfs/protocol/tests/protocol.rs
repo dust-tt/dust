@@ -1,13 +1,12 @@
+use anyhow::{Context, Result};
 use dfs_protocol::{ObjectId, ObjectRef, error, rpc};
 use prost::Message;
 use serde_json::json;
 
-type TestResult = Result<(), Box<dyn std::error::Error>>;
-
 const ID: &str = "017f22e279b07cc398c4dc0c0c07398f";
 
 #[test]
-fn identities_round_trip_with_distinct_real_and_virtual_wire_types() -> TestResult {
+fn identities_round_trip_with_distinct_real_and_virtual_wire_types() -> Result<()> {
     let generated = ObjectId::new_v7();
     generated.validate()?;
     assert_eq!(
@@ -40,7 +39,7 @@ fn identities_round_trip_with_distinct_real_and_virtual_wire_types() -> TestResu
 }
 
 #[test]
-fn invalid_identities_cannot_become_real_objects_or_virtual_projections() -> TestResult {
+fn invalid_identities_cannot_become_real_objects_or_virtual_projections() -> Result<()> {
     for text in [
         "root",
         "shared",
@@ -79,7 +78,7 @@ fn invalid_identities_cannot_become_real_objects_or_virtual_projections() -> Tes
 }
 
 #[test]
-fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> TestResult {
+fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
     let patch: rpc::UpdateOperation = serde_json::from_value(json!({
         "object_id": ID,
         "atime": 0,
@@ -108,7 +107,7 @@ fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> TestResult {
 }
 
 #[test]
-fn versions_remain_numeric_and_optional_preconditions_preserve_presence() -> TestResult {
+fn versions_remain_numeric_and_optional_preconditions_preserve_presence() -> Result<()> {
     for version in [None, Some(0), Some(1), Some(u64::MAX)] {
         let request = rpc::ReadRequest {
             object_id: ID.parse()?,
@@ -137,7 +136,7 @@ fn versions_remain_numeric_and_optional_preconditions_preserve_presence() -> Tes
 }
 
 #[test]
-fn attributes_carry_visible_parents_views_and_optional_metadata() -> TestResult {
+fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> {
     let mut object = rpc::Attr {
         id: ObjectRef::Root,
         parent: ObjectRef::Root,
@@ -177,7 +176,7 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> TestResult 
 }
 
 #[test]
-fn apply_preserves_operation_order_and_per_operation_outcomes() -> TestResult {
+fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
     let request: rpc::ApplyRequest = serde_json::from_value(json!({
         "operations": [
             {"operation": {"Create": {
@@ -212,7 +211,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> TestResult {
 }
 
 #[test]
-fn search_defaults_and_numeric_enums_match_the_api() -> TestResult {
+fn search_defaults_and_numeric_enums_match_the_api() -> Result<()> {
     let request: rpc::SearchRequest = serde_json::from_value(json!({
         "query": "",
         "fields": [0, 1],
@@ -220,7 +219,7 @@ fn search_defaults_and_numeric_enums_match_the_api() -> TestResult {
         "filter": {"modified_after": 0, "xattrs": [{"name": "user.tag", "value": []}]}
     }))?;
     assert_eq!(request.limit(), 20);
-    let scope = request.scope.as_ref().ok_or("missing scope")?;
+    let scope = request.scope.as_ref().context("missing scope")?;
     assert!(scope.recursive());
     assert_eq!(request.fields, vec![0, 1]);
     assert_eq!(
@@ -235,7 +234,7 @@ fn search_defaults_and_numeric_enums_match_the_api() -> TestResult {
 }
 
 #[test]
-fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> TestResult {
+fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Result<()> {
     let allow = rpc::Grant {
         kind: Some(rpc::grant::Kind::Allow(rpc::AllowGrant {
             subject: "g:engineering".into(),
@@ -304,7 +303,7 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Te
 }
 
 #[test]
-fn sessions_carry_subjects_instead_of_grant_rules() -> TestResult {
+fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
     let request: rpc::CreateSessionRequest = serde_json::from_value(json!({
         "tenant_id": "tenant",
         "subjects": ["u:spolu@dust.tt", "g:engineering"]
@@ -336,7 +335,7 @@ fn sessions_carry_subjects_instead_of_grant_rules() -> TestResult {
 }
 
 #[test]
-fn grpc_status_details_preserve_protocol_errors() -> TestResult {
+fn grpc_status_details_preserve_protocol_errors() -> Result<()> {
     for code in [
         rpc::ErrorCode::InvalidInput,
         rpc::ErrorCode::Unauthenticated,
