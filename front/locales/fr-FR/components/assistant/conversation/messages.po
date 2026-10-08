@@ -190,10 +190,12 @@ msgid "Handoff from {parentAgentName}"
 msgstr "Transmis par {parentAgentName}"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/agentErrorMessages.ts
 msgid "Connection lost while generating message. Reconnect to check its progress."
 msgstr "Connexion perdue pendant la génération du message. Reconnectez-vous pour suivre sa progression."
 
 #: front/components/assistant/conversation/AgentMessage.tsx
+#: front/components/assistant/conversation/agentErrorMessages.ts
 msgid "Connection lost"
 msgstr "Connexion perdue"
 
@@ -635,12 +637,12 @@ msgid "{failedProviderName} did not respond in time"
 msgstr "{failedProviderName} n’a pas répondu à temps"
 
 #: front/components/assistant/conversation/ErrorMessage.tsx
-msgid "Something went wrong"
-msgstr "Une erreur s’est produite"
-
-#: front/components/assistant/conversation/ErrorMessage.tsx
 msgid "This model did not respond in time. Retry will use the {retryTierName} model tier."
 msgstr "Ce modèle n’a pas répondu à temps. La nouvelle tentative utilisera le niveau de modèle {retryTierName}."
+
+#: front/components/assistant/conversation/ErrorMessage.tsx
+msgid "Details"
+msgstr "Détails"
 
 #: front/components/assistant/conversation/ErrorMessage.tsx
 msgid "Retry with {retryTierName} model tier"
@@ -1171,6 +1173,258 @@ msgstr "Réveil en attente"
 #: front/components/assistant/conversation/WakeUpMessage.tsx
 msgid "Wake-up executed"
 msgstr "Réveil exécuté"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Something went wrong"
+msgstr "Une erreur s’est produite"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "An unexpected error occurred."
+msgstr "Une erreur inattendue s’est produite."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your message or retrieved data is too large. Break it into smaller parts or reduce the input size."
+msgstr "Votre message ou les données récupérées sont trop volumineux. Divisez-les en plusieurs parties ou réduisez la taille de l’entrée."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The connection was interrupted while receiving the response. Try again."
+msgstr "La connexion a été interrompue pendant la réception de la réponse. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The agent stopped without producing an answer. You can retry."
+msgstr "L’agent s’est arrêté sans produire de réponse. Vous pouvez réessayer."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This message used too many resources to continue. Start a new message with a narrower request."
+msgstr "Ce message a utilisé trop de ressources pour continuer. Envoyez un nouveau message avec une demande plus ciblée."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} stopped the request unexpectedly. Try again."
+msgstr "{provider} a interrompu la requête de façon inattendue. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} refused to complete your request. Rephrase your message and try again."
+msgstr "{provider} a refusé de traiter votre demande. Reformulez votre message et réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The response exceeded the maximum length. Try reducing the scope of your request."
+msgstr "La réponse a dépassé la longueur maximale. Essayez de restreindre votre demande."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} ended the request before it was complete. Try again."
+msgstr "{provider} a mis fin à la requête avant qu’elle soit terminée. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} is taking longer than expected. Try again."
+msgstr "{provider} met plus de temps que prévu. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Too many requests were sent. Wait a moment and try again."
+msgstr "Trop de requêtes ont été envoyées. Patientez un instant et réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} is currently overloaded. Try again in a moment."
+msgstr "{provider} est actuellement surchargé. Réessayez dans un instant."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The request was invalid. Check your input and try again."
+msgstr "La requête n’est pas valide. Vérifiez votre saisie et réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} returned an invalid response. Try again."
+msgstr "{provider} a renvoyé une réponse non valide. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} authentication failed. Check your API credentials."
+msgstr "L’authentification auprès de {provider} a échoué. Vérifiez vos identifiants d’API."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "{provider} blocked your request. Check your access rights."
+msgstr "{provider} a bloqué votre requête. Vérifiez vos droits d’accès."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The requested resource wasn't found. Check your request and try again."
+msgstr "La ressource demandée est introuvable. Vérifiez votre requête et réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Connection to {provider} failed. Check your network and try again."
+msgstr "La connexion à {provider} a échoué. Vérifiez votre réseau et réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The request timed out. Try again."
+msgstr "La requête a expiré. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The AI provider ({provider}) ran into an issue. Try again in a moment."
+msgstr "Le fournisseur d’IA ({provider}) a rencontré un problème. Réessayez dans un instant."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "An unexpected error occurred. Try again or contact support if the issue persists."
+msgstr "Une erreur inattendue s’est produite. Réessayez ou contactez le support si le problème persiste."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your workspace's {provider} credentials are invalid. Contact your workspace administrator to update them."
+msgstr "Les identifiants {provider} de votre workspace ne sont pas valides. Contactez l’administrateur de votre workspace pour les mettre à jour."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your workspace's {provider} credentials don't have access to the requested model. Contact your workspace administrator."
+msgstr "Les identifiants {provider} de votre workspace n’ont pas accès au modèle demandé. Contactez l’administrateur de votre workspace."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your workspace's {provider} usage limits have been exceeded. Contact your workspace administrator."
+msgstr "Les limites d’utilisation {provider} de votre workspace ont été dépassées. Contactez l’administrateur de votre workspace."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The model couldn't complete the request. Try again."
+msgstr "Le modèle n’a pas pu traiter la requête. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The model provider ran into an issue. Try again in a moment."
+msgstr "Le fournisseur du modèle a rencontré un problème. Réessayez dans un instant."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The model returned an invalid response. Try again."
+msgstr "Le modèle a renvoyé une réponse non valide. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Workspace out of credits"
+msgstr "Workspace à court de crédits"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Personal usage cap reached"
+msgstr "Plafond d’utilisation personnel atteint"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Shared usage limit reached"
+msgstr "Limite d’utilisation partagée atteinte"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "No seat assigned"
+msgstr "Aucun siège attribué"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Plan message limit exceeded"
+msgstr "Limite de messages du forfait dépassée"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Rate limit exceeded"
+msgstr "Limite de requêtes dépassée"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your workspace has run out of credits. Purchase more credits to continue using Dust."
+msgstr "Votre workspace n’a plus de crédits. Achetez des crédits pour continuer à utiliser Dust."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your workspace has run out of credits. Contact your administrator to purchase more credits."
+msgstr "Votre workspace n’a plus de crédits. Contactez votre administrateur pour acheter des crédits."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "You've reached your personal usage cap. You can adjust user caps on the usage page."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Vous pouvez ajuster les plafonds des utilisateurs sur la page d’utilisation."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "You've reached your personal usage cap. Contact your administrator to increase it."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Contactez votre administrateur pour l’augmenter."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page."
+msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Vous pouvez ajuster les limites partagées sur la page d’utilisation."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your group has reached its shared usage limit. Contact your group managers or administrator to increase it."
+msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Contactez les managers de votre groupe ou votre administrateur pour l’augmenter."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+msgstr "Aucun siège ne vous est attribué dans ce workspace. Rendez-vous sur la page d’utilisation pour vous en attribuer un."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "You don't have a seat assigned in this workspace. Contact your administrator to assign you one."
+msgstr "Aucun siège ne vous est attribué dans ce workspace. Contactez votre administrateur pour qu’il vous en attribue un."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Too many steps"
+msgstr "Trop d’étapes"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This agent took too many steps to answer your query. Try narrowing down your question or breaking it into smaller parts."
+msgstr "Cet agent a effectué trop d’étapes pour répondre à votre demande. Essayez de préciser votre question ou de la diviser en plusieurs parties."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "No answer generated"
+msgstr "Aucune réponse générée"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Agent response generation failed"
+msgstr "Échec de la génération de la réponse de l’agent"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "An unexpected error occurred while generating the agent response. Try again."
+msgstr "Une erreur inattendue s’est produite pendant la génération de la réponse de l’agent. Réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Model tier not enabled"
+msgstr "Niveau de modèle non activé"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This agent uses a model tier that isn't enabled for you. Contact your workspace administrator or use another agent."
+msgstr "Cet agent utilise un niveau de modèle qui n’est pas activé pour vous. Contactez l’administrateur de votre workspace ou utilisez un autre agent."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Early exit"
+msgstr "Arrêt anticipé"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "A tool stopped before it finished. Check whether it completed, then retry."
+msgstr "Un outil s’est arrêté avant la fin. Vérifiez s’il a abouti, puis réessayez."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel)."
+msgstr "Le modèle utilisé par cet agent n’est pas disponible. Modifiez l’agent pour utiliser un autre modèle (paramètres avancés du panneau Instructions)."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Several tools have the same name. Each tool needs a unique name so the agent can pick the right one."
+msgstr "Plusieurs outils portent le même nom. Chaque outil doit avoir un nom unique pour que l’agent puisse choisir le bon."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "You've reached the free usage cap for this 24-hour period. Try again later."
+msgstr "Vous avez atteint le plafond d’utilisation gratuite pour cette période de 24 heures. Réessayez plus tard."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The agent tried to run an action that doesn't exist. You can retry."
+msgstr "L’agent a tenté d’exécuter une action qui n’existe pas. Vous pouvez réessayer."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The agent sent invalid inputs to a tool."
+msgstr "L’agent a envoyé des paramètres non valides à un outil."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "The tool call couldn't be parsed."
+msgstr "Impossible d’analyser l’appel d’outil."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This tool isn't available to the agent."
+msgstr "Cet outil n’est pas disponible pour l’agent."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This answer was marked as failed because it stopped responding."
+msgstr "Cette réponse a été marquée comme échouée, car elle ne répondait plus."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Context window exceeded"
+msgstr "Fenêtre de contexte dépassée"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Your message or retrieved data is too large. Break your request into smaller parts or reduce agent output."
+msgstr "Votre message ou les données récupérées sont trop volumineux. Divisez votre demande en plusieurs parties ou réduisez la sortie de l’agent."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Code: {code}"
+msgstr "Code : {code}"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Message: {rawMessage}"
+msgstr "Message : {rawMessage}"
 
 #: front/components/assistant/conversation/utils.ts
 msgid "Unnamed parent conversation"

@@ -245,7 +245,7 @@ export function categorizeLLMError(
   };
 }
 
-const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
+export const USERFACING_CLIENT_ID: Record<ModelProviderIdType, string> = {
   anthropic: "Anthropic",
   openai: "OpenAI",
   mistral: "Mistral",

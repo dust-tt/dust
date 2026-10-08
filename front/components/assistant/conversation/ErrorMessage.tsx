@@ -1,9 +1,11 @@
+import { formatAgentError } from "@app/components/assistant/conversation/agentErrorMessages";
 import {
   buildTierSelection,
   getModelTier,
   getPinnedModelRetryTier,
 } from "@app/components/model_picker/modelPickerUtils";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { GenericErrorContent } from "@app/types/assistant/agent";
@@ -18,8 +20,13 @@ import type {
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   InfoCircle,
   RefreshCw02,
@@ -27,6 +34,7 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ErrorMessageProps {
+  owner: LightWorkspaceType;
   error: GenericErrorContent;
   retryHandler: (modelSelection?: ModelSelectionType) => Promise<void>;
   retryLabel?: string;
@@ -35,6 +43,7 @@ interface ErrorMessageProps {
 }
 
 export function ErrorMessage({
+  owner,
   error,
   retryHandler,
   retryLabel,
@@ -42,6 +51,11 @@ export function ErrorMessage({
   modelResolutionMethod,
 }: ErrorMessageProps) {
   const { t } = useLingui();
+  const { hasFeature } = useFeatureFlags();
+  const formattedError = formatAgentError(error, {
+    hasLocalisation: hasFeature("localisation"),
+    viewerIsAdmin: isAdmin(owner),
+  });
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&
     error.metadata?.category === "context_window_exceeded";
@@ -80,7 +94,7 @@ export function ErrorMessage({
       title={
         retryTierName
           ? t`${failedProviderName} did not respond in time`
-          : `${error.metadata?.errorTitle ?? t`Something went wrong`}`
+          : formattedError.title
       }
       variant={
         errorIsRetryable || retryTierName !== null ? "golden" : "warning"
@@ -91,7 +105,7 @@ export function ErrorMessage({
       <div className="whitespace-normal break-words">
         {retryTierName
           ? t`This model did not respond in time. Retry will use the ${retryTierName} model tier.`
-          : error.message}
+          : formattedError.description}
         {isContextWindowExceeded && (
           <>
             {" "}
@@ -106,6 +120,20 @@ export function ErrorMessage({
           </>
         )}
       </div>
+      {formattedError.details && (
+        <Collapsible>
+          <CollapsibleTrigger>
+            <span className="copy-xs">
+              <Trans>Details</Trans>
+            </span>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <pre className="copy-xs mt-1 max-h-40 select-text overflow-auto whitespace-pre-wrap break-words font-mono opacity-80">
+              {formattedError.details}
+            </pre>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
       <div className="flex flex-col gap-2 pt-3 sm:flex-row">
         <Button
           variant="outline"

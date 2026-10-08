@@ -373,6 +373,16 @@ export function isAgentErrorCategory(
 }
 
 // Generic type for the content of an agent / tool error.
+/**
+ * @cc [owner:sfriquet,label:error-handling;product] agent-error-text-from-code
+ * For an error produced by the server, `message` and `metadata.errorTitle` are untranslated
+ * English diagnostics, shown to users only as details once localised: the user-facing title and
+ * description are derived from `code`, `metadata.category` and the codes and brand names in
+ * `metadata` only (`formatAgentError` in `components/assistant/conversation/agentErrorMessages.ts`),
+ * so any other detail of `message` is visible under details only. A producer SHOULD send as a
+ * `metadata` code the details users need to act on the error, and a new `code` SHOULD get a
+ * translation there. Errors built on the client may carry translated text.
+ */
 export type GenericErrorContent = {
   code: string;
   message: string;

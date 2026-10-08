@@ -796,7 +796,9 @@ UI code (`components/`, `hooks/`, `lib/swr/`) MUST NOT show an error's `message`
 other user-visible text. Error toasts MUST be sent with `useSendApiErrorNotification` from
 `hooks/useNotification.ts` (description = translated error type, raw code and message under
 "Details"); other displays MUST use the `description` of `formatError` from
-`lib/api_error_messages.ts`.
+`lib/api_error_messages.ts`. Agent message errors (`GenericErrorContent`) are not API errors: they
+MUST be displayed through `formatAgentError` from
+`components/assistant/conversation/agentErrorMessages.ts`, which follows the same rules.
 
 Exceptions: Poke (`components/poke/**` and `hooks/usePoke*.ts`, not translated), client-side
 validation messages (react-hook-form `fieldState.error.message`, or a line-level
