@@ -925,14 +925,6 @@ msgid "Group budget"
 msgstr "Budget du groupe"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "Members of this group will no longer draw from this budget. Members of another group with a budget will draw from that one instead."
-msgstr "Les membres de ce groupe ne puiseront plus dans ce budget. Les membres d’un autre groupe doté d’un budget puiseront dans celui-ci à la place."
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "If you set a budget again later, members in several groups may draw from another group first."
-msgstr "Si vous définissez à nouveau un budget plus tard, les membres de plusieurs groupes pourront d’abord puiser dans celui d’un autre groupe."
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "Limit per member"
 msgstr "Limite par membre"

@@ -150,10 +150,6 @@ function EditGroupUsageForm({
   const isValid =
     memberLimitResult.ok && (!isSharedLimitEditable || sharedLimitResult.ok);
   const isChanged = memberLimitChanged || sharedLimitChanged || seatChanged;
-  const isSharedLimitRemoved =
-    isSharedLimitEditable &&
-    initialSharedLimitAwuCredits !== null &&
-    sharedLimitInput === "";
 
   const saveChanges = async (): Promise<boolean> => {
     const tasks: Array<() => Promise<boolean>> = [];
@@ -267,37 +263,25 @@ function EditGroupUsageForm({
             </Page.Vertical>
           )}
           {sharedUsageLimitAccess !== "hidden" && (
-            <div className="flex flex-col gap-3">
-              <CreditLimitInput
-                label={t`Group budget`}
-                value={sharedLimitInput}
-                readOnly={!isSharedLimitEditable || isSaving}
-                validationMessage={
-                  sharedLimitResult.ok ? null : t(sharedLimitResult.message)
-                }
-                onChange={setSharedLimitInput}
-                description={groupBudgetDescription}
-                descriptionStatus="info"
-                action={
-                  sharedLimitInput !== ""
-                    ? {
-                        label: removeLabel,
-                        onClick: () => setSharedLimitInput(""),
-                      }
-                    : undefined
-                }
-              />
-              {isSharedLimitRemoved && (
-                <div className="flex flex-col gap-3 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  <p>
-                    {t`Members of this group will no longer draw from this budget. Members of another group with a budget will draw from that one instead.`}
-                  </p>
-                  <p>
-                    {t`If you set a budget again later, members in several groups may draw from another group first.`}
-                  </p>
-                </div>
-              )}
-            </div>
+            <CreditLimitInput
+              label={t`Group budget`}
+              value={sharedLimitInput}
+              readOnly={!isSharedLimitEditable || isSaving}
+              validationMessage={
+                sharedLimitResult.ok ? null : t(sharedLimitResult.message)
+              }
+              onChange={setSharedLimitInput}
+              description={groupBudgetDescription}
+              descriptionStatus="info"
+              action={
+                sharedLimitInput !== ""
+                  ? {
+                      label: removeLabel,
+                      onClick: () => setSharedLimitInput(""),
+                    }
+                  : undefined
+              }
+            />
           )}
           <CreditLimitInput
             label={t`Limit per member`}
