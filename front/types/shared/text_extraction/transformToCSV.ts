@@ -4,7 +4,11 @@ import { Parser } from "htmlparser2";
 import type { Readable } from "stream";
 import { Transform } from "stream";
 
-import { TABLE_PREFIX } from "../../files";
+import { MAX_FILE_SIZES, TABLE_PREFIX } from "../../files";
+
+// Tika pads each row with empty cells up to the sheet's last used column, so a small but wide
+// workbook can expand into gigabytes of CSV. Cap the output at the size accepted for a CSV upload.
+const MAX_CSV_OUTPUT_BYTES = MAX_FILE_SIZES.delimited;
 
 interface ParserState {
   tags: string[];
@@ -42,6 +46,12 @@ const HTML_TAGS = {
  *    - process data chunks through the parser
  *    - handle proper stream cleanup in flush
  */
+/**
+ * @cc [owner:philipperolet,label:performance;error-handling] bounded-csv-output
+ * The returned stream MUST NOT emit more than `MAX_CSV_OUTPUT_BYTES` bytes. When the output would
+ * exceed it, the stream MUST fail with an error whose message contains "could not be processed"
+ * (mapped to `file_too_large` by `processAndStoreFile`), and `input` MUST be destroyed.
+ */
 export function transformStreamToCSV(
   input: Readable,
   selector: string
@@ -52,6 +62,19 @@ export function transformStreamToCSV(
     currentRow: [],
     insideCell: false,
     currentCellText: "",
+  };
+
+  let outputBytes = 0;
+  const pushOutput = (text: string) => {
+    outputBytes += Buffer.byteLength(text);
+    if (outputBytes > MAX_CSV_OUTPUT_BYTES) {
+      throw new Error(
+        "The spreadsheet could not be processed: once converted, it is larger than " +
+          `${MAX_CSV_OUTPUT_BYTES / 1024 / 1024} MB. ` +
+          "Remove empty rows and columns, or split it into smaller files."
+      );
+    }
+    htmlParsingTransform.push(text);
   };
 
   // Create a single parser instance for the entire stream.
@@ -69,7 +92,7 @@ export function transformStreamToCSV(
         const currentTag = state.tags[state.tags.length - 1];
 
         if (currentTag === selector) {
-          htmlParsingTransform.push(`${TABLE_PREFIX}${text}\n`);
+          pushOutput(`${TABLE_PREFIX}${text}\n`);
         } else if (state.insideCell) {
           state.currentCellText += text;
         }
@@ -81,8 +104,7 @@ export function transformStreamToCSV(
           throw new Error("Invalid tag order");
         } else {
           if (lastTag === HTML_TAGS.ROW) {
-            const csv = stringify([state.currentRow]);
-            htmlParsingTransform.push(csv);
+            pushOutput(stringify([state.currentRow]));
             state.currentRow = [];
           }
           if (lastTag === HTML_TAGS.CELL) {
