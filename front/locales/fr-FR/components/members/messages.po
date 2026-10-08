@@ -128,12 +128,12 @@ msgid "Invite members"
 msgstr "Inviter des membres"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "Invite new users"
-msgstr "Inviter de nouveaux utilisateurs"
+msgid "Choose a role and a seat for the new members."
+msgstr "Choisissez un rôle et un siège pour les nouveaux membres."
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "Choose a new plan to continue"
-msgstr "Choisissez un nouveau forfait pour continuer"
+msgid "Choose a role for the new members."
+msgstr "Choisissez un rôle pour les nouveaux membres."
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "Email addresses"

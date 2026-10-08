@@ -424,10 +424,14 @@ export function InviteEmailButtonWithModal({
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>
-              <Trans>Invite new users</Trans>
+              <Trans>Invite members</Trans>
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              <Trans>Choose a new plan to continue</Trans>
+              {hasSeatSelection ? (
+                <Trans>Choose a role and a seat for the new members.</Trans>
+              ) : (
+                <Trans>Choose a role for the new members.</Trans>
+              )}
             </p>
           </div>
         </DialogHeader>
