@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Usage: bin/sweep. Safety net, run by bin/up and safe to run anytime:
+# - tears down bench clusters older than MAX_RUN_AGE_HOURS,
+# - cleans up resources of runs whose cluster is gone,
+# - kills bench sandboxes older than SANDBOX_MAX_AGE_HOURS.
+# Selects only resources labeled dfs-bench=true (or sandbox metadata dfs-bench=true).
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+now="$(date +%s)"
+to_epoch='sub("\\.[0-9]+"; "") | sub("(\\+00:00)?$"; "") | sub("Z$"; "") + "Z" | fromdateiso8601'
+
+clusters="$(gcloud container clusters list --project "$PROJECT" --filter="resourceLabels.dfs-bench=true" \
+  --format=json | jq -r ".[] | \"\(.resourceLabels[\"dfs-bench-run\"]) \(.createTime | $to_epoch)\"")"
+while read -r run created; do
+  [[ -z "$run" ]] && continue
+  if ((now - created > MAX_RUN_AGE_HOURS * 3600)); then
+    log "run $run is older than ${MAX_RUN_AGE_HOURS}h, tearing it down"
+    "$BENCH_DIR/bin/down" "$run" || log "teardown of $run failed"
+  fi
+done <<<"$clusters"
+
+live_runs="$(gcloud container clusters list --project "$PROJECT" --filter="resourceLabels.dfs-bench=true" \
+  --format="value(resourceLabels.dfs-bench-run)")"
+labeled_runs="$(for kind in disks addresses instances; do
+  gcloud compute "$kind" list --project "$PROJECT" --filter="labels.dfs-bench=true" \
+    --format="value(labels.dfs-bench-run)"
+done | sort -u)"
+for run in $labeled_runs; do
+  if ! grep -qx "$run" <<<"$live_runs"; then
+    log "run $run has no cluster but left resources, cleaning up"
+    "$BENCH_DIR/bin/leak-check" "$run" --delete || true
+  fi
+done
+
+load_e2b_env
+while read -r id started run; do
+  [[ -z "$id" ]] && continue
+  started_epoch="$(jq -rn --arg t "$started" "\$t | $to_epoch")"
+  if ((now - started_epoch > SANDBOX_MAX_AGE_HOURS * 3600)); then
+    log "killing sandbox $id (run $run, started $started)"
+    e2b_kill "$id" || true
+  fi
+done <<<"$(e2b_list_bench_sandboxes)"
+log "sweep done"

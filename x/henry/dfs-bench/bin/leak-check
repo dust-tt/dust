@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Usage: bin/leak-check <run_id> [--delete]
+# Lists GCP resources and E2B sandboxes left by a run; exits 1 if any. Matches only on the run's
+# label or its cluster name, never on broader name patterns (other people's experiments share
+# dust-dev). --delete removes leftover network resources, disks and sandboxes.
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:?run_id required}"
+DELETE="${2:-}"
+CLUSTER="$(cluster_name "$RUN_ID")"
+MATCH='select((.labels["dfs-bench-run"] // "") == $run
+  or (.name | contains($cluster))
+  or ((.targetTags // []) | any(contains($cluster)))
+  or ((.description // "") | contains($cluster)))'
+
+leaks=0
+report() {
+  local kind="$1" items="$2"
+  [[ -z "$items" ]] && return
+  leaks=$((leaks + $(wc -l <<<"$items")))
+  sed "s|^|LEAK $kind: |" <<<"$items" >&2
+}
+
+clusters="$(gcloud container clusters list --project "$PROJECT" \
+  --filter="resourceLabels.dfs-bench-run=$RUN_ID" --format="value(name)")"
+report cluster "$clusters"
+
+# Deletion order: frontends before the backends and checks they reference, disks last.
+for kind in forwarding-rules target-pools backend-services health-checks firewall-rules addresses \
+  instances instance-groups instance-templates disks; do
+  items="$(gcloud compute "$kind" list --project "$PROJECT" --format=json |
+    jq -r --arg run "$RUN_ID" --arg cluster "$CLUSTER" ".[] | $MATCH | .selfLink")"
+  report "$kind" "$items"
+  if [[ "$DELETE" == "--delete" && -n "$items" ]]; then
+    case "$kind" in
+      instances | instance-groups | instance-templates)
+        log "not deleting $kind; owned by the GKE cluster (re-run bin/down)" ;;
+      *)
+        log "deleting leftover $kind"
+        xargs gcloud compute "$kind" delete --quiet <<<"$items" || true ;;
+    esac
+  fi
+done
+
+load_e2b_env
+sandboxes="$(e2b_list_bench_sandboxes "$RUN_ID")"
+report sandbox "$sandboxes"
+if [[ "$DELETE" == "--delete" && -n "$sandboxes" ]]; then
+  while read -r id _; do e2b_kill "$id"; done <<<"$sandboxes"
+fi
+
+if ((leaks > 0)); then
+  log "$leaks leftover resource(s) for run $RUN_ID"
+  exit 1
+fi
+log "no leftovers for run $RUN_ID"

@@ -1,0 +1,12 @@
+# Dynamic PDs carry the run labels so bin/leak-check can find any that outlive the cluster.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: bench-ssd
+provisioner: pd.csi.storage.gke.io
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+parameters:
+  type: pd-ssd
+  labels: dfs-bench=true,dfs-bench-run=__RUN_ID__,owner=henry

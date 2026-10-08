@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Usage: bin/down [run_id]. Tears a run down and exits non-zero if anything billable survives.
+# Order matters: deleting the GKE cluster alone leaks the PDs and load balancers it created.
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(current_run)}"
+log "tearing down run $RUN_ID"
+
+if cluster_exists "$RUN_ID"; then
+  fetch_credentials "$RUN_ID"
+  # The operator must still be running to release FDB pods and PVCs.
+  delete_fdb || true
+  kubectl delete -f "$BENCH_DIR/k8s/namespaces.yaml" --ignore-not-found --timeout=15m || true
+  log "waiting for persistent volumes and load balancers to be released"
+  for _ in $(seq 60); do
+    pvs="$(kubectl get pv -o name 2>/dev/null | wc -l | tr -d ' ')"
+    lbs="$(kubectl get svc -A -o json | jq '[.items[] | select(.spec.type == "LoadBalancer")] | length')"
+    [[ "$pvs" == 0 && "$lbs" == 0 ]] && break
+    log "  $pvs PVs, $lbs load balancers left"
+    sleep 10
+  done
+fi
+
+tf_init "$RUN_ID"
+tf destroy -input=false -auto-approve -var "run_id=$RUN_ID"
+
+"$BENCH_DIR/bin/leak-check" "$RUN_ID" --delete
+"$BENCH_DIR/bin/leak-check" "$RUN_ID"
+
+rm -f "$STATE_DIR/kubeconfig-$RUN_ID"
+if [[ -f "$STATE_DIR/current-run" && "$(cat "$STATE_DIR/current-run")" == "$RUN_ID" ]]; then
+  rm "$STATE_DIR/current-run"
+fi
+log "down: run $RUN_ID is clean"

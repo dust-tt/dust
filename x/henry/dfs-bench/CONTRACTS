@@ -1,0 +1,24 @@
+@cc [owner:fontanierh,label:performance] bench-resources-labeled
+Every billable GCP resource a run creates (cluster, node VMs, disks, addresses) MUST carry the
+labels `dfs-bench=true` and `dfs-bench-run=<run_id>`, or have the run's cluster name `dfsb-<run_id>`
+in its name, tags or description. `bin/leak-check` and `bin/sweep` find leftovers only this way.
+
+@cc [owner:fontanierh,label:performance] down-proves-clean
+`bin/down <run_id>` MUST exit non-zero if any resource of that run, including E2B sandboxes,
+still exists after teardown. Kubernetes objects that own cloud resources (PVCs, LoadBalancer
+services) MUST be deleted before the cluster is destroyed.
+
+@cc [owner:fontanierh,label:security] sweep-only-bench-resources
+Cleanup scripts MUST select resources by the `dfs-bench` labels, sandbox metadata or the exact
+`dfsb-<run_id>` cluster name, never by broader name patterns: dust-dev hosts other people's
+experiments.
+
+@cc [owner:fontanierh,label:performance] sandbox-ttl
+Bench E2B sandboxes MUST be created with metadata `dfs-bench=true` and `dfs-bench-run=<run_id>`
+and a timeout of at most 15 minutes, extended only while the orchestrator is alive. None may live
+longer than 3 hours: our sandbox reaper does not manage them.
+
+@cc [owner:fontanierh,label:security] isolated-credentials
+Scripts MUST act only as the dust-dev service account, through the gcloud config and per-run
+kubeconfig under `.state/`. They MUST NOT read or modify the user's own gcloud config,
+application default credentials or kubeconfig, which hold production access.

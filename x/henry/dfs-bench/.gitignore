@@ -1,0 +1,3 @@
+.state/
+terraform/.terraform/
+terraform/.terraform.lock.hcl
