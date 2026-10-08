@@ -1,8 +1,10 @@
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import {
   Button,
@@ -10,6 +12,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  SettingsList,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -74,45 +77,45 @@ export function AnalyticsExportPanel({
   const selectedLabel = selectedTable ? t(selectedTable.label) : table;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base font-medium text-foreground">
-            <Trans>Export data</Trans>
-          </h3>
-          <p className="text-xs text-muted-foreground">
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.export}>
+      <SettingsList>
+        <SettingsList.Row
+          title={<Trans>Export data</Trans>}
+          description={
             <Trans>
               Download analytics for the selected period as a CSV file.
             </Trans>
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <WorkspaceAnalyticsTimeRangeSelector
-            period={period}
-            onPeriodChange={setPeriod}
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={selectedLabel}
-                size="xs"
-                variant="outline"
-                isSelect
+          }
+          action={
+            <div className="flex items-center gap-2">
+              <WorkspaceAnalyticsTimeRangeSelector
+                period={period}
+                onPeriodChange={setPeriod}
               />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {EXPORT_TABLES.map((exportTable) => (
-                <DropdownMenuItem
-                  key={exportTable.value}
-                  label={t(exportTable.label)}
-                  onClick={() => setTable(exportTable.value)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <CsvDownloadButton {...csvDownload} />
-        </div>
-      </div>
-    </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    label={selectedLabel}
+                    size="xs"
+                    variant="outline"
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {EXPORT_TABLES.map((exportTable) => (
+                    <DropdownMenuItem
+                      key={exportTable.value}
+                      label={t(exportTable.label)}
+                      onClick={() => setTable(exportTable.value)}
+                    />
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <CsvDownloadButton {...csvDownload} />
+            </div>
+          }
+        />
+      </SettingsList>
+    </AdminSectionAnchor>
   );
 }
