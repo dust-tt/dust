@@ -156,7 +156,7 @@ export function FilterPanel<
       >
         <div className="flex h-96 flex-row divide-x divide-border max-md:grid max-md:h-128 max-md:min-h-0 max-md:grid-cols-[8rem_minmax(0,1fr)] max-md:grid-rows-[minmax(0,2fr)_minmax(0,1fr)] dark:divide-border-dark">
           <FilterCategoryNav
-            className="max-md:min-h-0 max-md:w-32"
+            className="max-md:min-h-0 max-md:w-32 max-md:min-w-0"
             categories={categories}
             categoryLabels={categoryLabels}
             selectionCounts={categorySelectionCounts}

@@ -117,7 +117,7 @@ export function SkillFilterPanel({
             />
             <Label
               htmlFor="skill-filter-hidden-skills"
-              className="cursor-pointer text-sm leading-none"
+              className="cursor-pointer text-sm leading-none md:whitespace-nowrap"
             >
               <Trans>Hidden skills</Trans>
             </Label>

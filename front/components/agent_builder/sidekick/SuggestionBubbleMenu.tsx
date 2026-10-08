@@ -285,7 +285,6 @@ export function SuggestionBubbleMenu({
           size="xs"
           variant="ghost"
           tooltip={t`Reject suggestion`}
-          label={t`Reject`}
           onClick={handleReject}
         />
         <HoveringBar.Separator />
@@ -294,7 +293,6 @@ export function SuggestionBubbleMenu({
           size="xs"
           variant="highlight"
           tooltip={t`Accept suggestion`}
-          label={t`Accept`}
           onClick={handleAccept}
         />
       </HoveringBar>

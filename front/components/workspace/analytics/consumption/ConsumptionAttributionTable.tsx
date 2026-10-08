@@ -453,7 +453,7 @@ function buildColumns({
             meta: {
               className: cn(
                 COLLAPSED_COLUMN_CLASSES,
-                "@xs:w-52 @xs:max-w-none @xs:px-2"
+                "@xs:w-56 @xs:max-w-none @xs:px-2"
               ),
               headerAlign: "left",
             },
@@ -509,7 +509,7 @@ function buildColumns({
       meta: {
         className: cn(
           COLLAPSED_COLUMN_CLASSES,
-          "@md:w-auto @md:max-w-none @md:px-2"
+          "@lg:w-auto @lg:max-w-none @lg:px-2"
         ),
         headerAlign: "right",
       },

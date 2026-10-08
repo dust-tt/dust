@@ -102,7 +102,7 @@ export function ConsumptionOverviewView({
   return (
     <Page.P variant="secondary">
       {header.map((item, index) => (
-        <span key={item}>
+        <span key={item} className="whitespace-nowrap">
           {index > 0 && (
             <span className="mx-2" aria-hidden="true">
               |

@@ -179,22 +179,24 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
-          <FilterChip
-            label={isMobile ? undefined : t`Credit usage`}
-            tooltip={isMobile ? t`Credit usage` : undefined}
-            icon={CoinsStacked01}
-            variant="secondary"
-            isSelected={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
-            onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
-          />
-          <FilterChip
-            label={isMobile ? undefined : t`Files`}
-            tooltip={isMobile ? t`Files` : undefined}
-            icon={Folder}
-            variant="secondary"
-            isSelected={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
-            onClick={() => togglePanel({ type: FILES_SIDE_PANEL_TYPE })}
-          />
+          <div className="contents [&>button>span]:sr-only @sm:[&>button>span]:not-sr-only">
+            <FilterChip
+              label={isMobile ? undefined : t`Credit usage`}
+              tooltip={t`Credit usage`}
+              icon={CoinsStacked01}
+              variant="secondary"
+              isSelected={isPanelSelected(CREDITS_SIDE_PANEL_TYPE)}
+              onClick={() => togglePanel({ type: CREDITS_SIDE_PANEL_TYPE })}
+            />
+            <FilterChip
+              label={isMobile ? undefined : t`Files`}
+              tooltip={t`Files`}
+              icon={Folder}
+              variant="secondary"
+              isSelected={isPanelSelected(FILES_SIDE_PANEL_TYPE)}
+              onClick={() => togglePanel({ type: FILES_SIDE_PANEL_TYPE })}
+            />
+          </div>
           <PlanPanelChip
             key={activeConversationId}
             conversationId={activeConversationId}
