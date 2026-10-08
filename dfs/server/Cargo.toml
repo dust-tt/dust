@@ -1,0 +1,25 @@
+[package]
+name = "dfs-api"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
+tonic = "0.14"
+tonic-health = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tokio-stream = { version = "0.1", features = ["net"] }
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+expect_used = "deny"
+unwrap_used = "deny"
