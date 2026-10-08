@@ -22,7 +22,10 @@ service Dfs {
   rpc ListGrants(ListGrantsRequest) returns (GrantPage);
 
   // Requires a tenant key; the authenticated key determines the tenant.
-  rpc UpdateGrants(UpdateGrantsRequest) returns (Attr);
+  // @cc [owner:spolu,label:api;concurrency;error-handling] dfs-update-grants-result
+  // Success MUST return Empty after the atomic grant update completes. Failures MUST use gRPC
+  // status with ErrorDetails and MUST NOT commit partial grant changes.
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
 
   // Requires an active session key.
   rpc Stat(StatRequest) returns (StatResponse);
@@ -71,9 +74,11 @@ message Attr {
   required ObjectRef parent = 2;
   required bool directory = 3;
   required uint64 size = 4;
-  // @cc [owner:spolu,label:api] dfs-attribute-mode
-  // Mode MUST contain only POSIX owner permissions: r=0o400, w=0o200, x=0o100. Group, other,
-  // special, and file-type bits MUST be zero; the allowed mask is 0o700.
+  // @cc [owner:spolu,label:api;security] dfs-attribute-mode
+  // For real objects, mode MUST equal the current session's effective grant permissions shifted
+  // left by six bits: r=0o400, w=0o200, x=0o100. It MUST be derived from the authorization state
+  // used for the response, not stored as independent permissions. Group, other, special, and
+  // file-type bits MUST be zero. Virtual root/shared MUST report read/traverse access (0o500).
   required uint32 mode = 5;
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
@@ -311,24 +316,16 @@ message CreateOperation {
   required ObjectId object_id = 3;
   required bool directory = 4;
   optional string mime_type = 5;
-  // @cc [owner:spolu,label:api] dfs-create-mode
-  // Mode MUST use the owner permission bits specified by Attr.mode. Bits outside 0o700 MUST
-  // fail with INVALID_INPUT.
-  required uint32 mode = 6;
-  map<string, bytes> xattrs = 7;
+  map<string, bytes> xattrs = 6;
 }
 
 message UpdateOperation {
   required ObjectId object_id = 1;
   optional string mime_type = 2;
   repeated XattrChange xattrs = 3;
-  // @cc [owner:spolu,label:api] dfs-update-mode
-  // A supplied mode MUST use the owner permission bits specified by Attr.mode; bits outside
-  // 0o700 MUST fail with INVALID_INPUT. Omission MUST preserve the stored mode.
-  optional uint32 mode = 4;
-  optional uint64 atime = 5;
-  optional uint64 mtime = 6;
-  optional uint64 size = 7;
+  optional uint64 atime = 4;
+  optional uint64 mtime = 5;
+  optional uint64 size = 6;
 }
 
 message XattrChange {

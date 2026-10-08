@@ -26,7 +26,7 @@ Attr {
   parent: ObjectRef              // Visible parent; root is its own parent.
   directory: bool
   size: uint64                   // Logical file size; zero for directories.
-  mode: uint32                   // POSIX owner rwx bits, restricted to 0o700.
+  mode: uint32                   // Session's effective permissions in POSIX owner rwx bits.
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
@@ -55,10 +55,12 @@ ErrorDetails {
 Empty {}
 ```
 
-`Attr.mode` supports only owner read (`0o400`), write (`0o200`), and execute (`0o100`) permissions.
-Group, other, special, and file-type bits are always zero. For example, owner read/write is `0o600`
-and owner read/write/execute is `0o700`. Create and update operations reject modes containing bits
-outside `0o700` with `INVALID_INPUT`.
+For real objects, `Attr.mode` is the current session's effective grant permissions shifted left by
+six bits: read (`0o400`), write (`0o200`), and execute/traverse (`0o100`). It is computed from the
+authorization state used for the response and is not an independently stored permission mask.
+Group, other, special, and file-type bits are always zero. For example, effective `rw-` is `0o600`
+and effective `rwx` is `0o700`. Virtual `root` and `shared` report read/traverse access (`0o500`).
+Create and update operations do not accept a mode; new objects inherit permissions from grants.
 
 All timestamps, including session expiration and search time bounds, use this millisecond format.
 Precision is one millisecond, and dates before the Unix epoch are not representable. Zero denotes
@@ -86,8 +88,7 @@ session: prefer a visible path through the ordinary root; otherwise use the near
 with a matching explicit ALLOW on its ancestor chain, including the object itself, as the entry point
 under `/shared`. A DENY does not create an entry point. `parent` follows that selected path, even when
 a `Lookup` or `List` reached the object through another alias.
-Parent/path selection uses the same store snapshot and session subjects as the attributes. Tenant
-administration responses use the full tenant namespace, with the tenant root at `/`.
+Parent/path selection uses the same store snapshot and session subjects as the attributes.
 
 Full paths are computed on demand. An ancestor rename/move or a grant change can change a user's
 path without changing the object's identity or file contents. Paths are not stored on every
@@ -104,8 +105,9 @@ only with the same field for the same tenant and object. Attribute versions and 
 all directories, including virtual projections, are additionally scoped to the session's visible
 namespace; they are not comparable across different sessions.
 
-`attr_version` advances when attributes or extended metadata change, including size, mode,
-timestamps, MIME type, xattrs, the object's own name, and its parent. Renames and moves therefore
+`attr_version` advances when attributes or extended metadata change, including size, effective mode,
+timestamps, MIME type, xattrs, the object's own name, and its parent. Grant changes that alter the
+session's effective mode therefore advance its attribute version. Renames and moves also
 advance it even when file contents are unchanged. It also reflects changes to the caller-visible
 parent or full path caused by ancestor or authorization changes. These projected changes are
 resolved on read rather than requiring a stored version update on every descendant. Comparing
@@ -182,8 +184,9 @@ DenyGrant {
 
 ALLOW requires a nonempty subject. DENY has no subject and applies to every session. A grant must
 select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0o5`, `r--=0o4`,
-and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid. These masks are
-distinct from `Attr.mode`, which retains the file's POSIX mode bits restricted to `0o700`.
+and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid.
+`Attr.mode` encodes the session's resulting effective grant permissions in the POSIX owner bits by
+shifting this triplet left by six bits.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
 At each object, combine the modes of all ALLOW grants whose subjects match the session, then remove
@@ -208,9 +211,8 @@ matching sessions with `r-x`: the subtree can be read and traversed but not modi
 read/traverse access there for that subject, with inheritance to its descendants. The inaccessible
 parent stays hidden; the reopened entry point can be discovered through `/shared`.
 
-The server enforces grant permissions independently of mount/client checks of `Attr.mode`. A mode
-change through `UpdateOperation` cannot change grants or bypass their restrictions. Required grant
-permissions are:
+The server enforces grant permissions on every call. Mount/client checks of the session's
+`Attr.mode` do not replace server authorization. Required grant permissions are:
 
 | Operation | Required effective permissions |
 | --- | --- |
@@ -369,7 +371,9 @@ GrantUpdate {
 }
 ```
 
-**Returns:** the object's updated `Attr`.
+**Returns:** `Empty {}` on success. Failures use gRPC status errors with `ErrorDetails` and commit no
+partial grant changes. The tenant key provides no session context, so this operation does not return
+`Attr`.
 
 A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
@@ -704,7 +708,6 @@ CreateOperation {
   object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
   directory: bool                // True for a directory, false for a regular file.
   mime_type?: string             // Defaults to inode/directory or application/octet-stream.
-  mode: uint32
   xattrs: map<string, bytes>
 }
 ```
@@ -723,7 +726,6 @@ UpdateOperation {
   object_id: ObjectId
   mime_type?: string
   xattrs: XattrChange[]           // Changes to individual keys; not a full replacement map.
-  mode?: uint32
   atime?: Timestamp
   mtime?: Timestamp
   size?: uint64                  // Truncates or extends a regular file.

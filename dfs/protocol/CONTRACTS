@@ -12,11 +12,10 @@ an active session key and derive the tenant and subjects exclusively from it.
 
 @cc [owner:spolu,label:security] dfs-grant-authorization
 Filesystem and search access MUST use the effective grant permissions for the session's subjects.
-The server MUST enforce these permissions independently of mount/client checks of `Attr.mode`;
-changing stored POSIX mode MUST NOT change grants or bypass their restrictions. Ordinary reads MUST
-conceal inaccessible objects as `NOT_FOUND`; `Validate` MAY report `DENIED` explicitly. Mutation
-permission failures MUST use `FORBIDDEN`. Tenant-key administration MUST NOT be restricted by object
-grants.
+The server MUST enforce these permissions on every call; mount/client checks of `Attr.mode` MUST NOT
+replace server authorization. Ordinary reads MUST conceal inaccessible objects as `NOT_FOUND`;
+`Validate` MAY report `DENIED` explicitly. Mutation permission failures MUST use `FORBIDDEN`.
+Tenant-key administration MUST NOT be restricted by object grants.
 
 @cc [owner:spolu,label:api;security] dfs-grant-shape
 Each `Grant` MUST select exactly one ALLOW or DENY variant. ALLOW MUST contain a nonempty subject
@@ -100,8 +99,7 @@ ordinary root, otherwise enter `/shared` through the nearest readable ancestor w
 explicit ALLOW, including the object itself, using its returned `basename--<object-id>` entry name.
 DENY MUST NOT create entry points. Descendants MUST use ordinary basenames. `parent` MUST follow
 that path even when lookup/listing used another alias. Path selection MUST use the attributes' store
-snapshot and session subjects. Tenant administration responses MUST use the full tenant namespace,
-with the tenant root at `/`.
+snapshot and session subjects.
 
 @cc [owner:spolu,label:backend;performance] dfs-on-demand-paths
 Full paths MUST be computed on demand, not stored on every descendant. Ancestor renames, moves, and
@@ -121,9 +119,10 @@ versions of all directories MUST additionally be scoped to the same session's vi
 
 @cc [owner:spolu,label:api;security] dfs-attribute-version
 `attr_version` MUST advance when attributes or extended metadata change, including size, mode,
-timestamps, MIME type, xattrs, own name, and parent. It MUST reflect caller-visible parent/path
-changes from ancestors or authorization, resolved on read without requiring stored descendant
-version updates. Comparisons MUST require fresh authorization; equal versions MUST NOT grant access.
+timestamps, MIME type, xattrs, own name, and parent. It MUST reflect effective mode and caller-visible
+parent/path changes from ancestors or authorization, resolved on read without requiring stored
+descendant version updates. Comparisons MUST require fresh authorization; equal versions MUST NOT
+grant access.
 Fetching optional metadata or returning a newer `ReadView` MUST NOT itself advance the version.
 Version fields MUST be excluded from attribute-change detection. Content mutations MUST advance the
 attribute version when they change size or timestamps.
@@ -196,11 +195,11 @@ MUST be 1–512. `after` MUST be an opaque exclusive cursor, omitted for the fir
 pass `next_after` unchanged as `after`; its absence MUST indicate completion.
 
 @cc [owner:spolu,label:api;concurrency] dfs-update-grants
-`UpdateGrants` MUST atomically apply at most 512 changes with unique grant values and return updated
-attributes. Repeating a value with different removal flags MUST be invalid. Attachments not included
-in changes MUST remain unchanged; detaching an ancestor grant MUST NOT remove independent descendant
-attachments. Permission changes, including DENY, MUST remain subject to the authorization freshness
-bound and MUST NOT promise immediate revocation.
+`UpdateGrants` MUST atomically apply at most 512 changes with unique grant values. Repeating a value
+with different removal flags MUST be invalid. Attachments not included in changes MUST remain
+unchanged; detaching an ancestor grant MUST NOT remove independent descendant attachments. Permission
+changes, including DENY, MUST remain subject to the authorization freshness bound and MUST NOT promise
+immediate revocation.
 
 @cc [owner:spolu,label:api] dfs-stat-results
 `Stat` MUST accept 1–256 references and return exactly one `StatResult` per input in input order.

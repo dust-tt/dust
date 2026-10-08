@@ -82,7 +82,6 @@ fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
     let patch: rpc::UpdateOperation = serde_json::from_value(json!({
         "object_id": ID,
         "atime": 0,
-        "mode": 0,
         "size": 0,
         "xattrs": [
             {"name": "user.removed"},
@@ -91,7 +90,6 @@ fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
     }))?;
     assert_eq!(patch.atime, Some(0));
     assert_eq!(patch.mtime, None);
-    assert_eq!(patch.mode, Some(0));
     assert_eq!(patch.size, Some(0));
     assert_eq!(patch.xattrs[0].value, None);
     assert_eq!(patch.xattrs[1].value, Some(vec![]));
@@ -142,7 +140,7 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
         parent: ObjectRef::Root,
         directory: true,
         size: 0,
-        mode: 0o700,
+        mode: 0o500,
         atime: Some(0),
         mtime: None,
         ctime: None,
@@ -180,7 +178,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
     let request: rpc::ApplyRequest = serde_json::from_value(json!({
         "operations": [
             {"operation": {"Create": {
-                "parent_id": ID, "object_id": ID, "name": "file", "mode": 384
+                "parent_id": ID, "object_id": ID, "name": "file"
             }}},
             {"operation": {"Write": {"object_id": ID, "data": [0, 255]}}},
             {"operation": {"Remove": {"object_id": ID, "directory": false}}}
