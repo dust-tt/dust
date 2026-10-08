@@ -20,7 +20,23 @@ kills bench sandboxes older than 3 h. Run it whenever in doubt.
 
 Scripts run as the dust-dev service account (`~/.config/dust-dev/sa-key.json`) from an
 isolated gcloud config in `.state/`, so they work whatever your active gcloud login is.
-E2B credentials come from `E2B_API_KEY` / `E2B_DOMAIN`, or `~/.dust-hive/config.env`.
+
+## Benchmarking an implementation
+
+```bash
+impls/henry/build     # amd64 image pushed to Artifact Registry, dfs-mount kept in .state/
+impls/henry/deploy    # 3 servers (one per zone) behind a load balancer, one provisioned tenant
+bin/bench henry       # one round on 2 E2B sandboxes; results in .state/results/ and GCS
+```
+
+A round: sandbox A untars a seeded 10k-file corpus into its mount, sandbox B reads it all back
+through its own mount and checks digests, then B measures how long A's new files take to show up
+(the 1 s freshness bound). It only counts as valid if both mounts exit with no dropped ops and no
+missed commit windows. `bin/clear` wipes the deployment too: re-run `deploy` after it.
+
+The load balancer is open to all: plain TCP with a tenant token, fine for synthetic data. Sandboxes
+reach it through E2B's egress proxy (a TCP connect from a sandbox succeeds to any address, so only
+a real request proves reachability).
 
 ## Layout
 
@@ -29,7 +45,11 @@ E2B credentials come from `E2B_API_KEY` / `E2B_DOMAIN`, or `~/.dust-hive/config.
   `gs://dust-dev-dfs-bench/runs/<run_id>/tfstate`.
 - `k8s/`: namespaces, labeled `pd-ssd` storage class, FDB cluster (7.3, triple, redwood,
   6 storage / 4 log / 5 stateless processes) managed by the fdb-kubernetes-operator.
-- `bin/`: up, down, status, leak-check, sweep, bootstrap.
+- `bin/`: up, down, clear, status, bench, leak-check, sweep, bootstrap.
+- `impls/<impl>/`: how to build and deploy an implementation. `orchestrator/impls.ts`: how to
+  mount it in a sandbox.
+- `orchestrator/`: the E2B side (Node 24 runs the TypeScript directly). `workloads/`: what runs
+  inside sandboxes.
 
 ## Cost
 
