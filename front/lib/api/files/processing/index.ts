@@ -619,6 +619,7 @@ export async function processAndStoreFile(
     if (message.includes("Input buffer contains unsupported image format")) {
       code = "file_type_not_supported";
     } else if (message.includes("could not be processed")) {
+      // Matches Tika 422 errors and `transformStreamToCSV`'s `bounded-csv-output` contract.
       code = "file_too_large";
     }
 

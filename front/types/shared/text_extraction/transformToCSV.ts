@@ -48,9 +48,10 @@ const HTML_TAGS = {
  */
 /**
  * @cc [owner:philipperolet,label:performance;error-handling] bounded-csv-output
- * The returned stream MUST NOT emit more than `MAX_CSV_OUTPUT_BYTES` bytes. When the output would
- * exceed it, the stream MUST fail with an error whose message contains "could not be processed"
- * (mapped to `file_too_large` by `processAndStoreFile`), and `input` MUST be destroyed.
+ * The returned stream MUST NOT emit more than 50 MB (`MAX_FILE_SIZES.delimited`) of UTF-8 output.
+ * When the output would exceed it, the stream MUST fail with an error whose message contains
+ * "could not be processed" (mapped to `file_too_large` by `processAndStoreFile`), and `input` MUST
+ * be destroyed.
  */
 export function transformStreamToCSV(
   input: Readable,
