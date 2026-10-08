@@ -124,20 +124,20 @@ msgid "No data"
 msgstr "No data"
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per day**."
-msgstr "On your current plan, that is **{credits} credits per day**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per day} other {{credits} credits per day}}**."
+msgstr "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per day} other {{credits} credits per day}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per week**."
-msgstr "On your current plan, that is **{credits} credits per week**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per week} other {{credits} credits per week}}**."
+msgstr "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per week} other {{credits} credits per week}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per month**."
-msgstr "On your current plan, that is **{credits} credits per month**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per month} other {{credits} credits per month}}**."
+msgstr "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per month} other {{credits} credits per month}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits**."
-msgstr "On your current plan, that is **{credits} credits**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit} other {{credits} credits}}**."
+msgstr "On your current plan, that is **{displayedLimit, plural, one {{credits} credit} other {{credits} credits}}**."
 
 #: front/components/FairUsageModal.tsx
 msgid "On your current plan, that is **{messages, plural, one {# message per day} other {# messages per day}}**."

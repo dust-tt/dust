@@ -344,7 +344,11 @@ export const MultipleFilesUpload = ({
                     ))}
                     {duplicateFiles.length > 5 && (
                       <li>
-                        <Trans>and {hiddenDuplicateFileCount} more...</Trans>
+                        <Plural
+                          value={hiddenDuplicateFileCount}
+                          one="and # more..."
+                          other="and # more..."
+                        />
                       </li>
                     )}
                   </ul>

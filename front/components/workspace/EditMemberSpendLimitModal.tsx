@@ -11,7 +11,7 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCreditValue } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -127,7 +127,7 @@ function MemberSpendLimitForm({
   const resetBaselineCredits =
     resetBaselineAwuCredits === null
       ? null
-      : formatCredits(resetBaselineAwuCredits);
+      : formatCreditValue(resetBaselineAwuCredits, t);
   const memberName = member?.name;
 
   const memberGroupRows = useMemo(
@@ -348,8 +348,7 @@ function MemberSpendLimitForm({
                   </Trans>
                 ) : (
                   <Trans>
-                    Reset to {resetBaselineCredits} credits at the next billing
-                    cycle
+                    Reset to {resetBaselineCredits} at the next billing cycle
                   </Trans>
                 )}
               </Label>

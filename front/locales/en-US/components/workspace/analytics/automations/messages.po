@@ -189,9 +189,10 @@ msgstr "{percentage}% of its credits"
 msgid "How often it runs"
 msgstr "How often it runs"
 
+#. placeholder {0}: trigger.runCount
 #: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
-msgid "<0>{runCount}</0> <1>times</1>"
-msgstr "<0>{runCount}</0> <1>times</1>"
+msgid "<0>{runCount}</0> <1>{0, plural, one {time} other {times}}</1>"
+msgstr "<0>{runCount}</0> <1>{0, plural, one {time} other {times}}</1>"
 
 #: front/components/workspace/analytics/automations/AutomationsTriggerBreakdown.tsx
 msgid "What each run costs"

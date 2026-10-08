@@ -7,6 +7,7 @@ import {
   parseCreditsString,
   getMonthlyCapCreditsSchema,
   getMonthlyCapDollarsSchema,
+  parseDollarsString,
 } from "@app/components/workspace/api-keys/utils";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { GroupType } from "@app/types/groups";
@@ -231,8 +232,7 @@ export const NewAPIKeyDialog = ({
   };
 
   const onSubmit = async (data: FormValues) => {
-    const dollars =
-      data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
+    const dollars = parseDollarsString(data.monthlyCapDollars);
 
     await onCreate({
       name: data.name,

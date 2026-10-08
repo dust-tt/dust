@@ -9,7 +9,7 @@ import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { LoadingBlock, Tooltip } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
-import { Trans, useLingui } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 
 const CAPTION_TOOLTIP_LABEL: Record<AutomationsScope, MessageDescriptor> = {
@@ -178,7 +178,9 @@ export function AutomationsTriggerBreakdown({
         primaryText={
           <Trans>
             <span className="font-semibold text-foreground">{runCount}</span>{" "}
-            <span className="text-muted-foreground">times</span>
+            <span className="text-muted-foreground">
+              <Plural value={trigger.runCount} one="time" other="times" />
+            </span>
           </Trans>
         }
         caption={t(ratioCaption(trigger.runCount, medianRunCount))}

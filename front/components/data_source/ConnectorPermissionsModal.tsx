@@ -1390,7 +1390,10 @@ export async function confirmPrivateNodesSync({
       message:
         hiddenPrivateNodeCount > 0
           ? t(
-              msg`You are synchronizing data from private sources: ${privateNodeTitles} and ${hiddenPrivateNodeCount} more. Is this okay?`
+              msg`${plural(hiddenPrivateNodeCount, {
+                one: `You are synchronizing data from private sources: ${privateNodeTitles} and # more. Is this okay?`,
+                other: `You are synchronizing data from private sources: ${privateNodeTitles} and # more. Is this okay?`,
+              })}`
             )
           : t(
               msg`${plural(privateNodeCount, {

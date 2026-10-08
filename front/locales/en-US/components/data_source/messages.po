@@ -301,8 +301,8 @@ msgid "Sensitive data synchronization"
 msgstr "Sensitive data synchronization"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
-msgid "You are synchronizing data from private sources: {privateNodeTitles} and {hiddenPrivateNodeCount} more. Is this okay?"
-msgstr "You are synchronizing data from private sources: {privateNodeTitles} and {hiddenPrivateNodeCount} more. Is this okay?"
+msgid "{hiddenPrivateNodeCount, plural, one {You are synchronizing data from private sources: {privateNodeTitles} and # more. Is this okay?} other {You are synchronizing data from private sources: {privateNodeTitles} and # more. Is this okay?}}"
+msgstr "{hiddenPrivateNodeCount, plural, one {You are synchronizing data from private sources: {privateNodeTitles} and # more. Is this okay?} other {You are synchronizing data from private sources: {privateNodeTitles} and # more. Is this okay?}}"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "{privateNodeCount, plural, one {You are synchronizing data from a private source: {privateNodeTitles}. Is this okay?} other {You are synchronizing data from private sources: {privateNodeTitles}. Is this okay?}}"
@@ -673,8 +673,8 @@ msgid "{contentNodeType, select, document {An error occurred while deleting your
 msgstr "{contentNodeType, select, document {An error occurred while deleting your document.} table {An error occurred while deleting your table.} other {An error occurred while deleting your folder.}}"
 
 #: front/components/data_source/DocumentOrTableDeleteDialog.tsx
-msgid "{contentNodeType, select, document {Are you sure you want to delete document '{contentNodeTitle}'?} table {Are you sure you want to delete table '{contentNodeTitle}'?} other {Are you sure you want to delete folder '{contentNodeTitle}'?}}"
-msgstr "{contentNodeType, select, document {Are you sure you want to delete document '{contentNodeTitle}'?} table {Are you sure you want to delete table '{contentNodeTitle}'?} other {Are you sure you want to delete folder '{contentNodeTitle}'?}}"
+msgid "{contentNodeType, select, document {Are you sure you want to delete document “{contentNodeTitle}”?} table {Are you sure you want to delete table “{contentNodeTitle}”?} other {Are you sure you want to delete folder “{contentNodeTitle}”?}}"
+msgstr "{contentNodeType, select, document {Are you sure you want to delete document “{contentNodeTitle}”?} table {Are you sure you want to delete table “{contentNodeTitle}”?} other {Are you sure you want to delete folder “{contentNodeTitle}”?}}"
 
 #: front/components/data_source/DocumentOrTableDeleteDialog.tsx
 msgid "This action cannot be undone."
@@ -882,8 +882,8 @@ msgid "{duplicateFileCount, plural, one {# file already exists in this folder:} 
 msgstr "{duplicateFileCount, plural, one {# file already exists in this folder:} other {# files already exist in this folder:}}"
 
 #: front/components/data_source/MultipleFilesUpload.tsx
-msgid "and {hiddenDuplicateFileCount} more..."
-msgstr "and {hiddenDuplicateFileCount} more..."
+msgid "{hiddenDuplicateFileCount, plural, one {and # more...} other {and # more...}}"
+msgstr "{hiddenDuplicateFileCount, plural, one {and # more...} other {and # more...}}"
 
 #: front/components/data_source/MultipleFilesUpload.tsx
 msgid "Do you want to replace them?"

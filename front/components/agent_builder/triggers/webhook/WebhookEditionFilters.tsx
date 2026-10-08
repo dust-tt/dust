@@ -166,9 +166,6 @@ export function WebhookEditionFilters({
     }
   }, [filterGenerationStatus, filterErrorMessage, filterField.value, t]);
 
-  const matchingCount = estimation?.matchingCount;
-  const totalCount = estimation?.totalCount;
-
   return (
     <div className="space-y-1">
       {selectedPreset && availableEvents.length > 0 && (
@@ -276,10 +273,23 @@ export function WebhookEditionFilters({
             <ContentMessageInline variant="outline">
               <Trans>
                 According to the most recent data, this trigger would have
-                created <span className="font-semibold">{matchingCount}</span>{" "}
-                conversations out of{" "}
-                <span className="font-semibold">{totalCount}</span> events in
-                the last 24 hours.
+                created{" "}
+                <span className="font-semibold">
+                  <Plural
+                    value={estimation.matchingCount}
+                    one="# conversation"
+                    other="# conversations"
+                  />
+                </span>{" "}
+                out of{" "}
+                <span className="font-semibold">
+                  <Plural
+                    value={estimation.totalCount}
+                    one="# event"
+                    other="# events"
+                  />
+                </span>{" "}
+                in the last 24 hours.
               </Trans>
             </ContentMessageInline>
           )}

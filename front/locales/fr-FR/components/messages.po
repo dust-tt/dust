@@ -124,20 +124,20 @@ msgid "No data"
 msgstr "Aucune donnée"
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per day**."
-msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par jour**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per day} other {{credits} credits per day}}**."
+msgstr "Avec votre forfait actuel, cela représente **{displayedLimit, plural, one {{credits} crédit par jour} other {{credits} crédits par jour}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per week**."
-msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par semaine**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per week} other {{credits} credits per week}}**."
+msgstr "Avec votre forfait actuel, cela représente **{displayedLimit, plural, one {{credits} crédit par semaine} other {{credits} crédits par semaine}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits per month**."
-msgstr "Avec votre forfait actuel, cela représente **{credits} crédits par mois**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit per month} other {{credits} credits per month}}**."
+msgstr "Avec votre forfait actuel, cela représente **{displayedLimit, plural, one {{credits} crédit par mois} other {{credits} crédits par mois}}**."
 
 #: front/components/FairUsageModal.tsx
-msgid "On your current plan, that is **{credits} credits**."
-msgstr "Avec votre forfait actuel, cela représente **{credits} crédits**."
+msgid "On your current plan, that is **{displayedLimit, plural, one {{credits} credit} other {{credits} credits}}**."
+msgstr "Avec votre forfait actuel, cela représente **{displayedLimit, plural, one {{credits} crédit} other {{credits} crédits}}**."
 
 #: front/components/FairUsageModal.tsx
 msgid "On your current plan, that is **{messages, plural, one {# message per day} other {# messages per day}}**."

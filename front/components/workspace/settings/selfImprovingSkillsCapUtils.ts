@@ -1,3 +1,4 @@
+import { normalizeDecimalSeparator } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useLingui } from "@lingui/react/macro";
@@ -25,7 +26,7 @@ export function normalizeCapInput(
     case "awu_credits":
       return value.replace(/[^\d]/g, "");
     case "micro_usd":
-      return value.replace(/[^\d.]/g, "");
+      return normalizeDecimalSeparator(value).replace(/[^\d.]/g, "");
     default:
       assertNeverAndIgnore(unit);
       return value.replace(/[^\d.]/g, "");

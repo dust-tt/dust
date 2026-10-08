@@ -230,8 +230,8 @@ msgid "An error occurred while loading your Workspace Credit Pool data. Please r
 msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits de votre workspace. Veuillez actualiser la page ou contacter le support si le problème persiste."
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "/{initialTotalCreditsFormatted} credits"
-msgstr "/{initialTotalCreditsFormatted} crédits"
+msgid "{initialTotalCreditCount, plural, one {/{initialTotalCreditsFormatted} credit} other {/{initialTotalCreditsFormatted} credits}}"
+msgstr "{initialTotalCreditCount, plural, one {/{initialTotalCreditsFormatted} crédit} other {/{initialTotalCreditsFormatted} crédits}}"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "On target"

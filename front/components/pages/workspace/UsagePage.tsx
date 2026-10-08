@@ -40,7 +40,7 @@ import {
   useFeatureFlags,
   useWorkspace,
 } from "@app/lib/auth/AuthContext";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import { INHERIT_MODEL_TIER } from "@app/lib/client/model_tier_options";
 import {
@@ -849,6 +849,7 @@ export function UsagePage() {
     ? formatConsumptionDate(resetAt, getActiveLocale())
     : null;
   const initialTotalCreditsFormatted = formatCredits(initialTotalCredits);
+  const initialTotalCreditCount = roundCredits(initialTotalCredits);
   const overageCreditsFormatted =
     overageCredits !== null ? formatCredits(overageCredits) : null;
 
@@ -1099,7 +1100,10 @@ export function UsagePage() {
                           {formatCredits(totalConsumedCredits)}
                         </span>
                         <span className="copy-sm text-muted-foreground">
-                          <Trans>/{initialTotalCreditsFormatted} credits</Trans>
+                          {t`${plural(initialTotalCreditCount, {
+                            one: `/${initialTotalCreditsFormatted} credit`,
+                            other: `/${initialTotalCreditsFormatted} credits`,
+                          })}`}
                         </span>
                       </div>
                       {creditUsage && (

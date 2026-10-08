@@ -10,7 +10,7 @@ import {
 } from "@app/components/workspace/member_spend_limit_helpers";
 import { useUpdateGroupSharedUsageLimit } from "@app/hooks/useUpdateGroupSharedUsageLimit";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import {
   useGroupSeatMappingPreview,
   useUpdateGroupGrantedSeatType,
@@ -245,13 +245,17 @@ function GroupBudgetField({
   const { t } = useLingui();
   const removeAction = useRemoveAction();
   const usage = group.sharedUsageLimitUsage;
-  const usedCredits = usage ? formatCredits(usage.usedAwuCredits) : null;
 
   let description = t`Shared by all members.`;
   if (!isEditable && !usage) {
     description = t`This group has no budget.`;
-  } else if (usedCredits !== null) {
-    description = t`Shared by all members. ${usedCredits} credits used so far this cycle.`;
+  } else if (usage) {
+    const usedCredits = formatCredits(usage.usedAwuCredits);
+    const usedCreditCount = roundCredits(usage.usedAwuCredits);
+    description = t`${plural(usedCreditCount, {
+      one: `Shared by all members. ${usedCredits} credit used so far this cycle.`,
+      other: `Shared by all members. ${usedCredits} credits used so far this cycle.`,
+    })}`;
   }
 
   return (

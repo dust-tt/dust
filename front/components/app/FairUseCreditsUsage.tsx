@@ -1,13 +1,13 @@
 import { CreditUsageCard } from "@app/components/app/CreditUsageCard";
 import { FairUsageModal } from "@app/components/FairUsageModal";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
 import type { MaxAwuCreditsTimeframeType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { Hoverable } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useRef, useState } from "react";
 
@@ -21,23 +21,51 @@ const MUTATE_DELAY_MS = 3000;
 type Translate = (descriptor: MessageDescriptor) => string;
 
 function getCreditsUsageLabel(
-  usedCredits: string,
-  limitCredits: string,
+  used: number,
+  limit: number,
   timeframe: MaxAwuCreditsTimeframeType,
   t: Translate
 ): string {
+  const usedCredits = formatCredits(used);
+  const limitCredits = formatCredits(limit);
+  const displayedLimit = roundCredits(limit);
   switch (timeframe) {
     case "day":
-      return t(msg`${usedCredits} / ${limitCredits} credits per day`);
+      return t(
+        msg`${plural(displayedLimit, {
+          one: `${usedCredits} / ${limitCredits} credit per day`,
+          other: `${usedCredits} / ${limitCredits} credits per day`,
+        })}`
+      );
     case "week":
-      return t(msg`${usedCredits} / ${limitCredits} credits per week`);
+      return t(
+        msg`${plural(displayedLimit, {
+          one: `${usedCredits} / ${limitCredits} credit per week`,
+          other: `${usedCredits} / ${limitCredits} credits per week`,
+        })}`
+      );
     case "month":
-      return t(msg`${usedCredits} / ${limitCredits} credits per month`);
+      return t(
+        msg`${plural(displayedLimit, {
+          one: `${usedCredits} / ${limitCredits} credit per month`,
+          other: `${usedCredits} / ${limitCredits} credits per month`,
+        })}`
+      );
     case "lifetime":
-      return t(msg`${usedCredits} / ${limitCredits} credits`);
+      return t(
+        msg`${plural(displayedLimit, {
+          one: `${usedCredits} / ${limitCredits} credit`,
+          other: `${usedCredits} / ${limitCredits} credits`,
+        })}`
+      );
     default:
       assertNeverAndIgnore(timeframe);
-      return t(msg`${usedCredits} / ${limitCredits} credits`);
+      return t(
+        msg`${plural(displayedLimit, {
+          one: `${usedCredits} / ${limitCredits} credit`,
+          other: `${usedCredits} / ${limitCredits} credits`,
+        })}`
+      );
   }
 }
 
@@ -92,12 +120,7 @@ export function FairUseCreditsUsage({ workspaceId }: FairUseCreditsUsageProps) {
   }
 
   const isCritical = percentage >= CREDITS_USAGE_CRITICAL_THRESHOLD;
-  const usageLabel = getCreditsUsageLabel(
-    formatCredits(count),
-    formatCredits(limit),
-    timeframe,
-    t
-  );
+  const usageLabel = getCreditsUsageLabel(count, limit, timeframe, t);
 
   return (
     <>

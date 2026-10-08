@@ -613,7 +613,10 @@ export function AgentSidebarMenu({
       sendNotification({
         type: "error",
         title: t`Some conversations couldn’t be deleted`,
-        description: t`Deleted ${successCount} of ${total} conversations.`,
+        description: t`Deleted ${successCount} of ${plural(total, {
+          one: "# conversation",
+          other: "# conversations",
+        })}.`,
       });
     }
   }, [doDelete, selectedConversations, sendNotification, toggleMultiSelect, t]);
@@ -676,7 +679,10 @@ export function AgentSidebarMenu({
       sendNotification({
         type: "error",
         title: t`Some conversations couldn’t be deleted`,
-        description: t`Deleted ${successCount} of ${total} conversations.`,
+        description: t`Deleted ${successCount} of ${plural(total, {
+          one: "# conversation",
+          other: "# conversations",
+        })}.`,
       });
     }
     setIsDeleting(false);
