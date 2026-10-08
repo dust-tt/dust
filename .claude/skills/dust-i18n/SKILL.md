@@ -109,8 +109,7 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - The locale comes from `SparkleI18nProvider`. Without it, sparkle renders `en-US` (marketing,
   viz, the extension). Front mounts `SparkleLocaleProvider` (`front/components/app/`) at every app
   root that mounts `UserLocaleSync`, and front tests already wrap in it. Sparkle's locale is a
-  catalog locale (`en-GB` renders as `en-US`), so do not use it to format dates and numbers: take a
-  formatted value or a locale prop from the consumer instead.
+  catalog locale (`en-GB` renders as `en-US`).
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
   `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
 
