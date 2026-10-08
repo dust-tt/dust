@@ -1,5 +1,7 @@
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   dayBoundaryInTimezone,
+  getConversationUserTimezone,
   isValidTimezone,
   localTimeOfDayToUtc,
   parseCalendarDate,
@@ -146,5 +148,60 @@ describe("timezoneSchema", () => {
 
   it("rejects an invalid timezone", () => {
     expect(timezoneSchema.safeParse("Not/AZone").success).toBe(false);
+  });
+});
+
+describe("getConversationUserTimezone", () => {
+  function agentLoopContext(timezones: string[]): ToolContext {
+    return {
+      runContext: {
+        contextType: "agent_loop",
+        conversation: {
+          content: timezones.map((timezone) => [
+            { type: "user_message", context: { timezone } },
+            { type: "agent_message" },
+          ]),
+        },
+      },
+    } as unknown as ToolContext;
+  }
+
+  function sandboxContext(timezone: string | undefined): ToolContext {
+    return {
+      runContext: {
+        contextType: "sandbox_function",
+        invocation: {
+          getContext: async () => (timezone ? { timezone } : undefined),
+        },
+      },
+    } as unknown as ToolContext;
+  }
+
+  it("returns the latest user message timezone in an agent loop", async () => {
+    expect(
+      await getConversationUserTimezone(
+        agentLoopContext(["Europe/Paris", "America/New_York"])
+      )
+    ).toBe("America/New_York");
+  });
+
+  it("returns the reported value without normalizing it", async () => {
+    expect(
+      await getConversationUserTimezone(agentLoopContext(["GMT+02:00"]))
+    ).toBe("GMT+02:00");
+  });
+
+  it("returns the invocation timezone in a sandbox function", async () => {
+    expect(
+      await getConversationUserTimezone(sandboxContext("Asia/Tokyo"))
+    ).toBe("Asia/Tokyo");
+  });
+
+  it("returns null when no timezone is available", async () => {
+    expect(await getConversationUserTimezone(agentLoopContext([]))).toBeNull();
+    expect(
+      await getConversationUserTimezone(sandboxContext(undefined))
+    ).toBeNull();
+    expect(await getConversationUserTimezone(undefined)).toBeNull();
   });
 });

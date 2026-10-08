@@ -7,10 +7,7 @@ import type {
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import type { ToolContext } from "@app/lib/actions/types";
-import {
-  isAgentLoopRunContext,
-  isSandboxFunctionRunContext,
-} from "@app/lib/actions/types";
+import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
@@ -62,6 +59,7 @@ import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { listPodsForScope } from "@app/lib/api/projects/list";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import { getConversationUserTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { notifyPodMembersAdded } from "@app/lib/notifications/triggers/pod-added-as-member";
 import { seedInitialPodTasks } from "@app/lib/project_task/seed_initial_pod_tasks";
@@ -1318,7 +1316,9 @@ export function createProjectManagerTools(
 
         // Get origin and timezone from the current conversation
         let origin: UserMessageOrigin = "web";
-        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timezone =
+          (await getConversationUserTimezone(toolContext)) ??
+          Intl.DateTimeFormat().resolvedOptions().timeZone;
         let originMessageId: string | null = null;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
@@ -1327,13 +1327,8 @@ export function createProjectManagerTools(
             .findLast(isUserMessageType);
           if (userMessage?.context) {
             origin = userMessage.context.origin ?? origin;
-            timezone = userMessage.context.timezone ?? timezone;
           }
           originMessageId = toolContext.runContext.agentMessage.sId;
-        }
-        if (isSandboxFunctionRunContext(toolContext?.runContext)) {
-          const context = await toolContext.runContext.invocation.getContext();
-          timezone = context?.timezone ?? timezone;
         }
 
         // Get agent configuration name & profile picture URL
@@ -1636,7 +1631,9 @@ export function createProjectManagerTools(
         }
 
         let origin: UserMessageOrigin = "web";
-        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const timezone =
+          (await getConversationUserTimezone(toolContext)) ??
+          Intl.DateTimeFormat().resolvedOptions().timeZone;
 
         if (isAgentLoopRunContext(toolContext?.runContext)) {
           const userMessage = toolContext.runContext.conversation.content
@@ -1644,7 +1641,6 @@ export function createProjectManagerTools(
             .findLast(isUserMessageType);
           if (userMessage?.context) {
             origin = userMessage.context.origin ?? origin;
-            timezone = userMessage.context.timezone ?? timezone;
           }
         }
 
