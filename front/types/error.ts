@@ -183,6 +183,19 @@ const API_ERROR_TYPES = [
   "batch_suggestion_not_found",
   // Wake-ups
   "wakeup_not_found",
+  // Workspace verification
+  "invalid_captcha",
+  "phone_already_used_error",
+  "phone_number_not_mobile",
+  "phone_number_prepaid",
+  "phone_number_blocked",
+  "phone_number_invalid",
+  "phone_number_lookup_failed",
+  "verification_code_send_failed",
+  "verification_not_found",
+  "verification_code_expired",
+  "verification_code_invalid",
+  "verification_code_check_failed",
 ] as const;
 
 export type RegionRedirectError = CellInfo;

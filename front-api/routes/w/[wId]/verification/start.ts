@@ -26,9 +26,17 @@ export function getStatusCodeForError(
   switch (type) {
     case "rate_limit_error":
       return 429;
-    case "invalid_request_error":
-    case "verification_error":
     case "invalid_captcha":
+    case "phone_number_not_mobile":
+    case "phone_number_prepaid":
+    case "phone_number_blocked":
+    case "phone_number_invalid":
+    case "phone_number_lookup_failed":
+    case "verification_code_send_failed":
+    case "verification_not_found":
+    case "verification_code_expired":
+    case "verification_code_invalid":
+    case "verification_code_check_failed":
       return 400;
     case "phone_already_used_error":
       return 403;

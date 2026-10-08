@@ -29,7 +29,7 @@ export async function validateVerification(
 
   if (!attempt) {
     return new Err({
-      type: "verification_error",
+      type: "verification_not_found",
       message:
         "No pending verification found. Please start a new verification.",
     });
@@ -54,19 +54,19 @@ export async function validateVerification(
 
     if (error.code === "expired") {
       return new Err({
-        type: "verification_error",
+        type: "verification_code_expired",
         message: "Verification code has expired. Please request a new code.",
       });
     }
     if (error.code === "invalid_code") {
       return new Err({
-        type: "verification_error",
+        type: "verification_code_invalid",
         message: "Invalid verification code. Please try again.",
       });
     }
 
     return new Err({
-      type: "verification_error",
+      type: "verification_code_check_failed",
       message: "Failed to verify code. Please try again.",
     });
   }

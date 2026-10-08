@@ -1,3 +1,5 @@
+import type { APIErrorType } from "@app/types/error";
+
 // Computed status (derived from verifiedAt).
 export const VERIFICATION_STATUSES = ["pending", "verified"] as const;
 export type VerificationStatus = (typeof VERIFICATION_STATUSES)[number];
@@ -12,12 +14,28 @@ export type VerifyCodeResponse = {
 };
 
 // Error response.
-export type VerificationErrorType =
+/**
+ * @cc [owner:sfriquet,label:error-handling;product] verification-error-is-api-error
+ * Every `VerificationErrorType` MUST be an `APIErrorType`, so that the UI describes verification
+ * errors from their type with `API_ERROR_MESSAGES`, and each distinct user-facing failure MUST
+ * have its own type.
+ */
+export type VerificationErrorType = Extract<
+  APIErrorType,
   | "rate_limit_error"
-  | "invalid_request_error"
-  | "verification_error"
+  | "invalid_captcha"
   | "phone_already_used_error"
-  | "invalid_captcha";
+  | "phone_number_not_mobile"
+  | "phone_number_prepaid"
+  | "phone_number_blocked"
+  | "phone_number_invalid"
+  | "phone_number_lookup_failed"
+  | "verification_code_send_failed"
+  | "verification_not_found"
+  | "verification_code_expired"
+  | "verification_code_invalid"
+  | "verification_code_check_failed"
+>;
 
 export type VerificationErrorResponse = {
   error: {

@@ -165,6 +165,18 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   agent_suggestion_not_found: msg`Suggestion not found.`,
   batch_suggestion_not_found: msg`Suggestions not found.`,
   wakeup_not_found: msg`Wake-up not found.`,
+  invalid_captcha: msg`The captcha check failed. Try again.`,
+  phone_already_used_error: msg`This phone number is already used by another workspace.`,
+  phone_number_not_mobile: msg`Only mobile phone numbers can be used for verification.`,
+  phone_number_prepaid: msg`Prepaid phone numbers can't be used for verification.`,
+  phone_number_blocked: msg`This phone number can't be used for verification.`,
+  phone_number_invalid: msg`This phone number is invalid.`,
+  phone_number_lookup_failed: msg`We couldn't check this phone number. Try again.`,
+  verification_code_send_failed: msg`We couldn't send the verification code. Try again.`,
+  verification_not_found: msg`No verification is in progress. Request a new code.`,
+  verification_code_expired: msg`This verification code has expired. Request a new code.`,
+  verification_code_invalid: msg`This verification code is incorrect. Try again.`,
+  verification_code_check_failed: msg`We couldn't check the verification code. Try again.`,
 };
 
 export type FormatErrorOptions = {

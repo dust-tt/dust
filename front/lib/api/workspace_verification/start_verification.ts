@@ -121,26 +121,36 @@ export async function startVerification(
     const error = lookupResult.error;
     let panic = false;
 
+    let type: VerificationErrorType;
     let message: string;
     switch (error.code) {
       case "not_mobile":
+        type = "phone_number_not_mobile";
         message = "Only mobile phone numbers are accepted for verification.";
         break;
       case "prepaid_not_accepted":
+        type = "phone_number_prepaid";
         message = "Prepaid phone numbers are not accepted for verification.";
         break;
       case "high_risk_blocked":
       case "flagged_for_review":
+        type = "phone_number_blocked";
         message = "This phone number cannot be used for verification.";
         break;
       case "invalid_phone_number":
+        type = "phone_number_invalid";
+        message = error.message;
+        panic = true;
+        break;
       case "lookup_failed":
+        type = "phone_number_lookup_failed";
         message = error.message;
         panic = true;
         break;
       case "lookup_timeout":
         // Persona was still processing when our poll window elapsed. This is
         // transient latency on their side, not actionable by eng-oncall.
+        type = "phone_number_lookup_failed";
         message = error.message;
         break;
       default:
@@ -159,7 +169,7 @@ export async function startVerification(
       "Phone lookup validation failed"
     );
     return new Err({
-      type: "invalid_request_error",
+      type,
       message,
     });
   }
@@ -177,7 +187,7 @@ export async function startVerification(
     );
 
     return new Err({
-      type: "verification_error",
+      type: "verification_code_send_failed",
       message: "Failed to send verification code. Please try again.",
     });
   }

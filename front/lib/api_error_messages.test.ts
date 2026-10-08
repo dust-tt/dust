@@ -81,6 +81,24 @@ describe("formatError", () => {
     });
   });
 
+  it("describes a workspace verification error by its translated type", async () => {
+    const messages = await loadCatalog("fr-FR");
+    i18n.loadAndActivate({ locale: "fr-FR", messages });
+
+    expect(
+      formatError(
+        {
+          error: {
+            type: "verification_code_expired",
+            message:
+              "Verification code has expired. Please request a new code.",
+          },
+        },
+        WITH_LOCALISATION
+      ).description
+    ).toBe("Ce code de vérification a expiré. Demandez un nouveau code.");
+  });
+
   it("builds an error notification with the given title", () => {
     expect(
       errorNotification(

@@ -606,6 +606,54 @@ msgid "Wake-up not found."
 msgstr "Réveil introuvable."
 
 #: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr "La vérification captcha a échoué. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr "Ce numéro de téléphone est déjà utilisé par un autre workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Only mobile phone numbers can be used for verification."
+msgstr "Seuls les numéros de téléphone mobile peuvent être utilisés pour la vérification."
+
+#: front/lib/api_error_messages.ts
+msgid "Prepaid phone numbers can't be used for verification."
+msgstr "Les numéros de téléphone prépayés ne peuvent pas être utilisés pour la vérification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr "Ce numéro de téléphone ne peut pas être utilisé pour la vérification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is invalid."
+msgstr "Ce numéro de téléphone n’est pas valide."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't check this phone number. Try again."
+msgstr "Impossible de vérifier ce numéro de téléphone. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't send the verification code. Try again."
+msgstr "Impossible d’envoyer le code de vérification. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "No verification is in progress. Request a new code."
+msgstr "Aucune vérification n’est en cours. Demandez un nouveau code."
+
+#: front/lib/api_error_messages.ts
+msgid "This verification code has expired. Request a new code."
+msgstr "Ce code de vérification a expiré. Demandez un nouveau code."
+
+#: front/lib/api_error_messages.ts
+msgid "This verification code is incorrect. Try again."
+msgstr "Ce code de vérification est incorrect. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't check the verification code. Try again."
+msgstr "Impossible de valider le code de vérification. Réessayez."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code : {code}"
 

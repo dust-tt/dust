@@ -1,3 +1,4 @@
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAuthContext, useCheckoutStatus } from "@app/lib/swr/workspaces";
@@ -14,6 +15,7 @@ export function PaymentProcessingPage() {
   const { t } = useLingui();
   const owner = useWorkspace();
   const router = useAppRouter();
+  const formatErrorDescription = useFormatErrorDescription();
   const type = useSearchParam("type");
   const sessionId = useSearchParam("session_id");
   const planCode = useSearchParam("plan_code");
@@ -47,7 +49,7 @@ export function PaymentProcessingPage() {
         break;
       case "error":
         setShouldPoll(false);
-        setError(checkoutStatus.message);
+        setError(formatErrorDescription(checkoutStatus));
         break;
       case "pending":
         pollCountRef.current += 1;
@@ -59,7 +61,14 @@ export function PaymentProcessingPage() {
       default:
         assertNeverAndIgnore(checkoutStatus);
     }
-  }, [checkoutStatus, mutateAuthContext, owner.sId, router, t]);
+  }, [
+    checkoutStatus,
+    formatErrorDescription,
+    mutateAuthContext,
+    owner.sId,
+    router,
+    t,
+  ]);
 
   return (
     <>

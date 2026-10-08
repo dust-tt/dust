@@ -188,7 +188,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_not_mobile");
         expect(result.error.message).toBe(
           "Only mobile phone numbers are accepted for verification."
         );
@@ -209,7 +209,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_prepaid");
         expect(result.error.message).toBe(
           "Prepaid phone numbers are not accepted for verification."
         );
@@ -225,7 +225,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_blocked");
         expect(result.error.message).toBe(
           "This phone number cannot be used for verification."
         );
@@ -243,7 +243,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_blocked");
         expect(result.error.message).toBe(
           "This phone number cannot be used for verification."
         );
@@ -261,7 +261,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("invalid_request_error");
+        expect(result.error.type).toBe("phone_number_invalid");
         expect(result.error.message).toBe("Invalid phone number");
       }
     });
@@ -302,7 +302,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("verification_error");
+        expect(result.error.type).toBe("verification_code_send_failed");
         expect(result.error.message).toBe(
           "Failed to send verification code. Please try again."
         );
@@ -379,7 +379,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("verification_error");
+        expect(result.error.type).toBe("verification_not_found");
         expect(result.error.message).toBe(
           "No pending verification found. Please start a new verification."
         );
@@ -424,7 +424,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("verification_error");
+        expect(result.error.type).toBe("verification_code_invalid");
         expect(result.error.message).toBe(
           "Invalid verification code. Please try again."
         );
@@ -450,7 +450,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("verification_error");
+        expect(result.error.type).toBe("verification_code_expired");
         expect(result.error.message).toBe(
           "Verification code has expired. Please request a new code."
         );
@@ -472,7 +472,7 @@ describe("workspace_verification", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error.type).toBe("verification_error");
+        expect(result.error.type).toBe("verification_not_found");
         expect(result.error.message).toBe(
           "No pending verification found. Please start a new verification."
         );

@@ -606,6 +606,54 @@ msgid "Wake-up not found."
 msgstr "Wake-up not found."
 
 #: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr "The captcha check failed. Try again."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr "This phone number is already used by another workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Only mobile phone numbers can be used for verification."
+msgstr "Only mobile phone numbers can be used for verification."
+
+#: front/lib/api_error_messages.ts
+msgid "Prepaid phone numbers can't be used for verification."
+msgstr "Prepaid phone numbers can't be used for verification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr "This phone number can't be used for verification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is invalid."
+msgstr "This phone number is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't check this phone number. Try again."
+msgstr "We couldn't check this phone number. Try again."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't send the verification code. Try again."
+msgstr "We couldn't send the verification code. Try again."
+
+#: front/lib/api_error_messages.ts
+msgid "No verification is in progress. Request a new code."
+msgstr "No verification is in progress. Request a new code."
+
+#: front/lib/api_error_messages.ts
+msgid "This verification code has expired. Request a new code."
+msgstr "This verification code has expired. Request a new code."
+
+#: front/lib/api_error_messages.ts
+msgid "This verification code is incorrect. Try again."
+msgstr "This verification code is incorrect. Try again."
+
+#: front/lib/api_error_messages.ts
+msgid "We couldn't check the verification code. Try again."
+msgstr "We couldn't check the verification code. Try again."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code: {code}"
 
