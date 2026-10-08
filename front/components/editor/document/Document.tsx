@@ -2,11 +2,12 @@ import {
   DocumentBlockMenu,
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
+import { DocumentCommentCard } from "@app/components/editor/document/DocumentCommentCard";
 import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import {
-  DocumentCommentsPanel,
+  DocumentCommentsList,
   DocumentCommentsToggle,
-} from "@app/components/editor/document/DocumentCommentsPanel";
+} from "@app/components/editor/document/DocumentCommentsList";
 import {
   DocumentLiveStatus,
   DocumentStatus,
@@ -53,7 +54,7 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
  * Commenting MUST require an editable document and commentAuthor. Existing comments MUST
- * remain visible and browsable, through highlights, markers and the panel, in read-only
+ * remain visible and browsable, through highlights, markers, their card and the list, in read-only
  * documents and without an author. Clicking a highlight without selecting text MUST reveal its
  * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
@@ -210,7 +211,7 @@ export const DocumentView = ({
     live: live.binding?.comments,
   });
   const contentRef = useRef<HTMLDivElement>(null);
-  const panelId = useId();
+  const listId = useId();
   const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) =>
@@ -236,68 +237,71 @@ export const DocumentView = ({
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
-      {/* Container queries resolve against the article, so the push padding lives one level down. */}
       <div
+        ref={contentRef}
         className={cn(
-          "transition-[padding] duration-300 ease-out-quint motion-reduce:transition-none",
-          comments.panelOpen && "@6xl:pr-80"
+          "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+          editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
         )}
       >
-        <div
-          ref={contentRef}
-          className={cn(
-            "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-            editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
-          )}
+        <DocumentStatus
+          editable={canEditFile}
+          dirty={dirty}
+          saving={saving}
+          error={error}
+          autosaveDebounceMs={autosaveDebounceMs}
+          onRetry={save}
         >
-          <DocumentStatus
-            editable={canEditFile}
-            dirty={dirty}
-            saving={saving}
-            error={error}
-            autosaveDebounceMs={autosaveDebounceMs}
-            onRetry={save}
-          >
-            {liveView && <DocumentLiveStatus status={liveView.status} />}
-            {showCommentsToggle && (
-              <DocumentCommentsToggle panelId={panelId} comments={comments} />
-            )}
-          </DocumentStatus>
-          {editable && (
-            <DocumentEditingControls
-              editor={editor}
-              comments={comments}
-              blockMenu={blockMenu}
-            />
+          {liveView && <DocumentLiveStatus status={liveView.status} />}
+          {showCommentsToggle && (
+            <DocumentCommentsToggle listId={listId} comments={comments} />
           )}
-          {/* Only catches clicks bubbling from highlights; keyboard users reach comments through
-              the markers and the panel. */}
-          <div
-            role="presentation"
-            onClick={(event) => comments.revealClicked(event.target)}
-          >
-            <EditorContent editor={editor} />
-          </div>
-          {editor && comments.unresolved.length > 0 && (
-            <DocumentCommentMarkers
-              editor={editor}
-              comments={comments}
-              containerRef={contentRef}
-              mountPortalContainer={mountPortalContainer}
-            />
-          )}
+        </DocumentStatus>
+        {editor && showCommentsToggle && (
+          <DocumentCommentsList
+            id={listId}
+            comments={comments}
+            renderCommentBody={renderCommentBody}
+            commentInputExtensions={commentInputExtensions}
+            mountPortalContainer={mountPortalContainer}
+            renderAuthorAvatar={renderCommentAuthorAvatar}
+          />
+        )}
+        {editable && (
+          <DocumentEditingControls
+            editor={editor}
+            comments={comments}
+            blockMenu={blockMenu}
+          />
+        )}
+        {/* Only catches clicks bubbling from highlights; keyboard users reach comments through
+            the markers and the list. */}
+        <div
+          role="presentation"
+          onClick={(event) => comments.revealClicked(event.target)}
+        >
+          <EditorContent editor={editor} />
         </div>
+        {editor && comments.unresolved.length > 0 && (
+          <DocumentCommentMarkers
+            editor={editor}
+            comments={comments}
+            containerRef={contentRef}
+            mountPortalContainer={mountPortalContainer}
+          />
+        )}
+        {editor && (
+          <DocumentCommentCard
+            editor={editor}
+            comments={comments}
+            containerRef={contentRef}
+            renderCommentBody={renderCommentBody}
+            commentInputExtensions={commentInputExtensions}
+            mountPortalContainer={mountPortalContainer}
+            renderAuthorAvatar={renderCommentAuthorAvatar}
+          />
+        )}
       </div>
-      {editor && showCommentsToggle && (
-        <DocumentCommentsPanel
-          id={panelId}
-          comments={comments}
-          renderCommentBody={renderCommentBody}
-          commentInputExtensions={commentInputExtensions}
-          mountPortalContainer={mountPortalContainer}
-          renderAuthorAvatar={renderCommentAuthorAvatar}
-        />
-      )}
     </article>
   );
 };

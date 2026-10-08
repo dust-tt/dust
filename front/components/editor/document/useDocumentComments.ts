@@ -158,9 +158,9 @@ const previewDocument = (
   return applied ? next : null;
 };
 
-/** Where the panel should move focus once it has rendered. */
-export interface PanelFocusRequest {
-  /** Thread to focus, or null for the panel heading. */
+/** Where the comments card or list should move focus once it has rendered. */
+export interface CommentsFocusRequest {
+  /** Thread to focus, or null for the list heading. */
   threadId: string | null;
   nonce: number;
 }
@@ -176,9 +176,10 @@ export interface PanelFocusRequest {
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-navigation
  * Selecting a thread MUST make it active and scroll its highlight into view. Revealing a
- * comment from a highlight or marker MUST open the panel and request focus on that thread.
- * Opening the panel from its toggle MUST request focus on the panel. Closing the panel while
- * focus is inside it MUST return focus to the toggle.
+ * comment from a highlight or marker MUST close the comments list, make the comment active so its
+ * card floats under its text, and request focus on that thread. Opening the list from its toggle
+ * MUST cancel a pending draft and request focus on the list. Starting a draft MUST close the list.
+ * Closing the list while focus is inside it MUST return focus to the toggle.
  */
 /**
  * @cc [owner:tdraier,label:security] document-comment-verification
@@ -254,14 +255,14 @@ export const useDocumentComments = ({
       selector: ({ editor }): DfmComment[] =>
         editor ? getDocumentComments(editor.state.doc) : EMPTY_COMMENTS,
     }) ?? EMPTY_COMMENTS;
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [focusRequest, setFocusRequest] = useState<PanelFocusRequest | null>(
+  const [listOpen, setListOpen] = useState(false);
+  const [focusRequest, setFocusRequest] = useState<CommentsFocusRequest | null>(
     null
   );
   const [verification, setVerification] = useState<Verification | null>(null);
   const latestVerification = useRef<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
-  const panelRef = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLElement>(null);
   const canWrite = canComment && author !== undefined;
   // Stable identity matters: the markers re-measure the DOM whenever this array changes.
   const unresolved = useMemo(
@@ -338,7 +339,7 @@ export const useDocumentComments = ({
 
   const reveal = (id: string) => {
     select(id);
-    setPanelOpen(true);
+    setListOpen(false);
     requestFocus(id);
   };
 
@@ -600,30 +601,33 @@ export const useDocumentComments = ({
     draftQuote: state.draftQuote,
     canWrite,
     author,
-    panelOpen,
+    listOpen,
     focusRequest,
     toggleRef,
-    panelRef,
+    listRef,
     select,
-    closePanel: () => {
-      if (state.draft) {
-        editor?.commands.cancelCommentDraft();
-      }
-      if (panelRef.current?.contains(document.activeElement)) {
+    closeList: () => {
+      if (listRef.current?.contains(document.activeElement)) {
         toggleRef.current?.focus();
       }
-      setPanelOpen(false);
+      setListOpen(false);
     },
-    togglePanel: () => {
-      if (!panelOpen) {
+    toggleList: () => {
+      if (!listOpen) {
+        if (state.draft) {
+          editor?.commands.cancelCommentDraft();
+        }
         requestFocus(null);
-      } else if (state.draft) {
-        editor?.commands.cancelCommentDraft();
       }
-      setPanelOpen((open) => !open);
+      setListOpen((open) => !open);
     },
-    /** Opens the panel on a comment, from a highlight or marker. */
+    /** Floats a comment's card under its text, from a highlight or marker. */
     reveal,
+    /** Clears the active comment, closing its card, and hands focus back to the text. */
+    closeThread: () => {
+      select(null);
+      editor?.commands.focus();
+    },
     /**
      * Reveals the comment under a click in the text: the one covering the least text first,
      * then wider ones on repeated clicks. A click outside every comment clears the active one.
@@ -648,21 +652,21 @@ export const useDocumentComments = ({
       const current = state.activeId ? ids.indexOf(state.activeId) : -1;
       reveal(ids[(current + 1) % ids.length]);
     },
-    /** Activates a thread from the panel and scrolls to its text. */
+    /** Activates a thread from the list and scrolls to its text. */
     jumpTo: (id: string) => {
       select(id);
       if (editor) {
         scrollToCommentHighlight(editor, id);
       }
     },
-    /** Starts a comment on the selection and opens the panel on its card. */
+    /** Starts a comment on the selection, in a card floating under it. */
     startDraft: () => {
       if (!canWrite || !editor || !editor.commands.startCommentDraft()) {
         return false;
       }
-      // The draft card takes focus; an older request would steal it when the panel opens.
+      // The draft card takes focus; an older request would steal it.
       setFocusRequest(null);
-      setPanelOpen(true);
+      setListOpen(false);
       return true;
     },
     cancelDraft: () => {
@@ -689,7 +693,6 @@ export const useDocumentComments = ({
         commands.discard(id);
         return anchored;
       }
-      setPanelOpen(true);
       return new Ok(undefined);
     },
     reply: async (id: string, body: string): Promise<Result<void, string>> => {
@@ -703,7 +706,7 @@ export const useDocumentComments = ({
       }
       return commandsFor(editor, author).reply(thread, body);
     },
-    /** Resolves or reopens, then focuses the given thread or the panel heading. */
+    /** Resolves or reopens, then focuses the given thread or the list heading. */
     setResolved: async (
       id: string,
       resolved: boolean,
@@ -784,7 +787,7 @@ export const useDocumentComments = ({
       requestFocus(focusNext);
       return new Ok(undefined);
     },
-    /** Deletes, then focuses the given thread or the panel heading. */
+    /** Deletes, then focuses the given thread or the list heading. */
     remove: async (
       id: string,
       focusNext: string | null

@@ -2,7 +2,7 @@ import { getCommentHighlights } from "@app/components/editor/document/DocumentCo
 import type { DocumentCommentsController } from "@app/components/editor/document/useDocumentComments";
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
 import type { DfmComment } from "@app/lib/markdown/dfm";
-import { cn, Icon, MessageTextCircle01, Tooltip } from "@dust-tt/sparkle";
+import { cn, Icon, MessageCircle01, Tooltip } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
@@ -127,13 +127,13 @@ export const DocumentCommentMarkers = ({
                 onClick={() => reveal(targetId)}
                 style={{ top: cluster.center }}
                 className={cn(
-                  "pointer-events-auto absolute right-0 flex h-7 min-w-7 -translate-y-1/2 items-center justify-center gap-1 rounded-full border border-border bg-background text-muted-foreground shadow-xs transition-colors hover:bg-hover hover:text-foreground motion-reduce:transition-none",
-                  "aria-[current=true]:border-golden-500/60 aria-[current=true]:bg-golden-300/40 aria-[current=true]:text-foreground dark:aria-[current=true]:bg-golden-400/25",
+                  "pointer-events-auto absolute right-0 flex h-6 min-w-6 -translate-y-1/2 items-center justify-center gap-1 rounded-full text-muted-foreground/80 transition-colors hover:bg-muted-background hover:text-foreground motion-reduce:transition-none",
+                  "aria-[current=true]:bg-golden-100 aria-[current=true]:text-foreground dark:aria-[current=true]:bg-golden-400/25",
                   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  cluster.ids.length > 1 && "px-2"
+                  cluster.ids.length > 1 && "px-1.5"
                 )}
               >
-                <Icon visual={MessageTextCircle01} size="xs" />
+                <Icon visual={MessageCircle01} size="xs" />
                 {cluster.ids.length > 1 && (
                   <span className="text-xs font-medium tabular-nums">
                     {cluster.ids.length}

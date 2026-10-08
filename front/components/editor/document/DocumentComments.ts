@@ -17,14 +17,14 @@ const COMMENTS_ATTRIBUTE = "comments";
 const REMOVED_COMMENT_MARKS_META = "removedCommentMarks";
 
 const HIGHLIGHT_CLASS = cn(
-  "cursor-pointer border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",
-  "hover:bg-golden-300/60 dark:border-golden-500/70 dark:bg-golden-400/25 dark:hover:bg-golden-400/40",
-  "motion-reduce:transition-none print:border-transparent print:bg-transparent"
+  "cursor-pointer rounded-sm bg-golden-100 transition-colors",
+  "hover:bg-golden-200/70 dark:bg-golden-400/20 dark:hover:bg-golden-400/30",
+  "motion-reduce:transition-none print:bg-transparent"
 );
 // Dark alphas keep stone-200 text above 4.5:1 on the composited highlight.
 const ACTIVE_HIGHLIGHT_CLASS = cn(
-  "border-golden-500 bg-golden-300/80 hover:bg-golden-300/80",
-  "dark:border-golden-400 dark:bg-golden-400/40 dark:hover:bg-golden-400/40"
+  "bg-golden-200 hover:bg-golden-200",
+  "dark:bg-golden-400/40 dark:hover:bg-golden-400/40"
 );
 
 export interface DocumentCommentDraft {
