@@ -1,5 +1,5 @@
 import { useChildAgentStream } from "@app/hooks/useChildAgentStream";
-import type { LightWorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -9,19 +9,7 @@ vi.mock("@app/hooks/useEventSource", () => ({
   useEventSource: (...args: unknown[]) => mockUseEventSource(...args),
 }));
 
-const mockOwner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_test",
-  name: "Test Workspace",
-  role: "admin",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const mockOwner = LightWorkspaceFactory.build({ sId: "w_test" });
 
 const childStreamIds = {
   conversationId: "child_conv_123",

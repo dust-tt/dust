@@ -12,7 +12,7 @@ import { makeExtractDataToolsMetadata } from "@app/lib/api/actions/servers/extra
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { isJSONSchemaObject } from "@app/lib/utils/json_schemas";
-import type { WorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { describe, expect, it } from "vitest";
@@ -20,20 +20,10 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Mock workspace for testing
-const mockWorkspace: WorkspaceType = {
-  id: 1,
+const mockWorkspace = LightWorkspaceFactory.build({
   sId: "test-workspace",
-  name: "Test Workspace",
-  role: "admin",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  metadata: {},
-  metronomeCustomerId: null,
   sharingPolicy: "all_scopes",
-  locale: "en-US",
-  regionalModelsOnly: false,
-};
+});
 
 // Helper function to create a basic MCP tool configuration
 function createBasicMCPConfiguration(

@@ -1,6 +1,6 @@
 import { ConversationCreditUsagePanel } from "@app/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import type { LightWorkspaceType } from "@app/types/user";
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -25,19 +25,7 @@ vi.mock("@app/lib/tracking", async (importOriginal) => {
   return { ...actual, trackEvent: mockTrackEvent };
 });
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "workspace_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "workspace_1", role: "user" });
 
 const conversation: ConversationWithoutContentType = {
   id: 1,

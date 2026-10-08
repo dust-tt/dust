@@ -1,6 +1,6 @@
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
-import type { LightWorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
@@ -13,19 +13,7 @@ vi.mock(
   })
 );
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 const defaultProps: ComponentProps<typeof FeedbackSelector> = {
   feedback: null,

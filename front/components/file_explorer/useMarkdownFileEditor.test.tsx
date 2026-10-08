@@ -1,7 +1,7 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { writeFileContentByPath } from "@app/lib/swr/files";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,19 +28,7 @@ vi.mock("@app/lib/client/live_session", () => ({
   getLiveSessionUrl: () => liveSessionUrl,
 }));
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 const params = {
   category: "markdown" as const,

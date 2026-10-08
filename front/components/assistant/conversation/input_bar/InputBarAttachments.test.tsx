@@ -4,7 +4,7 @@ import type {
   FileBlobUploadState,
   FileUploaderService,
 } from "@app/hooks/useFileUploaderService";
-import type { LightWorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -32,19 +32,7 @@ vi.mock(import("@app/hooks/useNotification"), () => ({
   useSendNotification: () => vi.fn(),
 }));
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 function makeFileBlob(overrides: Partial<FileBlob> = {}): FileBlob {
   const filename = overrides.filename ?? "report.pdf";

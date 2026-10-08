@@ -1,24 +1,12 @@
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { Err, Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { AgentBuilderSimilarAgentsSection } from "./AgentBuilderSimilarAgentsSection";
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 const user = { sId: "user_1" };
 

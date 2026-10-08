@@ -8,12 +8,12 @@ import {
   useAgentMessageStream,
 } from "@app/hooks/useAgentMessageStream";
 import { isTerminalAgentLoopEvent } from "@app/lib/client/agent_loop_stream";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type {
   InlineActivityStep,
   LightAgentMessageType,
 } from "@app/types/assistant/conversation";
-import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -132,19 +132,7 @@ function makeLightAgentMessage(
   };
 }
 
-const mockOwner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_test",
-  name: "Test Workspace",
-  role: "admin",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const mockOwner = LightWorkspaceFactory.build({ sId: "w_test" });
 
 beforeEach(() => {
   mockUseEventSource.mockReset();

@@ -1,6 +1,6 @@
 import { InlineActivitySteps } from "@app/components/assistant/conversation/actions/inline/InlineActivitySteps";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
-import type { WorkspaceType } from "@app/types/user";
 import { fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -27,19 +27,7 @@ vi.mock(
   })
 );
 
-const mockOwner: WorkspaceType = {
-  id: 1,
-  sId: "w_test",
-  name: "Test Workspace",
-  role: "admin",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-  regionalModelsOnly: false,
-};
+const mockOwner = LightWorkspaceFactory.build({ sId: "w_test" });
 
 const mockAgentMessage: LightAgentMessageType = {
   type: "agent_message",

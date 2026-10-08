@@ -1,5 +1,4 @@
 import type { AgentLoopBlockedToolExecution } from "@app/lib/actions/mcp";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   act,
   fireEvent,
@@ -11,6 +10,7 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { UserAnswerRequired } from "./UserAnswerRequired";
 
 const removeCompletedActionMock = vi.fn();
@@ -194,19 +194,7 @@ vi.mock("@dust-tt/sparkle", () => {
   };
 });
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 function makeBlockedAction({
   multiSelect = false,
