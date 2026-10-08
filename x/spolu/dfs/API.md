@@ -12,8 +12,8 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 - `ObjectId`: the identity of a real stored object, represented as a 16-byte UUIDv4. It remains
   stable across renames and moves. The real tenant root also has an `ObjectId`.
 - `ObjectRef`: either a real `ObjectId` or a virtual `root` / `shared` tag. Virtual references work
-  with `Stat`, `Lookup`, and `List`. Other operations require a real `ObjectId`. Virtual `root`
-  is a session projection, distinct from the stored tenant root.
+  with `Stat`, `Lookup`, `List`, and `Validate`. Other operations require a real `ObjectId`.
+  Virtual `root` is a session projection, distinct from the stored tenant root.
 - `bytes`: a sequence of raw bytes.
 
 ```text
@@ -23,19 +23,22 @@ Timestamp = uint64              // Milliseconds since 1970-01-01T00:00:00Z.
 
 Attr {
   id: ObjectRef
+  parent: ObjectRef              // Visible parent; root is its own parent.
   directory: bool
   size: uint64                   // Logical file size; zero for directories.
   mode: uint32                   // POSIX mode bits, restricted to 0o7777.
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
-  content_version: uint64        // Monotonically increasing per file; zero for directories/projections.
-  view: ReadView                 // Store and authorization versions associated with these attributes.
+  attr_version: uint64           // Monotonically increasing version of attributes and metadata.
+  content_version: uint64        // Monotonic version of file bytes or directory entries.
+  view: ReadView                 // Store and authorization versions for these attributes.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
 
 ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
+  full_path: string              // Absolute path in the caller's visible namespace.
   mime_type: string
   xattrs: map<string, bytes>
 }
@@ -56,23 +59,72 @@ All timestamps, including session expiration and search time bounds, use this mi
 Precision is one millisecond, and dates before the Unix epoch are not representable. Zero denotes
 the epoch; an omitted optional timestamp is distinct from zero.
 
-`Attr` does not include parent links. Its optional `metadata` contains creation time, MIME type, and
-xattrs; absence means metadata was not fetched, while a present metadata object with an empty xattr
-map means it was fetched and no xattrs exist. `Stat(include_metadata=true)` populates this field.
-Other responses omit it unless explicitly specified.
+`Attr.parent` identifies the parent in the caller's visible namespace. Virtual `root` is its own
+parent; virtual `shared` and visible top-level objects have `parent: root`. An object whose selected
+path is an entry directly under `/shared` has `parent: shared`. Other objects use their visible
+parent's real ID. The stored tenant root, when accessible, also has `parent: root`.
+
+Optional `metadata` contains creation time, full path, MIME type, and xattrs; absence means metadata
+was not fetched, while a present metadata object with an empty xattr map means it was fetched and no
+xattrs exist. `Stat(include_metadata=true)` populates this field. Other responses omit it unless
+explicitly specified.
+
+`full_path` is required whenever extended metadata is returned. It starts with `/`, uses `/` between
+basenames, and has no trailing slash except for `/` itself. It is relative to the session's virtual
+root, not the server's storage layout or the client's mountpoint. Virtual `root` and the accessible
+stored tenant root use `/`; virtual `shared` uses `/shared`. Shared entry points use their returned
+`basename--<object-id>` names, followed by ordinary descendant names. Hidden ancestor names and IDs
+are never exposed through `full_path` or `parent`.
+
+An object can have multiple visible aliases. The server selects one canonical visible path per
+session: prefer a path through the ordinary root; otherwise use the nearest directly granted object
+on its ancestor chain, including the object itself, as the entry point under `/shared`. `parent`
+follows that selected path, even when a `Lookup` or `List` reached the object through another alias.
+Parent/path selection uses the same store snapshot and session grants as the attributes. Tenant
+administration responses use the full tenant namespace, with the tenant root at `/`.
+
+Full paths are computed on demand. An ancestor rename/move or a grant change can change a user's
+path without changing the object's identity or file contents. Paths are not stored on every
+descendant, and changing an ancestor does not require rewriting descendant paths.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
 across writes, metadata or grant changes, renames, and moves. Virtual projections return the
 synthetic value zero (the Unix epoch).
 
-For a regular file, **`content_version` is a monotonically increasing `uint64` scoped to that
-object**. It starts at 1 and advances atomically with nonempty writes and changes to file size,
-including truncation and extension. A nonempty write advances it even when the supplied bytes equal
-the existing bytes. Mode, timestamps, MIME type, xattrs, grants, renames, and moves do not advance it.
-Compare content versions only for the same object. The counter never wraps or resets during the
-object's lifetime.
-Directories and virtual projections return zero. Their listing pages are refreshed through `List`.
+**`attr_version` and `content_version` are monotonically increasing `uint64` values.** They are
+positive, may have gaps, and never wrap or reset during the object's lifetime. Compare each field
+only with the same field for the same tenant and object. Attribute versions and versions of virtual
+directory projections are additionally scoped to the session's visible namespace; they are not
+comparable across different sessions.
+
+`attr_version` advances when attributes or extended metadata change, including size, mode,
+timestamps, MIME type, xattrs, the object's own name, and its parent. Renames and moves therefore
+advance it even when file contents are unchanged. It also reflects changes to the caller-visible
+parent or full path caused by ancestor or authorization changes. These projected changes are
+resolved on read rather than requiring a stored version update on every descendant. Comparing
+`attr_version` requires a fresh authorization check; matching versions alone never grant access.
+Fetching optional metadata or returning a newer `ReadView` does not itself change `attr_version`.
+The version fields themselves are excluded from attribute-change detection, avoiding recursive
+version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
+
+For a regular file, `content_version` starts at 1 and advances atomically with nonempty writes and
+changes to file size, including truncation and extension. A nonempty write advances it even when the
+supplied bytes equal the existing bytes. Mode, timestamps, MIME type, xattrs, grants, renames, and
+moves do not advance it.
+
+For a real directory, `content_version` starts at 1 and advances atomically whenever its immediate
+listing changes: a child is created, removed, renamed, moved in or out, or replaced by another
+object under the same name. Listing content means the mapping of entry names to object IDs, not the child
+attributes included in `List` responses. Editing a child's contents or attributes alone does not
+advance its parent's `content_version`. Renaming or moving the directory itself advances its
+`attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
+unchanged when its entries are unchanged.
+
+Virtual `root` and `shared` also return positive content versions that advance when their
+session-visible entry mappings change, including changes caused by grant attachments or topology.
+These versions must preserve their ordering across servers and restarts for the same session view.
+No version comparison replaces authorization or establishes a snapshot across listing pages.
 
 **Both `ReadView.store_version` and `ReadView.auth_version` are monotonically increasing within a
 tenant.** Each is a nonnegative `int64`: as its respective state advances, its version increases
@@ -89,8 +141,8 @@ identifies the successful commit. `Attr.view` carries both versions with an indi
 attributes and matches the enclosing response or mutation's `view`. `auth_version` identifies the
 permission and topology state used to authorize the operation, whether served from the RAM tree or
 the store fallback. The two fields do not promise a common snapshot, and a mutation response does
-not imply the RAM tree has applied that mutation yet. Neither field replaces a file's
-`content_version` for detecting content changes.
+not imply the RAM tree has applied that mutation yet. Neither field replaces `attr_version` or
+`content_version` for detecting changes to an object's attributes or contents.
 
 Authorization versions must use one tenant-wide ordering across server instances, restarts, tree
 rebuilds, and store fallback. A process-local counter that resets on restart, or unrelated counters
@@ -281,10 +333,11 @@ StatResult {
 ```
 
 An individual missing or inaccessible object does not prevent results for the other IDs. With
-`include_metadata=true`, each successful result populates `object.metadata` from the same FDB
-snapshot as its attributes. Virtual projections return synthetic metadata with MIME type
-`inode/directory`, an empty xattr map, and `created: 0`. With the flag omitted or false,
-metadata is neither fetched nor returned.
+`include_metadata=true`, each successful result populates `object.metadata`, including its
+session-specific full path, from the same FDB snapshot as its attributes. Virtual projections return
+synthetic metadata with MIME type `inode/directory`, an empty xattr map, `created: 0`, and `full_path`
+set to `/` or `/shared`. With the flag omitted or false, extended metadata is not returned;
+`attr_version` still covers it.
 
 The encoded response is limited to 4 MiB. If requested metadata would exceed that budget, the RPC
 fails with `CAPACITY`; retry with fewer IDs. Metadata is never silently omitted from a successful
@@ -348,10 +401,15 @@ Pages obey both the entry limit and a 4 MiB response budget. Pass `next_after` u
 next request. Ordinary directories are ordered by basename; `shared` uses object-ID cursors.
 Continue until `next_after` is absent, even after an empty page.
 
-Clients refresh cached pages by calling `List` again when their cache deadline expires or an
-invalidation requires it. Each fetched page includes current child attributes and a `ReadView` for
-that request. Pages are independently refreshed; traversal across pages does not promise a single
-snapshot. The same refresh behavior applies to real directories and virtual projections.
+Clients refresh cached pages through `List`. A directory's `Attr.content_version`, obtained through
+`Stat`, identifies changes to its entry names and object IDs; `Validate` can check that version and
+renew access to bindings cached at that version. An unchanged directory version does not validate
+the child attributes embedded in an old page; those require separate checks or a refetch. Each
+fetched page includes current child attributes and a `ReadView` for that request. Pages are
+independently refreshed; traversal across pages does not promise a single snapshot, and validation
+does not retroactively make independently fetched pages coherent. The same refresh behavior applies
+to real directories and virtual projections. There is no separate listing token or version
+precondition on `List`.
 
 Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes grant entry
 points using names suffixed with `--<object-id>`, allowing discovery without access to their parents.
@@ -423,20 +481,26 @@ being downloaded. Attributes and contents share one FDB snapshot.
 
 ### Validate
 
-Rechecks access and determines whether cached file contents remain valid.
+Rechecks access and compares cached attribute and/or content versions for files, directories, and
+virtual projections.
 
 **Arguments**
 
 ```text
 ValidateRequest {
-  checks: FileCheck[]            // From 1 to 256 checks.
+  checks: VersionCheck[]         // From 1 to 256 checks.
 }
 
-FileCheck {
-  object_id: ObjectId
-  content_version: uint64        // Positive version of the cached file contents.
+VersionCheck {
+  object_id: ObjectRef
+  attr_version?: uint64          // Positive version of cached attributes and extended metadata.
+  content_version?: uint64       // Positive version of cached bytes or directory entries.
 }
 ```
+
+Each check must supply at least one version; it may supply either version alone or both. An omitted
+version is not compared. A check with neither version, or with any supplied version equal to zero,
+rejects the request with `INVALID_INPUT`.
 
 **Returns**
 
@@ -452,14 +516,27 @@ ValidationResult {
 }
 ```
 
-Authorization is checked before comparing content versions. `UNCHANGED` validates only the cached
-contents and access; it does not validate cached attributes or extended metadata. Refresh those
-separately with `Stat`, or refresh ordinary child attributes by fetching their directory page through
-`List`. Checks require real files and positive content versions; directories and virtual
-projections are refreshed through `List`.
+Authorization is checked before comparing versions. Both versions, when supplied, are compared
+against the same current object view. For an existing, authorized object:
 
-`CHANGED` requires a content refetch. `DENIED` means access was revoked, `MISSING` means the object is
-absent, and `ERROR` covers other check failures. A backend failure can fail the entire RPC rather
+| Supplied versions | `UNCHANGED` when | `CHANGED` when |
+| --- | --- | --- |
+| `attr_version` only | The attribute version matches. | The attribute version differs. |
+| `content_version` only | The content version matches. | The content version differs. |
+| Both | Both versions match. | Either or both versions differ. |
+
+`UNCHANGED` renews access and validates only the supplied versions. An attribute check covers the
+object's attributes and extended metadata, including its visible parent and full path. A content
+check covers file bytes or a directory's entry-name/object-ID bindings. An attribute-only check does
+not validate content or a cached `content_version`; a content-only check does not validate attributes
+or extended metadata. Even when both versions of a directory match, the attributes and contents of
+its children require their own checks. Session-scoped versions must come from the same session view.
+
+`CHANGED` does not identify which supplied version differed. Refresh the relevant state through
+`Stat`, `Read`/`ReadFiles`, or `List`; checking both versions does not necessarily require downloading
+file bytes again if a fresh `Stat` shows the content version still matches. `DENIED` means access is
+not allowed, `MISSING` means the object is absent, and `ERROR` covers other check failures. These
+outcomes take precedence over version comparisons. A backend failure can fail the entire RPC rather
 than establish freshness for only part of the batch.
 
 ## Filesystem mutations
@@ -513,8 +590,10 @@ operations commit together. Storage or commit failures affect the entire transac
 cannot be reported as isolated operation failures. No results are returned before commit.
 
 Returned attributes reflect the final committed state, rather than an intermediate state after
-each operation. Removed objects have no returned attributes. Parents changed only by membership
-bookkeeping are omitted and must be invalidated by clients.
+each operation. Removed objects have no returned attributes. Parents changed only by listing
+membership and its associated version bookkeeping may be omitted; clients must invalidate their
+cached attributes and listing pages. Attribute and content versions follow the shared rules above
+and advance atomically with their corresponding changes.
 
 Every successful result carries the same `mutation.view`: `store_version` is the batch's commit
 version, and `auth_version` is the authorization-state version used by the committed attempt. For
@@ -610,6 +689,9 @@ RenameOperation {
 **Successful result:** `mutation.object` contains the moved object's final attributes if it survives.
 The source object and affected parents must be accessible. Replacement requires the same kind;
 a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
+The object's `attr_version` advances on a rename or parent change; the affected parents' listing
+content versions advance as well. Extended metadata fetched later reflects the caller's new full
+path, including for descendants of a moved directory.
 
 ### remove operation
 
@@ -699,6 +781,9 @@ asynchronous; deleted objects and stale indexed content or metadata are suppress
 are returned, and every hit is permission-checked. A matching `content_version` establishes only
 content freshness; indexed names and metadata must be checked separately. Unsupported content
 formats remain searchable by name/metadata. Results have no public cursor, score, or total-hit count.
+Returned parents and attribute versions use the caller's namespace. Session-specific full paths are
+resolved by `Stat(include_metadata=true)` from the authoritative namespace, not stored in the shared
+search index.
 
 Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and a 1 MiB response.
 `partial` indicates bounded evaluation, not whether indexing is current. Backend failures are errors,
@@ -714,5 +799,6 @@ also use `ErrorDetails` for individual failures. Stable codes are `INTERNAL`, `I
 The Rust client exposes async and blocking methods. `dfs-client` accepts a kebab-case method name,
 `--endpoint`, `--key-file`, and JSON on stdin or via `--input`. Tenant/session creation also requires
 `--output` to save returned credentials to a new private file. CLI JSON uses string object IDs
-(32 lowercase hex digits, `dfs://` references, `root`, or `shared`), numeric enum values and content
-versions, and byte arrays for `bytes`; it is the Rust serde representation, not protobuf JSON mapping.
+(32 lowercase hex digits, `dfs://` references, `root`, or `shared`), numeric enum values, attribute and
+content versions, and byte arrays for `bytes`; it is the Rust serde representation, not protobuf JSON
+mapping.
