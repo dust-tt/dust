@@ -55,7 +55,7 @@ async function getDustLocales(
   });
 }
 
-// Locale changes in Dust take up to 2 minutes to reach Slack.
+// Bounds Dust -> Slack locale propagation to 10 min while avoiding a front call per bot message.
 const getDustLocalesMemoized = cacheWithRedisResult<
   GetMemberLocaleResponseType,
   APIError,
@@ -64,7 +64,7 @@ const getDustLocalesMemoized = cacheWithRedisResult<
   getDustLocales,
   (connector, { slackUserId }) =>
     `slack-dust-locales-${connector.id}-${slackUserId ?? "workspace"}`,
-  { ttlMs: 2 * 60 * 1000 }
+  { ttlMs: 10 * 60 * 1000 }
 );
 
 /**
