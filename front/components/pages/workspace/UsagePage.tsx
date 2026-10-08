@@ -711,11 +711,9 @@ export function UsagePage() {
   const handleBulkChangeSeatValidate = useCallback(
     async ({
       seatType,
-      seatName,
       hasDeferredChanges,
     }: {
       seatType: PaidSeatType;
-      seatName: string;
       hasDeferredChanges: boolean;
     }): Promise<boolean> => {
       const pendingMemberIds = getBulkPendingMemberIds();
@@ -729,7 +727,6 @@ export function UsagePage() {
         const body = await doBulkChangeSeatType({
           selection: buildBulkSelectionBody(),
           seatType,
-          seatName,
           hasDeferredChanges,
         });
         if (!body) {

@@ -1,3 +1,4 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -826,28 +827,15 @@ export function useUpdateGroupGrantedSeatType({
 
         const body: PutGroupGrantedSeatTypeResponseBody = await res.json();
 
-        let description: string;
-        switch (grantedSeatType) {
-          case "workspace":
-            description = t`Members of ${groupName} now get a Platform seat.`;
-            break;
-          case "pro":
-            description = t`Members of ${groupName} now get a Pro seat.`;
-            break;
-          case "max":
-            description = t`Members of ${groupName} now get a Max seat.`;
-            break;
-          case null:
-            description = t`${groupName} no longer grants a seat.`;
-            break;
-          default:
-            assertNeverAndIgnore(grantedSeatType);
-            description = "";
-        }
+        const seatName = grantedSeatType
+          ? seatTypeDisplayName(grantedSeatType, t)
+          : null;
         sendNotification({
           type: "success",
           title: t`Group seat updated`,
-          description,
+          description: seatName
+            ? t`Members of ${groupName} now get a ${seatName} seat.`
+            : t`${groupName} no longer grants a seat.`,
         });
 
         // Changing the mapping re-syncs member seats, so refresh the groups

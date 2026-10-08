@@ -1,3 +1,4 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -20,11 +21,7 @@ import type {
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
-import {
-  MEMBERSHIP_SEAT_TYPES,
-  PAID_SEAT_TYPES,
-  toBaseSeatType,
-} from "@app/types/memberships";
+import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
   ActiveRoleType,
@@ -32,7 +29,7 @@ import type {
   LightWorkspaceType,
 } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg, plural, select } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
@@ -311,20 +308,21 @@ export function useBulkSetUserSpendLimit({
 
       const body = BulkSetUserSpendLimitResponseSchema.parse(await res.json());
       const { memberCount } = body;
+      const formattedMemberCount = formatNumber(memberCount);
       let description: string;
       switch (limit.kind) {
         case "limited": {
           const awuCredits = formatNumber(limit.awuCredits);
           description = t`${plural(memberCount, {
-            one: `Applied a ${awuCredits} credit limit to # member.`,
-            other: `Applied a ${awuCredits} credit limit to # members.`,
+            one: `Applied a ${awuCredits} credit limit to ${formattedMemberCount} member.`,
+            other: `Applied a ${awuCredits} credit limit to ${formattedMemberCount} members.`,
           })}`;
           break;
         }
         case "unlimited":
           description = t`${plural(memberCount, {
-            one: "Removed the personal limit for # member.",
-            other: "Removed the personal limit for # members.",
+            one: `Removed the personal limit for ${formattedMemberCount} member.`,
+            other: `Removed the personal limit for ${formattedMemberCount} members.`,
           })}`;
           break;
         default:
@@ -440,12 +438,10 @@ export function useBulkChangeSeatType({
     async ({
       selection,
       seatType,
-      seatName,
       hasDeferredChanges,
     }: {
       selection: BulkMemberSelectionBody;
       seatType: PaidSeatType;
-      seatName: string;
       // Whether some selected members are being downgraded — their change
       // applies at the next credit refresh, so the notification says so.
       hasDeferredChanges: boolean;
@@ -467,17 +463,19 @@ export function useBulkChangeSeatType({
 
       const body = BulkChangeSeatTypeResponseSchema.parse(await res.json());
       const { memberCount } = body;
+      const formattedMemberCount = formatNumber(memberCount);
+      const seatName = seatTypeDisplayName(seatType, t);
       sendNotification({
         type: "success",
         title: t`Seats updated`,
         description: hasDeferredChanges
           ? t`${plural(memberCount, {
-              one: `Changed # member to ${seatName}. Downgrades take effect at the next credit refresh.`,
-              other: `Changed # members to ${seatName}. Downgrades take effect at the next credit refresh.`,
+              one: `Changed ${formattedMemberCount} member to ${seatName}. Downgrades take effect at the next credit refresh.`,
+              other: `Changed ${formattedMemberCount} members to ${seatName}. Downgrades take effect at the next credit refresh.`,
             })}`
           : t`${plural(memberCount, {
-              one: `Changed # member to ${seatName}.`,
-              other: `Changed # members to ${seatName}.`,
+              one: `Changed ${formattedMemberCount} member to ${seatName}.`,
+              other: `Changed ${formattedMemberCount} members to ${seatName}.`,
             })}`,
       });
 
@@ -626,6 +624,7 @@ export function useUpdateMemberSeatType({
         isCancellingScheduledChange,
         hasSeatPool,
         memberName,
+        seatName: seatTypeDisplayName(seatType, t),
       });
       sendNotification({
         type: "success",
@@ -648,12 +647,14 @@ function getSeatUpdateNotification({
   isCancellingScheduledChange,
   hasSeatPool,
   memberName,
+  seatName,
 }: {
   seatType: MembershipSeatType;
   isDeferred: boolean;
   isCancellingScheduledChange: boolean;
   hasSeatPool: boolean;
   memberName: string;
+  seatName: string;
 }): { title: MessageDescriptor; description: MessageDescriptor } {
   if (seatType === "none") {
     return {
@@ -663,34 +664,15 @@ function getSeatUpdateNotification({
         : msg`${memberName}'s seat has been removed.`,
     };
   }
-  const baseSeatType = toBaseSeatType(seatType);
   return {
     title: isDeferred ? msg`Seat change scheduled` : msg`Seat updated`,
     description: isDeferred
-      ? msg`${select(baseSeatType, {
-          free: `${memberName}'s seat will change to Free at the next credit refresh.`,
-          workspace: `${memberName}'s seat will change to Platform at the next credit refresh.`,
-          pro: `${memberName}'s seat will change to Pro at the next credit refresh.`,
-          max: `${memberName}'s seat will change to Max at the next credit refresh.`,
-          other: `${memberName}'s seat will change at the next credit refresh.`,
-        })}`
+      ? msg`${memberName}'s seat will change to ${seatName} at the next credit refresh.`
       : isCancellingScheduledChange
         ? msg`${memberName}'s scheduled seat change has been cancelled.`
         : hasSeatPool
-          ? msg`${select(baseSeatType, {
-              free: `${memberName}'s seat has been updated to Free. The seat pool will be provisioned shortly.`,
-              workspace: `${memberName}'s seat has been updated to Platform. The seat pool will be provisioned shortly.`,
-              pro: `${memberName}'s seat has been updated to Pro. The seat pool will be provisioned shortly.`,
-              max: `${memberName}'s seat has been updated to Max. The seat pool will be provisioned shortly.`,
-              other: `${memberName}'s seat has been updated. The seat pool will be provisioned shortly.`,
-            })}`
-          : msg`${select(baseSeatType, {
-              free: `${memberName}'s seat has been updated to Free.`,
-              workspace: `${memberName}'s seat has been updated to Platform.`,
-              pro: `${memberName}'s seat has been updated to Pro.`,
-              max: `${memberName}'s seat has been updated to Max.`,
-              other: `${memberName}'s seat has been updated.`,
-            })}`,
+          ? msg`${memberName}'s seat has been updated to ${seatName}. The seat pool will be provisioned shortly.`
+          : msg`${memberName}'s seat has been updated to ${seatName}.`,
   };
 }
 

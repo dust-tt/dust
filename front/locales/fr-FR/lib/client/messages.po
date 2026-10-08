@@ -110,6 +110,10 @@ msgid "{memberCount, plural, one {Membership revoked for # member.} other {Membe
 msgstr "{memberCount, plural, one {Accès révoqué pour # membre.} other {Accès révoqué pour # membres.}}"
 
 #: front/lib/client/members.ts
+msgid "Membership revoked"
+msgstr "Accès révoqué"
+
+#: front/lib/client/members.ts
 msgid "Role updated"
 msgstr "Rôle mis à jour"
 

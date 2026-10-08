@@ -701,7 +701,7 @@ export function useUpdateUserFavorite({
         }
       } catch (error) {
         sendApiErrorNotification({
-          title: t`Error updating agent list.`,
+          title: t`Error updating agent list`,
           error,
         });
         return false;

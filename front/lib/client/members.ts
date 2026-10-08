@@ -81,7 +81,7 @@ export async function handleMembersRoleChange({
     }
     sendNotification({
       type: "success",
-      title: t`Role updated`,
+      title: role === "none" ? t`Membership revoked` : t`Role updated`,
       description,
     });
   }

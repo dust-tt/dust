@@ -584,7 +584,7 @@ export function useUpsertFileAsDatasourceEntry(
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: t`Failed to upload the file.`,
+        title: t`Failed to upload the file`,
         error: errorData,
       });
       return null;
@@ -790,7 +790,7 @@ export function useSharingGrants({
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: t`Failed to add access.`,
+        title: t`Failed to add access`,
         error: errorData,
       });
       return false;
@@ -810,7 +810,7 @@ export function useSharingGrants({
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: t`Failed to revoke access.`,
+        title: t`Failed to revoke access`,
         error: errorData,
       });
       return false;

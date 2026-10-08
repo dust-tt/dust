@@ -305,7 +305,7 @@ export function useUserMemory({
       });
 
       if (res.ok) {
-        sendNotification({ type: "success", title: t`Memory saved.` });
+        sendNotification({ type: "success", title: t`Memory saved` });
         await mutate();
         return true;
       }

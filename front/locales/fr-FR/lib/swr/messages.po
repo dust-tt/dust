@@ -26,12 +26,12 @@ msgstr "Éditeurs ajoutés et retirés"
 #: front/lib/swr/agent_editors.ts
 #: front/lib/swr/skill_editors.ts
 msgid "{removedCount, plural, one {Successfully removed editor} other {Successfully removed editors}}"
-msgstr "{removedCount, plural, one {Éditeur retiré} other {Éditeurs retirés}}"
+msgstr "{removedCount, plural, =1 {Éditeur retiré} other {Éditeurs retirés}}"
 
 #: front/lib/swr/agent_editors.ts
 #: front/lib/swr/skill_editors.ts
 msgid "{addedCount, plural, one {Successfully added editor} other {Successfully added editors}}"
-msgstr "{addedCount, plural, one {Éditeur ajouté} other {Éditeurs ajoutés}}"
+msgstr "{addedCount, plural, =1 {Éditeur ajouté} other {Éditeurs ajoutés}}"
 
 #: front/lib/swr/agent_editors.ts
 #: front/lib/swr/skill_editors.ts
@@ -165,8 +165,8 @@ msgid "Error removing agent from favorites"
 msgstr "Erreur lors du retrait de l’agent des favoris"
 
 #: front/lib/swr/assistants.ts
-msgid "Error updating agent list."
-msgstr "Erreur lors de la mise à jour de la liste des agents."
+msgid "Error updating agent list"
+msgstr "Erreur lors de la mise à jour de la liste des agents"
 
 #: front/lib/swr/assistants.ts
 msgid "Successfully restored {agentName}"
@@ -357,8 +357,8 @@ msgid "File saved"
 msgstr "Fichier enregistré"
 
 #: front/lib/swr/files.ts
-msgid "Failed to upload the file."
-msgstr "Impossible d’importer le fichier."
+msgid "Failed to upload the file"
+msgstr "Impossible d’importer le fichier"
 
 #: front/lib/swr/files.ts
 msgid "File processing"
@@ -373,12 +373,12 @@ msgid "Failed to update frame sharing"
 msgstr "Impossible de mettre à jour le partage de la Frame"
 
 #: front/lib/swr/files.ts
-msgid "Failed to add access."
-msgstr "Impossible d’ajouter l’accès."
+msgid "Failed to add access"
+msgstr "Impossible d’ajouter l’accès"
 
 #: front/lib/swr/files.ts
-msgid "Failed to revoke access."
-msgstr "Impossible de révoquer l’accès."
+msgid "Failed to revoke access"
+msgstr "Impossible de révoquer l’accès"
 
 #: front/lib/swr/frames.ts
 msgid "Couldn't save edits"
@@ -529,24 +529,16 @@ msgid "Failed to update group seat"
 msgstr "Impossible de mettre à jour le siège du groupe"
 
 #: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Platform seat."
-msgstr "Les membres de {groupName} reçoivent désormais un siège Platform."
+msgid "Group seat updated"
+msgstr "Siège du groupe mis à jour"
 
 #: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Pro seat."
-msgstr "Les membres de {groupName} reçoivent désormais un siège Pro."
-
-#: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Max seat."
-msgstr "Les membres de {groupName} reçoivent désormais un siège Max."
+msgid "Members of {groupName} now get a {seatName} seat."
+msgstr "Les membres de {groupName} reçoivent désormais un siège {seatName}."
 
 #: front/lib/swr/groups.ts
 msgid "{groupName} no longer grants a seat."
 msgstr "{groupName} n’attribue plus de siège."
-
-#: front/lib/swr/groups.ts
-msgid "Group seat updated"
-msgstr "Siège du groupe mis à jour"
 
 #: front/lib/swr/groups.ts
 #: front/lib/swr/memberships.ts
@@ -670,12 +662,12 @@ msgid "Failed to update spend limit"
 msgstr "Impossible de mettre à jour la limite de dépenses"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Applied a {awuCredits} credit limit to # member.} other {Applied a {awuCredits} credit limit to # members.}}"
-msgstr "{memberCount, plural, one {Limite de {awuCredits} crédits appliquée à # membre.} other {Limite de {awuCredits} crédits appliquée à # membres.}}"
+msgid "{memberCount, plural, one {Applied a {awuCredits} credit limit to {formattedMemberCount} member.} other {Applied a {awuCredits} credit limit to {formattedMemberCount} members.}}"
+msgstr "{memberCount, plural, one {Limite de {awuCredits} crédits appliquée à {formattedMemberCount} membre.} other {Limite de {awuCredits} crédits appliquée à {formattedMemberCount} membres.}}"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Removed the personal limit for # member.} other {Removed the personal limit for # members.}}"
-msgstr "{memberCount, plural, one {Limite personnelle supprimée pour # membre.} other {Limite personnelle supprimée pour # membres.}}"
+msgid "{memberCount, plural, one {Removed the personal limit for {formattedMemberCount} member.} other {Removed the personal limit for {formattedMemberCount} members.}}"
+msgstr "{memberCount, plural, one {Limite personnelle supprimée pour {formattedMemberCount} membre.} other {Limite personnelle supprimée pour {formattedMemberCount} membres.}}"
 
 #: front/lib/swr/memberships.ts
 msgid "Spend limit updated"
@@ -690,12 +682,12 @@ msgid "Seats updated"
 msgstr "Sièges mis à jour"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Changed # member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed # members to {seatName}. Downgrades take effect at the next credit refresh.}}"
-msgstr "{memberCount, plural, one {# membre est passé au siège {seatName}. Les rétrogradations prennent effet au prochain renouvellement des crédits.} other {# membres sont passés au siège {seatName}. Les rétrogradations prennent effet au prochain renouvellement des crédits.}}"
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed {formattedMemberCount} members to {seatName}. Downgrades take effect at the next credit refresh.}}"
+msgstr "{memberCount, plural, one {{formattedMemberCount} membre est passé au siège {seatName}. Les rétrogradations prennent effet au prochain renouvellement des crédits.} other {{formattedMemberCount} membres sont passés au siège {seatName}. Les rétrogradations prennent effet au prochain renouvellement des crédits.}}"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Changed # member to {seatName}.} other {Changed # members to {seatName}.}}"
-msgstr "{memberCount, plural, one {# membre est passé au siège {seatName}.} other {# membres sont passés au siège {seatName}.}}"
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}.} other {Changed {formattedMemberCount} members to {seatName}.}}"
+msgstr "{memberCount, plural, one {{formattedMemberCount} membre est passé au siège {seatName}.} other {{formattedMemberCount} membres sont passés au siège {seatName}.}}"
 
 #: front/lib/swr/memberships.ts
 msgid "Failed to update seat"
@@ -726,20 +718,20 @@ msgid "Seat updated"
 msgstr "Siège mis à jour"
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat will change to Free at the next credit refresh.} workspace {{memberName}'s seat will change to Platform at the next credit refresh.} pro {{memberName}'s seat will change to Pro at the next credit refresh.} max {{memberName}'s seat will change to Max at the next credit refresh.} other {{memberName}'s seat will change at the next credit refresh.}}"
-msgstr "{baseSeatType, select, free {{memberName} disposera d’un siège Gratuit au prochain renouvellement des crédits.} workspace {{memberName} disposera d’un siège Platform au prochain renouvellement des crédits.} pro {{memberName} disposera d’un siège Pro au prochain renouvellement des crédits.} max {{memberName} disposera d’un siège Max au prochain renouvellement des crédits.} other {Le siège de {memberName} changera au prochain renouvellement des crédits.}}"
+msgid "{memberName}'s seat will change to {seatName} at the next credit refresh."
+msgstr "{memberName} disposera d’un siège {seatName} au prochain renouvellement des crédits."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s scheduled seat change has been cancelled."
 msgstr "Le changement de siège planifié de {memberName} a été annulé."
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat has been updated to Free. The seat pool will be provisioned shortly.} workspace {{memberName}'s seat has been updated to Platform. The seat pool will be provisioned shortly.} pro {{memberName}'s seat has been updated to Pro. The seat pool will be provisioned shortly.} max {{memberName}'s seat has been updated to Max. The seat pool will be provisioned shortly.} other {{memberName}'s seat has been updated. The seat pool will be provisioned shortly.}}"
-msgstr "{baseSeatType, select, free {{memberName} dispose désormais d’un siège Gratuit. La réserve de crédits du siège sera bientôt provisionnée.} workspace {{memberName} dispose désormais d’un siège Platform. La réserve de crédits du siège sera bientôt provisionnée.} pro {{memberName} dispose désormais d’un siège Pro. La réserve de crédits du siège sera bientôt provisionnée.} max {{memberName} dispose désormais d’un siège Max. La réserve de crédits du siège sera bientôt provisionnée.} other {Le siège de {memberName} a été mis à jour. La réserve de crédits du siège sera bientôt provisionnée.}}"
+msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
+msgstr "{memberName} dispose désormais d’un siège {seatName}. La réserve de crédits du siège sera bientôt provisionnée."
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat has been updated to Free.} workspace {{memberName}'s seat has been updated to Platform.} pro {{memberName}'s seat has been updated to Pro.} max {{memberName}'s seat has been updated to Max.} other {{memberName}'s seat has been updated.}}"
-msgstr "{baseSeatType, select, free {{memberName} dispose désormais d’un siège Gratuit.} workspace {{memberName} dispose désormais d’un siège Platform.} pro {{memberName} dispose désormais d’un siège Pro.} max {{memberName} dispose désormais d’un siège Max.} other {Le siège de {memberName} a été mis à jour.}}"
+msgid "{memberName}'s seat has been updated to {seatName}."
+msgstr "{memberName} dispose désormais d’un siège {seatName}."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s spend limit has been removed."
@@ -839,7 +831,7 @@ msgstr "Impossible d’ajouter les références au Pod"
 
 #: front/lib/swr/pods.ts
 msgid "{addedCount, plural, one {Added to Pod files} other {Added # items to Pod files}}"
-msgstr "{addedCount, plural, one {Ajouté aux fichiers du Pod} other {# éléments ajoutés aux fichiers du Pod}}"
+msgstr "{addedCount, plural, =1 {Ajouté aux fichiers du Pod} other {# éléments ajoutés aux fichiers du Pod}}"
 
 #: front/lib/swr/pods.ts
 msgid "Some items could not be added"
@@ -855,7 +847,7 @@ msgstr "Impossible de retirer les éléments du Pod"
 
 #: front/lib/swr/pods.ts
 msgid "{removedCount, plural, one {Removed from Pod files} other {Removed # items from Pod files}}"
-msgstr "{removedCount, plural, one {Retiré des fichiers du Pod} other {# éléments retirés des fichiers du Pod}}"
+msgstr "{removedCount, plural, =1 {Retiré des fichiers du Pod} other {# éléments retirés des fichiers du Pod}}"
 
 #: front/lib/swr/pods.ts
 msgid "Failed to create folder"
@@ -1533,8 +1525,8 @@ msgid "Error updating profile"
 msgstr "Erreur lors de la mise à jour du profil"
 
 #: front/lib/swr/user.ts
-msgid "Memory saved."
-msgstr "Mémoire enregistrée."
+msgid "Memory saved"
+msgstr "Mémoire enregistrée"
 
 #: front/lib/swr/user.ts
 msgid "Error saving memory"

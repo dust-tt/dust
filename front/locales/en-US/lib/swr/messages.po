@@ -165,8 +165,8 @@ msgid "Error removing agent from favorites"
 msgstr "Error removing agent from favorites"
 
 #: front/lib/swr/assistants.ts
-msgid "Error updating agent list."
-msgstr "Error updating agent list."
+msgid "Error updating agent list"
+msgstr "Error updating agent list"
 
 #: front/lib/swr/assistants.ts
 msgid "Successfully restored {agentName}"
@@ -357,8 +357,8 @@ msgid "File saved"
 msgstr "File saved"
 
 #: front/lib/swr/files.ts
-msgid "Failed to upload the file."
-msgstr "Failed to upload the file."
+msgid "Failed to upload the file"
+msgstr "Failed to upload the file"
 
 #: front/lib/swr/files.ts
 msgid "File processing"
@@ -373,12 +373,12 @@ msgid "Failed to update frame sharing"
 msgstr "Failed to update frame sharing"
 
 #: front/lib/swr/files.ts
-msgid "Failed to add access."
-msgstr "Failed to add access."
+msgid "Failed to add access"
+msgstr "Failed to add access"
 
 #: front/lib/swr/files.ts
-msgid "Failed to revoke access."
-msgstr "Failed to revoke access."
+msgid "Failed to revoke access"
+msgstr "Failed to revoke access"
 
 #: front/lib/swr/frames.ts
 msgid "Couldn't save edits"
@@ -529,24 +529,16 @@ msgid "Failed to update group seat"
 msgstr "Failed to update group seat"
 
 #: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Platform seat."
-msgstr "Members of {groupName} now get a Platform seat."
+msgid "Group seat updated"
+msgstr "Group seat updated"
 
 #: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Pro seat."
-msgstr "Members of {groupName} now get a Pro seat."
-
-#: front/lib/swr/groups.ts
-msgid "Members of {groupName} now get a Max seat."
-msgstr "Members of {groupName} now get a Max seat."
+msgid "Members of {groupName} now get a {seatName} seat."
+msgstr "Members of {groupName} now get a {seatName} seat."
 
 #: front/lib/swr/groups.ts
 msgid "{groupName} no longer grants a seat."
 msgstr "{groupName} no longer grants a seat."
-
-#: front/lib/swr/groups.ts
-msgid "Group seat updated"
-msgstr "Group seat updated"
 
 #: front/lib/swr/groups.ts
 #: front/lib/swr/memberships.ts
@@ -670,12 +662,12 @@ msgid "Failed to update spend limit"
 msgstr "Failed to update spend limit"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Applied a {awuCredits} credit limit to # member.} other {Applied a {awuCredits} credit limit to # members.}}"
-msgstr "{memberCount, plural, one {Applied a {awuCredits} credit limit to # member.} other {Applied a {awuCredits} credit limit to # members.}}"
+msgid "{memberCount, plural, one {Applied a {awuCredits} credit limit to {formattedMemberCount} member.} other {Applied a {awuCredits} credit limit to {formattedMemberCount} members.}}"
+msgstr "{memberCount, plural, one {Applied a {awuCredits} credit limit to {formattedMemberCount} member.} other {Applied a {awuCredits} credit limit to {formattedMemberCount} members.}}"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Removed the personal limit for # member.} other {Removed the personal limit for # members.}}"
-msgstr "{memberCount, plural, one {Removed the personal limit for # member.} other {Removed the personal limit for # members.}}"
+msgid "{memberCount, plural, one {Removed the personal limit for {formattedMemberCount} member.} other {Removed the personal limit for {formattedMemberCount} members.}}"
+msgstr "{memberCount, plural, one {Removed the personal limit for {formattedMemberCount} member.} other {Removed the personal limit for {formattedMemberCount} members.}}"
 
 #: front/lib/swr/memberships.ts
 msgid "Spend limit updated"
@@ -690,12 +682,12 @@ msgid "Seats updated"
 msgstr "Seats updated"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Changed # member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed # members to {seatName}. Downgrades take effect at the next credit refresh.}}"
-msgstr "{memberCount, plural, one {Changed # member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed # members to {seatName}. Downgrades take effect at the next credit refresh.}}"
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed {formattedMemberCount} members to {seatName}. Downgrades take effect at the next credit refresh.}}"
+msgstr "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed {formattedMemberCount} members to {seatName}. Downgrades take effect at the next credit refresh.}}"
 
 #: front/lib/swr/memberships.ts
-msgid "{memberCount, plural, one {Changed # member to {seatName}.} other {Changed # members to {seatName}.}}"
-msgstr "{memberCount, plural, one {Changed # member to {seatName}.} other {Changed # members to {seatName}.}}"
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}.} other {Changed {formattedMemberCount} members to {seatName}.}}"
+msgstr "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}.} other {Changed {formattedMemberCount} members to {seatName}.}}"
 
 #: front/lib/swr/memberships.ts
 msgid "Failed to update seat"
@@ -726,20 +718,20 @@ msgid "Seat updated"
 msgstr "Seat updated"
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat will change to Free at the next credit refresh.} workspace {{memberName}'s seat will change to Platform at the next credit refresh.} pro {{memberName}'s seat will change to Pro at the next credit refresh.} max {{memberName}'s seat will change to Max at the next credit refresh.} other {{memberName}'s seat will change at the next credit refresh.}}"
-msgstr "{baseSeatType, select, free {{memberName}'s seat will change to Free at the next credit refresh.} workspace {{memberName}'s seat will change to Platform at the next credit refresh.} pro {{memberName}'s seat will change to Pro at the next credit refresh.} max {{memberName}'s seat will change to Max at the next credit refresh.} other {{memberName}'s seat will change at the next credit refresh.}}"
+msgid "{memberName}'s seat will change to {seatName} at the next credit refresh."
+msgstr "{memberName}'s seat will change to {seatName} at the next credit refresh."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s scheduled seat change has been cancelled."
 msgstr "{memberName}'s scheduled seat change has been cancelled."
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat has been updated to Free. The seat pool will be provisioned shortly.} workspace {{memberName}'s seat has been updated to Platform. The seat pool will be provisioned shortly.} pro {{memberName}'s seat has been updated to Pro. The seat pool will be provisioned shortly.} max {{memberName}'s seat has been updated to Max. The seat pool will be provisioned shortly.} other {{memberName}'s seat has been updated. The seat pool will be provisioned shortly.}}"
-msgstr "{baseSeatType, select, free {{memberName}'s seat has been updated to Free. The seat pool will be provisioned shortly.} workspace {{memberName}'s seat has been updated to Platform. The seat pool will be provisioned shortly.} pro {{memberName}'s seat has been updated to Pro. The seat pool will be provisioned shortly.} max {{memberName}'s seat has been updated to Max. The seat pool will be provisioned shortly.} other {{memberName}'s seat has been updated. The seat pool will be provisioned shortly.}}"
+msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
+msgstr "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
 
 #: front/lib/swr/memberships.ts
-msgid "{baseSeatType, select, free {{memberName}'s seat has been updated to Free.} workspace {{memberName}'s seat has been updated to Platform.} pro {{memberName}'s seat has been updated to Pro.} max {{memberName}'s seat has been updated to Max.} other {{memberName}'s seat has been updated.}}"
-msgstr "{baseSeatType, select, free {{memberName}'s seat has been updated to Free.} workspace {{memberName}'s seat has been updated to Platform.} pro {{memberName}'s seat has been updated to Pro.} max {{memberName}'s seat has been updated to Max.} other {{memberName}'s seat has been updated.}}"
+msgid "{memberName}'s seat has been updated to {seatName}."
+msgstr "{memberName}'s seat has been updated to {seatName}."
 
 #: front/lib/swr/memberships.ts
 msgid "{memberName}'s spend limit has been removed."
@@ -1533,8 +1525,8 @@ msgid "Error updating profile"
 msgstr "Error updating profile"
 
 #: front/lib/swr/user.ts
-msgid "Memory saved."
-msgstr "Memory saved."
+msgid "Memory saved"
+msgstr "Memory saved"
 
 #: front/lib/swr/user.ts
 msgid "Error saving memory"
