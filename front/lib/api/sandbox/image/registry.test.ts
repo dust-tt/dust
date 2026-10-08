@@ -884,6 +884,19 @@ describe("sandbox image registry", () => {
     expect(installer).toContain("already exists");
   });
 
+  test("trust helper serializes concurrent installs before writing", () => {
+    const installer = getCopiedContent(
+      getCopyOperations(getDustBaseImageOperations()),
+      "/usr/local/bin/dust-install-trust-bundle"
+    );
+
+    const lockIndex = installer.indexOf("/usr/bin/flock -w");
+    expect(lockIndex).toBeGreaterThan(-1);
+    expect(installer).toContain("umask 077");
+    expect(lockIndex).toBeLessThan(installer.indexOf("/usr/bin/mktemp"));
+    expect(lockIndex).toBeLessThan(installer.indexOf("/usr/bin/keytool"));
+  });
+
   test("trust helper drops staged symlinks and normalizes the installed CA", () => {
     const copyOperations = getCopyOperations(getDustBaseImageOperations());
     const installer = getCopiedContent(
@@ -917,6 +930,9 @@ describe("sandbox image registry", () => {
       chmod: getCommandPath("chmod"),
       chown: getCommandPath("chown"),
       find: getCommandPath("find"),
+      // The install lock is exercised against a real JRE keystore elsewhere; flock is not
+      // available on every host running this test.
+      flock: join(stubBinDir, "flock"),
       install: getCommandPath("install"),
       ln: getCommandPath("ln"),
       mkdir: getCommandPath("mkdir"),
@@ -943,6 +959,8 @@ describe("sandbox image registry", () => {
           '/usr/bin/readlink "$1"\n'
       );
       chmodSync(commandPaths.readlink, 0o755);
+      writeFileSync(commandPaths.flock, "#!/bin/sh\nexit 0\n");
+      chmodSync(commandPaths.flock, 0o755);
       writeFileSync(leakedSecretPath, "DSEC_SECRET=should-not-leak\n");
       symlinkSync(leakedSecretPath, join(systemCaDir, "secrets.crt"));
       writeFileSync(
@@ -1000,6 +1018,7 @@ describe("sandbox image registry", () => {
         .replaceAll("/usr/bin/chmod", commandPaths.chmod)
         .replaceAll("/usr/bin/chown", commandPaths.chown)
         .replaceAll("/usr/bin/find", commandPaths.find)
+        .replaceAll("/usr/bin/flock", commandPaths.flock)
         .replaceAll("/usr/bin/install", commandPaths.install)
         .replaceAll("/bin/ln", commandPaths.ln)
         .replaceAll("/usr/bin/mkdir", commandPaths.mkdir)

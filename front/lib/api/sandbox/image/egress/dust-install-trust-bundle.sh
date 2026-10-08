@@ -8,6 +8,8 @@ SYSTEM_CA_CERTS_DIR="/etc/ssl/certs"
 SYSTEM_CA_BUNDLE="${SYSTEM_CA_CERTS_DIR}/ca-certificates.crt"
 MERGED_BUNDLE="/etc/dust/ca-bundle.pem"
 PRISTINE_SYSTEM_BUNDLE="/etc/dust/system-ca-certificates.crt.orig"
+INSTALL_LOCK="/etc/dust/.trust-bundle.lock"
+INSTALL_LOCK_TIMEOUT_SECONDS=60
 
 if [ ! -s "$CA_PATH" ]; then
   /usr/bin/printf '%s\n' "dsbx CA file $CA_PATH missing or empty" >&2
@@ -15,6 +17,20 @@ if [ ! -s "$CA_PATH" ]; then
 fi
 
 /usr/bin/mkdir -p /etc/dust "${SYSTEM_CA_CERTS_DIR}/java"
+
+# Concurrent runs on one sandbox must not interleave: keytool rewrites the Java
+# keystore in place, so a second import reads a half-written file and fails
+# ("Keystore was tampered with", EOFException), and the hash-slot and staging
+# directory updates below are read-modify-write too. The lock file is root-only
+# so a workload user cannot open it and hold the lock.
+umask_before_lock="$(umask)"
+umask 077
+exec 9>>"$INSTALL_LOCK"
+umask "$umask_before_lock"
+if ! /usr/bin/flock -w "$INSTALL_LOCK_TIMEOUT_SECONDS" 9; then
+  /usr/bin/printf '%s\n' "timed out waiting for $INSTALL_LOCK" >&2
+  exit 1
+fi
 
 normalized_ca_tmp="$(/usr/bin/mktemp /etc/dust/.egress-ca.pem.XXXXXX)"
 system_tmp=""
@@ -93,8 +109,8 @@ bundle_tmp="$(/usr/bin/mktemp /etc/dust/.ca-bundle.pem.XXXXXX)"
 /usr/bin/chmod 644 "$bundle_tmp"
 /usr/bin/mv "$bundle_tmp" "$MERGED_BUNDLE"
 
-# No JDK is installed in the base image today. When one is added later or
-# installed at runtime, cover both JAVA_HOME and Debian's system Java keystore.
+# The base image ships a JRE (pulled in by libreoffice); a JDK may also be
+# installed at runtime. Cover both JAVA_HOME and Debian's system Java keystore.
 if [ -x /usr/bin/keytool ]; then
   java_cacerts_candidates=()
   if [ -n "${JAVA_HOME:-}" ]; then
