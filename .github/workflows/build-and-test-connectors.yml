@@ -7,6 +7,7 @@ on:
       - sdks/js/**
       - connectors/**
       - lingui.config.ts
+      - scripts/i18n/**
       - .github/workflows/build-and-test-connectors.yml
 
 permissions:
@@ -39,7 +40,7 @@ jobs:
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
       - name: Check translation catalogs
-        run: npm -w front run i18n:check
+        run: npm run i18n:check
   tests:
     runs-on: ubuntu-latest
     services:

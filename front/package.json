@@ -18,8 +18,6 @@
     "dev:worker": "./admin/dev_worker.sh",
     "lint:audit-log-schemas": "BAD_KEYS=$(grep -rEn '^\\s*\"[a-z][a-zA-Z0-9_]*[A-Z][a-zA-Z0-9_]*\"\\s*:' admin/audit_log_schemas/); if [ -n \"$BAD_KEYS\" ]; then echo \"Error: Found camelCase keys in audit log schemas (must be snake_case):\"; echo \"$BAD_KEYS\"; exit 1; else echo \"Audit log schema check: OK.\"; exit 0; fi",
     "tsgo": "tsgo",
-    "i18n:extract": "tsx scripts/i18n/extract.ts",
-    "i18n:check": "tsx scripts/i18n/check.ts",
     "test": "NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:update-internal-mcp-availability-snapshot": "NODE_ENV=test UPDATE_INTERNAL_MCP_AVAILABILITY_SNAPSHOT=1 npm run test -- lib/actions/mcp_internal_actions/constants.test.ts",
     "test:watch": "NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --watch",

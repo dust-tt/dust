@@ -2,22 +2,25 @@ import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import logger from "@app/logger/logger";
-import * as frontLocales from "@app/types/locale";
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
 import { getCatalogs } from "@lingui/cli/api";
 import { getConfig } from "@lingui/conf";
 import { formatter } from "@lingui/format-po";
 
 // Connectors cannot import front: it keeps a copy of the locales, checked below.
-import * as connectorsLocales from "../../../connectors/src/types/locale";
+import * as connectorsLocales from "../../connectors/src/types/locale";
+import * as frontLocales from "../../front/types/locale";
+import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../../front/types/locale";
 
-const FRONT_DIR = path.resolve(__dirname, "../..");
-// The `locales/` directories of every catalog in `lingui.config.ts`, relative to front.
-const LOCALES_DIRS = ["locales", "../connectors/locales"];
+const ROOT_DIR = path.resolve(__dirname, "../..");
+// The `locales/` directories of every catalog in `lingui.config.ts`, relative to the repository root.
+const LOCALES_DIRS = ["front/locales", "connectors/locales"];
+
+function reportError(details: Record<string, unknown>, message: string) {
+  console.error(`${message}\n${JSON.stringify(details, null, 2)}`);
+}
 
 async function listCatalogPaths(locale: string): Promise<string[]> {
-  const catalogs = await getCatalogs(getConfig({ cwd: FRONT_DIR }));
+  const catalogs = await getCatalogs(getConfig({ cwd: ROOT_DIR }));
   return catalogs.map((catalog) => catalog.getFilename(locale));
 }
 
@@ -36,12 +39,12 @@ function listPoFiles(directory: string): string[] {
 }
 
 async function listStaleCatalogs(): Promise<string[]> {
-  execSync("npm run i18n:extract", { cwd: FRONT_DIR, stdio: "ignore" });
+  execSync("npm run i18n:extract", { cwd: ROOT_DIR, stdio: "ignore" });
   const localesDirs = LOCALES_DIRS.join(" ");
   const changedOrUntracked = [
     `git diff --name-only -- ${localesDirs}`,
     `git ls-files --others --exclude-standard -- ${localesDirs}`,
-  ].map((command) => execSync(command, { cwd: FRONT_DIR, encoding: "utf8" }));
+  ].map((command) => execSync(command, { cwd: ROOT_DIR, encoding: "utf8" }));
   const catalogPaths = new Set(
     (
       await Promise.all(
@@ -50,10 +53,10 @@ async function listStaleCatalogs(): Promise<string[]> {
     ).flat()
   );
   const orphanCatalogs = LOCALES_DIRS.flatMap((localesDir) =>
-    listPoFiles(path.join(FRONT_DIR, localesDir))
+    listPoFiles(path.join(ROOT_DIR, localesDir))
   )
     .filter((file) => !catalogPaths.has(file))
-    .map((file) => path.relative(FRONT_DIR, file));
+    .map((file) => path.relative(ROOT_DIR, file));
   return [
     ...changedOrUntracked
       .join("\n")
@@ -92,8 +95,8 @@ async function listConflictingTranslations(locale: string) {
     string,
     { message: string; context?: string; translations: Record<string, string> }
   >();
-  for (const catalog of await getCatalogs(getConfig({ cwd: FRONT_DIR }))) {
-    const filename = path.relative(FRONT_DIR, catalog.getFilename(locale));
+  for (const catalog of await getCatalogs(getConfig({ cwd: ROOT_DIR }))) {
+    const filename = path.relative(ROOT_DIR, catalog.getFilename(locale));
     for (const [id, entry] of Object.entries(
       (await catalog.read(locale)) ?? {}
     )) {
@@ -151,7 +154,7 @@ function listDriftedConnectorsLocales(): string[] {
 async function main() {
   const driftedLocales = listDriftedConnectorsLocales();
   if (driftedLocales.length > 0) {
-    logger.error(
+    reportError(
       { driftedLocales },
       "`connectors/src/types/locale.ts` differs from `front/types/locale.ts`: copy the front values."
     );
@@ -160,9 +163,9 @@ async function main() {
 
   const staleCatalogs = await listStaleCatalogs();
   if (staleCatalogs.length > 0) {
-    logger.error(
+    reportError(
       { staleCatalogs },
-      "Translation catalogs are out of date: run `npm run i18n:extract` in front and commit the result."
+      "Translation catalogs are out of date: run `npm run i18n:extract` at the repository root and commit the result."
     );
     process.exit(1);
   }
@@ -175,7 +178,7 @@ async function main() {
     const untranslated = await listUntranslatedMessages(locale);
     if (untranslated.length > 0) {
       hasMissingTranslations = true;
-      logger.error(
+      reportError(
         { locale, untranslated },
         "Missing translations: fill every empty `msgstr` of the catalogs."
       );
@@ -190,7 +193,7 @@ async function main() {
     const conflicts = await listConflictingTranslations(locale);
     if (conflicts.length > 0) {
       hasConflictingTranslations = true;
-      logger.error(
+      reportError(
         { locale, conflicts },
         "Conflicting translations: translate a message the same way in every catalog, or give messages with different meanings a Lingui `context`."
       );
@@ -200,7 +203,7 @@ async function main() {
     process.exit(1);
   }
 
-  logger.info({}, "Translation catalogs are up to date and complete.");
+  console.log("Translation catalogs are up to date and complete.");
 }
 
 void main();

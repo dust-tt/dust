@@ -1,11 +1,12 @@
 import { execSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import path from "node:path";
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
 import { getCatalogs } from "@lingui/cli/api";
 import { getConfig } from "@lingui/conf";
 
-const FRONT_DIR = path.resolve(__dirname, "../..");
+import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../../front/types/locale";
+
+const ROOT_DIR = path.resolve(__dirname, "../..");
 
 /**
  * @cc [owner:sfriquet,label:architecture] no-empty-catalogs
@@ -13,8 +14,8 @@ const FRONT_DIR = path.resolve(__dirname, "../..");
  * `CATALOG_LOCALES` entry, so that no `.po` file without messages exists under `locales/`.
  */
 async function main() {
-  execSync("npx lingui extract --clean", { cwd: FRONT_DIR, stdio: "inherit" });
-  for (const catalog of await getCatalogs(getConfig({ cwd: FRONT_DIR }))) {
+  execSync("npx lingui extract --clean", { cwd: ROOT_DIR, stdio: "inherit" });
+  for (const catalog of await getCatalogs(getConfig({ cwd: ROOT_DIR }))) {
     const messages = await catalog.read(DEFAULT_LOCALE);
     if (messages && Object.keys(messages).length === 0) {
       for (const locale of CATALOG_LOCALES) {

@@ -29,7 +29,7 @@ translate a message they share (`Cancel`, `Loading`) the same way in both by han
 
 ## Procedure
 
-1. Run `npm run i18n:extract` from `front/` (or `sparkle/`) so the catalogs match the code.
+1. Run `npm run i18n:extract` from the repository root (or `sparkle/`) so the catalogs match the code.
 2. For each entry with an empty `msgstr`:
    - Read the `#:` file reference and the code around the string: know whether it is a button,
      a title, a description or a toast, and what it refers to.
