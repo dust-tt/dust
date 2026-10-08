@@ -56,6 +56,18 @@ function postTable(
   );
 }
 
+async function setup(
+  options: Parameters<typeof createPublicApiMockRequest>[0]
+) {
+  const { workspace, key } = await createPublicApiMockRequest({
+    ...options,
+    method: "POST",
+  });
+  const space = await SpaceFactory.global(workspace);
+  const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+  return { workspace, key, space, dataSourceView };
+}
+
 describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables", () => {
   it.each([
     { remote_database_table_id: REMOTE_DATABASE_TABLE_ID },
@@ -63,15 +75,9 @@ describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables", () => 
   ])(
     "rejects remote database fields from a non-system key (%o)",
     async (remoteFields) => {
-      const { workspace, key } = await createPublicApiMockRequest({
+      const { workspace, key, space, dataSourceView } = await setup({
         role: "admin",
-        method: "POST",
       });
-      const space = await SpaceFactory.global(workspace);
-      const dataSourceView = await DataSourceViewFactory.folder(
-        workspace,
-        space
-      );
 
       const res = await postTable(
         workspace,
@@ -94,12 +100,9 @@ describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables", () => 
   );
 
   it("forwards remote database fields from a system key", async () => {
-    const { workspace, key } = await createPublicApiMockRequest({
+    const { workspace, key, space, dataSourceView } = await setup({
       systemKey: true,
-      method: "POST",
     });
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
 
     vi.mocked(internalFetch).mockImplementation(async (_url, init) => {
       const req = JSON.parse(String(init?.body));
@@ -124,6 +127,62 @@ describe("POST /api/v1/w/:wId/spaces/:spaceId/data_sources/:dsId/tables", () => 
         mime_type: "text/csv",
         remote_database_table_id: REMOTE_DATABASE_TABLE_ID,
         remote_database_secret_id: REMOTE_DATABASE_SECRET_ID,
+      }
+    );
+
+    expect(res.status).toBe(200);
+    expect(internalFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a source_url that is not an http(s) URL", async () => {
+    const { workspace, key, space, dataSourceView } = await setup({
+      role: "admin",
+    });
+
+    const res = await postTable(
+      workspace,
+      key,
+      space.sId,
+      dataSourceView.dataSource.sId,
+      {
+        name: "footable",
+        description: "desc",
+        title: "Wonderful table",
+        source_url: "javascript:alert(1)",
+      }
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain("source_url");
+    expect(internalFetch).not.toHaveBeenCalled();
+  });
+
+  it("forwards a standardized http(s) source_url", async () => {
+    const { workspace, key, space, dataSourceView } = await setup({
+      role: "admin",
+    });
+
+    vi.mocked(internalFetch).mockImplementation(async (_url, init) => {
+      const req = JSON.parse(String(init?.body));
+      expect(req.source_url).toBe("https://example.com/foo");
+      return new Response(JSON.stringify(CORE_TABLE_FAKE_RESPONSE), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const res = await postTable(
+      workspace,
+      key,
+      space.sId,
+      dataSourceView.dataSource.sId,
+      {
+        name: "footable",
+        description: "desc",
+        title: "Wonderful table",
+        source_url: "HTTPS://Example.com/foo",
       }
     );
 

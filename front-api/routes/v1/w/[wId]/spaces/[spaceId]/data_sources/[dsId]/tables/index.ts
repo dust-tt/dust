@@ -14,6 +14,7 @@ import {
   DUST_TABLE_MIME_TYPE,
   UpsertDatabaseTableRequestSchema,
 } from "@dust-tt/client";
+import { parseSourceUrlParam } from "@front-api/lib/api/source_url";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -317,8 +318,14 @@ app.post(
       parent_id: parentId,
       remote_database_table_id: remoteDatabaseTableId,
       remote_database_secret_id: remoteDatabaseSecretId,
-      source_url: sourceUrl,
+      source_url,
     } = data;
+
+    const sourceUrlRes = parseSourceUrlParam(source_url);
+    if (sourceUrlRes.isErr()) {
+      return apiError(ctx, sourceUrlRes.error);
+    }
+    const sourceUrl = sourceUrlRes.value;
 
     let mimeType: string;
     if (auth.isSystemKey()) {
@@ -457,7 +464,7 @@ app.post(
       remoteDatabaseSecretId: remoteDatabaseSecretId ?? null,
       title,
       mimeType,
-      sourceUrl: sourceUrl ?? null,
+      sourceUrl,
       checkNameUniqueness: true,
     });
 
