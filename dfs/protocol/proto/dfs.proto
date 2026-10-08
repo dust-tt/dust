@@ -9,7 +9,7 @@ service Dfs {
   // Requires the server key; tenant_id names the tenant to create.
   rpc CreateTenant(CreateTenantRequest) returns (Tenant);
 
-  // Requires the tenant key for the requested tenant_id.
+  // Requires a tenant key; the authenticated key determines the tenant.
   rpc CreateSession(CreateSessionRequest) returns (Session);
 
   // Requires an active session key; returns the authenticated session.
@@ -127,9 +127,9 @@ message Tenant {
   required string tenant_key = 3;
 }
 
+// The tenant is derived exclusively from the authenticated tenant key.
 message CreateSessionRequest {
-  required string tenant_id = 1;
-  repeated string subjects = 2;
+  repeated string subjects = 1;
 }
 
 message Session {
@@ -143,11 +143,9 @@ message Session {
 
 // The tenant is derived exclusively from the authenticated tenant key.
 message ListGrantsRequest {
-  reserved 1;
-  reserved "tenant_id";
-  required ObjectId object_id = 2;
-  optional string after = 3;
-  required uint32 limit = 4;
+  required ObjectId object_id = 1;
+  optional string after = 2;
+  required uint32 limit = 3;
 }
 
 message GrantPage {
@@ -157,10 +155,8 @@ message GrantPage {
 
 // The tenant is derived exclusively from the authenticated tenant key.
 message UpdateGrantsRequest {
-  reserved 1;
-  reserved "tenant_id";
-  required ObjectId object_id = 2;
-  repeated GrantChange changes = 3;
+  required ObjectId object_id = 1;
+  repeated GrantChange changes = 2;
 }
 
 message GrantChange {

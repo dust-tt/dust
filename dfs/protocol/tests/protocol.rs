@@ -305,16 +305,19 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
 #[test]
 fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
     let request: rpc::CreateSessionRequest = serde_json::from_value(json!({
-        "tenant_id": "tenant",
         "subjects": ["u:spolu@dust.tt", "g:engineering"]
     }))?;
+    assert_eq!(
+        serde_json::to_value(&request)?,
+        json!({"subjects": ["u:spolu@dust.tt", "g:engineering"]})
+    );
     assert_eq!(
         rpc::CreateSessionRequest::decode(request.encode_to_vec().as_slice())?,
         request
     );
     let session = rpc::Session {
         id: "session".into(),
-        tenant_id: request.tenant_id,
+        tenant_id: "tenant".into(),
         subjects: request.subjects,
         session_key: String::new(),
         expires_at: 1_800_000_000_000,
@@ -325,6 +328,7 @@ fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
         session
     );
     let json = serde_json::to_value(&session)?;
+    assert_eq!(json["tenant_id"], json!("tenant"));
     assert_eq!(
         json["subjects"],
         json!(["u:spolu@dust.tt", "g:engineering"])

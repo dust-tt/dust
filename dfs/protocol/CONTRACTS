@@ -5,11 +5,10 @@ Lists and maps MAY be empty unless a minimum is specified. Sizes and offsets MUS
 
 @cc [owner:spolu,label:security;api] dfs-bearer-authority
 Calls MUST authenticate through `authorization: Bearer <key>` gRPC metadata. Keys MUST be opaque
-64-character bearer strings. `CreateTenant` MUST require the server key. `CreateSession` MUST
-require the tenant key for the requested tenant. `ListGrants` and `UpdateGrants` MUST require a
-tenant key and derive the tenant exclusively from that authenticated key; their requests MUST NOT
-contain a tenant ID. All other RPCs MUST require an active session key and derive the tenant and
-subjects exclusively from it.
+64-character bearer strings. `CreateTenant` MUST require the server key. `CreateSession`,
+`ListGrants`, and `UpdateGrants` MUST require a tenant key and derive the tenant exclusively from
+that authenticated key; their requests MUST NOT contain a tenant ID. All other RPCs MUST require
+an active session key and derive the tenant and subjects exclusively from it.
 
 @cc [owner:spolu,label:security] dfs-grant-authorization
 Filesystem and search access MUST use the effective grant permissions for the session's subjects.

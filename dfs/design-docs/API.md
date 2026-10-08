@@ -269,13 +269,13 @@ values are deduplicated. An existing tenant ID fails with `ALREADY_EXISTS`.
 
 ### CreateSession
 
-Creates a session with a fixed subject set. Requires the **tenant key** for `tenant_id`.
+Creates a session with a fixed subject set in the tenant identified by the **tenant key**.
+The tenant is derived exclusively from the authenticated key; the request does not accept a tenant ID.
 
 **Arguments**
 
 ```text
 CreateSessionRequest {
-  tenant_id: string
   subjects: string[]             // At most 512 distinct subjects asserted by the tenant key holder.
 }
 ```
