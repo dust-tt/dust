@@ -76,6 +76,7 @@ describe("applyLiveCommentCommand", () => {
       }),
     ]);
     expect(comments).toEqual([THREAD, created]);
+    expect(result.value.added).toBe(created?.messages[0]);
   });
 
   it("refuses every command when the file cannot be written", async () => {
@@ -131,6 +132,7 @@ describe("applyLiveCommentCommand", () => {
     );
     expect(other).toBe(OTHER);
     expect(result.value.created).toBeNull();
+    expect(result.value.added).toBe(replied.messages[1]);
   });
 
   it("refuses a reply to a thread that moved on, or that is gone", async () => {
@@ -167,11 +169,14 @@ describe("applyLiveCommentCommand", () => {
       OTHER,
     ]);
     expect(deleted.isOk() && deleted.value.comments).toEqual([OTHER]);
+    expect(resolved.isOk() && resolved.value.added).toBeNull();
+    expect(deleted.isOk() && deleted.value.added).toBeNull();
   });
 });
 
 describe("dispatchLiveCommentMentions", () => {
   const TOM = { kind: "user", id: "usr_tom", name: "Tom" } as const;
+  const MENTION = ":mention[dust]{sId=dust}";
   const SOURCE = serializeDfm({
     frontMatter: null,
     body: "Ship it :comment-start{id=c1}on Friday:comment-end{id=c1}.",
@@ -184,7 +189,7 @@ describe("dispatchLiveCommentMentions", () => {
           {
             author: TOM,
             createdAt: "2026-10-05T12:01:00.000Z",
-            body: "@dust any idea?",
+            body: `${MENTION} any idea?`,
           },
         ],
       },
@@ -195,7 +200,7 @@ describe("dispatchLiveCommentMentions", () => {
           {
             author: TOM,
             createdAt: "2026-10-05T12:02:00.000Z",
-            body: "Not anchored yet.",
+            body: `${MENTION} not anchored yet.`,
           },
         ],
       },
@@ -232,59 +237,47 @@ describe("dispatchLiveCommentMentions", () => {
 
   it("dispatches a reply's message with the text its thread's anchors cover", async () => {
     const live = loadLive();
+    const message = live.comments[0].messages[1];
 
-    await dispatchLiveCommentMentions(file, live, {
-      type: "reply",
-      commentId: "c1",
-      position: 1,
-      body: "@dust any idea?",
-    });
+    await dispatchLiveCommentMentions(
+      file,
+      live,
+      { type: "reply", commentId: "c1", position: 1, body: message.body },
+      message
+    );
 
     expect(dispatchCommentMentions).toHaveBeenCalledWith(file.auth, {
       scopedPath: file.canonicalPath,
-      newMessages: [
-        {
-          commentId: "c1",
-          quote: "on Friday",
-          message: live.comments[0].messages[1],
-        },
-      ],
+      newMessages: [{ commentId: "c1", quote: "on Friday", message }],
     });
   });
 
-  it("dispatches an add not anchored yet with the quote it carries", async () => {
+  it("dispatches an add's message with the quote it carries", async () => {
     const live = loadLive();
+    const message = live.comments[1].messages[0];
 
-    await dispatchLiveCommentMentions(file, live, {
-      type: "add",
-      commentId: "c2",
-      body: "Not anchored yet.",
-      quote: "Ship it",
-    });
+    await dispatchLiveCommentMentions(
+      file,
+      live,
+      { type: "add", commentId: "c2", body: message.body, quote: "Ship it" },
+      message
+    );
 
     expect(
       vi.mocked(dispatchCommentMentions).mock.calls[0][1].newMessages
-    ).toEqual([
-      {
-        commentId: "c2",
-        quote: "Ship it",
-        message: live.comments[1].messages[0],
-      },
-    ]);
+    ).toEqual([{ commentId: "c2", quote: "Ship it", message }]);
   });
 
-  it("dispatches nothing for a resolve or a delete", async () => {
+  it("dispatches nothing for a message without mentions", async () => {
     const live = loadLive();
+    const message = live.comments[0].messages[0];
 
-    await dispatchLiveCommentMentions(file, live, {
-      type: "resolve",
-      commentId: "c1",
-      resolved: true,
-    });
-    await dispatchLiveCommentMentions(file, live, {
-      type: "delete",
-      commentId: "c1",
-    });
+    await dispatchLiveCommentMentions(
+      file,
+      live,
+      { type: "reply", commentId: "c1", position: 1, body: message.body },
+      message
+    );
 
     expect(dispatchCommentMentions).not.toHaveBeenCalled();
   });

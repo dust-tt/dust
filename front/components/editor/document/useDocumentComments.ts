@@ -95,6 +95,11 @@ const sameMessage = (a: DfmMessage | undefined, b: DfmMessage | undefined) =>
   a?.author.name === b?.author.name &&
   a?.createdAt === b?.createdAt &&
   a?.body === b?.body;
+
+/** The draft's text, shown as its quote and sent as the one agents get. */
+const getDraftQuote = (doc: Node, draft: DocumentCommentDraft) =>
+  doc.textBetween(draft.from, draft.to, " ");
+
 const UNSUGGESTABLE_MESSAGE = msg`Suggestions can only replace text within one paragraph.`;
 const UNAPPLICABLE_MESSAGE = msg`This suggestion can't replace the commented text. Another comment may cover part of it.`;
 const DELETED_MESSAGE = msg`This comment was deleted.`;
@@ -232,9 +237,7 @@ export const useDocumentComments = ({
           starts: getCommentStarts(editor.state.doc),
           activeId: pluginState?.activeId ?? null,
           draft,
-          draftQuote: draft
-            ? editor.state.doc.textBetween(draft.from, draft.to, " ")
-            : "",
+          draftQuote: draft ? getDraftQuote(editor.state.doc, draft) : "",
           suggestable: getSuggestableCommentIds(editor.state.doc),
           draftSuggestable: draft
             ? editor.state.doc
@@ -502,9 +505,7 @@ export const useDocumentComments = ({
           type: "add",
           commentId: id,
           body,
-          quote: draft
-            ? editor.state.doc.textBetween(draft.from, draft.to, " ")
-            : undefined,
+          quote: draft ? getDraftQuote(editor.state.doc, draft) : undefined,
         });
         if (created.isErr()) {
           return new Err(liveErrorMessage(created.error));

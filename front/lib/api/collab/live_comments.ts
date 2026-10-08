@@ -7,8 +7,9 @@ import {
   signDfmCommentMessage,
 } from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
-import type { DfmComment } from "@app/lib/markdown/dfm";
+import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
+import { extractFromString } from "@app/lib/mentions/format";
 import type {
   LiveCommentCommand,
   LiveCommentErrorCode,
@@ -26,12 +27,13 @@ const signatureRefusal = ({
  * @cc [owner:tdraier,label:security;product] live-comment-commands
  * A command MUST be refused as `unavailable` when `file` cannot write. `add` and `reply` MUST
  * store the message `signDfmCommentMessage` writes for `file`'s user and path after the thread's
- * last message, never a message, author or time from the command; when it refuses, the command
- * MUST be refused as `unwritable` if the codec cannot write the message, otherwise as
- * `unavailable`. `add` MUST be refused as `unavailable` for an id that already has
- * a thread; `reply`, `resolve` and `delete` as `not_found` for one that has none; `reply` as
- * `thread_changed` unless its position is the thread's length. A refused command MUST leave the
- * threads unchanged; an accepted one MUST change only its own thread.
+ * last message, never a message, author or time from the command, and return it as `added`, which
+ * other commands MUST leave null; when it refuses, the command MUST be refused as `unwritable` if
+ * the codec cannot write the message, otherwise as `unavailable`. `add` MUST be refused as
+ * `unavailable` for an id that already has a thread; `reply`, `resolve` and `delete` as
+ * `not_found` for one that has none; `reply` as `thread_changed` unless its position is the
+ * thread's length. A refused command MUST leave the threads unchanged; an accepted one MUST change
+ * only its own thread.
  *
  * Callers MUST apply a session's commands one at a time, each to the threads the previous one
  * left: the result is built from `comments` across an await, so overlapping calls would drop one.
@@ -42,7 +44,11 @@ export async function applyLiveCommentCommand(
   command: LiveCommentCommand
 ): Promise<
   Result<
-    { comments: DfmComment[]; created: DfmComment | null },
+    {
+      comments: DfmComment[];
+      created: DfmComment | null;
+      added: DfmMessage | null;
+    },
     LiveCommentErrorCode
   >
 > {
@@ -75,7 +81,11 @@ export async function applyLiveCommentCommand(
         status: "open",
         messages: [signed.value],
       };
-      return new Ok({ comments: [...comments, created], created });
+      return new Ok({
+        comments: [...comments, created],
+        created,
+        added: signed.value,
+      });
     }
     case "reply": {
       if (!thread) {
@@ -100,6 +110,7 @@ export async function applyLiveCommentCommand(
           messages: [...thread.messages, signed.value],
         }),
         created: null,
+        added: signed.value,
       });
     }
     case "resolve":
@@ -112,12 +123,13 @@ export async function applyLiveCommentCommand(
           status: command.resolved ? "resolved" : "open",
         }),
         created: null,
+        added: null,
       });
     case "delete":
       if (!thread) {
         return new Err("not_found");
       }
-      return new Ok({ comments: replace(null), created: null });
+      return new Ok({ comments: replace(null), created: null, added: null });
     default:
       assertNever(command);
   }
@@ -137,28 +149,25 @@ function liveQuote(live: LiveDocument, commentId: string): string | null {
 
 /**
  * @cc [owner:tdraier,label:product] live-comment-mentions
- * Once an `add` or a `reply` is accepted, the message it added, the thread's last in `live`, MUST
- * be handed to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would,
- * with as quote the text the thread's anchors cover in `live`, or the quote the `add` carries
- * while its thread is not anchored yet. Other commands MUST NOT dispatch anything.
+ * `message`, the one `applyLiveCommentCommand` stored for an accepted `command`, MUST be handed
+ * to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would, with as
+ * quote the one an `add` carries, as the browser anchors its thread only once it is accepted, or
+ * for a `reply` the text its thread's anchors cover in `live`. A message without mentions MUST
+ * NOT read `live`, as that serializes the whole document.
  */
 export async function dispatchLiveCommentMentions(
   file: LiveFile,
   live: LiveDocument,
-  command: LiveCommentCommand
+  command: LiveCommentCommand,
+  message: DfmMessage
 ): Promise<void> {
-  if (command.type !== "add" && command.type !== "reply") {
-    return;
-  }
-  const message = live.comments
-    .find(({ id }) => id === command.commentId)
-    ?.messages.at(-1);
-  if (!message) {
+  if (extractFromString(message.body).length === 0) {
     return;
   }
   const quote =
-    liveQuote(live, command.commentId) ??
-    (command.type === "add" ? (command.quote ?? null) : null);
+    command.type === "add"
+      ? (command.quote ?? null)
+      : liveQuote(live, command.commentId);
   await dispatchCommentMentions(file.auth, {
     scopedPath: file.canonicalPath,
     newMessages: [{ commentId: command.commentId, quote, message }],
