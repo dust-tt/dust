@@ -161,6 +161,23 @@ export async function checkLiveAccess(
 }
 
 /**
+ * @cc [owner:tdraier,label:security] live-read-access
+ * Reading a live document's source MUST apply the same membership, `co_edition` and workspace
+ * checks as `checkLiveAccess`, for a file `openLiveFile` opens for the user, without requiring write
+ * access: a reader may read what the session holds, never change it.
+ */
+export async function checkLiveReadAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<LiveFile, LiveAccessError>> {
+  const rights = await checkLiveSessionRights(auth);
+  if (rights.isErr()) {
+    return new Err(rights.error);
+  }
+  return openLiveFile(auth, canonicalPath);
+}
+
+/**
  * @cc [owner:PopDaph,label:security;performance] live-access-recheck
  * Re-checking an open session MUST apply the same membership, `co_edition`, workspace and write
  * access checks as `checkLiveAccess`, with an Authenticator built for it. It MUST NOT read the file

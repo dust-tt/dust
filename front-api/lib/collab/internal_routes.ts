@@ -1,6 +1,9 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
+import {
+  checkLiveAccess,
+  checkLiveReadAccess,
+} from "@app/lib/api/collab/live_file";
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
@@ -41,31 +44,16 @@ function isAuthorized(authorization: string | undefined): boolean {
   );
 }
 
-async function openLiveFileForUser({
-  workspaceId,
-  userId,
-  canonicalPath,
-}: {
-  workspaceId: string;
-  userId: string;
-  canonicalPath: string;
-}) {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    userId,
-    workspaceId
-  );
-  return checkLiveAccess(auth, canonicalPath);
-}
-
 /**
  * @cc [owner:tdraier,label:security] collab-internal-routes
  * Every internal route MUST answer 401 unless the request carries the configured internal secret,
  * and MUST answer 401 to every request when none is configured. A read MUST return a document's
- * source, and a write MUST be applied, only for the file `checkLiveAccess` opens for the request's
- * user, workspace and path, answering as the collab ticket route does when it refuses. A read of an
- * open document, readable or not, MUST answer 403 when the request has no user, and a write MUST
- * carry one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be
- * refused before it reaches the session, since no checkpoint could write it.
+ * source only for the file `checkLiveReadAccess` opens for the request's user, workspace and path,
+ * so a reader can read it, and a write MUST be applied only for the file `checkLiveAccess` opens
+ * for them, both answering as the collab ticket route does when they refuse. A read of an open
+ * document, readable or not, MUST answer 403 when the request has no user, and a write MUST carry
+ * one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused
+ * before it reaches the session, since no checkpoint could write it.
  */
 export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
   const app = createHono();
@@ -109,11 +97,10 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
           },
         });
       }
-      const file = await openLiveFileForUser({
-        workspaceId,
-        userId,
-        canonicalPath,
-      });
+      const file = await checkLiveReadAccess(
+        await Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId),
+        canonicalPath
+      );
       if (file.isErr()) {
         return apiError(ctx, liveAccessErrorToApiError(file.error));
       }
@@ -144,11 +131,10 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
       const { workspaceId, userId, canonicalPath, base, source } =
         ctx.req.valid("json");
 
-      const file = await openLiveFileForUser({
-        workspaceId,
-        userId,
-        canonicalPath,
-      });
+      const file = await checkLiveAccess(
+        await Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId),
+        canonicalPath
+      );
       if (file.isErr()) {
         return apiError(ctx, liveAccessErrorToApiError(file.error));
       }

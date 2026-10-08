@@ -1,6 +1,7 @@
 import { checkLiveAccess } from "@app/lib/api/collab/live_file";
 import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
+import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -11,11 +12,12 @@ import {
   LIVE_SOURCE_WRITE_PATH,
   toLiveDocumentName,
 } from "@app/types/collab";
+import { Err } from "@app/types/shared/result";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
 import { createHono } from "@front-api/lib/hono";
 import { unhandledErrorHandler } from "@front-api/middlewares/utils";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const SECRET = "collab-internal-secret";
 
@@ -56,6 +58,10 @@ describe("createInternalDocumentsApp", () => {
 
   beforeEach(() => {
     vi.spyOn(config, "getCollabServerInternalSecret").mockReturnValue(SECRET);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("refuses a request without the secret, or when none is configured", async () => {
@@ -156,6 +162,32 @@ describe("createInternalDocumentsApp", () => {
     expect(await allowed.json()).toEqual({ open: true, source: "# Notes\n" });
     expect((await readAs(undefined)).status).toBe(403);
     expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
+  });
+
+  it("serves an open document's source to a user who can only read it, never their write", async () => {
+    const { hocuspocus, request } = await openNotes();
+    vi.spyOn(DustFileSystem.prototype, "checkWriteAccess").mockReturnValue(
+      new Err(new DustFileSystemError("internal", "Read-only mount."))
+    );
+
+    const read = await post(
+      LIVE_SOURCE_READ_PATH,
+      request,
+      `Bearer ${SECRET}`,
+      hocuspocus
+    );
+    const written = await post(
+      LIVE_SOURCE_WRITE_PATH,
+      { ...request, base: "# Notes\n", source: "# Edited\n" },
+      `Bearer ${SECRET}`,
+      hocuspocus
+    );
+
+    expect(await read.json()).toEqual({ open: true, source: "# Notes\n" });
+    expect(written.status).toBe(403);
+    expect(await written.json()).toMatchObject({
+      error: { type: "file_read_only" },
+    });
   });
 
   it("refuses a read of an open document it cannot read before telling why", async () => {
