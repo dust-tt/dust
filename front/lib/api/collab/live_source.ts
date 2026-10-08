@@ -10,6 +10,7 @@ import type {
 import {
   INTERNAL_LIVE_SOURCE_READ_PATH,
   INTERNAL_LIVE_SOURCE_WRITE_PATH,
+  LIVE_SOURCE_WRITE_WAIT_MS,
   liveSourceReadResponseSchema,
   liveSourceWriteResponseSchema,
 } from "@app/types/collab";
@@ -18,7 +19,8 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
-const LIVE_SOURCE_TIMEOUT_MS = 10_000;
+// Long enough for the collab server to answer a write that waited its whole turn.
+const LIVE_SOURCE_TIMEOUT_MS = 2 * LIVE_SOURCE_WRITE_WAIT_MS;
 
 const apiErrorSchema = z.object({
   error: z.object({ type: z.string(), message: z.string() }),

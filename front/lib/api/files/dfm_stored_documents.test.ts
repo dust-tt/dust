@@ -101,20 +101,25 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
-  it("starts over from the session's new source when it changed meanwhile", async () => {
-    vi.mocked(fetchLiveSource)
-      .mockResolvedValueOnce(new Ok({ open: true, source: LIVE_SOURCE }))
-      .mockResolvedValueOnce(new Ok({ open: true, source: HUMAN_SOURCE }));
-    vi.mocked(pushLiveSource)
-      .mockResolvedValueOnce(new Ok("changed"))
-      .mockResolvedValueOnce(new Ok("written"));
+  it.each(["changed", "busy"] as const)(
+    "starts over from the session's current source when the write answered %s",
+    async (answer) => {
+      vi.mocked(fetchLiveSource)
+        .mockResolvedValueOnce(new Ok({ open: true, source: LIVE_SOURCE }))
+        .mockResolvedValueOnce(new Ok({ open: true, source: HUMAN_SOURCE }));
+      vi.mocked(pushLiveSource)
+        .mockResolvedValueOnce(new Ok(answer))
+        .mockResolvedValueOnce(new Ok("written"));
 
-    const result = await writeDocumentChange(auth, dustFs, path, appendLine);
+      const result = await writeDocumentChange(auth, dustFs, path, appendLine);
 
-    expect(result).toEqual(new Ok("done"));
-    expect(vi.mocked(pushLiveSource).mock.calls[1][1].base).toBe(HUMAN_SOURCE);
-    expect(writeCanonicalFileContent).not.toHaveBeenCalled();
-  });
+      expect(result).toEqual(new Ok("done"));
+      expect(vi.mocked(pushLiveSource).mock.calls[1][1].base).toBe(
+        HUMAN_SOURCE
+      );
+      expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+    }
+  );
 
   it("writes the file, conditional on its revision, once the session closed", async () => {
     vi.mocked(fetchLiveSource)

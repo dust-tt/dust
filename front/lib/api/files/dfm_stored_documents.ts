@@ -221,8 +221,8 @@ export async function readCurrentDocumentSource(
  *
  * While a live session holds the document, the file MUST NOT be written: `change` MUST receive
  * the session's source, parsed, after the file's checks and its write access, and its result MUST
- * be written through the session, conditional on that source. A session that changed or closed
- * meanwhile counts as a conflict.
+ * be written through the session, conditional on that source. A session that changed, closed or
+ * was busy meanwhile counts as a conflict.
  */
 export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
