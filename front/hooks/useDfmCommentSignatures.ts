@@ -1,3 +1,4 @@
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import { clientFetch } from "@app/lib/egress/client";
@@ -14,8 +15,8 @@ import type {
 } from "@app/types/api/file_system/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 
 /**
  * Checks DFM comment signatures with the server's public key. Null while the key loads, or
@@ -70,6 +71,9 @@ export function useSignDfmCommentMessage({
   /** Scoped path of the file the messages are written in. */
   filePath: string;
 }) {
+  const { t } = useLingui();
+  const formatErrorDescription = useFormatErrorDescription();
+
   return async (
     commentId: string,
     thread: DfmMessage[],
@@ -77,7 +81,7 @@ export function useSignDfmCommentMessage({
   ): Promise<Result<DfmMessage, string>> => {
     const previous = thread.at(-1) ?? null;
     if (!owner) {
-      return new Err("Commenting is unavailable.");
+      return new Err(t`Commenting is unavailable.`);
     }
     try {
       const response = await clientFetch(
@@ -100,13 +104,13 @@ export function useSignDfmCommentMessage({
       );
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
-        return new Err(errorData.message);
+        return new Err(formatErrorDescription(errorData));
       }
       const { message }: PostDfmCommentSignatureResponseBody =
         await response.json();
       return new Ok(message);
     } catch (error) {
-      return new Err(normalizeError(error).message);
+      return new Err(formatErrorDescription(error));
     }
   };
 }

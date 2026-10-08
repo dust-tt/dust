@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useLingui } from "@lingui/react/macro";
 
 export function useDeleteMessage({
   owner,
@@ -10,6 +11,7 @@ export function useDeleteMessage({
   owner: { sId: string };
   conversationId: string;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const { submit: deleteMessage, isSubmitting } = useSubmitFunction(
@@ -30,8 +32,8 @@ export function useDeleteMessage({
       }
 
       sendNotification({
-        title: "Message deleted",
-        description: "Message has been deleted successfully.",
+        title: t`Message deleted`,
+        description: t`Message has been deleted successfully.`,
         type: "success",
       });
     }

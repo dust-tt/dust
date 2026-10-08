@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export function useDismissFeedback({
@@ -14,6 +15,7 @@ export function useDismissFeedback({
   onSuccess?: () => void;
 }) {
   const [isDismissing, setIsDismissing] = useState(false);
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const toggleDismiss = useCallback(
@@ -33,8 +35,12 @@ export function useDismissFeedback({
       if (!response.ok) {
         sendNotification({
           type: "error",
-          title: `Failed to mark feedback as ${dismissed ? "seen" : "unseen"}.`,
-          description: `An error occurred while marking feedback as ${dismissed ? "seen" : "unseen"}`,
+          title: dismissed
+            ? t`Failed to mark feedback as seen.`
+            : t`Failed to mark feedback as unseen.`,
+          description: dismissed
+            ? t`An error occurred while marking feedback as seen.`
+            : t`An error occurred while marking feedback as unseen.`,
         });
         setIsDismissing(false);
         return;
@@ -42,15 +48,26 @@ export function useDismissFeedback({
 
       sendNotification({
         type: "success",
-        title: `Feedback marked as ${dismissed ? "seen" : "unseen"}.`,
-        description: `The feedback has been marked as ${dismissed ? "seen" : "unseen"}.`,
+        title: dismissed
+          ? t`Feedback marked as seen.`
+          : t`Feedback marked as unseen.`,
+        description: dismissed
+          ? t`The feedback has been marked as seen.`
+          : t`The feedback has been marked as unseen.`,
       });
 
       if (onSuccess) {
         onSuccess();
       }
     },
-    [workspaceId, agentConfigurationId, feedbackId, sendNotification, onSuccess]
+    [
+      workspaceId,
+      agentConfigurationId,
+      feedbackId,
+      sendNotification,
+      onSuccess,
+      t,
+    ]
   );
 
   return {

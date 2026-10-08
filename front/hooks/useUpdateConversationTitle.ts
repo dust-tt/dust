@@ -2,6 +2,7 @@ import { useConversation, useConversations } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useUpdateConversationTitle({
@@ -11,6 +12,7 @@ export function useUpdateConversationTitle({
   owner: LightWorkspaceType;
   conversationId: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateConversation } = useConversation({
     conversationId,
@@ -40,7 +42,7 @@ export function useUpdateConversationTitle({
       );
 
       if (!response.ok) {
-        sendNotification({ type: "error", title: "Failed to edit title" });
+        sendNotification({ type: "error", title: t`Failed to edit title` });
         return false;
       }
 
@@ -50,7 +52,7 @@ export function useUpdateConversationTitle({
           prev?.map((c) => (c.sId === conversationId ? { ...c, title } : c)),
         { revalidate: false }
       );
-      sendNotification({ type: "success", title: "Title edited" });
+      sendNotification({ type: "success", title: t`Title edited` });
       return true;
     },
     [
@@ -59,6 +61,7 @@ export function useUpdateConversationTitle({
       mutateConversation,
       mutateConversations,
       sendNotification,
+      t,
     ]
   );
 }

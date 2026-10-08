@@ -6,6 +6,7 @@ import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { FileUseCaseMetadata } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export function useToolFileUpload({
@@ -22,6 +23,7 @@ export function useToolFileUpload({
   const [uploadingFileKeys, setUploadingFileKeys] = useState<Set<string>>(
     new Set()
   );
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const getFileKey = useCallback(
@@ -89,7 +91,7 @@ export function useToolFileUpload({
         });
         onUploadSuccess(file);
       } catch (error) {
-        sendApiErrorNotification({ title: "Failed to attach file", error });
+        sendApiErrorNotification({ title: t`Failed to attach file`, error });
       } finally {
         setUploadingFileKeys((prev) => {
           const next = new Set(prev);
@@ -105,6 +107,7 @@ export function useToolFileUpload({
       getFileKey,
       useCaseMetadata,
       onUploadSuccess,
+      t,
     ]
   );
 

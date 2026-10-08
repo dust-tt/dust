@@ -15,6 +15,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 // Bounded concurrency for content fragment POSTs: each grabs a per-conversation advisory lock
@@ -36,6 +37,7 @@ export function useSubmitMessage({
   user: UserType;
   conversationId: string | null;
 }) {
+  const { t } = useLingui();
   const contextOrigin = useClientType();
   const resumeOngoingAgentLoopsPolling = useResumeOngoingAgentLoopsPolling(
     owner.sId
@@ -56,7 +58,7 @@ export function useSubmitMessage({
       if (!conversationId) {
         return new Err({
           type: "message_send_error",
-          title: "Conversation not found",
+          title: t`Conversation not found`,
           error: {
             type: "conversation_not_found",
             message: "Cannot send message without a conversation",
@@ -122,7 +124,7 @@ export function useSubmitMessage({
             console.error("Error creating content fragment", data);
             return new Err({
               type: "attachment_upload_error",
-              title: "Error uploading file.",
+              title: t`Error uploading file.`,
               error: data,
             });
           }
@@ -158,7 +160,7 @@ export function useSubmitMessage({
         if (mRes.status === 413) {
           return new Err({
             type: "content_too_large",
-            title: "Your message is too long to be sent.",
+            title: t`Your message is too long to be sent.`,
             error: {
               type: "content_too_large",
               message: "Please try again with a shorter message.",
@@ -179,7 +181,7 @@ export function useSubmitMessage({
                     : data.error.type === "no_seat"
                       ? "no_seat_error"
                       : "message_send_error",
-          title: "Your message could not be sent.",
+          title: t`Your message could not be sent.`,
           error: data,
         });
       }
@@ -189,6 +191,13 @@ export function useSubmitMessage({
 
       return new Ok(response);
     },
-    [owner, user, conversationId, contextOrigin, resumeOngoingAgentLoopsPolling]
+    [
+      owner,
+      user,
+      conversationId,
+      contextOrigin,
+      resumeOngoingAgentLoopsPolling,
+      t,
+    ]
   );
 }

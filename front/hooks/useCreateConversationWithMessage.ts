@@ -31,6 +31,9 @@ import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext } from "react";
 import type { z } from "zod";
 
@@ -46,6 +49,7 @@ export function useCreateConversationWithMessage({
   owner: WorkspaceType;
   user: UserType | null;
 }) {
+  const { t } = useLingui();
   const { fetcher } = useFetcher();
   const contextOrigin = useClientType();
   const sendApiErrorNotification = useSendApiErrorNotification();
@@ -98,7 +102,7 @@ export function useCreateConversationWithMessage({
       if (!user) {
         return new Err({
           type: "message_send_error",
-          title: "User not found",
+          title: t`User not found`,
           error: {
             type: "user_not_found",
             message: "Cannot create conversation without a user",
@@ -174,6 +178,7 @@ export function useCreateConversationWithMessage({
             skipToolsValidation,
             profilePictureUrl: user.image,
             modelSelection,
+            t,
             onError:
               onError ??
               ((err) => {
@@ -188,7 +193,7 @@ export function useCreateConversationWithMessage({
 
           return new Ok(conversationData.conversation);
         } catch (e) {
-          return toConversationCreationError(e);
+          return toConversationCreationError(e, t);
         }
       }
 
@@ -261,7 +266,7 @@ export function useCreateConversationWithMessage({
 
         return new Ok(conversationData.conversation);
       } catch (e) {
-        return toConversationCreationError(e);
+        return toConversationCreationError(e, t);
       }
     },
     [
@@ -273,6 +278,7 @@ export function useCreateConversationWithMessage({
       setPendingFirstMessage,
       clearPendingFirstMessage,
       resumeOngoingAgentLoopsPolling,
+      t,
     ]
   );
 }
@@ -293,6 +299,7 @@ async function postFirstMessageInBackground({
   skipToolsValidation,
   profilePictureUrl,
   modelSelection,
+  t,
   onError,
 }: {
   workspaceId: string;
@@ -307,6 +314,7 @@ async function postFirstMessageInBackground({
   skipToolsValidation: boolean;
   profilePictureUrl: string | null;
   modelSelection?: ModelSelectionType;
+  t: (descriptor: MessageDescriptor) => string;
   onError?: (err: SubmitMessageError) => void;
 }): Promise<void> {
   const timezone = getLocalTimeZone() || "Etc/UTC";
@@ -389,7 +397,8 @@ async function postFirstMessageInBackground({
       const body = await msgRes.json().catch(() => null);
       if (onError) {
         const errResult = toConversationCreationError(
-          isAPIErrorResponse(body) ? body : new Error("Failed to post message")
+          isAPIErrorResponse(body) ? body : new Error("Failed to post message"),
+          t
         );
         if (errResult.isErr()) {
           onError(errResult.error);
@@ -400,7 +409,7 @@ async function postFirstMessageInBackground({
   } catch (e) {
     logger.error({ err: e }, "Failed to post first message in background");
     if (onError) {
-      const err = toConversationCreationError(e);
+      const err = toConversationCreationError(e, t);
       if (err.isErr()) {
         onError(err.error);
       }
@@ -419,7 +428,8 @@ function parsePostConversationsResponse(
 }
 
 function toConversationCreationError(
-  e: unknown
+  e: unknown,
+  t: (descriptor: MessageDescriptor) => string
 ): Result<never, SubmitMessageError> {
   const isApiError = isAPIErrorResponse(e);
   return new Err({
@@ -435,7 +445,7 @@ function toConversationCreationError(
               : isApiError && e.error.type === "no_seat"
                 ? "no_seat_error"
                 : "message_send_error",
-    title: "Your message could not be sent.",
+    title: t(msg`Your message could not be sent.`),
     error: e,
   });
 }

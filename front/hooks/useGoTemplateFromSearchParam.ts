@@ -8,6 +8,8 @@ import { useSearchParam } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { GetGoTemplateDraftResponseBodySchema } from "@app/types/api/assistant/go_template_types";
 import { isSupportedFileContentType } from "@app/types/files";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useRef } from "react";
 
 /**
@@ -19,6 +21,7 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
   const goSlug = useSearchParam("go");
   const { setPendingInputText, fileUploaderService, setIsLoadingGoTemplate } =
     useContext(InputBarContext);
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const loadedSlugRef = useRef<string | null>(null);
@@ -50,7 +53,7 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Template unavailable",
+            title: t`Template unavailable`,
             error: errorData,
           });
           return;
@@ -62,8 +65,8 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
         if (!parsed.success) {
           sendNotification({
             type: "error",
-            title: "Template unavailable",
-            description: "This link template could not be loaded.",
+            title: t`Template unavailable`,
+            description: t`This link template could not be loaded.`,
           });
           return;
         }
@@ -87,11 +90,12 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
           });
         }
 
-        if (draft.attachmentErrors.length > 0) {
+        const skippedAttachmentCount = draft.attachmentErrors.length;
+        if (skippedAttachmentCount > 0) {
           sendNotification({
             type: "info",
-            title: "Some attachments could not be loaded",
-            description: `${draft.attachmentErrors.length} attachment(s) were skipped.`,
+            title: t`Some attachments could not be loaded`,
+            description: t`${plural(skippedAttachmentCount, { one: "# attachment was skipped.", other: "# attachments were skipped." })}`,
           });
         }
 
@@ -126,5 +130,6 @@ export function useGoTemplateFromSearchParam(workspaceId: string) {
     fileUploaderService,
     sendApiErrorNotification,
     sendNotification,
+    t,
   ]);
 }

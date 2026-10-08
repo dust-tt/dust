@@ -2,6 +2,7 @@ import type { UserQuestionAnswer } from "@app/lib/actions/types";
 import { useFetcher } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 interface UseAnswerUserQuestionParams {
@@ -9,6 +10,7 @@ interface UseAnswerUserQuestionParams {
 }
 
 export function useAnswerUserQuestion({ owner }: UseAnswerUserQuestionParams) {
+  const { t } = useLingui();
   const { fetcher } = useFetcher();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -48,13 +50,13 @@ export function useAnswerUserQuestion({ owner }: UseAnswerUserQuestionParams) {
         if (isAPIErrorResponse(e) && e.error.type === "action_not_blocked") {
           return { success: true };
         }
-        setErrorMessage("Failed to submit answer. Please try again.");
+        setErrorMessage(t`Failed to submit answer. Try again.`);
         return { success: false };
       } finally {
         setIsSubmitting(false);
       }
     },
-    [owner.sId, fetcher]
+    [owner.sId, fetcher, t]
   );
 
   return { answerQuestion, isSubmitting, errorMessage };

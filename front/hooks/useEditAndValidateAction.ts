@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp";
 import { useFetcher } from "@app/lib/swr/swr";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export function useEditAndValidateAction({
@@ -12,6 +13,7 @@ export function useEditAndValidateAction({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const [isEditingAndValidating, setIsEditingAndValidating] = useState(false);
@@ -52,7 +54,7 @@ export function useEditAndValidateAction({
         return { success: true };
       } catch (err) {
         sendApiErrorNotification({
-          title: "Failed to edit and approve action",
+          title: t`Failed to edit and approve action`,
           error: err,
         });
         return { success: false };
@@ -60,7 +62,7 @@ export function useEditAndValidateAction({
         setIsEditingAndValidating(false);
       }
     },
-    [owner.sId, fetcher, sendApiErrorNotification]
+    [owner.sId, fetcher, sendApiErrorNotification, t]
   );
 
   return { editAndValidateAction, isEditingAndValidating };

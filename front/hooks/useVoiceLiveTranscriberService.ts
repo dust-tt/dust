@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { requestMicrophone } from "@app/hooks/useVoiceTranscriberService";
 import type {
   VoiceTranscriberService,
@@ -14,9 +17,9 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { GetTranscribeTokenResponseBody } from "@app/types/api/transcribe";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AudioFormat, CommitStrategy, useScribe } from "@elevenlabs/react";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseVoiceLiveTranscriberServiceParams {
@@ -96,7 +99,9 @@ export function useVoiceLiveTranscriberService({
   const onErrorRef = useRef(onError);
   onErrorRef.current = onError;
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   // Tracks whether we are in the process of shutting down after a user-initiated stop.
   // When true, the next committed_transcript triggers disconnect + onTranscribeComplete.
@@ -258,26 +263,35 @@ export function useVoiceLiveTranscriberService({
 
       setStatus("recording");
     } catch (err) {
-      const error = normalizeError(err);
       const isPermissionError =
         err instanceof DOMException &&
         (err.name === "NotAllowedError" ||
           err.name === "PermissionDeniedError");
 
-      sendNotification({
-        type: "error",
-        title: isPermissionError
-          ? "Microphone permission required."
-          : "Could not start recording.",
-        description: isPermissionError
-          ? "Please allow microphone access and try again."
-          : error.message,
-      });
+      if (isPermissionError) {
+        sendNotification({
+          type: "error",
+          title: t`Microphone permission required.`,
+          description: t`Allow microphone access and try again.`,
+        });
+      } else {
+        sendApiErrorNotification({
+          title: t`Could not start recording.`,
+          error: err,
+        });
+      }
       scribeRef.current.disconnect();
       cleanup();
       setStatus("idle");
     }
-  }, [owner.sId, status, sendNotification, cleanup]);
+  }, [
+    owner.sId,
+    status,
+    sendNotification,
+    sendApiErrorNotification,
+    cleanup,
+    t,
+  ]);
 
   const stopRecording = useCallback(async () => {
     if (status !== "recording") {
