@@ -11,6 +11,13 @@ import type {
   ModelIdType,
 } from "@app/types/assistant/models/types";
 
+// gpt-5-mini tokens worth exactly one credit, the default model of `createWithUsage`.
+export const GPT_5_MINI_TOKENS_PER_CREDIT = {
+  input: 34_000,
+  cachedInput: 340_000,
+  output: 4_250,
+};
+
 export class RunFactory {
   static async createWithUsage(
     auth: Authenticator,
@@ -18,6 +25,7 @@ export class RunFactory {
       inputTokens = 100,
       outputTokens = 20,
       reasoningTokens,
+      cachedTokens,
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
       usageType = USAGE_TYPE_USER,
       serviceTier,
@@ -26,6 +34,7 @@ export class RunFactory {
       inputTokens?: number;
       outputTokens?: number;
       reasoningTokens?: number;
+      cachedTokens?: number;
       modelId?: ModelIdType;
       usageType?: UsageType | null;
       serviceTier?: ServiceTier;
@@ -46,6 +55,7 @@ export class RunFactory {
         inputTokens,
         totalOutputTokens: outputTokens,
         reasoningTokens,
+        cachedTokens,
         totalTokens: inputTokens + outputTokens,
         serviceTier,
       },

@@ -8,19 +8,26 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
-const BILLED_CREDITS = 10;
+const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
+// The run costs 1 credit of input and 2 credits of output.
+const BILLED_CREDITS = 3;
 const PREVIOUS_ATTRIBUTION_VERSION =
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 const INPUT_GROSS_CREDITS_MICRO = 2_000_000;
 const OUTPUT_GROSS_CREDITS_MICRO = 1_000_000;
 const REASONING_GROSS_CREDITS_MICRO = 1_000_000;
 
-async function setupMessage() {
+async function setupMessage({
+  billedCredits = BILLED_CREDITS,
+}: { billedCredits?: number } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({});
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
@@ -38,9 +45,9 @@ async function setupMessage() {
     throw new Error("Just-created conversation not found.");
   }
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
-    inputTokens: 100,
-    outputTokens: 20,
-    reasoningTokens: 5,
+    inputTokens: INPUT,
+    outputTokens: 2 * OUTPUT,
+    reasoningTokens: 0,
   });
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
@@ -50,7 +57,7 @@ async function setupMessage() {
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
-    costCredits: BILLED_CREDITS,
+    costCredits: billedCredits,
   });
 
   return {
@@ -68,19 +75,19 @@ function modelRecords(runUsageModelId: ModelId) {
     {
       itemType: "input" as const,
       runUsageModelId,
-      inputTokensCount: 100,
+      inputTokensCount: INPUT,
       grossAttributedCreditAmountMicro: INPUT_GROSS_CREDITS_MICRO,
     },
     {
       itemType: "output" as const,
       runUsageModelId,
-      outputTokensCount: 15,
+      outputTokensCount: OUTPUT,
       grossAttributedCreditAmountMicro: OUTPUT_GROSS_CREDITS_MICRO,
     },
     {
       itemType: "reasoning" as const,
       runUsageModelId,
-      outputTokensCount: 5,
+      outputTokensCount: 0,
       grossAttributedCreditAmountMicro: REASONING_GROSS_CREDITS_MICRO,
     },
   ];
@@ -95,7 +102,7 @@ describe("getAgentMessageConsumption", () => {
       run,
       runUsageModelId,
       agentMessage,
-    } = await setupMessage();
+    } = await setupMessage({ billedCredits: BILLED_CREDITS + 4 });
     const { action: firstAction } = await AgentMCPActionFactory.create(auth, {
       workspace,
       conversationModelId: conversation.id,
@@ -125,7 +132,7 @@ describe("getAgentMessageConsumption", () => {
           action: firstAction,
           attributedSkillIds: [],
           inputTokensCount: 20,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT / 2,
           grossAttributedCreditAmountMicro: 4_000_000,
           directCreditAmountMicro: 3_000_000,
         },
@@ -135,7 +142,7 @@ describe("getAgentMessageConsumption", () => {
           action: secondAction,
           attributedSkillIds: [],
           inputTokensCount: 10,
-          outputTokensCount: 4,
+          outputTokensCount: OUTPUT / 2,
           grossAttributedCreditAmountMicro: 3_000_000,
           directCreditAmountMicro: 1_000_000,
         },
@@ -149,16 +156,16 @@ describe("getAgentMessageConsumption", () => {
     });
 
     expect(consumption).toEqual({
-      billedCredits: BILLED_CREDITS,
-      totalBilledCredits: BILLED_CREDITS,
+      billedCredits: BILLED_CREDITS + 4,
+      totalBilledCredits: BILLED_CREDITS + 4,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        agentWorkCredits: 3,
+        agentWorkCredits: 1 + 1,
         tools: [
           expect.objectContaining({
             label: "Test tool",
             callCount: 2,
-            attributedCredits: 7,
+            attributedCredits: 4 + 0.5 + 0.5,
             directCredits: 4,
             pending: false,
             toolName: "test_tool",
@@ -179,7 +186,7 @@ describe("getAgentMessageConsumption", () => {
       run,
       runUsageModelId,
       agentMessage,
-    } = await setupMessage();
+    } = await setupMessage({ billedCredits: BILLED_CREDITS + 4 });
     const childAgentId = hidden
       ? GLOBAL_AGENTS_SID.DUST_TASK
       : (
@@ -318,7 +325,7 @@ describe("getAgentMessageConsumption", () => {
           action: runChildAction,
           attributedSkillIds: [],
           inputTokensCount: 20,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT,
           grossAttributedCreditAmountMicro: 6_000_000,
           directCreditAmountMicro: 4_000_000,
         },
@@ -332,17 +339,17 @@ describe("getAgentMessageConsumption", () => {
     });
 
     expect(consumption).toMatchObject({
-      billedCredits: BILLED_CREDITS,
-      totalBilledCredits: 33,
+      billedCredits: BILLED_CREDITS + 4,
+      totalBilledCredits: BILLED_CREDITS + 4 + 20 + 3,
       details: {
-        agentWorkCredits: hidden ? 33 : 4,
+        agentWorkCredits: hidden ? BILLED_CREDITS + 4 + 20 + 3 : 1 + 1,
         tools: hidden
           ? []
           : [
               expect.objectContaining({
                 label: "Run Research agent",
                 callCount: 1,
-                attributedCredits: 29,
+                attributedCredits: 4 + 1 + 20 + 3,
                 directCredits: 4,
                 toolName: "run_research_agent",
               }),
@@ -392,7 +399,7 @@ describe("getAgentMessageConsumption", () => {
           attributedSkillIds: [],
           runUsageModelId,
           inputTokensCount: null,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT / 2,
           grossAttributedCreditAmountMicro: 1_000_000,
           directCreditAmountMicro: null,
         },
@@ -402,7 +409,7 @@ describe("getAgentMessageConsumption", () => {
           action,
           attributedSkillIds: [],
           runUsageModelId,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT / 2,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
       ],
@@ -414,10 +421,11 @@ describe("getAgentMessageConsumption", () => {
     });
 
     expect(consumption?.details).toMatchObject({
-      agentWorkCredits: 9,
+      agentWorkCredits: 1 + 1 + 0.5,
       tools: [
         expect.objectContaining({
           callCount: 1,
+          attributedCredits: 0.5,
           directCredits: 0,
           pending: true,
           toolName: "test_tool",
@@ -449,22 +457,40 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("withholds details when non-input attribution exceeds the bill", async () => {
-    const { auth, conversation, runUsageModelId, agentMessage } =
-      await setupMessage();
+  it("withholds details when direct tool credits exceed the bill", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+    } = await setupMessage();
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+    });
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
       attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      records: modelRecords(runUsageModelId).map((record) =>
-        record.itemType === "output"
-          ? {
-              ...record,
-              grossAttributedCreditAmountMicro: 10_000_000,
-            }
-          : record
-      ),
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action,
+          attributedSkillIds: [],
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: (BILLED_CREDITS + 1) * 1_000_000,
+          directCreditAmountMicro: (BILLED_CREDITS + 1) * 1_000_000,
+        },
+      ],
       pendingToolItems: [],
     });
 

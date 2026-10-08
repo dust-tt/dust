@@ -161,6 +161,61 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
   };
 }
 
+// The recorded cost is stored as whole micro-dollars, so it can sit up to half a micro-dollar
+// below its exact price.
+const RECORDED_COST_ROUNDING_MICRO_USD = 0.5;
+
+/**
+ * @cc [owner:sfriquet,label:product] recorded-cost-split
+ * The output part MUST be `completionTokens` at the usage's output rate, and the input part MUST
+ * be the rest of the recorded `costMicroUsd`, so the input part carries every cache read discount
+ * and cache write premium. The split MUST fail (return null) when the output part exceeds the
+ * recorded cost by more than the half micro-dollar the stored cost was rounded to.
+ * `cachedTokenWeight` MUST be the cache read rate divided by the full input rate for the same
+ * pricing entry, or 1 when the full input rate is zero.
+ */
+export function splitRecordedUsageCost(
+  usage: RunUsageForAttribution & Pick<RunUsageWithRunKeyType, "costMicroUsd">
+): {
+  cachedTokenWeight: number;
+  inputCostMicroUsd: number;
+  outputCostMicroUsd: number;
+} | null {
+  const outputCostMicroUsd =
+    usage.completionTokens * getRunTokenRates(usage).outputCostMicroUsdPerToken;
+  if (
+    outputCostMicroUsd >
+    usage.costMicroUsd + RECORDED_COST_ROUNDING_MICRO_USD
+  ) {
+    return null;
+  }
+  const pricedPromptTokens = Math.max(usage.promptTokens, 1);
+  const inferenceRegion = usage.region
+    ? inferenceRegionForEndpointRegion(usage.region)
+    : "global";
+  const pricePromptTokens = (cachedTokens: number | null) =>
+    computeTokensCostForUsageInMicroUsd({
+      modelId: usage.modelId,
+      promptTokens: pricedPromptTokens,
+      completionTokens: 0,
+      cachedTokens,
+      cacheCreationTokens: null,
+      isBatch: usage.isBatch,
+      serviceTier: usage.serviceTier,
+      inferenceRegion,
+    });
+  const fullInputCostMicroUsd = pricePromptTokens(null);
+
+  return {
+    cachedTokenWeight:
+      fullInputCostMicroUsd > 0
+        ? pricePromptTokens(pricedPromptTokens) / fullInputCostMicroUsd
+        : 1,
+    inputCostMicroUsd: Math.max(usage.costMicroUsd - outputCostMicroUsd, 0),
+    outputCostMicroUsd,
+  };
+}
+
 function attributedCreditsForTokens({
   tokensCount,
   costMicroUsdPerToken,
