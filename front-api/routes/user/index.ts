@@ -13,10 +13,7 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
 import { isAdmin } from "@app/types/user";
-import {
-  MAX_USER_JOB_TITLE_LENGTH,
-  MAX_USER_PRONOUNS_LENGTH,
-} from "@app/types/user_profile";
+import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -34,9 +31,8 @@ const PatchUserBodySchema = z.object({
   favoritePlatforms: z.array(z.string()).optional(),
   emailProvider: z.enum(EMAIL_PROVIDER_TYPES).optional(),
   workspaceId: z.string().optional(),
-  // Omitted fields are left unchanged; null or blank values clear the field.
+  // Omitted pronouns are left unchanged; null or blank values clear them.
   pronouns: z.string().trim().max(MAX_USER_PRONOUNS_LENGTH).nullish(),
-  jobTitle: z.string().trim().max(MAX_USER_JOB_TITLE_LENGTH).nullish(),
 });
 
 // Mounted under /api/user. Every route below inherits sessionAuth.
@@ -66,7 +62,7 @@ const app = sessionApp();
  *         description: User not found
  *   patch:
  *     summary: Update current user
- *     description: Update the authenticated user's profile (name, job type, favorite platforms, image, pronouns, job title).
+ *     description: Update the authenticated user's profile (name, job type, favorite platforms, image, pronouns).
  *     tags:
  *       - Private User
  *     security:
@@ -103,11 +99,6 @@ const app = sessionApp();
  *                 type: string
  *                 nullable: true
  *                 maxLength: 32
- *                 description: Omit to leave unchanged; null or blank clears it.
- *               jobTitle:
- *                 type: string
- *                 nullable: true
- *                 maxLength: 128
  *                 description: Omit to leave unchanged; null or blank clears it.
  *     responses:
  *       200:
@@ -271,10 +262,9 @@ app.patch(
       }
     }
 
-    await u.updateProfile({
-      pronouns: body.pronouns === undefined ? undefined : body.pronouns || null,
-      jobTitle: body.jobTitle === undefined ? undefined : body.jobTitle || null,
-    });
+    if (body.pronouns !== undefined) {
+      await u.updatePronouns(body.pronouns || null);
+    }
 
     const userMetadata: Record<string, string | undefined> = {
       job_type: jobType,

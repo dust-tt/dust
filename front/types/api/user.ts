@@ -1,3 +1,4 @@
+import type { JobType } from "@app/types/job_type";
 import type {
   RoleType,
   UserMetadataType,
@@ -14,7 +15,7 @@ export type GetMemberResponseBody = {
     fullName: string;
     image: string | null;
     pronouns: string | null;
-    jobTitle: string | null;
+    jobType: JobType | null;
     // Names of the member's provisioned and manual groups readable by the caller.
     groups: string[];
     revoked: boolean;

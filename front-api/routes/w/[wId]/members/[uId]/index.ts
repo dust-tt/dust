@@ -78,7 +78,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const [{ pronouns, jobTitle }, groupNamesByUserId] = await Promise.all([
+  const [{ pronouns, jobType }, groupNamesByUserId] = await Promise.all([
     user.getProfile(),
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       auth,
@@ -97,7 +97,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       fullName: user.fullName(),
       image: user.imageUrl,
       pronouns,
-      jobTitle,
+      jobType,
       groups: groupNamesByUserId.get(user.id) ?? [],
       revoked: membership.isRevoked(),
       role: membership.isRevoked() ? "none" : membership.role,
