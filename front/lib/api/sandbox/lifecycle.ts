@@ -249,7 +249,6 @@ async function ensureOwnerSandboxReady<TScope>(
       }
 
       const { sandbox, freshlyCreated, scope } = ensureResult.value;
-      cold = freshlyCreated;
       return new Ok({ sandbox, freshlyCreated, scope });
     });
   } finally {

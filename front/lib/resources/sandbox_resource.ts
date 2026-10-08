@@ -935,8 +935,7 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       unlockedSnapshot.killRequestedAt === null &&
       unlockedSnapshot.status === "running";
     const isUsableWithoutLock =
-      isRunningSnapshot &&
-      !(opts.runtimeRefresh?.isDue(unlockedSnapshot) ?? false);
+      isRunningSnapshot && !opts.runtimeRefresh?.isDue(unlockedSnapshot);
 
     if (isUsableWithoutLock) {
       // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
