@@ -7,7 +7,6 @@ import {
 import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GROUP_PERMISSION_RESOURCE_TYPES } from "@app/types/group_permissions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -19,18 +18,6 @@ const QuerySchema = z.union([
   z.object({
     groupId: z.string(),
   }),
-  // TODO(2026-10-08 POKE GROUP PERMISSIONS): Remove once all clients have refreshed. Clients from
-  // before resources were addressed by sId send the resource ModelId. Must stay ahead of the sId
-  // variant, which also accepts numeric strings.
-  z
-    .object({
-      resourceType: z.enum([...GROUP_PERMISSION_RESOURCE_TYPES]),
-      resourceId: z.coerce.number().int(),
-    })
-    .transform(({ resourceType, resourceId }) => ({
-      resourceType,
-      resourceModelId: resourceId,
-    })),
   z.object({
     resourceType: z.enum([...POKE_GROUP_PERMISSION_RESOURCE_TYPES]),
     resourceId: z.string(),
@@ -62,15 +49,6 @@ app.get(
 
       return ctx.json({
         groupPermissions: await getPokeGroupPermissionsForGroup(auth, group),
-      });
-    }
-
-    if ("resourceModelId" in query) {
-      return ctx.json({
-        groupPermissions: await getPokeGroupPermissionsForResource(auth, {
-          resourceType: query.resourceType,
-          resourceId: query.resourceModelId,
-        }),
       });
     }
 
