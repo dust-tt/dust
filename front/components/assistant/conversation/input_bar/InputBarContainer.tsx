@@ -159,6 +159,7 @@ function narrowToKnownSlashCommand(
   return null;
 }
 
+const INPUT_BAR_BUTTON_SIZE = "sm";
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
@@ -1555,10 +1556,6 @@ const InputBarContainer = ({
     editor?.isEditable,
   ]);
 
-  const buttonSize = useMemo(() => {
-    return isMobile ? "sm" : "xs";
-  }, [isMobile]);
-
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
@@ -1687,7 +1684,7 @@ const InputBarContainer = ({
                   elapsedSeconds={activeVoiceService.elapsedSeconds}
                   onRecordStart={activeVoiceService.startRecording}
                   onRecordStop={activeVoiceService.stopRecording}
-                  size="sm"
+                  size={INPUT_BAR_BUTTON_SIZE}
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1734,7 +1731,7 @@ const InputBarContainer = ({
                 contentEditableClasses,
                 "scrollbar-hide",
                 "overflow-y-auto overscroll-none",
-                "max-h-[40vh] min-h-11"
+                "max-h-[40vh] min-h-10"
               )}
             />
           </div>
@@ -1802,7 +1799,7 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      buttonSize={buttonSize}
+                      buttonSize={INPUT_BAR_BUTTON_SIZE}
                       clientType={clientType}
                       conversation={conversation}
                       disableAgentSelector={disableAgentSelector}
@@ -1850,7 +1847,7 @@ const InputBarContainer = ({
                             <Button
                               variant="ghost-secondary"
                               icon={Plus}
-                              size={buttonSize}
+                              size={INPUT_BAR_BUTTON_SIZE}
                               disabled={disableInput}
                             />
                           </DropdownMenuTrigger>
@@ -1929,7 +1926,7 @@ const InputBarContainer = ({
                           owner={owner}
                           isLoading={false}
                           onNodeSelect={handleNodeSelect}
-                          buttonSize={buttonSize}
+                          buttonSize={INPUT_BAR_BUTTON_SIZE}
                           toolFileUpload={{
                             useCaseMetadata: {
                               conversationId: conversation?.sId,
@@ -1963,7 +1960,7 @@ const InputBarContainer = ({
                           agentId={selectedSingleAgent?.id ?? null}
                           lastRequestedModel={lastRequestedModel}
                           owner={owner}
-                          buttonSize={buttonSize}
+                          buttonSize={INPUT_BAR_BUTTON_SIZE}
                           side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
                           selectionRef={modelSelectionRef}
@@ -1972,7 +1969,7 @@ const InputBarContainer = ({
                       )}
                     {conversation && (
                       <ContextUsageIndicator
-                        buttonSize={buttonSize}
+                        buttonSize={INPUT_BAR_BUTTON_SIZE}
                         owner={owner}
                         conversationId={conversation?.sId}
                       />
@@ -1985,7 +1982,7 @@ const InputBarContainer = ({
                       elapsedSeconds={activeVoiceService.elapsedSeconds}
                       onRecordStart={activeVoiceService.startRecording}
                       onRecordStop={activeVoiceService.stopRecording}
-                      size={buttonSize}
+                      size={INPUT_BAR_BUTTON_SIZE}
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
                       buttonProps={{ className: "rounded-full" }}
@@ -2012,7 +2009,7 @@ const InputBarContainer = ({
                           }}
                         >
                           <Button
-                            size={buttonSize}
+                            size={INPUT_BAR_BUTTON_SIZE}
                             aria-label={t`Send message`}
                             isLoading={
                               isSubmitting &&
