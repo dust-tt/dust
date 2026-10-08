@@ -8,6 +8,7 @@ import {
   NO_PROVIDERS_SELECTED,
 } from "@app/types/provider_selection";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 export function useProvidersSelection(
@@ -15,6 +16,7 @@ export function useProvidersSelection(
   owner: LightWorkspaceType,
   mutateWorkspace: () => Promise<unknown>
 ) {
+  const { t } = useLingui();
   const [providersSelection, setProvidersSelection] =
     useState<ProvidersSelection>(ALL_PROVIDERS_SELECTED);
   const sendNotifications = useSendNotification();
@@ -60,8 +62,8 @@ export function useProvidersSelection(
 
         sendNotifications({
           type: "success",
-          title: "Providers Updated",
-          description: "The list of providers has been successfully updated.",
+          title: t`Providers updated`,
+          description: t`The list of providers has been successfully updated.`,
         });
 
         await mutateWorkspace();
@@ -69,8 +71,8 @@ export function useProvidersSelection(
         setProvidersSelection(previousSelection);
         sendNotifications({
           type: "error",
-          title: "Update Failed",
-          description: "An unexpected error occurred while updating providers.",
+          title: t`Update failed`,
+          description: t`An unexpected error occurred while updating providers.`,
         });
       }
     },
@@ -79,6 +81,7 @@ export function useProvidersSelection(
       workspace?.defaultEmbeddingProvider,
       mutateWorkspace,
       sendNotifications,
+      t,
     ]
   );
 
@@ -95,16 +98,15 @@ export function useProvidersSelection(
       ) {
         sendNotifications({
           type: "error",
-          title: "One provider required",
-          description:
-            "Please select at least one provider to continue with the update.",
+          title: t`One provider required`,
+          description: t`Select at least one provider to continue with the update.`,
         });
         return;
       }
 
       await saveProviders(newSelection, providersSelection);
     },
-    [providersSelection, saveProviders, sendNotifications]
+    [providersSelection, saveProviders, sendNotifications, t]
   );
 
   const selectAllProviders = useCallback(async () => {

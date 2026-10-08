@@ -1,3 +1,4 @@
+import { ROLE_NAMES_IN_SENTENCE } from "@app/components/members/Roles";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -9,6 +10,8 @@ import type {
   LightWorkspaceType,
   RoleType,
 } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 type HandleMembersRoleChangeParams = {
@@ -21,6 +24,7 @@ export function useChangeMembersRoles({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateMembers } = useMembers({
@@ -69,20 +73,24 @@ export function useChangeMembersRoles({
         if (errors.length > 0) {
           if (errors.length === 1) {
             const body = await errors[0].json().catch(() => null);
-            sendApiErrorNotification({ title: "Update failed", error: body });
+            sendApiErrorNotification({ title: t`Update failed`, error: body });
           } else {
+            const failedCount = errors.length;
+            const succeededCount = members.length - errors.length;
             sendNotification({
               type: "error",
-              title: "Update failed",
-              description: `Failed to update members role for ${errors.length} member(s) (${members.length - errors.length} succeeded).`,
+              title: t`Update failed`,
+              description: t`Failed to update the role of ${plural(failedCount, { one: "# member", other: "# members" })} (${succeededCount} succeeded).`,
             });
           }
           return false;
         } else {
+          const roleName = t(ROLE_NAMES_IN_SENTENCE[role]);
+          const memberCount = members.length;
           sendNotification({
             type: "success",
-            title: "Role updated",
-            description: `Role updated to ${role} for ${members.length} member(s).`,
+            title: t`Role updated`,
+            description: t`Role updated to ${roleName} for ${plural(memberCount, { one: "# member", other: "# members" })}.`,
           });
 
           await mutateMembers();
@@ -92,9 +100,8 @@ export function useChangeMembersRoles({
       } catch {
         sendNotification({
           type: "error",
-          title: "Update failed",
-          description:
-            "An unexpected error occurred while updating member roles.",
+          title: t`Update failed`,
+          description: t`An unexpected error occurred while updating member roles.`,
         });
         return false;
       }
@@ -105,6 +112,7 @@ export function useChangeMembersRoles({
       sendApiErrorNotification,
       mutateMembers,
       mutateSearchMembers,
+      t,
     ]
   );
 

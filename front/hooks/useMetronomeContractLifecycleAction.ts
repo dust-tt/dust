@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { PatchMetronomeContractRequestBody } from "@app/types/api/credits/metronome_contract";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { z } from "zod";
 
@@ -82,16 +83,17 @@ export function useCancelMetronomeContract({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const {
     applyMetronomeContractLifecycleAction,
     isApplyingMetronomeContractLifecycleAction,
   } = useMetronomeContractLifecycleAction({
     workspaceId,
     action: "cancel",
-    errorTitle: "Cancellation failed",
-    errorDescription: "Failed to cancel your subscription.",
-    successTitle: "Subscription cancelled",
-    successDescription: "Your subscription has been cancelled.",
+    errorTitle: t`Cancellation failed`,
+    errorDescription: t`Failed to cancel your subscription.`,
+    successTitle: t`Subscription cancelled`,
+    successDescription: t`Your subscription has been cancelled.`,
   });
 
   return {
@@ -105,16 +107,17 @@ export function useReactivateMetronomeContract({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const {
     applyMetronomeContractLifecycleAction,
     isApplyingMetronomeContractLifecycleAction,
   } = useMetronomeContractLifecycleAction({
     workspaceId,
     action: "reactivate",
-    errorTitle: "Reactivation failed",
-    errorDescription: "Failed to reactivate your subscription.",
-    successTitle: "Subscription reactivated",
-    successDescription: "Your subscription will continue normally.",
+    errorTitle: t`Reactivation failed`,
+    errorDescription: t`Failed to reactivate your subscription.`,
+    successTitle: t`Subscription reactivated`,
+    successDescription: t`Your subscription will continue normally.`,
   });
 
   return {

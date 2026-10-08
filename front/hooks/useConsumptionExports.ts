@@ -7,6 +7,7 @@ import type { ConsumptionExportBody } from "@app/lib/api/analytics/consumption/s
 import { getBaseUrl } from "@app/lib/api/config";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -58,6 +59,7 @@ export function useStartConsumptionExport({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const [isStarting, setIsStarting] = useState(false);
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -76,8 +78,8 @@ export function useStartConsumptionExport({
         if (!response.ok) {
           sendNotification({
             type: "error",
-            title: "Failed to start export",
-            description: "Could not start generating the export.",
+            title: t`Failed to start export`,
+            description: t`Could not start generating the export.`,
           });
           return;
         }
@@ -94,7 +96,7 @@ export function useStartConsumptionExport({
         setIsStarting(false);
       }
     },
-    [url, statusUrl, sendNotification, mutate]
+    [url, statusUrl, sendNotification, mutate, t]
   );
 
   return { isStarting, startConsumptionExport };

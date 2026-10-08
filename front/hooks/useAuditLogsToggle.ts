@@ -4,6 +4,7 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import { areAuditLogsEnabled } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseAuditLogsToggleProps {
@@ -11,6 +12,7 @@ interface UseAuditLogsToggleProps {
 }
 
 export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
@@ -32,7 +34,7 @@ export function useAuditLogsToggle({ owner }: UseAuditLogsToggleProps) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to update audit logs setting",
+          title: t`Failed to update the audit logs setting`,
           error: errorData,
         });
         return;

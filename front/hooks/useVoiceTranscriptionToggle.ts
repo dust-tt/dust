@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { isVoiceTranscriptionAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseVoiceTranscriptionToggleProps {
@@ -11,6 +12,7 @@ interface UseVoiceTranscriptionToggleProps {
 export function useVoiceTranscriptionToggle({
   owner,
 }: UseVoiceTranscriptionToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -37,8 +39,8 @@ export function useVoiceTranscriptionToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update Voice transcription setting",
-        description: "Could not update the Voice transcription setting.",
+        title: t`Failed to update the voice transcription setting`,
+        description: t`Could not update the voice transcription setting.`,
       });
     }
     setIsChanging(false);

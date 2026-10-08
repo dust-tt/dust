@@ -1,9 +1,9 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAuthContext } from "@app/lib/swr/workspaces";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseConversationExternalNotificationsToggleProps {
@@ -13,8 +13,9 @@ interface UseConversationExternalNotificationsToggleProps {
 export function useConversationExternalNotificationsToggle({
   owner,
 }: UseConversationExternalNotificationsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: owner.sId,
     disabled: true,
@@ -42,10 +43,9 @@ export function useConversationExternalNotificationsToggle({
       await mutateAuthContext();
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update conversation email and Slack notifications",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update conversation email and Slack notifications`,
+        error,
       });
       return false;
     } finally {

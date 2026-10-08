@@ -4,6 +4,7 @@ import {
 } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 type SubscriptionCancellationAction = "cancel" | "resume";
@@ -75,13 +76,13 @@ export function useCancelWorkspaceSubscription({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const { apply, isApplying } = useSubscriptionCancellationAction({
     workspaceId,
     action: "cancel",
-    errorTitle: "Cancellation failed",
-    successTitle: "Subscription cancelled",
-    successDescription:
-      "Your subscription will end at the end of the current period.",
+    errorTitle: t`Cancellation failed`,
+    successTitle: t`Subscription cancelled`,
+    successDescription: t`Your subscription will end at the end of the current period.`,
   });
   return {
     cancelSubscription: apply,
@@ -94,12 +95,13 @@ export function useResumeWorkspaceSubscription({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const { apply, isApplying } = useSubscriptionCancellationAction({
     workspaceId,
     action: "resume",
-    errorTitle: "Resume failed",
-    successTitle: "Subscription resumed",
-    successDescription: "Your subscription has been resumed.",
+    errorTitle: t`Resume failed`,
+    successTitle: t`Subscription resumed`,
+    successDescription: t`Your subscription has been resumed.`,
   });
   return {
     resumeSubscription: apply,
