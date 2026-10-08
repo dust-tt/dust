@@ -3,6 +3,8 @@ import {
   useSendNotification,
 } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
 import {
   emptyArray,
@@ -29,8 +31,9 @@ import type {
   SandboxEnvVarKind,
   SandboxEnvVarType,
 } from "@app/types/sandbox/env_var";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -51,25 +54,14 @@ function podSelectionQuery(selection: SandboxPodSelection): string {
     : `podIds=${[...selection.podIds].sort().map(encodeURIComponent).join(",")}`;
 }
 
-function scopeNameById(pods: { sId: string; name: string }[]) {
+function scopeNameById(
+  pods: { sId: string; name: string }[],
+  workspaceName: string
+) {
   return new Map<string, string>([
-    [SANDBOX_WORKSPACE_SCOPE_ID, "Workspace"],
+    [SANDBOX_WORKSPACE_SCOPE_ID, workspaceName],
     ...pods.map((pod) => [pod.sId, pod.name] as const),
   ]);
-}
-
-function describeScopeFailures(
-  failures: { scopeId: string; errorMessage?: string }[],
-  nameByScopeId: Map<string, string>
-): string {
-  return failures
-    .map(
-      (failure) =>
-        `${nameByScopeId.get(failure.scopeId) ?? failure.scopeId}: ${
-          failure.errorMessage ?? "unknown error"
-        }`
-    )
-    .join(" — ");
 }
 
 // Workspace-scoped env vars live under /sandbox/env-vars; pod-scoped ones
@@ -176,6 +168,7 @@ export function useBulkUpdateEgressDomain({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -193,7 +186,9 @@ export function useBulkUpdateEgressDomain({
   }): Promise<boolean> => {
     setIsUpdating(true);
     const failureTitle =
-      operation === "add" ? "Failed to add domain" : "Failed to remove domain";
+      operation === "add"
+        ? t`Failed to add domain`
+        : t`Failed to remove domain`;
     try {
       const response = await clientFetch(
         `${workspaceEgressPolicyUrl(owner.sId)}/bulk`,
@@ -218,22 +213,43 @@ export function useBulkUpdateEgressDomain({
       }
 
       const data: PostBulkEgressPolicyResponseBody = await response.json();
-      const scopeLabel = (count: number) =>
-        count === 1 ? "1 scope" : `${count} scopes`;
-      const verb = operation === "add" ? "added to" : "removed from";
+      const scopeCount = data.results.length;
 
       const failures = data.results.filter((result) => !result.success);
       if (failures.length > 0) {
-        const okCount = data.results.length - failures.length;
+        const okCount = scopeCount - failures.length;
+        const nameByScopeId = scopeNameById(pods, t`Workspace`);
+        const failedScopes = failures.map((failure) => ({
+          scopeName: nameByScopeId.get(failure.scopeId) ?? failure.scopeId,
+          errorMessage: failure.errorMessage,
+        }));
+        const failedScopeNames = formatList(
+          failedScopes.map(({ scopeName }) => scopeName),
+          { type: "conjunction" },
+          getActiveLocale()
+        );
+        const failureDetails = failedScopes.flatMap(
+          ({ scopeName, errorMessage }) =>
+            errorMessage ? [t`${scopeName}: ${errorMessage}`] : []
+        );
         sendNotification({
           type: "error",
           title:
             operation === "add"
-              ? "Domain partially added"
-              : "Domain partially removed",
-          description: `${domain} was ${verb} ${okCount} of ${scopeLabel(
-            data.results.length
-          )}. Failed: ${describeScopeFailures(failures, scopeNameById(pods))}`,
+              ? t`Domain partially added`
+              : t`Domain partially removed`,
+          description:
+            operation === "add"
+              ? t`${plural(scopeCount, {
+                  one: `${domain} was added to ${okCount} of # scope. Failed: ${failedScopeNames}.`,
+                  other: `${domain} was added to ${okCount} of # scopes. Failed: ${failedScopeNames}.`,
+                })}`
+              : t`${plural(scopeCount, {
+                  one: `${domain} was removed from ${okCount} of # scope. Failed: ${failedScopeNames}.`,
+                  other: `${domain} was removed from ${okCount} of # scopes. Failed: ${failedScopeNames}.`,
+                })}`,
+          details:
+            failureDetails.length > 0 ? failureDetails.join("\n") : undefined,
         });
         return false;
       }
@@ -241,22 +257,28 @@ export function useBulkUpdateEgressDomain({
       // A workspace add applies to every Pod, so spell that out rather than
       // reporting the single workspace scope.
       const workspaceAddCoversPods = operation === "add" && includeWorkspace;
+      let description: string;
+      if (workspaceAddCoversPods) {
+        description = t`${domain} was added to the workspace, which applies to all Pods. Computer egress policy changes will be applied by the proxy cache shortly.`;
+      } else if (operation === "add") {
+        description = t`${plural(scopeCount, {
+          one: `${domain} was added to # scope. Computer egress policy changes will be applied by the proxy cache shortly.`,
+          other: `${domain} was added to # scopes. Computer egress policy changes will be applied by the proxy cache shortly.`,
+        })}`;
+      } else {
+        description = t`${plural(scopeCount, {
+          one: `${domain} was removed from # scope. Computer egress policy changes will be applied by the proxy cache shortly.`,
+          other: `${domain} was removed from # scopes. Computer egress policy changes will be applied by the proxy cache shortly.`,
+        })}`;
+      }
       sendNotification({
         type: "success",
-        title: operation === "add" ? "Domain added" : "Domain removed",
-        description: workspaceAddCoversPods
-          ? `${domain} was added to the workspace, which applies to all Pods. Computer egress policy changes will be applied by the proxy cache shortly.`
-          : `${domain} was ${verb} ${scopeLabel(
-              data.results.length
-            )}. Computer egress policy changes will be applied by the proxy cache shortly.`,
+        title: operation === "add" ? t`Domain added` : t`Domain removed`,
+        description,
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: failureTitle,
-        description: normalizeError(error).message,
-      });
+      sendApiErrorNotification({ title: failureTitle, error });
       return false;
     } finally {
       setIsUpdating(false);
@@ -277,8 +299,8 @@ export function useDismissPodEgressRequestByPod({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
   const [isDismissing, setIsDismissing] = useState(false);
 
   const dismissPodEgressRequest = async (
@@ -299,17 +321,16 @@ export function useDismissPodEgressRequestByPod({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to reject domain request",
+          title: t`Failed to reject domain request`,
           error,
         });
         return false;
       }
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to reject domain request",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to reject domain request`,
+        error,
       });
       return false;
     } finally {
@@ -355,6 +376,7 @@ export function useUpsertSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpserting, setIsUpserting] = useState(false);
@@ -386,7 +408,7 @@ export function useUpsertSandboxEnvVar({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to save environment variable",
+          title: t`Failed to save environment variable`,
           error,
         });
         return false;
@@ -397,18 +419,17 @@ export function useUpsertSandboxEnvVar({
       sendNotification({
         type: "success",
         title: data.created
-          ? "Environment variable created"
-          : "Environment variable replaced",
+          ? t`Environment variable created`
+          : t`Environment variable replaced`,
         description: spaceId
-          ? `${name} has been saved for future Computers in this Pod.`
-          : `${name} has been saved for future Computers.`,
+          ? t`${name} has been saved for future Computers in this Pod.`
+          : t`${name} has been saved for future Computers.`,
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save environment variable",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to save environment variable`,
+        error,
       });
       return false;
     } finally {
@@ -429,6 +450,7 @@ export function usePatchSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isPatching, setIsPatching] = useState(false);
@@ -463,7 +485,7 @@ export function usePatchSandboxEnvVar({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to update environment variable",
+          title: t`Failed to update environment variable`,
           error,
         });
         return false;
@@ -471,22 +493,22 @@ export function usePatchSandboxEnvVar({
 
       const data: PatchSandboxEnvVarResponseBody = await response.json();
       await mutateSandboxEnvVars();
+      const envVarName = data.envVar.name;
       sendNotification({
         type: "success",
         title:
           data.envVar.kind === "https_secret"
-            ? "Environment variable secured"
-            : "Environment variable updated",
+            ? t`Environment variable secured`
+            : t`Environment variable updated`,
         description: spaceId
-          ? `${data.envVar.name} has been updated for future Computers in this Pod.`
-          : `${data.envVar.name} has been updated for future Computers.`,
+          ? t`${envVarName} has been updated for future Computers in this Pod.`
+          : t`${envVarName} has been updated for future Computers.`,
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update environment variable",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update environment variable`,
+        error,
       });
       return false;
     } finally {
@@ -507,6 +529,7 @@ export function useDeleteSandboxEnvVar({
   owner: LightWorkspaceType;
   spaceId?: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -531,26 +554,26 @@ export function useDeleteSandboxEnvVar({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to delete environment variable",
+          title: t`Failed to delete environment variable`,
           error,
         });
         return false;
       }
 
       await mutateSandboxEnvVars();
+      const envVarName = envVar.name;
       sendNotification({
         type: "success",
-        title: "Environment variable deleted",
+        title: t`Environment variable deleted`,
         description: spaceId
-          ? `${envVar.name} has been removed for future Computers in this Pod.`
-          : `${envVar.name} has been removed for future Computers.`,
+          ? t`${envVarName} has been removed for future Computers in this Pod.`
+          : t`${envVarName} has been removed for future Computers.`,
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to delete environment variable",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to delete environment variable`,
+        error,
       });
       return false;
     } finally {
@@ -569,6 +592,8 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const [isEnabled, setIsEnabled] = useState(
@@ -593,16 +618,14 @@ export function useUpdateWorkspaceSandboxAgentEgressRequests({
       setIsEnabled(enabled);
       sendNotification({
         type: "success",
-        title: "Computer network setting updated",
-        description:
-          "Agent-requested Computer domains setting has been updated.",
+        title: t`Computer network setting updated`,
+        description: t`Agent-requested Computer domains setting has been updated.`,
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update Computer network setting",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update Computer network setting`,
+        error,
       });
       return false;
     } finally {
@@ -622,6 +645,7 @@ export function useUpdateWorkspaceEgressPolicy({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -646,7 +670,7 @@ export function useUpdateWorkspaceEgressPolicy({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to update network policy",
+          title: t`Failed to update network policy`,
           error,
         });
         return false;
@@ -665,16 +689,15 @@ export function useUpdateWorkspaceEgressPolicy({
       );
       sendNotification({
         type: "success",
-        title: "Network policy updated",
-        description:
-          "Computer egress policy changes will be applied by the proxy cache shortly.",
+        title: t`Network policy updated`,
+        description: t`Computer egress policy changes will be applied by the proxy cache shortly.`,
       });
       return true;
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update network policy",
-        description: "An unexpected error occurred. Please try again.",
+        title: t`Failed to update network policy`,
+        description: t`An unexpected error occurred. Please try again.`,
       });
       return false;
     } finally {
@@ -693,6 +716,7 @@ export function useDismissWorkspaceEgressRequest({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDismissingRequest, setIsDismissing] = useState(false);
@@ -718,7 +742,7 @@ export function useDismissWorkspaceEgressRequest({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to reject domain request",
+          title: t`Failed to reject domain request`,
           error,
         });
         return false;
@@ -738,8 +762,8 @@ export function useDismissWorkspaceEgressRequest({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to reject domain request",
-        description: "An unexpected error occurred. Please try again.",
+        title: t`Failed to reject domain request`,
+        description: t`An unexpected error occurred. Please try again.`,
       });
       return false;
     } finally {

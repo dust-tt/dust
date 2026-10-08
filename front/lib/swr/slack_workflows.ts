@@ -14,6 +14,7 @@ import type {
   SlackWorkflowType,
 } from "@app/types/api/slack/workflows";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -47,6 +48,7 @@ export function useAllowSlackWorkflow({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isAllowing, setIsAllowing] = useState(false);
@@ -70,7 +72,7 @@ export function useAllowSlackWorkflow({
       if (!res.ok) {
         const error = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to allow Slack workflow",
+          title: t`Failed to allow Slack workflow`,
           error,
         });
         setIsAllowing(false);
@@ -80,15 +82,15 @@ export function useAllowSlackWorkflow({
 
       sendNotification({
         type: "success",
-        title: "Slack workflow allowed",
-        description: `"${botName}" can now summon agents in Slack.`,
+        title: t`Slack workflow allowed`,
+        description: t`"${botName}" can now summon agents in Slack.`,
       });
       await mutateWorkflows();
       setIsAllowing(false);
 
       return true;
     },
-    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification]
+    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doAllowSlackWorkflow, isAllowing };
@@ -99,6 +101,7 @@ export function useRevokeSlackWorkflow({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isRevoking, setIsRevoking] = useState(false);
@@ -116,7 +119,7 @@ export function useRevokeSlackWorkflow({
       if (!res.ok) {
         const error = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to revoke Slack workflow",
+          title: t`Failed to revoke Slack workflow`,
           error,
         });
         setIsRevoking(false);
@@ -126,15 +129,15 @@ export function useRevokeSlackWorkflow({
 
       sendNotification({
         type: "success",
-        title: "Slack workflow revoked",
-        description: `"${botName}" can no longer summon agents in Slack.`,
+        title: t`Slack workflow revoked`,
+        description: t`"${botName}" can no longer summon agents in Slack.`,
       });
       await mutateWorkflows();
       setIsRevoking(false);
 
       return true;
     },
-    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification]
+    [owner.sId, mutateWorkflows, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doRevokeSlackWorkflow, isRevoking };

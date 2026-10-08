@@ -7,6 +7,7 @@ import type { GetGitHubConnectionResponseBody } from "@app/lib/skill_detection";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -39,6 +40,7 @@ export function useDisconnectWorkspaceGitHub({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -52,19 +54,19 @@ export function useDisconnectWorkspaceGitHub({
       });
       sendNotification({
         type: "success",
-        title: "GitHub disconnected",
+        title: t`GitHub disconnected`,
       });
       return true;
     } catch (err) {
       sendApiErrorNotification({
-        title: "Failed to disconnect GitHub",
+        title: t`Failed to disconnect GitHub`,
         error: err,
       });
       return false;
     } finally {
       setIsDisconnectingGitHub(false);
     }
-  }, [fetcher, owner, sendNotification, sendApiErrorNotification]);
+  }, [fetcher, owner, sendNotification, sendApiErrorNotification, t]);
 
   return { disconnectGitHub, isDisconnectingGitHub };
 }
@@ -74,6 +76,7 @@ export function useConnectWorkspaceGitHub({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const { cellInfo } = useCellContext();
@@ -92,7 +95,7 @@ export function useConnectWorkspaceGitHub({
       });
       if (connectionResult.isErr()) {
         sendApiErrorNotification({
-          title: "Failed to connect GitHub",
+          title: t`Failed to connect GitHub`,
           error: connectionResult.error,
         });
         return false;
@@ -108,7 +111,7 @@ export function useConnectWorkspaceGitHub({
         });
       } catch (err) {
         sendApiErrorNotification({
-          title: "Failed to connect GitHub",
+          title: t`Failed to connect GitHub`,
           error: err,
         });
         return false;
@@ -116,14 +119,14 @@ export function useConnectWorkspaceGitHub({
 
       sendNotification({
         type: "success",
-        title: "GitHub connected",
-        description: "All workspace members will share this connection.",
+        title: t`GitHub connected`,
+        description: t`All workspace members will share this connection.`,
       });
       return true;
     } finally {
       setIsConnectingGitHub(false);
     }
-  }, [fetcher, owner, cellInfo, sendNotification, sendApiErrorNotification]);
+  }, [fetcher, owner, cellInfo, sendNotification, sendApiErrorNotification, t]);
 
   return { connectGitHub, isConnectingGitHub };
 }

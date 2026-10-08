@@ -72,6 +72,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -156,6 +158,7 @@ export function useAddPodContextContentNodes({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -178,7 +181,7 @@ export function useAddPodContextContentNodes({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to add references to Pod",
+          title: t`Failed to add references to Pod`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -191,26 +194,25 @@ export function useAddPodContextContentNodes({
       if (errorCount === 0) {
         sendNotification({
           type: "success",
-          title:
-            addedCount === 1
-              ? "Added to Pod files"
-              : `Added ${addedCount} items to Pod files`,
+          title: t`${plural(addedCount, {
+            one: "Added to Pod files",
+            other: "Added # items to Pod files",
+          })}`,
         });
       } else {
         sendNotification({
           type: "error",
-          title: "Some items could not be added",
-          description: `${addedCount} added, ${errorCount} failed.`,
+          title: t`Some items could not be added`,
+          description: t`${addedCount} added, ${errorCount} failed.`,
         });
       }
 
       return new Ok(responseData);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to add references to Pod",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to add references to Pod`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -224,6 +226,7 @@ export function useRemovePodContextContentNodes({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -246,27 +249,27 @@ export function useRemovePodContextContentNodes({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to remove content nodes from Pod",
+          title: t`Failed to remove content nodes from Pod`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
       }
 
+      const removedCount = items.length;
       sendNotification({
         type: "success",
-        title:
-          items.length === 1
-            ? "Removed from Pod files"
-            : `Removed ${items.length} items from Pod files`,
+        title: t`${plural(removedCount, {
+          one: "Removed from Pod files",
+          other: "Removed # items from Pod files",
+        })}`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to remove content nodes from Pod",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to remove content nodes from Pod`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -280,6 +283,7 @@ export function useCreatePodFolder({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -303,7 +307,7 @@ export function useCreatePodFolder({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to create folder",
+          title: t`Failed to create folder`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -311,16 +315,15 @@ export function useCreatePodFolder({
 
       sendNotification({
         type: "success",
-        title: `Folder "${folderName}" created`,
+        title: t`Folder "${folderName}" created`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to create folder",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to create folder`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -328,6 +331,7 @@ export function useCreatePodFolder({
 }
 
 export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -357,7 +361,7 @@ export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to move file",
+          title: t`Failed to move file`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -365,16 +369,15 @@ export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "File moved",
+        title: t`File moved`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to move file",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to move file`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -382,6 +385,7 @@ export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useExtractPodArchive({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -394,6 +398,7 @@ export function useExtractPodArchive({ owner }: { owner: LightWorkspaceType }) {
     /** Canonical scoped path of the destination folder, e.g. `pod-{sId}/reports`. */
     destCanonicalPath: string;
   }): Promise<Result<void, Error>> => {
+    const archiveName = archive.name;
     try {
       const encoded = destCanonicalPath
         .split("/")
@@ -411,7 +416,7 @@ export function useExtractPodArchive({ owner }: { owner: LightWorkspaceType }) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: `Failed to extract "${archive.name}"`,
+          title: t`Failed to extract "${archiveName}"`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -420,16 +425,18 @@ export function useExtractPodArchive({ owner }: { owner: LightWorkspaceType }) {
       const { filesWritten }: PostExtractArchiveResponseBody = await res.json();
       sendNotification({
         type: "success",
-        title: `Extracted ${filesWritten} ${filesWritten === 1 ? "file" : "files"} from "${archive.name}"`,
+        title: t`${plural(filesWritten, {
+          one: `Extracted # file from "${archiveName}"`,
+          other: `Extracted # files from "${archiveName}"`,
+        })}`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: `Failed to extract "${archive.name}"`,
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to extract "${archiveName}"`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -600,8 +607,8 @@ export function useSeedInitialPodTasks({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const [isSeeding, setIsSeeding] = useState(false);
 
@@ -623,7 +630,7 @@ export function useSeedInitialPodTasks({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to set up starter tasks",
+          title: t`Failed to set up starter tasks`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -635,16 +642,15 @@ export function useSeedInitialPodTasks({
       return new Ok(responseData.tasks);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to set up starter tasks",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to set up starter tasks`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     } finally {
       setIsSeeding(false);
     }
-  }, [mutate, owner.sId, sendNotification, sendApiErrorNotification, podId]);
+  }, [mutate, owner.sId, sendApiErrorNotification, podId, t]);
 
   return { seedInitialPodTasks, isSeeding };
 }
@@ -656,8 +662,8 @@ export function useCreatePodTask({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
 
   return async ({
     text,
@@ -679,7 +685,7 @@ export function useCreatePodTask({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to add task",
+          title: t`Failed to add task`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -689,10 +695,9 @@ export function useCreatePodTask({
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to add task",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to add task`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -706,8 +711,8 @@ export function useUpdatePodTask({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
 
   return async (
     taskId: string,
@@ -730,7 +735,7 @@ export function useUpdatePodTask({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to update task",
+          title: t`Failed to update task`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -740,10 +745,9 @@ export function useUpdatePodTask({
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to update task",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to update task`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -757,8 +761,8 @@ export function useDeletePodTask({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
 
   return async (taskId: string): Promise<Result<void, Error>> => {
     try {
@@ -770,7 +774,7 @@ export function useDeletePodTask({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to delete task",
+          title: t`Failed to delete task`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -779,10 +783,9 @@ export function useDeletePodTask({
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to delete task",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to delete task`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -796,8 +799,8 @@ export function useStartPodTaskConversation({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
 
   return async (
     taskId: string,
@@ -819,7 +822,7 @@ export function useStartPodTaskConversation({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to start task work",
+          title: t`Failed to start task work`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -829,10 +832,9 @@ export function useStartPodTaskConversation({
       return new Ok(responseData.task);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to start task work",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to start task work`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -882,6 +884,7 @@ export function useJoinPod({
   podName: string;
   userName: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
@@ -904,14 +907,14 @@ export function useJoinPod({
       void mutatePodSummary();
       sendNotification({
         type: "success",
-        title: `${userName} joined Pod ${podName}`,
-        description: "You can now participate in conversations.",
+        title: t`${userName} joined Pod ${podName}`,
+        description: t`You can now participate in conversations.`,
       });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Could not join Pod",
+        title: t`Could not join Pod`,
         error: errorData,
       });
       return false;
@@ -932,6 +935,7 @@ export function useLeavePod({
   podName: string;
   userName: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
@@ -954,14 +958,14 @@ export function useLeavePod({
       void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: `${userName} left Pod ${podName}`,
-        description: "You have successfully left the Pod.",
+        title: t`${userName} left Pod ${podName}`,
+        description: t`You have successfully left the Pod.`,
       });
       return true;
     } else {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Could not leave Pod",
+        title: t`Could not leave Pod`,
         error: errorData,
       });
       return false;
@@ -1026,6 +1030,7 @@ export function useUpdatePodMetadata({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutatePodMetadata } = usePodMetadata({
@@ -1121,7 +1126,7 @@ export function useUpdatePodMetadata({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Error updating Pod metadata",
+          title: t`Error updating Pod metadata`,
           error: errorData,
         });
         throw new Error(errorData.message);
@@ -1177,17 +1182,17 @@ export function useUpdatePodMetadata({
       const title =
         updates.frameTabs !== undefined || updates.tabsOrder !== undefined
           ? updates.frameTabs?.length === 0
-            ? "Pod tabs cleared"
-            : "Pod tabs updated"
+            ? t`Pod tabs cleared`
+            : t`Pod tabs updated`
           : updates.pinnedFramePath !== undefined
             ? updates.pinnedFramePath
-              ? "Frame pinned as Pod banner"
-              : "Banner unpinned"
+              ? t`Frame pinned as Pod banner`
+              : t`Banner unpinned`
             : updates.archive !== undefined
               ? updates.archive
-                ? "Pod archived"
-                : "Pod unarchived"
-              : "Pod updated";
+                ? t`Pod archived`
+                : t`Pod unarchived`
+              : t`Pod updated`;
 
       sendNotification({
         type: "success",
@@ -1234,6 +1239,7 @@ export function useUpdatePodNotificationPreference({
   workspaceId: string;
   podId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutatePodNotificationPreference } = usePodNotificationPreference({
@@ -1261,7 +1267,7 @@ export function useUpdatePodNotificationPreference({
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Error updating Pod notification preference",
+        title: t`Error updating Pod notification preference`,
         error: errorData,
       });
       return null;
@@ -1271,7 +1277,7 @@ export function useUpdatePodNotificationPreference({
 
     sendNotification({
       type: "success",
-      title: "Pod notification preference updated",
+      title: t`Pod notification preference updated`,
     });
 
     const response: PatchUserPodNotificationPreferenceResponseBody =
@@ -1287,6 +1293,7 @@ export function useStarPod({
   workspaceId: string;
   podId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
     workspaceId,
@@ -1311,7 +1318,7 @@ export function useStarPod({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: isStarred ? "Error starring Pod" : "Error unstarring Pod",
+          title: isStarred ? t`Error starring Pod` : t`Error unstarring Pod`,
           error: errorData,
         });
         return null;
@@ -1343,6 +1350,7 @@ export function useStarPod({
       podId,
       mutatePodConversationsSummary,
       sendApiErrorNotification,
+      t,
     ]
   );
 }
@@ -1384,6 +1392,7 @@ export function useUpdatePodEgressPolicy({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdatingPodEgressPolicy, setIsUpdating] = useState(false);
@@ -1407,7 +1416,7 @@ export function useUpdatePodEgressPolicy({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to update Pod network policy",
+          title: t`Failed to update Pod network policy`,
           error,
         });
         return false;
@@ -1426,16 +1435,15 @@ export function useUpdatePodEgressPolicy({
       );
       sendNotification({
         type: "success",
-        title: "Pod network policy updated",
-        description:
-          "Sandbox egress policy changes will be applied by the proxy cache shortly.",
+        title: t`Pod network policy updated`,
+        description: t`Sandbox egress policy changes will be applied by the proxy cache shortly.`,
       });
       return true;
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update Pod network policy",
-        description: "An unexpected error occurred. Please try again.",
+        title: t`Failed to update Pod network policy`,
+        description: t`An unexpected error occurred. Please try again.`,
       });
       return false;
     } finally {
@@ -1453,6 +1461,7 @@ export function useDismissPodEgressRequest({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDismissingRequest, setIsDismissing] = useState(false);
@@ -1477,7 +1486,7 @@ export function useDismissPodEgressRequest({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to reject domain request",
+          title: t`Failed to reject domain request`,
           error,
         });
         return false;
@@ -1497,8 +1506,8 @@ export function useDismissPodEgressRequest({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to reject domain request",
-        description: "An unexpected error occurred. Please try again.",
+        title: t`Failed to reject domain request`,
+        description: t`An unexpected error occurred. Please try again.`,
       });
       return false;
     } finally {
@@ -1518,6 +1527,7 @@ export function useRequestPodEgressDomain({
   owner: LightWorkspaceType;
   podId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isRequestingPodEgressDomain, setIsRequesting] = useState(false);
@@ -1542,7 +1552,7 @@ export function useRequestPodEgressDomain({
       if (!response.ok) {
         const error = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to request domain",
+          title: t`Failed to request domain`,
           error,
         });
         return false;
@@ -1563,25 +1573,23 @@ export function useRequestPodEgressDomain({
         type: "success",
         title:
           data.outcome === "already_allowed"
-            ? "Domain already allowed"
+            ? t`Domain already allowed`
             : data.outcome === "already_requested"
-              ? "Domain already requested"
-              : "Domain requested",
+              ? t`Domain already requested`
+              : t`Domain requested`,
         description:
           data.outcome === "requested"
-            ? "A workspace admin will review your request."
-            : `${domain} is already ${
-                data.outcome === "already_allowed"
-                  ? "allowed"
-                  : "pending review"
-              } for this Pod.`,
+            ? t`A workspace admin will review your request.`
+            : data.outcome === "already_allowed"
+              ? t`${domain} is already allowed for this Pod.`
+              : t`${domain} is already pending review for this Pod.`,
       });
       return true;
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to request domain",
-        description: "An unexpected error occurred. Please try again.",
+        title: t`Failed to request domain`,
+        description: t`An unexpected error occurred. Please try again.`,
       });
       return false;
     } finally {

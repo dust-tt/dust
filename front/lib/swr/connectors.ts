@@ -26,6 +26,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWRMutation from "swr/mutation";
@@ -244,6 +245,7 @@ export function useToggleChatBot({
   owner: LightWorkspaceType;
   botName: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -258,8 +260,8 @@ export function useToggleChatBot({
     return () => {
       sendNotification({
         type: "error",
-        title: `Failed to Enable ${botName}`,
-        description: `Tried to enable ${botName}, but no data source was found.`,
+        title: t`Failed to enable ${botName}`,
+        description: t`Tried to enable ${botName}, but no data source was found.`,
       });
     };
   }
@@ -287,18 +289,18 @@ export function useToggleChatBot({
       sendNotification({
         type: "success",
         title: botEnabled
-          ? `${botName} Enabled Successfully`
-          : `${botName} Disabled Successfully`,
+          ? t`${botName} enabled successfully`
+          : t`${botName} disabled successfully`,
         description: botEnabled
-          ? `The ${botName} is now active and ready to use.`
-          : `The ${botName} has been disabled.`,
+          ? t`The ${botName} is now active and ready to use.`
+          : t`The ${botName} has been disabled.`,
       });
       return configValue;
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Failed to Enable ${botName}`,
+        title: t`Failed to enable ${botName}`,
         error: errorData,
       });
       return null;
@@ -315,6 +317,7 @@ export function useTogglePdfEnabled({
   dataSource: DataSourceType | null;
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isLoading, setIsLoading] = useState(false);
@@ -331,9 +334,8 @@ export function useTogglePdfEnabled({
       doToggle: () => {
         sendNotification({
           type: "error",
-          title: "Failed to update PDF sync setting",
-          description:
-            "Tried to update PDF sync setting, but no data source was found.",
+          title: t`Failed to update PDF sync setting`,
+          description: t`Tried to update PDF sync setting, but no data source was found.`,
         });
       },
       isLoading: false,
@@ -363,10 +365,10 @@ export function useTogglePdfEnabled({
 
       sendNotification({
         type: "success",
-        title: "PDF sync setting updated successfully",
+        title: t`PDF sync setting updated successfully`,
         description: pdfEnabled
-          ? "PDF syncing is now enabled."
-          : "PDF syncing has been disabled.",
+          ? t`PDF syncing is now enabled.`
+          : t`PDF syncing has been disabled.`,
       });
       setIsLoading(false);
       return configValue;
@@ -374,7 +376,7 @@ export function useTogglePdfEnabled({
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: "Failed to update PDF sync setting",
+        title: t`Failed to update PDF sync setting`,
         error: errorData,
       });
       setIsLoading(false);

@@ -20,6 +20,7 @@ import type {
 } from "@app/types/api/public/data_sources";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { Fetcher } from "swr";
 
 export function useDataSourceViewDocument({
@@ -78,6 +79,7 @@ export function useUpdateDataSourceViewDocument(
     disabled: true, // Needed just to create
   });
 
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -95,7 +97,7 @@ export function useUpdateDataSourceViewDocument(
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Failed to update document",
+        title: t`Failed to update document`,
         error: errorData,
       });
       return null;
@@ -105,8 +107,8 @@ export function useUpdateDataSourceViewDocument(
 
       sendNotification({
         type: "success",
-        title: "Document updated",
-        description: "Document has been updated",
+        title: t`Document updated`,
+        description: t`Document has been updated.`,
       });
 
       const response: PatchDocumentResponseBody = await res.json();
@@ -128,6 +130,7 @@ export function useCreateDataSourceViewDocument(
       disabled: true,
     });
 
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -145,7 +148,7 @@ export function useCreateDataSourceViewDocument(
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Failed to create document",
+        title: t`Failed to create document`,
         error: errorData,
       });
       return null;
@@ -154,8 +157,8 @@ export function useCreateDataSourceViewDocument(
 
       sendNotification({
         type: "success",
-        title: "Document processing",
-        description: "Your document is processing and will appear shortly",
+        title: t`Document processing`,
+        description: t`Your document is processing and will appear shortly.`,
       });
 
       const response: PostDocumentResponseBody = await res.json();

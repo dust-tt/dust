@@ -62,6 +62,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import { useSWRConfig } from "swr";
@@ -247,6 +248,7 @@ export function useMCPServers({
  * Hook to delete an MCP server
  */
 export function useDeleteMCPServer(owner: LightWorkspaceType) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
@@ -255,6 +257,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
 
   const deleteServer = useCallback(
     async (server: MCPServerType): Promise<boolean> => {
+      const serverName = getMcpServerDisplayName(server);
       setIsDeleting(true);
       try {
         const response = await clientFetch(
@@ -266,7 +269,10 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
 
         if (!response.ok) {
           const body = await response.json();
-          sendApiErrorNotification({ title: `Failure`, error: body });
+          sendApiErrorNotification({
+            title: t`Failed to delete ${serverName}`,
+            error: body,
+          });
           return false;
         }
 
@@ -274,23 +280,26 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
           await response.json();
 
         if (isAPIErrorResponse(result)) {
-          sendApiErrorNotification({ title: `Failure`, error: result });
+          sendApiErrorNotification({
+            title: t`Failed to delete ${serverName}`,
+            error: result,
+          });
           return false;
         }
 
         if (!result.deleted) {
           sendNotification({
-            title: `Failure`,
+            title: t`Failed to delete ${serverName}`,
             type: "error",
-            description: `Failed to delete ${getMcpServerDisplayName(server)}`,
+            description: t`Could not delete ${serverName}. Please try again.`,
           });
           return false;
         }
 
         sendNotification({
-          title: `Success`,
+          title: t`${serverName} deleted`,
           type: "success",
-          description: `Successfully deleted ${getMcpServerDisplayName(server)}`,
+          description: t`Successfully deleted ${serverName}.`,
         });
         await mutate();
         return result.deleted;
@@ -298,7 +307,7 @@ export function useDeleteMCPServer(owner: LightWorkspaceType) {
         setIsDeleting(false);
       }
     },
-    [mutate, owner.sId, sendApiErrorNotification, sendNotification]
+    [mutate, owner.sId, sendApiErrorNotification, sendNotification, t]
   );
 
   return { deleteServer, isDeleting };
@@ -524,6 +533,7 @@ export function useSyncRemoteMCPServer(
   owner: LightWorkspaceType,
   serverId: string
 ) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
@@ -546,7 +556,7 @@ export function useSyncRemoteMCPServer(
     if (!response.ok) {
       const body = await response.json();
       sendApiErrorNotification({
-        title: `Error synchronizing server`,
+        title: t`Error synchronizing server`,
         error: body,
       });
       return false;
@@ -557,16 +567,17 @@ export function useSyncRemoteMCPServer(
 
     if (isAPIErrorResponse(result)) {
       sendApiErrorNotification({
-        title: `Error synchronizing server`,
+        title: t`Error synchronizing server`,
         error: result,
       });
       return false;
     }
 
+    const serverName = getMcpServerDisplayName(result.server);
     sendNotification({
-      title: "Success",
+      title: t`${serverName} synchronized`,
       type: "success",
-      description: `${getMcpServerDisplayName(result.server)} synchronized successfully.`,
+      description: t`${serverName} synchronized successfully.`,
     });
 
     void mutateMCPServer();
@@ -587,6 +598,7 @@ export function useUpdateMCPServerView(
   owner: LightWorkspaceType,
   mcpServerView: MCPServerViewType
 ) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServer } = useMCPServer({
@@ -611,7 +623,10 @@ export function useUpdateMCPServerView(
 
     if (!response.ok) {
       const body = await response.json();
-      sendApiErrorNotification({ title: `Error updating server`, error: body });
+      sendApiErrorNotification({
+        title: t`Error updating server`,
+        error: body,
+      });
 
       return false;
     }
@@ -620,17 +635,17 @@ export function useUpdateMCPServerView(
       await response.json();
     if (isAPIErrorResponse(result)) {
       sendApiErrorNotification({
-        title: `Error updating server`,
+        title: t`Error updating server`,
         error: result,
       });
       return false;
     }
 
-    const serverView = result.serverView;
+    const serverViewName = getMcpServerViewDisplayName(result.serverView);
     sendNotification({
-      title: `${getMcpServerViewDisplayName(serverView)} updated`,
+      title: t`${serverViewName} updated`,
       type: "success",
-      description: `${getMcpServerViewDisplayName(serverView)} has been successfully updated.`,
+      description: t`${serverViewName} has been successfully updated.`,
     });
 
     void mutateMCPServer();
@@ -648,7 +663,7 @@ export function useUpdateMCPToolsSettings({
   owner: LightWorkspaceType;
   serverId: string;
 }) {
-  const sendNotification = useSendNotification(true);
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const updateMCPToolsSettings = async (
@@ -667,7 +682,7 @@ export function useUpdateMCPToolsSettings({
       if (!response.ok) {
         const errorResponse = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to save changes",
+          title: t`Failed to save changes`,
           error: errorResponse,
         });
         return new Err(new Error(errorResponse.message));
@@ -675,13 +690,11 @@ export function useUpdateMCPToolsSettings({
 
       return new Ok(undefined);
     } catch (caughtError) {
-      const error = normalizeError(caughtError);
-      sendNotification({
-        type: "error",
-        title: "Failed to save changes",
-        description: error.message,
+      sendApiErrorNotification({
+        title: t`Failed to save changes`,
+        error: caughtError,
       });
-      return new Err(error);
+      return new Err(normalizeError(caughtError));
     }
   };
 
@@ -731,6 +744,7 @@ export function useCreateMCPServerConnection({
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
@@ -764,8 +778,8 @@ export function useCreateMCPServerConnection({
     if (response.ok) {
       sendNotification({
         type: "success",
-        title: `${mcpServerDisplayName} connected`,
-        description: `Successfully connected to ${mcpServerDisplayName}.`,
+        title: t`${mcpServerDisplayName} connected`,
+        description: t`Successfully connected to ${mcpServerDisplayName}.`,
       });
       void mutateConnections();
       if (connectionType === "workspace") {
@@ -775,8 +789,8 @@ export function useCreateMCPServerConnection({
     } else {
       sendNotification({
         type: "error",
-        title: `Failed to connect ${mcpServerDisplayName}`,
-        description: `Could not connect to ${mcpServerDisplayName}. Please try again.`,
+        title: t`Failed to connect ${mcpServerDisplayName}`,
+        description: t`Could not connect to ${mcpServerDisplayName}. Please try again.`,
       });
       return null;
     }
@@ -806,6 +820,7 @@ export function useDeleteMCPServerConnection({
 
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const deleteMCPServerConnection = useCallback(
@@ -825,11 +840,12 @@ export function useDeleteMCPServerConnection({
           },
         }
       );
+      const serverName = getMcpServerDisplayName(mcpServer);
       if (response.ok) {
         sendNotification({
           type: "success",
-          title: `${getMcpServerDisplayName(mcpServer)} disconnected`,
-          description: `Successfully disconnected from ${getMcpServerDisplayName(mcpServer)}.`,
+          title: t`${serverName} disconnected`,
+          description: t`Successfully disconnected from ${serverName}.`,
         });
         if (connection.connectionType === "workspace") {
           void mutateWorkspaceConnections();
@@ -840,8 +856,8 @@ export function useDeleteMCPServerConnection({
       } else {
         sendNotification({
           type: "error",
-          title: `Failed to disconnect ${getMcpServerDisplayName(mcpServer)}`,
-          description: `Could not disconnect from ${getMcpServerDisplayName(mcpServer)}. Please try again.`,
+          title: t`Failed to disconnect ${serverName}`,
+          description: t`Could not disconnect from ${serverName}. Please try again.`,
         });
       }
 
@@ -853,6 +869,7 @@ export function useDeleteMCPServerConnection({
       mutateWorkspaceConnections,
       mutatePersonalConnections,
       mutate,
+      t,
     ]
   );
 
@@ -864,6 +881,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
+  const { t } = useLingui();
   const cellContext = useCellContext();
   const formatErrorDescription = useFormatErrorDescription();
 
@@ -894,9 +912,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       ) {
         return {
           success: false,
-          error:
-            `A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. ` +
-            "Please contact your workspace administrator to set up the workspace connection.",
+          error: t`A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.`,
         };
       }
 
@@ -940,8 +956,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     } catch {
       return {
         success: false,
-        error:
-          "Unexpected error trying to connect to your provider. Please try again.",
+        error: t`Unexpected error trying to connect to your provider. Please try again.`,
       };
     }
   };
@@ -1119,6 +1134,7 @@ export function useAddMCPServerToSpace(
   owner: LightWorkspaceType,
   options?: { skipNotification?: boolean }
 ) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServers } = useMCPServers({
@@ -1127,6 +1143,8 @@ export function useAddMCPServerToSpace(
 
   const createView = useCallback(
     async (server: MCPServerType, space: SpaceType): Promise<void> => {
+      const serverName = getMcpServerDisplayName(server);
+      const spaceName = space.name;
       await mutateMCPServers(
         async (data) => {
           const response = await clientFetch(
@@ -1141,7 +1159,7 @@ export function useAddMCPServerToSpace(
           if (!response.ok) {
             if (!options?.skipNotification) {
               sendApiErrorNotification({
-                title: `Failed to add actions to space ${space.name}`,
+                title: t`Failed to add actions to space ${spaceName}`,
                 error: await response.json(),
               });
             }
@@ -1154,8 +1172,8 @@ export function useAddMCPServerToSpace(
           if (!options?.skipNotification) {
             sendNotification({
               type: "success",
-              title: `Actions added to space ${space.name}`,
-              description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
+              title: t`Actions added to space ${spaceName}`,
+              description: t`${serverName} has been added to the ${spaceName} space successfully.`,
             });
           }
           return getOptimisticDataForCreate(data, server, space);
@@ -1174,6 +1192,7 @@ export function useAddMCPServerToSpace(
       owner,
       mutateMCPServers,
       options?.skipNotification,
+      t,
     ]
   );
 
@@ -1184,6 +1203,7 @@ export function useRemoveMCPServerViewFromSpace(
   owner: LightWorkspaceType,
   options?: { skipNotification?: boolean }
 ) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServers } = useMCPServers({
@@ -1192,6 +1212,8 @@ export function useRemoveMCPServerViewFromSpace(
 
   const deleteView = useCallback(
     async (serverView: MCPServerViewType, space: SpaceType): Promise<void> => {
+      const serverViewName = getMcpServerViewDisplayName(serverView);
+      const spaceName = space.name;
       await mutateMCPServers(
         async (data) => {
           const response = await clientFetch(
@@ -1207,14 +1229,14 @@ export function useRemoveMCPServerViewFromSpace(
                 type: "success",
                 title:
                   space.kind === "system"
-                    ? "Action removed from workspace"
-                    : "Action removed from space",
-                description: `${getMcpServerViewDisplayName(serverView)} has been removed from the ${space.name} space successfully.`,
+                    ? t`Action removed from workspace`
+                    : t`Action removed from space`,
+                description: t`${serverViewName} has been removed from the ${spaceName} space successfully.`,
               });
             } else {
               const res = await response.json();
               sendApiErrorNotification({
-                title: "Failed to remove action",
+                title: t`Failed to remove action`,
                 error: res,
               });
             }
@@ -1236,6 +1258,7 @@ export function useRemoveMCPServerViewFromSpace(
       owner,
       mutateMCPServers,
       options?.skipNotification,
+      t,
     ]
   );
 
