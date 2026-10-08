@@ -1,7 +1,6 @@
 import { Document } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
@@ -422,7 +421,6 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
         <CommentBodyMarkdown owner={owner} body={body} />
       )}
       commentInputExtensions={commentInputExtensions}
-      badge={<CoEditionBadge />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

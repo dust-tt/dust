@@ -10,7 +10,6 @@ import {
 import {
   DocumentLiveStatus,
   DocumentStatus,
-  StatusRow,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
@@ -134,30 +133,6 @@ const handleDocumentShortcut = (
   onBlockMenuKeyDown(event);
 };
 
-interface UnsupportedDocumentProps {
-  className?: string;
-  badge: DocumentProps["badge"];
-  source: string;
-  reason: string;
-}
-
-/** A file the editor cannot open: its source, read-only, under the reason. */
-const UnsupportedDocument = ({
-  className,
-  badge,
-  source,
-  reason,
-}: UnsupportedDocumentProps) => (
-  <div className={className}>
-    {badge && (
-      <div className="mx-auto max-w-[50rem] px-5 pt-8">
-        <StatusRow badge={badge} />
-      </div>
-    )}
-    <DocumentSourcePreview source={source} reason={reason} />
-  </div>
-);
-
 /** The editor's binding to the shared document, and whether it still waits for one. */
 const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
   binding: liveView?.binding ?? undefined,
@@ -199,7 +174,6 @@ export const DocumentView = ({
   onSave,
   onStateChange,
   liveView,
-  badge,
   commentAuthor,
   renderCommentAuthorAvatar,
   signCommentMessage,
@@ -251,9 +225,8 @@ export const DocumentView = ({
 
   if (unsupported !== null) {
     return (
-      <UnsupportedDocument
+      <DocumentSourcePreview
         className={className}
-        badge={badge}
         source={unsupported.source}
         reason={unsupported.reason}
       />
@@ -286,7 +259,6 @@ export const DocumentView = ({
             error={error}
             autosaveDebounceMs={autosaveDebounceMs}
             onRetry={save}
-            badge={badge}
           >
             {liveView && <DocumentLiveStatus status={liveView.status} />}
             {showCommentsToggle && (

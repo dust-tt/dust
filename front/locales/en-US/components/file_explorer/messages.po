@@ -14,12 +14,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/file_explorer/CoEditionBadge.tsx
-msgid "This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
-msgstr "This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+msgid "This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+msgstr "This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
 
 #: front/components/file_explorer/CoEditionBadge.tsx
-msgid "Co-edition · WIP · Dust only"
-msgstr "Co-edition · WIP · Dust only"
+msgid "Co-edition · Unstable alpha"
+msgstr "Co-edition · Unstable alpha"
 
 #: front/components/file_explorer/FileExplorer.tsx
 msgid "View source"
