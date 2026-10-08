@@ -835,9 +835,8 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               className="rounded-2xl p-4"
             >
               <Trans>
-                Agents may use your memory when answering, so people who see
-                their responses, for example in Slack, could see or infer some
-                of it.
+                Agents may use your memory when answering, so their responses,
+                including in Slack, can reflect some of what it contains.
               </Trans>
             </ContentMessageInline>
           )}
