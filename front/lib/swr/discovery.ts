@@ -11,7 +11,7 @@ import type {
   GetGroupDiscoveryPinsResponseBody,
 } from "@app/types/api/discovery";
 import type { GroupPinnedItemType } from "@app/types/discovery";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -117,6 +117,7 @@ interface PinDiscoveryItemArgs {
 }
 
 export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isPinning, setIsPinning] = useState(false);
@@ -144,16 +145,17 @@ export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to pin to Featured",
+            title: t`Failed to pin to Featured`,
             error,
           });
           return false;
         }
 
+        const displayedPosition = position + 1;
         sendNotification({
           type: "success",
-          title: `Pinned in position ${position + 1}`,
-          description: `${itemName} is now featured for ${audienceName}.`,
+          title: t`Pinned in position ${displayedPosition}`,
+          description: t`${itemName} is now featured for ${audienceName}.`,
         });
         await Promise.all([
           mutate(featuredUrl(workspaceId)),
@@ -161,17 +163,16 @@ export function usePinDiscoveryItem({ workspaceId }: UseDiscoveryOptions) {
         ]);
         return true;
       } catch (e) {
-        sendNotification({
-          type: "error",
-          title: "Failed to pin to Featured",
-          description: normalizeError(e).message,
+        sendApiErrorNotification({
+          title: t`Failed to pin to Featured`,
+          error: e,
         });
         return false;
       } finally {
         setIsPinning(false);
       }
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doPin, isPinning };

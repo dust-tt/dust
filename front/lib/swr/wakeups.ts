@@ -13,6 +13,7 @@ import type { GetConversationWakeUpsResponseBody } from "@app/types/api/assistan
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isActiveWakeUp } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -58,6 +59,7 @@ export function useCancelWakeUp({
   owner: LightWorkspaceType;
   conversationId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateWakeUps } = useConversationWakeUps({
@@ -80,13 +82,13 @@ export function useCancelWakeUp({
       if (!res.ok) {
         const json = await res.json();
         sendApiErrorNotification({
-          title: "Failed to cancel wake-up",
+          title: t`Failed to cancel wake-up`,
           error: json,
         });
         return false;
       }
 
-      sendNotification({ type: "success", title: "Wake-up cancelled" });
+      sendNotification({ type: "success", title: t`Wake-up cancelled` });
       void mutateWakeUps();
       void mutateConversations(
         (currentData: ConversationListItemType[] | undefined) =>
@@ -104,6 +106,7 @@ export function useCancelWakeUp({
       sendApiErrorNotification,
       mutateWakeUps,
       mutateConversations,
+      t,
     ]
   );
 

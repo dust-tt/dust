@@ -6,8 +6,9 @@ import type {
   SkillEditorsLightResponseBody,
   SkillEditorsResponseBody,
 } from "@app/types/api/skills/editors";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -49,6 +50,7 @@ export function useUpdateSkillEditors({
   owner: LightWorkspaceType;
   skillId: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateEditors } = useSkillEditors({
     owner,
@@ -84,16 +86,24 @@ export function useUpdateSkillEditors({
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = "Successfully updated editors";
-          description = "Successfully added and removed editors";
+          title = t`Successfully updated editors`;
+          description = t`Successfully added and removed editors`;
         } else if (
           (body.addEditorIds == null || body.addEditorIds.length <= 0) &&
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = `Successfully removed editor${pluralize(body.removeEditorIds.length)}`;
+          const removedCount = body.removeEditorIds.length;
+          title = t`${plural(removedCount, {
+            one: "Successfully removed editor",
+            other: "Successfully removed editors",
+          })}`;
         } else {
-          title = `Successfully added editor${pluralize(body.addEditorIds?.length ?? 0)}`;
+          const addedCount = body.addEditorIds?.length ?? 0;
+          title = t`${plural(addedCount, {
+            one: "Successfully added editor",
+            other: "Successfully added editors",
+          })}`;
         }
 
         sendNotification({
@@ -106,11 +116,11 @@ export function useUpdateSkillEditors({
 
       sendNotification({
         type: "error",
-        title: "Failed to update editors",
+        title: t`Failed to update editors`,
       });
       return false;
     },
-    [owner, skillId, mutateEditors, sendNotification]
+    [owner, skillId, mutateEditors, sendNotification, t]
   );
 
   return updateSkillEditors;
