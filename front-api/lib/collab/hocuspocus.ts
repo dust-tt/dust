@@ -21,6 +21,7 @@ import type {
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
+  LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
   toLiveDocumentName,
@@ -60,6 +61,7 @@ const commandRequestSchema = z.object({
 });
 
 const sessions = new WeakMap<Document, LiveSession>();
+const shuttingDown = new WeakSet<Hocuspocus<LiveFile>>();
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -391,15 +393,24 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
  * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
  * Once no connection can send edits any more, every document MUST be checkpointed at once, in
  * place of its pending debounced store, including documents still loading, which are waited for
- * first. The returned promise MUST resolve only once each checkpoint has finished or failed.
+ * first. From the call on, `writeLiveSource` MUST answer `busy`, and the writes and comment
+ * commands already queued MUST finish before the checkpoints. The returned promise MUST resolve
+ * only once each checkpoint has finished or failed.
  */
 export async function checkpointAllDocuments(
   hocuspocus: Hocuspocus<LiveFile>
 ): Promise<void> {
+  shuttingDown.add(hocuspocus);
   // A load may still apply edits queued while it ran; its failure was already logged.
   for (const loading of [...hocuspocus.loadingDocuments.values()]) {
     await loading.catch(() => undefined);
   }
+  // Their writes only reach the file through the checkpoints below.
+  await Promise.all(
+    [...hocuspocus.documents.values()].map(
+      (document) => sessions.get(document)?.commentCommands
+    )
+  );
   await concurrentExecutor(
     [...hocuspocus.documents.values()],
     (document) =>
@@ -473,8 +484,10 @@ export async function readLiveSource(
  * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
  * MUST be able to write. It MUST take its turn among the document's comment commands, answering
  * `closed` if the document unloaded meanwhile, and a write that fails MUST NOT hold the later ones.
- * Nothing may run between the comparison with `base` and the change, so no edit can slip between
- * them.
+ * A write whose turn has not come within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never
+ * apply, so its caller never retries a change that lands later; so MUST a write once
+ * `checkpointAllDocuments` was called. Nothing may run between the comparison with `base` and the
+ * change, so no edit can slip between them.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -488,9 +501,17 @@ export async function writeLiveSource(
   if (!open) {
     return new Ok("closed");
   }
+  if (shuttingDown.has(hocuspocus)) {
+    return new Ok("busy");
+  }
   const { document, session } = open;
 
+  let turn: "waiting" | "taken" | "expired" = "waiting";
   const write = (): Result<LiveSourceWriteResult, string> => {
+    if (turn === "expired") {
+      return new Ok("busy");
+    }
+    turn = "taken";
     // Unloaded while it waited for its turn: a reload reads the file into a new document.
     if (document.isDestroyed) {
       return new Ok("closed");
@@ -541,5 +562,15 @@ export async function writeLiveSource(
   const written = session.commentCommands.then(write);
   // A write that throws fails for its caller only, not for the commands queued after it.
   session.commentCommands = Promise.allSettled([written]).then(() => undefined);
+
+  const answered = await Promise.race([
+    written,
+    setTimeoutAsync(LIVE_SOURCE_WRITE_WAIT_MS),
+  ]);
+  // `write` runs at once when its turn comes: a turn already taken has finished.
+  if (answered === "timeout" && turn === "waiting") {
+    turn = "expired";
+    return new Ok("busy");
+  }
   return written;
 }

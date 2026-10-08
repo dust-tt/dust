@@ -19,7 +19,11 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
-import { BODY_FRAGMENT_NAME, toLiveDocumentName } from "@app/types/collab";
+import {
+  BODY_FRAGMENT_NAME,
+  LIVE_SOURCE_WRITE_WAIT_MS,
+  toLiveDocumentName,
+} from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import {
   authenticateConnection,
@@ -867,22 +871,33 @@ describe("comment threads in a live session", () => {
   }, 15_000);
 
   describe("a write from an agent", () => {
-    // Holds the next command until `release`, then accepts it.
-    function holdNextAdd() {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // Holds the next command until `release`, then accepts or refuses it.
+    function holdNextAdd(outcome: "accepted" | "refused") {
       const held = { release: () => {} };
       vi.mocked(applyLiveCommentCommand).mockImplementationOnce(
         (_file, comments) =>
           new Promise((resolve) => {
             held.release = () =>
               resolve(
-                new Ok({ comments: [...comments, CREATED], created: CREATED })
+                outcome === "accepted"
+                  ? new Ok({
+                      comments: [...comments, CREATED],
+                      created: CREATED,
+                    })
+                  : new Err("thread_changed")
               );
           })
       );
       return held;
     }
 
-    async function writeBehindHeldAdd() {
+    async function startWithHeldAdd(
+      outcome: "accepted" | "refused" = "accepted"
+    ) {
       const { writer, hocuspocus, url } = await start();
       const { channel } = await join(url, writer);
       const name = toLiveDocumentName(writer.workspaceId, writer.canonicalPath);
@@ -890,7 +905,8 @@ describe("comment threads in a live session", () => {
       if (read.isErr() || !read.value.open) {
         throw new Error("The document is not open.");
       }
-      const held = holdNextAdd();
+      const base = read.value.source;
+      const held = holdNextAdd(outcome);
       const adding = channel.send({
         type: "add",
         commentId: "c2",
@@ -899,14 +915,31 @@ describe("comment threads in a live session", () => {
       await vi.waitFor(() =>
         expect(applyLiveCommentCommand).toHaveBeenCalledTimes(1)
       );
-      const writing = writeLiveSource(hocuspocus, {
-        file: writer,
-        base: read.value.source,
-        source: read.value.source.replace("Hello.", "Hello, edited."),
-      });
+      const edit = () =>
+        writeLiveSource(hocuspocus, {
+          file: writer,
+          base,
+          source: base.replace("Hello.", "Hello, edited."),
+        });
+      return { hocuspocus, name, channel, held, adding, edit };
+    }
+
+    async function writeBehindHeldAdd(
+      outcome: "accepted" | "refused" = "accepted"
+    ) {
+      const started = await startWithHeldAdd(outcome);
+      const writing = started.edit();
       // Past the document lookup, the write now waits for its turn.
       await new Promise((resolve) => setTimeout(resolve, 10));
-      return { hocuspocus, name, channel, held, adding, writing };
+      return { ...started, writing };
+    }
+
+    async function liveSource(
+      hocuspocus: ReturnType<typeof createCollabHocuspocus>,
+      name: string
+    ) {
+      const read = await readLiveSource(hocuspocus, name);
+      return read.isOk() && read.value.open ? read.value.source : null;
     }
 
     it("waits for the comment command before it, then compares with its threads", async () => {
@@ -939,6 +972,38 @@ describe("comment threads in a live session", () => {
       const added = await adding;
       expect(added.isErr() && added.error).toBe("unavailable");
       expect(await writing).toEqual(new Ok("closed"));
+    }, 15_000);
+
+    it("answers busy, and never applies, when its turn does not come in time", async () => {
+      const { hocuspocus, name, held, adding, edit } =
+        await startWithHeldAdd("refused");
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+      const writing = edit();
+      await vi.advanceTimersByTimeAsync(LIVE_SOURCE_WRITE_WAIT_MS);
+      expect(await writing).toEqual(new Ok("busy"));
+
+      vi.useRealTimers();
+      held.release();
+      expect((await adding).isErr()).toBe(true);
+      expect(await liveSource(hocuspocus, name)).not.toContain("edited");
+    }, 15_000);
+
+    it("finishes the queued writes before the shutdown checkpoint, then answers busy", async () => {
+      const { hocuspocus, name, held, writing, edit } =
+        await writeBehindHeldAdd("refused");
+
+      const stopping = checkpointAllDocuments(hocuspocus);
+      expect(await edit()).toEqual(new Ok("busy"));
+      held.release();
+      await stopping;
+
+      expect(await writing).toEqual(new Ok("written"));
+      expect(await liveSource(hocuspocus, name)).toContain("edited");
+      const [, live] =
+        vi.mocked(checkpointLiveDocument).mock.calls.at(-1) ?? [];
+      const checkpointed = live ? yDocToDfm(live) : null;
+      expect(checkpointed?.isOk() && checkpointed.value).toContain("edited");
     }, 15_000);
   });
 });

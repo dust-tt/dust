@@ -113,6 +113,10 @@ export const LIVE_SOURCE_WRITE_RESULTS = [
   "written",
   "changed",
   "closed",
+  "busy",
 ] as const;
+
+/** How long a write may wait for its turn on the collab server, kept below its caller's timeout. */
+export const LIVE_SOURCE_WRITE_WAIT_MS = 5 * 1000;
 
 export type LiveSourceWriteResult = (typeof LIVE_SOURCE_WRITE_RESULTS)[number];
