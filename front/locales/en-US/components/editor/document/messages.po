@@ -257,6 +257,10 @@ msgid "Italic"
 msgstr "Italic"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Underline"
+msgstr "Underline"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Strikethrough"
 msgstr "Strikethrough"
 

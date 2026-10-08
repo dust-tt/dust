@@ -29,7 +29,19 @@ interface DocumentSelectionToolbarProps {
   onComment?: () => void;
 }
 
-// Sparkle has no strikethrough icon; drawn to match its stroke set.
+// Sparkle has no underline or strikethrough icon; drawn to match its stroke set.
+const UnderlineIcon = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+    <path
+      d="M7 4v6a5 5 0 0 0 10 0V4M5 20h14"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 const StrikethroughIcon = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
     <path
@@ -135,9 +147,9 @@ const LinkField = ({ initialHref, onApply, onCancel }: LinkFieldProps) => {
 /**
  * @cc [owner:PopDaph;tdraier,label:product] document-selection-toolbar
  * The toolbar MUST offer, over a nonempty text selection of an editable document: a text style
- * menu (text, headings 1 to 3), bold, italic, strikethrough, inline code, a list menu (bulleted,
- * numbered) and a link control. A link MUST be an http(s) or mailto URL, a bare domain reading as
- * https. Using a control MUST keep the editor's selection.
+ * menu (text, headings 1 to 3), bold, italic, underline, strikethrough, inline code, a list menu
+ * (bulleted, numbered) and a link control. A link MUST be an http(s) or mailto URL, a bare domain
+ * reading as https. Using a control MUST keep the editor's selection.
  */
 export const DocumentSelectionToolbar = ({
   editor,
@@ -150,6 +162,7 @@ export const DocumentSelectionToolbar = ({
     selector: ({ editor }) => ({
       bold: editor.isActive("bold"),
       italic: editor.isActive("italic"),
+      underline: editor.isActive("underline"),
       strike: editor.isActive("strike"),
       code: editor.isActive("code"),
       link: editor.isActive("link"),
@@ -179,6 +192,14 @@ export const DocumentSelectionToolbar = ({
       icon: Italic01,
       active: selection.italic,
       run: () => chain().toggleItalic().run(),
+    },
+    {
+      key: "underline",
+      label: t`Underline`,
+      shortcut: `${modifier}+U`,
+      icon: UnderlineIcon,
+      active: selection.underline,
+      run: () => chain().toggleUnderline().run(),
     },
     {
       key: "strike",
