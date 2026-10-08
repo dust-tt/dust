@@ -1,4 +1,3 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
@@ -6,7 +5,6 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
-import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 import { Card, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -111,19 +109,7 @@ export function CapabilitiesSelectionPageContent({
   onStateChange,
 }: CapabilitiesSelectionPageProps) {
   const { t } = useLingui();
-  const { owner } = useAgentBuilderContext();
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) => {
-      onStateChange({
-        state: "info",
-        kind: "skill",
-        capability: skill,
-        hasPreviousPage: true,
-      });
-    },
-  });
 
   const sortedMCPServerViews = useMemo(
     () => [
@@ -207,7 +193,14 @@ export function CapabilitiesSelectionPageContent({
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
                     onClick={() => handleSkillToggle(skill)}
-                    onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
+                    onMoreInfoClick={() =>
+                      onStateChange({
+                        state: "info",
+                        kind: "skill",
+                        skillId: skill.sId,
+                        hasPreviousPage: true,
+                      })
+                    }
                   />
                 ))}
               </div>
