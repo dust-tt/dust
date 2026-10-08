@@ -42,6 +42,7 @@ import { md5 } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type {
   ActiveRoleType,
+  LightUserType,
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
   RoleType,
@@ -874,4 +875,8 @@ export type SearchMembersResponseBody = {
 export type SearchMembersAdminResponseBody = {
   members: UserTypeWithWorkspace[];
   total: number;
+};
+
+export type SearchMembersByEmailsResponseBody = {
+  members: (LightUserType & { role: RoleType })[];
 };

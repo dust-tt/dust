@@ -391,7 +391,7 @@ function postSearchByEmails(wId: string, emails: string[]) {
 }
 
 describe("POST /api/w/:wId/members/search", () => {
-  it("returns the members matching the emails exactly", async () => {
+  it("returns the members matching the emails exactly, without ModelIds", async () => {
     const { workspace } = await setup();
 
     const users = await Promise.all([
@@ -413,23 +413,12 @@ describe("POST /api/w/:wId/members/search", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.total).toBe(2);
     expect(data.members.map((m: { email: string }) => m.email).sort()).toEqual(
       [users[0].email, users[1].email].sort()
     );
-    expect(data.members[0].id).toBeDefined();
-  });
-
-  it("returns only light user fields for non-admin users", async () => {
-    const { workspace, user } = await setup("user");
-
-    const response = await postSearchByEmails(workspace.sId, [user.email]);
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.members).toHaveLength(1);
-    expect(data.members[0].email).toBe(user.email);
+    expect(data.members[0].role).toBe("user");
     expect(data.members[0].id).toBeUndefined();
+    expect(data.members[0].workspace).toBeUndefined();
   });
 
   it("returns 400 when too many emails provided", async () => {
