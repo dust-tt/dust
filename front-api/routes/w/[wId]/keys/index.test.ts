@@ -1,6 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -8,6 +11,7 @@ import { redactString } from "@app/types/shared/utils/string_utils";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 // A key's groups are not part of its serialized form (only the spaces they map to are), so the
@@ -303,5 +307,113 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
 
     expect(res.status).toBe(403);
     expect((await res.json()).error.type).toBe("workspace_auth_error");
+  });
+});
+
+describe("POST /api/w/:wId/keys — analytics groups", () => {
+  function createKey(workspace: { sId: string }, body: object) {
+    return honoApp.request(`/api/w/${workspace.sId}/keys`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("lets a user key read the analytics of the requested groups only", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const manual = await GroupFactory.regularManual(workspace, "Manual");
+    const provisioned = await GroupFactory.provisioned(workspace, "SCIM");
+    const other = await GroupFactory.regularManual(workspace, "Other");
+
+    const res = await createKey(workspace, {
+      name: "analytics-key",
+      analytics_group_ids: [manual.sId, provisioned.sId],
+    });
+
+    expect(res.status).toBe(201);
+    const created: KeyType = (await res.json()).key;
+    const expectedGroupIds = [manual.sId, provisioned.sId].toSorted();
+    expect(created.analyticsGroups.map((g) => g.id).toSorted()).toEqual(
+      expectedGroupIds
+    );
+
+    const listRes = await honoApp.request(`/api/w/${workspace.sId}/keys`);
+    const { keys }: { keys: KeyType[] } = await listRes.json();
+    const listed = keys.find((k) => k.id === created.id);
+    expect(listed?.analyticsGroups.map((g) => g.id).toSorted()).toEqual(
+      expectedGroupIds
+    );
+
+    const key = await KeyResource.fetchByWorkspaceAndId({
+      workspace,
+      id: created.id,
+    });
+    assert(key);
+    const keyAuth = await Authenticator.fromKey(key, workspace.sId);
+    expect(keyAuth.can("read_analytics", manual)).toBe(true);
+    expect(keyAuth.can("read_analytics", provisioned)).toBe(true);
+    expect(keyAuth.can("read_analytics", other)).toBe(false);
+
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, {
+        grantType: "analytics_reader",
+        resourceType: "group",
+        resourceId: manual.id,
+      });
+    expect(key.groupIds).toContain(grantGroup?.id);
+  });
+
+  it("rejects analytics groups on an admin key and creates no key", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const manual = await GroupFactory.regularManual(workspace, "Manual");
+
+    const res = await createKey(workspace, {
+      name: "admin-analytics-key",
+      role: "admin",
+      analytics_group_ids: [manual.sId],
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.type).toBe(
+      "admin_key_analytics_groups_not_allowed"
+    );
+    expect(
+      await KeyResource.fetchByName(
+        await Authenticator.internalAdminForWorkspace(workspace.sId),
+        { name: "admin-analytics-key", onlyActive: false }
+      )
+    ).toBeNull();
+  });
+
+  it("rejects a group that is neither manual nor provisioned", async () => {
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const manual = await GroupFactory.regularManual(workspace, "Manual");
+
+    const res = await createKey(workspace, {
+      name: "global-analytics-key",
+      analytics_group_ids: [manual.sId, globalGroup.sId],
+    });
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error.type).toBe(
+      "analytics_group_kind_not_supported"
+    );
+  });
+
+  it("rejects an unknown group id", async () => {
+    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
+    const manual = await GroupFactory.regularManual(workspace, "Manual");
+
+    const res = await createKey(workspace, {
+      name: "unknown-analytics-key",
+      analytics_group_ids: [manual.sId, "grp_unknown"],
+    });
+
+    expect(res.status).toBe(404);
+    expect((await res.json()).error.type).toBe("group_not_found");
   });
 });

@@ -22,6 +22,8 @@ const CreateKeyPostBodySchema = z.object({
   // = unlimited.
   monthly_cap_awu_credits: z.number().nullish(),
   role: z.enum(["user", "admin"]).optional(),
+  // Groups whose analytics the key can read. Rejected for admin keys, which read every group.
+  analytics_group_ids: z.array(z.string()).optional(),
 });
 
 // Mounted at /api/w/:wId/keys.
@@ -58,6 +60,7 @@ app.post(
       monthly_cap_micro_usd,
       monthly_cap_awu_credits,
       role,
+      analytics_group_ids,
     } = ctx.req.valid("json");
 
     const keyRes = await createApiKey(auth, {
@@ -66,6 +69,7 @@ app.post(
       monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
       monthlyCapAwuCredits: monthly_cap_awu_credits ?? null,
       role: role ?? "user",
+      analyticsGroupIds: analytics_group_ids ?? [],
     });
 
     if (keyRes.isErr()) {
@@ -86,6 +90,12 @@ app.post(
           return apiError(ctx, {
             status_code: 404,
             api_error: { type: "group_not_found", message },
+          });
+        case "admin_key_analytics_groups_not_allowed":
+        case "analytics_group_kind_not_supported":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: code, message },
           });
         case "limit_reached":
           return apiError(ctx, {

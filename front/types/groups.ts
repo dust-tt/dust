@@ -119,6 +119,12 @@ export function isRegularManualGroupKind(value: GroupKind): boolean {
   return value === "regular_manual";
 }
 
+// A group reduced to what a client needs to display it, without model ids.
+export type LightGroupType = {
+  id: string;
+  name: string;
+};
+
 export type GroupType = {
   id: ModelId;
   name: string;

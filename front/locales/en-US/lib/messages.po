@@ -362,6 +362,14 @@ msgid "The API key doesn't have the required scope."
 msgstr "The API key doesn't have the required scope."
 
 #: front/lib/api_error_messages.ts
+msgid "Admin API keys already read the analytics of every group."
+msgstr "Admin API keys already read the analytics of every group."
+
+#: front/lib/api_error_messages.ts
+msgid "Analytics access can only be granted on manual or provisioned groups."
+msgstr "Analytics access can only be granted on manual or provisioned groups."
+
+#: front/lib/api_error_messages.ts
 msgid "Transcripts configuration not found."
 msgstr "Transcripts configuration not found."
 

@@ -101,6 +101,8 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   dust_app_secret_not_found: msg`Secret not found.`,
   key_not_found: msg`API key not found.`,
   insufficient_key_scope: msg`The API key doesn't have the required scope.`,
+  admin_key_analytics_groups_not_allowed: msg`Admin API keys already read the analytics of every group.`,
+  analytics_group_kind_not_supported: msg`Analytics access can only be granted on manual or provisioned groups.`,
   transcripts_configuration_not_found: msg`Transcripts configuration not found.`,
   transcripts_configuration_default_not_allowed: msg`This transcripts configuration can't be the default.`,
   transcripts_configuration_already_exists: msg`A transcripts configuration already exists.`,
