@@ -890,7 +890,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_pod_goal"
   | "figma_mcp"
   | "fireworks_new_model_feature"
-  | "frame_documents"
   | "frames_v2"
   | "frames_v2_functions"
   | "google_sheets_tool"

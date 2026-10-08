@@ -10,11 +10,9 @@
  */
 export const buildInteractiveContentAuthoringProseV2 = ({
   hasFramesV2,
-  hasDocuments,
   hasFunctions,
 }: {
   hasFramesV2: boolean;
-  hasDocuments: boolean;
   hasFunctions: boolean;
 }) => `\
 ### Rendering Context
@@ -71,21 +69,6 @@ content file using the \`Slideshow\` and \`Slide\` components.
 
 Before creating a slideshow, read the attached \`slideshow.example.tsx\`. Adapt its content and
 visual design to the user's request.
-${
-  hasDocuments
-    ? `
-### Editable documents
-
-\`Document\` from \`@dust/document/v1\` provides rich text editing and autosaves to a JSON file in
-the Frame folder. Named visual blocks
-let you place your React charts and interactive components within the text.
-
-After choosing the document format, read the attached \`document.md\` before creating or editing it.
-For a new document, also read \`document.example.tsx\` and \`document.example.json\`, then adapt their
-content and visual design to the user's request.
-`
-    : ""
-}
 
 ### Page and dashboard layout
 
@@ -232,7 +215,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, ${hasDocuments ? "`@dust/document/v1`, " : ""}\`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, \`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 
