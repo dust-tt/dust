@@ -40,7 +40,8 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
  * document editor's instance, extensions, or toolbar configuration; `commentInputExtensions`
  * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
- * text selection. Block commands MUST require an editable document and a typed `/`.
+ * text selection. Block commands MUST require an editable document, and either a typed `/` or the
+ * selection toolbar's text style and list menus.
  * className MUST apply only to the outer container.
  */
 /**
@@ -166,7 +167,6 @@ const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
 
 interface DocumentEditingControlsProps {
   editor: Editor | null;
-  mountPortalContainer: DocumentProps["mountPortalContainer"];
   comments: DocumentCommentsController;
   blockMenu: ReturnType<typeof useDocumentBlockMenu>;
 }
@@ -174,7 +174,6 @@ interface DocumentEditingControlsProps {
 /** The formatting toolbar over a selection and the `/` block menu, while editable. */
 const DocumentEditingControls = ({
   editor,
-  mountPortalContainer,
   comments,
   blockMenu,
 }: DocumentEditingControlsProps) =>
@@ -182,7 +181,6 @@ const DocumentEditingControls = ({
     <>
       <DocumentSelectionToolbar
         editor={editor}
-        mountPortalContainer={mountPortalContainer}
         onComment={comments.canWrite ? comments.startDraft : undefined}
       />
       <DocumentBlockMenu editor={editor} menu={blockMenu} />
@@ -296,7 +294,6 @@ export const DocumentView = ({
           {editable && (
             <DocumentEditingControls
               editor={editor}
-              mountPortalContainer={mountPortalContainer}
               comments={comments}
               blockMenu={blockMenu}
             />
