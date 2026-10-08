@@ -232,18 +232,17 @@ export function AnalyticsConsumptionPage() {
 
   const content = (
     <AdminPageContainer>
-      <Tabs
-        value={tab}
-        onValueChange={(value) => setTab(value as AnalyticsTab)}
-      >
-        <TabsList className="mb-6">
-          <TabsTrigger value="consumption" label={t`Consumption`} />
-          <TabsTrigger value="export" label={t`Export`} />
-        </TabsList>
-        <TabsContent value="consumption" className="flex flex-col gap-4">
-          <AdminSectionAnchor
-            sectionId={ADMIN_SECTION_IDS.analytics.consumption}
-          >
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header title={<Page.H variant="h3">{t`Analytics`}</Page.H>} />
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as AnalyticsTab)}
+        >
+          <TabsList className="mb-6">
+            <TabsTrigger value="consumption" label={t`Consumption`} />
+            <TabsTrigger value="export" label={t`Export`} />
+          </TabsList>
+          <TabsContent value="consumption" className="flex flex-col gap-4">
             <AnalyticsConsumptionContent
               owner={owner}
               state={{ ...state, filter }}
@@ -262,14 +261,12 @@ export function AnalyticsConsumptionPage() {
               onAgentClick={setAgentDetailsId}
               onSkillClick={setSkillDetailsId}
             />
-          </AdminSectionAnchor>
-        </TabsContent>
-        <TabsContent value="export" className="flex flex-col gap-4">
-          <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.export}>
+          </TabsContent>
+          <TabsContent value="export" className="flex flex-col gap-4">
             <AnalyticsExportPanel workspaceId={owner.sId} />
-          </AdminSectionAnchor>
-        </TabsContent>
-      </Tabs>
+          </TabsContent>
+        </Tabs>
+      </Page.Vertical>
     </AdminPageContainer>
   );
 
@@ -333,7 +330,6 @@ interface AnalyticsConsumptionContentProps {
   showMemberGroupFilter?: boolean;
   showOverviewError?: boolean;
   state: AnalyticsConsumptionState;
-  title?: string;
   usageHref?: string;
   usageLinkLabel?: string;
 }
@@ -350,11 +346,9 @@ export function AnalyticsConsumptionContent({
   showMemberGroupFilter = true,
   showOverviewError = false,
   state,
-  title,
   usageHref = `/w/${owner.sId}/credits`,
   usageLinkLabel,
 }: AnalyticsConsumptionContentProps) {
-  const { t } = useLingui();
   const {
     dimension,
     filter,
@@ -411,140 +405,134 @@ export function AnalyticsConsumptionContent({
     </div>
   );
 
-  const header = embedded ? (
-    <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
-      <div className="flex flex-row flex-wrap items-center gap-2">
-        <OverviewComponent
-          workspaceId={owner.sId}
-          period={period}
-          showError={showOverviewError}
-        />
-      </div>
-      {selectors}
-    </div>
-  ) : (
-    <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
-      <div className="flex flex-col gap-1">
-        <Page.H variant="h3">{title ?? t`Analytics`}</Page.H>
-        <OverviewComponent workspaceId={owner.sId} period={period} />
-      </div>
-      {selectors}
-    </div>
-  );
-
   return (
-    <Page.Vertical align="stretch" gap="xl">
-      {embedded ? header : <Page.Header title={header} />}
-
-      <SummaryComponent
-        workspaceId={owner.sId}
-        period={period}
-        usageHref={usageHref}
-        usageLinkLabel={usageLinkLabel}
-      />
-
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-semibold text-foreground">
-              <Trans>Explore</Trans>
-            </h2>
-            <UsageFilterPanelComponent
-              owner={owner}
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.analytics.consumption}>
+      <Page.Vertical align="stretch" gap="xl">
+        <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
+          <div className="flex flex-row flex-wrap items-center gap-2">
+            <OverviewComponent
+              workspaceId={owner.sId}
               period={period}
-              filter={filter}
-              onFilterChange={handleFilterChange}
-              onOpenChange={(open) => {
-                if (open) {
-                  trackAnalyticsClick(trackingWorkspaceId, "filter", {
-                    filter_action: "open",
-                  });
-                }
-              }}
-              showMemberGroupFilter={showMemberGroupFilter}
+              showError={showOverviewError}
             />
           </div>
-          <UsageFilterSummary
-            filter={filter}
-            onFilterChange={(nextFilter) => {
-              trackAnalyticsClick(trackingWorkspaceId, "filter", {
-                filter_action: "clear",
-              });
-              setFilter(nextFilter);
-            }}
-          />
+          {selectors}
         </div>
-        <LazyMotion features={domMax}>
-          <m.div
-            layout={!shouldReduceMotion}
-            transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
-            className="flex flex-col"
-          >
-            <SafeSuspense
-              fallback={<ChartFallback controlsInCard={embedded} />}
-            >
-              <ChartComponent
-                workspaceId={owner.sId}
+
+        <SummaryComponent
+          workspaceId={owner.sId}
+          period={period}
+          usageHref={usageHref}
+          usageLinkLabel={usageLinkLabel}
+        />
+
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                <Trans>Explore</Trans>
+              </h2>
+              <UsageFilterPanelComponent
+                owner={owner}
                 period={period}
-                granularity={granularity}
-                dimension={dimension}
-                filter={scopeFilter}
-                onModeChange={(mode) => {
-                  trackAnalyticsClick(trackingWorkspaceId, "chart_mode", {
-                    mode,
-                  });
+                filter={filter}
+                onFilterChange={handleFilterChange}
+                onOpenChange={(open) => {
+                  if (open) {
+                    trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                      filter_action: "open",
+                    });
+                  }
                 }}
+                showMemberGroupFilter={showMemberGroupFilter}
               />
-            </SafeSuspense>
-          </m.div>
-        </LazyMotion>
-      </div>
+            </div>
+            <UsageFilterSummary
+              filter={filter}
+              onFilterChange={(nextFilter) => {
+                trackAnalyticsClick(trackingWorkspaceId, "filter", {
+                  filter_action: "clear",
+                });
+                setFilter(nextFilter);
+              }}
+            />
+          </div>
+          <LazyMotion features={domMax}>
+            <m.div
+              layout={!shouldReduceMotion}
+              transition={{ duration: shouldReduceMotion ? 0 : 0.18 }}
+              className="flex flex-col"
+            >
+              <SafeSuspense
+                fallback={<ChartFallback controlsInCard={embedded} />}
+              >
+                <ChartComponent
+                  workspaceId={owner.sId}
+                  period={period}
+                  granularity={granularity}
+                  dimension={dimension}
+                  filter={scopeFilter}
+                  onModeChange={(mode) => {
+                    trackAnalyticsClick(trackingWorkspaceId, "chart_mode", {
+                      mode,
+                    });
+                  }}
+                />
+              </SafeSuspense>
+            </m.div>
+          </LazyMotion>
+        </div>
 
-      <AttributionTableComponent
-        workspaceId={owner.sId}
-        period={period}
-        filter={scopeFilter}
-        onAddFilter={(selectedRow) => {
-          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
-            dimension,
-            filter_action: "add",
-          });
-          setFilter((current) =>
-            addUsageFilterFromAttributionRow(current, dimension, selectedRow)
-          );
-        }}
-        onAgentClick={onAgentClick}
-        onRemoveFilter={(selectedRow) => {
-          trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
-            dimension,
-            filter_action: "remove",
-          });
-          setFilter((current) =>
-            removeUsageFilterFromAttributionRow(current, dimension, selectedRow)
-          );
-        }}
-        onSkillClick={onSkillClick}
-        dimension={dimension}
-        onDimensionChange={(nextDimension) => {
-          trackAnalyticsClick(trackingWorkspaceId, "attribution_tab", {
-            dimension: nextDimension,
-          });
-          handleDimensionChange(nextDimension);
-        }}
-        onViewAll={(nextDimension, selectedRow) => {
-          trackAnalyticsClick(trackingWorkspaceId, "attribution_view_all", {
-            dimension: nextDimension,
-          });
-          setFilter((current) =>
-            setUsageFilterFromAttributionRow(current, dimension, selectedRow)
-          );
-          handleDimensionChange(nextDimension);
-        }}
-        showExport={showExport}
-      />
+        <AttributionTableComponent
+          workspaceId={owner.sId}
+          period={period}
+          filter={scopeFilter}
+          onAddFilter={(selectedRow) => {
+            trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
+              dimension,
+              filter_action: "add",
+            });
+            setFilter((current) =>
+              addUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            );
+          }}
+          onAgentClick={onAgentClick}
+          onRemoveFilter={(selectedRow) => {
+            trackAnalyticsClick(trackingWorkspaceId, "attribution_filter", {
+              dimension,
+              filter_action: "remove",
+            });
+            setFilter((current) =>
+              removeUsageFilterFromAttributionRow(
+                current,
+                dimension,
+                selectedRow
+              )
+            );
+          }}
+          onSkillClick={onSkillClick}
+          dimension={dimension}
+          onDimensionChange={(nextDimension) => {
+            trackAnalyticsClick(trackingWorkspaceId, "attribution_tab", {
+              dimension: nextDimension,
+            });
+            handleDimensionChange(nextDimension);
+          }}
+          onViewAll={(nextDimension, selectedRow) => {
+            trackAnalyticsClick(trackingWorkspaceId, "attribution_view_all", {
+              dimension: nextDimension,
+            });
+            setFilter((current) =>
+              setUsageFilterFromAttributionRow(current, dimension, selectedRow)
+            );
+            handleDimensionChange(nextDimension);
+          }}
+          showExport={showExport}
+        />
 
-      {showExportPanel && <AnalyticsExportPanel workspaceId={owner.sId} />}
-    </Page.Vertical>
+        {showExportPanel && <AnalyticsExportPanel workspaceId={owner.sId} />}
+      </Page.Vertical>
+    </AdminSectionAnchor>
   );
 }
 
