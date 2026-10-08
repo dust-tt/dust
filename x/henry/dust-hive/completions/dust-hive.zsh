@@ -335,6 +335,14 @@ _dust_hive_flags() {
   _describe -V 'feature flag' remaining
 }
 
+_dust_hive_config_env_keys() {
+  local -a keys
+  keys=(${(f)"$(command sed -nE 's/^export ([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$HOME/.dust-hive/config.env" 2>/dev/null)"})
+  (( $#keys )) || return
+
+  _describe -V 'config key' keys
+}
+
 _dust-hive() {
   local curcontext="$curcontext" state line
   typeset -A opt_args
@@ -377,7 +385,6 @@ _dust-hive() {
         'env:Manage config.env vars (list|get|set|unset)'
         'feed:Run seed script for a scenario'
         'flag:Toggle a feature flag on the workspace'
-        'help:Show help'
       )
       _describe 'command' commands
       ;;
@@ -547,9 +554,24 @@ _dust-hive() {
           ;;
         env)
           _arguments \
-            '1::subcommand:(list get set unset)' \
-            '2::key:' \
+            '1::subcommand or key:->env_arg' \
+            '2::key:->env_key' \
             '3::value:'
+          case $state in
+            env_arg)
+              local -a subcmds=(
+                'list:List all config vars'
+                'get:Print a config var'
+                'set:Set a config var'
+                'unset:Remove a config var'
+              )
+              _describe 'subcommand' subcmds
+              _dust_hive_config_env_keys
+              ;;
+            env_key)
+              [[ $words[2] == (get|set|unset) ]] && _dust_hive_config_env_keys
+              ;;
+          esac
           ;;
         feed)
           _arguments \

@@ -340,6 +340,10 @@ _dust_hive_flags() {
   )
 }
 
+_dust_hive_config_env_keys() {
+  command sed -nE 's/^export ([A-Za-z_][A-Za-z0-9_]*)=.*/\1/p' "$HOME/.dust-hive/config.env" 2>/dev/null
+}
+
 _dust_hive_complete() {
   local cur prev words cword
   _init_completion 2>/dev/null || {
@@ -365,7 +369,7 @@ _dust_hive_complete() {
 
   # Top-level command completion
   if [[ -z "$cmd" ]]; then
-    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url kibana cd setup doctor cache autostart refresh forward sync temporal seed-config feed flag help"
+    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url kibana cd setup doctor cache autostart refresh forward sync temporal seed-config env feed flag"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
   fi
@@ -589,6 +593,26 @@ _dust_hive_complete() {
       ;;
     seed-config)
       # Expects a postgres URI — no useful completion
+      ;;
+    env)
+      # 1st positional = subcommand or key (shorthand for get), 2nd = key for get/set/unset
+      local pos=0
+      local subcmd=""
+      for (( i=cmd_index+1; i<cword; i++ )); do
+        if [[ "${COMP_WORDS[$i]}" != -* ]]; then
+          (( pos == 0 )) && subcmd="${COMP_WORDS[$i]}"
+          (( pos++ ))
+        fi
+      done
+      if (( pos == 0 )); then
+        COMPREPLY=($(compgen -W "list get set unset $(_dust_hive_config_env_keys)" -- "$cur"))
+      elif (( pos == 1 )); then
+        case "$subcmd" in
+          get|set|unset)
+            COMPREPLY=($(compgen -W "$(_dust_hive_config_env_keys)" -- "$cur"))
+            ;;
+        esac
+      fi
       ;;
   esac
 }
