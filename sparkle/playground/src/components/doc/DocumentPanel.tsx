@@ -1213,6 +1213,8 @@ export function DocumentPanel({
                   )}
                   // Clicks on the sheet's margins, or below the text, still start
                   // typing: only clicks on the text itself reach the editor.
+                  // A pointer convenience: keyboard users are in the editor.
+                  role="presentation"
                   onMouseDown={(e) => {
                     const target = e.target as HTMLElement;
                     if (
