@@ -25,6 +25,7 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { isJobType } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
 import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -37,6 +38,8 @@ import type {
   UserProviderType,
   UserType,
 } from "@app/types/user";
+import type { UserProfileType } from "@app/types/user_profile";
+import { USER_PRONOUNS_METADATA_KEY } from "@app/types/user_profile";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import chunk from "lodash/chunk";
 import escape from "lodash/escape";
@@ -754,6 +757,21 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async getMetadataValues(
+    keys: string[],
+    workspaceModelId?: ModelId | null
+  ): Promise<Map<string, string>> {
+    const rows = await UserMetadataModel.findAll({
+      attributes: ["key", "value"],
+      where: {
+        userId: this.id,
+        key: { [Op.in]: keys },
+        workspaceId: workspaceModelId ?? null,
+      },
+    });
+    return new Map(rows.map((row) => [row.key, row.value]));
+  }
+
   async setMetadata(
     key: string,
     value: string,
@@ -806,6 +824,29 @@ export class UserResource extends BaseResource<UserModel> {
     const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
     const storedLocale = metadata?.value;
     return isSupportedLocale(storedLocale) ? storedLocale : fallbackLocale;
+  }
+
+  async getProfile(): Promise<UserProfileType> {
+    const values = await this.getMetadataValues([
+      USER_PRONOUNS_METADATA_KEY,
+      "job_type",
+    ]);
+    const jobType = values.get("job_type");
+    return {
+      pronouns: values.get(USER_PRONOUNS_METADATA_KEY) ?? null,
+      jobType: isJobType(jobType) ? jobType : null,
+    };
+  }
+
+  async updatePronouns(pronouns: string | null): Promise<void> {
+    if (pronouns === null) {
+      await this.deleteMetadata({
+        key: USER_PRONOUNS_METADATA_KEY,
+        workspaceId: null,
+      });
+    } else {
+      await this.setMetadata(USER_PRONOUNS_METADATA_KEY, pronouns);
+    }
   }
 
   /**

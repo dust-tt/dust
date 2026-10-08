@@ -1,3 +1,4 @@
+import type { JobType } from "@app/types/job_type";
 import type {
   RoleType,
   UserMetadataType,
@@ -13,6 +14,8 @@ export type GetMemberResponseBody = {
     lastName: string | null;
     fullName: string;
     image: string | null;
+    pronouns: string | null;
+    jobType: JobType | null;
     revoked: boolean;
     role: RoleType;
     startAt: string | null;
