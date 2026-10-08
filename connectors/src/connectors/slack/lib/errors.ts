@@ -62,7 +62,8 @@ export function isSlackPostingPermissionError(
 }
 
 // Slack rejects the whole message when one of its user group mentions (`<!subteam^ID>`) points to a
-// group Slack cannot find, e.g. a deleted group or an id made up by the agent.
+// group Slack cannot find, e.g. a deleted group or an id made up by the agent. The error is
+// `invalid_blocks` with a message like "usergroup [S123] could not be found [json-pointer:...]".
 export function isSlackUnknownUserGroupError(
   err: unknown
 ): err is WebAPIPlatformError {

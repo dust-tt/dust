@@ -1191,6 +1191,7 @@ async function postSlackMessageUpdate({
             provider: "slack",
             connectorId: connector.id,
             conversationId: conversation.sId,
+            err: error,
           },
           "Slack rejected a user group mention, retrying with group mentions as plain text."
         );
