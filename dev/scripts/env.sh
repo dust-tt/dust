@@ -31,6 +31,11 @@ export DUST_TEMPORAL_DB_FILE="${DUST_TEMPORAL_DB_FILE:-${DUST_DATA_ROOT}/tempora
 # Qdrant has no CLI flags for these; it reads QDRANT__* overrides from the env.
 export QDRANT__STORAGE__STORAGE_PATH="${QDRANT__STORAGE__STORAGE_PATH:-${DUST_DATA_ROOT}/qdrant/storage}"
 export QDRANT__STORAGE__SNAPSHOTS_PATH="${QDRANT__STORAGE__SNAPSHOTS_PATH:-${DUST_DATA_ROOT}/qdrant/snapshots}"
+# FoundationDB: one local process. FDB_CLUSTER_FILE is read by fdbcli and libfdb_c directly.
+export DUST_FDB_DATA_DIR="${DUST_FDB_DATA_DIR:-${DUST_DATA_ROOT}/fdb/data}"
+export DUST_FDB_LOG_DIR="${DUST_FDB_LOG_DIR:-${DUST_INFRA_LOG_DIR}/fdb}"
+export FDB_PORT="${FDB_PORT:-4500}"
+export FDB_CLUSTER_FILE="${FDB_CLUSTER_FILE:-${DUST_DATA_ROOT}/fdb/fdb.cluster}"
 
 export POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
 export POSTGRES_PORT="${POSTGRES_PORT:-5432}"
