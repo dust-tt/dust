@@ -20,8 +20,6 @@ kills bench sandboxes older than 3 h. Run it whenever in doubt.
 
 Scripts run as the dust-dev service account (`~/.config/dust-dev/sa-key.json`) from an
 isolated gcloud config in `.state/`, so they work whatever your active gcloud login is.
-E2B credentials (the e2b.dev cluster, us-central1) go in `.state/e2b.env` as `E2B_API_KEY=` and
-`E2B_DOMAIN=` lines.
 
 ## Benchmarking an implementation
 

@@ -89,15 +89,13 @@ tf_init() {
     -backend-config="prefix=runs/$run_id/tfstate" >/dev/null
 }
 
-# --- E2B (e2b.dev, us-central1). Credentials from .state/e2b.env, else the environment. ---
+# --- E2B (e2b.dev, us-central1). Needs E2B_API_KEY and E2B_DOMAIN. ---
 
 load_e2b_env() {
-  if [[ -f "$STATE_DIR/e2b.env" ]]; then
-    set -a
-    source "$STATE_DIR/e2b.env"
-    set +a
+  if [[ -z "${E2B_API_KEY:-}" || -z "${E2B_DOMAIN:-}" ]] && [[ -f "$HOME/.dust-hive/config.env" ]]; then
+    eval "$(grep -E '^(export )?E2B_(API_KEY|DOMAIN)=' "$HOME/.dust-hive/config.env")"
   fi
-  [[ -n "${E2B_API_KEY:-}" && -n "${E2B_DOMAIN:-}" ]] || die "set E2B_API_KEY and E2B_DOMAIN in $STATE_DIR/e2b.env"
+  [[ -n "${E2B_API_KEY:-}" && -n "${E2B_DOMAIN:-}" ]] || die "E2B_API_KEY and E2B_DOMAIN must be set"
   export E2B_API_KEY E2B_DOMAIN
 }
 
