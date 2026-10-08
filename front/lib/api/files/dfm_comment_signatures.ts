@@ -352,30 +352,6 @@ function textRuns(text: string): TextRun[] {
   return runs;
 }
 
-function quoteBetween(runs: TextRun[], start: number, end: number): string {
-  let quote = "";
-  let lastBlock: number | null = null;
-  for (const run of runs) {
-    if (run.end <= start || run.start >= end) {
-      continue;
-    }
-    // A run whose source and text differ (escapes, code fences) is taken whole.
-    const value =
-      run.end - run.start === run.value.length
-        ? run.value.slice(
-            Math.max(start, run.start) - run.start,
-            Math.min(end, run.end) - run.start
-          )
-        : run.value;
-    if (lastBlock !== null && run.block !== lastBlock) {
-      quote += " ";
-    }
-    quote += value;
-    lastBlock = run.block;
-  }
-  return quote;
-}
-
 /**
  * The plain text each comment's anchors cover in `body`, without its Markdown syntax and with
  * its blocks separated by a space, the form the editor quotes live comments in.
@@ -385,13 +361,41 @@ function commentQuotes(body: string): Map<string, string> {
   if (anchors.isErr()) {
     return new Map();
   }
-  const runs = textRuns(anchors.value.text);
-  return new Map(
-    anchors.value.anchors.map(({ id, start, end }) => [
-      id,
-      quoteBetween(runs, start, end),
-    ])
-  );
+  const quotes = anchors.value.anchors.map(({ id, start, end }) => ({
+    id,
+    start,
+    end,
+    text: "",
+    block: null as number | null,
+  }));
+  let next = 0;
+  let open: typeof quotes = [];
+
+  // One sweep: anchors come in order of start and runs in document order, so a run only visits
+  // the anchors it overlaps.
+  for (const run of textRuns(anchors.value.text)) {
+    open = open.filter((quote) => quote.end > run.start);
+    while (next < quotes.length && quotes[next].start < run.end) {
+      open.push(quotes[next++]);
+    }
+    for (const quote of open) {
+      // A run whose source and text differ (escapes, code fences) is taken whole.
+      const value =
+        run.end - run.start === run.value.length
+          ? run.value.slice(
+              Math.max(quote.start, run.start) - run.start,
+              Math.min(quote.end, run.end) - run.start
+            )
+          : run.value;
+      if (quote.block !== null && quote.block !== run.block) {
+        quote.text += " ";
+      }
+      quote.text += value;
+      quote.block = run.block;
+    }
+  }
+
+  return new Map(quotes.map(({ id, text }) => [id, text]));
 }
 
 interface ValidationContext {
