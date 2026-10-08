@@ -512,6 +512,10 @@ export const useDocumentComments = ({
           discard(id);
           return new Err(t(UNAVAILABLE_MESSAGE));
         }
+        if (!isWritableThread(created.value)) {
+          discard(id);
+          return new Err(t(UNSAVABLE_MESSAGE));
+        }
         return new Ok(created.value);
       },
       // The session refuses the reply once the thread has moved past what was shown.

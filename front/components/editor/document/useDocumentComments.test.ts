@@ -553,6 +553,41 @@ describe("useDocumentComments", () => {
       expect(deleted).toEqual({ type: "delete", commentId: added.commentId });
     });
 
+    it("deletes a thread the session returned that the codec cannot write, without anchoring it", async () => {
+      const { channel, send } = liveChannel(
+        (command) =>
+          new Ok(
+            command.type === "add"
+              ? sessionThread(
+                  command.commentId,
+                  "First line\n::message{author=user:x}"
+                )
+              : null
+          )
+      );
+      const { result } = await renderCommentedEditor("Hello brave world.\n", {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      act(() => {
+        select(editor, "brave");
+        result.current.comments.startDraft();
+      });
+
+      await act(async () => {
+        expect(
+          (await result.current.comments.submitDraft("Too bold?")).isErr()
+        ).toBe(true);
+      });
+
+      const [[added], [deleted]] = send.mock.calls;
+      expect(deleted).toEqual({ type: "delete", commentId: added.commentId });
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+    });
+
     it("comments in a document holding marks whose thread is gone", async () => {
       const { channel, send } = liveChannel(
         (command) =>

@@ -35,6 +35,7 @@ interface PanelIconButtonProps {
   label: string;
   icon: ComponentType<{ className?: string }>;
   onClick: () => void;
+  busy?: boolean;
   mountPortalContainer?: HTMLElement;
 }
 
@@ -42,6 +43,7 @@ const PanelIconButton = ({
   label,
   icon,
   onClick,
+  busy = false,
   mountPortalContainer,
 }: PanelIconButtonProps) => (
   <Tooltip
@@ -52,13 +54,17 @@ const PanelIconButton = ({
       <button
         type="button"
         aria-label={label}
+        aria-disabled={busy}
         onClick={(event) => {
           event.stopPropagation();
-          onClick();
+          if (!busy) {
+            onClick();
+          }
         }}
         className={cn(
           "inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-hover hover:text-foreground motion-reduce:transition-none",
-          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          "aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-transparent"
         )}
       >
         <Icon visual={icon} size="xs" />
@@ -129,6 +135,7 @@ interface SuggestionCardProps {
   suggestion: string;
   renderBody: (body: string) => ReactNode;
   onApply?: () => Promise<Result<void, string> | null>;
+  busy: boolean;
 }
 
 /**
@@ -144,9 +151,11 @@ const SuggestionCard = ({
   suggestion,
   renderBody,
   onApply,
+  busy,
 }: SuggestionCardProps) => {
   const { t } = useLingui();
   const [error, setError] = useState<string | null>(null);
+  const [applying, setApplying] = useState(false);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border border-border text-sm">
@@ -160,9 +169,13 @@ const SuggestionCard = ({
             variant="outline"
             size="xs"
             label={t`Apply`}
+            isLoading={applying}
+            disabled={busy && !applying}
             onClick={(event) => {
               event.stopPropagation();
+              setApplying(true);
               void onApply().then((applied) => {
+                setApplying(false);
                 if (applied) {
                   setError(applied.isErr() ? applied.error : null);
                 }
@@ -201,6 +214,7 @@ interface MessageBodyProps {
   onApplySuggestion?: (
     suggestion: string
   ) => Promise<Result<void, string> | null>;
+  busy: boolean;
 }
 
 /**
@@ -214,6 +228,7 @@ const MessageBody = ({
   quote,
   renderBody,
   onApplySuggestion,
+  busy,
 }: MessageBodyProps) => {
   const parts = useMemo(() => {
     const read = readMessageSuggestions(body);
@@ -254,6 +269,7 @@ const MessageBody = ({
                 ? () => onApplySuggestion(part.suggestion)
                 : undefined
             }
+            busy={busy}
           />
         )
       )}
@@ -364,6 +380,7 @@ const CommentThread = ({
   const ref = useRef<HTMLElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pending = useRef(false);
+  const [busy, setBusy] = useState(false);
   const [first, ...replies] = comment.messages;
   // Each action waits for the session; a second click would repeat it on a thread not yet updated.
   const runAlone = async (
@@ -373,10 +390,12 @@ const CommentThread = ({
       return null;
     }
     pending.current = true;
+    setBusy(true);
     try {
       return await action();
     } finally {
       pending.current = false;
+      setBusy(false);
     }
   };
   const showResult = (action: () => Promise<Result<void, string>>) =>
@@ -435,12 +454,14 @@ const CommentThread = ({
                 label={resolved ? t`Reopen` : t`Resolve`}
                 icon={resolved ? ReverseLeft : Check}
                 onClick={() => showResult(() => onSetResolved(!resolved))}
+                busy={busy}
                 mountPortalContainer={mountPortalContainer}
               />
               <PanelIconButton
                 label={t`Delete comment`}
                 icon={Trash01}
                 onClick={() => showResult(onDelete)}
+                busy={busy}
                 mountPortalContainer={mountPortalContainer}
               />
             </div>
@@ -471,6 +492,7 @@ const CommentThread = ({
           quote={quote}
           renderBody={renderBody}
           onApplySuggestion={applySuggestion}
+          busy={busy}
         />
         {replies.length > 0 && (
           <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
@@ -491,6 +513,7 @@ const CommentThread = ({
                   quote={quote}
                   renderBody={renderBody}
                   onApplySuggestion={applySuggestion}
+                  busy={busy}
                 />
               </li>
             ))}
@@ -547,8 +570,8 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
  * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
  * neighbouring thread or to the panel heading; a refused one MUST show the reason on its thread
- * instead. While a thread's resolve, reopen, delete or suggestion is pending, further clicks on
- * them MUST be ignored. Opening or closing the panel MUST NOT change the document.
+ * instead. While a thread's resolve, reopen, delete or suggestion is pending, its controls MUST
+ * show it and further clicks on them MUST be ignored. Opening or closing the panel MUST NOT change the document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars
