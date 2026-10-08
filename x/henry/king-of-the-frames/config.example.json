@@ -1,19 +1,11 @@
 {
   "apiBaseUrl": "https://dust.tt/api/v1",
-  "agents": [
-    {
-      "id": "agent-candidate-a",
-      "label": "Candidate A"
-    },
-    {
-      "id": "agent-candidate-b",
-      "label": "Candidate B"
-    },
-    {
-      "id": "agent-candidate-c",
-      "label": "Candidate C"
-    }
-  ],
+  "output": {
+    "type": "frame"
+  },
+  "review": {
+    "type": "ranking"
+  },
   "concurrency": 4,
   "timeoutMs": 900000,
   "pollIntervalMs": 4000,

@@ -3,5 +3,9 @@
     "agent-candidate-a": "https://example.invalid/share/frame/candidate-a",
     "agent-candidate-b": "https://example.invalid/share/frame/candidate-b",
     "agent-candidate-c": "https://example.invalid/share/frame/candidate-c"
+  },
+  "example-brief": {
+    "agent-candidate-b": "https://example.invalid/share/frame/candidate-b-brief",
+    "agent-candidate-d": "https://example.invalid/share/frame/candidate-d-brief"
   }
 }

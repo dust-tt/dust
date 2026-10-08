@@ -4,11 +4,18 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "node src/prepare-experiment.mjs",
+    "validate-dataset": "node src/validate-dataset.mjs",
     "validate-packs": "node src/validate-packs.mjs",
     "run": "node src/run-eval.mjs",
+    "resolve-frame-share-urls": "node src/resolve-frame-share-urls.mjs",
     "build-blind": "node src/build-blind-eval.mjs",
+    "create-slack-channel": "node src/create-slack-channel.mjs",
     "post-slack": "node src/post-slack.mjs",
     "collect-feedback": "node src/collect-feedback.mjs",
+    "collect-run-audit": "node src/collect-run-audit.mjs",
+    "collect-step-costs": "node src/collect-step-costs.mjs",
+    "analyze-rankings": "node src/analyze-rankings.mjs",
     "tally": "node src/tally.mjs",
     "cost-latency": "node src/cost-latency.mjs",
     "test": "node --test"

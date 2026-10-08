@@ -27,6 +27,27 @@ const SECRET_PATTERNS = [
   },
 ];
 
+const DEFAULT_OUTPUT_CONFIG = {
+  type: "frame",
+};
+
+const DEFAULT_REVIEW_CONFIG = {
+  type: "winner",
+};
+
+const AGENT_ID_PATTERN = /^[A-Za-z0-9_-]+$/;
+const ITEM_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const REASONING_EFFORTS = new Set([
+  "none",
+  "minimal",
+  "light",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "maximal",
+]);
+
 export function parseArgs(argv) {
   const parsed = {};
   for (let index = 0; index < argv.length; index += 1) {
@@ -80,6 +101,17 @@ export async function loadJsonl(filePath) {
 export async function appendJsonl(filePath, value) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.appendFile(filePath, `${JSON.stringify(value)}\n`);
+}
+
+export async function appendRunEvent(logPath, event, details = {}) {
+  if (!logPath) {
+    return;
+  }
+  await appendJsonl(logPath, {
+    timestamp: new Date().toISOString(),
+    event,
+    ...details,
+  });
 }
 
 export async function pathExists(filePath) {
@@ -144,6 +176,229 @@ export async function collectPackAttachments(packDir) {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function normalizeCandidates(candidates, { context, idKey }) {
+  if (
+    !Array.isArray(candidates) ||
+    candidates.length < 2 ||
+    candidates.length > 5
+  ) {
+    throw new Error(`${context} must contain two to five candidates`);
+  }
+  const ids = new Set();
+  return candidates.map((candidate) => {
+    const id = candidate?.[idKey];
+    if (!isNonEmptyString(id) || !AGENT_ID_PATTERN.test(id)) {
+      throw new Error(
+        `${context} candidate ${idKey} must use only letters, digits, underscore, or hyphen`,
+      );
+    }
+    if (!isNonEmptyString(candidate.label)) {
+      throw new Error(`${context} candidate ${id} needs a label`);
+    }
+    if (ids.has(id)) {
+      throw new Error(`${context} has duplicate candidate ${id}`);
+    }
+    ids.add(id);
+    return { id, label: candidate.label.trim() };
+  });
+}
+
+function normalizeModelSelection(modelSelection, { context, candidateId }) {
+  if (modelSelection === undefined) {
+    return undefined;
+  }
+  if (
+    modelSelection === null ||
+    typeof modelSelection !== "object" ||
+    Array.isArray(modelSelection)
+  ) {
+    throw new Error(
+      `${context} candidate ${candidateId} modelSelection must be an object`,
+    );
+  }
+  if (!isNonEmptyString(modelSelection.providerId)) {
+    throw new Error(
+      `${context} candidate ${candidateId} modelSelection needs providerId`,
+    );
+  }
+  if (!isNonEmptyString(modelSelection.modelId)) {
+    throw new Error(
+      `${context} candidate ${candidateId} modelSelection needs modelId`,
+    );
+  }
+  if (
+    modelSelection.reasoningEffort !== undefined &&
+    !REASONING_EFFORTS.has(modelSelection.reasoningEffort)
+  ) {
+    throw new Error(
+      `${context} candidate ${candidateId} modelSelection reasoningEffort must be ${[...REASONING_EFFORTS].join(", ")}`,
+    );
+  }
+  return {
+    providerId: modelSelection.providerId.trim(),
+    modelId: modelSelection.modelId.trim(),
+    ...(modelSelection.reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort: modelSelection.reasoningEffort }),
+  };
+}
+
+function normalizeDatasetCandidates(candidates, { context }) {
+  if (
+    !Array.isArray(candidates) ||
+    candidates.length < 2 ||
+    candidates.length > 5
+  ) {
+    throw new Error(`${context} must contain two to five candidates`);
+  }
+  const ids = new Set();
+  return candidates.map((candidate) => {
+    const agentId = candidate?.agentId;
+    const id = candidate?.id ?? agentId;
+    if (!isNonEmptyString(id) || !AGENT_ID_PATTERN.test(id)) {
+      throw new Error(
+        `${context} candidate id must use only letters, digits, underscore, or hyphen`,
+      );
+    }
+    if (!isNonEmptyString(agentId) || !AGENT_ID_PATTERN.test(agentId)) {
+      throw new Error(
+        `${context} candidate ${id} agentId must use only letters, digits, underscore, or hyphen`,
+      );
+    }
+    if (!isNonEmptyString(candidate.label)) {
+      throw new Error(`${context} candidate ${id} needs a label`);
+    }
+    if (ids.has(id)) {
+      throw new Error(`${context} has duplicate candidate ${id}`);
+    }
+    ids.add(id);
+    const modelSelection = normalizeModelSelection(candidate.modelSelection, {
+      context,
+      candidateId: id,
+    });
+    return {
+      id,
+      agentId,
+      label: candidate.label.trim(),
+      ...(modelSelection === undefined ? {} : { modelSelection }),
+    };
+  });
+}
+
+function secretType(body) {
+  return SECRET_PATTERNS.find(({ pattern }) => pattern.test(body))?.name;
+}
+
+export async function loadDatasetItems(datasetPath) {
+  const rows = await loadJsonl(datasetPath);
+  if (rows.length === 0) {
+    throw new Error(`No items found in ${datasetPath}`);
+  }
+  const datasetRoot = path.dirname(datasetPath);
+  const itemIds = new Set();
+  const candidateSpecs = new Map();
+  const items = [];
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const row = rows[index];
+    const context = `${datasetPath}:${index + 1}`;
+    if (!isNonEmptyString(row?.id) || !ITEM_ID_PATTERN.test(row.id)) {
+      const allowedIdCharacters = "letters, digits, dot, underscore, or hyphen";
+      throw new Error(
+        `${context} id must start with a letter or digit and use only ${allowedIdCharacters}`,
+      );
+    }
+    if (itemIds.has(row.id)) {
+      throw new Error(`${context} has duplicate item id ${row.id}`);
+    }
+    itemIds.add(row.id);
+    if (!isNonEmptyString(row.prompt)) {
+      throw new Error(`${context} prompt must be a non-empty string`);
+    }
+    const promptSecret = secretType(row.prompt);
+    if (promptSecret) {
+      throw new Error(
+        `${context} prompt looks like it contains a ${promptSecret}`,
+      );
+    }
+    const candidates = normalizeDatasetCandidates(row.candidates, { context });
+    for (const candidate of candidates) {
+      const candidateSpec = JSON.stringify(candidate);
+      const priorSpec = candidateSpecs.get(candidate.id);
+      if (priorSpec !== undefined && priorSpec !== candidateSpec) {
+        throw new Error(
+          `${context} candidate ${candidate.id} must keep the same label, agentId, and modelSelection across items`,
+        );
+      }
+      candidateSpecs.set(candidate.id, candidateSpec);
+    }
+    const attachmentPaths = row.attachments ?? [];
+    if (!Array.isArray(attachmentPaths)) {
+      throw new Error(`${context} attachments must be an array`);
+    }
+    const basenames = new Set();
+    const attachments = [];
+    for (const attachmentPath of attachmentPaths) {
+      if (
+        !isNonEmptyString(attachmentPath) ||
+        path.isAbsolute(attachmentPath)
+      ) {
+        throw new Error(`${context} attachment paths must be relative strings`);
+      }
+      const filePath = path.resolve(datasetRoot, attachmentPath);
+      const relativePath = path.relative(datasetRoot, filePath);
+      if (
+        relativePath === ".." ||
+        relativePath.startsWith(`..${path.sep}`) ||
+        path.isAbsolute(relativePath)
+      ) {
+        throw new Error(
+          `${context} attachment is outside the dataset directory: ${attachmentPath}`,
+        );
+      }
+      let stat;
+      try {
+        stat = await fs.lstat(filePath);
+      } catch {
+        throw new Error(
+          `${context} attachment does not exist: ${attachmentPath}`,
+        );
+      }
+      if (stat.isSymbolicLink() || !stat.isFile()) {
+        throw new Error(
+          `${context} attachment must be a regular file: ${attachmentPath}`,
+        );
+      }
+      const name = path.basename(filePath);
+      if (basenames.has(name)) {
+        throw new Error(`${context} has duplicate attachment basename ${name}`);
+      }
+      basenames.add(name);
+      if (
+        stat.size <= 5_000_000 &&
+        TEXT_EXTENSIONS.has(path.extname(filePath).toLowerCase())
+      ) {
+        const attachmentBody = await fs.readFile(filePath, "utf8");
+        const attachmentSecret = secretType(attachmentBody);
+        if (attachmentSecret) {
+          throw new Error(
+            `${context} attachment ${attachmentPath} looks like it contains a ${attachmentSecret}`,
+          );
+        }
+      }
+      attachments.push({ filePath, name });
+    }
+    items.push({
+      id: row.id,
+      prompt: row.prompt,
+      candidates,
+      attachments,
+    });
+  }
+
+  return items;
 }
 
 export async function validatePack(packsRoot, packId) {
@@ -258,35 +513,111 @@ export function validateConfig(config) {
   if (!isNonEmptyString(config?.apiBaseUrl)) {
     throw new Error("config.apiBaseUrl is required");
   }
-  if (
-    !Array.isArray(config.agents) ||
-    config.agents.length < 2 ||
-    config.agents.length > 5
-  ) {
-    throw new Error("config.agents must contain two to five candidates");
+  if (config.agents !== undefined) {
+    normalizeCandidates(config.agents, {
+      context: "config.agents",
+      idKey: "id",
+    });
   }
-  const ids = new Set();
-  for (const agent of config.agents) {
-    if (!isNonEmptyString(agent?.id) || !/^[A-Za-z0-9_-]+$/.test(agent.id)) {
+  getOutputConfig(config);
+  getReviewConfig(config);
+  return config;
+}
+
+export async function loadEvaluationItems({ config, datasetPath, packsRoot }) {
+  if (Boolean(datasetPath) === Boolean(packsRoot)) {
+    throw new Error("Provide exactly one of --dataset or --packs");
+  }
+  if (datasetPath) {
+    if (config.agents !== undefined) {
       throw new Error(
-        "Every agent id must use only letters, digits, underscore, or hyphen",
+        "config.agents cannot be used with --dataset; define candidates on each dataset item",
       );
     }
-    if (!isNonEmptyString(agent.label)) {
-      throw new Error(`Agent ${agent.id} needs a label`);
-    }
-    if (ids.has(agent.id)) {
-      throw new Error(`Duplicate agent id: ${agent.id}`);
-    }
-    ids.add(agent.id);
+    return loadDatasetItems(datasetPath);
   }
-  return config;
+  if (config.agents === undefined) {
+    throw new Error("config.agents is required when using --packs");
+  }
+  const candidates = normalizeCandidates(config.agents, {
+    context: "config.agents",
+    idKey: "id",
+  });
+  const packIds = await listPackIds(packsRoot);
+  if (packIds.length === 0) {
+    throw new Error(`No packs found in ${packsRoot}`);
+  }
+  const items = [];
+  for (const packId of packIds) {
+    const validation = await validatePack(packsRoot, packId);
+    if (validation.errors.length > 0) {
+      throw new Error(
+        `${packId} is invalid:\n${validation.errors.map((error) => `- ${error}`).join("\n")}`,
+      );
+    }
+    const packDir = path.join(packsRoot, packId);
+    items.push({
+      id: packId,
+      prompt: (
+        await fs.readFile(path.join(packDir, "brief.md"), "utf8")
+      ).trim(),
+      candidates,
+      attachments: await collectPackAttachments(packDir),
+    });
+  }
+  return items;
+}
+
+export function getOutputConfig(config) {
+  const output = config.output ?? DEFAULT_OUTPUT_CONFIG;
+  if (output?.type !== "frame" && output?.type !== "answer") {
+    throw new Error('config.output.type must be either "frame" or "answer"');
+  }
+  return { type: output.type };
+}
+
+export function getReviewConfig(config) {
+  const review = config.review ?? DEFAULT_REVIEW_CONFIG;
+  if (review?.type !== "winner" && review?.type !== "ranking") {
+    throw new Error('config.review.type must be either "winner" or "ranking"');
+  }
+  if (review.collection !== undefined && review.collection !== "google-form") {
+    throw new Error('config.review.collection must be "google-form" when set');
+  }
+  return {
+    type: review.type,
+    ...(review.collection ? { collection: review.collection } : {}),
+  };
 }
 
 export function randomShuffle(values) {
   const shuffled = [...values];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
     const target = crypto.randomInt(index + 1);
+    [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
+  }
+  return shuffled;
+}
+
+export function createSeededRandom(seed) {
+  if (typeof seed !== "string" || seed.length === 0) {
+    throw new Error("seed must be a non-empty string");
+  }
+  let counter = 0;
+  return () => {
+    const digest = crypto
+      .createHash("sha256")
+      .update(`${seed}:${counter}`)
+      .digest();
+    counter += 1;
+    return digest.readUInt32BE(0) / 2 ** 32;
+  };
+}
+
+export function seededShuffle(values, random) {
+  const shuffled = [...values];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const target = Math.floor(random() * (index + 1));
     [shuffled[index], shuffled[target]] = [shuffled[target], shuffled[index]];
   }
   return shuffled;

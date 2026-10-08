@@ -1,6 +1,7 @@
 # Blind matchup analysis
 
-Analyze the supplied brief, slot Frames, source code, vote counts, reviewer comments, and screenshots.
+Analyze the supplied brief, slot outputs, available source, structured rankings or vote counts,
+reviewer comments, and screenshots.
 Do not inspect or infer candidate identities.
 
 For each slot provide:
