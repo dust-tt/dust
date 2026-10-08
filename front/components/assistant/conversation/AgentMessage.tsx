@@ -1536,6 +1536,7 @@ function AgentMessageContent({
   if (agentMessage.status === "created" && !!streamError && !blockedAction) {
     return (
       <ErrorMessage
+        owner={owner}
         error={{
           message: t`Connection lost while generating message. Reconnect to check its progress.`,
           code: "stream_error",
@@ -1728,6 +1729,7 @@ function AgentMessageContent({
         )}
         {agentMessage.status === "failed" && (
           <ErrorMessage
+            owner={owner}
             error={
               agentMessage.error ?? {
                 message: t`Unexpected error`,

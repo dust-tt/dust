@@ -20,6 +20,8 @@ import type {
   ModelSelectionType,
   ResolvedRequestedModel,
 } from "@app/types/assistant/models/types";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
 import {
   Button,
   Collapsible,
@@ -32,6 +34,7 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ErrorMessageProps {
+  owner: LightWorkspaceType;
   error: GenericErrorContent;
   retryHandler: (modelSelection?: ModelSelectionType) => Promise<void>;
   retryLabel?: string;
@@ -40,6 +43,7 @@ interface ErrorMessageProps {
 }
 
 export function ErrorMessage({
+  owner,
   error,
   retryHandler,
   retryLabel,
@@ -50,6 +54,7 @@ export function ErrorMessage({
   const { hasFeature } = useFeatureFlags();
   const formattedError = formatAgentError(error, {
     hasLocalisation: hasFeature("localisation"),
+    viewerIsAdmin: isAdmin(owner),
   });
   const isContextWindowExceeded =
     isAgentErrorCategory(error.metadata?.category) &&

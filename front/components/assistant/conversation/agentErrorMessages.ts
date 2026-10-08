@@ -224,16 +224,19 @@ function getModelErrorDescription(
 
 function getLimitDescription(
   reason: LimitReason,
-  isAdmin: unknown
+  viewerIsAdmin: boolean
 ): MessageDescriptor {
-  if (isUserBlockedReason(reason) && typeof isAdmin === "boolean") {
+  if (isUserBlockedReason(reason)) {
     const descriptions = BLOCKED_REASON_DESCRIPTIONS[reason];
-    return isAdmin ? descriptions.admin : descriptions.member;
+    return viewerIsAdmin ? descriptions.admin : descriptions.member;
   }
   return API_ERROR_MESSAGES[reason];
 }
 
-function getAgentErrorMessages(error: GenericErrorContent): AgentErrorMessages {
+function getAgentErrorMessages(
+  error: GenericErrorContent,
+  viewerIsAdmin: boolean
+): AgentErrorMessages {
   const metadata = error.metadata ?? {};
   const { category, blockedReason } = metadata;
 
@@ -262,7 +265,7 @@ function getAgentErrorMessages(error: GenericErrorContent): AgentErrorMessages {
   if (limitReason) {
     return {
       title: LIMIT_TITLES[limitReason],
-      description: getLimitDescription(limitReason, metadata.isAdmin),
+      description: getLimitDescription(limitReason, viewerIsAdmin),
     };
   }
 
@@ -275,6 +278,11 @@ function getAgentErrorMessages(error: GenericErrorContent): AgentErrorMessages {
     description: getCategoryDescription(category),
   };
 }
+
+export type FormatAgentErrorOptions = FormatErrorOptions & {
+  /** Whether the current user is an admin of the current workspace. */
+  viewerIsAdmin: boolean;
+};
 
 export type FormattedAgentError = {
   title: string;
@@ -294,13 +302,14 @@ export type FormattedAgentError = {
  * @cc [owner:sfriquet,label:error-handling;react] agent-error-translated-from-code
  * When `hasLocalisation` is true, `title` and `description` MUST be translated from the error
  * `code`, `metadata.category` and the codes and brand names carried in `metadata` (`llmErrorType`,
- * `provider`, `isByok`, `blockedReason`, `isAdmin`), falling back to a translated generic message
- * for an unknown code. The server `message` and `metadata.errorTitle` MUST NOT appear in `title` or
+ * `provider`, `isByok`, `blockedReason`), falling back to a translated generic message for an
+ * unknown code. Wording that depends on a role follows `viewerIsAdmin`, the role of the current
+ * user in the current workspace, not the role of the user who triggered the error. The server `message` and `metadata.errorTitle` MUST NOT appear in `title` or
  * `description`: the raw `code` and `message` go to `details`.
  */
 export function formatAgentError(
   error: GenericErrorContent,
-  { hasLocalisation }: FormatErrorOptions
+  { hasLocalisation, viewerIsAdmin }: FormatAgentErrorOptions
 ): FormattedAgentError {
   if (!hasLocalisation) {
     const errorTitle = error.metadata?.errorTitle;
@@ -310,7 +319,7 @@ export function formatAgentError(
     };
   }
 
-  const { title, description } = getAgentErrorMessages(error);
+  const { title, description } = getAgentErrorMessages(error, viewerIsAdmin);
   const { code, message: rawMessage } = error;
   return {
     title: t(title),

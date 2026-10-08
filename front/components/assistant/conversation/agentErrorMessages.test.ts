@@ -2,8 +2,8 @@ import { formatAgentError } from "@app/components/assistant/conversation/agentEr
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import { describe, expect, it } from "vitest";
 
-const WITH_LOCALISATION = { hasLocalisation: true };
-const WITHOUT_LOCALISATION = { hasLocalisation: false };
+const WITH_LOCALISATION = { hasLocalisation: true, viewerIsAdmin: false };
+const WITHOUT_LOCALISATION = { hasLocalisation: false, viewerIsAdmin: false };
 
 const overloadedError = {
   code: "multi_actions_error",
@@ -79,26 +79,29 @@ describe("formatAgentError", () => {
     ).toBe("The model provider ran into an issue. Try again in a moment.");
   });
 
-  it("describes a credit stop from its blocked reason and the user's role", () => {
-    expect(
-      formatAgentError(
-        {
-          code: "credits_exhausted",
-          message: "You don't have a seat assigned in this workspace.",
-          metadata: {
-            category: "credits_exhausted",
-            errorTitle: "No seat assigned",
-            blockedReason: "no_seat",
-            isAdmin: false,
-          },
-        },
-        WITH_LOCALISATION
-      )
-    ).toMatchObject({
+  it("describes a credit stop from its blocked reason and the viewer's role", () => {
+    const noSeatError = {
+      code: "credits_exhausted",
+      message: "You don't have a seat assigned in this workspace.",
+      metadata: {
+        category: "credits_exhausted",
+        errorTitle: "No seat assigned",
+        blockedReason: "no_seat",
+      },
+    };
+    expect(formatAgentError(noSeatError, WITH_LOCALISATION)).toMatchObject({
       title: "No seat assigned",
       description:
         "You don't have a seat assigned in this workspace. Contact your administrator to assign you one.",
     });
+    expect(
+      formatAgentError(noSeatError, {
+        ...WITH_LOCALISATION,
+        viewerIsAdmin: true,
+      }).description
+    ).toBe(
+      "You don't have a seat assigned in this workspace. Go to the usage page to assign yourself one."
+    );
   });
 
   it("describes a trigger limit from its API error type", () => {
