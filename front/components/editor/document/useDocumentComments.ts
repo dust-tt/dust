@@ -200,15 +200,13 @@ export interface PanelFocusRequest {
  * exceptions: a new thread MUST be anchored to the draft once the session created it, and deleting
  * MUST remove the comment's marks once the session deleted the thread or answered that it has none,
  * never before. A new thread MUST be deleted from the session instead when it can no longer be
- * anchored, when the session accepted it without returning it or returned a thread the codec cannot
- * write, or when the answer to its `add` was lost and the session's threads then show it; such a
- * delete the session could not receive MUST be sent again once its threads show the thread again. A
- * new comment or reply the codec could not write, or the document would no longer save with, MUST
- * be refused before the session sees it, checked with the current author and a full-length
- * signature, and without the comment marks that have no thread, which the session drops when it
- * writes the file. Every refusal from the session, and a command that could not be sent, MUST be
- * returned with a reason, never thrown; applying a suggestion whose resolution the session refuses
- * MUST keep the text change and return that reason.
+ * anchored, or when the session accepted it without returning it or returned a thread the codec
+ * cannot write. A new comment or reply the codec could not write, or the document would no longer
+ * save with, MUST be refused before the session sees it, checked with the current author and a
+ * full-length signature, and without the comment marks that have no thread, which the session drops
+ * when it writes the file. Every refusal from the session, and a command that could not be sent,
+ * MUST be returned with a reason, never thrown; applying a suggestion whose resolution the session
+ * refuses MUST keep the text change and return that reason.
  */
 export const useDocumentComments = ({
   editor,
@@ -492,22 +490,10 @@ export const useDocumentComments = ({
         ? new Ok(undefined)
         : new Err(liveErrorMessage(sent.error));
     };
-    // A lost connection can drop the answer, not the command: the session's threads, sent again
-    // on reconnect, tell whether it still holds the thread.
-    const discardOnceSeen = (id: string) => {
-      const unsubscribe = channel.onThreads((threads) => {
-        unsubscribe();
-        if (threads.some((thread) => thread.id === id)) {
-          discard(id);
-        }
-      });
-    };
+    // TODO(co-edition): a connection lost while the session stores an `add`, or before it hears
+    // this delete, closes the channel, so the thread stays in the session without an anchor.
     const discard = (id: string) => {
-      void channel.send({ type: "delete", commentId: id }).then((deleted) => {
-        if (deleted.isErr() && deleted.error === "unavailable") {
-          discardOnceSeen(id);
-        }
-      });
+      void channel.send({ type: "delete", commentId: id });
     };
     return {
       add: async (id, body) => {
@@ -517,9 +503,6 @@ export const useDocumentComments = ({
           body,
         });
         if (created.isErr()) {
-          if (created.error === "unavailable") {
-            discardOnceSeen(id);
-          }
           return new Err(liveErrorMessage(created.error));
         }
         if (!created.value) {

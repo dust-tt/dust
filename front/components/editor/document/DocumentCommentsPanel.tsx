@@ -378,11 +378,17 @@ const CommentThread = ({
 }: CommentThreadProps) => {
   const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{
+    comment: DfmComment;
+    message: string;
+  } | null>(null);
+  // A refusal is about the thread as it was; once the thread changes, it no longer applies.
+  const error = failure?.comment === comment ? failure.message : null;
   const pending = useRef(false);
   const [busy, setBusy] = useState(false);
   const [first, ...replies] = comment.messages;
   // Each action waits for the session; a second click would repeat it on a thread not yet updated.
+  // Resolves to null for an action ignored because another one on this thread is still pending.
   const runAlone = async (
     action: () => Promise<Result<void, string>>
   ): Promise<Result<void, string> | null> => {
@@ -401,7 +407,7 @@ const CommentThread = ({
   const showResult = (action: () => Promise<Result<void, string>>) =>
     void runAlone(action).then((done) => {
       if (done) {
-        setError(done.isErr() ? done.error : null);
+        setFailure(done.isErr() ? { comment, message: done.error } : null);
       }
     });
   const applySuggestion =
@@ -564,14 +570,15 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comments-panel
- * The panel MUST list open threads in document order, then resolved threads in a collapsed
- * group. Reply and moderation controls MUST render only when canWrite, and replies only on the
- * active open thread. Escape inside a reply field MUST NOT close the panel; when the field hands
- * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
- * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
- * neighbouring thread or to the panel heading; a refused one MUST show the reason on its thread
- * instead. While a thread's resolve, reopen, delete or suggestion is pending, its controls MUST
- * show it and further clicks on them MUST be ignored. Opening or closing the panel MUST NOT change the document.
+ * The panel MUST list open threads in document order, then resolved threads in a collapsed group.
+ * Reply and moderation controls MUST render only when canWrite, and replies only on the active open
+ * thread. Escape inside a reply field MUST NOT close the panel; when the field hands it to its
+ * onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST return to its
+ * thread. After resolving, reopening or deleting a thread, focus MUST move to a neighbouring thread
+ * or to the panel heading; a refused one MUST show the reason on its thread instead, until the
+ * thread changes. While a thread's resolve, reopen, delete or suggestion is pending, its controls
+ * MUST show it and further clicks on them MUST be ignored. Opening or closing the panel MUST NOT
+ * change the document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars

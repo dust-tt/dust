@@ -97,19 +97,13 @@ function liveChannel(
   ) => Result<DfmComment | null, LiveCommentErrorCode>
 ) {
   const send = vi.fn(async (command: LiveCommentCommand) => answer(command));
-  const listeners = new Set<(comments: DfmComment[]) => void>();
   const channel: LiveCommentChannel = {
     getThreads: () => null,
-    onThreads: (listener) => {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
+    onThreads: () => () => undefined,
     send,
     close: () => undefined,
   };
-  const push = (comments: DfmComment[]) =>
-    listeners.forEach((listener) => listener(comments));
-  return { channel, send, push };
+  return { channel, send };
 }
 
 const sessionThread = (id: string, body: string): DfmComment => ({
@@ -573,108 +567,6 @@ describe("useDocumentComments", () => {
       const [[added], [deleted]] = send.mock.calls;
       expect(deleted).toEqual({ type: "delete", commentId: added.commentId });
       expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
-    });
-
-    it("deletes a thread whose add answer was lost once the session's threads show it", async () => {
-      const { channel, send, push } = liveChannel(() => new Err("unavailable"));
-      const { result } = await renderCommentedEditor("Hello brave world.\n", {
-        live: channel,
-      });
-      const editor = result.current.document.editor;
-      if (!editor) {
-        throw new Error("Editor did not mount.");
-      }
-      act(() => {
-        select(editor, "brave");
-        result.current.comments.startDraft();
-      });
-      await act(async () => {
-        expect(
-          (await result.current.comments.submitDraft("Too bold?")).isErr()
-        ).toBe(true);
-      });
-      const [[added]] = send.mock.calls;
-      send.mockImplementation(async () => new Ok(null));
-
-      await act(async () => {
-        push([sessionThread(added.commentId, "Too bold?")]);
-      });
-
-      expect(send).toHaveBeenLastCalledWith({
-        type: "delete",
-        commentId: added.commentId,
-      });
-      expect(send).toHaveBeenCalledTimes(2);
-      await act(async () => {
-        push([sessionThread(added.commentId, "Too bold?")]);
-      });
-      expect(send).toHaveBeenCalledTimes(2);
-    });
-
-    it("leaves the session alone when its threads do not show the lost thread", async () => {
-      const { channel, send, push } = liveChannel(() => new Err("unavailable"));
-      const { result } = await renderCommentedEditor("Hello brave world.\n", {
-        live: channel,
-      });
-      const editor = result.current.document.editor;
-      if (!editor) {
-        throw new Error("Editor did not mount.");
-      }
-      act(() => {
-        select(editor, "brave");
-        result.current.comments.startDraft();
-      });
-      await act(async () => {
-        await result.current.comments.submitDraft("Too bold?");
-      });
-
-      await act(async () => {
-        push([]);
-      });
-
-      expect(send).toHaveBeenCalledTimes(1);
-    });
-
-    it("sends a cleanup delete again once the session's threads show the thread", async () => {
-      const { channel, send, push } = liveChannel((command) =>
-        command.type === "add"
-          ? new Ok(sessionThread(command.commentId, command.body))
-          : new Err("unavailable")
-      );
-      const { result } = await renderCommentedEditor("Hello brave world.\n", {
-        live: channel,
-      });
-      const editor = result.current.document.editor;
-      if (!editor) {
-        throw new Error("Editor did not mount.");
-      }
-      act(() => {
-        select(editor, "brave");
-        result.current.comments.startDraft();
-      });
-      send.mockImplementationOnce(async (command) => {
-        editor.commands.cancelCommentDraft();
-        return new Ok(
-          command.type === "add"
-            ? sessionThread(command.commentId, command.body)
-            : null
-        );
-      });
-      await act(async () => {
-        await result.current.comments.submitDraft("Too bold?");
-      });
-      const [[added]] = send.mock.calls;
-      expect(send).toHaveBeenCalledTimes(2);
-
-      await act(async () => {
-        push([sessionThread(added.commentId, "Too bold?")]);
-      });
-
-      expect(send).toHaveBeenCalledTimes(3);
-      expect(send).toHaveBeenLastCalledWith({
-        type: "delete",
-        commentId: added.commentId,
-      });
     });
 
     it("comments in a document holding marks whose thread is gone", async () => {
