@@ -547,7 +547,9 @@ export default function SwitchContractDialog({
         (p) =>
           p.tier === template.package?.tier &&
           p.currency === resolvedCurrency &&
-          (!pattern || p.name.toLowerCase().includes(pattern))
+          (!pattern || p.name.toLowerCase().includes(pattern)) &&
+          (!template.package?.billingAnchor ||
+            p.billingAnchor === template.package.billingAnchor)
       );
       return match?.id ?? null;
     },
@@ -1119,10 +1121,9 @@ export default function SwitchContractDialog({
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
       // ones the package would otherwise sell. Entitled-by-default seats are
-      // pre-checked. A checked seat the package does not entitle requires a
-      // positive rate (except the free seat, which may be entitled at rate 0).
+      // pre-checked.
       const seats: NonNullable<SwitchContractBodyInput["seats"]> = {};
-      for (const { seatType, entitled } of selectedSeats) {
+      for (const { seatType } of selectedSeats) {
         const entry = values.seats?.[seatType];
         const selected = entry?.selected ?? false;
         const minSeats = Number.isFinite(entry?.minSeats)
@@ -1159,13 +1160,6 @@ export default function SwitchContractDialog({
         const paymentSchedule = entry?.paymentSchedule ?? {
           frequency: "one_time" as const,
         };
-        if (selected && !entitled && seatType !== "free" && !(rate > 0)) {
-          setError(
-            `Seat "${seatType}" is not entitled by the selected package and ` +
-              "requires a rate greater than 0 to entitle it."
-          );
-          return;
-        }
         seats[seatType] = {
           selected,
           minSeats,
@@ -1668,8 +1662,7 @@ export default function SwitchContractDialog({
                         <div className="text-xs text-muted-foreground">
                           Checked seats are entitled on the new contract. Seats
                           the package does not entitle by default are unchecked
-                          — check one to entitle it (a non-zero rate is
-                          required, except for the free seat).
+                          — check one to entitle it.
                         </div>
                         {/* Header row */}
                         <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground">
