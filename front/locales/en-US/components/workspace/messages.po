@@ -814,6 +814,14 @@ msgid "No groups found in this workspace."
 msgstr "No groups found in this workspace."
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI cannot be empty."
+msgstr "Redirect URI cannot be empty."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
+msgstr "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
 msgid "This redirect URI is already in the list."
 msgstr "This redirect URI is already in the list."
 
