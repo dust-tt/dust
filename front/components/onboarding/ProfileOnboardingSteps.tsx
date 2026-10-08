@@ -40,7 +40,7 @@ const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   front: FrontLogo,
 };
 
-const JOB_TYPE_LABELS: Record<JobType, MessageDescriptor> = {
+export const JOB_TYPE_LABELS: Record<JobType, MessageDescriptor> = {
   customer_success: msg`Customer Success`,
   customer_support: msg`Customer Support`,
   data: msg({ message: "Data", context: "job function" }),

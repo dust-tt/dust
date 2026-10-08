@@ -191,6 +191,7 @@ export function usePatchUser() {
     favoritePlatforms,
     emailProvider,
     workspaceId,
+    pronouns,
   }: {
     firstName: string;
     lastName: string;
@@ -200,6 +201,7 @@ export function usePatchUser() {
     favoritePlatforms?: FavoritePlatform[];
     emailProvider?: EmailProviderType;
     workspaceId?: string;
+    pronouns?: string | null;
   }) => {
     const res = await clientFetch("/api/user", {
       method: "PATCH",
@@ -214,6 +216,7 @@ export function usePatchUser() {
         favoritePlatforms,
         emailProvider,
         workspaceId,
+        pronouns,
       }),
     });
 
