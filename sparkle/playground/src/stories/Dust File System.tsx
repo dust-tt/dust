@@ -1018,6 +1018,17 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     return options;
   }, [files, filesById]);
 
+  /**
+   * Where a Pod goes when no folder was named: the shared drive, found by what
+   * it is rather than by its id, so renaming it changes nothing here.
+   */
+  const defaultPodDestinationId = useMemo(() => {
+    const companyDrive = files.find(
+      (file) => file.folderType === "drive" && file.source === "company"
+    );
+    return companyDrive?.id ?? podDestinations[0]?.id ?? null;
+  }, [files, podDestinations]);
+
   const addPodToSidebar = useCallback((spaceId: string) => {
     setFavoritePodIds((prev) => new Set(prev).add(spaceId));
   }, []);
@@ -2481,7 +2492,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           setCreatePodParentId(null);
         }}
         destinations={podDestinations}
-        defaultDestinationId={createPodParentId}
+        defaultDestinationId={createPodParentId ?? defaultPodDestinationId}
         onNext={handleRoomNameNext}
       />
       <ToolDetailsSheet

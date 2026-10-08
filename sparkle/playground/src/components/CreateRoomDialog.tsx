@@ -17,6 +17,7 @@ import {
 import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 
+import { canContainItems } from "../data/fileMoves";
 import { TreeDnd } from "./TreeDnd";
 
 /**
@@ -151,14 +152,21 @@ function DestinationTree({
     );
   };
 
+  // The root names the branch the drives hang off, so it stays visible, but
+  // it only holds drives: it is read, not picked.
+  const isRootPickable = canContainItems(null);
+
   return (
     <TreeDnd variant="navigator">
       <TreeDnd.Item
         type="node"
         label={ROOT_DESTINATION_LABEL}
         visual={Folder}
-        isSelected={selectedId === null}
-        onItemClick={() => onSelect(null)}
+        isSelected={isRootPickable && selectedId === null}
+        onItemClick={isRootPickable ? () => onSelect(null) : undefined}
+        className={
+          isRootPickable ? undefined : "cursor-default hover:bg-hover/0"
+        }
         collapsed={false}
         renderTreeItems={() => (
           <TreeDnd variant="navigator">

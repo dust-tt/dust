@@ -314,8 +314,14 @@ const DEPARTMENT_FOLDER_NAMES: Record<string, string> = {
   "company-space-7": "Leadership",
 };
 
-/** The two drives the file system splits into: what is shared, and what is not. */
-const COMPANY_DRIVE_NAME = "Company";
+/**
+ * The two drives the file system splits into: what is shared, and what is not.
+ * The ids are fixed rather than derived from the names, so renaming a drive
+ * stays a label change.
+ */
+const COMPANY_DRIVE_ID = "fs-drive-company";
+const COMPANY_DRIVE_NAME = "Main";
+const PERSONAL_DRIVE_ID = "fs-drive-personal";
 const PERSONAL_DRIVE_NAME = "Personal";
 
 /** Plain folders kept on the Company drive for Pods that belong to no department. */
@@ -459,10 +465,10 @@ function addPodFolder(
  */
 function addDriveFolder(
   builder: Builder,
+  id: string,
   name: string,
   source: DataSource["source"]
 ): string {
-  const id = `fs-drive-${name.toLowerCase()}`;
   builder.push({
     id,
     kind: "folder",
@@ -545,8 +551,13 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
 
   // The two drives exist from the first day, even with nothing filed in the
   // personal one yet.
-  const companyDriveId = addDriveFolder(builder, COMPANY_DRIVE_NAME, "company");
-  addDriveFolder(builder, PERSONAL_DRIVE_NAME, "pod");
+  const companyDriveId = addDriveFolder(
+    builder,
+    COMPANY_DRIVE_ID,
+    COMPANY_DRIVE_NAME,
+    "company"
+  );
+  addDriveFolder(builder, PERSONAL_DRIVE_ID, PERSONAL_DRIVE_NAME, "pod");
 
   ONBOARDING_DOCS.forEach((fileName, index) => {
     builder.push({
@@ -639,8 +650,18 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
 
   // The tree splits in two at the top: everything the workspace shares, and
   // the user's own. Nothing else sits at the root.
-  const companyDriveId = addDriveFolder(builder, COMPANY_DRIVE_NAME, "company");
-  const personalDriveId = addDriveFolder(builder, PERSONAL_DRIVE_NAME, "pod");
+  const companyDriveId = addDriveFolder(
+    builder,
+    COMPANY_DRIVE_ID,
+    COMPANY_DRIVE_NAME,
+    "company"
+  );
+  const personalDriveId = addDriveFolder(
+    builder,
+    PERSONAL_DRIVE_ID,
+    PERSONAL_DRIVE_NAME,
+    "pod"
+  );
 
   // Company Data's folders are the top of the Company drive; every other Space
   // becomes a department folder.

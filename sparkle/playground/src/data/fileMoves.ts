@@ -90,6 +90,18 @@ export function indexFilesById(files: DataSource[]): Map<string, DataSource> {
 }
 
 /**
+ * Whether a folder can hold items at all. The root holds the two drives and
+ * nothing else, so everything lands in one of them rather than beside them.
+ * Shared so dropping something and picking a destination in a dialog ask the
+ * same question.
+ */
+export function canContainItems(
+  targetFolderId: string | null
+): targetFolderId is string {
+  return targetFolderId !== null;
+}
+
+/**
  * Takes the id index rather than the file list: `dragover` fires on every
  * pixel, and a workspace holds thousands of items.
  */
@@ -106,9 +118,7 @@ export function canDropInto(
     return false;
   }
 
-  // The root holds the two drives and nothing else, so everything lands in
-  // one of them rather than beside them.
-  if (!targetFolderId) {
+  if (!canContainItems(targetFolderId)) {
     return false;
   }
 
