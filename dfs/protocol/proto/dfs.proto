@@ -28,7 +28,7 @@ service Dfs {
   rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
 
   // Requires an active session key.
-  rpc Stat(StatRequest) returns (StatResponse);
+  rpc Stat(StatRequest) returns (StatBatch);
 
   // Requires an active session key.
   rpc Lookup(LookupRequest) returns (LookupResponse);
@@ -184,9 +184,9 @@ message StatRequest {
   optional bool include_metadata = 2 [default = false];
 }
 
-message StatResponse {
+// Each successful result carries its read view in object.view.
+message StatBatch {
   repeated StatResult results = 1;
-  required ReadView view = 2;
 }
 
 message StatResult {

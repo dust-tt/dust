@@ -148,11 +148,11 @@ freshness bound.
 
 For reads, `store_version` identifies the store snapshot supplying the response. For mutations, it
 identifies the successful commit. `Attr.view` carries both versions with an individual object's
-attributes and matches the enclosing response or mutation's `view`. `auth_version` identifies the
-permission and topology state used to authorize the operation, whether served from the RAM tree or
-the store fallback. The two fields do not promise a common snapshot, and a mutation response does
-not imply the RAM tree has applied that mutation yet. Neither field replaces `attr_version` or
-`content_version` for detecting changes to an object's attributes or contents.
+attributes and matches the enclosing response or mutation's `view` when present. `auth_version`
+identifies the permission and topology state used to authorize the operation, whether served from
+the RAM tree or the store fallback. The two fields do not promise a common snapshot, and a mutation
+response does not imply the RAM tree has applied that mutation yet. Neither field replaces
+`attr_version` or `content_version` for detecting changes to an object's attributes or contents.
 
 Authorization versions must use one tenant-wide ordering across server instances, restarts, tree
 rebuilds, and store fallback. A process-local counter that resets on restart, or unrelated counters
@@ -406,9 +406,8 @@ StatRequest {
 **Returns**
 
 ```text
-StatResponse {
+StatBatch {
   results: StatResult[]          // One result per input, in the same order.
-  view: ReadView
 }
 
 StatResult {
@@ -418,6 +417,7 @@ StatResult {
 }
 ```
 
+Each successful result carries its read view in `object.view`; the batch has no separate view.
 An individual missing or inaccessible object does not prevent results for the other IDs. With
 `include_metadata=true`, each successful result populates `object.metadata`, including its
 session-specific full path, from the same FDB snapshot as its attributes. Virtual projections return

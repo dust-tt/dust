@@ -159,8 +159,8 @@ permitted authorization replicas MAY expose older versions after newer ones.
 For reads, `store_version` MUST identify the supplying store snapshot; for mutations it MUST
 identify the successful commit, or the checked snapshot when no stored changes occur. `auth_version`
 MUST identify the permission/topology state used for authorization. `Attr.view` MUST match its
-enclosing response or mutation view. The two fields MUST NOT promise a common snapshot, RAM-tree
-application of a mutation, or replace per-object attribute/content versions.
+enclosing response or mutation view when present. The two fields MUST NOT promise a common snapshot,
+RAM-tree application of a mutation, or replace per-object attribute/content versions.
 
 @cc [owner:spolu,label:security;backend] dfs-authorization-version-ordering
 Authorization versions MUST use one tenant-wide ordering across instances, restarts, tree rebuilds,
@@ -202,11 +202,12 @@ changes, including DENY, MUST remain subject to the authorization freshness boun
 immediate revocation.
 
 @cc [owner:spolu,label:api] dfs-stat-results
-`Stat` MUST accept 1–256 references and return exactly one `StatResult` per input in input order.
-Each result MUST echo the reference and contain exactly one of `object` or `error`. A missing or
-inaccessible object MUST NOT prevent other results. The encoded response MUST fit 4 MiB; metadata
-that would exceed the budget MUST fail the RPC with `CAPACITY`, allowing a retry with fewer IDs, and
-MUST NOT be silently omitted from a successful result.
+`Stat` MUST accept 1–256 references and return a `StatBatch` containing exactly one `StatResult` per
+input in input order. Each result MUST echo the reference and contain exactly one of `object` or
+`error`. Successful results MUST carry their read view in `object.view`; the batch MUST NOT contain
+a separate view. A missing or inaccessible object MUST NOT prevent other results. The encoded
+response MUST fit 4 MiB; metadata that would exceed the budget MUST fail the RPC with `CAPACITY`,
+allowing a retry with fewer IDs, and MUST NOT be silently omitted from a successful result.
 
 @cc [owner:spolu,label:api;backend] dfs-stat-metadata
 `Stat(include_metadata=true)` MUST populate each successful object's extended metadata, including
