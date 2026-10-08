@@ -421,6 +421,15 @@
     },
     {
       "files": [
+        "sparkle/src/components/Document/**"
+      ],
+      "rules": {
+        "no-restricted-globals": "off",
+        "dust/noSparkleToLocaleFormat": "off"
+      }
+    },
+    {
+      "files": [
         "cli/dust-cli/**",
         "sparkle/**"
       ],
