@@ -13,6 +13,7 @@ import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
@@ -164,6 +165,11 @@ interface AgentDetailsDropdownMenuProps {
   contextMenuPosition?: { x: number; y: number };
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] duplicate-requires-create-agent
+ * The duplicate action MUST only be offered when the user holds the `create` grant on `agent`, the
+ * workspace permission `NewAgentPage` requires to render the duplication flow.
+ */
 export function AgentDetailsDropdownMenu({
   agentConfiguration,
   owner,
@@ -178,6 +184,7 @@ export function AgentDetailsDropdownMenu({
   const router = useAppRouter();
 
   const { providersHealth } = useAuth();
+  const { hasPermission } = useWorkspacePermissions();
   const noHealthyProviders = !hasHealthyProviders(providersHealth);
 
   const tracking = useManageTracking();
@@ -283,7 +290,7 @@ export function AgentDetailsDropdownMenu({
       )}
       {agentConfiguration.scope !== "global" && (
         <>
-          {!isRedactedForAdmin && (
+          {!isRedactedForAdmin && hasPermission("create", "agent") && (
             <DropdownMenuItem
               label={t`Duplicate (new)`}
               disabled={noHealthyProviders}
