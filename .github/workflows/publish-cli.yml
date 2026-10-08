@@ -25,7 +25,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
 
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@latest
+        run: npm install -g npm@latest # zizmor: ignore[adhoc-packages] intentional global npm pin; TODO: Corepack
 
       - working-directory: cli/dust-cli
         run: npm ci && npm run build:prod && npm publish --provenance --access public
