@@ -5,12 +5,14 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import {
-  INTERNAL_LIVE_SOURCE_READ_PATH,
-  INTERNAL_LIVE_SOURCE_WRITE_PATH,
+  COLLAB_INTERNAL_ROUTES_PREFIX,
+  LIVE_SOURCE_READ_PATH,
+  LIVE_SOURCE_WRITE_PATH,
   toLiveDocumentName,
 } from "@app/types/collab";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
+import { createHono } from "@front-api/lib/hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const SECRET = "collab-internal-secret";
@@ -21,8 +23,12 @@ function post(
   authorization?: string,
   hocuspocus = createCollabHocuspocus()
 ) {
-  const app = createInternalDocumentsApp(hocuspocus);
-  return app.request(path, {
+  // Mounted as the collab server mounts it.
+  const app = createHono().route(
+    COLLAB_INTERNAL_ROUTES_PREFIX,
+    createInternalDocumentsApp(hocuspocus)
+  );
+  return app.request(`${COLLAB_INTERNAL_ROUTES_PREFIX}${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -40,20 +46,20 @@ describe("createInternalDocumentsApp", () => {
   });
 
   it("refuses a request without the secret, or when none is configured", async () => {
-    expect((await post(INTERNAL_LIVE_SOURCE_READ_PATH, read)).status).toBe(401);
+    expect((await post(LIVE_SOURCE_READ_PATH, read)).status).toBe(401);
     expect(
-      (await post(INTERNAL_LIVE_SOURCE_READ_PATH, read, "Bearer wrong")).status
+      (await post(LIVE_SOURCE_READ_PATH, read, "Bearer wrong")).status
     ).toBe(401);
 
     vi.mocked(config.getCollabServerInternalSecret).mockReturnValue(undefined);
-    expect(
-      (await post(INTERNAL_LIVE_SOURCE_READ_PATH, read, "Bearer ")).status
-    ).toBe(401);
+    expect((await post(LIVE_SOURCE_READ_PATH, read, "Bearer ")).status).toBe(
+      401
+    );
   });
 
   it("reports a document nobody has open as closed", async () => {
     const response = await post(
-      INTERNAL_LIVE_SOURCE_READ_PATH,
+      LIVE_SOURCE_READ_PATH,
       read,
       `Bearer ${SECRET}`
     );
@@ -68,7 +74,7 @@ describe("createInternalDocumentsApp", () => {
 
     // `co_edition` is off for the workspace.
     const response = await post(
-      INTERNAL_LIVE_SOURCE_WRITE_PATH,
+      LIVE_SOURCE_WRITE_PATH,
       {
         workspaceId: workspace.sId,
         userId: user.sId,
@@ -80,6 +86,9 @@ describe("createInternalDocumentsApp", () => {
     );
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toMatchObject({
+      error: { type: "feature_flag_not_found" },
+    });
   });
 
   /** A user who can open `notes.md` live, and that file's document opened in a session. */
@@ -111,7 +120,7 @@ describe("createInternalDocumentsApp", () => {
     const { authenticator: outsider } = await createResourceTest({});
     const readAs = (userId?: string) =>
       post(
-        INTERNAL_LIVE_SOURCE_READ_PATH,
+        LIVE_SOURCE_READ_PATH,
         { ...request, userId },
         `Bearer ${SECRET}`,
         hocuspocus
@@ -124,11 +133,32 @@ describe("createInternalDocumentsApp", () => {
     expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
   });
 
+  it("answers a refused access with the error type naming why", async () => {
+    const { hocuspocus, request } = await openNotes();
+
+    const response = await post(
+      LIVE_SOURCE_WRITE_PATH,
+      {
+        ...request,
+        canonicalPath: `${request.canonicalPath}/`,
+        base: "",
+        source: "# Notes\n",
+      },
+      `Bearer ${SECRET}`,
+      hocuspocus
+    );
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { type: "invalid_request_error" },
+    });
+  });
+
   it("refuses a source too large for a checkpoint to write", async () => {
     const { hocuspocus, request } = await openNotes();
 
     const response = await post(
-      INTERNAL_LIVE_SOURCE_WRITE_PATH,
+      LIVE_SOURCE_WRITE_PATH,
       {
         ...request,
         base: "# Notes\n",
@@ -139,12 +169,12 @@ describe("createInternalDocumentsApp", () => {
     );
 
     expect(await response.json()).toMatchObject({ result: "refused" });
-    const read = await post(
-      INTERNAL_LIVE_SOURCE_READ_PATH,
+    const after = await post(
+      LIVE_SOURCE_READ_PATH,
       request,
       `Bearer ${SECRET}`,
       hocuspocus
     );
-    expect(await read.json()).toEqual({ open: true, source: "# Notes\n" });
+    expect(await after.json()).toEqual({ open: true, source: "# Notes\n" });
   });
 });

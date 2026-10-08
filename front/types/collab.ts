@@ -104,8 +104,10 @@ export type LiveCommentServerMessage = z.infer<
  * session's source, change it, then write it back conditional on the source they read.
  */
 
-export const INTERNAL_LIVE_SOURCE_READ_PATH = "/internal/documents/read";
-export const INTERNAL_LIVE_SOURCE_WRITE_PATH = "/internal/documents/write";
+/** Where the collab server mounts the routes only reached from inside the cluster. */
+export const COLLAB_INTERNAL_ROUTES_PREFIX = "/internal";
+export const LIVE_SOURCE_READ_PATH = "/documents/read";
+export const LIVE_SOURCE_WRITE_PATH = "/documents/write";
 
 export const liveSourceReadRequestSchema = z.object({
   workspaceId: z.string().min(1),

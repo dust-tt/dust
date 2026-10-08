@@ -4,6 +4,7 @@ import "./lib/startup-log";
 
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
+import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab";
 import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
@@ -43,7 +44,10 @@ const hocuspocus = createCollabHocuspocus();
 
 const app = createHono();
 app.route("/api/healthz", healthzApp);
-app.route("/", createInternalDocumentsApp(hocuspocus));
+app.route(
+  COLLAB_INTERNAL_ROUTES_PREFIX,
+  createInternalDocumentsApp(hocuspocus)
+);
 
 // crossws types the upgraded socket as a partial WebSocket; on Node it is a full `ws` socket.
 function isWebSocketLike(socket: unknown): socket is WebSocketLike {

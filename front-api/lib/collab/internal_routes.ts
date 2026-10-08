@@ -9,8 +9,8 @@ import type {
   LiveSourceWriteResponse,
 } from "@app/types/collab";
 import {
-  INTERNAL_LIVE_SOURCE_READ_PATH,
-  INTERNAL_LIVE_SOURCE_WRITE_PATH,
+  LIVE_SOURCE_READ_PATH,
+  LIVE_SOURCE_WRITE_PATH,
   liveSourceReadRequestSchema,
   liveSourceWriteRequestSchema,
   toLiveDocumentName,
@@ -19,11 +19,11 @@ import {
   readLiveSource,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
+import { liveAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { Hocuspocus } from "@hocuspocus/server";
-import type { Context } from "hono";
 
 const BEARER_PREFIX = "Bearer ";
 
@@ -57,27 +57,20 @@ async function openLiveFileForUser({
   return checkLiveAccess(auth, canonicalPath);
 }
 
-function accessRefused(ctx: Context, message: string) {
-  return apiError(ctx, {
-    status_code: 403,
-    api_error: { type: "workspace_auth_error", message },
-  });
-}
-
 /**
  * @cc [owner:tdraier,label:security] collab-internal-routes
  * Every internal route MUST answer 401 unless the request carries the configured internal secret,
  * and MUST answer 401 to every request when none is configured. A read MUST return a document's
  * source, and a write MUST be applied, only for the file `checkLiveAccess` opens for the request's
- * user, workspace and path, answering 403 when it refuses or, for an open document, when the
- * request has no user. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES`
- * MUST be refused before it reaches the session, since no checkpoint could write it.
+ * user, workspace and path, answering as the collab ticket route does when it refuses, and 403 for
+ * an open document when the request has no user. A write whose source is larger than
+ * `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused before it reaches the session, since no
+ * checkpoint could write it.
  */
 export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
   const app = createHono();
 
-  // Only its own routes: the app is mounted at the root, next to the public ones.
-  app.use("/internal/*", async (ctx, next) => {
+  app.use("*", async (ctx, next) => {
     if (!isAuthorized(ctx.req.header("authorization"))) {
       return apiError(ctx, {
         status_code: 401,
@@ -91,7 +84,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
   });
 
   app.post(
-    INTERNAL_LIVE_SOURCE_READ_PATH,
+    LIVE_SOURCE_READ_PATH,
     validate("json", liveSourceReadRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath } = ctx.req.valid("json");
@@ -120,10 +113,14 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
       }
 
       if (!userId) {
-        return accessRefused(
-          ctx,
-          "This document is being edited live and can only be read on behalf of a user."
-        );
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message:
+              "This document is being edited live and can only be read on behalf of a user.",
+          },
+        });
       }
       const file = await openLiveFileForUser({
         workspaceId,
@@ -131,14 +128,14 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
         canonicalPath,
       });
       if (file.isErr()) {
-        return accessRefused(ctx, file.error.message);
+        return apiError(ctx, liveAccessErrorToApiError(file.error));
       }
       return ctx.json<LiveSourceReadResponse>(read.value);
     }
   );
 
   app.post(
-    INTERNAL_LIVE_SOURCE_WRITE_PATH,
+    LIVE_SOURCE_WRITE_PATH,
     validate("json", liveSourceWriteRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, base, source } =
@@ -150,7 +147,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
         canonicalPath,
       });
       if (file.isErr()) {
-        return accessRefused(ctx, file.error.message);
+        return apiError(ctx, liveAccessErrorToApiError(file.error));
       }
       if (
         Buffer.byteLength(source, "utf8") >
