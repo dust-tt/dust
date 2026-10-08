@@ -326,6 +326,18 @@ msgid "Sidekick error"
 msgstr "Sidekick error"
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name cannot be empty."
+msgstr "Agent name cannot be empty."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name must be at most {AGENT_NAME_MAX_LENGTH} characters."
+msgstr "Agent name must be at most {AGENT_NAME_MAX_LENGTH} characters."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Agent name cannot contain spaces."
+msgstr "Agent name cannot contain spaces."
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Agent description is required"
 msgstr "Agent description is required"
 

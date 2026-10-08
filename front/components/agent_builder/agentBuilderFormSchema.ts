@@ -3,9 +3,11 @@ import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
-import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
+import type { AgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
+import { getAgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import {
   TRIGGER_EXECUTION_MODES,
@@ -24,12 +26,24 @@ const tagSchema = z.object({
   kind: TAG_KINDS,
 });
 
+const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<
+  AgentNameFormatErrorCode,
+  MessageDescriptor
+> = {
+  empty: msg`Agent name cannot be empty.`,
+  too_long: msg`Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`,
+  contains_spaces: msg`Agent name cannot contain spaces.`,
+};
+
 const getAgentSettingsSchema = (t: (descriptor: MessageDescriptor) => string) =>
   z.object({
     name: z.string().superRefine((value, ctx) => {
-      const error = getAgentNameFormatError(value);
-      if (error) {
-        ctx.addIssue({ code: "custom", message: error });
+      const errorCode = getAgentNameFormatErrorCode(value);
+      if (errorCode) {
+        ctx.addIssue({
+          code: "custom",
+          message: t(AGENT_NAME_FORMAT_ERROR_MESSAGES[errorCode]),
+        });
       }
     }),
     description: z.string().min(1, t(msg`Agent description is required`)),

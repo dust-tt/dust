@@ -39,27 +39,6 @@ function formatTimezone(timezone: string): string {
   return `${city} (${timezone})`;
 }
 
-function isErrorWithMessage(
-  err: unknown
-): err is { error: { message: string } } {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "error" in err &&
-    typeof err.error === "object" &&
-    err.error !== null &&
-    "message" in err.error &&
-    typeof err.error.message === "string"
-  );
-}
-
-function extractErrorMessage(error: unknown): string | null {
-  if (isErrorWithMessage(error)) {
-    return error.error.message;
-  }
-  return null;
-}
-
 interface ScheduleEditionSchedulerProps {
   isEditor: boolean;
   owner: LightWorkspaceType;
@@ -95,7 +74,6 @@ export function ScheduleEditionScheduler({
   const [generationStatus, setGenerationStatus] = useState<
     "idle" | "loading" | "error"
   >("idle");
-  const [cronErrorMessage, setCronErrorMessage] = useState<string | null>(null);
   const [generatedTimezone, setGeneratedTimezone] = useState<string | null>(
     null
   );
@@ -137,10 +115,6 @@ export function ScheduleEditionScheduler({
           setGenerationStatus("idle");
         } else {
           setGenerationStatus("error");
-          setCronErrorMessage(
-            extractErrorMessage(result.error) ??
-              t`Unable to generate a schedule. Please try rephrasing.`
-          );
           setGeneratedTimezone(null);
           setGeneratedConfig(null);
         }
@@ -171,7 +145,7 @@ export function ScheduleEditionScheduler({
       case "loading":
         return t`Generating schedule...`;
       case "error":
-        return cronErrorMessage;
+        return t`Unable to generate a schedule. Please try rephrasing.`;
       case "idle": {
         if (!resolvedConfig) {
           return undefined;
@@ -186,13 +160,7 @@ export function ScheduleEditionScheduler({
       default:
         assertNever(generationStatus);
     }
-  }, [
-    generationStatus,
-    resolvedConfig,
-    generatedTimezone,
-    cronErrorMessage,
-    t,
-  ]);
+  }, [generationStatus, resolvedConfig, generatedTimezone, t]);
 
   const nextOccurrences = useMemo(() => {
     if (!resolvedConfig) {

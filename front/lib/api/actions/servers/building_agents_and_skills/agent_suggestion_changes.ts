@@ -1,7 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
+import type { AgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
+import { getAgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
 import {
   LIST_MODELS_TOOL_NAME,
@@ -41,6 +42,7 @@ import { DustError } from "@app/lib/error";
 import type { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import type { BatchSuggestionResource } from "@app/lib/resources/batch_suggestion_resource";
+import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type {
   ModelIdType,
@@ -110,6 +112,15 @@ export async function validateAgentNameChange(
   return validateAgentName(auth, { name });
 }
 
+const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<
+  AgentNameFormatErrorCode,
+  string
+> = {
+  empty: "Agent name cannot be empty.",
+  too_long: `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`,
+  contains_spaces: "Agent name cannot contain spaces.",
+};
+
 /**
  * The rules a new agent name must follow, whether for a rename or a creation: non-empty once
  * trimmed, no spaces, and not carried by another active agent of the workspace.
@@ -124,9 +135,14 @@ async function validateAgentName(
   >
 > {
   const trimmedName = name.trim();
-  const formatError = getAgentNameFormatError(trimmedName);
-  if (formatError) {
-    return new Err(new DustError("invalid_request_error", formatError));
+  const formatErrorCode = getAgentNameFormatErrorCode(trimmedName);
+  if (formatErrorCode) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        AGENT_NAME_FORMAT_ERROR_MESSAGES[formatErrorCode]
+      )
+    );
   }
 
   if (await getAgentIdFromName(auth, trimmedName)) {

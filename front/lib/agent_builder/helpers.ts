@@ -4,16 +4,20 @@ import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creati
 
 // Agent rules shared by the agent builder and conversational building.
 
+export type AgentNameFormatErrorCode = "empty" | "too_long" | "contains_spaces";
+
 // The format rules every agent name follows. Uniqueness is checked separately, server-side.
-export function getAgentNameFormatError(name: string): string | null {
+export function getAgentNameFormatErrorCode(
+  name: string
+): AgentNameFormatErrorCode | null {
   if (!name) {
-    return "Agent name cannot be empty.";
+    return "empty";
   }
   if (name.length > AGENT_NAME_MAX_LENGTH) {
-    return `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`;
+    return "too_long";
   }
   if (/\s/.test(name)) {
-    return "Agent name cannot contain spaces.";
+    return "contains_spaces";
   }
   return null;
 }
