@@ -21,8 +21,8 @@
 #   dhdb  - open psql on environment database
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
-_dust_hive_services=(sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz)
-_dust_hive_warm_state_services=(front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz)
+_dust_hive_services=(front sdk sparkle front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz storybook sqlite-worker collab)
+_dust_hive_warm_state_services=(front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz storybook sqlite-worker collab)
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
 _dust_hive_json_string() {

@@ -24,10 +24,12 @@
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(
-  sdk sparkle front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front sdk sparkle front-api marketing proxy core oauth connectors front-workers front-spa-poke
+  front-spa-app viz storybook sqlite-worker collab
 )
 _dust_hive_warm_state_services=(
-  front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz
+  storybook sqlite-worker collab
 )
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
