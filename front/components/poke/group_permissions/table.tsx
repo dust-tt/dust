@@ -1,7 +1,7 @@
 import { makeColumnsForGroupPermissions } from "@app/components/poke/group_permissions/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import type { PokeGroupPermissionResourceType } from "@app/lib/api/poke/group_permissions";
 import { usePokeGroupPermissions } from "@app/poke/swr/group_permissions";
+import type { GroupPermissionResourceType } from "@app/types/group_permissions";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -10,7 +10,7 @@ interface GroupPermissionsDataTableProps {
   // Pass either a groupId (grants held by that group) or a resourceType +
   // resourceId (grants that apply to that resource instance).
   groupId?: string;
-  resourceType?: PokeGroupPermissionResourceType;
+  resourceType?: GroupPermissionResourceType;
   resourceId?: string;
 }
 

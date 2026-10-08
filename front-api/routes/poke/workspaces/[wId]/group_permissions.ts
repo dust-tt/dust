@@ -2,12 +2,10 @@ import type { PokeListGroupPermissions } from "@app/lib/api/poke/group_permissio
 import {
   getPokeGroupPermissionsForGroup,
   getPokeGroupPermissionsForResource,
-  POKE_GROUP_PERMISSION_RESOURCE_TYPES,
 } from "@app/lib/api/poke/group_permissions";
 import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
+import { GROUP_PERMISSION_RESOURCE_TYPES } from "@app/types/group_permissions";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -19,7 +17,7 @@ const QuerySchema = z.union([
     groupId: z.string(),
   }),
   z.object({
-    resourceType: z.enum([...POKE_GROUP_PERMISSION_RESOURCE_TYPES]),
+    resourceType: z.enum([...GROUP_PERMISSION_RESOURCE_TYPES]),
     resourceId: z.string(),
   }),
 ]);
@@ -52,51 +50,23 @@ app.get(
       });
     }
 
-    const { resourceType, resourceId } = query;
-    switch (resourceType) {
-      case "space": {
-        const space = await SpaceResource.fetchById(auth, resourceId);
-        if (!space) {
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "space_not_found",
-              message: "Space not found.",
-            },
-          });
-        }
-
-        return ctx.json({
-          groupPermissions: await getPokeGroupPermissionsForResource(auth, {
-            resourceType: "space",
-            resourceId: space.id,
-          }),
-        });
-      }
-
-      case "skill": {
-        const skill = await SkillResource.fetchById(auth, resourceId);
-        if (!skill) {
-          return apiError(ctx, {
-            status_code: 404,
-            api_error: {
-              type: "skill_not_found",
-              message: "Skill not found.",
-            },
-          });
-        }
-
-        return ctx.json({
-          groupPermissions: await getPokeGroupPermissionsForResource(auth, {
-            resourceType: "skill",
-            resourceId: skill.id,
-          }),
-        });
-      }
-
-      default:
-        return assertNever(resourceType);
+    const resourceModelId = getResourceIdFromSId(query.resourceId);
+    if (resourceModelId === null) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid resource sId.",
+        },
+      });
     }
+
+    return ctx.json({
+      groupPermissions: await getPokeGroupPermissionsForResource(auth, {
+        resourceType: query.resourceType,
+        resourceId: resourceModelId,
+      }),
+    });
   }
 );
 
