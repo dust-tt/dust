@@ -197,6 +197,7 @@ export const AUDIT_ACTIONS = [
   "frame.email_grant_revoked",
   "frame.publication_activated",
   "frame.share_scope_updated",
+  "frame.trust_granted",
   // Audit Logs.
   "audit_log.viewed",
   "audit_log.export_configured",

@@ -1,0 +1,14 @@
+{
+  "action": "frame.trust_granted",
+  "targets": [
+    { "type": "workspace" },
+    { "type": "frame" },
+    { "type": "user" }
+  ],
+  "metadata": {
+    "frame_id": "string",
+    "publisher_id": "string",
+    "publisher_email": "string",
+    "actor_type": "string"
+  }
+}

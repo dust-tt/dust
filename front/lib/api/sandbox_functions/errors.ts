@@ -22,7 +22,8 @@ export class SandboxFunctionError extends Error {
 
 export type SandboxFunctionInvocationErrorCode =
   | "user_authentication_required"
-  | "frame_runtime_unavailable";
+  | "frame_runtime_unavailable"
+  | "frame_trust_required";
 
 export class SandboxFunctionInvocationError extends Error {
   constructor(

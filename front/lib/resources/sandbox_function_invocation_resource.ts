@@ -762,6 +762,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const authorizeStartedAtMs = Date.now();
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
+        executionMode: persistedFunction.executionMode,
+        publicationId: persistedFunction.publicationId,
         origin: this.origin ?? "delegated",
         owner: {
           kind: "frame",

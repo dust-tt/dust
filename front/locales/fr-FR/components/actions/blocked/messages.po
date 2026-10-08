@@ -13,6 +13,46 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Someone else published this Frame since you opened it. Reload it to see who."
+msgstr "Quelqu’un d’autre a publié cette Frame depuis que vous l’avez ouverte. Rechargez-la pour savoir qui."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "We couldn't save your choice. Try again."
+msgstr "Impossible d’enregistrer votre choix. Réessayez."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "We couldn't load who published this Frame. Reload it to try again."
+msgstr "Impossible de savoir qui a publié cette Frame. Rechargez-la pour réessayer."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Do you trust {publisherName}?"
+msgstr "Faites-vous confiance à {publisherName} ?"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "{publisherName} published this Frame. Its code can use Dust tools as you, with your access and your connected accounts, such as Gmail or Slack. Only continue if you trust them."
+msgstr "{publisherName} a publié cette Frame. Son code peut utiliser les outils Dust en votre nom, avec vos accès et vos comptes connectés, comme Gmail ou Slack. Ne continuez que si vous faites confiance à cette personne."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "This Frame can't use tools"
+msgstr "Cette Frame ne peut pas utiliser d’outils"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Nobody is recorded as its publisher, so it can't use tools on your behalf. Ask someone who can edit it to publish it again."
+msgstr "Aucun auteur de publication n’est enregistré, elle ne peut donc pas utiliser d’outils en votre nom. Demandez à une personne qui peut la modifier de la publier à nouveau."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Not now"
+msgstr "Plus tard"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Trust"
+msgstr "Faire confiance"
+
 #: front/components/actions/blocked/PersonalAuthenticationCard.tsx
 msgid "Connect account"
 msgstr "Connecter le compte"

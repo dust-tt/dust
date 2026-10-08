@@ -1,4 +1,5 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import { FramePublicationResource } from "@app/lib/resources/frame_publication_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -67,6 +68,10 @@ async function setup() {
     })}Status/manifest.json`,
   });
   await frame.setShareScope(context.auth, "workspace_and_emails");
+  await FramePublicationResource.makeNew(context.auth, {
+    frame,
+    publicationId,
+  });
   await withTransaction((transaction) =>
     SandboxFunctionResource.createForFramePublication(
       context.auth,

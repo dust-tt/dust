@@ -52,6 +52,23 @@ export class FramePublicationResource extends BaseResource<FramePublicationModel
     return new this(this.model, row.get());
   }
 
+  static async fetchByFrameAndPublicationId(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<FramePublicationResource | null> {
+    this.assertFrameOfWorkspace(auth, frame);
+
+    const row = await this.model.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        fileId: frame.id,
+        publicationId,
+      },
+    });
+
+    return row ? new this(this.model, row.get()) : null;
+  }
+
   static async listForFrame(
     auth: Authenticator,
     frame: FileResource

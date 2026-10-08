@@ -13,6 +13,46 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Someone else published this Frame since you opened it. Reload it to see who."
+msgstr "Someone else published this Frame since you opened it. Reload it to see who."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "We couldn't save your choice. Try again."
+msgstr "We couldn't save your choice. Try again."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "We couldn't load who published this Frame. Reload it to try again."
+msgstr "We couldn't load who published this Frame. Reload it to try again."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Do you trust {publisherName}?"
+msgstr "Do you trust {publisherName}?"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "{publisherName} published this Frame. Its code can use Dust tools as you, with your access and your connected accounts, such as Gmail or Slack. Only continue if you trust them."
+msgstr "{publisherName} published this Frame. Its code can use Dust tools as you, with your access and your connected accounts, such as Gmail or Slack. Only continue if you trust them."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "This Frame can't use tools"
+msgstr "This Frame can't use tools"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Nobody is recorded as its publisher, so it can't use tools on your behalf. Ask someone who can edit it to publish it again."
+msgstr "Nobody is recorded as its publisher, so it can't use tools on your behalf. Ask someone who can edit it to publish it again."
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Not now"
+msgstr "Not now"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Close"
+msgstr "Close"
+
+#: front/components/actions/blocked/FrameTrustCard.tsx
+msgid "Trust"
+msgstr "Trust"
+
 #: front/components/actions/blocked/PersonalAuthenticationCard.tsx
 msgid "Connect account"
 msgstr "Connect account"

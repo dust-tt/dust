@@ -690,6 +690,8 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
+      executionMode: this.executionMode,
+      publicationId: this.publicationId,
       origin,
       owner: { kind: "frame", frame: this.frame },
     });
