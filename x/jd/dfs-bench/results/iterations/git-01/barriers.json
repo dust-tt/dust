@@ -1,0 +1,65 @@
+[
+  {
+    "phase": "clone",
+    "start_time": 1791318427.350079,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "search",
+    "start_time": 1791318922.7800431,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "finished",
+    "time": 1791318932.368221,
+    "states": {
+      "rocks": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791318922.7807605
+        }
+      },
+      "fdb": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791318922.7808135
+        }
+      },
+      "tikv": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791318922.7806976
+        }
+      }
+    }
+  }
+]

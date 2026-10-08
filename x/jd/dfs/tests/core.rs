@@ -1190,3 +1190,72 @@ fn published_nodes_support_view_handle_reads_without_bypassing_current_authority
         libc::EACCES
     );
 }
+
+#[test]
+fn view_writer_pins_preserve_version_authority_and_writer_fences() {
+    let f = Fixture::new();
+    let node = f.create(&f.root, "view-writer", Kind::File);
+    f.grant(&f.root, "alice", READ | WRITE);
+    f.engine.view(&f.alice.id).unwrap();
+    let handle = format!("view:{}", node.id);
+    let mutation = |node: &Node| Mutation::Write {
+        node: node.id.clone(),
+        base: node.version.clone(),
+        offset: 0,
+        data: b"new".to_vec(),
+        append: false,
+        handle: Some(handle.clone()),
+    };
+    assert_eq!(
+        f.engine
+            .mutate(&f.bob.id, f.bob.request_id(), mutation(&node))
+            .unwrap_err()
+            .code,
+        libc::EACCES
+    );
+    let lease = f
+        .engine
+        .open_writeback(&f.admin.id, &node.id, &id())
+        .unwrap();
+    assert_eq!(
+        f.engine
+            .mutate(&f.alice.id, f.alice.request_id(), mutation(&node))
+            .unwrap_err()
+            .code,
+        libc::EBUSY
+    );
+    f.engine.close_handle(&f.admin.id, &lease.handle).unwrap();
+    let current = f
+        .engine
+        .mutate(&f.alice.id, f.alice.request_id(), mutation(&node))
+        .unwrap()
+        .node
+        .unwrap();
+    assert_eq!(
+        f.engine
+            .mutate(&f.alice.id, f.alice.request_id(), mutation(&node))
+            .unwrap_err()
+            .code,
+        libc::ESTALE
+    );
+    f.apply(Mutation::Unlink {
+        parent: f.root.clone(),
+        name: node.name.clone(),
+        expected: node.entry_token.clone(),
+        directory: false,
+    });
+    let current = f
+        .engine
+        .mutate(&f.alice.id, f.alice.request_id(), mutation(&current))
+        .unwrap()
+        .node
+        .unwrap();
+    f.grant(&f.root, "alice", READ);
+    assert_eq!(
+        f.engine
+            .mutate(&f.alice.id, f.alice.request_id(), mutation(&current))
+            .unwrap_err()
+            .code,
+        libc::EACCES
+    );
+}

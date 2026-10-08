@@ -1,0 +1,80 @@
+[
+  {
+    "backends": [
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instanceGroups/dfs-rawkv-jd-20261005-routers-a"
+      },
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/instanceGroups/dfs-rawkv-jd-20261005-routers-b"
+      },
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/instanceGroups/dfs-rawkv-jd-20261005-routers-f"
+      }
+    ],
+    "connectionDraining": {
+      "drainingTimeoutSec": 0
+    },
+    "connectionTrackingPolicy": {
+      "connectionPersistenceOnUnhealthyBackends": "NEVER_PERSIST",
+      "idleTimeoutSec": 600,
+      "trackingMode": "PER_CONNECTION"
+    },
+    "creationTimestamp": "2026-10-05T05:52:51.521-07:00",
+    "description": "",
+    "fingerprint": "1qEp0-UhL0Q=",
+    "healthChecks": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/healthChecks/dfs-rawkv-jd-20261005-router"
+    ],
+    "id": "5894376303597855564",
+    "kind": "compute#backendService",
+    "loadBalancingScheme": "INTERNAL",
+    "name": "dfs-rawkv-jd-20261005-routers",
+    "protocol": "TCP",
+    "region": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1",
+    "selfLink": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-routers",
+    "sessionAffinity": "NONE",
+    "timeoutSec": 30
+  },
+  {
+    "backends": [
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instanceGroups/dfs-rawkv-jd-20261005-routers-a"
+      },
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/instanceGroups/dfs-rawkv-jd-20261005-routers-b"
+      },
+      {
+        "balancingMode": "CONNECTION",
+        "group": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/instanceGroups/dfs-rawkv-jd-20261005-routers-f"
+      }
+    ],
+    "connectionDraining": {
+      "drainingTimeoutSec": 0
+    },
+    "connectionTrackingPolicy": {
+      "connectionPersistenceOnUnhealthyBackends": "NEVER_PERSIST",
+      "idleTimeoutSec": 600,
+      "trackingMode": "PER_CONNECTION"
+    },
+    "creationTimestamp": "2026-10-05T06:32:40.791-07:00",
+    "description": "",
+    "fingerprint": "doBcZPCrMEY=",
+    "healthChecks": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/healthChecks/dfs-rawkv-jd-20261005-search"
+    ],
+    "id": "8559670116565784599",
+    "kind": "compute#backendService",
+    "loadBalancingScheme": "INTERNAL",
+    "name": "dfs-rawkv-jd-20261005-search",
+    "protocol": "TCP",
+    "region": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1",
+    "selfLink": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-search",
+    "sessionAffinity": "NONE",
+    "timeoutSec": 30
+  }
+]

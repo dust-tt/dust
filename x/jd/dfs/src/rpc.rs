@@ -222,6 +222,7 @@ impl Service {
                     handle.as_deref(),
                 )
                 .map(Reply::Data),
+            Call::ReadBlocks { ranges } => engine.read_blocks(&session, &ranges).map(Reply::Blocks),
             Call::ReadPack { ranges } => {
                 if ranges.len() > 256
                     || ranges

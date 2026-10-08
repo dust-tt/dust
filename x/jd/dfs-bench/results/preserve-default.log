@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/Users/jd/repos/dust-tt/dust/.hives/poc-dfs/x/jd/dfs-bench/scripts/preserve-default.py", line 56, in <module>
+    list(pool.map(preserve, backends))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 608, in result_iterator
+    yield fs.pop().result()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 445, in result
+    return self.__get_result()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 390, in __get_result
+    raise self._exception
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/thread.py", line 52, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/Users/jd/repos/dust-tt/dust/.hives/poc-dfs/x/jd/dfs-bench/scripts/preserve-default.py", line 49, in preserve
+    assert p.returncode == 0, p.stderr.decode()
+AssertionError:   File "<stdin>", line 19
+    (b/'config/client.json').write_text(json.dumps(settings,indent=2)+'
+                                                                      ^
+SyntaxError: unterminated string literal (detected at line 19)
+

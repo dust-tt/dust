@@ -68,7 +68,7 @@ impl Dfs for LostReplies {
         }
         let reply = self.service.call(request).await?;
         let kind = match envelope.call {
-            Call::Read { .. } => 1,
+            Call::Read { .. } | Call::ReadBlocks { .. } => 1,
             Call::ReadPack { .. } => 2,
             Call::Mutate { .. } => 3,
             Call::RenewWriteback { .. } => 4,
@@ -1090,3 +1090,6 @@ async fn linux_namespace_capacity_rejects_create_before_publication() {
 #[cfg(target_os = "linux")]
 #[path = "publication/writeback.rs"]
 mod writeback;
+
+#[path = "publication/live.rs"]
+mod live;

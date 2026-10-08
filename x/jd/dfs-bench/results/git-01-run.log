@@ -1,0 +1,257 @@
+{"phase": "clone", "start_time": 1791318427.350079, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318414.7577322}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318425.958652}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318437.570373}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318448.7002618}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318459.829246}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318471.012735}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318482.250437}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318493.4447901}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318504.857975}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318516.055189}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318527.210921}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318538.368522}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318549.563267}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318560.707159}
+{"waiting": "search", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318572.133069}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318583.290526}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318594.468384}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318605.556694}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318616.685568}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318627.8385348}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318639.260292}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318650.406326}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318661.562809}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318672.7497861}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318683.896363}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318695.020513}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318706.433462}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318717.6422532}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318728.75152}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318739.878865}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318751.0322099}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318762.163994}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318773.628932}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318784.833938}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318795.9803572}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318807.078341}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318818.22969}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318829.388293}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318840.842432}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318852.019649}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318863.160031}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318874.3278039}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318885.5177128}
+{"waiting": "search", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318896.6814332}
+{"phase": "search", "start_time": 1791318922.7800431, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318910.0099578}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791318921.170783}
+rocks {
+  "backend": "rocks",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791318427.350079,
+      "actual_start_time": 1791318427.35017,
+      "end_time": 1791318575.6075945
+    },
+    "search": {
+      "target_start_time": 1791318922.7800431,
+      "actual_start_time": 1791318922.7801356,
+      "end_time": 1791318922.780455
+    }
+  },
+  "settings": {
+    "backend": "rocks",
+    "endpoint": "https://10.150.0.3:7443",
+    "search_host": "10.150.0.3",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "scope": "full GitHub clone attempt, validated checkout search when successful",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-01/client/clone-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "clone_mount_startup_ms": 52.712738997797715,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 128,
+    "elapsed_ms": 148257.213916,
+    "successful": false
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "search": {
+    "skipped": true,
+    "reason": "Clone failed; an incomplete checkout is not a valid search corpus."
+  },
+  "iteration": "git-01"
+}
+
+fdb {
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791318427.350079,
+      "actual_start_time": 1791318427.3501809,
+      "end_time": 1791318821.4236503
+    },
+    "search": {
+      "target_start_time": 1791318922.7800431,
+      "actual_start_time": 1791318922.7801666,
+      "end_time": 1791318922.7806623
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "scope": "full GitHub clone attempt, validated checkout search when successful",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-01/client/clone-mount-metrics.json"
+  ],
+  "clone_mount_startup_ms": 71.85973699961323,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 128,
+    "elapsed_ms": 394073.045936,
+    "successful": false
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "search": {
+    "skipped": true,
+    "reason": "Clone failed; an incomplete checkout is not a valid search corpus."
+  },
+  "iteration": "git-01"
+}
+
+tikv {
+  "backend": "tikv",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791318427.350079,
+      "actual_start_time": 1791318427.3501709,
+      "end_time": 1791318904.3022912
+    },
+    "search": {
+      "target_start_time": 1791318922.7800431,
+      "actual_start_time": 1791318922.780136,
+      "end_time": 1791318922.780419
+    }
+  },
+  "settings": {
+    "backend": "tikv",
+    "endpoint": "https://10.150.0.15:7443",
+    "search_host": "10.150.0.15",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "scope": "full GitHub clone attempt, validated checkout search when successful",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-01/client/clone-mount-metrics.json"
+  ],
+  "clone_mount_startup_ms": 58.749177002027864,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 128,
+    "elapsed_ms": 476951.838288,
+    "successful": false
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "search": {
+    "skipped": true,
+    "reason": "Clone failed; an incomplete checkout is not a valid search corpus."
+  },
+  "iteration": "git-01"
+}
+

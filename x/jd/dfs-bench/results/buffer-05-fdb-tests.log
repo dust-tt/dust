@@ -1,0 +1,57 @@
+
+running 7 tests
+test acknowledged_directory_overlay_preserves_unseen_changes ... ok
+test capacity_flush_keeps_current_file_buffered              ... ok
+test incremental_refresh_handles_more_than_128_changes       ... ok
+test graceful_unmount_drains_unpublished_files               ... ok
+test buffered_creates_coalesce_and_sync_preserves_all_files  ... ok
+test file_batch_is_atomic_fenced_and_idempotent              ... ok
+test buffered_revocation_is_deferred_and_retained            ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.91s
+
+
+running 7 tests
+test warm_key_hints_do_not_cache_credential_authority                ... ok
+test sessions_handles_and_logout_cross_frontends                     ... ok
+test identical_append_resolves_once_and_rejects_changed_payload      ... ok
+test opposing_directory_moves_cannot_form_cycle                      ... ok
+test cached_history_and_handles_do_not_bypass_group_revocation       ... ok
+test chunk_boundaries_holes_and_stale_base_are_preserved             ... ok
+test view_pins_fence_writes_by_version_session_and_current_authority ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.59s
+
+
+running 3 tests
+test distributed_incremental_workers_reject_stale_replay_and_recover_shared_progress ... ok
+test directory_move_during_index_publication_preserves_authority_and_newer_content   ... ok
+test large_tenant_edits_index_one_document_and_become_search_visible                 ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 52.91s
+
+large tenant: created 500 files in 2.5s
+large tenant: created 1000 files in 4.9s
+large tenant: created 1500 files in 7.4s
+large tenant: created 2000 files in 9.9s
+large tenant: created 2500 files in 12.3s
+large tenant: created 3000 files in 14.8s
+large tenant: created 3500 files in 17.3s
+large tenant: created 4000 files in 19.8s
+large tenant: created 4500 files in 22.3s
+large tenant: created 5000 files in 24.8s
+large tenant: created 5500 files in 27.3s
+large tenant: created 6000 files in 29.8s
+large tenant: created 6500 files in 32.4s
+large tenant: created 7000 files in 34.9s
+large tenant: created 7500 files in 37.4s
+large tenant: created 8000 files in 39.9s
+large tenant: created 8500 files in 42.4s
+large tenant: created 9000 files in 45.0s
+large tenant: created 9500 files in 47.5s
+large tenant: created 10000 files in 50.0s
+large tenant edit: {"ack_to_index_ms":27.398623,"ack_to_verified_search_ms":45.100014,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20143,"object_writes":12,"root_cas":0,"root_reads":0,"transaction_commits":12,"transaction_conflicts":0,"transaction_snapshots":51},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20129,"object_writes":11,"root_cas":0,"root_reads":0,"transaction_commits":11,"transaction_conflicts":0,"transaction_snapshots":47},"mutation_ms":5.685268000000001,"primary_index_operations":1,"revision":1,"through":10002}
+large tenant edit: {"ack_to_index_ms":26.964107000000002,"ack_to_verified_search_ms":46.271361,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20157,"object_writes":13,"root_cas":0,"root_reads":0,"transaction_commits":13,"transaction_conflicts":0,"transaction_snapshots":55},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20143,"object_writes":12,"root_cas":0,"root_reads":0,"transaction_commits":12,"transaction_conflicts":0,"transaction_snapshots":51},"mutation_ms":5.8586219999999996,"primary_index_operations":1,"revision":2,"through":10003}
+large tenant edit: {"ack_to_index_ms":27.048418,"ack_to_verified_search_ms":42.239636999999995,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20171,"object_writes":14,"root_cas":0,"root_reads":0,"transaction_commits":14,"transaction_conflicts":0,"transaction_snapshots":59},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20157,"object_writes":13,"root_cas":0,"root_reads":0,"transaction_commits":13,"transaction_conflicts":0,"transaction_snapshots":55},"mutation_ms":6.317494,"primary_index_operations":1,"revision":3,"through":10004}
+large tenant edit: {"ack_to_index_ms":25.819455,"ack_to_verified_search_ms":41.382521999999994,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20185,"object_writes":15,"root_cas":0,"root_reads":0,"transaction_commits":15,"transaction_conflicts":0,"transaction_snapshots":63},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20171,"object_writes":14,"root_cas":0,"root_reads":0,"transaction_commits":14,"transaction_conflicts":0,"transaction_snapshots":59},"mutation_ms":5.605314,"primary_index_operations":1,"revision":4,"through":10005}
+large tenant edit: {"ack_to_index_ms":24.793796999999998,"ack_to_verified_search_ms":39.562067,"indexed_documents":1,"indexer_object_reads":14,"indexer_object_writes":1,"indexer_root_cas":0,"indexer_root_reads":0,"indexer_stats_after":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20199,"object_writes":16,"root_cas":0,"root_reads":0,"transaction_commits":16,"transaction_conflicts":0,"transaction_snapshots":67},"indexer_stats_before":{"cache":{"capacity_bytes":67108864,"entries":0,"evictions":0,"hits":0,"misses":0,"resident_bytes":0},"object_reads":20185,"object_writes":15,"root_cas":0,"root_reads":0,"transaction_commits":15,"transaction_conflicts":0,"transaction_snapshots":63},"mutation_ms":5.620356,"primary_index_operations":1,"revision":5,"through":10006}

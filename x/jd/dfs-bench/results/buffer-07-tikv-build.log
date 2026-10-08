@@ -1,0 +1,14 @@
+    Updating crates.io index
+    Blocking waiting for file lock on package cache
+     Locking 1 package to highest Rust 1.99.0 compatible version
+      Adding serde_bytes v0.11.19
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling dfs-tikv v0.1.0 (/home/dfs/dfs-tikv)
+   Compiling serde_bytes v0.11.19
+    Finished `release` profile [optimized + debuginfo] target(s) in 4m 51s
+  Executable tests/buffered.rs (target/release/deps/buffered-e05c2bafad549db4)
+  Executable tests/codec.rs (target/release/deps/codec-10e783ef6f39d356)
+  Executable tests/engine.rs (target/release/deps/engine-f57d0cffa8aabc2f)
+  Executable tests/indexing.rs (target/release/deps/indexing-184677691efb3650)

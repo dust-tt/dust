@@ -1,0 +1,21 @@
+
+running 5 tests
+test incremental_refresh_handles_more_than_128_changes      ... ok
+test graceful_unmount_drains_unpublished_files              ... ok
+test buffered_creates_coalesce_and_sync_preserves_all_files ... ok
+test file_batch_is_atomic_fenced_and_idempotent             ... ok
+test buffered_revocation_is_deferred_and_retained           ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.10s
+
+
+running 6 tests
+test sessions_handles_and_logout_cross_frontends                     ... ok
+test identical_append_resolves_once_and_rejects_changed_payload      ... ok
+test opposing_directory_moves_cannot_form_cycle                      ... ok
+test cached_history_and_handles_do_not_bypass_group_revocation       ... ok
+test chunk_boundaries_holes_and_stale_base_are_preserved             ... ok
+test view_pins_fence_writes_by_version_session_and_current_authority ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.56s
+

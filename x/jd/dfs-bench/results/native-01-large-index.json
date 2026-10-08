@@ -1,0 +1,253 @@
+{
+  "bootstrap_ms": 1294.8209319999999,
+  "bootstrap_passes": 10,
+  "bootstrap_refresh_interval": "100ms",
+  "creation_ms": 59618.615750000004,
+  "edits": [
+    {
+      "ack_to_index_ms": 34.358747,
+      "ack_to_verified_search_ms": 57.945504,
+      "indexed_documents": 1,
+      "indexer_object_reads": 17,
+      "indexer_object_writes": 1,
+      "indexer_root_cas": 0,
+      "indexer_root_reads": 0,
+      "indexer_stats_after": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20179,
+        "object_writes": 12,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 12,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 51
+      },
+      "indexer_stats_before": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20162,
+        "object_writes": 11,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 11,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 47
+      },
+      "mutation_ms": 7.358532,
+      "primary_index_operations": 1,
+      "revision": 1,
+      "through": 10002
+    },
+    {
+      "ack_to_index_ms": 33.131535,
+      "ack_to_verified_search_ms": 50.114556,
+      "indexed_documents": 1,
+      "indexer_object_reads": 17,
+      "indexer_object_writes": 1,
+      "indexer_root_cas": 0,
+      "indexer_root_reads": 0,
+      "indexer_stats_after": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20196,
+        "object_writes": 13,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 13,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 55
+      },
+      "indexer_stats_before": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20179,
+        "object_writes": 12,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 12,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 51
+      },
+      "mutation_ms": 6.299425,
+      "primary_index_operations": 1,
+      "revision": 2,
+      "through": 10003
+    },
+    {
+      "ack_to_index_ms": 31.467188,
+      "ack_to_verified_search_ms": 47.879931,
+      "indexed_documents": 1,
+      "indexer_object_reads": 17,
+      "indexer_object_writes": 1,
+      "indexer_root_cas": 0,
+      "indexer_root_reads": 0,
+      "indexer_stats_after": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20213,
+        "object_writes": 14,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 14,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 59
+      },
+      "indexer_stats_before": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20196,
+        "object_writes": 13,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 13,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 55
+      },
+      "mutation_ms": 7.308936999999999,
+      "primary_index_operations": 1,
+      "revision": 3,
+      "through": 10004
+    },
+    {
+      "ack_to_index_ms": 37.882218,
+      "ack_to_verified_search_ms": 55.061419,
+      "indexed_documents": 1,
+      "indexer_object_reads": 17,
+      "indexer_object_writes": 1,
+      "indexer_root_cas": 0,
+      "indexer_root_reads": 0,
+      "indexer_stats_after": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20230,
+        "object_writes": 15,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 15,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 63
+      },
+      "indexer_stats_before": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20213,
+        "object_writes": 14,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 14,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 59
+      },
+      "mutation_ms": 7.312731,
+      "primary_index_operations": 1,
+      "revision": 4,
+      "through": 10005
+    },
+    {
+      "ack_to_index_ms": 31.276178,
+      "ack_to_verified_search_ms": 48.552935,
+      "indexed_documents": 1,
+      "indexer_object_reads": 17,
+      "indexer_object_writes": 1,
+      "indexer_root_cas": 0,
+      "indexer_root_reads": 0,
+      "indexer_stats_after": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20247,
+        "object_writes": 16,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 16,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 67
+      },
+      "indexer_stats_before": {
+        "cache": {
+          "capacity_bytes": 67108864,
+          "entries": 0,
+          "evictions": 0,
+          "hits": 0,
+          "misses": 0,
+          "resident_bytes": 0
+        },
+        "object_reads": 20230,
+        "object_writes": 15,
+        "root_cas": 0,
+        "root_reads": 0,
+        "transaction_commits": 15,
+        "transaction_conflicts": 0,
+        "transaction_snapshots": 63
+      },
+      "mutation_ms": 7.0461730000000005,
+      "primary_index_operations": 1,
+      "revision": 5,
+      "through": 10006
+    }
+  ],
+  "files": 10000,
+  "indexed_records": 10001,
+  "limitations": "namespace cardinality and incremental work, not large-body ingest, HTTP ingress latency, or production visibility SLA",
+  "measurement_refresh_interval": "1s",
+  "passed": true,
+  "replicas": 1,
+  "scope": "normal filesystem publications; direct index driver without worker polling delay; two independent engines on host A; three-host storage",
+  "shards": 3,
+  "unchanged_sentinel_preserved": true,
+  "workload": "10000 empty files; one receives 12-byte text and five same-size edits"
+}

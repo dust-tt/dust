@@ -342,6 +342,12 @@ impl Mount {
             Mutation::Rename {
                 parent, new_parent, ..
             } => vec![parent.clone(), new_parent.clone()],
+            Mutation::PutFiles { files } => files
+                .iter()
+                .flat_map(|file| {
+                    std::iter::once(file.node.id.clone()).chain(file.node.parent.clone())
+                })
+                .collect(),
             Mutation::Member { .. } => Vec::new(),
         }
     }

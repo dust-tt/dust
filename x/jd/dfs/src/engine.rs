@@ -330,8 +330,7 @@ impl Engine {
         let node = reader.node(&session.tenant, node)?;
         if let Some(handle) = handle {
             if let Some(pin) = handle.strip_prefix("view:") {
-                if write
-                    || pin != node.id
+                if pin != node.id
                     || !self
                         .view_pins
                         .lock()
@@ -469,6 +468,66 @@ impl Engine {
         }
         Ok(chunk.bytes)
     }
+    pub fn read_blocks(
+        &self,
+        session: &str,
+        ranges: &[BlockRead],
+    ) -> Result<Vec<Result<BlockPage>>> {
+        validate_block_reads(ranges)?;
+        let session = self.session(session)?;
+        let reader = self.store.reader();
+        let mut result = Vec::with_capacity(ranges.len());
+        for range in ranges {
+            result.push(self.block_page(&reader, &session, range));
+        }
+        Ok(result)
+    }
+
+    fn block_page(
+        &self,
+        reader: &Reader<'_>,
+        session: &Session,
+        range: &BlockRead,
+    ) -> Result<BlockPage> {
+        let node = self.live_node(reader, session, &range.node, range.handle.as_deref(), false)?;
+        self.require(reader, session, &node.id, READ)?;
+        let manifest = self.manifest(reader, &session.tenant, &node, &range.version)?;
+        let end = range
+            .offset
+            .saturating_add(u64::from(range.size))
+            .min(manifest.size);
+        let first = range.offset / CHUNK_BYTES as u64;
+        let mut page = BlockPage {
+            node: range.node.clone(),
+            version: range.version.clone(),
+            size: manifest.size,
+            first,
+            hashes: Vec::new(),
+            chunks: Vec::new(),
+        };
+        if end <= range.offset {
+            return Ok(page);
+        }
+        let mut sent = std::collections::BTreeSet::new();
+        for index in first..=(end - 1) / CHUNK_BYTES as u64 {
+            let hash = if let Some(chunk) = manifest.chunks.get(&index) {
+                let bytes = self.chunk(reader, &session.tenant, chunk)?;
+                if bytes.len() > CHUNK_BYTES {
+                    return Err(err(libc::EIO, "oversized block"));
+                }
+                let hash = format!("{:x}", Sha256::digest(&bytes));
+                if !range.known.contains(&hash) && sent.insert(hash.clone()) {
+                    page.chunks.push((hash.clone(), bytes));
+                }
+                Some(hash)
+            } else {
+                None
+            };
+            page.hashes.push(hash);
+        }
+        Ok(page)
+    }
+
     pub fn read(
         &self,
         session: &str,
@@ -657,7 +716,7 @@ impl Engine {
             from_head: cursor.head,
             head: state.head,
             auth_generation: state.auth_generation,
-            reset: cursor.head < state.journal_floor || state.head - cursor.head > 128,
+            reset: cursor.head < state.journal_floor || state.head - cursor.head > 4096,
             upserts: Vec::new(),
             removed: Vec::new(),
         };
@@ -894,12 +953,100 @@ impl Engine {
         let mut batch = WriteBatch::default();
         let mut targets = Vec::new();
         let mut output = None;
+        let mut extra_nodes = Vec::new();
         let mut written = 0;
         let mut reset = false;
         let mut namespace_roots = Vec::new();
         let namespace_changed =
             matches!(&mutation, Mutation::Rename { .. } | Mutation::Unlink { .. });
         match mutation {
+            Mutation::PutFiles { files } => {
+                validate_file_updates(&files)?;
+                let mut parents = std::collections::BTreeSet::new();
+                let mut directories = std::collections::BTreeSet::new();
+                for file in files {
+                    let node = file.node;
+                    let parent = node.parent.as_ref().unwrap();
+                    Self::check_name(&node.name)?;
+                    if let Some(base) = &file.base {
+                        let previous = if node.kind == Kind::Directory {
+                            let previous = reader.node(tenant, &node.id)?;
+                            self.require(&reader, &session, &node.id, WRITE)?;
+                            if previous.kind != Kind::Directory || &previous.version != base {
+                                return Err(err(libc::ESTALE, "directory version changed"));
+                            }
+                            previous
+                        } else {
+                            self.checked_file(
+                                &reader,
+                                &session,
+                                &node.id,
+                                base,
+                                Some(&format!("view:{}", node.id)),
+                            )?
+                        };
+                        if previous.parent != node.parent
+                            || previous.name != node.name
+                            || previous.entry_token != node.entry_token
+                            || previous.unlinked
+                        {
+                            return Err(err(libc::ESTALE, "file identity changed"));
+                        }
+                    } else {
+                        if !directories.contains(parent) && parents.insert(parent.clone()) {
+                            self.parent(&reader, &session, parent, CREATE | WRITE)?;
+                        }
+                        if reader.entry(tenant, parent, &node.name)?.is_some()
+                            || reader
+                                .get::<Node>("metadata", key(tenant, &["node", &node.id]))?
+                                .is_some()
+                        {
+                            return Err(err(libc::EEXIST, "file identity exists"));
+                        }
+                        if state.node_count >= self.limits.max_nodes as u64 {
+                            return Err(err(libc::EDQUOT, "node quota"));
+                        }
+                        state.node_count += 1;
+                        self.put_entry(
+                            &mut batch,
+                            tenant,
+                            parent,
+                            &node.name,
+                            &node.id,
+                            &node.entry_token,
+                        )?;
+                    }
+                    if reader
+                        .get::<Manifest>(
+                            "metadata",
+                            key(tenant, &["version", &node.id, &node.version]),
+                        )?
+                        .is_some()
+                    {
+                        return Err(err(libc::EEXIST, "file generation exists"));
+                    }
+                    let mut manifest = Manifest {
+                        size: node.size,
+                        chunks: BTreeMap::new(),
+                    };
+                    for (index, bytes) in file.data.chunks(CHUNK_BYTES).enumerate() {
+                        manifest.chunks.insert(
+                            index as u64,
+                            self.put_chunk(&mut batch, tenant, bytes.to_vec())?,
+                        );
+                    }
+                    if node.kind == Kind::File {
+                        self.put_manifest(&mut batch, tenant, &node, &manifest)?;
+                    } else if file.base.is_none() {
+                        directories.insert(node.id.clone());
+                    }
+                    self.put_node(&mut batch, tenant, &node)?;
+                    targets.push(node.id.clone());
+                    targets.push(parent.clone());
+                    extra_nodes.push(node);
+                }
+                output = extra_nodes.pop();
+            }
             Mutation::Create {
                 parent,
                 name,
@@ -1241,6 +1388,24 @@ impl Engine {
                 reset = true;
             }
         }
+        for node in &extra_nodes {
+            state.head += 1;
+            self.store.put(
+                &mut batch,
+                "changes",
+                key(tenant, &["sequence", &format!("{:020}", state.head)]),
+                &Change {
+                    head: state.head,
+                    node: Some(node.id.clone()),
+                    reset: false,
+                    time_ms: now_ms(),
+                    old_parent: node.parent.clone(),
+                    old_name: Some(node.name.clone()),
+                    new_parent: node.parent.clone(),
+                    new_name: Some(node.name.clone()),
+                },
+            )?;
+        }
         state.head += 1;
         if namespace_changed {
             let previous = reader
@@ -1358,6 +1523,7 @@ impl Engine {
             .node
             .map(|node| self.public_node(&self.store.reader(), &session, node))
             .transpose()?;
+        self.pin_nodes(&session, extra_nodes.iter().map(|node| node.id.clone()));
         self.pin_outcome(&session, &outcome);
         if let (Some(started), Some(locked)) = (rename_started, rename_locked) {
             let writer_held_us = locked.elapsed().as_micros() as u64;

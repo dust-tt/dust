@@ -1,0 +1,1 @@
+{"time": 1791303789.5072193, "query": "rare terms", "status": 200, "dfs": {"engine": "elasticsearch", "incomplete": false, "indexed_through": 47517, "source_head": 47517}, "rows": 4, "matches_validated": true, "error": null}

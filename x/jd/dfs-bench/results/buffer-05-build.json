@@ -1,0 +1,12 @@
+{
+  "rocks_features": [
+    "lexical-search"
+  ],
+  "distributed_features": [],
+  "source_verification": "buffer-05-source-verification.json",
+  "correctness_tests": [
+    "buffer-05-rocks-tests.log",
+    "buffer-05-fdb-tests.log",
+    "buffer-05-tikv-tests.log"
+  ]
+}

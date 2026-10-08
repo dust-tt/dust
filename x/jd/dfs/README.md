@@ -1,5 +1,9 @@
 # DFS + Tantivy prototype
 
+[Current clean benchmark](../dfs-bench/docs/RESULTS.md). Previous benchmark runs and timing reports were removed at the user’s request.
+
+The latest implementation adds [authorized content-hash reuse and bounded read batching](../dfs-tikv/docs/CONTENT_HASH_CACHE.md). Earlier measurements below retain their original source identities.
+
 A standalone Rust filesystem service: RocksDB owns filesystem state, tonic serves authenticated RPC, a Linux FUSE client mounts authorized files, and optional embedded Tantivy indexes names and file bodies.
 
 - [Deployment](DEPLOYMENT.md): build, start, mount and restart.
@@ -7,8 +11,6 @@ A standalone Rust filesystem service: RocksDB owns filesystem state, tonic serve
 - [Tantivy API and indexing](lexical/README.md), [HTTP schema](lexical/openapi.json).
 - [Concurrent operations](design/CONCURRENT_OPERATIONS.md): move/write/rename/delete outcomes and tests.
 - [Design investigations](design/index.md): future implementation and Kubernetes/HA work.
-- [Server service template](deploy/dfsd.service), [mount service template](deploy/dfs-mount.service), [historical results](RESULTS.md).
-- [Cleanup verification](results/prototype-cleanup-verified/README.md): 93 default / 114 search tests, 14 mounted scenario groups, HTTP search and restart/rebuild passed on GCP.
 
 ## Build and test
 
@@ -29,7 +31,7 @@ DFS_BIN=target/release bash scripts/smoke.sh
 - `proto/dfs.proto` and `build.rs` generate DFS RPC types; both are required.
 - `src/search.rs` implements source authorization used by Tantivy. `src/export.rs` supplies durable indexing snapshots. Keep both modules.
 - `lexical/openapi.json` is embedded into the server binary. Keep `lexical/` when uploading source; `scripts/sync-cloud.sh` includes it.
-- `scripts/server-implementation-check.py` runs the compiler/test/contract checks with source fingerprints on GCP. `scripts/benchmark-local.sh`, despite its name, also runs on GCP and includes the RPC and two-mount race matrices.
+- `scripts/server-implementation-check.py` runs the compiler/test/contract checks with source fingerprints on GCP. The clean benchmark runner is `../dfs-bench/scripts/run.py`.
 
 ## Start DFS with Tantivy
 
@@ -63,12 +65,12 @@ target/release/dfs-mount \
   --mountpoint runtime/mount
 ```
 
-The tenant root appears under `runtime/mount/files`. The mount defaults to a complete authorized metadata view, no startup body preload, a 4 MiB daemon body cache and kernel-cached read-only access. Writable handles use direct I/O. See `dfs-mount --help` for limits and the experimental kernel-writeback opt-in.
+The tenant root appears under `runtime/mount/files`. The default mount uses one-second metadata/revision validation, direct file-data I/O, a 256 MiB daemon cache and optimistic version-fenced writes. Immutable bytes survive metadata expiry, but reads must validate the selected revision and authority. Explicit fsync is durable. See [the contract and CLI migration](design/ONE_SECOND_VIEW.md); `dfs-mount-legacy` retains the previous Watch/kernel-cache implementation.
 
 ## Publication and recovery
 
 - Successful writes publish atomically. Concurrent content changes use expected versions; namespace mutations check entry tokens. Conflicts fail instead of silently overwriting another client's replacement.
-- **Default `fsync` confirms publication and reports errors; it does not wait for server storage persistence.** `--durable-sync` opts the mount into verified receipt-based WAL persistence. `--publication-only-sync` explicitly selects the default.
+- **Default `fsync` waits for verified WAL persistence and reports prior errors.** The explicit `dfs-mount-legacy` executable retains the older publication-only default and its `--durable-sync`/`--publication-only-sync` flags.
 - Background WAL sync defaults to 100 ms; that timer is not a guaranteed loss bound. Unsynced publications can be lost after a machine failure.
 - Timed-out writes retain their identities for resolution. Unknown outcomes stop dependent writes; synchronization does not issue a replacement mutation with a new identity.
 - Server restart recovers RocksDB and creates a new incarnation. Clients reconcile; old handles can fail. Tantivy rebuilds against the new source incarnation before exposing a matching index generation.

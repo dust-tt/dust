@@ -89,28 +89,11 @@ candidates. These changes preserve the index format and native score/tie orderin
 
 `lexical/cloud-check.sh` runs the feature-enabled DFS suite, Clippy, formatting,
 and a release build on the server. Integration tests use actual RocksDB and Tantivy.
-Measured results and limitations belong in `RESULTS.md` after cloud validation.
+The current [three-system results](../../dfs-bench/docs/RESULTS.md),
+[method](../../dfs-bench/docs/METHOD.md), and
+[topology](../../dfs-bench/docs/TOPOLOGY.md) describe the clean Titanium SSD run.
 
-The Tantivy experiment owns `dfs-tantivy-jd-20261002-server` (n2-standard-16,
-300 GB SSD boot disk) and `dfs-tantivy-jd-20261002-client` (n2-standard-4).
-Only that client can reach the server's private TLS port 7444. Both backend
-listeners and DFS gRPC bind to loopback. `cloud-start.sh PRIVATE_IP` provisions
-new credentials and TLS; `cloud-import.sh` imports the supplied synthetic corpus.
-The unrelated `dfs-search-*` and `dfs-slate-*` VMs are not used for measurements.
-
-The `scale-*.py` scripts repeat the query matrix and concurrent load on generated
-100,000-file and 2.58 GiB corpora, with per-phase cgroup and process memory samples.
-See the larger-corpus follow-up in `RESULTS.md` for measured results, limitations,
-and the complete server/client sequence. Large runs use explicit `--max-nodes`
-limits on both `dfsd` and `dfsctl`; their default remains 100,000 nodes.
-
-`--experiment tantivy-optimized` reuses the saved corpus databases while creating
-fresh indexes under `runtime/optimized`. `optimized-sequence.sh BUILD_UNIT` waits
-for a successful cloud build, runs each server measurement and live checks, and
-restores the original services. Run `scale-run.py` with the same experiment and
-dataset from the local workspace when its phase file exists. The dedicated client
-needs that dataset's fixture and manifest in its corresponding results directory.
-`optimized-compare.py results/tantivy-scale results/tantivy-optimized` verifies
-and aggregates the before/after measurements.
-
-The comparison results and scale comparison scripts describe historical runs. The standalone search service is no longer part of this prototype; use the Tantivy path for current builds and queries.
+The older cloud and scale scripts are historical harnesses. Their VMs, saved
+corpora, indexes and timing reports were removed; they do not identify the
+current deployment or provide a retained baseline. The standalone search service
+is no longer part of this prototype. Current builds and queries use Tantivy.

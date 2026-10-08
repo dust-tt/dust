@@ -4,7 +4,7 @@
 
 This is an executable experiment for native Lance queries with real DFS authorization. It follows the existing filesystem benchmark's seeded fixtures, correctness gates, raw results, and isolated output directories. See the [design doc](../LANCEDB_SEARCH_DESIGN.md) for the Core/Qdrant comparison and architecture choices.
 
-The [local validation results](../results/search/README.md) retain a 1,000-file run and a four-client concurrency run, including raw samples and grant checks.
+The [Clean benchmark results](../../dfs-bench/docs/RESULTS.md) retain a 1,000-file run and a four-client concurrency run, including raw samples and grant checks.
 
 It runs a private local DFS server and embeds LanceDB in Python. It does not implement the proposed search HTTP service, WAL/journal consumer, or async indexer. The benchmark adapter is experimental code, not a production authorization gateway.
 

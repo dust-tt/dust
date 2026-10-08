@@ -1,0 +1,83 @@
+[
+  {
+    "phase": "untar",
+    "start_time": 1791313294.845851,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "filesystem",
+    "start_time": 1791313364.346986,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "search",
+    "start_time": 1791313400.537937,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  },
+  {
+    "phase": "finished",
+    "time": 1791313411.1092448,
+    "states": {
+      "rocks": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791313400.6284735
+        }
+      },
+      "fdb": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791313402.2736728
+        }
+      },
+      "tikv": {
+        "ready": false,
+        "finished": {
+          "passed": true,
+          "time": 1791313401.994827
+        }
+      }
+    }
+  }
+]

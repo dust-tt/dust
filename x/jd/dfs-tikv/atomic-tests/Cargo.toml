@@ -1,0 +1,17 @@
+[package]
+name = "dfs-tikv-atomic-tests"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+dfs-tikv = { path = ".." }
+fail = { version = "0.4", features = ["failpoints"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+serde_json = "1"
+sha2 = "0.10"
+tikv-client = { version = "=0.4.0", features = ["integration-tests"] }
+tokio = { version = "1", features = ["full"] }
+uuid = { version = "1", features = ["v4"] }

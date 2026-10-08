@@ -1,0 +1,2 @@
+Filesystem        1B-blocks       Used        Avail Mounted on
+/dev/nvme0n1   395188764672 9432473600 365606854656 /srv/dfs

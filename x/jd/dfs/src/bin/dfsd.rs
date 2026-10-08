@@ -129,6 +129,8 @@ async fn main() -> anyhow::Result<()> {
         None
     };
     let mut server = Server::builder()
+        .initial_stream_window_size(Some(2 << 20))
+        .initial_connection_window_size(Some(8 << 20))
         .concurrency_limit_per_connection(16)
         .timeout(Duration::from_secs(10));
     if let (Some(cert), Some(key)) = (args.tls_cert, args.tls_key) {

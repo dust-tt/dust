@@ -1,7 +1,10 @@
 # DFS implementation snapshot — handover
 
+[Current clean benchmark](../dfs-bench/docs/RESULTS.md). Previous benchmark runs and timing reports were removed at the user’s request.
+
+The default `dfs-mount` now uses [one-second metadata/revision validation and optimistic publication](design/ONE_SECOND_VIEW.md), direct data I/O and durable explicit fsync. Watch/kernel-cache implementation details below describe `dfs-mount-legacy`; historical benchmark binary names remain unchanged.
+
 - **As of 2026-10-05:** this describes the RocksDB filesystem prototype and its embedded Tantivy search. Behavior below is implemented unless explicitly labelled as a gap. Source links name the responsible types/functions; proposal documents are not evidence of implementation.
-- **Validation boundary:** [cleanup verification](results/prototype-cleanup-verified/README.md) tests the retained RocksDB/Tantivy runtime after removing the experimental backends and standalone search. The older [server campaign](results/server-implementation/summary.json) has its own frozen source and performance results; see the verification section below.
 - **Build inputs:** preserve [Cargo.toml](Cargo.toml) and [Cargo.lock](Cargo.lock) together.
 - **Reading order:** runtime map → identities/storage → publication/recovery → client → search → operational limits. [CONTRACTS](CONTRACTS) records invariants; [server implementation design](design/SERVER_IMPLEMENTATION_DESIGN.md) and [HA design](design/HA_DESIGN.md) describe further work.
 
@@ -294,9 +297,7 @@ These are source publication outcomes with initially valid permissions and captu
 
 - **Execution rule:** builds, tests and benchmarks run on GCP `dust-dev`, not locally. [Reproduction policy](README.md#build-and-test). Rust 1.96/Linux/FUSE/Clang are used by the existing campaign tooling.
 - **Core suites:** [core](tests/core.rs), [store](tests/store.rs), [RPC](tests/rpc.rs), [reader](tests/reader.rs), [publication](tests/publication.rs), [recovery](tests/recovery.rs), [native cache pressure](tests/rocksdb_memory.rs), [lexical](tests/lexical.rs), [namespace races](tests/namespace_races.rs).
-- **Cleanup validation, 2026-10-05:** 93 default / 114 search Rust test executions, strict Clippy, formatting, contracts and release build passed. All 14 two-mount Unix scenario groups passed; HTTP filename/body queries and restart/rebuild preserved file identity/content. [Evidence and exact drivers](results/prototype-cleanup-verified/README.md). This was a correctness rerun, not a full benchmark campaign.
-- **Campaign:** [server-implementation-check.py](scripts/server-implementation-check.py) and [server-implementation-campaign.py](scripts/server-implementation-campaign.py) preserve source/binary fingerprints and evidence. [benchmark-local.sh](scripts/benchmark-local.sh) includes the ordinary filesystem corpus and both race harnesses despite its historical name.
-- **Last frozen local-backend evidence:** 93 default / 114 lexical Rust test executions passed; 2,448 RPC race trials; 72 real two-mount trials; eight failure scenarios; normal 24-row filesystem benchmark. [Archived source and validation summary](results/server-implementation/summary.json). These do not establish million-file improvement, Kubernetes recovery or HA.
+- **Campaign:** [server-implementation-check.py](scripts/server-implementation-check.py) and [server-implementation-campaign.py](scripts/server-implementation-campaign.py) preserve source/binary fingerprints and evidence. [Clean benchmark](../dfs-bench/scripts/run.py) includes the ordinary filesystem corpus and both race harnesses despite its historical name.
 - **Source metrics:** published/persisted prefixes, pending bytes, persistence age, sticky storage error, retained accounting, SST bytes and pending compaction. Native `StoreMemory::usage` exposes cache/pins/memtables; not every native metric is included in RPC `Metrics`.
 - **Client metrics:** RPC categories/bytes, cached namespace charge, inode references, FUSE operations, read admission, prefetch usefulness/eviction and writeback state. Search exposes authenticated status plus indexing logs; Tantivy successful queries include stage timing.
 - **Fault injection:** `dfsd --fault-phase` supports before/after publish and before/after persist, with `--fault-after`; tests separately inject WAL-sync failure. Preserve original source and binary hashes when reproducing a failure.

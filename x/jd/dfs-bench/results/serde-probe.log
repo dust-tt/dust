@@ -1,0 +1,16 @@
+plain_ms=234.623 bytes_ms=105.333 ratio=2.227 wire_identical=true iterations=100 payload_bytes=1048576
+    Updating crates.io index
+     Locking 9 packages to highest Rust 1.99.0 compatible versions
+      Adding bincode v1.3.3 (available: v3.0.0)
+   Compiling proc-macro2 v1.0.107
+   Compiling unicode-ident v1.0.26
+   Compiling quote v1.0.47
+   Compiling serde_core v1.0.229
+   Compiling syn v3.0.6
+   Compiling serde v1.0.229
+   Compiling serde_derive v1.0.229
+   Compiling bincode v1.3.3
+   Compiling serde_bytes v0.11.19
+   Compiling dfs-serde-probe v0.1.0 (/home/dfs/serde-probe)
+    Finished `release` profile [optimized] target(s) in 14.27s
+     Running `target/release/dfs-serde-probe`

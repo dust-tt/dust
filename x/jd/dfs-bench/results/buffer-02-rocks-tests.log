@@ -1,0 +1,58 @@
+test engine::persistence_tests::failed_flush_preserves_pending_suffix_and_stops_subsequent_publication ... ok
+test engine::persistence_tests::historical_view_pins_are_bounded_by_retained_nodes_and_cannot_outlive_logout ... ok
+test engine::persistence_tests::publication_proceeds_during_flush_and_preserves_snapshot_and_pending_suffix ... ok
+test live::freshness::tests::cache_hits_do_not_extend_server_validation ... ok
+test live::freshness::tests::kernel_and_daemon_share_one_deadline ... ok
+test live::freshness::tests::slow_refresh_does_not_create_an_extra_cache_window ... ok
+test memory::tests::growth_failure_and_deadlines_preserve_existing_reservations ... ok
+test memory::tests::release_wakes_waiters_and_full_queues_reject_immediately ... ok
+test memory::tests::shared_ownership_retains_capacity_until_the_last_owner_exits ... ok
+test mount::inodes::tests::lookup_and_capacity_limits_recover_after_forget ... ok
+test mount::inodes::tests::references_delay_reclamation_and_retirement_never_reuses_identity ... ok
+test mount::kernel_cache::tests::partial_store_recovers_pages_or_disables_insertion_before_releasing_ordering ... ok
+test reader::tests::access_prediction_expires_old_directories_and_authority ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+test scope_tenant_and_epoch_boundaries_cannot_expand_authority ... ok
+test search_validation_matches_view_after_membership_and_grant_changes ... ok
+test shared_view_groups_overlaps_revocation_and_no_siblings ... ok
+test snapshot_working_bytes_reject_large_views_without_blocking_point_operations ... ok
+test subtree_moves_change_inheritance_and_require_grant_administration ... ok
+test view_refresh_discards_replaced_removed_and_old_incarnation_content ... ok
+test view_refresh_preserves_unaffected_content_and_tracks_projection_changes ... ok
+test view_writer_pins_preserve_version_authority_and_writer_fences ... ok
+test writer_lease_cases::exclusive_writers_share_a_generation_and_fence_all_other_content_publication ... ok
+test writer_lease_cases::expired_generations_cannot_publish_renew_or_release_their_replacement ... ok
+test writer_lease_cases::fenced_publication_and_renewal_enforce_current_read_and_write_authority ... ok
+test writer_lease_cases::restart_retires_writer_handles_and_preserves_only_published_retry_outcomes ... ok
+test writer_lease_cases::writer_open_retries_do_not_consume_handle_capacity ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.06s
+
+
+running 5 tests
+test buffered_creates_coalesce_and_sync_preserves_all_files ... ok
+test buffered_revocation_is_deferred_and_retained ... ok
+test file_batch_is_atomic_fenced_and_idempotent ... ok
+test graceful_unmount_drains_unpublished_files ... ok
+test incremental_refresh_handles_more_than_128_changes ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.87s
+
+test live::buffered_batch_retains_identity_after_lost_reply_and_close ... ok
+test live::live_ambiguous_append_survives_close_without_duplicate_publication ... ok
+test live::live_cached_read_checks_expiry_ranges_and_local_revision ... ok
+test live::live_content_hash_reuse_and_bounded_batches ... ok
+test live::live_default_binary_refreshes_revision_and_preserves_cli_ownership ... ok
+test live::live_delayed_content_does_not_block_metadata_and_revalidates ... ok
+test live::live_directory_reply_expiry_revalidates_unchanged_attributes ... ok
+test live::live_metadata_fences_writes_and_preserves_local_acknowledgements ... ok
+test live::live_readdirplus_populates_bounded_kernel_metadata_and_cached_reads ... ok
+test live::live_receipts_survive_close_and_sync_is_not_repeated ... ok
+test live::live_revision_expiry_detects_same_size_same_mtime_rewrite ... ok
+test live::live_two_mounts_follow_revision_and_preserve_unlinked_identity ... ok
+test writeback::linux_writeback_renews_ownership_and_keeps_unlinked_mapping_alive ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 18.58s
+

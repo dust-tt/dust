@@ -1,5 +1,7 @@
 # Deploy DFS + Tantivy
 
+[Current clean benchmark](../dfs-bench/docs/RESULTS.md). Previous benchmark runs and timing reports were removed at the user’s request.
+
 ## Build on GCP
 
 - Run builds, tests and benchmarks on Linux in **GCP project `dust-dev`**. Local work is editing, upload preparation, orchestration and evidence review.
@@ -44,6 +46,7 @@ target/release/dfs-mount \
   --mountpoint runtime/mount
 ```
 
+- `dfs-mount` uses the [one-second metadata contract](design/ONE_SECOND_VIEW.md), direct data I/O and durable explicit fsync; old Watch/writeback tuning requires `dfs-mount-legacy`.
 - Read and write files under `runtime/mount/files`.
 - Check RPC with `target/release/dfsctl --token-file runtime/credentials/admin.token metrics`.
 - Check authenticated `GET /lexical/status` for source/index progress; [search requests](lexical/README.md) document filename and body queries.
@@ -53,10 +56,10 @@ target/release/dfs-mount \
 
 - One `dfsd` owns one RocksDB directory. Keep `--db` on persistent storage; mount credentials from a Secret. The Tantivy directory is derived state, but needs writable disk space.
 - On restart, RocksDB recovers first. The server gets a new incarnation; clients reconcile and old handles may fail. Tantivy rebuilds its matching generation before search catches up.
-- Default mount `fsync` confirms publication. Use `--durable-sync` when it must wait for server WAL persistence. Abrupt machine loss can discard unsynced publications.
+- Default mount `fsync` waits for verified WAL persistence. Abrupt machine loss can still discard publications that have not been synchronized. The older flags apply only to `dfs-mount-legacy`.
 - Kubernetes deployment remains to be implemented: one replica per shard, exclusive volume ownership, fencing before takeover, a same-pod search proxy, resource limits and a measured termination grace period. Do not overlap two owners during rollout.
-- FUSE clients need `/dev/fuse` and mount permissions; exposing their mounts to other containers also needs explicit mount propagation. Each mount has its own cache and invalidation state.
+- FUSE clients need `/dev/fuse` and mount permissions; exposing their mounts to other containers also needs explicit mount propagation. Each mount has its own cache and bounded metadata-validation state.
 - Body caches evict; full namespace metadata still consumes RAM. Size memory limits for it. There is no replicated HA, history GC or automated backup yet.
 - Existing [server](deploy/dfsd.service) and [mount](deploy/dfs-mount.service) systemd units are templates; the server template needs the two `--search-*` flags above to enable Tantivy.
 
-See [DESIGN.md](DESIGN.md) for implemented behavior and [RESULTS.md](RESULTS.md) for test drivers and recorded evidence. Historical experiment scripts contain campaign-specific VM names and paths.
+See [DESIGN.md](DESIGN.md) for implemented behavior and [Clean benchmark](../dfs-bench/docs/RESULTS.md) for test drivers and recorded evidence. Historical experiment scripts contain campaign-specific VM names and paths.

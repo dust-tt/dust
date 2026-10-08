@@ -13,8 +13,42 @@ use std::{
 };
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 
+const CALL_KINDS: [&str; 9] = [
+    "create",
+    "write",
+    "truncate",
+    "setattr",
+    "unlink",
+    "put_files",
+    "changes",
+    "data",
+    "other",
+];
+
+#[derive(Default)]
+struct CallTiming {
+    count: AtomicU64,
+    elapsed_us: AtomicU64,
+    max_us: AtomicU64,
+}
+
+struct TimedCall<'a> {
+    timing: &'a CallTiming,
+    started: std::time::Instant,
+}
+
+impl Drop for TimedCall<'_> {
+    fn drop(&mut self) {
+        let elapsed = self.started.elapsed().as_micros().min(u64::MAX as u128) as u64;
+        self.timing.count.fetch_add(1, Ordering::Relaxed);
+        self.timing.elapsed_us.fetch_add(elapsed, Ordering::Relaxed);
+        self.timing.max_us.fetch_max(elapsed, Ordering::Relaxed);
+    }
+}
+
 #[derive(Default)]
 pub struct Counters {
+    timings: [CallTiming; 9],
     pub calls: AtomicU64,
     pub sent_bytes: AtomicU64,
     pub received_bytes: AtomicU64,
@@ -23,6 +57,9 @@ pub struct Counters {
     pub mutation_calls: AtomicU64,
     pub head_calls: AtomicU64,
     pub snapshot_calls: AtomicU64,
+    pub block_batches: AtomicU64,
+    pub block_ranges: AtomicU64,
+    pub block_chunk_bytes: AtomicU64,
 }
 #[derive(Clone)]
 pub struct Client {
@@ -34,6 +71,8 @@ impl Client {
     pub async fn connect(endpoint: &str, token: &str, ca: Option<Vec<u8>>) -> anyhow::Result<Self> {
         crate::rpc::initialize_crypto();
         let mut endpoint = Endpoint::from_shared(endpoint.to_owned())?
+            .initial_stream_window_size(Some(2 << 20))
+            .initial_connection_window_size(Some(8 << 20))
             .connect_timeout(Duration::from_secs(2))
             .timeout(Duration::from_secs(5));
         if let Some(ca) = ca {
@@ -68,13 +107,37 @@ impl Client {
         })
     }
     pub async fn call(&self, call: Call) -> Result<Reply> {
+        let kind = match &call {
+            Call::Mutate { mutation, .. } => match mutation {
+                Mutation::Create { .. } => 0,
+                Mutation::Write { .. } => 1,
+                Mutation::Truncate { .. } => 2,
+                Mutation::SetAttr { .. } => 3,
+                Mutation::Unlink { .. } => 4,
+                Mutation::PutFiles { .. } => 5,
+                _ => 8,
+            },
+            Call::Changes { .. } | Call::Head => 6,
+            Call::Read { .. } | Call::ReadBlocks { .. } | Call::ReadPack { .. } => 7,
+            _ => 8,
+        };
+        let _timing = TimedCall {
+            timing: &self.counters.timings[kind],
+            started: std::time::Instant::now(),
+        };
         let mutation = matches!(&call, Call::Mutate { .. });
         let mut uncertain = false;
         let category = match &call {
-            Call::Read { .. } | Call::ReadPack { .. } => &self.counters.data_calls,
+            Call::Read { .. } | Call::ReadPack { .. } | Call::ReadBlocks { .. } => {
+                &self.counters.data_calls
+            }
             Call::Mutate { .. } => &self.counters.mutation_calls,
             Call::Head | Call::Changes { .. } => &self.counters.head_calls,
             _ => &self.counters.metadata_calls,
+        };
+        let block_ranges = match &call {
+            Call::ReadBlocks { ranges } => ranges.len(),
+            _ => 0,
         };
         let frame = encode(&Envelope {
             session: self.session.id.clone(),
@@ -82,6 +145,12 @@ impl Client {
         })?;
         for attempt in 0..3 {
             self.counters.calls.fetch_add(1, Ordering::Relaxed);
+            if block_ranges > 0 {
+                self.counters.block_batches.fetch_add(1, Ordering::Relaxed);
+                self.counters
+                    .block_ranges
+                    .fetch_add(block_ranges as u64, Ordering::Relaxed);
+            }
             category.fetch_add(1, Ordering::Relaxed);
             self.counters
                 .sent_bytes
@@ -116,6 +185,17 @@ impl Client {
                             libc::ETIMEDOUT,
                             "publication outcome unknown after reconnect",
                         ));
+                    }
+                    if let Ok(Reply::Blocks(pages)) = &reply {
+                        let bytes: usize = pages
+                            .iter()
+                            .filter_map(|p| p.as_ref().ok())
+                            .flat_map(|p| &p.chunks)
+                            .map(|(_, bytes)| bytes.len())
+                            .sum();
+                        self.counters
+                            .block_chunk_bytes
+                            .fetch_add(bytes as u64, Ordering::Relaxed);
                     }
                     return reply;
                 }
@@ -295,7 +375,10 @@ impl Client {
 
 impl Counters {
     pub fn snapshot(&self) -> serde_json::Value {
-        serde_json::json!({ "rpc_calls": self.calls.load(Ordering::Relaxed), "sent_bytes": self.sent_bytes.load(Ordering::Relaxed),
+        let timings = CALL_KINDS.iter().zip(&self.timings).map(|(name, timing)| {
+            (*name, serde_json::json!({"calls": timing.count.load(Ordering::Relaxed), "elapsed_us": timing.elapsed_us.load(Ordering::Relaxed), "max_us": timing.max_us.load(Ordering::Relaxed)}))
+        }).collect::<std::collections::BTreeMap<_, _>>();
+        serde_json::json!({ "timings": timings, "block_batches": self.block_batches.load(Ordering::Relaxed), "block_ranges": self.block_ranges.load(Ordering::Relaxed), "block_chunk_bytes": self.block_chunk_bytes.load(Ordering::Relaxed), "rpc_calls": self.calls.load(Ordering::Relaxed), "sent_bytes": self.sent_bytes.load(Ordering::Relaxed),
             "received_bytes": self.received_bytes.load(Ordering::Relaxed), "data_calls": self.data_calls.load(Ordering::Relaxed),
             "metadata_calls": self.metadata_calls.load(Ordering::Relaxed), "mutation_calls": self.mutation_calls.load(Ordering::Relaxed),
             "head_calls": self.head_calls.load(Ordering::Relaxed), "snapshot_calls": self.snapshot_calls.load(Ordering::Relaxed) })

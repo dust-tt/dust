@@ -1,0 +1,5 @@
+    Blocking waiting for file lock on package cache
+   Compiling dfs-poc v0.1.0 (/home/dfs/dfs)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2m 00s
+  Executable tests/buffered.rs (target/release/deps/buffered-0d6c8a841a4879ca)
+  Executable tests/publication.rs (target/release/deps/publication-14b14e460df6b744)
