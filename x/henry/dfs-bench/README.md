@@ -26,12 +26,15 @@ isolated gcloud config in `.state/`, so they work whatever your active gcloud lo
 ```bash
 impls/henry/build     # amd64 image pushed to Artifact Registry, dfs-mount kept in .state/
 impls/henry/deploy    # 3 servers (one per zone) behind a load balancer, one provisioned tenant
-bin/bench henry       # one round on 2 E2B sandboxes; results in .state/results/ and GCS
+bin/bench henry       # one `basic` round on 2 E2B sandboxes; results in .state/results/ and GCS
 ```
 
-A round: sandbox A untars a seeded 10k-file corpus into its mount, sandbox B reads it all back
-through its own mount and checks digests, then B measures how long A's new files take to show up
-(the 1 s freshness bound). It only counts as valid if both mounts exit with no dropped ops and no
+A `basic` round: both sandboxes time round trips to an in-cluster echo service (the network floor of
+an RPC), sandbox A untars jd's 10k-file corpus (the one behind `x/henry/dfs/DESIGN.md` numbers,
+checked by manifest hash) into its mount, sandbox B reads it all back through its own mount and
+checks digests, then B measures how long A's new files take to show up (the 1 s freshness bound).
+`BENCH_CORPUS=scatter` swaps in a metadata stress instead: ~1.8 files per directory over ~5.5k
+directories in random order, not comparable with other numbers. It only counts as valid if both mounts exit with no dropped ops and no
 missed commit windows. `bin/clear` wipes the deployment too: re-run `deploy` after it.
 
 The load balancer is open to all: plain TCP with a tenant token, fine for synthetic data. Sandboxes

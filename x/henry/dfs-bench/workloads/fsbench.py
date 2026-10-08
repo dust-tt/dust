@@ -8,16 +8,52 @@ import json
 import os
 from pathlib import Path
 import random
+import socket
 import subprocess
 import sys
 import tarfile
+import threading
 import time
 
 TAR = '/usr/bin/tar'
 
 
+# jd's corpus (x/jd/filesystem-benchmark/generate.py, seed 42): the corpus behind the numbers in
+# x/henry/dfs/DESIGN.md and spolu's RESULTS.md. Same manifest hash as x/henry/dfs/bench/harness.py.
+JD_GENERATE = '/opt/jd_generate.py'
+JD_MANIFEST_SHA256 = '67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1'
+
+
 def corpus(args):
-    """Deterministic source-like tree: mostly small files, a few large ones, nested directories."""
+    if args.kind == 'jd':
+        return jd_corpus(args)
+    return scatter_corpus(args)
+
+
+def jd_corpus(args):
+    """jd's 10k files in 100 directories, tarred like x/henry/dfs/bench/untar.py: directories first
+    (shallowest first), then files in manifest order."""
+    source = Path('/tmp/jd-corpus')
+    subprocess.run([sys.executable, '-I', JD_GENERATE, str(source), '--seed', '42'], check=True,
+                   stdout=subprocess.DEVNULL)
+    manifest_bytes = (source / 'manifest.json').read_bytes()
+    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
+    if manifest_sha256 != JD_MANIFEST_SHA256:
+        raise SystemExit(f'jd corpus manifest {manifest_sha256} != {JD_MANIFEST_SHA256}')
+    files = json.loads(manifest_bytes)['paths']
+    with tarfile.open(args.out, 'w') as archive:
+        directories = {parent for file in files for parent in Path(file).parents if parent != Path('.')}
+        for directory in sorted(directories, key=lambda path: (len(path.parts), str(path))):
+            archive.add(source / 'docs' / directory, arcname=str(Path('docs') / directory), recursive=False)
+        for file in files:
+            archive.add(source / 'docs' / file, arcname=str(Path('docs') / file))
+    return {'kind': 'jd', 'archive': args.out, 'files': len(files), 'directories': len(directories) + 1,
+            'bytes': sum(json.loads(manifest_bytes)['sizes']), 'seed': 42, 'manifest_sha256': manifest_sha256}
+
+
+def scatter_corpus(args):
+    """Metadata stress, not comparable with other benches: ~1.8 files per directory over ~5.5k
+    directories, in random order, so the archive keeps jumping between directories."""
     rng = random.Random(args.seed)
     total_bytes = 0
     with tarfile.open(args.out, 'w') as archive:
@@ -32,7 +68,52 @@ def corpus(args):
             info.mtime = 0
             archive.addfile(info, fileobj=io.BytesIO(data))
             total_bytes += size
-    return {'archive': args.out, 'files': args.files, 'bytes': total_bytes, 'seed': args.seed}
+    return {'kind': 'scatter', 'archive': args.out, 'files': args.files, 'bytes': total_bytes, 'seed': args.seed}
+
+
+def rtt(args):
+    """Round trips over one TCP connection to an echo server: the network floor of an RPC from this
+    sandbox. Connect time is not reported: E2B's egress layer accepts connections locally."""
+    host, port = args.addr.rsplit(':', 1)
+    with socket.create_connection((host, int(port)), timeout=10) as connection:
+        connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        payload = b'x' * 64
+        samples = []
+        for index in range(args.count + 5):
+            started = time.monotonic()
+            connection.sendall(payload)
+            received = 0
+            while received < len(payload):
+                chunk = connection.recv(len(payload) - received)
+                if not chunk:
+                    raise SystemExit('echo server closed the connection')
+                received += len(chunk)
+            if index >= 5:
+                samples.append(time.monotonic() - started)
+    samples.sort()
+    pick = lambda q: samples[min(len(samples) - 1, int(q * len(samples)))]
+    return {'addr': args.addr, 'count': len(samples), 'min_ms': samples[0] * 1000, 'p50_ms': pick(0.5) * 1000,
+            'p95_ms': pick(0.95) * 1000, 'max_ms': samples[-1] * 1000,
+            'echo_mb_per_second': echo_throughput(host, int(port), args.bulk_mb)}
+
+
+def echo_throughput(host, port, megabytes):
+    """Streams `megabytes` through the echo server on one connection; bounded by the slower of
+    upload and download."""
+    total = megabytes << 20
+    chunk = b'x' * (256 << 10)
+    with socket.create_connection((host, port), timeout=30) as connection:
+        started = time.monotonic()
+        sender = threading.Thread(target=lambda: [connection.sendall(chunk) for _ in range(total // len(chunk))])
+        sender.start()
+        received = 0
+        while received < total:
+            data = connection.recv(1 << 20)
+            if not data:
+                raise SystemExit('echo server closed the connection')
+            received += len(data)
+        sender.join()
+        return total / (1 << 20) / (time.monotonic() - started)
 
 
 def extract(archive, target):
@@ -131,11 +212,16 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     command = commands.add_parser('corpus')
     command.add_argument('--out', required=True)
-    command.add_argument('--files', type=int, default=10000)
-    command.add_argument('--seed', type=int, default=42)
+    command.add_argument('--kind', choices=['jd', 'scatter'], default='jd')
+    command.add_argument('--files', type=int, default=10000, help='scatter only')
+    command.add_argument('--seed', type=int, default=42, help='scatter only')
     command = commands.add_parser('untar')
     command.add_argument('--archive', required=True)
     command.add_argument('--target', required=True)
+    command = commands.add_parser('rtt')
+    command.add_argument('--addr', required=True)
+    command.add_argument('--count', type=int, default=200)
+    command.add_argument('--bulk-mb', type=int, default=64)
     command = commands.add_parser('digest')
     command.add_argument('--root', required=True)
     command = commands.add_parser('fresh-write')
@@ -149,7 +235,7 @@ def main():
     command.add_argument('--timeout-seconds', type=float, default=60)
     args = parser.parse_args()
     handlers = {'corpus': corpus, 'untar': untar, 'digest': digest, 'fresh-write': fresh_write,
-                'fresh-read': fresh_read}
+                'fresh-read': fresh_read, 'rtt': rtt}
     print(json.dumps(handlers[args.command](args)))
 
 

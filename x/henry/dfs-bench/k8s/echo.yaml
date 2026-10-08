@@ -1,0 +1,65 @@
+# TCP echo on a server node behind its own public L4 load balancer, configured like the
+# implementations' services: sandboxes time round trips to it to get the network floor of an RPC
+# (sandbox, E2B egress, LB, node, pod). Applied by bin/bench.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: echo
+  namespace: bench
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: echo
+  template:
+    metadata:
+      labels:
+        app: echo
+    spec:
+      nodeSelector:
+        dfs-bench/role: server
+      tolerations:
+        - key: dfs-bench/role
+          operator: Equal
+          value: server
+          effect: NoSchedule
+      containers:
+        - name: echo
+          image: python:3.12-slim
+          command:
+            - python3
+            - -c
+            - |
+              import asyncio
+              async def echo(reader, writer):
+                  while data := await reader.read(65536):
+                      writer.write(data)
+                      await writer.drain()
+                  writer.close()
+              async def main():
+                  server = await asyncio.start_server(echo, '0.0.0.0', 7500)
+                  await server.serve_forever()
+              asyncio.run(main())
+          ports:
+            - containerPort: 7500
+          readinessProbe:
+            tcpSocket:
+              port: 7500
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: echo
+  namespace: bench
+spec:
+  type: LoadBalancer
+  selector:
+    app: echo
+  ports:
+    - port: 7500
+      targetPort: 7500
