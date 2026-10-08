@@ -9,6 +9,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import {
@@ -294,9 +295,85 @@ describe("GET /api/w/[wId]/credits/groups-usage", () => {
     expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
-  it.each(["user", "manager"] as const)("refuses a %s", async (role) => {
+  it("reports every limited group to a workspace manager", async () => {
     const workspace = await sharedUsageLimitsWorkspace();
-    await createPrivateApiMockRequest({ method: "GET", role, workspace });
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    const sales = await makeLimitedGroup(workspace, "Sales", {
+      awuCredits: 6_000,
+      priority: 2,
+    });
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "manager",
+      workspace,
+    });
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      groups: [
+        {
+          groupId: engineering.sId,
+          limitAwuCredits: 10_000,
+          usedAwuCredits: 0,
+        },
+        { groupId: sales.sId, limitAwuCredits: 6_000, usedAwuCredits: 0 },
+      ],
+    });
+  });
+
+  it("reports only the groups a group manager manages", async () => {
+    const workspace = await sharedUsageLimitsWorkspace();
+    const engineering = await makeLimitedGroup(workspace, "Engineering", {
+      awuCredits: 10_000,
+      priority: 1,
+    });
+    await makeLimitedGroup(workspace, "Sales", {
+      awuCredits: 6_000,
+      priority: 2,
+    });
+    const { user: delegate } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await FeatureFlagFactory.basic(adminAuth, "group_management");
+    const grant = await GroupPermissionResource.grantToUser(adminAuth, {
+      user: delegate.toJSON(),
+      grantType: "group_manager",
+      resourceType: "group",
+      resourceId: engineering.id,
+    });
+    expect(grant.isOk()).toBe(true);
+
+    const response = await getGroupsUsage(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      groups: [
+        {
+          groupId: engineering.sId,
+          limitAwuCredits: 10_000,
+          usedAwuCredits: 0,
+        },
+      ],
+    });
+  });
+
+  it("refuses a regular member", async () => {
+    const workspace = await sharedUsageLimitsWorkspace();
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+      workspace,
+    });
 
     const response = await getGroupsUsage(workspace.sId);
 
