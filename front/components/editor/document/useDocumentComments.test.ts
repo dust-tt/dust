@@ -516,25 +516,6 @@ describe("useDocumentComments", () => {
       expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
     });
 
-    it("reports a command that could not be sent instead of throwing", async () => {
-      const { channel, send } = liveChannel(() => new Ok(null));
-      send.mockRejectedValue(new Error("No crypto.randomUUID here."));
-      const { result } = await renderCommentedEditor(SOURCE, {
-        live: channel,
-      });
-
-      await act(async () => {
-        const resolved = await result.current.comments.setResolved(
-          "c1",
-          true,
-          null
-        );
-        expect(resolved.isErr() && resolved.error).toBe(
-          "Commenting is unavailable."
-        );
-      });
-    });
-
     it("deletes a thread the session accepted without returning it", async () => {
       const { channel, send } = liveChannel(() => new Ok(null));
       const { result } = await renderCommentedEditor("Hello brave world.\n", {
@@ -694,39 +675,6 @@ describe("useDocumentComments", () => {
         type: "delete",
         commentId: added.commentId,
       });
-    });
-
-    it("refuses a new comment without throwing when no comment id can be made", async () => {
-      const { channel, send } = liveChannel(() => new Ok(null));
-      const { result } = await renderCommentedEditor("Hello brave world.\n", {
-        live: channel,
-      });
-      const editor = result.current.document.editor;
-      if (!editor) {
-        throw new Error("Editor did not mount.");
-      }
-      act(() => {
-        select(editor, "brave");
-        result.current.comments.startDraft();
-      });
-      const randomUUID = vi
-        .spyOn(crypto, "randomUUID")
-        .mockImplementation(() => {
-          throw new TypeError("crypto.randomUUID is not a function");
-        });
-
-      try {
-        await act(async () => {
-          const submitted =
-            await result.current.comments.submitDraft("Too bold?");
-          expect(submitted.isErr() && submitted.error).toBe(
-            "Commenting is unavailable."
-          );
-        });
-      } finally {
-        randomUUID.mockRestore();
-      }
-      expect(send).not.toHaveBeenCalled();
     });
 
     it("comments in a document holding marks whose thread is gone", async () => {

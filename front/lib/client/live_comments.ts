@@ -9,6 +9,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
+import { v4 as uuidv4 } from "uuid";
 
 /** The comment side of a live connection. */
 export interface LiveCommentChannel {
@@ -97,9 +98,7 @@ export function createLiveCommentChannel(
       if (closed || !provider.isSynced) {
         return Promise.resolve(new Err("unavailable"));
       }
-      // TODO(co-edition): `crypto.randomUUID` only exists in secure contexts, so this throws over
-      // plain HTTP on a host other than localhost.
-      const requestId = crypto.randomUUID();
+      const requestId = uuidv4();
       return new Promise((resolve) => {
         pending.set(requestId, resolve);
         sendMessage({ type: "command", requestId, command });

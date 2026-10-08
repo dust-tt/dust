@@ -34,6 +34,7 @@ import type { ChainedCommands, Editor, JSONContent } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 import { useEditorState } from "@tiptap/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { v4 as uuidv4 } from "uuid";
 
 interface UseDocumentCommentsProps {
   editor: Editor | null;
@@ -483,19 +484,10 @@ export const useDocumentComments = ({
     editor: Editor,
     channel: LiveCommentChannel
   ): CommentCommands => {
-    const send = async (
-      command: LiveCommentCommand
-    ): Promise<Result<DfmComment | null, LiveCommentErrorCode>> => {
-      try {
-        return await channel.send(command);
-      } catch {
-        return new Err("unavailable");
-      }
-    };
     const sendForReason = async (
       command: LiveCommentCommand
     ): Promise<Result<void, string>> => {
-      const sent = await send(command);
+      const sent = await channel.send(command);
       return sent.isOk()
         ? new Ok(undefined)
         : new Err(liveErrorMessage(sent.error));
@@ -511,7 +503,7 @@ export const useDocumentComments = ({
       });
     };
     const discard = (id: string) => {
-      void send({ type: "delete", commentId: id }).then((deleted) => {
+      void channel.send({ type: "delete", commentId: id }).then((deleted) => {
         if (deleted.isErr() && deleted.error === "unavailable") {
           discardOnceSeen(id);
         }
@@ -519,7 +511,11 @@ export const useDocumentComments = ({
     };
     return {
       add: async (id, body) => {
-        const created = await send({ type: "add", commentId: id, body });
+        const created = await channel.send({
+          type: "add",
+          commentId: id,
+          body,
+        });
         if (created.isErr()) {
           if (created.error === "unavailable") {
             discardOnceSeen(id);
@@ -548,7 +544,10 @@ export const useDocumentComments = ({
         sendForReason({ type: "resolve", commentId: id, resolved }),
       // A thread already gone is what a delete asks for.
       remove: async (id) => {
-        const deleted = await send({ type: "delete", commentId: id });
+        const deleted = await channel.send({
+          type: "delete",
+          commentId: id,
+        });
         if (deleted.isErr() && deleted.error !== "not_found") {
           return new Err(liveErrorMessage(deleted.error));
         }
@@ -685,12 +684,7 @@ export const useDocumentComments = ({
       if (!canWrite || !editor || !author || !state.draft) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
-      let id: string;
-      try {
-        id = crypto.randomUUID();
-      } catch {
-        return new Err(t(UNAVAILABLE_MESSAGE));
-      }
+      const id = uuidv4();
       const checked = checkNewMessage(editor, author, id, undefined, body);
       if (checked.isErr()) {
         return checked;
