@@ -1,5 +1,10 @@
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
-import { useSearchAgents } from "@app/hooks/useSearchAgents";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import {
+  useSearchAgents,
+  useSearchAgentsInfinite,
+} from "@app/hooks/useSearchAgents";
+import { MAX_AGENT_SEARCH_RESULTS } from "@app/lib/agent_search/constants";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -23,6 +28,22 @@ import {
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
+
+function AgentPickerLoadingRows({ count }: { count: number }) {
+  return (
+    <div aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={`agent-picker-loading-${i}`}
+          className="flex items-center gap-2.5 px-2 py-1"
+        >
+          <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
+          <LoadingBlock className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"} />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 interface AgentPickerProps {
   owner: LightWorkspaceType;
@@ -74,6 +95,7 @@ export function AgentPicker({
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const hasQuery = searchText.trim().length > 0;
   const shouldFetchFavorites = showFavoritesFirst && !hasQuery;
 
@@ -81,9 +103,13 @@ export function AgentPicker({
     agents: allAgents,
     isAgentsLoading: isSearchLoading,
     isAgentsError: isSearchError,
-  } = useSearchAgents({
+    hasMore,
+    isLoadingMore,
+    loadMore,
+  } = useSearchAgentsInfinite({
     owner,
     searchTerm: searchText,
+    limit: MAX_AGENT_SEARCH_RESULTS,
     sortBy: showFavoritesFirst && hasQuery ? "relevance" : "name",
     permissionFiltering: "strict",
     selectionMode: "all",
@@ -151,6 +177,7 @@ export function AgentPicker({
         className="h-96 w-80"
         side={side}
         align="start"
+        viewportRef={setScrollRoot}
         dropdownHeaders={
           <>
             <DropdownMenuSearchbar
@@ -190,85 +217,86 @@ export function AgentPicker({
       >
         {isAgentsLoading ? (
           <div role="status" aria-label={t`Loading agents`}>
-            <div aria-hidden="true">
-              {Array.from({ length: 10 }).map((_, i) => (
-                <div
-                  key={`agent-picker-loading-${i}`}
-                  className="flex items-center gap-2.5 px-2 py-1"
-                >
-                  <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
-                  <LoadingBlock
-                    className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"}
-                  />
-                </div>
-              ))}
-            </div>
+            <AgentPickerLoadingRows count={10} />
           </div>
         ) : isAgentsError ? (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             <Trans>Unable to load agents</Trans>
           </div>
         ) : searchedAgents.length > 0 ? (
-          searchedAgents.map((c) => {
-            const isSelected = c.sId === selectedAgentId;
-            return (
-              <DropdownMenuItem
-                key={`agent-picker-${c.sId}`}
-                icon={() => <Avatar size="xs" visual={c.pictureUrl} lazyLoad />}
-                label={c.name}
-                truncateText
-                className={`group py-1 notranslate ${
-                  isSelected ? "bg-primary-100" : ""
-                }`}
-                endComponent={
-                  <div className="z-10 flex items-center gap-1">
-                    {isSelected && (
-                      // Show a tick by default; on hover swap it for an X to
-                      // signal that clicking will deselect the agent.
-                      <>
-                        <Icon
-                          visual={Check}
-                          size="sm"
-                          className="group-hover:hidden"
+          <>
+            {searchedAgents.map((c) => {
+              const isSelected = c.sId === selectedAgentId;
+              return (
+                <DropdownMenuItem
+                  key={`agent-picker-${c.sId}`}
+                  icon={() => (
+                    <Avatar size="xs" visual={c.pictureUrl} lazyLoad />
+                  )}
+                  label={c.name}
+                  truncateText
+                  className={`group py-1 notranslate ${
+                    isSelected ? "bg-primary-100" : ""
+                  }`}
+                  endComponent={
+                    <div className="z-10 flex items-center gap-1">
+                      {isSelected && (
+                        // Show a tick by default; on hover swap it for an X to
+                        // signal that clicking will deselect the agent.
+                        <>
+                          <Icon
+                            visual={Check}
+                            size="sm"
+                            className="group-hover:hidden"
+                          />
+                          <Icon
+                            visual={XClose}
+                            size="sm"
+                            className="hidden group-hover:block"
+                          />
+                        </>
+                      )}
+                      {onAgentDetailsClick && clientType !== "extension" ? (
+                        <Button
+                          icon={DotsHorizontal}
+                          variant="outline"
+                          size="xmini"
+                          className="opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onAgentDetailsClick(c.sId);
+                            setIsOpen(false);
+                          }}
                         />
-                        <Icon
-                          visual={XClose}
-                          size="sm"
-                          className="hidden group-hover:block"
-                        />
-                      </>
-                    )}
-                    {onAgentDetailsClick && clientType !== "extension" ? (
-                      <Button
-                        icon={DotsHorizontal}
-                        variant="outline"
-                        size="xmini"
-                        className="opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          onAgentDetailsClick(c.sId);
-                          setIsOpen(false);
-                        }}
-                      />
-                    ) : undefined}
-                  </div>
-                }
-                onClick={() => {
-                  // Clicking the selected agent deselects it; keep the picker
-                  // open so a different agent can be chosen right away.
-                  if (isSelected) {
-                    onDeselect?.();
-                    return;
+                      ) : undefined}
+                    </div>
                   }
-                  onItemClick(c);
-                  setSearchText("");
-                  setIsOpen(false);
-                }}
-                onSelect={isSelected ? (e) => e.preventDefault() : undefined}
+                  onClick={() => {
+                    // Clicking the selected agent deselects it; keep the picker
+                    // open so a different agent can be chosen right away.
+                    if (isSelected) {
+                      onDeselect?.();
+                      return;
+                    }
+                    onItemClick(c);
+                    setSearchText("");
+                    setIsOpen(false);
+                  }}
+                  onSelect={isSelected ? (e) => e.preventDefault() : undefined}
+                />
+              );
+            })}
+            {scrollRoot && (
+              <InfiniteScroll
+                nextPage={loadMore}
+                hasMore={hasMore}
+                options={{ root: scrollRoot }}
+                showLoader={isLoadingMore}
+                loader={<AgentPickerLoadingRows count={3} />}
               />
-            );
-          })
+            )}
+          </>
         ) : (
           <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
             <Trans>No results found</Trans>
