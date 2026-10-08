@@ -14,6 +14,7 @@ import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
 const COMMENTS_ATTRIBUTE = "comments";
+const REMOVED_COMMENT_MARKS_META = "removedCommentMarks";
 
 const HIGHLIGHT_CLASS = cn(
   "cursor-pointer border-b-2 border-golden-400/70 bg-golden-300/40 transition-colors",
@@ -89,6 +90,27 @@ export const withoutDocumentJSONComments = ({
 }: JSONContent): JSONContent => {
   const { [COMMENTS_ATTRIBUTE]: _comments, ...rest } = attrs ?? {};
   return Object.keys(rest).length > 0 ? { ...document, attrs: rest } : document;
+};
+
+/** The document without the comment marks whose id is not in `threadIds`. */
+export const withoutOrphanCommentMarks = (
+  content: JSONContent,
+  threadIds: Set<string>
+): JSONContent => {
+  const { marks, content: children, ...node } = content;
+  const kept = marks?.filter(
+    (mark) =>
+      mark.type !== COMMENT_MARK_NAME || threadIds.has(String(mark.attrs?.id))
+  );
+  return {
+    ...node,
+    ...(kept && kept.length > 0 && { marks: kept }),
+    ...(children && {
+      content: children.map((child) =>
+        withoutOrphanCommentMarks(child, threadIds)
+      ),
+    }),
+  };
 };
 
 /** Comment ids of every highlight wrapping the clicked element. */
@@ -419,6 +441,8 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Removes every mark that anchors the comment, keeping its thread. */
+      removeCommentMarks: (id: string) => ReturnType;
       /** Replaces every thread, keeping the marks; a live document gets its threads this way. */
       setCommentThreads: (comments: DfmComment[]) => ReturnType;
       /** Replaces the commented text with inline content that keeps the comment. */
@@ -618,7 +642,8 @@ const dropOrphanCommentMarks = (tr: Transaction, changed: CommentRange[]) => {
  * A transaction MUST be refused when it takes the comment mark off the first or last character
  * of a comment that has a thread after it, without deleting that character, such as inline code
  * or a code block over a comment's edge, since saving would then shrink or drop the comment.
- * With `holdsThreads: false`, every marked comment counts as having a thread.
+ * With `holdsThreads: false`, every marked comment counts as having a thread, except the one
+ * whose marks `removeCommentMarks` strips.
  */
 const takesCommentEdge = (
   transaction: Transaction,
@@ -638,8 +663,9 @@ const takesCommentEdge = (
   const threadsAfter = new Set(
     getDocumentComments(transaction.doc).map((comment) => comment.id)
   );
+  const removed = transaction.getMeta(REMOVED_COMMENT_MARKS_META);
   for (const [id, { from, to }] of getCommentRanges(before.doc)) {
-    if (holdsThreads && !threadsAfter.has(id)) {
+    if (id === removed || (holdsThreads && !threadsAfter.has(id))) {
       continue;
     }
     const range = after.get(id);
@@ -831,8 +857,11 @@ export const DocumentComments = Extension.create({
             draft.to,
             state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
           );
+          // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
-            ...getDocumentComments(state.doc),
+            ...getDocumentComments(state.doc).filter(
+              ({ id }) => id !== comment.id
+            ),
             comment,
           ]);
           tr.setMeta(documentCommentsPluginKey, {
@@ -902,6 +931,20 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
           );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    removeCommentMarks:
+      (id) =>
+      ({ state, tr, dispatch }) => {
+        if (dispatch) {
+          tr.removeMark(
+            0,
+            state.doc.content.size,
+            state.schema.marks[COMMENT_MARK_NAME].create({ id })
+          );
+          tr.setMeta(REMOVED_COMMENT_MARKS_META, id);
           tr.setMeta("addToHistory", false);
         }
         return true;

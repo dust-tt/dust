@@ -329,6 +329,53 @@ describe("useDocumentEditor in a live session", () => {
       expect(editor.state.doc.eq(before)).toBe(true);
     });
 
+    it("loses its marks, in the shared document too, when they are removed", async () => {
+      const { document } = sharedDocumentFor(TAGGED);
+      const { result } = renderLiveEditor(document, {
+        initialContent: "Hi run all tests now\n",
+      });
+      await waitFor(() => expect(result.current.editor).not.toBeNull());
+      const editor = result.current.editor;
+      if (!editor) {
+        return;
+      }
+
+      act(() => {
+        editor.commands.removeCommentMarks("c1");
+      });
+
+      expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
+      expect(
+        document.getXmlFragment(BODY_FRAGMENT_NAME).toString()
+      ).not.toContain("c1");
+    });
+
+    it("loses its marks in another editor of the session when one removes them", async () => {
+      const { document } = sharedDocumentFor(TAGGED);
+      const editors = [0, 1].map(
+        () =>
+          renderLiveEditor(document, {
+            initialContent: "Hi run all tests now\n",
+          }).result
+      );
+      await waitFor(() =>
+        editors.forEach((result) =>
+          expect(result.current.editor).not.toBeNull()
+        )
+      );
+      const [local, remote] = editors.map((result) => result.current.editor);
+      if (!local || !remote) {
+        return;
+      }
+      expect(getMarkedCommentIds(remote.getJSON())).toEqual(new Set(["c1"]));
+
+      act(() => {
+        local.commands.removeCommentMarks("c1");
+      });
+
+      expect(getMarkedCommentIds(remote.getJSON()).size).toBe(0);
+    });
+
     it("marks text pasted inside it", async () => {
       const editor = await renderStaleEditor();
 
