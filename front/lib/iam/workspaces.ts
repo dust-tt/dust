@@ -16,6 +16,8 @@ import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import type { SupportedLocale } from "@app/types/locale";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -38,12 +40,14 @@ export async function createWorkspaceInternal({
   planCode,
   endDate,
   utmParams,
+  locale = DEFAULT_LOCALE,
 }: {
   name: string;
   isBusiness: boolean;
   planCode: string | null;
   endDate: Date | null;
   utmParams?: UTMParams;
+  locale?: SupportedLocale;
 }) {
   // If planCode is provided, it must be a free plan that exists in the database.
   if (planCode) {
@@ -84,6 +88,7 @@ export async function createWorkspaceInternal({
         sId: generateRandomModelSId(),
         name,
         metadata,
+        locale,
       },
       transaction
     );

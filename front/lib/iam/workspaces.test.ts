@@ -1,5 +1,6 @@
 import { createWorkspaceInternal } from "@app/lib/iam/workspaces";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import { Err, Ok } from "@app/types/shared/result";
 import type { Organization } from "@workos-inc/node";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -97,6 +98,25 @@ describe("createWorkspaceInternal", () => {
     );
     expect(workspace.workOSOrganizationId).toBe(`org_${workspace.sId}`);
     expect(mockLaunchImmediateWorkspaceScrubWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("sets the given locale, and the default locale when none is given", async () => {
+    const withLocale = await createWorkspaceInternal({
+      name: "French Workspace",
+      isBusiness: false,
+      planCode: null,
+      endDate: null,
+      locale: "fr-FR",
+    });
+    const withoutLocale = await createWorkspaceInternal({
+      name: "Default Locale Workspace",
+      isBusiness: false,
+      planCode: null,
+      endDate: null,
+    });
+
+    expect(withLocale.locale).toBe("fr-FR");
+    expect(withoutLocale.locale).toBe(DEFAULT_LOCALE);
   });
 
   it("scrubs and throws when WorkOS organization creation fails", async () => {
