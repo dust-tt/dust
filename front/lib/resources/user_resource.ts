@@ -757,6 +757,23 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  // Reads several metadata keys in one query. Returns a Map keyed by metadata key, omitting keys
+  // that have no value.
+  async getMetadataValues(
+    keys: string[],
+    workspaceModelId?: number | null
+  ): Promise<Map<string, string>> {
+    const rows = await UserMetadataModel.findAll({
+      attributes: ["key", "value"],
+      where: {
+        userId: this.id,
+        key: { [Op.in]: keys },
+        workspaceId: workspaceModelId ?? null,
+      },
+    });
+    return new Map(rows.map((row) => [row.key, row.value]));
+  }
+
   async setMetadata(
     key: string,
     value: string,
@@ -812,13 +829,14 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async getProfile(): Promise<UserProfileType> {
-    const [pronouns, jobType] = await Promise.all([
-      this.getMetadata(USER_PRONOUNS_METADATA_KEY),
-      this.getMetadata("job_type"),
+    const values = await this.getMetadataValues([
+      USER_PRONOUNS_METADATA_KEY,
+      "job_type",
     ]);
+    const jobType = values.get("job_type");
     return {
-      pronouns: pronouns?.value ?? null,
-      jobType: isJobType(jobType?.value) ? jobType.value : null,
+      pronouns: values.get(USER_PRONOUNS_METADATA_KEY) ?? null,
+      jobType: isJobType(jobType) ? jobType : null,
     };
   }
 
