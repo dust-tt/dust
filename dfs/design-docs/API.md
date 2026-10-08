@@ -9,7 +9,7 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 
 ## Shared types
 
-- `ObjectId`: the identity of a real stored object, represented as a 16-byte UUIDv4. It remains
+- `ObjectId`: the identity of a real stored object, represented as a 16-byte UUIDv7. It remains
   stable across renames and moves. The real tenant root also has an `ObjectId`.
 - `ObjectRef`: either a real `ObjectId` or a virtual `root` / `shared` tag. Virtual references work
   with `Stat`, `Lookup`, `List`, and `Validate`. Other operations require a real `ObjectId`.
@@ -17,7 +17,7 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 - `bytes`: a sequence of raw bytes.
 
 ```text
-ObjectId = UUIDv4               // Exactly 16 bytes; identifies a real stored object.
+ObjectId = UUIDv7               // Exactly 16 bytes; identifies a real stored object.
 ObjectRef = ObjectId | root | shared
 Timestamp = uint64              // Milliseconds since 1970-01-01T00:00:00Z.
 
@@ -77,10 +77,11 @@ stored tenant root use `/`; virtual `shared` uses `/shared`. Shared entry points
 are never exposed through `full_path` or `parent`.
 
 An object can have multiple visible aliases. The server selects one canonical visible path per
-session: prefer a path through the ordinary root; otherwise use the nearest directly granted object
-on its ancestor chain, including the object itself, as the entry point under `/shared`. `parent`
-follows that selected path, even when a `Lookup` or `List` reached the object through another alias.
-Parent/path selection uses the same store snapshot and session grants as the attributes. Tenant
+session: prefer a visible path through the ordinary root; otherwise use the nearest readable object
+with a matching explicit ALLOW on its ancestor chain, including the object itself, as the entry point
+under `/shared`. A DENY does not create an entry point. `parent` follows that selected path, even when
+a `Lookup` or `List` reached the object through another alias.
+Parent/path selection uses the same store snapshot and session subjects as the attributes. Tenant
 administration responses use the full tenant namespace, with the tenant root at `/`.
 
 Full paths are computed on demand. An ancestor rename/move or a grant change can change a user's
@@ -94,9 +95,9 @@ synthetic value zero (the Unix epoch).
 
 **`attr_version` and `content_version` are monotonically increasing `uint64` values.** They are
 positive, may have gaps, and never wrap or reset during the object's lifetime. Compare each field
-only with the same field for the same tenant and object. Attribute versions and versions of virtual
-directory projections are additionally scoped to the session's visible namespace; they are not
-comparable across different sessions.
+only with the same field for the same tenant and object. Attribute versions and content versions of
+all directories, including virtual projections, are additionally scoped to the session's visible
+namespace; they are not comparable across different sessions.
 
 `attr_version` advances when attributes or extended metadata change, including size, mode,
 timestamps, MIME type, xattrs, the object's own name, and its parent. Renames and moves therefore
@@ -114,10 +115,12 @@ supplied bytes equal the existing bytes. Mode, timestamps, MIME type, xattrs, gr
 moves do not advance it.
 
 For a real directory, `content_version` starts at 1 and advances atomically whenever its immediate
-listing changes: a child is created, removed, renamed, moved in or out, or replaced by another
-object under the same name. Listing content means the mapping of entry names to object IDs, not the child
-attributes included in `List` responses. Editing a child's contents or attributes alone does not
-advance its parent's `content_version`. Renaming or moving the directory itself advances its
+session-visible listing changes: a child is created, removed, renamed, moved in or out, replaced by
+another object under the same name, or becomes visible/invisible because of grant changes. Listing
+content means the mapping of visible entry names to object IDs, not the child attributes included in
+`List` responses. Projected visibility changes are resolved on read without rewriting every affected
+directory. Editing a child's contents or attributes alone does not advance its parent's
+`content_version`. Renaming or moving the directory itself advances its
 `attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
 unchanged when its entries are unchanged.
 
@@ -152,18 +155,84 @@ authorization state.
 
 ## Authorization and common limits
 
-Filesystem and search calls derive the tenant and grant set exclusively from the active session.
-Access is allowed when any session grant is attached to the object or an ancestor. Grants are
-additive, inherit through directories, and do not distinguish read from write access. POSIX mode
-checks belong to the mount/client. Namespace mutations also require access to the affected parents.
-Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED` explicitly.
+Filesystem and search calls derive the tenant and subject set exclusively from the active session.
+The tenant key holder asserts the session's subjects, such as `u:spolu@dust.tt` and `g:engineering`.
+Subjects are opaque, case-sensitive strings matched exactly; the server does not resolve group
+membership or infer additional subjects. Sessions contain subjects, not grants or permission masks.
+
+Object grants have two variants:
+
+```text
+Grant = allow(AllowGrant) | deny(DenyGrant)
+
+AllowGrant {
+  subject: string                // Exact subject to match against the session's subjects.
+  mode: uint32                   // Permissions to add: r=4, w=2, x=1; restricted to 0o7.
+}
+
+DenyGrant {
+  mode: uint32                   // Permissions to remove for everyone; restricted to 0o7.
+}
+```
+
+ALLOW requires a nonempty subject. DENY has no subject and applies to every session. A grant must
+select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0o5`, `r--=0o4`,
+and `-w-=0o2`. Zero is valid and has no effect; bits outside `0o7` are invalid. These masks are
+distinct from `Attr.mode`, which retains the file's POSIX mode bits restricted to `0o7777`.
+
+Grants inherit from the stored tenant root down to the target object. Start with no permissions.
+At each object, combine the modes of all ALLOW grants whose subjects match the session, then remove
+the modes of all DENY grants attached there:
+
+```text
+effective_mode = 0
+For each object from the tenant root through the target:
+  allow_mode = bitwise OR of matching ALLOW modes attached to this object
+  deny_mode = bitwise OR of all DENY modes attached to this object
+  effective_mode = (effective_mode | allow_mode) & (~deny_mode & 0o7)
+```
+
+DENY wins over ALLOW at the same object, independent of attachment order. A deeper ALLOW can restore
+permissions removed by an ancestor DENY; evaluation must continue even when the inherited mode is
+zero. An ALLOW for a different subject has no effect. Direct object IDs and `/shared` use the same
+evaluation against the real ancestor chain, including grants above the visible entry point.
+
+For example, after ALLOW `g:engineering rwx` on `/project`, DENY `-w-` on `/project/archive` leaves
+matching sessions with `r-x`: the subtree can be read and traversed but not modified. DENY `rwx` on
+`/project/private` removes all access. ALLOW `u:spolu@dust.tt r-x` on `/project/private/reports` restores
+read/traverse access there for that subject, with inheritance to its descendants. The inaccessible
+parent stays hidden; the reopened entry point can be discovered through `/shared`.
+
+The server enforces grant permissions independently of mount/client checks of `Attr.mode`. A mode
+change through `UpdateOperation` cannot change grants or bypass their restrictions. Required grant
+permissions are:
+
+| Operation | Required effective permissions |
+| --- | --- |
+| `Stat`, `Read`, `ReadFiles` | `r` on each target. |
+| `Lookup` | `x` on the parent and `r` on the returned child. |
+| `List` | `rx` on the directory; only children with `r` are returned. |
+| `Search` | `r` on each hit; `rx` on a supplied scope directory. |
+| `Validate` | `r` on each target; also `x` for a directory content-version check. |
+| create | `wx` on the parent. |
+| update, write | `w` on the target. |
+| rename | `w` on the source and any replacement; `wx` on affected parents. |
+| remove | `w` on the target and `wx` on its parent. |
+
+Namespace permissions are checked on each participating object using its effective mode. `x`
+controls directory traversal; this API has no file-execution RPC. Virtual root/shared support
+namespace reads as read-only projections, with permissions checked separately on real entries.
+Tenant administration uses its tenant key and is not restricted by object grants.
+
+Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
+explicitly. Mutation permission failures use `FORBIDDEN`.
 
 The server may authorize through a complete permission tree up to 30 seconds old by default. Expired
 or unusable tree proofs fall back to current FDB authorization. File metadata/content reads use FDB;
 search indexing has independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
-filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes. Grant names contain
+filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes. Subject strings contain
 1–1,024 UTF-8 bytes.
 
 Basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types must be
@@ -181,7 +250,7 @@ Creates a tenant with an empty root directory. Requires the **server key**.
 ```text
 CreateTenantRequest {
   tenant_id: string
-  root_grants: string[]          // At most 512 distinct grant names.
+  root_grants: Grant[]           // At most 512 distinct grant values.
 }
 ```
 
@@ -195,19 +264,19 @@ Tenant {
 }
 ```
 
-The supplied grants are attached to the root and inherit to future descendants. Duplicate grant
-names are deduplicated. An existing tenant ID fails with `ALREADY_EXISTS`.
+The supplied grants are attached to the root and inherit to future descendants. Identical grant
+values are deduplicated. An existing tenant ID fails with `ALREADY_EXISTS`.
 
 ### CreateSession
 
-Creates a session with a fixed grant set. Requires the **tenant key** for `tenant_id`.
+Creates a session with a fixed subject set. Requires the **tenant key** for `tenant_id`.
 
 **Arguments**
 
 ```text
 CreateSessionRequest {
   tenant_id: string
-  grants: string[]               // At most 512 distinct grant names.
+  subjects: string[]             // At most 512 distinct subjects asserted by the tenant key holder.
 }
 ```
 
@@ -217,15 +286,15 @@ CreateSessionRequest {
 Session {
   id: string                    // Session identifier, not a bearer credential.
   tenant_id: string
-  grants: string[]               // Deduplicated session grant names.
+  subjects: string[]             // Deduplicated session subjects.
   session_key: string            // Bearer key for filesystem and search calls.
   expires_at: Timestamp          // Session expiration time in Unix milliseconds.
   root_id: ObjectId              // Real tenant root directory.
 }
 ```
 
-Grant names may be included before they have any attachments. Sessions live in server memory,
-expire after one hour, and are lost on restart. There is no session renewal or grant-set update
+Subjects may be included before any ALLOW grants reference them. Sessions live in server memory,
+expire after one hour, and are lost on restart. There is no session renewal or subject-set update
 RPC; create a new session instead.
 
 ### CurrentSession
@@ -235,7 +304,7 @@ Returns information about the authenticated session. Requires the **session key*
 **Arguments:** `Empty {}`.
 
 **Returns:** `Session`, with the fields defined above. `session_key` is an empty string; this call
-never reissues the credential. The session's grant set and expiration are unchanged.
+never reissues the credential. The session's subject set and expiration are unchanged.
 
 ### CloseSession
 
@@ -250,15 +319,15 @@ Subsequent calls using that session key fail authentication.
 
 ### ListGrants
 
-Lists explicit grants attached to one object. Requires the **tenant key** for `tenant_id`.
+Lists explicit grants attached to one object in the tenant identified by the **tenant key**.
+The tenant is derived exclusively from the authenticated key; the request does not accept a tenant ID.
 
 **Arguments**
 
 ```text
 ListGrantsRequest {
-  tenant_id: string
   object_id: ObjectId
-  after?: string                 // Exclusive grant-name cursor; omit for the first page.
+  after?: string                 // Opaque exclusive cursor; omit for the first page.
   limit: uint32                  // Required, from 1 to 512.
 }
 ```
@@ -267,37 +336,45 @@ ListGrantsRequest {
 
 ```text
 GrantPage {
-  grants: string[]               // Explicit attachments in grant-name order.
+  grants: Grant[]                // Explicit ALLOW and DENY attachments in stable order.
   next_after?: string            // Absent when there are no more pages.
 }
 ```
 
-Inherited grants are excluded. Pass `next_after` unchanged as the next request's `after`.
+Inherited grants are excluded. Grants are ordered by variant (ALLOW before DENY), then by subject
+in UTF-8 byte order for ALLOW, then by numeric mode. Pass `next_after` unchanged as the next request's
+`after`; clients must not construct cursors from subject names.
 
 ### UpdateGrants
 
-Atomically attaches or detaches grants on one object. Requires the **tenant key** for `tenant_id`.
+Atomically attaches or detaches grants on one object in the tenant identified by the **tenant key**.
+The tenant is derived exclusively from the authenticated key; the request does not accept a tenant ID.
 
 **Arguments**
 
 ```text
 UpdateGrantsRequest {
-  tenant_id: string
   object_id: ObjectId
-  changes: GrantChange[]         // At most 512 changes, with unique grant names.
+  changes: GrantChange[]         // At most 512 changes, with unique grant values.
 }
 
 GrantChange {
-  grant: string
+  grant: Grant
   attached: bool                 // True attaches the grant; false detaches it.
 }
 ```
 
 **Returns:** the object's updated `Attr`.
 
-Attachments not named in `changes` remain unchanged. Detaching an ancestor grant does not remove
-independent attachments below it. Permission changes are subject to the authorization freshness
-bound described above.
+A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
+repeat the same grant value, even with different `attached` flags. Multiple ALLOW modes for the same
+subject, or multiple DENY modes, are combined as described above. To change a mode, detach the old
+grant and attach the new one in the same request. Attaching an existing value or detaching an absent
+value is a no-op.
+
+Attachments not included in `changes` remain unchanged. Detaching an ancestor grant does not remove
+independent attachments below it. Permission changes, including DENY, are subject to the
+authorization freshness bound described above; they do not promise immediate revocation.
 
 ## Filesystem reads
 
@@ -411,9 +488,12 @@ does not retroactively make independently fetched pages coherent. The same refre
 to real directories and virtual projections. There is no separate listing token or version
 precondition on `List`.
 
-Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes grant entry
-points using names suffixed with `--<object-id>`, allowing discovery without access to their parents.
-Use returned real IDs for subsequent metadata, content, and mutation operations.
+Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes readable
+entry points with a matching explicit ALLOW using names suffixed with `--<object-id>`, allowing
+discovery without access to their parents. DENY does not create entry points; all entry points must
+pass the full root-to-object grant evaluation. This includes descendants reopened by a deeper ALLOW
+below an inaccessible parent. Use returned real IDs for subsequent metadata, content, and mutation
+operations.
 
 ### Read
 
@@ -525,7 +605,8 @@ against the same current object view. For an existing, authorized object:
 | `content_version` only | The content version matches. | The content version differs. |
 | Both | Both versions match. | Either or both versions differ. |
 
-`UNCHANGED` renews access and validates only the supplied versions. An attribute check covers the
+`UNCHANGED` renews read access and validates only the supplied versions; it does not authorize writes.
+Every mutation must independently check its required grant permissions. An attribute check covers the
 object's attributes and extended metadata, including its visible parent and full path. A content
 check covers file bytes or a directory's entry-name/object-ID bindings. An attribute-only check does
 not validate content or a cached `content_version`; a content-only check does not validate attributes
@@ -615,7 +696,7 @@ Creates an empty file or directory under an authorized real directory.
 CreateOperation {
   parent_id: ObjectId
   name: string
-  object_id: ObjectId            // Fresh UUIDv4 supplied by the caller.
+  object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
   directory: bool                // True for a directory, false for a regular file.
   mime_type?: string             // Defaults to inode/directory or application/octet-stream.
   mode: uint32

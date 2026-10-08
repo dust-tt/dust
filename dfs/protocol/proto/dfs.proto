@@ -1,0 +1,417 @@
+syntax = "proto2";
+
+package dfs.v1;
+
+// Behavioral requirements and validation limits are specified in ../CONTRACTS.
+// All calls are unary and authenticate with authorization: Bearer <key> metadata.
+// Session-key calls derive their tenant and subjects exclusively from the authenticated session.
+service Dfs {
+  // Requires the server key; tenant_id names the tenant to create.
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+
+  // Requires the tenant key for the requested tenant_id.
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+
+  // Requires an active session key; returns the authenticated session.
+  rpc CurrentSession(Empty) returns (Session);
+
+  // Requires an active session key; closes the authenticated session.
+  rpc CloseSession(Empty) returns (Empty);
+
+  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc ListGrants(ListGrantsRequest) returns (GrantPage);
+
+  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Attr);
+
+  // Requires an active session key.
+  rpc Stat(StatRequest) returns (StatResponse);
+
+  // Requires an active session key.
+  rpc Lookup(LookupRequest) returns (LookupResponse);
+
+  // Requires an active session key.
+  rpc List(ListRequest) returns (Page);
+
+  // Requires an active session key.
+  rpc Read(ReadRequest) returns (ReadResponse);
+
+  // Requires an active session key.
+  rpc ReadFiles(ReadFilesRequest) returns (ReadFilesResponse);
+
+  // Requires an active session key.
+  rpc Validate(ValidateRequest) returns (ValidateResponse);
+
+  // Requires an active session key.
+  rpc Apply(ApplyRequest) returns (ApplyResponse);
+
+  // Requires an active session key.
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+message Empty {}
+
+// The value contains exactly 16 UUIDv7 bytes, including for the stored tenant root.
+message ObjectId {
+  required bytes value = 1;
+}
+
+// Virtual tags are selected with true; an absent value or a false tag is invalid.
+message ObjectRef {
+  oneof value {
+    ObjectId id = 1;
+    bool root = 2;
+    bool shared = 3;
+  }
+}
+
+// Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
+message Attr {
+  required ObjectRef id = 1;
+  required ObjectRef parent = 2;
+  required bool directory = 3;
+  required uint64 size = 4;
+  required uint32 mode = 5;
+  optional uint64 atime = 6;
+  optional uint64 mtime = 7;
+  optional uint64 ctime = 8;
+  required uint64 attr_version = 9;
+  // Directory entry versions include session-visible membership changes caused by grants.
+  required uint64 content_version = 10;
+  required ReadView view = 11;
+  optional ExtendedMetadata metadata = 12;
+}
+
+message ExtendedMetadata {
+  required uint64 created = 1;
+  required string full_path = 2;
+  required string mime_type = 3;
+  map<string, bytes> xattrs = 4;
+}
+
+message ReadView {
+  required int64 store_version = 1;
+  required int64 auth_version = 2;
+}
+
+// Exactly one rule is required. Rules inherit from root to object; a deeper ALLOW can restore bits.
+// At each object, matching ALLOW modes are added before subjectless DENY modes are removed.
+message Grant {
+  oneof kind {
+    AllowGrant allow = 1;
+    DenyGrant deny = 2;
+  }
+}
+
+message AllowGrant {
+  // An exact session subject, such as u:spolu@dust.tt or g:engineering.
+  required string subject = 1;
+  // Permissions to add: r=4, w=2, x=1; only bits in 0o7 are permitted.
+  required uint32 mode = 2;
+}
+
+message DenyGrant {
+  // Permissions to remove for every subject: r=4, w=2, x=1; only bits in 0o7 are permitted.
+  // Mode 0o2 removes writes; 0o7 removes all access until a deeper ALLOW restores it.
+  required uint32 mode = 1;
+}
+
+message CreateTenantRequest {
+  required string tenant_id = 1;
+  repeated Grant root_grants = 2;
+}
+
+message Tenant {
+  required string tenant_id = 1;
+  required ObjectId root_id = 2;
+  required string tenant_key = 3;
+}
+
+message CreateSessionRequest {
+  required string tenant_id = 1;
+  repeated string subjects = 2;
+}
+
+message Session {
+  required string id = 1;
+  required string tenant_id = 2;
+  repeated string subjects = 3;
+  required string session_key = 4;
+  required uint64 expires_at = 5;
+  required ObjectId root_id = 6;
+}
+
+// The tenant is derived exclusively from the authenticated tenant key.
+message ListGrantsRequest {
+  reserved 1;
+  reserved "tenant_id";
+  required ObjectId object_id = 2;
+  optional string after = 3;
+  required uint32 limit = 4;
+}
+
+message GrantPage {
+  repeated Grant grants = 1;
+  optional string next_after = 2;
+}
+
+// The tenant is derived exclusively from the authenticated tenant key.
+message UpdateGrantsRequest {
+  reserved 1;
+  reserved "tenant_id";
+  required ObjectId object_id = 2;
+  repeated GrantChange changes = 3;
+}
+
+message GrantChange {
+  required Grant grant = 1;
+  required bool attached = 2;
+}
+
+message StatRequest {
+  repeated ObjectRef object_ids = 1;
+  optional bool include_metadata = 2 [default = false];
+}
+
+message StatResponse {
+  repeated StatResult results = 1;
+  required ReadView view = 2;
+}
+
+message StatResult {
+  required ObjectRef object_id = 1;
+  optional Attr object = 2;
+  optional ErrorDetails error = 3;
+}
+
+message LookupRequest {
+  required ObjectRef parent_id = 1;
+  required string name = 2;
+}
+
+message LookupResponse {
+  required Attr object = 1;
+  required ReadView view = 2;
+}
+
+message ListRequest {
+  required ObjectRef directory_id = 1;
+  optional string after = 2;
+  required uint32 limit = 3;
+}
+
+message Page {
+  repeated Entry entries = 1;
+  optional string next_after = 2;
+  required ReadView view = 3;
+}
+
+message Entry {
+  required string name = 1;
+  optional Attr object = 2;
+}
+
+message ReadRequest {
+  required ObjectId object_id = 1;
+  required uint64 offset = 2;
+  required uint32 length = 3;
+  optional uint64 content_version = 4;
+}
+
+message ReadResponse {
+  required bytes data = 1;
+  required Attr object = 2;
+  required ReadView view = 3;
+}
+
+message ReadFilesRequest {
+  repeated ObjectId object_ids = 1;
+}
+
+message ReadFilesResponse {
+  repeated FileResult results = 1;
+  repeated ObjectId omitted_ids = 2;
+  required ReadView view = 3;
+}
+
+message FileResult {
+  required ObjectId object_id = 1;
+  optional Attr object = 2;
+  optional bytes data = 3;
+  optional ErrorDetails error = 4;
+}
+
+message ValidateRequest {
+  repeated VersionCheck checks = 1;
+}
+
+message VersionCheck {
+  required ObjectRef object_id = 1;
+  optional uint64 attr_version = 2;
+  optional uint64 content_version = 3;
+}
+
+message ValidateResponse {
+  repeated ValidationResult results = 1;
+  required ReadView view = 2;
+}
+
+enum ValidationOutcome {
+  UNCHANGED = 0;
+  CHANGED = 1;
+  DENIED = 2;
+  MISSING = 3;
+  ERROR = 4;
+}
+
+message ValidationResult {
+  required ValidationOutcome outcome = 1;
+  optional ErrorDetails error = 2;
+}
+
+message ApplyRequest {
+  repeated Operation operations = 1;
+}
+
+message Operation {
+  oneof operation {
+    CreateOperation create = 1;
+    UpdateOperation update = 2;
+    WriteOperation write = 3;
+    RenameOperation rename = 4;
+    RemoveOperation remove = 5;
+  }
+}
+
+message ApplyResponse {
+  repeated OperationResult results = 1;
+}
+
+message OperationResult {
+  optional Mutation mutation = 1;
+  optional ErrorDetails error = 2;
+}
+
+message Mutation {
+  optional Attr object = 1;
+  repeated Attr related = 2;
+  required ReadView view = 3;
+}
+
+message CreateOperation {
+  required ObjectId parent_id = 1;
+  required string name = 2;
+  // The caller supplies a fresh UUIDv7.
+  required ObjectId object_id = 3;
+  required bool directory = 4;
+  optional string mime_type = 5;
+  required uint32 mode = 6;
+  map<string, bytes> xattrs = 7;
+}
+
+message UpdateOperation {
+  required ObjectId object_id = 1;
+  optional string mime_type = 2;
+  repeated XattrChange xattrs = 3;
+  optional uint32 mode = 4;
+  optional uint64 atime = 5;
+  optional uint64 mtime = 6;
+  optional uint64 size = 7;
+}
+
+message XattrChange {
+  required string name = 1;
+  optional bytes value = 2;
+}
+
+message WriteOperation {
+  required ObjectId object_id = 1;
+  required uint64 offset = 2;
+  required bytes data = 3;
+  required bool append = 4;
+}
+
+message RenameOperation {
+  required ObjectId object_id = 1;
+  required ObjectId parent_id = 2;
+  required string name = 3;
+  required bool replace = 4;
+}
+
+message RemoveOperation {
+  required ObjectId object_id = 1;
+  required bool directory = 2;
+}
+
+enum SearchField {
+  NAME = 0;
+  CONTENT = 1;
+}
+
+enum SearchKind {
+  FILE = 0;
+  DIRECTORY = 1;
+}
+
+message SearchRequest {
+  required string query = 1;
+  repeated SearchField fields = 2;
+  optional SearchScope scope = 3;
+  optional SearchFilter filter = 4;
+  optional uint32 limit = 5 [default = 20];
+}
+
+message SearchScope {
+  required ObjectId directory_id = 1;
+  optional bool recursive = 2 [default = true];
+}
+
+message SearchFilter {
+  optional SearchKind kind = 1;
+  optional string name = 2;
+  optional string name_prefix = 3;
+  repeated string mime_types = 4;
+  optional uint64 min_size = 5;
+  optional uint64 max_size = 6;
+  optional uint64 modified_after = 7;
+  optional uint64 modified_before = 8;
+  repeated SearchXattr xattrs = 9;
+}
+
+message SearchXattr {
+  required string name = 1;
+  optional bytes value = 2;
+}
+
+message SearchResponse {
+  repeated SearchHit hits = 1;
+  required bool partial = 2;
+  required ReadView view = 3;
+}
+
+message SearchHit {
+  required Attr object = 1;
+  required string name = 2;
+  optional string excerpt = 3;
+}
+
+enum ErrorCode {
+  INTERNAL = 0;
+  INVALID_INPUT = 1;
+  NOT_FOUND = 2;
+  FORBIDDEN = 3;
+  UNAUTHENTICATED = 4;
+  ALREADY_EXISTS = 5;
+  NOT_DIRECTORY = 6;
+  IS_DIRECTORY = 7;
+  NOT_EMPTY = 8;
+  CAPACITY = 9;
+  UNAVAILABLE = 10;
+  UNSUPPORTED = 11;
+  NAME_TOO_LONG = 12;
+  STALE_VIEW = 13;
+}
+
+message ErrorDetails {
+  required ErrorCode code = 1;
+}
