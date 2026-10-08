@@ -46,6 +46,7 @@ import {
   getByokUserFacingLLMErrorMessage,
   getUserFacingLLMErrorMessage,
   LLM_ERROR_TYPE_TO_CATEGORY,
+  USERFACING_CLIENT_ID,
 } from "@app/lib/api/llm/types/errors";
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
@@ -926,10 +927,10 @@ export async function runModel(
           }
         }
 
-        const errorMessage =
-          plan.isByok && isByokProviderId(modelConfig.providerId)
-            ? getByokUserFacingLLMErrorMessage(type, metadata)
-            : getUserFacingLLMErrorMessage(type, metadata);
+        const isByok = plan.isByok && isByokProviderId(modelConfig.providerId);
+        const errorMessage = isByok
+          ? getByokUserFacingLLMErrorMessage(type, metadata)
+          : getUserFacingLLMErrorMessage(type, metadata);
 
         if (shouldSurfaceModelError({ isRetryable, attempt: currentAttempt })) {
           await publishAgentError(
@@ -938,6 +939,9 @@ export async function runModel(
               message: errorMessage,
               metadata: {
                 category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+                llmErrorType: type,
+                provider: USERFACING_CLIENT_ID[metadata.clientId],
+                isByok,
               },
             },
             errorDustRunId

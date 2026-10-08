@@ -957,6 +957,8 @@ export async function finalizeCreditStop(
         metadata: {
           category: "credits_exhausted",
           errorTitle: CREDIT_STOP_ERROR_TITLES[reason],
+          blockedReason: reason,
+          isAdmin: auth.isAdmin(),
         },
       },
       runIds: agentLoopArgs.dustRunIds ?? [],
