@@ -28,9 +28,8 @@ import type { UserType } from "@app/types/user";
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
 /**
- * Fetches the data source views used by `actions`, including those in spaces the caller cannot read:
- * the fetch checks the workspace only. This deliberately skips the space check required by
- * `space-verbs-checked-by-callers`, so it is only for callers allowed by `unreadable-space-views`.
+ * Fetches the data source views used by `actions` that the caller can read, or all of them for an
+ * admin seeing private entities.
  */
 async function fetchActionsDataSourceViews(
   auth: Authenticator,
@@ -44,7 +43,14 @@ async function fetchActionsDataSourceViews(
     ])
     .map((configuration) => configuration.dataSourceViewId);
 
-  return DataSourceViewResource.fetchByIds(auth, dataSourceViewIds);
+  const dataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceViewIds
+  );
+  if (await canAdminSeePrivateEntities(auth)) {
+    return dataSourceViews;
+  }
+  return dataSourceViews.filter((view) => auth.can("read", view));
 }
 
 /**
@@ -82,8 +88,7 @@ export async function getAgentConfigurationAsYAMLConfig(
   }
   const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
-  const { dataSourceViews, mcpServerViews } =
-    await getAccessibleSourcesAndAppsForActions(auth);
+  const { mcpServerViews } = await getAccessibleSourcesAndAppsForActions(auth);
   const spaceResources = await SpaceResource.fetchByModelIds(auth, [
     ...agent.requestedSpaceModelIds(),
   ]);
@@ -95,14 +100,13 @@ export async function getAgentConfigurationAsYAMLConfig(
 
   const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
 
-  // `dataSourceViews` only holds views of spaces the caller can read, but an admin seeing private
-  // entities may export an agent built on other spaces.
-  const agentDataSourceViews = seePrivateEntities
-    ? await fetchActionsDataSourceViews(auth, agentConfiguration.actions)
-    : dataSourceViews;
+  const dataSourceViews = await fetchActionsDataSourceViews(
+    auth,
+    agentConfiguration.actions
+  );
 
   const actions = await buildInitialActions({
-    dataSourceViews: agentDataSourceViews,
+    dataSourceViews,
     actions: agentConfiguration.actions,
     mcpServerViews: mcpServerViewsJSON,
   });
