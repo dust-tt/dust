@@ -189,6 +189,60 @@ export function FilePreviewPanel({
       <ConversationSidePanelHeader
         onClose={closePanel}
         closeDisabled={markdown.holdsNavigation}
+        actions={
+          <>
+            {markdown.canEdit && !markdown.richEditor && (
+              <>
+                <MarkdownFilePreviewViewModeSwitch
+                  viewMode={markdown.viewMode}
+                  onViewModeChange={markdown.setViewMode}
+                />
+                {markdown.isDirty && (
+                  <>
+                    <Button
+                      label={t`Save`}
+                      variant="highlight"
+                      size="xs"
+                      isLoading={markdown.isSaving}
+                      disabled={markdown.isSaving}
+                      onClick={() => void markdown.save()}
+                    />
+                    <Button
+                      label={t`Revert`}
+                      variant="outline"
+                      size="xs"
+                      disabled={markdown.isSaving}
+                      onClick={markdown.revert}
+                    />
+                  </>
+                )}
+              </>
+            )}
+            <div ref={setDocumentControls} className="flex empty:hidden" />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Download01}
+              tooltip={t({ message: "Download", context: "action" })}
+              href={urls.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+            {!isMobile && clientType !== "extension" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={isFullScreen ? Minimize01 : Maximize01}
+                tooltip={
+                  isFullScreen
+                    ? t`Exit full screen mode`
+                    : t`Go to full screen mode`
+                }
+                onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+              />
+            )}
+          </>
+        }
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
@@ -196,58 +250,6 @@ export function FilePreviewPanel({
             {fileName}
           </span>
           {markdown.richEditor && <CoEditionBadge />}
-        </div>
-        <div className="ml-auto flex items-center gap-1 pl-2">
-          {markdown.canEdit && !markdown.richEditor && (
-            <>
-              <MarkdownFilePreviewViewModeSwitch
-                viewMode={markdown.viewMode}
-                onViewModeChange={markdown.setViewMode}
-              />
-              {markdown.isDirty && (
-                <>
-                  <Button
-                    label={t`Save`}
-                    variant="highlight"
-                    size="xs"
-                    isLoading={markdown.isSaving}
-                    disabled={markdown.isSaving}
-                    onClick={() => void markdown.save()}
-                  />
-                  <Button
-                    label={t`Revert`}
-                    variant="outline"
-                    size="xs"
-                    disabled={markdown.isSaving}
-                    onClick={markdown.revert}
-                  />
-                </>
-              )}
-            </>
-          )}
-          <div ref={setDocumentControls} className="flex empty:hidden" />
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Download01}
-            tooltip={t({ message: "Download", context: "action" })}
-            href={urls.downloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
-          {!isMobile && clientType !== "extension" && (
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={isFullScreen ? Minimize01 : Maximize01}
-              tooltip={
-                isFullScreen
-                  ? t`Exit full screen mode`
-                  : t`Go to full screen mode`
-              }
-              onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-            />
-          )}
         </div>
       </ConversationSidePanelHeader>
       <div
