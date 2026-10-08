@@ -102,14 +102,14 @@ export async function updateGroupManagers(
     return { kind: "invalid_managers" };
   }
 
-  const replacement = await GroupPermissionResource.updateUsersForGrant(auth, {
-    users: users.map((user) => user.toJSON()),
+  const changes = await GroupPermissionResource.updateUsersForGrant(auth, {
+    usersToAdd: users.map((user) => user.toJSON()),
     ...managerGrant(group),
     userIdsToRemove,
   });
   return {
     kind: "ok",
     managers: await getGroupManagers(auth, group),
-    ...replacement,
+    ...changes,
   };
 }

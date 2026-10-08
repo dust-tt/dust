@@ -25,16 +25,16 @@ it("updates the users holding a group-manager grant and removes an empty grant",
 
   await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [alice.toJSON()],
+    usersToAdd: [alice.toJSON()],
     userIdsToRemove: [],
   });
-  const replacement = await GroupPermissionResource.updateUsersForGrant(auth, {
+  const changes = await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [bob.toJSON()],
+    usersToAdd: [bob.toJSON()],
     userIdsToRemove: [alice.sId],
   });
-  expect(replacement.addedUsers.map((user) => user.sId)).toEqual([bob.sId]);
-  expect(replacement.removedUsers.map((user) => user.sId)).toEqual([alice.sId]);
+  expect(changes.addedUsers.map((user) => user.sId)).toEqual([bob.sId]);
+  expect(changes.removedUsers.map((user) => user.sId)).toEqual([alice.sId]);
 
   const holder = await GroupPermissionResource.findRegularAutoGroupForGrant(
     auth,
@@ -56,7 +56,7 @@ it("updates the users holding a group-manager grant and removes an empty grant",
   });
   await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [bob.toJSON()],
+    usersToAdd: [bob.toJSON()],
     userIdsToRemove: [],
   });
   expect((await holder.getActiveMembers(auth)).map((user) => user.sId)).toEqual(
@@ -65,7 +65,7 @@ it("updates the users holding a group-manager grant and removes an empty grant",
 
   await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [],
+    usersToAdd: [],
     userIdsToRemove: [bob.sId],
   });
   expect(

@@ -800,20 +800,23 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
   /**
    * @cc [owner:philipperolet,label:security;backend] replace-grant-users-atomically
    * Updating the users holding one grant MUST serialize with other changes to that grant and
-   * either apply every addition/removal or apply none. Callers MUST validate that the supplied
-   * users are active members of the workspace before invoking this method.
+   * either apply every addition/removal or apply none. Callers MUST validate that usersToAdd
+   * are active members of the workspace before invoking this method.
    * Users MUST be added, listed users removed, and other active workspace members preserved.
    * Removal MUST take precedence when a user appears in both lists.
    */
   static async updateUsersForGrant(
     auth: Authenticator,
     {
-      users,
+      usersToAdd,
       grantType,
       resourceType,
       resourceId,
       userIdsToRemove,
-    }: Omit<UsersGrantSpec, "transaction"> & { userIdsToRemove: string[] }
+    }: GrantSpec & {
+      usersToAdd: UserType[];
+      userIdsToRemove: string[];
+    }
   ): Promise<{ addedUsers: UserType[]; removedUsers: UserType[] }> {
     return withTransaction(async (transaction) => {
       await this.getGrantLock(
@@ -842,7 +845,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         [...new Set(memberships.map((membership) => membership.userId))],
         { transaction }
       );
-      const requestedIds = new Set(users.map((user) => user.id));
+      const requestedIds = new Set(usersToAdd.map((user) => user.id));
       const removedIds = new Set(userIdsToRemove);
       const activeUsers = group
         ? await group.getActiveMembers(auth, { transaction })
@@ -852,7 +855,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
           requestedIds.add(user.id);
         }
       }
-      for (const user of users) {
+      for (const user of usersToAdd) {
         if (removedIds.has(user.sId)) {
           requestedIds.delete(user.id);
         }
@@ -865,7 +868,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
           )
           .map((membership) => membership.userId)
       );
-      const addedUsers = users.filter(
+      const addedUsers = usersToAdd.filter(
         (user) => requestedIds.has(user.id) && !activeIds.has(user.id)
       );
       const removedUsers = currentUsers

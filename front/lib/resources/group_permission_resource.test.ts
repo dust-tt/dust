@@ -1123,7 +1123,7 @@ describe("GroupPermissionResource", () => {
       });
 
       await GroupPermissionResource.updateUsersForGrant(auth, {
-        users: [],
+        usersToAdd: [],
         userIdsToRemove: [user.sId],
         ...grant,
       });
