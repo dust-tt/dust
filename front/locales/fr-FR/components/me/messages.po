@@ -268,7 +268,7 @@ msgstr "Impossible de supprimer l’historique d’approbation des outils."
 
 #: front/components/me/UserToolsTable.tsx
 msgid "Success!"
-msgstr "Succès !"
+msgstr "C’est fait !"
 
 #: front/components/me/UserToolsTable.tsx
 msgid "Tool approbation history deleted."
@@ -333,7 +333,7 @@ msgstr "une fois"
 #: front/components/me/UserWakeUpsTable.tsx
 msgctxt "next run, table column header"
 msgid "Next"
-msgstr "Prochain"
+msgstr "Prochaine exécution"
 
 #: front/components/me/UserWakeUpsTable.tsx
 msgid "Failed to load your wake-ups."

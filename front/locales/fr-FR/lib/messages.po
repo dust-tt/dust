@@ -35,7 +35,7 @@ msgstr "L’en-tête d’autorisation de la requête est mal formé."
 
 #: front/lib/api_error_messages.ts
 msgid "The request basic authorization is invalid."
-msgstr "L’autorisation basique de la requête n’est pas valide."
+msgstr "L’authentification Basic de la requête n’est pas valide."
 
 #: front/lib/api_error_messages.ts
 msgid "Your session token is invalid."
@@ -63,7 +63,7 @@ msgstr "La requête n’est pas valide."
 
 #: front/lib/api_error_messages.ts
 msgid "The table rows are invalid."
-msgstr "Les lignes du tableau ne sont pas valides."
+msgstr "Les lignes de la table ne sont pas valides."
 
 #: front/lib/api_error_messages.ts
 msgid "User not found."
@@ -159,7 +159,7 @@ msgstr "Workspace personnel introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "The action failed with an unknown error."
-msgstr "L’action a échoué avec une erreur inconnue."
+msgstr "L’action a échoué en raison d’une erreur inconnue."
 
 #: front/lib/api_error_messages.ts
 msgid "The action failed."
@@ -167,7 +167,7 @@ msgstr "L’action a échoué."
 
 #: front/lib/api_error_messages.ts
 msgid "Membership not found."
-msgstr "Adhésion introuvable."
+msgstr "Appartenance au workspace introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "Your membership to this workspace was revoked."
@@ -247,7 +247,7 @@ msgstr "Vous n’avez pas l’autorisation de modifier cet agent."
 
 #: front/lib/api_error_messages.ts
 msgid "The agent message failed."
-msgstr "Le message de l’agent a échoué."
+msgstr "Échec du message de l’agent."
 
 #: front/lib/api_error_messages.ts
 msgid "The request couldn't be processed."
@@ -343,7 +343,7 @@ msgstr "Les paramètres de pagination ne sont pas valides."
 
 #: front/lib/api_error_messages.ts
 msgid "Table not found."
-msgstr "Tableau introuvable."
+msgstr "Table introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "An invitation was already sent recently."
@@ -367,7 +367,7 @@ msgstr "Configuration des transcriptions introuvable."
 
 #: front/lib/api_error_messages.ts
 msgid "This transcripts configuration can't be the default."
-msgstr "Cette configuration des transcriptions ne peut pas être celle par défaut."
+msgstr "Cette configuration de transcriptions ne peut pas être définie par défaut."
 
 #: front/lib/api_error_messages.ts
 msgid "A transcripts configuration already exists."
@@ -745,7 +745,7 @@ msgstr "Vous ne pouvez pas modifier l’URL de l’instance Salesforce. Ajoutez 
 
 #: front/lib/connector_providers_ui.ts
 msgid "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile."
-msgstr "OAuth nécessite un accès administrateur Gong. Toutes les transcriptions du workspace seront synchronisées avec Dust, sauf celles marquées comme privées dans Gong. Vous pouvez sélectionner un profil de permissions pour limiter les appels synchronisés aux participants de ce profil."
+msgstr "OAuth nécessite un accès administrateur Gong. Toutes les transcriptions du workspace seront synchronisées avec Dust, sauf celles marquées comme privées dans Gong. Vous pouvez sélectionner un profil d’autorisations pour limiter les appels synchronisés aux participants de ce profil."
 
 #: front/lib/connector_providers_ui.ts
 msgid "You cannot change the Gong account. Please add a new Gong connection instead."

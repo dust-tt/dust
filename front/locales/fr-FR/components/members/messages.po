@@ -109,7 +109,7 @@ msgstr "{activeDifferentRoleCount, plural, one {L’utilisateur ci-dessous fait 
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "- {fullName} ({email}, current role: {currentRole})"
-msgstr "- {fullName} ({email}, rôle actuel : {currentRole})"
+msgstr "- {fullName} ({email}, rôle actuel : {currentRole})"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "Do you want to proceed?"

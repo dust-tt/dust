@@ -45,7 +45,7 @@ msgstr "Réseau"
 
 #: front/components/sandbox/ComputerNetworkSection.tsx
 msgid "Select the Workspace or one or more Pods to view and edit network access."
-msgstr "Sélectionnez le Workspace ou un ou plusieurs Pods pour afficher et modifier l’accès réseau."
+msgstr "Sélectionnez le workspace ou un ou plusieurs Pods pour afficher et modifier l’accès réseau."
 
 #: front/components/sandbox/DomainInputForm.tsx
 msgid "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai."
@@ -109,7 +109,7 @@ msgstr "Retirer {domain}"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Will be added to the Workspace, inherited by all Pods, as {domain}."
-msgstr "Sera ajouté au Workspace, hérité par tous les Pods, sous la forme {domain}."
+msgstr "Sera ajouté au workspace, hérité par tous les Pods, sous la forme {domain}."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Will be added to the {podCount, plural, one {# selected Pod} other {# selected Pods}} as {domain}."
@@ -117,7 +117,7 @@ msgstr "Sera ajouté {podCount, plural, one {au # Pod sélectionné} other {aux 
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Add {domain} to the Workspace"
-msgstr "Ajouter {domain} au Workspace"
+msgstr "Ajouter {domain} au workspace"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Add {domain} to {podName}"
@@ -125,7 +125,7 @@ msgstr "Ajouter {domain} à {podName}"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Reject {domain} for the Workspace"
-msgstr "Refuser {domain} pour le Workspace"
+msgstr "Refuser {domain} pour le workspace"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Reject {domain} for {podName}"
@@ -133,7 +133,7 @@ msgstr "Refuser {domain} pour {podName}"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Inherited from the Workspace — select the Workspace to remove it."
-msgstr "Hérité du Workspace — sélectionnez le Workspace pour le retirer."
+msgstr "Hérité du workspace — sélectionnez le workspace pour le retirer."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
@@ -155,15 +155,15 @@ msgstr "Workspace"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Remove Workspace domain"
-msgstr "Retirer le domaine du Workspace"
+msgstr "Retirer le domaine du workspace"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace and from {removeTargetPodNames}. This cannot be undone."
-msgstr "{removeTargetDomain} est un domaine du Workspace, hérité par chaque Pod et chaque Computer en cours d’exécution. Le retirer ici le supprime du Workspace et de {removeTargetPodNames}. Cette action est irréversible."
+msgstr "{removeTargetDomain} est un domaine du workspace, hérité par chaque Pod et chaque Computer en cours d’exécution. Le retirer ici le supprime du workspace et de {removeTargetPodNames}. Cette action est irréversible."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "{removeTargetDomain} is a Workspace domain, inherited by every Pod and running Computer. Removing it here drops it from the Workspace. This cannot be undone."
-msgstr "{removeTargetDomain} est un domaine du Workspace, hérité par chaque Pod et chaque Computer en cours d’exécution. Le retirer ici le supprime du Workspace. Cette action est irréversible."
+msgstr "{removeTargetDomain} est un domaine du workspace, hérité par chaque Pod et chaque Computer en cours d’exécution. Le retirer ici le supprime du workspace. Cette action est irréversible."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Remove"
@@ -176,7 +176,7 @@ msgstr "Domaines autorisés"
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "Domains allowed across the selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod."
-msgstr "Domaines autorisés dans les périmètres sélectionnés. Un ajout s’applique au Workspace lorsqu’il est sélectionné (hérité par tous les Pods), sinon à chaque Pod sélectionné."
+msgstr "Domaines autorisés dans les périmètres sélectionnés. Un ajout s’applique au workspace lorsqu’il est sélectionné (hérité par tous les Pods), sinon à chaque Pod sélectionné."
 
 #: front/components/sandbox/MultiPodNetworkSection.tsx
 msgid "This domain is already allowed workspace-wide."

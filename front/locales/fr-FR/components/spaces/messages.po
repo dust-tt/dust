@@ -244,7 +244,7 @@ msgstr "Supprimer"
 
 #: front/components/spaces/ConnectorDataUpdatedModal.tsx
 msgid "Data sync in progress..."
-msgstr "Synchronisation des données en cours..."
+msgstr "Synchronisation des données en cours…"
 
 #: front/components/spaces/ConnectorDataUpdatedModal.tsx
 msgid "Once synchronized, table will appear under <0>\"Connection Admin\"</0> and can be added to:"
@@ -320,7 +320,7 @@ msgstr "Continuer"
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
 msgid "Space settings - {spaceName}"
-msgstr "Paramètres de l’espace - {spaceName}"
+msgstr "Paramètres de l’espace – {spaceName}"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/SpaceCategoriesList.tsx
@@ -343,7 +343,7 @@ msgstr "L’accès restreint est activé."
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 msgid "Members can read the content of the space and write data into it (upload files, delete documents...)."
-msgstr "Les membres peuvent lire le contenu de l’espace et y écrire des données (importer des fichiers, supprimer des documents...)."
+msgstr "Les membres peuvent lire le contenu de l’espace et y écrire des données (importer des fichiers, supprimer des documents…)."
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 msgid "Restricted access is disabled. The space is open."
@@ -355,7 +355,7 @@ msgstr "Tout le monde dans le workspace peut lire les données de cet espace."
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 msgid "Members of the space can also write data (upload files, delete documents...)."
-msgstr "Les membres de l’espace peuvent aussi écrire des données (importer des fichiers, supprimer des documents...)."
+msgstr "Les membres de l’espace peuvent aussi écrire des données (importer des fichiers, supprimer des documents…)."
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
@@ -543,7 +543,7 @@ msgstr "{spaceName} est l’espace où vous importez et connectez les données a
 
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
 msgid "Only admins, managers and the people and groups selected here can modify the data (upload files, delete documents, connect data sources...)."
-msgstr "Seuls les administrateurs, les managers et les personnes et groupes sélectionnés ici peuvent modifier les données (importer des fichiers, supprimer des documents, connecter des sources de données...)."
+msgstr "Seuls les administrateurs, les managers et les personnes et groupes sélectionnés ici peuvent modifier les données (importer des fichiers, supprimer des documents, connecter des sources de données…)."
 
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
 msgid "They are the people picked below, plus everyone in the groups given access to the space."
@@ -618,7 +618,7 @@ msgstr "Importer des données"
 
 #: front/components/spaces/SpaceCategoriesList.tsx
 msgid "Scrape a website"
-msgstr "Extraire un site web"
+msgstr "Indexer un site web"
 
 #: front/components/spaces/SpaceCategoriesList.tsx
 msgid "Create a Dust App"
@@ -761,7 +761,7 @@ msgstr "Vous ne pouvez pas créer plus d’espaces."
 
 #: front/components/spaces/SpaceLayout.tsx
 msgid "We're going to make changes to data permissions spaces soon and are limiting the creation of spaces for that reason. Reach out to us to learn more."
-msgstr "Nous allons bientôt modifier les permissions des données dans les espaces et limitons donc la création d’espaces. Contactez-nous pour en savoir plus."
+msgstr "Nous allons bientôt modifier les autorisations des données dans les espaces et limitons donc la création d’espaces. Contactez-nous pour en savoir plus."
 
 #: front/components/spaces/SpaceLayout.tsx
 msgid "The maximum number of spaces for this workspace has been reached. Please reach out at support@dust.tt to learn more."
@@ -793,7 +793,7 @@ msgstr "Besoin d’aide ? Consultez notre <0>guide</0>."
 
 #: front/components/spaces/SpacePageHeaders.tsx
 msgid "Here you can add new trigger sources to your workspace. Once created, those sources can be used in the Agent Builder to trigger Agents."
-msgstr "Ajoutez ici de nouvelles sources de déclencheurs à votre workspace. Une fois créées, ces sources peuvent être utilisées dans l’Agent Builder pour déclencher des agents."
+msgstr "Ajoutez ici de nouvelles sources de déclencheurs à votre workspace. Une fois créées, ces sources peuvent être utilisées dans l’éditeur d’agent pour déclencher des agents."
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Managed by"
@@ -801,7 +801,7 @@ msgstr "Géré par"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Last sync"
-msgstr "Dernière synchronisation"
+msgstr "Dernière synchro"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgctxt "last sync status"
@@ -814,7 +814,7 @@ msgstr "Réessayez dans quelques minutes"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Connecting..."
-msgstr "Connexion en cours..."
+msgstr "Connexion en cours…"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Connect"

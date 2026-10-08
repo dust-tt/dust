@@ -35,8 +35,8 @@ msgid "Apply"
 msgstr "Appliquer"
 
 #: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
-msgid "All {categoryLabel}"
-msgstr "Tous ({categoryLabel})"
+msgid "All options"
+msgstr "Toutes les options"
 
 #: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
 msgid "Updating…"

@@ -389,7 +389,7 @@ msgstr "Détermine si les membres peuvent utiliser la transcription vocale dans 
 
 #: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
 msgid "Workspace Analyst"
-msgstr "Analyst du workspace"
+msgstr "Agent Analyst du workspace"
 
 #: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
 msgid "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used"

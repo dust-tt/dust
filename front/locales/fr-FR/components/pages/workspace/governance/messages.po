@@ -124,11 +124,11 @@ msgstr "Créer des agents"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "Who can create agents in the Agent Builder"
-msgstr "Qui peut créer des agents dans l’Agent Builder"
+msgstr "Qui peut créer des agents dans l’éditeur d’agent"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "who can create agents agent builder permission"
-msgstr "qui peut créer des agents agent builder autorisation"
+msgstr "qui peut créer des agents éditeur d’agent autorisation"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "Publish agents"
@@ -332,7 +332,7 @@ msgstr "conversation confidentialité participants"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "Workspace Analyst"
-msgstr "Analyst du workspace"
+msgstr "Agent Analyst du workspace"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "analyst agent analytics tools admins"

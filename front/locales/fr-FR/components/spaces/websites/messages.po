@@ -192,7 +192,7 @@ msgstr "Modifier {dataSourceName}"
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Create a website"
-msgstr "Créer un site web"
+msgstr "Ajouter un site web"
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Cancel"

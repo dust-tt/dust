@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/editor/input_bar/EmojiDropdown.tsx
 msgid "No emoji found"
-msgstr "Aucun emoji trouvé"
+msgstr "Aucun émoji trouvé"
 
 #: front/components/editor/input_bar/MentionDropdown.tsx
 msgid "Member"

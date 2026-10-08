@@ -31,7 +31,7 @@ msgstr "Réessayer"
 
 #: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
 msgid "Starting Analyst session..."
-msgstr "Démarrage de la session Analyst..."
+msgstr "Démarrage de la session Analyst…"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Usage metrics"
@@ -222,7 +222,7 @@ msgstr "Type"
 
 #: front/components/workspace/analytics/automationsFilter.ts
 msgid "Pool"
-msgstr "Réserve"
+msgstr "Réserve de crédits"
 
 #: front/components/workspace/analytics/creditsTableCells.tsx
 msgid "{formattedCredits} credits"

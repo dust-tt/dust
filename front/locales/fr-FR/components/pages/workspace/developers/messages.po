@@ -203,7 +203,7 @@ msgstr "Fournisseurs de modèles"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Model providers available to your Dust apps."
-msgstr "Fournisseurs de modèles disponibles pour vos Dust Apps."
+msgstr "Fournisseurs de modèles disponibles pour vos apps Dust."
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Service Providers"
@@ -211,7 +211,7 @@ msgstr "Fournisseurs de services"
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Service providers enable your Dust Apps to query external data or write to external services."
-msgstr "Les fournisseurs de services permettent à vos Dust Apps d’interroger des données externes ou d’écrire dans des services externes."
+msgstr "Les fournisseurs de services permettent à vos apps Dust d’interroger des données externes ou d’écrire dans des services externes."
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "enabled"

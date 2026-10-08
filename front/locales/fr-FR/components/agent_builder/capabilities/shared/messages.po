@@ -131,7 +131,7 @@ msgstr "Sélectionner une app Dust"
 
 #: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
 msgid "The agent will execute a <0>Dust Application</0> of your design before replying. The output of the app (last block) is injected in context for the model to generate an answer."
-msgstr "L’agent exécutera une <0>application Dust</0> de votre conception avant de répondre. La sortie de l’app (dernier bloc) est injectée dans le contexte pour que le modèle génère une réponse."
+msgstr "L’agent exécutera une <0>app Dust</0> de votre conception avant de répondre. La sortie de l’app (dernier bloc) est injectée dans le contexte pour que le modèle génère une réponse."
 
 #: front/components/agent_builder/capabilities/shared/DustAppSection.tsx
 msgid "Space:"

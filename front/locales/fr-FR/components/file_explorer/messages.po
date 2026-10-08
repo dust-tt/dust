@@ -199,7 +199,7 @@ msgstr "Enregistrer"
 
 #: front/components/file_explorer/FilePreviewDialog.tsx
 msgid "Revert"
-msgstr "Annuler les modifications"
+msgstr "Rétablir"
 
 #: front/components/file_explorer/MarkdownFilePreview.tsx
 msgctxt "markdown file view mode"
@@ -270,7 +270,7 @@ msgstr "Renommer le dossier"
 
 #: front/components/file_explorer/RenameFileDialog.tsx
 msgid "Rename Frame"
-msgstr "Renommer la Frame"
+msgstr "Renommer le Frame"
 
 #: front/components/file_explorer/RenameFileDialog.tsx
 msgid "Enter new name..."
@@ -278,7 +278,7 @@ msgstr "Saisissez le nouveau nom…"
 
 #: front/components/file_explorer/RenameFileDialog.tsx
 msgid "Enter new file name..."
-msgstr "Saisissez le nouveau nom du fichier..."
+msgstr "Saisissez le nouveau nom du fichier…"
 
 #: front/components/file_explorer/useFileDownload.ts
 msgid "Failed to download the file."

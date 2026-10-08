@@ -64,11 +64,11 @@ msgstr "crédits"
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Upgrade request emails"
-msgstr "E-mails de demande de mise à niveau"
+msgstr "E-mails de demande d’augmentation"
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Email all workspace admins and managers when a member requests a spend-limit upgrade."
-msgstr "Envoyer un e-mail à tous les administrateurs et responsables du workspace lorsqu’un membre demande une augmentation de sa limite de dépenses."
+msgstr "Envoyer un e-mail à tous les administrateurs et managers du workspace lorsqu’un membre demande une augmentation de sa limite de dépenses."
 
 #: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
 msgid "Default cost cap per skill"
@@ -132,23 +132,23 @@ msgstr "crédits/mois"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Upgrade request"
-msgstr "Demande de mise à niveau"
+msgstr "Demande d’augmentation"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on this page."
-msgstr "Autoriser les membres qui atteignent leur limite à demander une mise à niveau. Les administrateurs et responsables du workspace examinent les demandes sur cette page."
+msgstr "Autoriser les membres qui atteignent leur limite à demander une augmentation. Les administrateurs et managers du workspace examinent les demandes sur cette page."
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Enable upgrade requests to enable this setting"
-msgstr "Activez les demandes de mise à niveau pour activer ce paramètre"
+msgstr "Activez les demandes d’augmentation pour activer ce paramètre"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Require a reason for upgrade requests"
-msgstr "Exiger un motif pour les demandes de mise à niveau"
+msgstr "Exiger un motif pour les demandes d’augmentation"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Members must explain why they need an upgrade before their request can be submitted."
-msgstr "Les membres doivent expliquer pourquoi ils ont besoin d’une mise à niveau avant de pouvoir envoyer leur demande."
+msgstr "Les membres doivent expliquer pourquoi ils ont besoin d’une augmentation avant de pouvoir envoyer leur demande."
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Auto-upgrade seats"

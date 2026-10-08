@@ -35,4 +35,4 @@ msgstr "Aucune table trouvée"
 
 #: front/components/tables/TablePicker.tsx
 msgid "Loading more data..."
-msgstr "Chargement de données supplémentaires..."
+msgstr "Chargement de données supplémentaires…"

@@ -164,7 +164,7 @@ msgstr "L’enregistrement retirera l’outil des agents suivants :"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Open {agentName} in Agent Builder"
-msgstr "Ouvrir {agentName} dans l’Agent Builder"
+msgstr "Ouvrir {agentName} dans l’éditeur d’agent"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Skills using this tool will not be affected."
@@ -351,7 +351,7 @@ msgstr "Sélectionner {toolDisplayName}"
 
 #: front/components/actions/mcp/MCPServerDetailsTools.tsx
 msgid "Stake"
-msgstr "Niveau de risque"
+msgstr "Risque"
 
 #: front/components/actions/mcp/MCPServerDetailsTools.tsx
 msgid "Show less"
@@ -451,7 +451,7 @@ msgstr "Activer"
 
 #: front/components/actions/mcp/MCPServerSettings.tsx
 msgid "Permissions"
-msgstr "Permissions"
+msgstr "Autorisations"
 
 #: front/components/actions/mcp/RemoteMCPForm.tsx
 msgid "Synchronization warning"

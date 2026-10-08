@@ -84,7 +84,7 @@ msgstr "Activer la synchronisation des PDF"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Failed to update the permissions"
-msgstr "Impossible de mettre à jour les permissions"
+msgstr "Impossible de mettre à jour les autorisations"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Failed to update the connection"
@@ -104,11 +104,11 @@ msgstr "La connexion a bien été mise à jour."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "The authenticated user needs higher permissions from your service provider."
-msgstr "L’utilisateur authentifié a besoin de permissions plus élevées auprès de votre fournisseur de service."
+msgstr "L’utilisateur authentifié a besoin d’autorisations plus élevées auprès de votre fournisseur de service."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Failed to update the permissions of the data source. Please retry to reconnect, or contact support@dust.tt for assistance if the problem persists."
-msgstr "Impossible de mettre à jour les permissions de la source de données. Réessayez de vous reconnecter, ou contactez support@dust.tt si le problème persiste."
+msgstr "Impossible de mettre à jour les autorisations de la source de données. Réessayez de vous reconnecter, ou contactez support@dust.tt si le problème persiste."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Manage connection"
@@ -132,7 +132,7 @@ msgstr "<0>{ownerFullName}</0> l’a configurée."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "{connectorName} data & permissions"
-msgstr "Données et permissions {connectorName}"
+msgstr "Données et autorisations {connectorName}"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Migration required"
@@ -152,7 +152,7 @@ msgstr "Important"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "<0>Editing</0> can break the existing data structure in Dust and Agents using them."
-msgstr "<0>Toute modification</0> peut casser la structure de données existante dans Dust et les agents qui l’utilisent."
+msgstr "<0>Toute modification</0> peut endommager la structure de données existante dans Dust et les agents qui l’utilisent."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Read our <0>Playbook</0>."
@@ -168,7 +168,7 @@ msgstr "Autorisée avec le compte Microsoft <0>{microsoftAccount}</0>."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Editing permissions"
-msgstr "Modification des permissions"
+msgstr "Modification des autorisations"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "You are not the owner of this connection."
@@ -176,15 +176,15 @@ msgstr "Vous n’êtes pas propriétaire de cette connexion."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Editing permission rights with a different account will likely break the existing data structure in Dust and Agents using them."
-msgstr "Modifier les permissions avec un autre compte risque de casser la structure de données existante dans Dust et les agents qui l’utilisent."
+msgstr "Modifier les autorisations avec un autre compte risque d’endommager la structure de données existante dans Dust et les agents qui l’utilisent."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Edit permissions"
-msgstr "Modifier les permissions"
+msgstr "Modifier les autorisations"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Editing permissions is temporarily disabled"
-msgstr "La modification des permissions est temporairement désactivée"
+msgstr "La modification des autorisations est temporairement désactivée"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Are you sure?"
@@ -192,7 +192,7 @@ msgstr "Êtes-vous sûr ?"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "The changes you are about to make may break existing {connectorName} data sources and the agents using them. Are you sure you want to continue?"
-msgstr "Les modifications que vous allez effectuer peuvent casser les sources de données {connectorName} existantes et les agents qui les utilisent. Voulez-vous vraiment continuer ?"
+msgstr "Les modifications que vous allez effectuer peuvent rendre inutilisables les sources de données {connectorName} existantes et les agents qui les utilisent. Voulez-vous vraiment continuer ?"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
@@ -231,7 +231,7 @@ msgstr "Suppression de la connexion {connectorName}"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "<0>Deleting</0> will break Agents using this data."
-msgstr "<0>La suppression</0> cassera les agents qui utilisent ces données."
+msgstr "<0>La suppression</0> rendra inutilisables les agents qui utilisent ces données."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Connection removal requires support"
@@ -239,7 +239,7 @@ msgstr "La suppression de la connexion nécessite le support"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Removing a connection permanently deletes its synced data and may break agents or spaces that rely on it. Contact <0>support@dust.tt</0> to be assisted with the removal of this connection."
-msgstr "Supprimer une connexion efface définitivement ses données synchronisées et peut casser les agents ou les espaces qui en dépendent. Contactez <0>support@dust.tt</0> pour être accompagné dans la suppression de cette connexion."
+msgstr "Supprimer une connexion efface définitivement ses données synchronisées et peut rendre inutilisables les agents ou les espaces qui en dépendent. Contactez <0>support@dust.tt</0> pour être accompagné dans la suppression de cette connexion."
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Delete connection"
@@ -247,7 +247,7 @@ msgstr "Supprimer la connexion"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "The changes you are about to make will break existing agents using {connectorName}. Are you sure you want to continue?"
-msgstr "Les modifications que vous allez effectuer casseront les agents existants qui utilisent {connectorName}. Voulez-vous vraiment continuer ?"
+msgstr "Les modifications que vous allez effectuer rendront inutilisables les agents existants qui utilisent {connectorName}. Voulez-vous vraiment continuer ?"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 #: front/components/data_source/DeleteStaticDataSourceDialog.tsx
@@ -316,7 +316,7 @@ msgstr "Configuration de la connexion"
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Connecting {providerName}"
-msgstr "Connexion de {providerName}"
+msgstr "Connexion à {providerName}"
 
 #: front/components/data_source/CreateConnectionOAuthModal.tsx
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
@@ -348,7 +348,7 @@ msgstr "Limites"
 
 #: front/components/data_source/CreateConnectionOAuthModal.tsx
 msgid "Connecting..."
-msgstr "Connexion en cours..."
+msgstr "Connexion en cours…"
 
 #: front/components/data_source/CreateConnectionOAuthModal.tsx
 msgid "Acknowledge and connect"
@@ -564,7 +564,7 @@ msgstr "Limite atteinte"
 
 #: front/components/data_source/DataSourceSyncChip.tsx
 msgid "We need read-only access to your database to synchronize data. Please update the permissions and try again."
-msgstr "Nous avons besoin d’un accès en lecture seule à votre base de données pour synchroniser les données. Mettez à jour les permissions et réessayez."
+msgstr "Nous avons besoin d’un accès en lecture seule à votre base de données pour synchroniser les données. Mettez à jour les autorisations et réessayez."
 
 #: front/components/data_source/DataSourceSyncChip.tsx
 msgid "We encountered a network error while trying to connect to your database. Please check your network connection and try again."
@@ -608,7 +608,7 @@ msgstr "En attente"
 
 #: front/components/data_source/DeleteStaticDataSourceDialog.tsx
 msgid "Checking usage..."
-msgstr "Vérification de l’utilisation..."
+msgstr "Vérification de l’utilisation…"
 
 #: front/components/data_source/DeleteStaticDataSourceDialog.tsx
 msgid "Failed to check usage."
@@ -765,7 +765,7 @@ msgstr "Copiez-collez le contenu ou importez un fichier ({supportedFileExtension
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Uploading..."
-msgstr "Import en cours..."
+msgstr "Import en cours…"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 #: front/components/data_source/TableUploadOrEditModal.tsx
@@ -774,7 +774,7 @@ msgstr "Importer un fichier"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Your document content..."
-msgstr "Contenu de votre document..."
+msgstr "Contenu de votre document…"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "You must upload a file or specify the content of the document."
@@ -782,7 +782,7 @@ msgstr "Vous devez importer un fichier ou saisir le contenu du document."
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Labels"
-msgstr "Libellés"
+msgstr "Étiquettes"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Hide"
@@ -794,16 +794,16 @@ msgstr "Afficher"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Labels can be set to filter data source retrieval."
-msgstr "Les libellés permettent de filtrer la récupération dans la source de données."
+msgstr "Les étiquettes permettent de filtrer la récupération dans la source de données."
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Add label"
-msgstr "Ajouter un libellé"
+msgstr "Ajouter une étiquette"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgctxt "noun, document label"
 msgid "Label"
-msgstr "Libellé"
+msgstr "Étiquette"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Remove"
@@ -839,7 +839,7 @@ msgstr "Utiliser un principal de service"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Tenant ID"
-msgstr "ID du tenant"
+msgstr "ID du locataire"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Client ID"
@@ -875,7 +875,7 @@ msgstr "{duplicateFileCount, plural, one {# fichier existe déjà dans ce dossie
 
 #: front/components/data_source/MultipleFilesUpload.tsx
 msgid "and {hiddenDuplicateFileCount} more..."
-msgstr "et {hiddenDuplicateFileCount} autres..."
+msgstr "et {hiddenDuplicateFileCount} autres…"
 
 #: front/components/data_source/MultipleFilesUpload.tsx
 msgid "Do you want to replace them?"
@@ -1096,7 +1096,7 @@ msgstr "Décrivez le contenu de vos données. Le LLM s’en servira pour génér
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "This table contains..."
-msgstr "Cette table contient..."
+msgstr "Cette table contient…"
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "You need to provide a description for your data file."

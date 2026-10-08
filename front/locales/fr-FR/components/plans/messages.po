@@ -179,4 +179,4 @@ msgstr "selon les utilisateurs actifs"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
 msgid "Contact sales"
-msgstr "Contacter l’équipe commerciale"
+msgstr "Contacter les ventes"

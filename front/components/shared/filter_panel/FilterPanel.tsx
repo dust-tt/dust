@@ -210,7 +210,6 @@ export function FilterPanel<
                 <FilterOptionCheckboxList
                   key={`${isOpen}|${activeCategory}|${searchText}`}
                   idPrefix={`${idPrefix}-option-${activeCategory}`}
-                  categoryLabel={categoryLabels[activeCategory]}
                   options={filteredOptions}
                   selectedIds={selectedIds}
                   onToggleOption={(option) =>
