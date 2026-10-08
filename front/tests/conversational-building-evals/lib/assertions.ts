@@ -815,12 +815,10 @@ function extractBuildEntityMentions(text: string): BuildEntityMention[] {
   );
 }
 
-type MentionedEntity = { kind: BuildEntityMention["kind"]; key: string };
+type EditedEntity = { kind: BuildEntityMention["kind"]; key: string };
 
-// The entities the response must mention, or none for a creation.
-function getEntitiesToMention(
-  assertion: FinalToolCallAssertion
-): MentionedEntity[] {
+// The entities the response acted on, or none for a creation.
+function getEditedEntities(assertion: FinalToolCallAssertion): EditedEntity[] {
   switch (assertion.type) {
     // A created agent has no id the model could know: it is named in plain text.
     case "suggestAgentCreation":
@@ -872,29 +870,35 @@ function getEntitiesToMention(
 }
 
 /**
- * The response must mention every entity it acted on with its mention directive, so the user can
- * click it open next to the suggestion cards. A created agent has no id the model could know, so it
- * is not checked; an edited agent is checked against its seeded id, like a skill.
+ * When the response acted on several entities, it must not mention every one of them: the
+ * suggestion cards already list them, so the response names only the entities a sentence needs. A
+ * created agent has no id the model could know, so it is not counted.
  */
 export function validateEntityMention(
   assertion: FinalToolCallAssertion,
   responseText: string,
   scenario: SeededScenario
 ): AssertionResult {
+  const editedEntities = getEditedEntities(assertion);
+  if (editedEntities.length < 2) {
+    return { success: true };
+  }
+
   const mentions = extractBuildEntityMentions(responseText);
-  for (const { kind, key } of getEntitiesToMention(assertion)) {
-    const expectedId =
+  const mentionsEveryEntity = editedEntities.every(({ kind, key }) => {
+    const id =
       kind === "skill"
         ? resolveSkillId(scenario, key)
         : resolveAgentId(scenario, key);
-    if (!mentions.some((m) => m.kind === kind && m.sId === expectedId)) {
-      return {
-        success: false,
-        error:
-          `Expected the response to mention ${kind} "${key}" as ` +
-          `:build_${kind}[...]{sId=${expectedId}}; mentions: ${JSON.stringify(mentions)}`,
-      };
-    }
+    return mentions.some((m) => m.kind === kind && m.sId === id);
+  });
+  if (mentionsEveryEntity) {
+    return {
+      success: false,
+      error:
+        `Expected the response not to mention all ${editedEntities.length} edited entities; ` +
+        `mentions: ${JSON.stringify(mentions)}`,
+    };
   }
   return { success: true };
 }

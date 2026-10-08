@@ -97,12 +97,14 @@ User message:
    Did it avoid redundant calls?
 4. **Response Quality**: Is the closing message short and clear? Does it tell the user a
    suggestion was recorded for editors to review rather than pretending the change is live?
-5. **Entity Mention**: Does the message carrying the suggestion directives also name the entity
-   it acted on, as \`:build_skill[Skill Name]{sId=<skillId>}\` or
-   \`:build_agent[Agent Name]{sId=<agentId>}\`, with the same id the suggestion targets, so the
-   user can click it open? An entity named in plain text, or with an invented id, does not render
-   as a clickable chip. Exception: an agent or skill the suggestion creates has no id yet, so it
-   is named in plain text; a mention directive for it can only carry an invented id.
+5. **Entity Mention**: When the message names an existing agent or skill, does it use its mention
+   directive, \`:build_skill[Skill Name]{sId=<skillId>}\` or
+   \`:build_agent[Agent Name]{sId=<agentId>}\`, with the entity's real id, so the user can click it
+   open? An entity named in plain text, or with an invented id, does not render as a clickable
+   chip. The message names only the entities a sentence needs: the suggestion cards already list
+   every edited entity, so listing all of them is a flaw. Exception: an agent or skill the
+   suggestion creates has no id yet, so it is named in plain text; a mention directive for it can
+   only carry an invented id.
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 
