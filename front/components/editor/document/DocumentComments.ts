@@ -249,36 +249,38 @@ export const getCommentedTexts = (doc: Node): Map<string, string> => {
     id,
     ...range,
     text: "",
-    started: false,
   }));
   let next = 0;
   let open: typeof quotes = [];
 
-  // Builds what doc.textBetween(from, to, " ") returns for every comment at once.
+  // Builds what doc.textBetween(from, to, " ") returns for every comment at once. A comment opens
+  // only at the text node holding its first marked character, never at an enclosing block, so a
+  // node only visits the comments it overlaps, and every block an open comment then enters is a
+  // later one, which takes the separator.
   doc.descendants((node, pos) => {
-    const end = pos + node.nodeSize;
     if (open.length > 0) {
       open = open.filter((quote) => quote.to > pos);
     }
-    while (next < quotes.length && quotes[next].from < end) {
-      open.push(quotes[next++]);
+    if (node.isText) {
+      const end = pos + node.nodeSize;
+      while (next < quotes.length && quotes[next].from < end) {
+        open.push(quotes[next++]);
+      }
     }
+    const leafText =
+      node.isLeaf && !node.isText
+        ? (node.type.spec.leafText?.(node) ?? "")
+        : "";
     for (const quote of open) {
-      const text = node.isText
+      if (node.isBlock && (node.isTextblock || leafText)) {
+        quote.text += " ";
+      }
+      quote.text += node.isText
         ? (node.text ?? "").slice(
             Math.max(quote.from, pos) - pos,
             quote.to - pos
           )
-        : node.isLeaf
-          ? (node.type.spec.leafText?.(node) ?? "")
-          : "";
-      if (node.isBlock && (node.isTextblock || (node.isLeaf && text))) {
-        if (quote.started) {
-          quote.text += " ";
-        }
-        quote.started = true;
-      }
-      quote.text += text;
+        : leafText;
     }
   });
 
