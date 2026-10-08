@@ -85,10 +85,13 @@ export function TreeDnd({
   );
 }
 
+// Reads as the same control as the sidebar's `NavigationListItem`: same
+// height, radius, gap, icon box and label colors. Only the padding differs,
+// and deliberately — the chevron needs the room on the left.
 const treeItemStyleClasses = {
-  base: "group/tree flex cursor-default flex-row items-center gap-2 h-9",
+  base: "group/tree flex cursor-default flex-row items-center gap-1.5 h-9",
   isNavigatableBase:
-    "rounded-xl pl-1.5 pr-3 cursor-pointer transition-colors duration-150 motion-reduce:transition-none",
+    "rounded-lg pl-1.5 pr-3 cursor-pointer transition-colors duration-150 motion-reduce:transition-none",
   isNavigatableUnselected: cn("bg-hover/0", "hover:bg-hover"),
   isNavigatableSelected: cn("font-medium", "bg-selected"),
 };
@@ -220,7 +223,10 @@ TreeDnd.Item = React.forwardRef<
       <div
         ref={labelRef}
         className={cn(
-          "font-medium truncate text-sm text-primary",
+          "font-medium truncate text-sm",
+          isSelected
+            ? "text-primary"
+            : "text-muted-foreground group-hover/tree:text-primary",
           labelClassName
         )}
       >
@@ -304,7 +310,11 @@ TreeDnd.Item = React.forwardRef<
           )}
           {type === "leaf" && <div className="w-[24px] flex-shrink-0" />}
           {checkbox && <Checkbox {...checkbox} />}
-          <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
+          <Icon
+            visual={visual}
+            size="xs"
+            className={cn("m-0.5", tailwindIconTextColor)}
+          />
           {isTruncated ? (
             <TooltipProvider>
               <TooltipRoot>
