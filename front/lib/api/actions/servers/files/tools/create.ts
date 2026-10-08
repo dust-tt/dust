@@ -15,10 +15,11 @@ import {
   requireAgentLoopConversation,
   scopedPathsFromArgs,
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
-import { frameSourceUpdatedNotice } from "@app/lib/api/actions/servers/files/tools/utils";
+import {
+  frameSourceUpdatedNotice,
+  getLiveSessionPath,
+} from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { fetchLiveSource } from "@app/lib/api/collab/live_source";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
   isAllSupportedFileContentType,
@@ -81,19 +82,11 @@ export async function createHandler(
     statResult.value !== null &&
     isMarkdownContentType(stripMimeParameters(statResult.value.contentType))
   ) {
-    const live = await fetchLiveSource(
-      auth,
-      // Without a trailing slash, which names the same file.
-      (DustFileSystem.normalizeScopedPath(path) ?? path).replace(/\/$/, "")
-    );
+    const live = await getLiveSessionPath(auth, path);
     if (live.isErr()) {
-      return new Err(
-        new MCPError(live.error.message, {
-          tracked: live.error.code === "unavailable",
-        })
-      );
+      return live;
     }
-    if (live.value.open) {
+    if (live.value !== null) {
       return new Err(
         new MCPError(
           `\`${path}\` is open in the document editor and cannot be overwritten. Change it with ` +

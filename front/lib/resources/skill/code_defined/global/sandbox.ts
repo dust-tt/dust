@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -80,10 +85,10 @@ function buildFilesSection({
   const liveDocumentsSection = hasLiveDocuments
     ? `
 
-Markdown documents are the exception: a \`.md\` file may be open in the
+Exception to defaulting to the sandbox: a \`.md\` file may be open in the
 document editor while people type in it. Read it from the sandbox if you
-like, but change an existing \`.md\` file only with \`files__edit\` or
-\`documents__edit_document\`, never by writing it from the sandbox
+like, but change an existing \`.md\` file only with
+\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\`, never by writing it from the sandbox
 (\`cat >\`, \`sed -i\`, a script): such writes skip the editor, the people in
 it do not see them, and the document stops saving.`
     : "";

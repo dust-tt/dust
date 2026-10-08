@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { Authenticator } from "@app/lib/auth";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -51,7 +56,7 @@ describe("sandboxSkill", () => {
 
   it("tells agents to edit open Markdown documents with the edit tools only under co_edition", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    const exception = "Markdown documents are the exception";
+    const exception = "Exception to defaulting to the sandbox";
 
     const without = await sandboxSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -63,7 +68,9 @@ describe("sandboxSkill", () => {
       spaceIds: [],
     });
     expect(withCoEdition).toContain(exception);
-    expect(withCoEdition).toContain("`files__edit`");
+    expect(withCoEdition).toContain(
+      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\``
+    );
   });
 
   it("allows the Frames CLI without Frame function guidance under Frames v2 alone", async () => {

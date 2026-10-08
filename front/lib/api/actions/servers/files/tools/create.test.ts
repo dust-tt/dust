@@ -1,4 +1,9 @@
-import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/metadata";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CREATE_CONTENT_MAX_BYTES,
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { createHandler } from "@app/lib/api/actions/servers/files/tools/create";
 import { fetchLiveSource } from "@app/lib/api/collab/live_source";
 import {
@@ -40,7 +45,9 @@ describe("createHandler", () => {
     );
 
     assert(result.isErr());
-    expect(result.error.message).toContain("files__edit");
+    expect(result.error.message).toContain(
+      getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)
+    );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 

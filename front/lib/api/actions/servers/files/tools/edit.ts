@@ -16,11 +16,11 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import {
   frameSourceUpdatedNotice,
+  getLiveSessionPath,
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
-import { fetchLiveSource } from "@app/lib/api/collab/live_source";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { editAgentDocument } from "@app/lib/api/files/dfm_agent_documents";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,8 +38,7 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
  * A Markdown file a live session holds MUST be edited through `editAgentDocument`, never by
  * writing the file, with its rules and refusals; a collab server failure MUST refuse the edit
  * rather than write the file. Without a session, or for a file `editAgentDocument` cannot read
- * by its name, it MUST return null so the file is edited as before. The session MUST be looked up
- * without a trailing slash, which names the same file.
+ * by its name, it MUST return null so the file is edited as before.
  */
 async function editLiveMarkdown(
   auth: Authenticator,
@@ -54,25 +53,17 @@ async function editLiveMarkdown(
     expectedReplacements: number;
   }
 ): Promise<ToolHandlerResult | null> {
-  const canonicalPath = DustFileSystem.normalizeScopedPath(path)?.replace(
-    /\/$/,
-    ""
-  );
+  // Checked here as well as in `editAgentDocument`: a closed file keeps the plain string replace,
+  // not `edit_document`'s rules.
+  const live = await getLiveSessionPath(auth, path);
+  if (live.isErr()) {
+    return live;
+  }
+  const canonicalPath = live.value;
   if (
-    !canonicalPath ||
+    canonicalPath === null ||
     contentTypeFromFileName(canonicalPath) !== "text/markdown"
   ) {
-    return null;
-  }
-  const live = await fetchLiveSource(auth, canonicalPath);
-  if (live.isErr()) {
-    return new Err(
-      new MCPError(live.error.message, {
-        tracked: live.error.code === "unavailable",
-      })
-    );
-  }
-  if (!live.value.open) {
     return null;
   }
   // Through `edit_document`'s path, which writes the session or, if it closed meanwhile, the file.

@@ -10,6 +10,8 @@ import {
   INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import { fetchLiveSource } from "@app/lib/api/collab/live_source";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -194,4 +196,33 @@ export function isReadableAsText(contentType: string): boolean {
       frameSlideshowContentType,
     ].includes(mime)
   );
+}
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] files-live-session-path
+ * MUST return the path a live session holds `path` under, or null when none does. The session
+ * MUST be looked up by the normalized path without a trailing slash, which names the same file,
+ * and a collab server failure MUST be an error, never null, since the caller would then write the
+ * file under an open session.
+ */
+export async function getLiveSessionPath(
+  auth: Authenticator,
+  path: string
+): Promise<Result<string | null, MCPError>> {
+  const canonicalPath = DustFileSystem.normalizeScopedPath(path)?.replace(
+    /\/$/,
+    ""
+  );
+  if (!canonicalPath) {
+    return new Ok(null);
+  }
+  const live = await fetchLiveSource(auth, canonicalPath);
+  if (live.isErr()) {
+    return new Err(
+      new MCPError(live.error.message, {
+        tracked: live.error.code === "unavailable",
+      })
+    );
+  }
+  return new Ok(live.value.open ? canonicalPath : null);
 }
