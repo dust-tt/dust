@@ -125,10 +125,10 @@ fn version_checks_preserve_presence_and_full_u64_range() -> Result<()> {
 }
 
 #[test]
-fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> {
+fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
     let mut object = rpc::Attr {
-        id: ObjectRef::Root,
-        parent: ObjectRef::Root,
+        id: ObjectRef::Object(ID.parse()?),
+        name: "reports".into(),
         directory: true,
         size: 0,
         mode: 0o500,
@@ -183,7 +183,7 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
             rpc::AttrResult {
                 object: Some(rpc::Attr {
                     id: ObjectRef::Shared,
-                    parent: ObjectRef::Root,
+                    name: "shared".into(),
                     directory: true,
                     mode: 0o500,
                     attr_version: 1,
@@ -263,7 +263,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                     object: None,
                     related: vec![rpc::Attr {
                         id: ObjectRef::Object(parent_id),
-                        parent: ObjectRef::Root,
+                        name: "project".into(),
                         directory: true,
                         mode: 0o700,
                         attr_version: 2,
@@ -297,7 +297,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
 }
 
 #[test]
-fn search_preserves_defaults_filters_and_enum_values() -> Result<()> {
+fn search_preserves_defaults_filters_and_optional_hit_metadata() -> Result<()> {
     let request = rpc::SearchRequest {
         fields: vec![
             rpc::SearchField::Name as i32,
@@ -326,6 +326,35 @@ fn search_preserves_defaults_filters_and_enum_values() -> Result<()> {
     assert_eq!(filter.modified_after, Some(0));
     assert_eq!(filter.xattrs[0].value, Some(vec![]));
     assert_eq!(decoded, request);
+    for metadata in [
+        None,
+        Some(rpc::ExtendedMetadata {
+            created: 0,
+            mime_type: "text/plain".into(),
+            xattrs: Default::default(),
+        }),
+    ] {
+        let response = rpc::SearchResults {
+            hits: vec![rpc::SearchHit {
+                object: rpc::SearchAttr {
+                    id: ID.parse()?,
+                    name: "report.txt".into(),
+                    directory: false,
+                    size: 42,
+                    atime: None,
+                    mtime: Some(0),
+                    ctime: Some(123),
+                    metadata,
+                },
+                excerpt: Some("Matching content.".into()),
+            }],
+            partial: false,
+        };
+        assert_eq!(
+            rpc::SearchResults::decode(response.encode_to_vec().as_slice())?,
+            response
+        );
+    }
     Ok(())
 }
 

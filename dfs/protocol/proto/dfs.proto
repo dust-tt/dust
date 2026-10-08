@@ -79,7 +79,11 @@ message ObjectRef {
 // Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
 message Attr {
   required ObjectRef id = 1;
-  required ObjectRef parent = 2;
+  // @cc [owner:spolu,label:api] dfs-attribute-name
+  // Real non-root objects MUST report their stored basename, independent of the access alias.
+  // The stored tenant root and virtual root MUST report an empty name; virtual shared MUST report
+  // "shared". Projected listing names, including /shared ID suffixes, belong in Entry.name.
+  required string name = 13;
   required bool directory = 3;
   required uint64 size = 4;
   // @cc [owner:spolu,label:api;security] dfs-attribute-mode
@@ -96,7 +100,7 @@ message Attr {
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
   optional uint64 ctime = 8;
-  // Grant changes do not advance this version, including changes to visible mode or parent.
+  // Grant changes do not advance this version, including changes to visible mode.
   required uint64 attr_version = 9;
   // Directory entry versions track topology changes; grant changes do not advance them.
   required uint64 content_version = 10;
@@ -401,15 +405,31 @@ message SearchXattr {
   optional bytes value = 2;
 }
 
+// @cc [owner:spolu,label:api] dfs-search-read-view
+// Search responses MUST NOT expose ReadView, including on individual hits. Index-backed results
+// do not represent a store read snapshot.
 message SearchResults {
   repeated SearchHit hits = 1;
   required bool partial = 2;
 }
 
 message SearchHit {
-  required Attr object = 1;
-  required string name = 2;
+  required SearchAttr object = 1;
   optional string excerpt = 3;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-attributes
+// Search attributes MUST use Attr's stored-name, size, timestamp, and metadata semantics for real
+// objects. They MUST NOT be treated as cache-validation results or evidence of current permissions.
+message SearchAttr {
+  required ObjectId id = 1;
+  required string name = 2;
+  required bool directory = 3;
+  required uint64 size = 4;
+  optional uint64 atime = 5;
+  optional uint64 mtime = 6;
+  optional uint64 ctime = 7;
+  optional ExtendedMetadata metadata = 8;
 }
 
 enum ErrorCode {

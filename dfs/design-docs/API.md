@@ -23,7 +23,7 @@ Timestamp = uint64              // Milliseconds since 1970-01-01T00:00:00Z.
 
 Attr {
   id: ObjectRef
-  parent: ObjectRef              // Visible parent; root is its own parent.
+  name: string                   // Stored basename; empty for the stored and virtual roots.
   directory: bool
   size: uint64                   // Logical file size; zero for directories.
   mode: uint32                   // Owner r/w bits, plus derived directory x.
@@ -54,6 +54,11 @@ ErrorDetails {
 Empty {}
 ```
 
+`Attr.name` is the stored basename for real non-root objects, independent of the alias used to
+access them. The stored tenant root and virtual `root` use an empty name; virtual `shared` uses
+`shared`. `Entry.name` is the listing name and can differ from `Attr.name`, such as the
+`<name>--<object-id>` aliases under `/shared`.
+
 For real objects, `Attr.mode` encodes the current session's effective read/write grant permissions
 in the POSIX owner bits by shifting them left by six: read (`0o400`) and write (`0o200`). Directories
 automatically add owner execute/traverse (`0o100`) if and only if read is allowed. Write alone does
@@ -80,21 +85,10 @@ All timestamps, including session expiration and search time bounds, use this mi
 Precision is one millisecond, and dates before the Unix epoch are not representable. Zero denotes
 the epoch; an omitted optional timestamp is distinct from zero.
 
-`Attr.parent` identifies the parent in the caller's visible namespace. Virtual `root` is its own
-parent; virtual `shared` and visible top-level objects have `parent: root`. An object selected as an
-entry point directly under `/shared` has `parent: shared`. Other objects use their visible
-parent's real ID. The stored tenant root, when accessible, also has `parent: root`.
-
-An object can have multiple visible aliases. Parent selection prefers the ordinary root namespace;
-otherwise it uses the nearest readable ancestor with a matching explicit ALLOW, including the object
-itself, as the entry point under `/shared`. A DENY does not create an entry point. Parent selection
-uses the same store snapshot and session subjects as the attributes, regardless of the alias used
-by `Lookup` or `List`. Hidden ancestor IDs are never exposed through `parent`.
-
 Optional `metadata` contains creation time, MIME type, and xattrs; absence means metadata was not
 fetched, while a present metadata object with an empty xattr map means it was fetched and no xattrs
-exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. Other responses omit it
-unless explicitly specified.
+exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. `Search` may include it
+in `SearchAttr`. Other responses omit it unless explicitly specified.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
@@ -108,12 +102,11 @@ all directories, including virtual projections, are additionally scoped to the s
 namespace; they are not comparable across different sessions.
 
 `attr_version` advances when stored attributes or extended metadata change, including size,
-timestamps, MIME type, xattrs, the object's own name, and its parent. Renames and moves advance it
-even when file contents are unchanged. It also reflects caller-visible parent changes caused by
-topology, resolved on read rather than requiring a stored version update on every descendant. Grant
-changes never advance `attr_version`, even when grants on the object or its ancestors change the
-reported mode or visible parent. Comparing `attr_version` requires a fresh authorization check;
-matching versions alone never grant access or confirm that grant-dependent attributes are unchanged.
+timestamps, MIME type, xattrs, the object's own name, and its stored parent. Renames and moves advance
+it even when file contents are unchanged. Grant changes never advance `attr_version`, even when
+grants on the object or its ancestors change the reported mode. Comparing `attr_version` requires a
+fresh authorization check; matching versions alone never grant access or confirm that grant-dependent
+attributes are unchanged.
 Fetching optional metadata or returning a newer `ReadView` does not itself change `attr_version`.
 The version fields themselves are excluded from attribute-change detection, avoiding recursive
 version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
@@ -635,9 +628,9 @@ For other existing, authorized objects:
 
 `UNCHANGED` renews read access and validates only the supplied versions; it does not authorize
 writes. Every mutation must independently check its required grant permissions. An attribute check
-covers the object's stored attributes and extended metadata, excluding mode and visible-parent
-changes caused by grants. A content check covers file bytes or a directory's entry-name/object-ID
-bindings, excluding visibility changes caused by grants. Refresh through `Stat` or `Lookup` for
+covers the object's stored attributes and extended metadata, excluding mode changes caused by
+grants. A content check covers file bytes or a directory's entry-name/object-ID bindings, excluding
+visibility changes caused by grants. Refresh through `Stat` or `Lookup` for
 current grant-dependent attributes and through `List` for current entry visibility; `UNCHANGED` does
 not validate either from cached versions. An attribute-only check does not validate content or a
 cached `content_version`; a content-only check does not validate attributes or extended metadata.
@@ -874,14 +867,27 @@ SearchResults {
 }
 
 SearchHit {
-  object: Attr
-  name: string                  // Basename.
+  object: SearchAttr
   excerpt?: string              // File excerpt, at most 512 characters; absent for directories.
+}
+
+SearchAttr {
+  id: ObjectId
+  name: string                   // Stored basename; empty for the stored tenant root.
+  directory: bool
+  size: uint64                   // Logical file size; zero for directories.
+  atime?: Timestamp
+  mtime?: Timestamp
+  ctime?: Timestamp
+  metadata?: ExtendedMetadata
 }
 ```
 
-Each hit carries its read view in `object.view`. All returned attributes share the same view for
-the request; the results have no separate view.
+Each hit carries simplified attributes in `object`, using the same name, size, timestamp, and
+metadata semantics as `Attr`. Extended metadata is optional. Neither search results nor individual
+hits expose a `ReadView`: the search index's state is independent of the store's read snapshot.
+Search attributes also omit mode and attribute/content versions and cannot validate cached
+attributes or permissions. Use `Stat` to fetch full attributes and versions.
 
 An empty or whitespace-only query searches metadata only. Nonempty text matches any normalized
 token in the selected fields, combined with OR. Content-only selection excludes directories.
@@ -893,10 +899,9 @@ Filter fields combine with AND. MIME/size predicates select files and cannot be 
 
 Search uses Elasticsearch and returns `UNAVAILABLE` when it is disabled or unavailable. Indexing is
 asynchronous; deleted objects and stale indexed content or metadata are suppressed before results
-are returned, and every hit is permission-checked. A matching `content_version` establishes only
-content freshness; indexed names and metadata must be checked separately. Unsupported content
-formats remain searchable by name/metadata. Results have no public cursor, score, or total-hit count.
-Returned parents and attribute versions use the caller's namespace.
+are returned, and every hit is permission-checked. The server checks indexed names and metadata
+separately from indexed content freshness. Unsupported content formats remain searchable by
+name/metadata. Results have no public cursor, score, or total-hit count.
 
 Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and a 1 MiB response.
 `partial` indicates bounded evaluation, not whether indexing is current. Backend failures are errors,
