@@ -78,6 +78,9 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
     vi.mocked(readCanonicalFileContent).mockImplementation(async () =>
       stored(FILE_SOURCE, "7")
     );
+    vi.spyOn(DustFileSystem.prototype, "stat").mockResolvedValue(
+      new Ok({ contentType: "text/markdown", sizeBytes: FILE_SOURCE.length })
+    );
   });
 
   it("changes the session's source through the session, never the file, while one is open", async () => {
@@ -98,6 +101,7 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
       base: LIVE_SOURCE,
       source: "# Notes\n\nFrom the session.\n\nAppended.\n",
     });
+    expect(readCanonicalFileContent).not.toHaveBeenCalled();
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
   });
 
@@ -141,19 +145,30 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
     expect(revision).toBe("7");
   });
 
-  it("refuses a storage without revisions, even while a session is open", async () => {
+  it("refuses a storage without revisions once the session closed", async () => {
     vi.mocked(readCanonicalFileContent).mockImplementation(async () =>
       stored(FILE_SOURCE, undefined)
     );
-    vi.mocked(fetchLiveSource).mockResolvedValue(
-      new Ok({ open: true, source: LIVE_SOURCE })
-    );
+    vi.mocked(fetchLiveSource).mockResolvedValue(new Ok({ open: false }));
 
     const result = await writeDocumentChange(auth, dustFs, path, appendLine);
 
     expect(result.isErr() && result.error.code).toBe("refused");
-    expect(pushLiveSource).not.toHaveBeenCalled();
     expect(writeCanonicalFileContent).not.toHaveBeenCalled();
+  });
+
+  it("refuses a file that does not exist, even while a session is open", async () => {
+    vi.mocked(DustFileSystem.prototype.stat).mockResolvedValue(new Ok(null));
+    vi.mocked(fetchLiveSource).mockResolvedValue(
+      new Ok({ open: true, source: LIVE_SOURCE })
+    );
+
+    const written = await writeDocumentChange(auth, dustFs, path, appendLine);
+    const read = await readCurrentDocumentSource(auth, dustFs, path);
+
+    expect(written.isErr() && written.error.code).toBe("not_found");
+    expect(read.isErr() && read.error.code).toBe("not_found");
+    expect(pushLiveSource).not.toHaveBeenCalled();
   });
 
   it("writes nothing when the collab server cannot tell whether a session is open", async () => {
@@ -176,6 +191,7 @@ describe("writeDocumentChange and readCurrentDocumentSource", () => {
     expect(await readCurrentDocumentSource(auth, dustFs, path)).toEqual(
       new Ok({ source: LIVE_SOURCE })
     );
+    expect(readCanonicalFileContent).not.toHaveBeenCalled();
     expect(await readCurrentDocumentSource(auth, dustFs, path)).toEqual(
       new Ok({ source: FILE_SOURCE })
     );

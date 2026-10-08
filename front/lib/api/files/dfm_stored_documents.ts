@@ -52,6 +52,41 @@ function liveSourceError({
   );
 }
 
+function resolveDocumentPath(
+  scopedPath: string
+): Result<string, DfmStoredDocumentError> {
+  const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
+  if (resolvedPath.isErr()) {
+    return new Err(fileSystemError(resolvedPath.error));
+  }
+  if (contentTypeFromFileName(resolvedPath.value) !== "text/markdown") {
+    return new Err(
+      new DfmStoredDocumentError(
+        "not_markdown",
+        "Only Markdown documents can be read or changed with this tool."
+      )
+    );
+  }
+  return new Ok(resolvedPath.value);
+}
+
+/** That `dustFs` can read the file and that it exists, without reading it. */
+async function checkDocumentFound(
+  dustFs: DustFileSystem,
+  scopedPath: string
+): Promise<Result<void, DfmStoredDocumentError>> {
+  const found = await dustFs.stat(scopedPath);
+  if (found.isErr()) {
+    return new Err(fileSystemError(found.error));
+  }
+  if (found.value === null) {
+    return new Err(
+      new DfmStoredDocumentError("not_found", `File not found: ${scopedPath}`)
+    );
+  }
+  return new Ok(undefined);
+}
+
 function parseDocument(
   text: string
 ): Result<DfmDocument, DfmStoredDocumentError> {
@@ -89,17 +124,9 @@ export async function readStoredDocument(
     DfmStoredDocumentError
   >
 > {
-  const resolvedPath = DustFileSystem.resolveScopedPath(scopedPath);
-  if (resolvedPath.isErr()) {
-    return new Err(fileSystemError(resolvedPath.error));
-  }
-  if (contentTypeFromFileName(resolvedPath.value) !== "text/markdown") {
-    return new Err(
-      new DfmStoredDocumentError(
-        "not_markdown",
-        "Only Markdown documents can be read or changed with this tool."
-      )
-    );
+  const filePath = resolveDocumentPath(scopedPath);
+  if (filePath.isErr()) {
+    return filePath;
   }
 
   const read = await readStoredText(dustFs, scopedPath);
@@ -122,7 +149,7 @@ export async function readStoredDocument(
     text,
     revision,
     document: document.value,
-    filePath: resolvedPath.value,
+    filePath: filePath.value,
   });
 }
 
@@ -158,6 +185,10 @@ async function writeLiveDocumentChange<T, E extends Error>(
   { filePath, source }: { filePath: string; source: string },
   change: DocumentChange<T, E>
 ): Promise<Result<{ value: T } | null, DfmStoredDocumentError | E>> {
+  const found = await checkDocumentFound(dustFs, filePath);
+  if (found.isErr()) {
+    return found;
+  }
   const writable = dustFs.checkWriteAccess(filePath);
   if (writable.isErr()) {
     return new Err(fileSystemError(writable.error));
@@ -191,38 +222,52 @@ async function writeLiveDocumentChange<T, E extends Error>(
 /**
  * @cc [owner:tdraier,label:product] dfm-stored-document-live-read
  * While a live session holds the document, reading MUST return the session's source in place of
- * the file's, after the same checks and refusals as `readStoredDocument`, since the file lags the
- * session until its next checkpoint.
+ * the file's, since the file lags the session until its next checkpoint, without reading the file:
+ * after the name check of `readStoredDocument`, `dustFs` MUST be able to read the file and the file
+ * MUST exist. Otherwise it MUST return what `readStoredDocument` reads, with its refusals.
  */
 export async function readCurrentDocumentSource(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
+  const filePath = resolveDocumentPath(scopedPath);
+  if (filePath.isErr()) {
+    return filePath;
+  }
+  const live = await fetchLiveSource(auth, filePath.value);
+  if (live.isErr()) {
+    return new Err(liveSourceError(live.error));
+  }
+  if (live.value.open) {
+    const found = await checkDocumentFound(dustFs, filePath.value);
+    if (found.isErr()) {
+      return found;
+    }
+    return new Ok({ source: live.value.source });
+  }
+
   const read = await readStoredDocument(dustFs, scopedPath);
   if (read.isErr()) {
     return read;
   }
-  const live = await fetchLiveSource(auth, read.value.filePath);
-  if (live.isErr()) {
-    return new Err(liveSourceError(live.error));
-  }
-  return new Ok({
-    source: live.value.open ? live.value.source : read.value.text,
-  });
+  return new Ok({ source: read.value.text });
 }
 
 /**
  * @cc [owner:tdraier,label:concurrency] dfm-stored-document-write
- * The document MUST be read through `readStoredDocument`, and `change` MUST receive it as read.
+ * Without a live session, the document MUST be read through `readStoredDocument`, and `change` MUST
+ * receive it as read.
  * Its result MUST be written conditional on the revision read; a file whose storage returns no
  * revision MUST be refused. On a conflict it MUST start over from a fresh read, and give up with
  * `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write.
  *
- * While a live session holds the document, the file MUST NOT be written: `change` MUST receive
- * the session's source, parsed, after the file's checks and its write access, and its result MUST
- * be written through the session, conditional on that source. A session that changed, closed or
- * was busy meanwhile counts as a conflict. The revision refusal applies to both paths.
+ * While a live session holds the document, the file MUST NOT be read or written: after the name
+ * check of `readStoredDocument`, the file MUST exist and `dustFs` be able to write it, then
+ * `change` MUST receive the session's source, parsed, and its result MUST be written through the
+ * session, conditional on that source; the session refuses a storage without revisions itself
+ * (`collab-live-source-write`). A session that changed, closed or was busy meanwhile counts as a
+ * conflict.
  *
  * Known gap until the per-file lock of LIVE_SESSION.md (build step 8): a session opening between
  * the check for one and the file write loads the file before the write, so the session misses the
@@ -234,27 +279,16 @@ export async function writeDocumentChange<T, E extends Error>(
   scopedPath: string,
   change: DocumentChange<T, E>
 ): Promise<Result<T, DfmStoredDocumentError | E>> {
+  const filePath = resolveDocumentPath(scopedPath);
+  if (filePath.isErr()) {
+    return filePath;
+  }
+
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    const read = await readStoredDocument(dustFs, scopedPath);
-    if (read.isErr()) {
-      return read;
-    }
-    const { text, revision, document, filePath } = read.value;
-
-    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
-    if (revision === undefined) {
-      return new Err(
-        new DfmStoredDocumentError(
-          "refused",
-          "This document's storage does not support safe changes yet."
-        )
-      );
-    }
-
     // TODO(co-edition): a session opening between this check and the file write below loads the
     // file before the write, and its checkpoints then conflict with it. Both should run under the
     // per-file lock of LIVE_SESSION.md.
-    const live = await fetchLiveSource(auth, filePath);
+    const live = await fetchLiveSource(auth, filePath.value);
     if (live.isErr()) {
       return new Err(liveSourceError(live.error));
     }
@@ -262,7 +296,7 @@ export async function writeDocumentChange<T, E extends Error>(
       const written = await writeLiveDocumentChange(
         auth,
         dustFs,
-        { filePath, source: live.value.source },
+        { filePath: filePath.value, source: live.value.source },
         change
       );
       if (written.isErr()) {
@@ -274,7 +308,27 @@ export async function writeDocumentChange<T, E extends Error>(
       continue;
     }
 
-    const changed = await applyChange(change, { text, document, filePath });
+    const read = await readStoredDocument(dustFs, scopedPath);
+    if (read.isErr()) {
+      return read;
+    }
+    const { text, revision, document } = read.value;
+
+    // Without a revision the write cannot be conditional, and could replace a concurrent edit.
+    if (revision === undefined) {
+      return new Err(
+        new DfmStoredDocumentError(
+          "refused",
+          "This document's storage does not support safe changes yet."
+        )
+      );
+    }
+
+    const changed = await applyChange(change, {
+      text,
+      document,
+      filePath: filePath.value,
+    });
     if (changed.isErr()) {
       return changed;
     }
