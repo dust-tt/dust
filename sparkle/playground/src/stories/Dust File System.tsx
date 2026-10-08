@@ -39,6 +39,7 @@ import {
   MessageChatSquare,
   MessageCircle01,
   MessageLightning01,
+  MessagePlusCircle,
   MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -77,6 +78,8 @@ import {
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
 import { ToolDetailsSheet } from "../components/BuildDetails";
+import type { CommandPaletteItem } from "../components/CommandPalette";
+import { CommandPalette } from "../components/CommandPalette";
 import {
   BUILD_SECTIONS,
   type BuildSection,
@@ -116,6 +119,10 @@ import { ProfilePanel } from "../components/Profile";
 import { RequestDetailView } from "../components/RequestDetailView";
 import type { RequestsTab } from "../components/RequestsView";
 import { RequestsView } from "../components/RequestsView";
+import {
+  SidebarSearch,
+  useSidebarShortcuts,
+} from "../components/SidebarSearch";
 import { TriggersManageView } from "../components/TriggersManageView";
 import { WakeUpsManageView } from "../components/WakeUpsManageView";
 import { WorkspaceFileSystem } from "../components/WorkspaceFileSystem";
@@ -163,6 +170,8 @@ import {
   getFolderPath,
   getIconForFileType,
   getItemLocations,
+  isDataSourceFolder,
+  ROOT_FOLDER_LABEL,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
 import {
@@ -365,7 +374,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // Which Build row is highlighted. Only three of them have a screen, so this
   // outlives `p2View` — a Space stays lit without the panel changing.
   const [buildNavItem, setBuildNavItem] = useState("agents");
-  const [searchText, setSearchText] = useState("");
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -505,27 +514,17 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     });
   }, [spaces]);
 
-  const filteredSpaces = useMemo(() => {
-    if (!searchText.trim()) return sortedSpaces;
-    const lower = searchText.toLowerCase();
-    return sortedSpaces.filter(
-      (s) =>
-        s.name.toLowerCase().includes(lower) ||
-        s.description.toLowerCase().includes(lower)
-    );
-  }, [searchText, sortedSpaces]);
-
   // The sidebar list itself, plus the Pod you are currently in when it is not
   // on it — otherwise the selection would have nowhere to show.
   const sidebarSpaces = useMemo(() => {
-    const favorites = filteredSpaces.filter((s) => favoritePodIds.has(s.id));
+    const favorites = sortedSpaces.filter((s) => favoritePodIds.has(s.id));
     const openSpaceId = p2View.kind === "space" ? p2View.spaceId : null;
     if (!openSpaceId || favoritePodIds.has(openSpaceId)) {
       return favorites;
     }
     const openSpace = spaces.find((s) => s.id === openSpaceId);
     return openSpace ? [...favorites, openSpace] : favorites;
-  }, [favoritePodIds, filteredSpaces, p2View, spaces]);
+  }, [favoritePodIds, sortedSpaces, p2View, spaces]);
 
   const [podBrowseSearch, setPodBrowseSearch] = useState("");
   const browsableSpaces = useMemo(() => {
@@ -1055,6 +1054,62 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     setP3View(fileSidePanelView(file));
     setP4View(null);
   }, []);
+
+  /** Everything addressable, in one list for the palette to narrow. */
+  const paletteItems = useMemo((): CommandPaletteItem[] => {
+    const podItems = spaces.map((space) => ({
+      id: `pod-${space.id}`,
+      group: "Pods",
+      label: space.name,
+      description: space.description || undefined,
+      icon: Cube01,
+      onSelect: () => {
+        setP2View({ kind: "space", spaceId: space.id });
+        setP3View(null);
+        setP4View(null);
+      },
+    }));
+
+    const conversationItems = allConversations.map((conversation) => ({
+      id: `conversation-${conversation.id}`,
+      group: "Conversations",
+      label: conversation.title,
+      icon: MessageChatSquare,
+      onSelect: () => {
+        setP2View({
+          kind: "conversation",
+          conversationId: conversation.id,
+        });
+        setP3View(null);
+        setP4View(null);
+      },
+    }));
+
+    const fileItems = files
+      .filter((file) => !isDataSourceFolder(file))
+      .map((file) => ({
+        id: `file-${file.id}`,
+        group: ROOT_FOLDER_LABEL,
+        label: file.fileName,
+        description: getFolderPath(filesById, file.id)
+          .map((folder) => folder.fileName)
+          .join(" / "),
+        icon: getDataSourceIcon(file),
+        avatar: file.avatar,
+        onSelect: () => {
+          setP2View({ kind: "files" });
+          setP3View(fileSidePanelView(file));
+          setP4View(null);
+        },
+      }));
+
+    return [...podItems, ...conversationItems, ...fileItems];
+  }, [spaces, allConversations, files, filesById]);
+
+  useSidebarShortcuts({
+    onNewConversation: startNewConversation,
+    onOpenSearch: () => setIsPaletteOpen(true),
+  });
 
   /**
    * The create menu, for everything that is a file of its own. An agent, a
@@ -2066,27 +2121,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
         <div className="flex min-h-0 flex-1 flex-col">
           <ScrollArea className="flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
-            <div className="z-50 flex justify-end gap-2 p-sidebar-side-spacing">
-              <div className="flex-1">
-                <SearchInput
-                  name="search"
-                  value={searchText}
-                  onChange={setSearchText}
-                  placeholder="Search"
-                />
-              </div>
-              <Button
-                variant="highlight"
-                tooltip="Create a new conversation"
-                size="sm"
-                icon={MessageCircle01}
-                label="New"
-                className="shrink-0"
-                onClick={startNewConversation}
-              />
-            </div>
-
             <NavigationList className="mx-sidebar-side-spacing pt-1">
+              <SidebarSearch onClick={() => setIsPaletteOpen(true)} />
               <NavigationListItem
                 label="Inbox"
                 icon={Inbox01}
@@ -2122,16 +2158,38 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                   setP4View(null);
                 }}
               />
-              <NavigationListItem
-                label="Free conversations"
-                icon={MessageChatSquare}
-                selected={p2View.kind === "conversations"}
-                onClick={() => {
-                  setP2View({ kind: "conversations" });
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
+              {/* Two controls on one line: the row goes to the list, the
+                  button starts a conversation. Nesting the button inside the
+                  row cost the label 7px it could not spare. */}
+              <div className="flex items-center gap-1">
+                <NavigationListItem
+                  // The item reserves 32px of its label for a hover action,
+                  // and the rule is gated on having no `suffix` rather than on
+                  // having an action — so moving the button out does not
+                  // release it, and the label would truncate on hover and stay
+                  // truncated once selected.
+                  className="min-w-0 flex-1 [&>div>span]:pr-0!"
+                  label="Free conversations"
+                  icon={MessageChatSquare}
+                  selected={p2View.kind === "conversations"}
+                  onClick={() => {
+                    setP2View({ kind: "conversations" });
+                    setP3View(null);
+                    setP4View(null);
+                  }}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost-secondary"
+                  icon={MessagePlusCircle}
+                  tooltip="New conversation"
+                  tooltipShortcut="C"
+                  // Its own dark hover is white/0.08 against the nav rows'
+                  // white/0.04, which reads as a different control.
+                  className="size-9 shrink-0 rounded-lg dark:hover:bg-hover"
+                  onClick={startNewConversation}
+                />
+              </div>
               <NavigationListItem
                 label="Automated work"
                 icon={Zap}
@@ -2498,6 +2556,27 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       <ToolDetailsSheet
         toolId={detailedToolId}
         onClose={() => setDetailedToolId(null)}
+      />
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={() => setIsPaletteOpen(false)}
+        items={paletteItems}
+        actions={[
+          {
+            id: "action-new-conversation",
+            group: "Actions",
+            label: "New conversation",
+            icon: MessagePlusCircle,
+            onSelect: startNewConversation,
+          },
+          {
+            id: "action-new-pod",
+            group: "Actions",
+            label: "New Pod",
+            icon: Cube01,
+            onSelect: () => handleCreatePodIn(null),
+          },
+        ]}
       />
       <Dialog
         open={selectedTemplateForBuilder !== null}
