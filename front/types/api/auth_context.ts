@@ -35,6 +35,8 @@ export type GetWorkspaceAuthContextResponseType = {
   featureFlags: WhitelistableFeature[];
   isEligibleForTrial?: boolean;
   vizUrl: string;
+  /** The live session server's URL; absent where live editing is not deployed. */
+  collabUrl?: string;
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;

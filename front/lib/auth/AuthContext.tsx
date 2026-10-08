@@ -32,6 +32,7 @@ export interface AuthContextValue {
   isManager: boolean;
   featureFlags: WhitelistableFeature[];
   vizUrl: string;
+  collabUrl?: string;
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
@@ -46,6 +47,15 @@ export function useAuth(): AuthContextValue {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return ctx;
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] live-editing-per-cell
+ * Files MUST be edited live only where the cell's auth context returns a `collabUrl` (its
+ * `COLLAB_PUBLIC_URL`), and only through it: without one, the editor saves the file itself.
+ */
+export function useCollabUrl(): string | undefined {
+  return useContext(AuthContext)?.collabUrl;
 }
 
 export function useFeatureFlags() {

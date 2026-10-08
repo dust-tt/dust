@@ -72,8 +72,9 @@ describe("envgen", () => {
       expect(content).toContain("export CONNECTORS_PUBLIC_URL=http://localhost:10002");
     });
 
-    it("exports the collab server's internal URL and a secret", () => {
+    it("exports the collab server's URLs and a secret", () => {
       const content = generateEnvSh("test", ports);
+      expect(content).toContain("export COLLAB_PUBLIC_URL=ws://localhost:10000/api/collab");
       expect(content).toContain("export COLLAB_INTERNAL_URL=http://localhost:10012");
       expect(content).toMatch(/export COLLAB_INTERNAL_SECRET=[0-9a-f]{64}\n/);
     });

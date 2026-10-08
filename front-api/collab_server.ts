@@ -5,7 +5,6 @@ import "./lib/startup-log";
 import config from "@app/lib/api/config";
 import logger from "@app/logger/logger";
 import { COLLAB_INTERNAL_ROUTES_PREFIX } from "@app/types/collab";
-import { isDevelopment } from "@app/types/shared/env";
 import { setupGlobalErrorHandler } from "@app/types/shared/utils/global_error_handler";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { serve } from "@hono/node-server";
@@ -24,18 +23,6 @@ import { unhandledErrorHandler } from "./middlewares/utils";
 import { healthzApp } from "./routes/healthz";
 
 /**
- * @cc [owner:PopDaph,label:security] collab-server-dev-only
- * The server MUST refuse to start outside development until live editing is turned on for
- * production, together with the browser's production URL. This runs before anything else at
- * startup.
- */
-function assertDevelopmentOnly() {
-  if (!isDevelopment()) {
-    throw new Error("The collab server only runs in development for now.");
-  }
-}
-
-/**
  * @cc [owner:tdraier,label:product;concurrency] collab-server-internal-secret
  * The server MUST refuse to start without `COLLAB_INTERNAL_SECRET`: front reports every document
  * closed when it has no collab server configured, so a server front cannot ask MUST hold no
@@ -47,7 +34,6 @@ function assertInternalSecret() {
   }
 }
 
-assertDevelopmentOnly();
 assertInternalSecret();
 setupGlobalErrorHandler(logger);
 
