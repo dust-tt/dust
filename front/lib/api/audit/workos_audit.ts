@@ -55,6 +55,7 @@ export const AUDIT_ACTIONS = [
   "group.advanced_model_access_updated",
   "group.granted_seat_type_updated",
   "group.shared_usage_limit_updated",
+  "group.shared_usage_limit_priority_updated",
   "group.managers_updated",
   "group.member_added",
   "group.member_removed",

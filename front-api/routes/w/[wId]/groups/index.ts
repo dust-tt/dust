@@ -29,6 +29,7 @@ import { validate } from "@front-api/middlewares/validator";
 import assert from "assert";
 import { z } from "zod";
 
+import sharedUsageLimitPriorities from "@front-api/routes/w/[wId]/groups/shared_usage_limit_priorities";
 import groupDetail from "./[groupId]";
 import grantedRole from "./[groupId]/granted_role";
 import grantedSeatType from "./[groupId]/granted_seat_type";
@@ -198,6 +199,7 @@ app.post(
   }
 );
 
+app.route("/shared_usage_limit_priorities", sharedUsageLimitPriorities);
 app.route("/:groupId/spend_limit", spendLimit);
 app.route("/:groupId/shared_usage_limit", sharedUsageLimit);
 app.route("/:groupId/granted_role", grantedRole);

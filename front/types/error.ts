@@ -126,6 +126,7 @@ const API_ERROR_TYPES = [
   "project_task_not_found",
   // Groups:
   "group_not_found",
+  "shared_usage_limit_order_changed",
   // Coupons:
   "coupon_not_found",
   "coupon_not_redeemable",

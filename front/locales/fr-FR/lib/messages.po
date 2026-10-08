@@ -422,6 +422,10 @@ msgid "Group not found."
 msgstr "Groupe introuvable."
 
 #: front/lib/api_error_messages.ts
+msgid "The order of group budgets changed since you opened it. Reopen the group to see the current order."
+msgstr "L’ordre des budgets de groupe a changé depuis que vous l’avez ouvert. Rouvrez le groupe pour voir l’ordre actuel."
+
+#: front/lib/api_error_messages.ts
 msgid "Coupon not found."
 msgstr "Coupon introuvable."
 
