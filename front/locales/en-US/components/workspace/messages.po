@@ -244,8 +244,8 @@ msgid "Coupon applied!"
 msgstr "Coupon applied!"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
-msgstr "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
+msgid "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
+msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -339,10 +339,6 @@ msgid "Amount"
 msgstr "Amount"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "{addedCreditsFormatted} credits"
-msgstr "{addedCreditsFormatted} credits"
-
-#: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
 msgstr "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
 
@@ -387,8 +383,8 @@ msgid "Manage invoices"
 msgstr "Manage invoices"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Add {addedCreditsFormatted} credits"
-msgstr "Add {addedCreditsFormatted} credits"
+msgid "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
+msgstr "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/TopUpsHistoryTable.tsx
@@ -816,6 +812,14 @@ msgstr "Workspace Groups"
 #: front/components/workspace/DirectorySync.tsx
 msgid "No groups found in this workspace."
 msgstr "No groups found in this workspace."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI cannot be empty."
+msgstr "Redirect URI cannot be empty."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
+msgstr "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 msgid "This redirect URI is already in the list."

@@ -25,6 +25,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
             document: connection.document,
             awareness: connection.provider.awareness,
             user: { name, color },
+            comments: connection.comments,
           })
         : null,
     [t, connection, name, color]
@@ -37,7 +38,11 @@ export default function LiveDocument(props: LiveDocumentProps) {
       {...props}
       liveView={{
         status,
-        binding: { extensions, connected: status === "live" },
+        binding: {
+          extensions,
+          connected: status === "live",
+          comments: connection.comments,
+        },
       }}
     />
   ) : (

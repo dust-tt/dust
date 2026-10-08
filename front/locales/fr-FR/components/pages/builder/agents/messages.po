@@ -75,7 +75,7 @@ msgstr "Configurer les fournisseurs de modèles"
 
 #: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
 msgid "Providers must be configured in your workspace to use the agent builder."
-msgstr "Des fournisseurs doivent être configurés dans votre workspace pour utiliser l’Agent Builder."
+msgstr "Des fournisseurs doivent être configurés dans votre workspace pour utiliser l’éditeur d’agent."
 
 #: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
 msgid "Back to homepage"
@@ -87,4 +87,4 @@ msgstr "Aucun fournisseur n’est configuré dans votre workspace. Contactez vot
 
 #: front/components/pages/builder/agents/NotAvailableErrorPage.tsx
 msgid "Agent builder is not available"
-msgstr "L’Agent Builder n’est pas disponible"
+msgstr "L’éditeur d’agent n’est pas disponible"

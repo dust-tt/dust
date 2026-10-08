@@ -27,7 +27,8 @@ import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
-import { compareStrings } from "@app/lib/i18n/format";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { compareStrings, formatList } from "@app/lib/i18n/format";
 import { useAppRouter } from "@app/lib/platform";
 import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
@@ -137,27 +138,23 @@ const getTableColumns = ({
           </div>
         );
       },
-      cell: (info: CellContext<RowData, SpaceType[]>) => (
-        <DataTable.BasicCellContent
-          className="justify-end"
-          label={
-            info.getValue().length > 0
-              ? info
-                  .getValue()
-                  .map((v) => v.name)
-                  .join(", ")
-              : "-"
-          }
-          tooltip={
-            info.getValue().length > 0
-              ? info
-                  .getValue()
-                  .map((v) => v.name)
-                  .join(", ")
-              : "-"
-          }
-        />
-      ),
+      cell: (info: CellContext<RowData, SpaceType[]>) => {
+        const spaceNames =
+          info.getValue().length > 0
+            ? formatList(
+                info.getValue().map((v) => v.name),
+                { type: "conjunction" },
+                getActiveLocale()
+              )
+            : "-";
+        return (
+          <DataTable.BasicCellContent
+            className="justify-end"
+            label={spaceNames}
+            tooltip={spaceNames}
+          />
+        );
+      },
     });
   }
 
@@ -167,7 +164,7 @@ const getTableColumns = ({
     accessorKey: "lastUpdatedAt",
     enableSorting: true,
     meta: {
-      className: "w-24",
+      className: "w-44",
     },
     cell: (info: CellContext<RowData, number>) => (
       <DataTable.BasicCellContent

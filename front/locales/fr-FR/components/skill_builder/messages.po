@@ -124,7 +124,7 @@ msgstr "Restaurer la description"
 
 #: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
 msgid "Only editors can find it via the composer and agent builder"
-msgstr "Seuls les éditeurs peuvent la trouver via la zone de saisie et l’Agent Builder"
+msgstr "Seuls les éditeurs peuvent la trouver via la zone de saisie et l’éditeur d’agent"
 
 #: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
 msgid "The skill remains available through agents and skills that use it"
@@ -132,12 +132,12 @@ msgstr "La compétence reste disponible via les agents et les compétences qui l
 
 #: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
 msgid "They can all find it via the composer and agent builder."
-msgstr "Ils peuvent tous la trouver via la zone de saisie et l’Agent Builder."
+msgstr "Ils peuvent tous la trouver via la zone de saisie et l’éditeur d’agent."
 
 #: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
 #: front/components/skill_builder/SkillBuilderAvailabilitySection.tsx
 msgid "All members can find it via the composer and agent builder"
-msgstr "Tous les membres peuvent la trouver via la zone de saisie et l’Agent Builder"
+msgstr "Tous les membres peuvent la trouver via la zone de saisie et l’éditeur d’agent"
 
 #: front/components/skill_builder/SkillBuilderAvailabilityMessage.tsx
 msgid "Agents with Discover Skills can use it automatically"
@@ -522,7 +522,7 @@ msgstr "Le nom de la compétence est obligatoire"
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Description of when to use the skill is required"
-msgstr "La description du moment où utiliser la compétence est obligatoire"
+msgstr "Indiquez quand utiliser cette compétence"
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Skill description is required"

@@ -1,0 +1,50 @@
+[
+  {
+    "role": "fdb-a",
+    "exit_code": 0
+  },
+  {
+    "role": "fdb-es-a",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-a",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-es-a",
+    "exit_code": 0
+  },
+  {
+    "role": "fdb-b",
+    "exit_code": 0
+  },
+  {
+    "role": "fdb-es-b",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-b",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-es-b",
+    "exit_code": 0
+  },
+  {
+    "role": "fdb-c",
+    "exit_code": 0
+  },
+  {
+    "role": "fdb-es-c",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-c",
+    "exit_code": 0
+  },
+  {
+    "role": "tikv-es-c",
+    "exit_code": 0
+  }
+]

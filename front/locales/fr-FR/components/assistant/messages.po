@@ -92,7 +92,7 @@ msgstr "À partir d’un modèle"
 
 #: front/components/assistant/CreateAgentDropdown.tsx
 msgid "Uploading..."
-msgstr "Import en cours..."
+msgstr "Import en cours…"
 
 #: front/components/assistant/CreateAgentDropdown.tsx
 msgid "From YAML"
@@ -355,7 +355,7 @@ msgstr "Recherche dans les données"
 
 #: front/components/assistant/WelcomeTourGuide.tsx
 msgid "Table query"
-msgstr "Requêtes sur tableaux"
+msgstr "Requêtes sur les tables"
 
 #: front/components/assistant/WelcomeTourGuide.tsx
 msgid "Extract data"

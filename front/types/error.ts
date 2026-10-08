@@ -105,6 +105,8 @@ const API_ERROR_TYPES = [
   // Key:
   "key_not_found",
   "insufficient_key_scope",
+  "admin_key_analytics_groups_not_allowed",
+  "analytics_group_kind_not_supported",
   // Labs:
   "transcripts_configuration_not_found",
   "transcripts_configuration_default_not_allowed",
@@ -114,6 +116,7 @@ const API_ERROR_TYPES = [
   "file_too_large",
   "file_type_not_supported",
   "file_is_empty",
+  "file_read_only",
   // Runs:
   "run_not_found",
   // Spaces:

@@ -20,11 +20,14 @@ import {
 import type { ConfigurationState } from "@app/components/agent_builder/skills/types";
 import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { getDefaultFormValues } from "@app/components/shared/tools_picker/formDefaults";
+import { SkillLoadError } from "@app/components/skills/SkillDetailsBody";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { ButtonProps, MultiPageSheetPage } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -57,6 +60,16 @@ export function useCapabilitiesPageAndFooter({
     disabled: !isOpen || sheetState.state !== "selection",
     alreadyAddedSkillIds,
     searchQuery,
+  });
+  const skillInfoId =
+    sheetState.state === "info" && sheetState.kind === "skill"
+      ? sheetState.skillId
+      : null;
+  const { skill, isSkillError, mutateSkill } = useSkill({
+    workspaceId: owner.sId,
+    skillId: skillInfoId,
+    withRelations: true,
+    disabled: !isOpen || !skillInfoId,
   });
   const toolSelection = useToolSelection({
     selectedActions,
@@ -205,17 +218,23 @@ export function useCapabilitiesPageAndFooter({
 
         return {
           page: {
-            title: sheetState.capability.name,
-            description: sheetState.capability.userFacingDescription,
+            title: skill?.name ?? "",
+            description: skill?.userFacingDescription,
             id: sheetState.state,
-            icon: getSkillIcon(sheetState.capability.icon),
-            content: (
+            icon: skill ? getSkillIcon(skill.icon) : undefined,
+            content: skill ? (
               <SkillInfoPage
-                skill={sheetState.capability}
+                skill={skill}
                 owner={owner}
                 user={user}
                 onClose={handleClose}
               />
+            ) : isSkillError ? (
+              <SkillLoadError onRetry={mutateSkill} />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Spinner size="lg" />
+              </div>
             ),
           },
           leftButton: sheetState.hasPreviousPage

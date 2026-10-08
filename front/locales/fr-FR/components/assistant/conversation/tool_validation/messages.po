@@ -179,7 +179,7 @@ msgstr "Responsable"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgid "Unassign"
-msgstr "Désassigner"
+msgstr "Retirer l’attribution"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgctxt "marked done by"

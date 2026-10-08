@@ -1,0 +1,82 @@
+[
+  {
+    "role": "fdb-a",
+    "write_iops": 8945.105489,
+    "sync_lat_ns_mean": 70371.887356
+  },
+  {
+    "role": "fdb-client",
+    "write_iops": 10566.443356,
+    "sync_lat_ns_mean": 57508.787147
+  },
+  {
+    "role": "fdb-es-a",
+    "write_iops": 8950.10499,
+    "sync_lat_ns_mean": 70604.975299
+  },
+  {
+    "role": "rocks",
+    "write_iops": 8790.220978,
+    "sync_lat_ns_mean": 71683.104687
+  },
+  {
+    "role": "rocks-client",
+    "write_iops": 10770.722928,
+    "sync_lat_ns_mean": 53989.32163
+  },
+  {
+    "role": "tikv-a",
+    "write_iops": 9011.19888,
+    "sync_lat_ns_mean": 69681.929439
+  },
+  {
+    "role": "tikv-client",
+    "write_iops": 10995.60044,
+    "sync_lat_ns_mean": 52462.703045
+  },
+  {
+    "role": "tikv-es-a",
+    "write_iops": 11345.665433,
+    "sync_lat_ns_mean": 53497.827077
+  },
+  {
+    "role": "fdb-b",
+    "write_iops": 11310.468953,
+    "sync_lat_ns_mean": 49443.122822
+  },
+  {
+    "role": "fdb-es-b",
+    "write_iops": 8650.634937,
+    "sync_lat_ns_mean": 74312.747301
+  },
+  {
+    "role": "tikv-b",
+    "write_iops": 9411.558844,
+    "sync_lat_ns_mean": 66013.922368
+  },
+  {
+    "role": "tikv-es-b",
+    "write_iops": 10324.067593,
+    "sync_lat_ns_mean": 56666.530576
+  },
+  {
+    "role": "fdb-c",
+    "write_iops": 9294.870513,
+    "sync_lat_ns_mean": 67118.51456
+  },
+  {
+    "role": "fdb-es-c",
+    "write_iops": 9533.046695,
+    "sync_lat_ns_mean": 65002.180608
+  },
+  {
+    "role": "tikv-c",
+    "write_iops": 9801.219878,
+    "sync_lat_ns_mean": 62015.114771
+  },
+  {
+    "role": "tikv-es-c",
+    "write_iops": 8235.076492,
+    "sync_lat_ns_mean": 78570.078778
+  }
+]

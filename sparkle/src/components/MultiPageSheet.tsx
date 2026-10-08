@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { Separator } from "@sparkle/components/Separator";
@@ -160,6 +161,7 @@ const MultiPageSheetContent = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const currentPageIndex = pages.findIndex(
       (page) => page.id === currentPageId
     );
@@ -211,7 +213,7 @@ const MultiPageSheetContent = React.forwardRef<
                     size="sm"
                     disabled={!hasPrevious}
                     onClick={handlePrevious}
-                    tooltip={hasPrevious ? "Previous page" : undefined}
+                    tooltip={hasPrevious ? t`Previous page` : undefined}
                   />
                   <Button
                     icon={ChevronRight}
@@ -219,7 +221,7 @@ const MultiPageSheetContent = React.forwardRef<
                     size="sm"
                     disabled={nextButtonDisabled}
                     onClick={handleNext}
-                    tooltip={hasNext && !disableNext ? "Next page" : undefined}
+                    tooltip={hasNext && !disableNext ? t`Next page` : undefined}
                   />
                 </div>
               )}
@@ -253,7 +255,10 @@ const MultiPageSheetContent = React.forwardRef<
           <div
             className={cn(
               "h-full",
-              currentPage.fixedContent ? "flex flex-col" : ""
+              // Bound the SheetContainer height so its ScrollArea viewport is the actual scroller.
+              currentPage.fixedContent || !currentPage.noScroll
+                ? "flex flex-col"
+                : ""
             )}
           >
             {currentPage.fixedContent && (

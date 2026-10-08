@@ -1126,7 +1126,7 @@
     "/api/v1/w/{wId}/assistant/agent_configurations/search": {
       "get": {
         "summary": "Search agents by name",
-        "description": "Search for agent configurations by name in the workspace identified by {wId}.",
+        "description": "Search for agent configurations by name in the workspace identified by {wId}. Returns the global agents and the published agents the caller can access whose name contains the query, case-insensitively.",
         "tags": [
           "Agents"
         ],

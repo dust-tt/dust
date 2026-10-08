@@ -13,9 +13,191 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/ActionCard.tsx
+msgid "Added"
+msgstr "Added"
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr "Add"
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr "Back"
+
+#: src/components/Bar.tsx
+msgid "Close"
+msgstr "Close"
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr "Delete"
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr "Share"
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr "Breadcrumb"
+
+#: src/components/Chip.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Remove"
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr "Get work done"
+
+#: src/components/ConversationListItem.tsx
+msgid "{mentionCount, plural, one {# Mention} other {# Mentions}}"
+msgstr "{mentionCount, plural, one {# Mention} other {# Mentions}}"
+
+#: src/components/ConversationListItem.tsx
+msgctxt "follows the mention count, e.g. 2 Mentions in 5 unreads"
+msgid "{unreadCount, plural, one {in # unread} other {in # unreads}}"
+msgstr "{unreadCount, plural, one {in # unread} other {in # unreads}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})"
+msgstr "({replyCount, plural, one {# reply} other {# replies}})"
+
+#: src/components/ConversationListItem.tsx
+msgid "{replyCount, plural, one {# Reply} other {# Replies}}"
+msgstr "{replyCount, plural, one {# Reply} other {# Replies}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "{unreadCount, plural, one {# Unread} other {# Unread}}"
+msgstr "{unreadCount, plural, one {# Unread} other {# Unread}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})."
+msgstr "({replyCount, plural, one {# reply} other {# replies}})."
+
+#: src/components/ConversationListItem.tsx
+msgid "Last by <0>{lastMessageBy}</0>."
+msgstr "Last by <0>{lastMessageBy}</0>."
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr "Message actions"
+
+#: src/components/DataTable/ScrollableDataTable.tsx
+msgid "Loading more data…"
+msgstr "Loading more data…"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select {label}"
+msgstr "Select {label}"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select row"
+msgstr "Select row"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select all rows"
+msgstr "Select all rows"
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr "Loading table"
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr "Show less"
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Show more"
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr "Website icon"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr "Creating image"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr "Generated image"
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgid "Download"
+msgstr "Download"
+
+#: src/components/InputWithSave.tsx
+#: src/components/LegacyInputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr "Save"
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Loading"
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Load more"
+
+#: src/components/LoadMore.tsx
 #: src/components/Pagination.tsx
 msgid "{rowCount, plural, one {# item} other {# items}}"
 msgstr "{rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+
+#: src/components/MessageCard.tsx
+msgid "New on Dust"
+msgstr "New on Dust"
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr "Learn more"
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr "Dismiss"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Previous page"
+msgstr "Previous page"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Next page"
+msgstr "Next page"
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr "Hide"
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr "Show all"
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr "Dismiss notification"
+
+#: src/components/Notification.tsx
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Details"
+msgstr "Details"
 
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
@@ -24,3 +206,196 @@ msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plura
 #: src/components/Pagination.tsx
 msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
 msgstr "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr "Progress"
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr "Search"
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search result} other {# search results}} (out of {totalItems})."
+msgstr "{itemCount, plural, one {# search result} other {# search results}} (out of {totalItems})."
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search result.} other {# search results.}}"
+msgstr "{itemCount, plural, one {# search result.} other {# search results.}}"
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr "Select all"
+
+#: src/components/Toolbar.tsx
+msgid "Insert link"
+msgstr "Insert link"
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr "Add a link to your message with custom text."
+
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr "Text"
+
+#: src/components/Toolbar.tsx
+msgid "Link"
+msgstr "Link"
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/components/VoicePicker.tsx
+msgid "{progress}%"
+msgstr "{progress}%"
+
+#: src/components/VoicePicker.tsx
+msgctxt "verb, stop recording"
+msgid "Stop"
+msgstr "Stop"
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr "Transcribing…"
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr "Release to stop"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr "Stop recording"
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or press and hold to record"
+msgstr "Click, or press and hold to record"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Apply"
+msgstr "Apply"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Reject"
+msgstr "Reject"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Always allow"
+msgstr "Always allow"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the diagram's raw source code"
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the rendered diagram"
+msgid "Mermaid"
+msgstr "Mermaid"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the diagram's raw source code"
+msgid "Switch to Markdown"
+msgstr "Switch to Markdown"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the rendered diagram"
+msgid "Switch to Mermaid"
+msgstr "Switch to Mermaid"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Raw JSON"
+msgstr "Raw JSON"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Pretty JSON"
+msgstr "Pretty JSON"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON source text"
+msgid "Switch to Raw JSON"
+msgstr "Switch to Raw JSON"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON as a formatted tree"
+msgid "Switch to Pretty View"
+msgstr "Switch to Pretty View"
+
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgctxt "verb, copy to clipboard"
+msgid "Copy"
+msgstr "Copy"
+
+#: src/components/markdown/List.tsx
+msgid "Done"
+msgstr "Done"
+
+#: src/components/markdown/List.tsx
+msgid "Step {number}"
+msgstr "Step {number}"
+
+#: src/components/markdown/List.tsx
+msgid "To do"
+msgstr "To do"
+
+#: src/components/markdown/Markdown.tsx
+msgid "There was an error parsing this markdown content"
+msgstr "There was an error parsing this markdown content"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, show hidden JSON content"
+msgid "expand"
+msgstr "expand"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Maximum depth reached"
+msgstr "Maximum depth reached"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "a null JSON value"
+msgid "empty"
+msgstr "empty"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Yes"
+msgstr "Yes"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "No"
+msgstr "No"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, hide JSON content"
+msgid "collapse"
+msgstr "collapse"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "expand ({hiddenCharCount, plural, one {# more character} other {# more characters}})"
+msgstr "expand ({hiddenCharCount, plural, one {# more character} other {# more characters}})"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "empty list"
+msgstr "empty list"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Item {itemNumber}"
+msgstr "Item {itemNumber}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenItemCount, plural, one {# more item} other {# more items}}"
+msgstr "{hiddenItemCount, plural, one {# more item} other {# more items}}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "an empty JSON object"
+msgid "empty"
+msgstr "empty"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
+msgstr "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
+
+#: src/lib/SafeSuspense.tsx
+msgid "Failed to load. Please reload the page."
+msgstr "Failed to load. Please reload the page."

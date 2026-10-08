@@ -1,7 +1,7 @@
 import {
   normalizeCapInput,
   useCapUnitLabel,
-} from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+} from "@app/components/workspace/settings/selfImprovingSkillsCapUtils";
 import { formatCredits } from "@app/lib/client/credits";
 import { compareStrings, formatNumber } from "@app/lib/i18n/format";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";

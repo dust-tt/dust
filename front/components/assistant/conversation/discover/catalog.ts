@@ -4,7 +4,6 @@ import type {
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
 import type { SkillSearchFilters } from "@app/types/api/skills";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 
@@ -58,7 +57,11 @@ export function buildCatalogQuery(
   const { view, kind, tagId } = filters;
   const normalizedSearchTerm = searchTerm.slice(0, CATALOG_SEARCH_MAX_LENGTH);
   const sortBy =
-    view === "popular" ? "usage" : normalizedSearchTerm ? "relevance" : "name";
+    view === "popular"
+      ? "usage"
+      : normalizedSearchTerm || view === "favorites"
+        ? "relevance"
+        : "name";
   const showAgents = kind !== "skill";
   // Tags are an agent-only concept, so filtering by one excludes skills.
   const showSkills = kind !== "agent" && tagId === null;
@@ -99,18 +102,6 @@ export function getItemDescription(item: CatalogItem): string {
   return item.kind === "agent"
     ? item.agent.description
     : item.skill.userFacingDescription;
-}
-
-export function toHydratedAgentCatalogItem(
-  agent: LightAgentConfigurationType
-): CatalogItem {
-  return {
-    kind: "agent",
-    agent,
-    authors: agent.lastAuthors ?? [],
-    isDustProvided: agent.scope === "global",
-    activeUsersCount: agent.usage?.userCount ?? null,
-  };
 }
 
 export function toSearchAgentCatalogItem(

@@ -1,0 +1,36 @@
+
+running 12 tests
+test partial_drain_retains_each_records_original_age           ... ok
+test directory_updates_remain_complete_during_concurrent_flush ... ok
+test buffered_directory_attributes_keep_original_fence         ... ok
+test buffered_directories_and_children_publish_atomically      ... ok
+test buffered_directory_collision_leaves_no_descendants        ... ok
+test acknowledged_directory_overlay_preserves_unseen_changes   ... ok
+test capacity_flush_keeps_current_file_buffered                ... ok
+test incremental_refresh_handles_more_than_128_changes         ... ok
+test graceful_unmount_drains_unpublished_files                 ... ok
+test buffered_creates_coalesce_and_sync_preserves_all_files    ... ok
+test file_batch_is_atomic_fenced_and_idempotent                ... ok
+test buffered_revocation_is_deferred_and_retained              ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.92s
+
+
+running 7 tests
+test warm_key_hints_do_not_cache_credential_authority                ... ok
+test sessions_handles_and_logout_cross_frontends                     ... ok
+test identical_append_resolves_once_and_rejects_changed_payload      ... ok
+test opposing_directory_moves_cannot_form_cycle                      ... ok
+test cached_history_and_handles_do_not_bypass_group_revocation       ... ok
+test chunk_boundaries_holes_and_stale_base_are_preserved             ... ok
+test view_pins_fence_writes_by_version_session_and_current_authority ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.60s
+
+
+running 2 tests
+test distributed_incremental_workers_reject_stale_replay_and_recover_shared_progress ... ok
+test directory_move_during_index_publication_preserves_authority_and_newer_content   ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 1.04s
+

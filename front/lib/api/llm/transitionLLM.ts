@@ -73,6 +73,7 @@ import type {
   PassthroughLab,
 } from "@app/lib/model_constructors/types/output/events";
 import { isCacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
+import { isInputTransformations } from "@app/lib/model_constructors/utils/input_transformation";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type {
   AgentFunctionCallContentType,
@@ -447,12 +448,16 @@ export function convertToOldEvent(
   switch (event.type) {
     case "response_id": {
       const cacheMissReason = event.metadata.content?.cacheMissReason;
+      const inputTransformations = event.metadata.content?.inputTransformations;
       return {
         type: "interaction_id",
         content: {
           modelInteractionId: event.content.responseId,
           cacheMissReason: isCacheMissReason(cacheMissReason)
             ? cacheMissReason
+            : undefined,
+          inputTransformations: isInputTransformations(inputTransformations)
+            ? inputTransformations
             : undefined,
         },
         metadata,

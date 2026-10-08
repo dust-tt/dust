@@ -1,0 +1,50 @@
+[package]
+name = "dfs-poc"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[workspace]
+
+[features]
+lexical-search = ["dep:tantivy", "dep:roaring", "dep:axum", "dep:self_cell"]
+
+[dependencies]
+anyhow = "1"
+tantivy = { version = "0.26", optional = true }
+roaring = { version = "0.11", optional = true }
+axum = { version = "0.8", optional = true }
+self_cell = { version = "=1.2.0", optional = true }
+bincode = "1.3.3"
+clap = { version = "4", features = ["derive"] }
+futures = "0.3"
+libc = "0.2"
+parking_lot = "0.12"
+prost = "0.13.5"
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rocksdb = { version = "0.24.0", default-features = false, features = ["lz4", "bindgen-runtime"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_bytes = "0.11"
+sha2 = "0.10"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync", "net"] }
+tonic = { version = "0.12.3", features = ["tls"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "0.16.0", default-features = false, features = ["abi-7-36"] }
+
+[build-dependencies]
+protoc-bin-vendored = "3"
+tonic-build = "0.12.3"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+debug = 1
+

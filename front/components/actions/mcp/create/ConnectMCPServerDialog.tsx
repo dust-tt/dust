@@ -260,10 +260,9 @@ export function ConnectMCPServerDialog({
 
     if (submitRes.isErr()) {
       const providerName = OAUTH_PROVIDER_NAMES[authorization.provider];
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to connect ${providerName}`,
-        description: submitRes.error.message,
+        error: submitRes.error,
       });
       setIsLoading(false);
       return;
@@ -375,14 +374,12 @@ export function ConnectMCPServerDialog({
       setIsOpen(false);
       resetState();
     } catch (err) {
-      const e = normalizeError(err);
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to connect the tool`,
-        description: e.message,
+        error: err,
       });
       datadogLogger.error(
-        { workspaceId: owner.sId, err: e },
+        { workspaceId: owner.sId, err: normalizeError(err) },
         "Unexpected error in handleStaticCredentialSave"
       );
     } finally {

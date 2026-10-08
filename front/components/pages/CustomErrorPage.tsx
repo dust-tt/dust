@@ -18,7 +18,7 @@ export default function CustomErrorPage({
   icon,
 }: CustomErrorPageProps) {
   return (
-    <div className="flex h-dvh items-center justify-center">
+    <div className="flex h-dvh items-center justify-center px-4">
       <div className="flex flex-col gap-3 text-center">
         <div className="flex flex-col items-center">
           <div>

@@ -31,37 +31,78 @@ const EgressPolicyShapeSchema = z.object({
   requestedDomains: z.array(EgressDomainRequestSchema).optional(),
 });
 
-function normalizeDnsName(value: string): Result<string, Error> {
+export const EGRESS_POLICY_DOMAIN_MAX_LENGTH = 253;
+
+export type EgressPolicyDomainErrorCode =
+  | "empty"
+  | "too_long"
+  | "ip_address"
+  | "invalid_format"
+  | "tld_without_letter"
+  | "wildcard_without_suffix"
+  | "invalid_wildcard"
+  | "https_secret_single_label";
+
+const EGRESS_POLICY_DOMAIN_ERROR_MESSAGES: Record<
+  EgressPolicyDomainErrorCode,
+  string
+> = {
+  empty: "Domain cannot be empty.",
+  too_long: `Domain must be ${EGRESS_POLICY_DOMAIN_MAX_LENGTH} characters or less.`,
+  ip_address: "IP addresses are not supported.",
+  invalid_format:
+    "Use an exact domain such as api.github.com or a wildcard such as *.github.com.",
+  tld_without_letter: "Domain must have a top-level label containing a letter.",
+  wildcard_without_suffix: "Wildcard domains must include a suffix.",
+  invalid_wildcard: "Wildcards must use the form *.example.com.",
+  https_secret_single_label:
+    "HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com.",
+};
+
+/**
+ * @cc [owner:sfriquet,label:error-handling;api] stable-code-and-english-message
+ * `code` is the stable identifier UI code translates. `message` MUST stay the English
+ * `EGRESS_POLICY_DOMAIN_ERROR_MESSAGES[code]`, prefixed with `<domain>: ` when `domain` is set:
+ * server callers return it as is to API clients and agents.
+ */
+export class EgressPolicyDomainError extends Error {
+  constructor(
+    readonly code: EgressPolicyDomainErrorCode,
+    readonly domain?: string
+  ) {
+    const message = EGRESS_POLICY_DOMAIN_ERROR_MESSAGES[code];
+    super(domain === undefined ? message : `${domain}: ${message}`);
+    this.name = "EgressPolicyDomainError";
+  }
+}
+
+function normalizeDnsName(
+  value: string
+): Result<string, EgressPolicyDomainError> {
   const normalized = value.toLowerCase().replace(/\.$/, "");
 
   if (normalized.length === 0) {
-    return new Err(new Error("Domain cannot be empty."));
+    return new Err(new EgressPolicyDomainError("empty"));
   }
 
-  if (normalized.length > 253) {
-    return new Err(new Error("Domain must be 253 characters or less."));
+  if (normalized.length > EGRESS_POLICY_DOMAIN_MAX_LENGTH) {
+    return new Err(new EgressPolicyDomainError("too_long"));
   }
 
   if (isIpLiteral(normalized)) {
-    return new Err(new Error("IP addresses are not supported."));
+    return new Err(new EgressPolicyDomainError("ip_address"));
   }
 
   const labels = normalized.split(".");
   for (const label of labels) {
     if (!isValidDnsLabel(label)) {
-      return new Err(
-        new Error(
-          "Use an exact domain such as api.github.com or a wildcard such as *.github.com."
-        )
-      );
+      return new Err(new EgressPolicyDomainError("invalid_format"));
     }
   }
 
   const tld = labels[labels.length - 1];
   if (!/[a-z]/.test(tld)) {
-    return new Err(
-      new Error("Domain must have a top-level label containing a letter.")
-    );
+    return new Err(new EgressPolicyDomainError("tld_without_letter"));
   }
 
   return new Ok(normalized);
@@ -103,11 +144,11 @@ function isValidDnsLabel(label: string): boolean {
 
 export function normalizeEgressPolicyDomain(
   value: string
-): Result<string, Error> {
+): Result<string, EgressPolicyDomainError> {
   const trimmed = value.trim();
 
   if (trimmed.length === 0) {
-    return new Err(new Error("Domain cannot be empty."));
+    return new Err(new EgressPolicyDomainError("empty"));
   }
 
   if (trimmed.startsWith("*.")) {
@@ -118,14 +159,14 @@ export function normalizeEgressPolicyDomain(
 
     const suffix = suffixResult.value;
     if (suffix.split(".").length < 2) {
-      return new Err(new Error("Wildcard domains must include a suffix."));
+      return new Err(new EgressPolicyDomainError("wildcard_without_suffix"));
     }
 
     return new Ok(`*.${suffix}`);
   }
 
   if (trimmed.includes("*")) {
-    return new Err(new Error("Wildcards must use the form *.example.com."));
+    return new Err(new EgressPolicyDomainError("invalid_wildcard"));
   }
 
   return normalizeDnsName(trimmed);
@@ -133,13 +174,13 @@ export function normalizeEgressPolicyDomain(
 
 export function normalizeEgressPolicyDomains(
   values: string[]
-): Result<string[], Error> {
+): Result<string[], EgressPolicyDomainError> {
   const domains = new Set<string>();
 
   for (const value of values) {
     const normalized = normalizeEgressPolicyDomain(value);
     if (normalized.isErr()) {
-      return new Err(new Error(`${value}: ${normalized.error.message}`));
+      return new Err(new EgressPolicyDomainError(normalized.error.code, value));
     }
     domains.add(normalized.value);
   }

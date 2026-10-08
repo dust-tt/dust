@@ -1,8 +1,10 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -77,6 +79,7 @@ function PermissionProfileSelector({
   disabled,
 }: PermissionProfileSelectorProps) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
 
@@ -148,12 +151,10 @@ function PermissionProfileSelector({
         description: t`Participant filter successfully updated.`,
       });
     } else {
-      const err = await res.json();
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to update Gong configuration`,
-        description:
-          normalizeError(err).message || t`An unknown error occurred`,
+        error: err,
       });
     }
     setLoading(false);
@@ -303,6 +304,7 @@ export function GongOptionComponent({
   }, [excludeKeywordsConfigValue]);
 
   const [loading, setLoading] = useState(false);
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
   const handleConfigUpdate = async (configKey: string, newValue: string) => {
@@ -359,12 +361,10 @@ export function GongOptionComponent({
       });
     } else {
       setLoading(false);
-      const err = await res.json();
-      sendNotification({
-        type: "error",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to update Gong configuration`,
-        description:
-          normalizeError(err).message || t`An unknown error occurred`,
+        error: err,
       });
     }
   };

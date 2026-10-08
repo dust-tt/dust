@@ -1559,11 +1559,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     );
 
     const internalMCPServerName = this.metadata.internalMCPServerName;
-    // Fallback for old actions created before these fields were added to the toolConfiguration JSONB.
-    // Extract the unprefixed tool name from the function call name (e.g. "server__tool" -> "tool").
-    const toolName =
-      this.toolConfiguration.originalName ??
-      getToolNameFromFunctionCallName(this.functionCallName);
+    const toolName = this.toolName;
     const mcpServerId = this.metadata.mcpServerId ?? null;
 
     const displayLabels = this.resolveDisplayLabels(
@@ -1896,6 +1892,20 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   get functionCallName(): string {
     return this.stepContent.value.value.name;
+  }
+
+  /**
+   * @cc [owner:davidebbo,label:product] tool-name-from-tool-configuration
+   * MUST return the tool's unprefixed name from its persisted tool configuration, never from
+   * `functionCallName`, which sandbox child actions share with their parent `sandbox` call. Only
+   * actions created before `toolConfiguration.originalName` existed fall back to
+   * `functionCallName`.
+   */
+  get toolName(): string {
+    return (
+      this.toolConfiguration.originalName ??
+      getToolNameFromFunctionCallName(this.functionCallName)
+    );
   }
 
   // The raw arguments string the model emitted, before Dust augments it with preconfigured values

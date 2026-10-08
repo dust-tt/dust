@@ -1,3 +1,11 @@
+import { APIKeyDetailsSheet } from "@app/components/workspace/api-keys/APIKeyDetailsSheet";
+import type { APIKeyStatus } from "@app/components/workspace/api-keys/utils";
+import {
+  API_KEY_STATUS_CHIP_COLORS,
+  API_KEY_STATUS_LABELS,
+  getKeyScopeLabel,
+  getKeyStatus,
+} from "@app/components/workspace/api-keys/utils";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -6,8 +14,8 @@ import { compareStrings, formatCurrency } from "@app/lib/i18n/format";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { RoleType, WorkspaceType } from "@app/types/user";
+import type { ModelId } from "@app/types/shared/model_id";
+import type { WorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
   Building04,
@@ -33,8 +41,6 @@ import {
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type {
   ColumnDef,
@@ -98,14 +104,6 @@ function APIKeySkeletonCell({
   }
 }
 
-type APIKeyStatus = "active" | "capped" | "revoked";
-
-const API_KEY_STATUS_LABELS: Record<APIKeyStatus, MessageDescriptor> = {
-  active: msg`Active`,
-  capped: msg`Capped`,
-  revoked: msg`Revoked`,
-};
-
 interface APIKeysTableProps {
   keys: KeyType[];
   workspaceId: WorkspaceType["sId"];
@@ -134,29 +132,7 @@ interface APIKeyRowData {
   monthlyCap: string | null;
   lastUsedAt: number | null;
   menuItems: MenuItem[];
-}
-
-const getKeyScopeLabel = (role: RoleType): MessageDescriptor => {
-  switch (role) {
-    case "user":
-      return msg`Read-only`;
-    case "manager":
-      return msg`Read & write`;
-    case "admin":
-      return msg`Admin`;
-    case "none":
-      return msg`No access`;
-    default:
-      assertNeverAndIgnore(role);
-      return msg`Unknown`;
-  }
-};
-
-function getKeyStatus(key: KeyType): APIKeyStatus {
-  if (key.status !== "active") {
-    return "revoked";
-  }
-  return key.isSpendCapped ? "capped" : "active";
+  onClick: () => void;
 }
 
 function formatMonthlyCap({
@@ -337,13 +313,7 @@ function StatusCell({ status }: StatusCellProps) {
     <DataTable.CellContent>
       <Chip
         size="xs"
-        color={
-          status === "active"
-            ? "success"
-            : status === "capped"
-              ? "warning"
-              : "primary"
-        }
+        color={API_KEY_STATUS_CHIP_COLORS[status]}
         label={t(API_KEY_STATUS_LABELS[status])}
       />
     </DataTable.CellContent>
@@ -532,7 +502,11 @@ function buildColumns({
                 size="sm"
                 variant="warning"
                 disabled={actionsDisabled}
-                onClick={() => void onRevoke(info.row.original.key)}
+                onClick={(event) => {
+                  // The row opens the key details on click.
+                  event.stopPropagation();
+                  void onRevoke(info.row.original.key);
+                }}
               />
             </div>
           </DataTable.CellContent>
@@ -591,6 +565,9 @@ export function APIKeysTable({
     pageSize: API_KEYS_PAGE_SIZE,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [detailsKeyModelId, setDetailsKeyModelId] = useState<ModelId | null>(
+    null
+  );
 
   const { spaces: workspaceSpaces, isSpacesLoading } = useSpacesAsAdmin({
     workspaceId,
@@ -679,6 +656,7 @@ export function APIKeysTable({
           }),
           lastUsedAt: key.lastUsedAt,
           menuItems,
+          onClick: () => setDetailsKeyModelId(key.id),
         };
       }),
     [
@@ -695,6 +673,12 @@ export function APIKeysTable({
     ]
   );
 
+  const detailsRow =
+    rows.find((row) => row.key.id === detailsKeyModelId) ?? null;
+  const monthlyCapLabel = showCreditMonthlyCap
+    ? t`Credits cap`
+    : t`Monthly cap`;
+
   const scopeOptions = useMemo(
     () => [...new Set(rows.map((row) => row.scope))].sort(),
     [rows]
@@ -709,7 +693,7 @@ export function APIKeysTable({
           key: t`Key`,
           spaces: t`Spaces`,
           credits: t`Credits`,
-          monthlyCap: showCreditMonthlyCap ? t`Credits cap` : t`Monthly cap`,
+          monthlyCap: monthlyCapLabel,
           lastUsed: t`Last used`,
           status: t`Status`,
           revoke: t`Revoke API key`,
@@ -722,8 +706,8 @@ export function APIKeysTable({
       actionsDisabled,
       isConsumptionLoading,
       onRevoke,
+      monthlyCapLabel,
       showAnalyticsConsumption,
-      showCreditMonthlyCap,
       t,
     ]
   );
@@ -789,6 +773,15 @@ export function APIKeysTable({
       className="flex flex-col gap-4 rounded-xl border border-border bg-panel-background p-4"
       aria-busy={isLoading || isSpacesLoading}
     >
+      <APIKeyDetailsSheet
+        apiKey={detailsRow?.key ?? null}
+        onClose={() => setDetailsKeyModelId(null)}
+        monthlyCap={detailsRow?.monthlyCap ?? null}
+        monthlyCapLabel={monthlyCapLabel}
+        credits={detailsRow?.credits ?? null}
+        isCreditsLoading={isConsumptionLoading}
+        showAnalyticsConsumption={showAnalyticsConsumption}
+      />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput
           name="api-keys-search"

@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import {
   ChevronLeft,
@@ -146,6 +147,8 @@ export type BarButtonBarProps =
  * @summary Preset Bar action layouts.
  */
 Bar.ButtonBar = function (props: BarButtonBarProps) {
+  const { t } = useLingui();
+
   switch (props.variant) {
     case "back":
       return (
@@ -153,7 +156,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
           size="sm"
           icon={ChevronLeft}
           variant="ghost"
-          tooltip="Back"
+          tooltip={t`Back`}
           onClick={props.onBack}
         />
       );
@@ -163,7 +166,7 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
           size="sm"
           icon={XClose}
           variant="ghost"
-          tooltip="Close"
+          tooltip={t`Close`}
           onClick={props.onClose}
         />
       );
@@ -180,13 +183,13 @@ Bar.ButtonBar = function (props: BarButtonBarProps) {
           <Button
             size="sm"
             icon={Trash01}
-            tooltip="Delete"
+            tooltip={t`Delete`}
             variant="ghost"
             onClick={props.onDelete}
           />
           <Button
             size="sm"
-            label="Share"
+            label={t`Share`}
             icon={Upload01}
             variant="ghost"
             onClick={props.onShare}

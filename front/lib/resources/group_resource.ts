@@ -44,6 +44,7 @@ import type {
   GroupGrantableSeatType,
   GroupKind,
   GroupType,
+  LightGroupType,
   UserVisibleGroupKind,
 } from "@app/types/groups";
 import {
@@ -3622,6 +3623,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       groupId: this.sId,
       limitAwuCredits: this.sharedUsageLimitAwuCredits ?? 0,
       usedAwuCredits,
+    };
+  }
+
+  toLightJSON(): LightGroupType {
+    return {
+      id: this.sId,
+      name: this.name,
     };
   }
 

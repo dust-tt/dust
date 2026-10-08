@@ -42,41 +42,106 @@ msgstr "ID du workspace"
 msgid "API Key"
 msgstr "Clé API"
 
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Active"
-msgstr "Actif"
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "Close"
+msgstr "Fermer"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Capped"
-msgstr "Plafonnée"
+msgid "Unknown creator"
+msgstr "Créateur inconnu"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Revoked"
-msgstr "Révoqué"
+msgid "Unnamed"
+msgstr "Sans nom"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Read-only"
-msgstr "Lecture seule"
+msgid "Status"
+msgstr "Statut"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Read & write"
-msgstr "Lecture et écriture"
+msgid "Key"
+msgstr "Clé"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgctxt "API key details section, creation date"
+msgid "Created"
+msgstr "Création"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "{createdOn} by {creator}"
+msgstr "{createdOn} par {creator}"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Admin"
-msgstr "Administration"
+msgid "Last used"
+msgstr "Dernière utilisation"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "No access"
-msgstr "Aucun accès"
+msgid "Never"
+msgstr "Jamais"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unknown"
-msgstr "Inconnu"
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Spaces"
+msgstr "Espaces"
 
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "The key can read everything workspace members can, including open spaces and Company Data. It can read and write in the spaces below."
+msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et Company Data. Elle peut lire et écrire dans les espaces ci-dessous."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "No spaces"
 msgstr "Aucun espace"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Access scope"
+msgstr "Périmètre de l’accès"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Create and modify resources plus workspace administration (members, analytics export)"
+msgstr "Créer et modifier des ressources, et administrer le workspace (membres, export des statistiques)"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Can create conversations, read agents and data sources."
+msgstr "Peut créer des conversations, lire les agents et les sources de données."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "This key can access all analytics."
+msgstr "Cette clé peut accéder à toutes les statistiques."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
+msgid "The key can read the analytics of the members of the following groups."
+msgstr "La clé peut lire les statistiques des membres des groupes suivants."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "This key cannot access analytics."
+msgstr "Cette clé ne peut pas accéder aux statistiques."
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+#: front/components/workspace/api-keys/APIKeysTable.tsx
+msgid "Unlimited"
+msgstr "Illimité"
+
+#: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
+msgid "Credits used"
+msgstr "Crédits utilisés"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Spaces: {spaceList}"
@@ -87,41 +152,8 @@ msgid "{creditsLabel}/unlimited"
 msgstr "{creditsLabel}/illimité"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unlimited"
-msgstr "Illimité"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Never"
-msgstr "Jamais"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unknown creator"
-msgstr "Créateur inconnu"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Edit monthly cap"
 msgstr "Modifier le plafond mensuel"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Unnamed"
-msgstr "Sans nom"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Scope"
-msgstr "Périmètre"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Key"
-msgstr "Clé"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-#: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Spaces"
-msgstr "Espaces"
-
-#: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Credits"
-msgstr "Crédits"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Credits cap"
@@ -132,12 +164,12 @@ msgid "Monthly cap"
 msgstr "Plafond mensuel"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Last used"
-msgstr "Dernière utilisation"
+msgid "Scope"
+msgstr "Périmètre"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Status"
-msgstr "Statut"
+msgid "Credits"
+msgstr "Crédits"
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
 msgid "Revoke API key"
@@ -236,7 +268,7 @@ msgstr "Saisissez un nom pour la clé API"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "The key can read everything workspace members can, including open spaces and Company Data. Selecting a space grants the key read and write access to it, such as uploading files."
-msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et les données de l’entreprise. Sélectionner un espace donne à la clé un accès en lecture et en écriture à cet espace, par exemple pour importer des fichiers."
+msgstr "La clé peut lire tout ce que les membres du workspace peuvent lire, y compris les espaces ouverts et Company Data. Sélectionner un espace donne à la clé un accès en lecture et en écriture à cet espace, par exemple pour importer des fichiers."
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Add Spaces"
@@ -251,20 +283,54 @@ msgid "No spaces found"
 msgstr "Aucun espace trouvé"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Access scope"
-msgstr "Périmètre de l’accès"
+msgid "Add Groups"
+msgstr "Ajouter des groupes"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Can create conversations, read agents and data sources."
-msgstr "Peut créer des conversations, lire les agents et les sources de données."
+msgid "Search groups"
+msgstr "Rechercher des groupes"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Create and modify resources plus workspace administration (members, analytics export)"
-msgstr "Créer et modifier des ressources, et administrer le workspace (membres, export des statistiques)"
+msgid "No groups found"
+msgstr "Aucun groupe trouvé"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Create"
 msgstr "Créer"
+
+#: front/components/workspace/api-keys/utils.ts
+msgctxt "API key status"
+msgid "Active"
+msgstr "Active"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Capped"
+msgstr "Plafonnée"
+
+#: front/components/workspace/api-keys/utils.ts
+msgctxt "API key status"
+msgid "Revoked"
+msgstr "Révoquée"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Read-only"
+msgstr "Lecture seule"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Read & write"
+msgstr "Lecture et écriture"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Admin"
+msgstr "Administration"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "No access"
+msgstr "Aucun accès"
+
+#: front/components/workspace/api-keys/utils.ts
+msgid "Unknown"
+msgstr "Inconnu"
 
 #: front/components/workspace/api-keys/utils.ts
 msgid "Monthly cap must be a positive number"

@@ -38,6 +38,10 @@ msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{format
 msgstr "{displayedCredits, plural, one {{formattedCredits} crédit} other {{formattedCredits} crédits}}"
 
 #: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} crédit / message} other {{formattedCredits} crédits / message}}"
+
+#: front/lib/client/credits.ts
 msgid "{callCount, plural, one {# use} other {# uses}}"
 msgstr "{callCount, plural, one {# utilisation} other {# utilisations}}"
 
@@ -116,7 +120,7 @@ msgstr "Des modèles de pointe, bien plus chers que Premium, pour les travaux le
 
 #: front/lib/client/model_tiers_explainer.ts
 msgid "all efforts"
-msgstr "tous les efforts"
+msgstr "tous les niveaux d’effort"
 
 #: front/lib/client/wakeup_schedule.ts
 msgid "at {time}"

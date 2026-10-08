@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { Dialog, DialogClose, DialogContent } from "@sparkle/components/Dialog";
 import { ImageWrapper } from "@sparkle/components/ImageWrapper";
@@ -63,6 +64,7 @@ function ImageZoomDialog({
   image,
   navigation,
 }: ImageZoomDialogProps) {
+  const { t } = useLingui();
   const [imageLoaded, setImageLoaded] = useState(false);
 
   const handleDownload = useCallback(
@@ -129,7 +131,7 @@ function ImageZoomDialog({
                     variant="outline"
                     size="xs"
                     icon={Download01}
-                    tooltip="Download"
+                    tooltip={t`Download`}
                     className="absolute bottom-2 right-2"
                     onClick={handleDownload}
                   />

@@ -1,0 +1,35 @@
+Unable to find image 'docker.elastic.co/elasticsearch/elasticsearch:8.19.4' locally
+8.19.4: Pulling from elasticsearch/elasticsearch
+c32ccf34cba7: Pulling fs layer
+5b8fdf031e0c: Pulling fs layer
+338024fa24f5: Pulling fs layer
+9497c04db777: Pulling fs layer
+4ca545ee6d5d: Pulling fs layer
+d6dd78e3f5c7: Pulling fs layer
+4f1c1ed983a1: Pulling fs layer
+e4bb8aac29c1: Pulling fs layer
+04794b8592cb: Pulling fs layer
+8166dc9bd9ed: Pulling fs layer
+4ca545ee6d5d: Download complete
+e4bb8aac29c1: Download complete
+c32ccf34cba7: Download complete
+338024fa24f5: Download complete
+4f1c1ed983a1: Download complete
+8166dc9bd9ed: Download complete
+5b8fdf031e0c: Download complete
+04794b8592cb: Download complete
+9497c04db777: Download complete
+9497c04db777: Pull complete
+4ca545ee6d5d: Pull complete
+338024fa24f5: Pull complete
+8166dc9bd9ed: Pull complete
+d6dd78e3f5c7: Download complete
+e4bb8aac29c1: Pull complete
+4f1c1ed983a1: Pull complete
+5b8fdf031e0c: Pull complete
+04794b8592cb: Pull complete
+d6dd78e3f5c7: Pull complete
+c32ccf34cba7: Pull complete
+Digest: sha256:13bb550524faa2aef6950b13fb6414c73b957e97e6169e5808743c8378614599
+Status: Downloaded newer image for docker.elastic.co/elasticsearch/elasticsearch:8.19.4
+d1b97ed241361ef5bf86c18167c7390c4c00561797df8f1c65e74d75d0e69903

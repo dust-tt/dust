@@ -1,0 +1,27 @@
+{
+  "deleted": [
+    "dfs/design/LIVE_CACHE_RESULTS.md",
+    "dfs/design/LIVE_CACHE_FAST_PATH_RESULTS.md",
+    "dfs-tikv/docs/BENCHMARK_CONFIGURATION_AUDIT.md",
+    "dfs-tikv/docs/CURRENT_CACHE_RESULTS.md",
+    "dfs-tikv/docs/FILESYSTEM_COMPARISON_LIVE.md",
+    "dfs-tikv/docs/FILESYSTEM_COMPARISON.md",
+    "dfs-tikv/docs/FULL_RESULTS.md",
+    "dfs-tikv/docs/RESULTS.md",
+    "dfs-tikv/docs/UNTAR_RESULTS.md",
+    "dfs-tikv/docs/TXNKV_EVALUATION.md",
+    "dfs-tikv/docs/ARCHITECTURE_ACCEPTANCE.md",
+    "dfs-fdb/docs/BASELINE_BENCHMARKS.md",
+    "dfs-fdb/docs/COMPARISON.md",
+    "dfs-fdb/docs/SMART_CACHE_COMPARISON.md",
+    "dfs-fdb/docs/VALIDATION.md",
+    "dfs-fdb/docs/SMART_CACHE_COMPARANDS.json",
+    "dfs-fdb/docs/SMART_CACHE_COMPARANDS-FIRST.json",
+    "dfs-fdb/docs/SMART_CACHE_COMPARANDS-READDIRPLUS.json",
+    "dfs/cloud/opt-client-serial.log",
+    "dfs/cloud/client-serial.log",
+    "dfs/cloud/qemu-install.log",
+    "dfs/cloud/opt-server-serial.log"
+  ],
+  "replacement": "dfs-bench/docs/RESULTS.md"
+}

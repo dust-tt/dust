@@ -1,0 +1,12 @@
+    Blocking waiting for file lock on package cache
+    Updating crates.io index
+    Blocking waiting for file lock on package cache
+     Locking 1 package to highest Rust 1.99.0 compatible version
+      Adding serde_bytes v0.11.19
+    Blocking waiting for file lock on package cache
+   Compiling serde_bytes v0.11.19
+   Compiling dfs-poc v0.1.0 (/home/dfs/dfs)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2m 32s
+  Executable tests/buffered.rs (target/release/deps/buffered-7395df63315a5ff3)
+  Executable tests/codec.rs (target/release/deps/codec-882c4ec2bd97047f)
+  Executable tests/publication.rs (target/release/deps/publication-d36f1c9db06a6a63)

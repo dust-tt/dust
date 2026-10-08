@@ -1,9 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { LiveFileError } from "@app/lib/api/collab/live_file";
-import { openLiveFile } from "@app/lib/api/collab/live_file";
+import type { LiveAccessError } from "@app/lib/api/collab/live_file";
+import { checkLiveAccess } from "@app/lib/api/collab/live_file";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
@@ -19,33 +18,21 @@ const LiveTicketSchema = z.object({
 /** Who may open which file in a live session, as a ticket grants it. */
 export type LiveTicket = z.infer<typeof LiveTicketSchema>;
 
-export type LiveTicketError =
-  | { code: "not_available"; message: string }
-  | LiveFileError;
-
 // Keyed by a hash so Redis never holds a usable ticket.
 const ticketKey = (ticket: string) =>
   `collab_ticket:${createHash("sha256").update(ticket).digest("hex")}`;
 
 /**
  * @cc [owner:PopDaph,label:security] live-ticket-minting
- * A ticket MUST be minted only for a user of a workspace with `co_edition`, for a file
- * `openLiveFile` opens for them, and MUST grant only that user, workspace and file. It MUST expire
- * after `LIVE_TICKET_TTL_SECONDS` and be unguessable.
+ * A ticket MUST be minted only when `checkLiveAccess` lets the user open the file, and MUST grant
+ * only that user, workspace and file. It MUST expire after `LIVE_TICKET_TTL_SECONDS` and be
+ * unguessable.
  */
 export async function mintLiveTicket(
   auth: Authenticator,
   canonicalPath: string
-): Promise<Result<string, LiveTicketError>> {
-  const user = auth.user();
-  if (!user || !(await hasFeatureFlag(auth, "co_edition"))) {
-    return new Err({
-      code: "not_available",
-      message: "Live editing is not available here.",
-    });
-  }
-
-  const file = await openLiveFile(auth, canonicalPath);
+): Promise<Result<string, LiveAccessError>> {
+  const file = await checkLiveAccess(auth, canonicalPath);
   if (file.isErr()) {
     return new Err(file.error);
   }
@@ -53,7 +40,7 @@ export async function mintLiveTicket(
   const ticket = randomBytes(32).toString("base64url");
   const granted: LiveTicket = {
     workspaceId: file.value.workspaceId,
-    userId: user.sId,
+    userId: auth.getNonNullableUser().sId,
     canonicalPath,
   };
   await runOnRedis({ origin: "collab_tickets" }, (redis) =>

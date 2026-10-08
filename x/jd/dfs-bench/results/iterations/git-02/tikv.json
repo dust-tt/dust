@@ -1,0 +1,317 @@
+{
+  "backend": "tikv",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791319059.757664,
+      "actual_start_time": 1791319059.7577548,
+      "end_time": 1791319602.8914912
+    },
+    "search": {
+      "target_start_time": 1791319891.4706712,
+      "actual_start_time": 1791319891.470775,
+      "end_time": 1791319979.5775304
+    }
+  },
+  "settings": {
+    "backend": "tikv",
+    "endpoint": "https://10.150.0.15:7443",
+    "search_host": "10.150.0.15",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "git_mode": "external-gitdir",
+  "scope": "full GitHub clone with native-SSD Git database, FUSE working tree and symlink placeholders",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-02/client/clone-mount-metrics.json"
+  ],
+  "clone_mount_startup_ms": 57.55597799725365,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "--separate-git-dir",
+      "/srv/dfs/git-metadata-git-02",
+      "-c",
+      "core.symlinks=false",
+      "--no-checkout",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 543133.488387,
+    "checkout_command": [
+      "git",
+      "-C",
+      "/srv/dfs/mount/files/dust",
+      "checkout",
+      "--detach",
+      "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5"
+    ],
+    "successful": true
+  },
+  "transfer": {
+    "command": [
+      "git",
+      "clone",
+      "--separate-git-dir",
+      "/srv/dfs/git-metadata-git-02",
+      "-c",
+      "core.symlinks=false",
+      "--no-checkout",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 507614.140523
+  },
+  "checkout": {
+    "command": [
+      "git",
+      "-C",
+      "/srv/dfs/mount/files/dust",
+      "checkout",
+      "--detach",
+      "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 35519.305937
+  },
+  "commit": "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5",
+  "durability": {
+    "open_fsync_close_ms": 873.428946,
+    "files": 15462
+  },
+  "git_status": {
+    "command": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 1516.157455
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_readiness": {
+    "wait_ms": 196.2173680003616,
+    "checkpoint": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 20922,
+      "source_head": 20922
+    }
+  },
+  "search_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-02/client/search-mount-metrics.json"
+  ],
+  "search_mount_startup_ms": 547.0981250000477,
+  "search": {
+    "passed": true,
+    "rows": [
+      {
+        "workload": "rg --files",
+        "first_ms": 115.390968,
+        "warm_median_ms": 61.036597,
+        "samples_ms": [
+          115.390968,
+          63.476761,
+          61.036597,
+          60.004269
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 15176,
+          "sha256": "16e8392a0a8c60b2b4b98c693ad530261a3708ee543ac10f49110d07fbb0635e"
+        }
+      },
+      {
+        "workload": "rg absent literal",
+        "first_ms": 5266.7097,
+        "warm_median_ms": 4338.467753,
+        "samples_ms": [
+          5266.7097,
+          5274.168154,
+          3674.370727,
+          4338.467753
+        ],
+        "validated": {
+          "exit_code": 1,
+          "lines": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "workload": "rg useEffect",
+        "first_ms": 5652.871756,
+        "warm_median_ms": 5598.386632,
+        "samples_ms": [
+          5652.871756,
+          5098.686494,
+          5752.881534,
+          5598.386632
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 509,
+          "sha256": "b25f9e2ae282c5708ebeae7e5e809233e531182aa6d7a9b0ad416733d4337f75"
+        }
+      },
+      {
+        "workload": "rg repository literal",
+        "first_ms": 4866.008618,
+        "warm_median_ms": 5670.308848,
+        "samples_ms": [
+          4866.008618,
+          5670.308848,
+          5701.754203,
+          5369.428446
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 43,
+          "sha256": "57664a6bb17de6de4e0af41d134d126d22970693dc15463dbbabc4c2176aeaf4"
+        }
+      },
+      {
+        "workload": "rg TSX useEffect",
+        "first_ms": 175.593735,
+        "warm_median_ms": 109.10093,
+        "samples_ms": [
+          175.593735,
+          109.10093,
+          107.084949,
+          124.951878
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 399,
+          "sha256": "b4fab16c45fab220b94fb0b736a8c3ae5062356e85e0cccebf9c5dbf7b13f083"
+        }
+      },
+      {
+        "workload": "rg front subtree",
+        "first_ms": 845.210155,
+        "warm_median_ms": 228.356891,
+        "samples_ms": [
+          845.210155,
+          244.173741,
+          215.953226,
+          228.356891
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 348,
+          "sha256": "d7563279f9de24ea8d47c9ce6207d5d617b3a2049d5e4bb0b4d770d748cf173b"
+        }
+      }
+    ]
+  },
+  "indexed_search": {
+    "passed": true,
+    "rows": [
+      {
+        "literal": "useEffect",
+        "expected_hits": 10,
+        "first_ms": 202.692,
+        "warm_median_ms": 168.817683,
+        "samples_ms": [
+          202.692,
+          177.340218,
+          167.746693,
+          166.424044,
+          170.769791,
+          161.962062,
+          169.888673,
+          161.62704,
+          171.331933,
+          162.087735,
+          170.219217
+        ]
+      },
+      {
+        "literal": "dust-tt/dust",
+        "expected_hits": 10,
+        "first_ms": 179.252127,
+        "warm_median_ms": 177.70123949999999,
+        "samples_ms": [
+          179.252127,
+          181.717285,
+          180.69975,
+          174.71615,
+          177.229955,
+          175.287455,
+          178.01711,
+          182.139945,
+          177.385369,
+          176.609198,
+          178.555832
+        ]
+      },
+      {
+        "literal": "DFS_ABSENT_40b5c32e5ff649f18005",
+        "expected_hits": 0,
+        "first_ms": 99.07469,
+        "warm_median_ms": 104.3336635,
+        "samples_ms": [
+          99.07469,
+          102.793908,
+          108.340039,
+          104.10557,
+          104.503159,
+          103.392739,
+          103.647176,
+          115.114306,
+          104.164168,
+          106.157476,
+          107.465547
+        ]
+      }
+    ]
+  },
+  "checkout_validation": {
+    "regular_files": 15461,
+    "bytes": 316183460,
+    "manifest_sha256": "d6e8ad6787fcdcf98409cdb31f2146902a05a4d5b0863652dec1cdb10cf641e0",
+    "passed": true
+  },
+  "search_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "iteration": "git-02"
+}

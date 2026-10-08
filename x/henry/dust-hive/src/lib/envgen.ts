@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
 import { CONFIG_ENV_PATH, getEnvFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -87,6 +88,10 @@ export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 # === Viz service ===
 export VIZ_PUBLIC_URL=http://localhost:${ports.viz}
 export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:${ports.front},http://localhost:${ports.frontSpaApp}
+
+# === Co-edition collab server (agents write to live documents through it) ===
+export COLLAB_INTERNAL_URL=http://localhost:${ports.collab}
+export COLLAB_INTERNAL_SECRET=${randomBytes(32).toString("hex")}
 
 # === Region & auth overrides (used by front cross-region and Dust CLI) ===
 export DUST_US_URL=http://localhost:${ports.front}

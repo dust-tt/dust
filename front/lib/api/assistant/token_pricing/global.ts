@@ -350,14 +350,15 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     long_cache_creation_input_tokens: 6.0,
     cache_read_input_tokens: 0.3,
   },
-  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-28).
-  // Same rates as Sonnet 5.
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-10-08).
+  // Same rates as Sonnet 5 except cache reads, which are 0.05x base input on
+  // Sonnet 5.5 instead of the usual 0.1x.
   "claude-sonnet-5-5": {
     input: 2.0,
     output: 10.0,
     cache_creation_input_tokens: 2.5,
     long_cache_creation_input_tokens: 4.0,
-    cache_read_input_tokens: 0.2,
+    cache_read_input_tokens: 0.1,
   },
   // https://platform.claude.com/docs/en/about-claude/pricing
   "claude-sonnet-5": {
@@ -408,6 +409,24 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     cache_creation_input_tokens: 1.25,
     long_cache_creation_input_tokens: 2.0,
     cache_read_input_tokens: 0.1,
+  },
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-10-08).
+  // Priced by prompt length: prompts over 100,000 tokens pay 5x on every rate.
+  "claude-haiku-5-5": {
+    input: 0.1,
+    output: 0.5,
+    cache_creation_input_tokens: 0.125,
+    long_cache_creation_input_tokens: 0.2,
+    cache_read_input_tokens: 0.01,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 100_001,
+      input: 0.5,
+      output: 2.5,
+      cache_creation_input_tokens: 0.625,
+      long_cache_creation_input_tokens: 1.0,
+      cache_read_input_tokens: 0.05,
+    },
   },
   "claude-haiku-4-5-20251001": {
     input: 1.0,

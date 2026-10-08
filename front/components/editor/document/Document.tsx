@@ -22,6 +22,7 @@ import type { DocumentCommentsController } from "@app/components/editor/document
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
@@ -78,7 +79,11 @@ interface DocumentViewProps extends DocumentProps {
   liveView?: {
     status: LiveStatus;
     /** Bound to the shared document once synced; until then the file shows read-only. */
-    binding: { extensions: AnyExtension[]; connected: boolean } | null;
+    binding: {
+      extensions: AnyExtension[];
+      connected: boolean;
+      comments: LiveCommentChannel;
+    } | null;
   };
 }
 
@@ -220,16 +225,17 @@ export const DocumentView = ({
     onStateChange,
     live: live.binding,
   });
-  // Live documents are edited through the session: no file saves, and no threads yet.
+  // Live documents are edited through the session: no file saves.
   const canEditFile = editable && liveView === undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable);
   const comments = useDocumentComments({
     editor,
-    canComment: canEditFile,
+    canComment: editable,
     author: commentAuthor,
     isSavable,
     sign: signCommentMessage,
     verify: verifyCommentMessage,
+    live: live.binding?.comments,
   });
   const contentRef = useRef<HTMLDivElement>(null);
   const panelId = useId();

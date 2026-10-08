@@ -21,8 +21,8 @@
 #   dhdb  - open psql on environment database
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
-_dust_hive_services=(sdk sparkle front core oauth connectors front-workers front-spa-poke front-spa-app viz)
-_dust_hive_warm_state_services=(front front-api core oauth connectors front-workers front-spa-poke front-spa-app viz)
+_dust_hive_services=(front sdk sparkle front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz storybook sqlite-worker collab)
+_dust_hive_warm_state_services=(front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz storybook sqlite-worker collab)
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
 _dust_hive_json_string() {
@@ -365,7 +365,7 @@ _dust_hive_complete() {
 
   # Top-level command completion
   if [[ -z "$cmd" ]]; then
-    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url kibana cd setup doctor cache refresh forward sync temporal seed-config feed flag help"
+    local commands="spawn adopt open reload restart warm cool start stop up down destroy unregister list status logs url kibana cd setup doctor cache autostart refresh forward sync temporal seed-config feed flag help"
     COMPREPLY=($(compgen -W "$commands" -- "$cur"))
     return
   fi
@@ -490,6 +490,9 @@ _dust_hive_complete() {
       esac
       ;;
     list|ls|l)
+      ;;
+    autostart)
+      COMPREPLY=($(compgen -W "-l --list --reset" -- "$cur"))
       ;;
     status|st|url|cd|refresh)
       case "$cur" in

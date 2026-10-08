@@ -5,18 +5,20 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
-  COMMENT_MARK_NAME,
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
+  withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LocalTransactionOrigin } from "@hocuspocus/server";
 import type { JSONContent } from "@tiptap/core";
 import {
   prosemirrorJSONToYXmlFragment,
+  updateYFragment,
   yXmlFragmentToProsemirrorJSON,
 } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
@@ -65,23 +67,46 @@ export function dfmToYDoc(source: string): Result<LiveDocument, string> {
   return new Ok({ doc, comments: getDocumentJSONComments(content) });
 }
 
-const withoutOrphanAnchors = (
-  content: JSONContent,
-  threadIds: Set<string>
-): JSONContent => {
-  const { marks, content: children, ...node } = content;
-  const kept = marks?.filter(
-    (mark) =>
-      mark.type !== COMMENT_MARK_NAME || threadIds.has(String(mark.attrs?.id))
+/**
+ * @cc [owner:tdraier,label:product;concurrency] co-edition-ydoc-replace
+ * `replaceYDocContent` MUST change `doc` so that `yDocToDfm`, with the threads it returns, gives
+ * what it gives for `dfmToYDoc(source)`, in one transaction with `origin`, leaving what is equal
+ * in place so the people editing keep their cursors. It MUST refuse a file `loadDfm` refuses, with
+ * the same reason, without changing `doc`.
+ */
+export function replaceYDocContent(
+  doc: Y.Doc,
+  source: string,
+  origin: LocalTransactionOrigin
+): Result<DfmComment[], string> {
+  const loaded = loadDfm(source);
+  if (loaded.isErr()) {
+    return loaded;
+  }
+  const { envelope, content } = loaded.value;
+
+  const body = documentSchema.nodeFromJSON(
+    withoutDocumentJSONComments(content)
   );
-  return {
-    ...node,
-    ...(kept && kept.length > 0 && { marks: kept }),
-    ...(children && {
-      content: children.map((child) => withoutOrphanAnchors(child, threadIds)),
-    }),
-  };
-};
+  doc.transact(() => {
+    updateYFragment(doc, doc.getXmlFragment(BODY_FRAGMENT_NAME), body, {
+      mapping: new Map(),
+      isOMark: new Map(),
+    });
+    // Setting an unchanged value would still send an update to every editor.
+    const map = doc.getMap(ENVELOPE_MAP_NAME);
+    if (map.get("frontMatter") !== envelope.frontMatter) {
+      map.set("frontMatter", envelope.frontMatter);
+    }
+    if (
+      JSON.stringify(map.get("anchorOrder")) !==
+      JSON.stringify(envelope.anchorOrder)
+    ) {
+      map.set("anchorOrder", envelope.anchorOrder);
+    }
+  }, origin);
+  return new Ok(getDocumentJSONComments(content));
+}
 
 /**
  * @cc [owner:tdraier,label:product] co-edition-orphan-anchors-dropped
@@ -111,6 +136,9 @@ export function yDocToDfm({
   const threadIds = new Set(comments.map(({ id }) => id));
   return saveDfm(
     envelope.data,
-    withDocumentJSONComments(withoutOrphanAnchors(content, threadIds), comments)
+    withDocumentJSONComments(
+      withoutOrphanCommentMarks(content, threadIds),
+      comments
+    )
   );
 }

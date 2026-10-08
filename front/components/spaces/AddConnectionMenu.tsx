@@ -33,6 +33,7 @@ import type {
   ConnectorType,
   DataSourceType,
 } from "@app/types/data_source";
+import type { APIError } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthUseCase } from "@app/types/oauth/lib";
 import { isOAuthProvider } from "@app/types/oauth/lib";
@@ -86,7 +87,10 @@ export async function setupConnection({
   extraConfig: Record<string, string>;
   cellInfo: CellInfo | null;
 }): Promise<
-  Result<{ connectionId: string; relatedCredentialId?: string }, Error>
+  Result<
+    { connectionId: string; relatedCredentialId?: string },
+    APIError | Error
+  >
 > {
   if (!isOAuthProvider(provider)) {
     return new Err(new Error(`Unknown provider ${provider}`));

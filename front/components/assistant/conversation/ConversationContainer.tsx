@@ -8,6 +8,7 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
+import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -187,10 +188,11 @@ export function ConversationContainerVirtuoso({
       ...useCase.skills.map((skill) => serializeSkillTag(skill)),
       ...useCase.tools.map((tool) => serializeToolTag(tool)),
     ].join(" ");
+    const prompt = t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].prompt);
 
     setPendingInputText(references, {
       replace: true,
-      typedSuffix: references ? ` ${useCase.prompt}` : useCase.prompt,
+      typedSuffix: references ? ` ${prompt}` : prompt,
     });
   };
 
@@ -421,6 +423,7 @@ export function ConversationContainerVirtuoso({
           user={user}
           onSubmit={handleConversationCreation}
           draftKey="home-new-conversation"
+          homepageVariant={isDiscoveryHomepage ? "discovery" : "classic"}
           disableAutoFocus={false}
           defaultAgentId={workspaceDefaultAgentId}
         />

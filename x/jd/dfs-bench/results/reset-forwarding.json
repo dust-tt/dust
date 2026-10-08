@@ -1,0 +1,48 @@
+[
+  {
+    "IPAddress": "10.128.0.50",
+    "IPProtocol": "TCP",
+    "attachedExtensions": [],
+    "backendService": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-routers",
+    "creationTimestamp": "2026-10-05T05:55:26.708-07:00",
+    "description": "",
+    "fingerprint": "y7nuD1Jlwj8=",
+    "id": "6253093788930941137",
+    "kind": "compute#forwardingRule",
+    "labelFingerprint": "42WmSpB8rSM=",
+    "loadBalancingScheme": "INTERNAL",
+    "name": "dfs-rawkv-jd-20261005-rpc",
+    "network": "https://www.googleapis.com/compute/v1/projects/dust-dev/global/networks/default",
+    "networkTier": "PREMIUM",
+    "ports": [
+      "7544"
+    ],
+    "region": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1",
+    "selfLink": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/dfs-rawkv-jd-20261005-rpc",
+    "selfLinkWithId": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/6253093788930941137",
+    "subnetwork": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/subnetworks/default"
+  },
+  {
+    "IPAddress": "10.128.0.51",
+    "IPProtocol": "TCP",
+    "attachedExtensions": [],
+    "backendService": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-search",
+    "creationTimestamp": "2026-10-05T06:34:31.558-07:00",
+    "description": "",
+    "fingerprint": "7WAzIKitM1w=",
+    "id": "660875794912778632",
+    "kind": "compute#forwardingRule",
+    "labelFingerprint": "42WmSpB8rSM=",
+    "loadBalancingScheme": "INTERNAL",
+    "name": "dfs-rawkv-jd-20261005-search",
+    "network": "https://www.googleapis.com/compute/v1/projects/dust-dev/global/networks/default",
+    "networkTier": "PREMIUM",
+    "ports": [
+      "7545"
+    ],
+    "region": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1",
+    "selfLink": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/dfs-rawkv-jd-20261005-search",
+    "selfLinkWithId": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/660875794912778632",
+    "subnetwork": "https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/subnetworks/default"
+  }
+]

@@ -1,5 +1,5 @@
 import { OAuthFinalizePage } from "@app/components/pages/oauth/OAuthFinalizePage";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -166,5 +166,24 @@ describe("OAuthFinalizePage postMessage target origin", () => {
       "https://app.dust.tt"
     );
     expect(postMessage.mock.calls[0][1]).not.toBe("https://attacker.example");
+  });
+
+  it("posts the API error when finalization fails", async () => {
+    const apiError = {
+      type: "connector_oauth_target_mismatch",
+      message: "Authorized account does not match.",
+    };
+    mocks.doFinalize.mockResolvedValue(new Err(apiError));
+
+    render(<OAuthFinalizePage />);
+
+    await waitFor(() => {
+      expect(postMessage).toHaveBeenCalledTimes(1);
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      { type: "connection_finalized", apiError, provider: "github" },
+      "https://app.dust.tt"
+    );
   });
 });

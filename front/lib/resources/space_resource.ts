@@ -557,6 +557,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:product] readable-before-limit
+   * Pagination MUST apply to spaces the caller can read. Filtering read access after
+   * the SQL `limit` under-fills pages (including empty pages) when unreadable Pods sort
+   * ahead of readable ones — the command palette and sidebar search both surface this.
+   */
   static async searchProjectsByNamePaginated(
     auth: Authenticator,
     {
@@ -575,6 +581,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     hasMore: boolean;
     lastValue: string | null;
   }> {
+    // Same pattern as `listWorkspacePodsAsMember`: constrain the query to readable
+    // space ids so `limit` / `hasMore` / cursor describe the visible page, not a
+    // post-filtered subset of all workspace projects.
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    if (
+      readableSpaces.kind === "ids" &&
+      readableSpaces.resourceIds.length === 0
+    ) {
+      return { spaces: [], hasMore: false, lastValue: null };
+    }
+
     const cursorOperator = pagination.orderDirection === "desc" ? Op.lt : Op.gt;
 
     const fetchLimit = pagination.limit + 1;
@@ -584,6 +601,9 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const spaces = await this.baseFetch(auth, {
       where: {
         kind: "project",
+        ...(readableSpaces.kind === "ids"
+          ? { id: { [Op.in]: readableSpaces.resourceIds } }
+          : {}),
         ...(query?.trim() && { name: { [Op.iLike]: `%${query}%` } }),
         ...(pagination.lastValue && {
           [Op.and]: [
@@ -606,7 +626,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     const lastValue = lastSpace?.name ?? null;
 
     return {
-      spaces: resultSpaces.filter((space) => auth.can("read", space)),
+      spaces: resultSpaces,
       hasMore,
       lastValue,
     };

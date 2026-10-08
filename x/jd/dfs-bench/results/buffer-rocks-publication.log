@@ -1,0 +1,17 @@
+
+running 12 tests
+test live::live_ambiguous_append_survives_close_without_duplicate_publication ... ok
+test live::live_cached_read_checks_expiry_ranges_and_local_revision ... ok
+test live::live_content_hash_reuse_and_bounded_batches ... ok
+test live::live_default_binary_refreshes_revision_and_preserves_cli_ownership ... ok
+test live::live_delayed_content_does_not_block_metadata_and_revalidates ... ok
+test live::live_directory_reply_expiry_revalidates_unchanged_attributes ... ok
+test live::live_metadata_fences_writes_and_preserves_local_acknowledgements ... ok
+test live::live_readdirplus_populates_bounded_kernel_metadata_and_cached_reads ... ok
+test live::live_receipts_survive_close_and_sync_is_not_repeated ... ok
+test live::live_revision_expiry_detects_same_size_same_mtime_rewrite ... ok
+test live::live_two_mounts_follow_revision_and_preserve_unlinked_identity ... ok
+test writeback::linux_writeback_renews_ownership_and_keeps_unlinked_mapping_alive ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 17 filtered out; finished in 19.06s
+

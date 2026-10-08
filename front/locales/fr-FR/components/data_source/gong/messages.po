@@ -26,10 +26,6 @@ msgid "Failed to update Gong configuration"
 msgstr "Impossible de mettre à jour la configuration Gong"
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
-msgid "An unknown error occurred"
-msgstr "Une erreur inconnue s’est produite"
-
-#: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Participant filter"
 msgstr "Filtre de participants"
 
@@ -47,7 +43,7 @@ msgstr "Enregistrer"
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Filter calls by Gong permission profile."
-msgstr "Filtrez les appels par profil de permissions Gong."
+msgstr "Filtrez les appels par profil d’autorisations Gong."
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Only calls involving users listed in the selected profile's \"Specific Teams\" section will be synced."

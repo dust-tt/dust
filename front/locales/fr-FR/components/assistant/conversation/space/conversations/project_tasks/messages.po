@@ -16,7 +16,7 @@ msgstr ""
 #: front/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope.ts
 msgctxt "task status filter"
 msgid "Open"
-msgstr "Ouvertes"
+msgstr "À faire"
 
 #: front/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope.ts
 msgid "Done today"

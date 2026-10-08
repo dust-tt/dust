@@ -1,0 +1,17 @@
+[Unit]
+Description=DFS proof of concept mount
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/dfs/mount.env
+ExecStart=/opt/dfs/dfs-mount --endpoint ${DFS_ENDPOINT} --token-file ${DFS_TOKEN_FILE} --ca ${DFS_CA} --mountpoint ${DFS_MOUNTPOINT} --uid ${DFS_UID} --gid ${DFS_GID} --allow-other
+ExecStop=/bin/fusermount3 -u ${DFS_MOUNTPOINT}
+Restart=on-failure
+TimeoutStopSec=30
+KillSignal=SIGTERM
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

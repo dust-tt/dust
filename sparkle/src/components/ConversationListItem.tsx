@@ -1,3 +1,5 @@
+import { plural } from "@lingui/core/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
@@ -28,6 +30,7 @@ export function ReplySection({
   avatars,
   lastMessageBy,
 }: ReplySectionProps) {
+  const { t } = useLingui();
   return (
     <div className="flex items-center gap-2 pt-2">
       {replyCount > 0 && (
@@ -42,46 +45,53 @@ export function ReplySection({
         {mentionCount > 0 ? (
           <>
             <span className="heading-xs text-highlight">
-              {mentionCount} {mentionCount === 1 ? "Mention" : "Mentions"}
+              {t`${plural(mentionCount, { one: "# Mention", other: "# Mentions" })}`}
             </span>
             {unreadCount !== mentionCount && (
               <span className="heading-xs  text-highlight">
                 {" "}
-                in {unreadCount} {unreadCount === 1 ? "unread" : "unreads"}
+                {t({
+                  message: plural(unreadCount, {
+                    one: "in # unread",
+                    other: "in # unreads",
+                  }),
+                  context:
+                    "follows the mention count, e.g. 2 Mentions in 5 unreads",
+                })}
               </span>
             )}
             {replyCount !== unreadCount && (
               <span className="heading-xs">
                 {" "}
-                ({replyCount} {replyCount === 1 ? "reply" : "replies"})
+                {t`(${plural(replyCount, { one: "# reply", other: "# replies" })})`}
               </span>
             )}
           </>
         ) : unreadCount === 0 ? (
           <span className="heading-xs">
-            {replyCount} {replyCount === 1 ? "Reply" : "Replies"}
+            {t`${plural(replyCount, { one: "# Reply", other: "# Replies" })}`}
           </span>
         ) : unreadCount === replyCount ? (
           <span className="heading-xs text-highlight">
-            {unreadCount} Unread
+            {t`${plural(unreadCount, { one: "# Unread", other: "# Unread" })}`}
           </span>
         ) : (
           <>
             <span className="heading-xs text-highlight">
-              {unreadCount} Unread
+              {t`${plural(unreadCount, { one: "# Unread", other: "# Unread" })}`}
             </span>
             {replyCount > 0 && (
               <span className="heading-xs">
                 {" "}
-                ({replyCount} {replyCount === 1 ? "reply" : "replies"}).
+                {t`(${plural(replyCount, { one: "# reply", other: "# replies" })}).`}
               </span>
             )}
           </>
         )}{" "}
         {replyCount > 0 && (
-          <>
+          <Trans>
             Last by <span className="heading-xs">{lastMessageBy}</span>.
-          </>
+          </Trans>
         )}
       </div>
     </div>

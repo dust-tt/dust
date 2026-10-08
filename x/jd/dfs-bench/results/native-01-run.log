@@ -1,0 +1,131 @@
+rocks {
+  "backend": "rocks",
+  "passed": false,
+  "phases": {},
+  "settings": {
+    "backend": "rocks",
+    "endpoint": "https://10.150.0.3:7443",
+    "search_host": "10.150.0.3",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-01/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "untar_mount_startup_ms": 53.000184000666195,
+  "error": "InterruptedError('benchmark interrupted by signal 15')",
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  }
+}
+
+fdb {
+  "backend": "fdb",
+  "passed": false,
+  "phases": {},
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-01/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "error": "AssertionError('mount exited')",
+  "untar_unmount": {
+    "exit_code": 2,
+    "unmounted": true
+  }
+}
+
+tikv {
+  "backend": "tikv",
+  "passed": false,
+  "phases": {},
+  "settings": {
+    "backend": "tikv",
+    "endpoint": "https://10.150.0.15:7443",
+    "search_host": "10.150.0.15",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-01/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "error": "AssertionError('mount exited')",
+  "untar_unmount": {
+    "exit_code": 2,
+    "unmounted": true
+  }
+}
+
+Traceback (most recent call last):
+  File "/Users/jd/repos/dust-tt/dust/.hives/poc-dfs/x/jd/dfs-bench/scripts/iterate.py", line 52, in <module>
+    assert not any(v['finished'] and not v['finished']['passed'] for v in states.values()), states
+AssertionError: {'rocks': {'ready': True, 'finished': None}, 'fdb': {'ready': False, 'finished': {'passed': False, 'time': 1791302896.9963481}}, 'tikv': {'ready': False, 'finished': {'passed': False, 'time': 1791302896.975898}}}

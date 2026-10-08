@@ -1,0 +1,69 @@
+[
+  {
+    "time": 1791300561.9090328,
+    "backend": "rocks",
+    "passed": false,
+    "error": null,
+    "untar": {
+      "extraction_ms": 23048.96088,
+      "open_fsync_close_all_files_ms": 301.147563,
+      "file_count_including_manifest": 10001,
+      "all_hashes_verified": true
+    },
+    "phases": {
+      "untar": {
+        "target_start_time": 1791296670.666825,
+        "actual_start_time": 1791296670.6669168,
+        "end_time": 1791296699.7665017
+      }
+    },
+    "ready": [
+      "untar",
+      "filesystem"
+    ]
+  },
+  {
+    "time": 1791300561.9079587,
+    "backend": "fdb",
+    "passed": false,
+    "error": null,
+    "untar": {
+      "extraction_ms": 2276447.89068,
+      "open_fsync_close_all_files_ms": 316.009745,
+      "file_count_including_manifest": 10001,
+      "all_hashes_verified": true
+    },
+    "phases": {
+      "untar": {
+        "target_start_time": 1791296670.666825,
+        "actual_start_time": 1791296670.6669185,
+        "end_time": 1791299163.7368274
+      }
+    },
+    "ready": [
+      "untar"
+    ]
+  },
+  {
+    "time": 1791300561.9082427,
+    "backend": "tikv",
+    "passed": false,
+    "error": null,
+    "untar": {
+      "extraction_ms": 363978.494642,
+      "open_fsync_close_all_files_ms": 357.684626,
+      "file_count_including_manifest": 10001,
+      "all_hashes_verified": true
+    },
+    "phases": {
+      "untar": {
+        "target_start_time": 1791296670.666825,
+        "actual_start_time": 1791296670.6669173,
+        "end_time": 1791297083.842091
+      }
+    },
+    "ready": [
+      "untar"
+    ]
+  }
+]

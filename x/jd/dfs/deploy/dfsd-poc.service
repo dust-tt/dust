@@ -1,0 +1,19 @@
+[Unit]
+Description=DFS measured PoC owner
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/home/dfs/x/jd/dfs/runtime/data
+
+[Service]
+Type=simple
+User=dfs
+Group=dfs
+WorkingDirectory=/home/dfs/x/jd/dfs
+ExecStart=/bin/bash /home/dfs/x/jd/dfs/scripts/network-server.sh
+Restart=on-failure
+TimeoutStopSec=30
+KillSignal=SIGTERM
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

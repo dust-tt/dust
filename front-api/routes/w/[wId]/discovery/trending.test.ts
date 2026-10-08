@@ -1,7 +1,5 @@
 import { listDiscoveryTrendingItems } from "@app/lib/api/discovery";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { GetDiscoveryTrendingResponseBody } from "@app/types/api/discovery";
 import { Err, Ok } from "@app/types/shared/result";
@@ -34,23 +32,8 @@ describe("GET /api/w/:wId/discovery/trending", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects workspaces without the discovery homepage flag", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/discovery/trending`
-    );
-
-    expect(response.status).toBe(403);
-    expect(mockedListTrending).not.toHaveBeenCalled();
-  });
-
   it("returns the viewer-filtered trending items", async () => {
     const { workspace } = await createPrivateApiMockRequest();
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
     const body: GetDiscoveryTrendingResponseBody = {
       items: [
         {
@@ -78,10 +61,6 @@ describe("GET /api/w/:wId/discovery/trending", () => {
 
   it("returns an internal error when trending candidates cannot be loaded", async () => {
     const { workspace } = await createPrivateApiMockRequest();
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
     mockedListTrending.mockResolvedValue(
       new Err(
         new ElasticsearchError("query_error", "Failed to query trending usage")

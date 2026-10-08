@@ -1,21 +1,46 @@
-import type { LiveCheckpoint, LiveFile } from "@app/lib/api/collab/live_file";
+import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
+import type {
+  LiveAccessError,
+  LiveCheckpoint,
+  LiveFile,
+} from "@app/lib/api/collab/live_file";
 import {
+  checkLiveAccess,
   checkpointLiveDocument,
   loadLiveDocument,
-  openLiveFile,
+  recheckLiveAccess,
 } from "@app/lib/api/collab/live_file";
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
+import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { parseLiveDocumentName } from "@app/types/collab";
+import type {
+  LiveCommentErrorCode,
+  LiveCommentServerMessage,
+  LiveSourceReadResponse,
+  LiveSourceWriteResult,
+} from "@app/types/collab";
+import {
+  LIVE_SOURCE_WRITE_WAIT_MS,
+  liveCommentClientMessageSchema,
+  parseLiveDocumentName,
+  toLiveDocumentName,
+} from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Document } from "@hocuspocus/server";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
+const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
@@ -24,7 +49,24 @@ interface LiveSession {
   checkpointFailed: boolean;
   lastChangedBy: LiveFile | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
+  commentCommands: Promise<void>;
 }
+
+const serverMessage = (message: LiveCommentServerMessage) =>
+  JSON.stringify(message);
+
+const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
+  serverMessage({ type: "refused", requestId, error });
+
+type CommandResult = Awaited<ReturnType<typeof applyLiveCommentCommand>>;
+
+const commandRequestSchema = z.object({
+  type: z.literal("command"),
+  requestId: z.string().min(1),
+});
+
+const sessions = new WeakMap<Document, LiveSession>();
+const shuttingDown = new WeakSet<Hocuspocus<LiveFile>>();
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -49,8 +91,7 @@ function logUnexpected(
 /**
  * @cc [owner:PopDaph,label:security] live-connection-auth
  * A connection MUST open only with a ticket redeemed for the workspace and the file its document
- * name carries, for a user still a member of that workspace, and for a file `openLiveFile` still
- * opens for them.
+ * name carries, and only if `checkLiveAccess` still lets the ticket's user open that file.
  */
 export async function authenticateConnection(
   parsed: { workspaceId: string; canonicalPath: string },
@@ -68,10 +109,7 @@ export async function authenticateConnection(
     ticket.userId,
     parsed.workspaceId
   );
-  if (!auth.isUser()) {
-    return new Err("Not a member of this workspace.");
-  }
-  const file = await openLiveFile(auth, parsed.canonicalPath);
+  const file = await checkLiveAccess(auth, parsed.canonicalPath);
   if (file.isErr()) {
     return new Err(file.error.message);
   }
@@ -90,17 +128,27 @@ export async function authenticateConnection(
 /**
  * @cc [owner:tdraier,label:product;concurrency] collab-document-lifecycle
  * Every load MUST read the file: no Yjs state outlives its Hocuspocus document. A store MUST
- * checkpoint the document with the threads and checkpoint of its load, through the connection that
- * last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
+ * checkpoint the document with the session's threads and last checkpoint, through the connection
+ * that last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
  * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
  * unless a connection is open or its last checkpoint failed. A direct connection that leaves
  * during that period does not extend it.
  */
+/**
+ * @cc [owner:tdraier,label:security;product] collab-comment-threads
+ * A connection MUST receive the session's threads when it asks. A comment command MUST be applied
+ * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
+ * answered to that connection only. Once accepted, the new threads MUST be sent to every
+ * connection of the document and the document stored, so the checkpoint writes them, through the
+ * connection that last changed its text, or through the commenter's when none did. A command its
+ * document unloaded before it finished MUST change nothing. Every command carrying a request id
+ * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
+ * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
+ * the later ones. Any other message that is not a valid client message MUST be ignored.
+ */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
-  const sessions = new WeakMap<Document, LiveSession>();
-
-  return new Hocuspocus<LiveFile>({
+  const hocuspocus = new Hocuspocus<LiveFile>({
     // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const parsed = parseLiveDocumentName(documentName);
@@ -142,6 +190,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         checkpointFailed: false,
         lastChangedBy: undefined,
         graceTimer: undefined,
+        commentCommands: Promise.resolve(),
       });
       return live.doc;
     },
@@ -232,5 +281,406 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         }
       }, UNLOAD_GRACE_PERIOD_MS);
     },
+
+    async onStateless({ connection, document, documentName, payload }) {
+      const session = sessions.get(document);
+      const file: LiveFile = connection.context;
+      const json = safeParseJSON(payload);
+      const message = json.isOk()
+        ? liveCommentClientMessageSchema.safeParse(json.value)
+        : null;
+      if (!session || !message?.success) {
+        logger.info(
+          { documentName, workspaceId: file.workspaceId },
+          "Collab stateless message ignored"
+        );
+        const request = json.isOk()
+          ? commandRequestSchema.safeParse(json.value)
+          : null;
+        if (request?.success) {
+          connection.sendStateless(
+            refusedMessage(request.data.requestId, "unavailable")
+          );
+        }
+        return;
+      }
+      if (message.data.type === "threads") {
+        connection.sendStateless(
+          serverMessage({ type: "threads", comments: session.comments })
+        );
+        return;
+      }
+
+      const { requestId, command } = message.data;
+      const logFailure = (err: unknown) =>
+        logger.error(
+          {
+            err: normalizeError(err),
+            documentName,
+            workspaceId: file.workspaceId,
+          },
+          "Collab comment command failed"
+        );
+      const apply = async (): Promise<CommandResult> => {
+        try {
+          const applied = await Promise.race([
+            applyLiveCommentCommand(file, session.comments, command),
+            setTimeoutAsync(COMMENT_COMMAND_TIMEOUT_MS),
+          ]);
+          if (applied === "timeout") {
+            logger.error(
+              { documentName, workspaceId: file.workspaceId },
+              "Collab comment command timed out"
+            );
+            return new Err("unavailable");
+          }
+          return applied;
+        } catch (err) {
+          logFailure(err);
+          return new Err("unavailable");
+        }
+      };
+      const run = async () => {
+        // Unloaded while the command waited or ran: a reload reads the file into a new document,
+        // and storing this one would cancel that document's debounced store, keyed by name.
+        const result: CommandResult = document.isDestroyed
+          ? new Err("unavailable")
+          : await apply();
+        if (document.isDestroyed || result.isErr()) {
+          connection.sendStateless(
+            refusedMessage(
+              requestId,
+              result.isErr() ? result.error : "unavailable"
+            )
+          );
+          return;
+        }
+
+        // TODO(co-edition): refuse commands while `session.checkpointFailed`: an accepted comment
+        // only lives in memory until a checkpoint succeeds, and is lost if none ever does.
+        // TODO(co-edition): a command still applies after its sender left, whose channel already
+        // answered it `unavailable`; a retried `add` then makes a second thread.
+        session.comments = result.value.comments;
+        session.lastChangedBy ??= file;
+        // TODO(co-edition): broadcast only the changed thread rather than every thread to every
+        // connection.
+        document.broadcastStateless(
+          serverMessage({ type: "threads", comments: session.comments })
+        );
+        connection.sendStateless(
+          serverMessage({
+            type: "accepted",
+            requestId,
+            comment: result.value.created,
+          })
+        );
+        // Not awaited: Hocuspocus debounces the store and catches its failures, which
+        // `onStoreDocument` logs.
+        void hocuspocus.storeDocumentHooks(document, {
+          clientsCount: document.getConnectionsCount(),
+          document,
+          documentName,
+          instance: hocuspocus,
+          lastContext: file,
+          lastTransactionOrigin: undefined,
+        });
+      };
+      session.commentCommands = session.commentCommands
+        .then(run)
+        .catch(logFailure);
+    },
   });
+
+  return hocuspocus;
+}
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
+ * Once no connection can send edits any more, every document MUST be checkpointed at once, in
+ * place of its pending debounced store, including documents still loading, which are waited for
+ * first. From the call on, `writeLiveSource` MUST answer `busy`, and the writes and comment
+ * commands already queued MUST finish before the checkpoints. The returned promise MUST resolve
+ * only once each checkpoint has finished or failed.
+ */
+export async function checkpointAllDocuments(
+  hocuspocus: Hocuspocus<LiveFile>
+): Promise<void> {
+  shuttingDown.add(hocuspocus);
+  // A load may still apply edits queued while it ran; its failure was already logged.
+  for (const loading of [...hocuspocus.loadingDocuments.values()]) {
+    await loading.catch(() => undefined);
+  }
+  // Their writes only reach the file through the checkpoints below.
+  await Promise.all(
+    [...hocuspocus.documents.values()].map(
+      (document) => sessions.get(document)?.commentCommands
+    )
+  );
+  await concurrentExecutor(
+    [...hocuspocus.documents.values()],
+    (document) =>
+      hocuspocus.storeDocumentHooks(
+        document,
+        {
+          clientsCount: document.getConnectionsCount(),
+          document,
+          documentName: document.name,
+          instance: hocuspocus,
+          // The store hook checkpoints through the last writer it recorded, not this context.
+          lastContext: undefined,
+          lastTransactionOrigin: undefined,
+        },
+        true
+      ),
+    { concurrency: 8 }
+  );
+}
+
+/** The document and its session while one is open, once it has finished loading or unloading. */
+async function openSession(
+  hocuspocus: Hocuspocus<LiveFile>,
+  documentName: string
+): Promise<{ document: Document; session: LiveSession } | null> {
+  // Only their outcome matters, read from `documents` below: a failed load leaves no document, and
+  // `onLoadDocument` already logged why.
+  await Promise.allSettled([
+    hocuspocus.loadingDocuments.get(documentName),
+    hocuspocus.unloadingDocuments.get(documentName),
+  ]);
+  const document = hocuspocus.documents.get(documentName);
+  const session = document && sessions.get(document);
+  if (!document || document.isDestroyed || !session) {
+    return null;
+  }
+  return { document, session };
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency] collab-live-source-read
+ * A document MUST be reported open while Hocuspocus holds it, after waiting for a load or an
+ * unload in progress, with as source what `yDocToDfm` gives for it and the session's threads.
+ */
+export async function readLiveSource(
+  hocuspocus: Hocuspocus<LiveFile>,
+  documentName: string
+): Promise<Result<LiveSourceReadResponse, string>> {
+  const open = await openSession(hocuspocus, documentName);
+  if (!open) {
+    return new Ok({ open: false });
+  }
+  const source = yDocToDfm({
+    doc: open.document,
+    comments: open.session.comments,
+  });
+  if (source.isErr()) {
+    return source;
+  }
+  return new Ok({ open: true, source: source.value });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;concurrency;security] collab-live-source-write
+ * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
+ * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
+ * `readLiveSource` would report the document closed, and `changed`, changing nothing, unless the
+ * source `readLiveSource` would return is `base`. Otherwise it MUST apply `source` with
+ * `replaceYDocContent` as a change from `file`, replace the session's threads with the ones it
+ * returns, send them to every connection when they changed, and store the document so the
+ * checkpoint writes the change; a source the editor refuses MUST fail and change nothing. `file`
+ * MUST be able to write. It MUST take its turn among the document's comment commands, answering
+ * `closed` if the document unloaded meanwhile, and a write that fails MUST NOT hold the later ones.
+ * A write whose turn has not come within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never
+ * apply, so its caller never retries a change that lands later; so MUST a write once
+ * `checkpointAllDocuments` was called. Nothing may run between the comparison with `base` and the
+ * change, so no edit can slip between them.
+ */
+export async function writeLiveSource(
+  hocuspocus: Hocuspocus<LiveFile>,
+  { file, base, source }: { file: LiveFile; base: string; source: string }
+): Promise<Result<LiveSourceWriteResult, string>> {
+  if (!file.canWrite) {
+    return new Err("The file cannot be written.");
+  }
+  const documentName = toLiveDocumentName(file.workspaceId, file.canonicalPath);
+  const open = await openSession(hocuspocus, documentName);
+  if (!open) {
+    return new Ok("closed");
+  }
+  if (shuttingDown.has(hocuspocus)) {
+    return new Ok("busy");
+  }
+  const { document, session } = open;
+
+  let turn: "waiting" | "taken" | "expired" = "waiting";
+  const write = (): Result<LiveSourceWriteResult, string> => {
+    if (turn === "expired") {
+      return new Ok("busy");
+    }
+    turn = "taken";
+    // Unloaded while it waited for its turn: a reload reads the file into a new document.
+    if (document.isDestroyed) {
+      return new Ok("closed");
+    }
+    const current = yDocToDfm({ doc: document, comments: session.comments });
+    if (current.isErr()) {
+      return current;
+    }
+    if (current.value !== base) {
+      return new Ok("changed");
+    }
+
+    // As a direct connection's change, so `onChange` records `file` as its writer.
+    const comments = replaceYDocContent(document, source, {
+      source: "local",
+      context: file,
+    });
+    if (comments.isErr()) {
+      return comments;
+    }
+    const threadsChanged =
+      JSON.stringify(comments.value) !== JSON.stringify(session.comments);
+    session.comments = comments.value;
+    // A change of the threads alone does not go through `onChange`.
+    session.lastChangedBy ??= file;
+    if (threadsChanged) {
+      document.broadcastStateless(
+        serverMessage({ type: "threads", comments: session.comments })
+      );
+    }
+    // Not awaited: Hocuspocus debounces the store and catches its failures, which
+    // `onStoreDocument` logs.
+    void hocuspocus.storeDocumentHooks(document, {
+      clientsCount: document.getConnectionsCount(),
+      document,
+      documentName,
+      instance: hocuspocus,
+      lastContext: file,
+      lastTransactionOrigin: undefined,
+    });
+    // TODO(co-edition): refuse writes while `session.checkpointFailed`: an accepted write only lives
+    // in memory until a checkpoint succeeds, and is lost if none ever does.
+    return new Ok("written");
+  };
+
+  // A comment command builds the threads across an await: the write takes its turn among them, so
+  // neither drops the threads the other wrote.
+  const written = session.commentCommands.then(write);
+  // A write that throws fails for its caller only, not for the commands queued after it.
+  session.commentCommands = Promise.allSettled([written]).then(() => undefined);
+
+  const answered = await Promise.race([
+    written,
+    setTimeoutAsync(LIVE_SOURCE_WRITE_WAIT_MS),
+  ]);
+  // `write` runs at once when its turn comes: a turn already taken has finished.
+  if (answered === "timeout" && turn === "waiting") {
+    turn = "expired";
+    return new Ok("busy");
+  }
+  return written;
+}
+
+// Hocuspocus's `Forbidden`, from `@hocuspocus/common`.
+const FORBIDDEN = { code: 4403, reason: "Forbidden" };
+
+export const ACCESS_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
+
+/**
+ * @cc [owner:PopDaph,label:security;performance] collab-access-recheck
+ * The collab server MUST start a sweep every `ACCESS_RECHECK_INTERVAL_MS`, unless the previous one
+ * is still running. Every WebSocket document connection of this process open when the sweep starts
+ * MUST be checked again with `recheckLiveAccess`, with an Authenticator freshly built for its user
+ * in this sweep, and MUST be closed when the check fails or throws.
+ * A failure checking one user and document MUST NOT stop the others: it is logged and their
+ * connections closed, an exception to `no-catching-own-errors` limited to it. The returned promise
+ * MUST resolve once every connection has been checked. Its per-user and per-document reads are an
+ * exception to `batch-database-queries`, limited to it: they reuse the Authenticator and the file
+ * system's permission checks, which have no batch API, and run at most 4 at a time.
+ */
+export async function recheckAllConnections(
+  hocuspocus: Hocuspocus<LiveFile>
+): Promise<void> {
+  const startedAt = Date.now();
+  // One check per user and document, however many tabs they have open. Each process sweeps only
+  // its own connections, so the work spreads over replicas.
+  const groups = new Map<string, Connection[]>();
+  for (const document of hocuspocus.documents.values()) {
+    for (const connection of document.getConnections()) {
+      const context: LiveFile = connection.context;
+      const key = `${context.auth.getNonNullableUser().sId}:${document.name}`;
+      const group = groups.get(key);
+      if (group) {
+        group.push(connection);
+      } else {
+        groups.set(key, [connection]);
+      }
+    }
+  }
+
+  // One fresh Authenticator per user and workspace, shared by their documents in this sweep.
+  const authenticators = new Map<string, Promise<Authenticator>>();
+  const authenticatorFor = (userId: string, workspaceId: string) => {
+    const key = `${userId}:${workspaceId}`;
+    const existing = authenticators.get(key);
+    if (existing) {
+      return existing;
+    }
+    const built = Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId);
+    authenticators.set(key, built);
+    return built;
+  };
+
+  let closed = 0;
+  let failed = 0;
+  // TODO(co-edition): batch these reads. Each group still builds an Authenticator per user and
+  // resolves the file's permissions per document; batching needs a way to load many users' groups
+  // at once and to resolve many files' permissions at once. Do it once the sweep log shows
+  // durations growing towards ACCESS_RECHECK_INTERVAL_MS.
+  await concurrentExecutor(
+    [...groups.values()],
+    async (connections) => {
+      const { auth, workspaceId, canonicalPath } = connections[0].context;
+      const userId = auth.getNonNullableUser().sId;
+      const close = () => {
+        for (const connection of connections) {
+          connection.close(FORBIDDEN);
+        }
+        closed += connections.length;
+      };
+      let access: Result<void, LiveAccessError>;
+      try {
+        const fresh = await authenticatorFor(userId, workspaceId);
+        access = await recheckLiveAccess(fresh, canonicalPath);
+      } catch (err) {
+        failed++;
+        logger.error(
+          { err: normalizeError(err), workspaceId, userId },
+          "Collab access re-check failed, closing its connections"
+        );
+        // Access is unknown: closed, as when it is lost. The browser reconnects with a new ticket.
+        close();
+        return;
+      }
+      if (access.isOk()) {
+        return;
+      }
+      logger.info(
+        { workspaceId, userId, reason: access.error.message },
+        "Collab connection closed: access lost"
+      );
+      close();
+    },
+    { concurrency: 4 }
+  );
+
+  // A sweep growing close to the interval means revocation gets slower: time to scale.
+  logger.info(
+    {
+      checked: groups.size,
+      closed,
+      failed,
+      durationMs: Date.now() - startedAt,
+    },
+    "Collab access re-check done"
+  );
 }

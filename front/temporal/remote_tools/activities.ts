@@ -1,3 +1,4 @@
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { fetchRemoteServerMetaDataByServerId } from "@app/lib/actions/mcp_metadata";
 import { Authenticator } from "@app/lib/auth";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -68,6 +69,29 @@ export async function syncRemoteMCPServers(ids: ModelId[]): Promise<void> {
         lastSyncAt: new Date(),
         clearError: true,
       });
+
+      // Preset stakes are matched by exact tool name, so tools a provider adds
+      // or renames fall back to the strictest approval level until the preset
+      // catches up.
+      const preset = getDefaultRemoteMCPServerByURL(server.url);
+      if (preset?.toolStakes) {
+        const presetToolNames = new Set(Object.keys(preset.toolStakes));
+        const toolsMissingFromPreset = metadata.tools
+          .map((tool) => tool.name)
+          .filter((name) => !presetToolNames.has(name));
+        if (toolsMissingFromPreset.length > 0) {
+          logger.warn(
+            {
+              workspaceId,
+              serverId: server.sId,
+              url: server.url,
+              presetName: preset.name,
+              toolsMissingFromPreset,
+            },
+            "Remote MCP server exposes tools missing from its preset"
+          );
+        }
+      }
 
       logger.info({
         msg: "Successfully synced remote MCP server",

@@ -95,7 +95,7 @@ msgstr "Enregistrer"
 
 #: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
 msgid "Revert"
-msgstr "Annuler les modifications"
+msgstr "Rétablir"
 
 #: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
 msgctxt "action"

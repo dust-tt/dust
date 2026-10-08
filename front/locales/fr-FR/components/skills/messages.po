@@ -90,7 +90,7 @@ msgstr "À partir de zéro"
 
 #: front/components/skills/CreateSkillButton.tsx
 msgid "From existing"
-msgstr "À partir de l’existant"
+msgstr "À partir d’une compétence existante"
 
 #: front/components/skills/DiscoverableSkillsList.tsx
 msgid "Discoverable skills"
@@ -120,7 +120,7 @@ msgstr "Continuer"
 
 #: front/components/skills/RedactedSkillMessage.tsx
 msgid "Joined {spaceName}"
-msgstr "A rejoint {spaceName}"
+msgstr "Vous avez rejoint {spaceName}"
 
 #: front/components/skills/RedactedSkillMessage.tsx
 msgid "You are now a member of {spaceName}."
@@ -334,7 +334,7 @@ msgstr "Nombre d’utilisateurs actifs au cours des 30 derniers jours."
 
 #: front/components/skills/SkillSearchTable.tsx
 msgid "Last edited"
-msgstr "Dernière modification"
+msgstr "Modifié le"
 
 #: front/components/skills/SkillSearchTable.tsx
 msgid "Loading skills"
@@ -351,7 +351,7 @@ msgstr "{count, plural, one {Réserver # compétence aux éditeurs} other {Rése
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {Only editors can find it via the composer and agent builder. The skill remains available through agents and skills that use it.} other {Only editors can find them via the composer and agent builder. The skills remain available through agents and skills that use them.}}"
-msgstr "{count, plural, one {Seuls les éditeurs peuvent la trouver via la zone de saisie et l’Agent Builder. La compétence reste disponible via les agents et compétences qui l’utilisent.} other {Seuls les éditeurs peuvent les trouver via la zone de saisie et l’Agent Builder. Les compétences restent disponibles via les agents et compétences qui les utilisent.}}"
+msgstr "{count, plural, one {Seuls les éditeurs peuvent la trouver via la zone de saisie et l’éditeur d’agent. La compétence reste disponible via les agents et compétences qui l’utilisent.} other {Seuls les éditeurs peuvent les trouver via la zone de saisie et l’éditeur d’agent. Les compétences restent disponibles via les agents et compétences qui les utilisent.}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 #: front/components/skills/skillAvailabilityDisplay.ts
@@ -364,7 +364,7 @@ msgstr "{count, plural, one {Rendre # compétence disponible pour tous les membr
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {All members can find it via the composer and agent builder.} other {All members can find them via the composer and agent builder.}}"
-msgstr "{count, plural, one {Tous les membres peuvent la trouver via la zone de saisie et l’Agent Builder.} other {Tous les membres peuvent les trouver via la zone de saisie et l’Agent Builder.}}"
+msgstr "{count, plural, one {Tous les membres peuvent la trouver via la zone de saisie et l’éditeur d’agent.} other {Tous les membres peuvent les trouver via la zone de saisie et l’éditeur d’agent.}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 #: front/components/skills/skillAvailabilityDisplay.ts
@@ -382,7 +382,7 @@ msgstr "Cela concerne l’ensemble de votre workspace"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
-msgstr "{count, plural, one {Tous les membres peuvent la trouver via la zone de saisie et l’Agent Builder. Les agents dotés de Discover Skills, y compris Dust, peuvent l’utiliser automatiquement.} other {Tous les membres peuvent les trouver via la zone de saisie et l’Agent Builder. Les agents dotés de Discover Skills, y compris Dust, peuvent les utiliser automatiquement.}}"
+msgstr "{count, plural, one {Tous les membres peuvent la trouver via la zone de saisie et l’éditeur d’agent. Les agents dotés de Discover Skills, y compris Dust, peuvent l’utiliser automatiquement.} other {Tous les membres peuvent les trouver via la zone de saisie et l’éditeur d’agent. Les agents dotés de Discover Skills, y compris Dust, peuvent les utiliser automatiquement.}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "Select all {totalCount, plural, one {# skill} other {# skills}}"
@@ -402,11 +402,11 @@ msgstr "Mettre à jour"
 
 #: front/components/skills/skillAvailabilityDisplay.ts
 msgid "Only editors can find it via the composer and agent builder"
-msgstr "Seuls les éditeurs peuvent la trouver via la zone de saisie et l’Agent Builder"
+msgstr "Seuls les éditeurs peuvent la trouver via la zone de saisie et l’éditeur d’agent"
 
 #: front/components/skills/skillAvailabilityDisplay.ts
 msgid "All members can find it via the composer and agent builder"
-msgstr "Tous les membres peuvent la trouver via la zone de saisie et l’Agent Builder"
+msgstr "Tous les membres peuvent la trouver via la zone de saisie et l’éditeur d’agent"
 
 #: front/components/skills/skillFilter.ts
 msgid "Workspace"

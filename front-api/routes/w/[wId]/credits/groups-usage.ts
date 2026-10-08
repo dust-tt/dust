@@ -1,7 +1,7 @@
 import { getGroupSharedUsageLimits } from "@app/lib/api/groups/group_shared_usage_limit";
 import type { GetGroupsUsageResponseBody } from "@app/types/api/groups/shared_usage_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
 // Mounted at /api/w/:wId/credits/groups-usage.
@@ -10,7 +10,10 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureHasAnyGroupPermission(
+    "read_usage",
+    "Only workspace managers and group managers can view group usage."
+  ),
   async (ctx): HandlerResult<GetGroupsUsageResponseBody> => {
     const auth = ctx.get("auth");
 

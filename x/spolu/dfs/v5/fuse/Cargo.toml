@@ -1,0 +1,28 @@
+[package]
+name = "dfs-fuse"
+version = "0.5.0"
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+dfs-client = { path = "../client" }
+dfs-protocol = { path = "../protocol" }
+libc = "0.2"
+parking_lot = "0.12"
+serde_json = "1"
+tonic = "0.14"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+fuser = { version = "0.18", default-features = false }
+nix = { version = "0.30", features = ["user"] }
+signal-hook = "0.3"
+
+# Compile and test adapter logic natively without mounting or linking macFUSE.
+[target.'cfg(target_os = "macos")'.dependencies]
+fuser = { version = "0.18", default-features = false, features = ["macos-no-mount"] }
+nix = { version = "0.30", features = ["user"] }
+
+[lints]
+workspace = true

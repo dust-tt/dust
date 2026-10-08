@@ -1,6 +1,5 @@
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
-import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
 import { SpacesProvider } from "@app/components/shared/SpacesContext";
 import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
@@ -57,11 +56,9 @@ export function AgentBuilderProvider({
       <PreviewPanelProvider>
         <SpacesProvider owner={owner}>
           <MCPServerViewsProvider owner={owner}>
-            <SkillsProvider owner={owner}>
-              <DataSourceViewsProvider owner={owner}>
-                {children}
-              </DataSourceViewsProvider>
-            </SkillsProvider>
+            <DataSourceViewsProvider owner={owner}>
+              {children}
+            </DataSourceViewsProvider>
           </MCPServerViewsProvider>
         </SpacesProvider>
       </PreviewPanelProvider>

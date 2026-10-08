@@ -1,5 +1,6 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import { notifyPublishedFrameSidePanel } from "@app/lib/api/frames/notify_published_frame";
+import { recordFramePublishAction } from "@app/lib/api/frames/publish_billing";
 import { publishFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -42,6 +43,13 @@ app.route("/share", share);
 /**
  * @ignoreswagger
  * internal endpoint
+ */
+/**
+ * @cc [owner:davidebbo,label:product] publish-records-billing-action
+ * Every successful publish MUST call `recordFramePublishAction` with the exec token's `actionId`
+ * before responding, so the agent message is charged for it. A recording failure returned as an
+ * `Err` MUST be logged and MUST NOT change the publish response. Thrown errors propagate, per
+ * `no-catching-own-errors`.
  */
 app.post(
   "/publish",
@@ -97,6 +105,24 @@ app.post(
           message: publication.error.message,
         },
       });
+    }
+
+    // The Frame is already published: failing to record its charge must not fail the request.
+    const recorded = await recordFramePublishAction(auth, {
+      conversation,
+      parentActionId: claims.actionId,
+      publication: publication.value,
+    });
+    if (recorded.isErr()) {
+      logger.error(
+        {
+          err: recorded.error,
+          actionId: claims.actionId,
+          conversationId: claims.cId,
+          frameId: publication.value.frameId,
+        },
+        "Failed to record Frame publish billing action."
+      );
     }
 
     // Soft-open the Frame panel (refresh if already open; don't steal file explorer).

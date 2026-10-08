@@ -1,0 +1,12 @@
+@cc [owner:ykmsd,label:architecture] sparkle-translates-through-macros
+Sparkle components MUST translate with the macros (`@lingui/react/macro`, `@lingui/core/macro`).
+They MUST NOT import `useLingui`, `Trans`, `I18nProvider` or `i18n` from `@lingui/react` or
+`@lingui/core`: those would show front's translations, which don't include sparkle's text.
+`src/lib/i18n/` is the exception, since it uses them to set up sparkle's own translations.
+
+@cc [owner:ykmsd,label:product] sparkle-lingui-files-fully-translated
+A file under `src/` (excluding `src/stories/`) that uses a Lingui macro MUST translate every
+user-visible string it renders by default, including `aria-label`, `placeholder`, `title` and
+tooltip text. A text prop the consumer may override MUST be rendered as given when defined, and fall
+back to the translated default only when `undefined` (``{label ?? t`Load more`}``), not through a
+hardcoded English default value.

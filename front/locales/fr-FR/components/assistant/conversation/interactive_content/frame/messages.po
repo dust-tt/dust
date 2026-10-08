@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameBetaChip.tsx
 msgid "Click for more info on this beta"
-msgstr "Cliquer pour en savoir plus sur cette bêta"
+msgstr "Cliquez pour en savoir plus sur cette bêta"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameBetaChip.tsx
 msgid "Beta"
@@ -31,7 +31,7 @@ msgstr "Publication de vos modifications…"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "Save text edits"
-msgstr "Enregistrer les modifications du texte"
+msgstr "Enregistrer le texte"
 
 #: front/components/assistant/conversation/interactive_content/frame/FrameEditControls.tsx
 msgid "No unsaved edits"

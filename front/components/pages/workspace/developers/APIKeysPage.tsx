@@ -22,8 +22,10 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatNumber } from "@app/lib/i18n/format";
 import { useKeys } from "@app/lib/swr/apps";
+import { useGroups } from "@app/lib/swr/groups";
 import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
@@ -148,6 +150,14 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const { spaces, isSpacesError, isSpacesLoading } = useKeyScopableSpaces({
     owner,
   });
+  const {
+    groups: analyticsGroups,
+    isGroupsLoading,
+    isGroupsError,
+  } = useGroups({
+    owner,
+    kinds: CAP_ELIGIBLE_GROUP_KINDS,
+  });
 
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
@@ -160,12 +170,14 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
         monthlyCapMicroUsd,
         monthlyCapAwuCredits,
         role,
+        analyticsGroupIds,
       }: {
         name: string;
         spaceIds: string[];
         monthlyCapMicroUsd: number | null;
         monthlyCapAwuCredits: number | null;
         role: KeyRole;
+        analyticsGroupIds: string[];
       }) => {
         const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
@@ -178,6 +190,7 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
             monthly_cap_micro_usd: monthlyCapMicroUsd,
             monthly_cap_awu_credits: monthlyCapAwuCredits,
             role,
+            analytics_group_ids: analyticsGroupIds,
           }),
         });
         await mutate(`/api/w/${owner.sId}/keys`);
@@ -299,7 +312,13 @@ export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
           />
           <NewAPIKeyDialog
             spaces={spaces}
-            disabled={isSpacesLoading || isSpacesError}
+            analyticsGroups={analyticsGroups}
+            disabled={
+              isSpacesLoading ||
+              isSpacesError ||
+              isGroupsLoading ||
+              isGroupsError
+            }
             isGenerating={isGenerating}
             isRevoking={isRevoking}
             onCreate={handleGenerate}

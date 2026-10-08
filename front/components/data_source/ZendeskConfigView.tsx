@@ -2,7 +2,10 @@ import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCu
 import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
 import { ZendeskRateLimitConfig } from "@app/components/data_source/ZendeskRateLimitConfig";
 import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
@@ -60,6 +63,7 @@ export function ZendeskConfigView({
     syncUnresolvedTicketsConfigValue === "true";
   const hideCustomerDetailsEnabled = hideCustomerDetailsConfigValue === "true";
 
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
   const [retentionInput, setRetentionInput] = useState(
@@ -99,13 +103,11 @@ export function ZendeskConfigView({
       }
     } else {
       setLoading(false);
-      const err = await res.json();
+      const err: unknown = await res.json();
 
-      sendNotification({
-        type: "info",
+      sendApiErrorNotification({
         title: t`Failed to edit Zendesk configuration`,
-        description:
-          err.error?.connectors_error.message || t`An unknown error occurred`,
+        error: err,
       });
     }
     return true;

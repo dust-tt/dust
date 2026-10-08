@@ -223,3 +223,115 @@ msgstr "Position {positionNumber}"
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Masquer cette suggestion"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Find important emails I haven't replied to"
+msgstr "Trouve les e-mails importants auxquels je n’ai pas répondu"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Go through my inbox from the last 7 days and list the emails I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+msgstr "Parcours ma boîte de réception des 7 derniers jours et liste les e-mails auxquels je n’ai pas répondu et qui attendent une réponse de ma part. Regroupe-les par urgence, indique qui attend et depuis quand, et propose une réponse d’une ligne pour chacun."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Find important DMs I haven't replied to"
+msgstr "Trouve les messages privés importants auxquels je n’ai pas répondu"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Go through my direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+msgstr "Parcours mes messages privés des 7 derniers jours et liste ceux auxquels je n’ai pas répondu et qui attendent une réponse de ma part. Regroupe-les par urgence, indique qui attend et depuis quand, et propose une réponse d’une ligne pour chacun."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the most important news in my industry"
+msgstr "Résume-moi l’actualité la plus importante de mon secteur"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the most important news in our industry from the last 7 days. Use our own documents to work out what industry we are in and who our competitors are, then search the web. Give me the five stories that matter most to us, why each one matters, and sources."
+msgstr "Résume-moi l’actualité la plus importante de notre secteur sur les 7 derniers jours. Utilise nos documents pour déterminer notre secteur et nos concurrents, puis cherche sur le web. Donne-moi les cinq sujets qui comptent le plus pour nous, pourquoi chacun compte, et les sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the AI news that matters most"
+msgstr "Résume-moi l’actualité de l’IA qui compte le plus"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the AI news from the last 7 days that matters most: model releases, product launches, funding and regulation. Keep the five stories with real impact, say in one line why each one matters for a company like ours, and link the sources."
+msgstr "Résume-moi l’actualité de l’IA des 7 derniers jours qui compte le plus : sorties de modèles, lancements de produits, levées de fonds et réglementation. Garde les cinq sujets qui ont un réel impact, dis en une ligne pourquoi chacun compte pour une entreprise comme la nôtre, et donne les liens des sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me what's new in Dust"
+msgstr "Montre-moi les nouveautés de Dust"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Read the Dust changelog at https://docs.dust.tt/docs/changelog and tell me what shipped over the last month. Keep the five changes most useful to me, say in one line what each one lets me do, and link each entry."
+msgstr "Lis le changelog de Dust sur https://docs.dust.tt/docs/changelog et dis-moi ce qui est sorti le mois dernier. Garde les cinq changements les plus utiles pour moi, dis en une ligne ce que chacun me permet de faire, et donne le lien de chaque entrée."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Build an agent for a task I keep repeating"
+msgstr "Crée un agent pour une tâche que je répète souvent"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me build an agent for a task I keep repeating. Ask me what the task is, what it needs to read and what it should produce, then create the agent with me and show me how to use it."
+msgstr "Aide-moi à créer un agent pour une tâche que je répète souvent. Demande-moi quelle est la tâche, ce qu’il doit lire et ce qu’il doit produire, puis crée l’agent avec moi et montre-moi comment l’utiliser."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me identify and prioritize my key priorities for the week"
+msgstr "Aide-moi à identifier et hiérarchiser mes priorités de la semaine"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me identify and prioritize my key priorities for this week. Look at what is on my plate from my calendar, messages and our documents where you can reach them, then rank the top five by impact and urgency, and flag what I can drop or delegate."
+msgstr "Aide-moi à identifier et hiérarchiser mes priorités pour cette semaine. Regarde ce que j’ai à faire dans mon agenda, mes messages et nos documents quand tu y as accès, puis classe les cinq premières par impact et urgence, et signale ce que je peux abandonner ou déléguer."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me how my team is using Dust"
+msgstr "Montre-moi comment mon équipe utilise Dust"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me how my team is using Dust this month: active members, the agents and skills they lean on, and how that compares with last month. Point out who has not started yet."
+msgstr "Montre-moi comment mon équipe utilise Dust ce mois-ci : membres actifs, agents et compétences les plus utilisés, et l’évolution par rapport au mois dernier. Indique qui n’a pas encore commencé."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Create a Pod for my team project"
+msgstr "Crée un Pod pour le projet de mon équipe"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me create a Pod for my team project. Ask me what the project is and who is working on it, then create the Pod with a clear description and add the right people."
+msgstr "Aide-moi à créer un Pod pour le projet de mon équipe. Demande-moi quel est le projet et qui y travaille, puis crée le Pod avec une description claire et ajoute les bonnes personnes."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Get me ready for my next customer meeting"
+msgstr "Prépare-moi pour mon prochain rendez-vous client"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Get me ready for my next customer meeting: who is attending, what we discussed last time, open action items on my side, and two or three points I should raise. Keep it to one page."
+msgstr "Prépare-moi pour mon prochain rendez-vous client : les participants, ce dont nous avons parlé la dernière fois, les actions en attente de mon côté, et deux ou trois points à aborder. Tiens-t’en à une page."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research an account before I reach out"
+msgstr "Renseigne-toi sur un compte avant que je le contacte"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research the company I name before I reach out: what they do, recent news, who the likely buyers are, and what we already know about them in our own documents. Finish with three angles for a first message."
+msgstr "Renseigne-toi sur l’entreprise que je vais nommer avant que je la contacte : son activité, son actualité récente, les acheteurs probables, et ce que nos documents disent déjà d’elle. Termine par trois angles d’approche pour un premier message."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research how our competitors position themselves"
+msgstr "Analyse le positionnement de nos concurrents"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research how our competitors have positioned themselves over the last year: the players that gained ground, what they shipped, how they talk about it, and where we are exposed. Use our own documents and the web, and write it up with sources."
+msgstr "Analyse comment nos concurrents se sont positionnés au cours de l’année écoulée : les acteurs qui ont gagné du terrain, ce qu’ils ont lancé, comment ils en parlent, et là où nous sommes exposés. Utilise nos documents et le web, et rédige une synthèse avec les sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Turn a spreadsheet into an analysis"
+msgstr "Transforme un tableur en analyse"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Take the spreadsheet I attach, clean it up, and tell me what it says: the three numbers that matter, how they moved, and what looks off. Give me back a sheet with the analysis alongside the data."
+msgstr "Prends le tableur que je joins, nettoie-le et dis-moi ce qu’il révèle : les trois chiffres qui comptent, leur évolution, et ce qui semble anormal. Rends-moi une feuille avec l’analyse à côté des données."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Draft a document from our own knowledge"
+msgstr "Rédige un document à partir de nos connaissances"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."
+msgstr "Rédige une note d’une page sur le sujet que je vais nommer, à partir de nos documents : où en est le sujet, ce qui bloque, qui s’occupe de quoi, et les décisions encore ouvertes. Rends-la sous forme de document."

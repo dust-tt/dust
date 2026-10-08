@@ -222,6 +222,7 @@ function CodeStepForm({ email, onVerified, shareToken }: CodeStepFormProps) {
         <div className="flex items-center justify-between">
           <Button
             variant="outline"
+            type="button"
             label={resent ? t`Code sent!` : t`Resend code`}
             onClick={handleResend}
             disabled={isSubmitting || isResending}

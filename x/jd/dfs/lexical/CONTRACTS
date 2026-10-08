@@ -1,0 +1,8 @@
+@cc [owner:id13,label:security;architecture] isolated-tantivy-cloud-experiment
+Tantivy builds, tests, services, and measurements MUST use only the dedicated dfs-tantivy-jd-20261002 resources in dust-dev. Deployment scripts MUST NOT alter services, databases, or builds on the parallel dfs-search or dfs-slate VMs. Public experiment ingress MUST be disabled; the dedicated client alone may access the server's private authenticated TLS endpoint. Credentials and private keys MUST remain outside exported results.
+
+@cc [owner:id13,label:testing] comparable-search-measurements
+Engine comparisons MUST use the same source corpus and permissions, release binaries, client transport, and result validation. Measurements MUST run without concurrent builds or corpus mutations. Reports MUST distinguish client wall time, server timings, sequential latency, concurrent throughput, and restart recovery. Raw samples and source identities MUST accompany performance claims.
+
+@cc [owner:id13,label:testing;performance] scale-resource-evidence
+Scale runs MUST preserve source and query identities, record explicit node/byte/memory limits, and validate results before accepting latency samples. Resource sampling MUST distinguish process RSS/PSS, anonymous memory, file cache, total cgroup memory, and OOM events. Sampler and corpus-generation memory MUST NOT be attributed to the search services. Index-build peaks and query-phase sampled peaks MUST be reported separately. Unsupported query capabilities MUST remain explicit rather than silently acquire different semantics.

@@ -2682,6 +2682,16 @@ async function scrubRemovedFolders({
   }
 }
 
+// Time spent on items before handing back to the workflow. Leaves room under the 120 minute
+// startToCloseTimeout for the delta file read and for the item in progress when time runs out.
+const DELTA_PROCESSING_BUDGET_MS = 90 * 60 * 1000;
+
+/**
+ * @cc [owner:philipperolet,label:backend] next-cursor-first-unprocessed
+ * `nextCursor` MUST be the index of the first delta file item this call did not process, or null
+ * when no item is left; skipping an item counts as processing it. When items remain at `cursor`,
+ * the call MUST process at least one of them, so that the workflow's cursor loop always advances.
+ */
 export async function processDeltaChangesFromGCS({
   connectorId,
   driveId,
@@ -2783,7 +2793,16 @@ export async function processDeltaChangesFromGCS({
   let folders = 0;
   let files = 0;
 
+  // Started after the read so that the first item is always processed.
+  const processingStartMs = Date.now();
   for (const driveItem of currentBatch) {
+    if (Date.now() - processingStartMs > DELTA_PROCESSING_BUDGET_MS) {
+      logger.info(
+        { processedCount: count, batchSize: currentBatch.length, cursor },
+        "Delta processing time budget reached, resuming in a new activity"
+      );
+      break;
+    }
     count++;
     if (count % 100 === 0) {
       logger.info(
@@ -2995,25 +3014,27 @@ export async function processDeltaChangesFromGCS({
     { concurrency: 5 }
   );
 
+  const processedEndIndex = startIndex + count;
+
   logger.info(
     {
       connectorId,
       driveId,
       rootNodeIds,
-      processedCount: currentBatch.length,
-      totalProcessed: startIndex + currentBatch.length,
+      processedCount: count,
+      totalProcessed: processedEndIndex,
       totalItems,
-      hasMore: endIndex < totalItems,
+      hasMore: processedEndIndex < totalItems,
     },
     "Delta changes batch processing complete"
   );
 
   // Return cursor for next batch or null if all items processed
-  const nextCursor = endIndex < totalItems ? endIndex : null;
+  const nextCursor = processedEndIndex < totalItems ? processedEndIndex : null;
 
   return {
     nextCursor,
-    processedCount: currentBatch.length,
+    processedCount: count,
   };
 }
 

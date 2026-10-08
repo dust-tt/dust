@@ -132,7 +132,7 @@ msgstr "Définissez les propriétés et leurs types pour garantir la validité d
 
 #: front/components/app/DatasetView.tsx
 msgid "(JSON inputs are only supported when using Dust Apps through the API and not through agent actions)"
-msgstr "(Les entrées JSON ne sont prises en charge que lorsque les Dust Apps sont utilisées via l’API, et non via les actions d’agent)"
+msgstr "(Les entrées JSON ne sont prises en charge que lorsque les apps Dust sont utilisées via l’API, et non via les actions d’agent)"
 
 #: front/components/app/DatasetView.tsx
 msgid "Delete property"
@@ -189,11 +189,11 @@ msgstr "{usedCredits} / {limitCredits} crédits"
 
 #: front/components/app/FairUseCreditsUsage.tsx
 msgid "Fair usage"
-msgstr "Utilisation équitable"
+msgstr "Usage raisonnable"
 
 #: front/components/app/FairUseCreditsUsage.tsx
 msgid "Fair Use policy"
-msgstr "Politique d’utilisation équitable"
+msgstr "Politique d’usage raisonnable"
 
 #: front/components/app/ModelPicker.tsx
 msgid "Setup provider"
@@ -306,7 +306,7 @@ msgstr "Entrée"
 
 #: front/components/app/NewBlock.tsx
 msgid "Select a dataset of inputs used for the design your Dust app. Each element in the dataset kicks off a separate parallel execution of the Dust app."
-msgstr "Sélectionner un jeu de données d’entrées utilisé pour concevoir votre Dust app. Chaque élément du jeu de données déclenche une exécution parallèle distincte de la Dust app."
+msgstr "Sélectionner un jeu de données d’entrées utilisé pour concevoir votre app Dust. Chaque élément du jeu de données déclenche une exécution parallèle distincte de l’app Dust."
 
 #: front/components/app/NewBlock.tsx
 msgid "Add block"
@@ -387,11 +387,11 @@ msgstr "Quota de crédits dépassé"
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "We've paused messaging for your account due to our fair usage policy."
-msgstr "Nous avons suspendu l’envoi de messages pour votre compte en raison de notre politique d’utilisation équitable."
+msgstr "Nous avons suspendu l’envoi de messages pour votre compte en raison de notre politique d’usage raisonnable."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Check our <0>Fair Use policy</0> to learn more."
-msgstr "Consultez notre <0>politique d’utilisation équitable</0> pour en savoir plus."
+msgstr "Consultez notre <0>politique d’usage raisonnable</0> pour en savoir plus."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Message quota exceeded"
@@ -399,7 +399,7 @@ msgstr "Quota de messages dépassé"
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "We've paused messaging for your workspace due to our fair usage policy."
-msgstr "Nous avons suspendu l’envoi de messages pour votre workspace en raison de notre politique d’utilisation équitable."
+msgstr "Nous avons suspendu l’envoi de messages pour votre workspace en raison de notre politique d’usage raisonnable."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "This total limit is collectively shared by all users in the workspace."
@@ -467,7 +467,7 @@ msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Vous pouvez 
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
-msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Veuillez contacter les responsables de votre groupe ou votre administrateur pour l’augmenter."
+msgstr "Votre groupe a atteint sa limite d’utilisation partagée. Veuillez contacter les managers de votre groupe ou votre administrateur pour l’augmenter."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Cancel"

@@ -10,6 +10,7 @@
   ],
   "metadata": {
     "group_ids": "string",
+    "analytics_group_ids": "string",
     "actor_type": "string",
     "role": "string"
   }

@@ -1,6 +1,4 @@
 import {
-  trackDiscoverySuggestionClick,
-  trackDiscoverySuggestionView,
   trackHomepageUseCaseClick,
   trackHomepageUseCaseView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
@@ -34,40 +32,6 @@ describe("discoveryTracking", () => {
       object: "homepage_use_case",
       action: "click",
       extra: { use_case_id: "meeting-prep" },
-    });
-  });
-
-  it("names the surfaced For You or Trending item on click and view", () => {
-    trackDiscoverySuggestionView({
-      section: "for_you",
-      itemKind: "skill",
-      itemId: "skill_123",
-    });
-    trackDiscoverySuggestionClick({
-      section: "trending",
-      itemKind: "agent",
-      itemId: "agent_456",
-    });
-
-    expect(trackEventMock).toHaveBeenNthCalledWith(1, {
-      area: "discover",
-      object: "discovery_suggestion",
-      action: "view",
-      extra: {
-        section: "for_you",
-        item_kind: "skill",
-        item_id: "skill_123",
-      },
-    });
-    expect(trackEventMock).toHaveBeenNthCalledWith(2, {
-      area: "discover",
-      object: "discovery_suggestion",
-      action: "click",
-      extra: {
-        section: "trending",
-        item_kind: "agent",
-        item_id: "agent_456",
-      },
     });
   });
 });

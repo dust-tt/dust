@@ -7,6 +7,13 @@ import { PlanModel } from "@app/lib/models/plan";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { getRegionDisplay } from "@app/lib/poke/regions";
 import { isEmailValid } from "@app/lib/utils";
+import {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  LOCALE_LABELS,
+  SUPPORTED_LOCALES,
+} from "@app/types/locale";
+import { mapToEnumValues } from "@app/types/poke/plugins";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const createWorkspacePlugin = createPlugin({
@@ -48,6 +55,18 @@ export const createWorkspacePlugin = createPlugin({
           "End date of the subscription, format: YYYY-MM-DD. Leave empty for no end date. If an end date is set, the workspace will automatically downgraded the day after the end date.",
         required: false,
       },
+      locale: {
+        type: "enum",
+        label: "Locale (not released yet)",
+        description:
+          "Default locale of the workspace. Members who did not pick a locale use it. Localization is not released yet: keep en-US unless the workspace is internal or for testing.",
+        values: mapToEnumValues(SUPPORTED_LOCALES, (locale) => ({
+          label: `${LOCALE_LABELS[locale]} (${locale})`,
+          value: locale,
+          checked: locale === DEFAULT_LOCALE,
+        })),
+        multiple: false,
+      },
     },
     requiredRoles: ["support"],
   },
@@ -84,6 +103,11 @@ export const createWorkspacePlugin = createPlugin({
       return new Err(new Error("Name is required."));
     }
 
+    const locale = args.locale[0];
+    if (!isSupportedLocale(locale)) {
+      return new Err(new Error("Please select a locale."));
+    }
+
     // Extract the selected plan code from the enum array (empty string means no plan)
     const selectedPlanCode = args.planCode[0] || "";
     const planCode = selectedPlanCode === "" ? null : selectedPlanCode;
@@ -93,6 +117,7 @@ export const createWorkspacePlugin = createPlugin({
       isBusiness: args.isBusiness,
       planCode,
       endDate: args.endDate ? new Date(args.endDate) : null,
+      locale,
     });
 
     const newWorkspaceAuth = await Authenticator.internalAdminForWorkspace(

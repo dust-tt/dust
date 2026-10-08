@@ -1,0 +1,368 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Embedded DFS lexical search",
+    "version": "1",
+    "description": "Additive Tantivy API. Match is conjunction of lowercased simple tokens, maximum 64 tokens; phrases retain positions. Names and literal substrings are case-sensitive. Nodes support all/node/exact/prefix/substring. Documents support all/node/match/phrase/substring. Empty token queries fail. UTF-8 extraction is limited to 8 MiB. Scores are native Tantivy and may change after merges; exact fresh-rebuild score parity is not promised."
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "all"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "node"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "exact"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "prefix"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "substring"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "match"
+                  },
+                  "terms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "terms"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "phrase"
+                  },
+                  "terms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "terms"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "default": 0
+          },
+          "include_text": {
+            "type": "boolean",
+            "default": false
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "file",
+              "directory",
+              null
+            ]
+          }
+        }
+      },
+      "Response": {
+        "type": "object",
+        "required": [
+          "rows",
+          "dfs"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": [
+                "node_id",
+                "source_version"
+              ],
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "source_version": {
+                  "type": "string"
+                },
+                "basename": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "file",
+                    "directory"
+                  ]
+                },
+                "size": {
+                  "type": "integer"
+                },
+                "mtime_ms": {
+                  "type": "integer"
+                },
+                "content_status": {
+                  "enum": [
+                    "indexed",
+                    "empty",
+                    "directory",
+                    "too_large",
+                    "unsupported"
+                  ]
+                },
+                "_score": {
+                  "type": "number"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "dfs": {
+            "type": "object",
+            "required": [
+              "engine",
+              "indexed_through",
+              "incomplete"
+            ],
+            "properties": {
+              "engine": {
+                "const": "tantivy"
+              },
+              "indexed_through": {
+                "type": "object",
+                "required": [
+                  "tenant",
+                  "incarnation",
+                  "head"
+                ],
+                "properties": {
+                  "tenant": {
+                    "type": "string"
+                  },
+                  "incarnation": {
+                    "type": "string"
+                  },
+                  "head": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "incomplete": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/workspaces/{workspace}/lexical/{table}/query": {
+      "post": {
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "nodes",
+                "documents"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authorized results. Incomplete flags stale or suppressed rows. Server-Timing measures monotonic stage durations.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query"
+          },
+          "401": {
+            "description": "Invalid or expired credential"
+          },
+          "404": {
+            "description": "Workspace or table unavailable"
+          },
+          "413": {
+            "description": "Request exceeds 16 KiB"
+          },
+          "429": {
+            "description": "Eight queries already admitted"
+          },
+          "503": {
+            "description": "Index, authority, deadline or response size unavailable"
+          }
+        }
+      }
+    },
+    "/lexical/status": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Unscoped administrators: source head, indexed boundary, document count and indexing failure state."
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Administrator required"
+          }
+        }
+      }
+    },
+    "/lexical/openapi.json": {
+      "get": {
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI document"
+          }
+        }
+      }
+    }
+  }
+}

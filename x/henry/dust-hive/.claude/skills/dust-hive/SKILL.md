@@ -34,7 +34,7 @@ Environments can be in one of three states:
 |-------|----------------|----------------|
 | **stopped** | Nothing | No |
 | **cold** | SDK and Sparkle watches | Yes (front tests use shared test DB) |
-| **warm** | SDK/Sparkle, application services except Viz/Storybook, and Docker | Yes |
+| **warm** | SDK/Sparkle, Docker, and the autostart services (`dust-hive autostart`; default: application services except viz, storybook, sqlite-worker, collab) | Yes |
 
 Check the current state:
 ```bash

@@ -94,7 +94,7 @@ msgstr "Fichier enregistré"
 
 #: front/components/pod/PodFileTabPreview.tsx
 msgid "Revert"
-msgstr "Annuler les modifications"
+msgstr "Rétablir"
 
 #: front/components/pod/PodFileTabPreview.tsx
 msgid "This file is too large to preview ({fileSize})."

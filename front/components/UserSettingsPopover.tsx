@@ -543,6 +543,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
         <SettingsList.Row
           title={t`Theme`}
           description={t`Choose how Dust looks on this device`}
+          className="max-sm:flex-col max-sm:items-start"
           action={
             <OptionTileGroup
               ariaLabel={t`Theme`}
@@ -560,6 +561,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
           <SettingsList.Row
             title={t`Conversation font`}
             description={t`Font used for agent answers in conversations`}
+            className="max-sm:flex-col max-sm:items-start"
             action={
               <OptionTileGroup
                 ariaLabel={t`Conversation font`}
@@ -960,7 +962,7 @@ export function UserSettingsPopover({
           </div>
 
           {/* Desktop: vertical sidebar */}
-          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
+          <div className="hidden w-72 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
                 <Button variant="ghost" size="mini" icon={XClose} />

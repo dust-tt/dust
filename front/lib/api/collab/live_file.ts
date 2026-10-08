@@ -6,7 +6,10 @@ import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
   writeCanonicalFileContent,
 } from "@app/lib/api/files/file_system_ops";
+import type { WorkspaceAccessError } from "@app/lib/api/workspace_validation";
+import { validateWorkspaceAccess } from "@app/lib/api/workspace_validation";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -86,6 +89,102 @@ export async function openLiveFile(
     dustFs: dustFs.value,
     canWrite: dustFs.value.checkWriteAccess(canonicalPath).isOk(),
   });
+}
+
+/** Why a user may not open or keep a file in a live session. */
+export type LiveAccessError =
+  | { code: "not_member"; message: string }
+  | { code: "not_available"; message: string }
+  | { code: "read_only"; message: string }
+  | {
+      code: "workspace_unavailable";
+      message: string;
+      workspaceError: WorkspaceAccessError;
+    }
+  | LiveFileError;
+
+const READ_ONLY: LiveAccessError = {
+  code: "read_only",
+  message: "Live editing needs write access to this file.",
+};
+
+/** Membership, `co_edition` and the workspace's status: a live session's needs besides the file. */
+async function checkLiveSessionRights(
+  auth: Authenticator
+): Promise<Result<void, LiveAccessError>> {
+  if (!auth.user() || !auth.isUser()) {
+    return new Err({
+      code: "not_member",
+      message: "Not a member of this workspace.",
+    });
+  }
+  const hasCoEdition = await hasFeatureFlag(auth, "co_edition");
+  if (!hasCoEdition) {
+    return new Err({
+      code: "not_available",
+      message: "Live editing is not available here.",
+    });
+  }
+  const workspaceError = validateWorkspaceAccess(auth);
+  if (workspaceError) {
+    return new Err({
+      code: "workspace_unavailable",
+      message: `This workspace is not available (${workspaceError.type}).`,
+      workspaceError,
+    });
+  }
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:PopDaph,label:security] live-access
+ * A live session MUST be opened only for a member of the workspace, in a workspace with
+ * `co_edition` that `validateWorkspaceAccess` lets through, for a file `openLiveFile` opens for
+ * them with write access. `auth` MUST be built for this check: an Authenticator keeps the
+ * membership, plan and workspace it was built with. Minting a ticket and connecting MUST both go
+ * through it.
+ */
+export async function checkLiveAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<LiveFile, LiveAccessError>> {
+  const rights = await checkLiveSessionRights(auth);
+  if (rights.isErr()) {
+    return new Err(rights.error);
+  }
+  const file = await openLiveFile(auth, canonicalPath);
+  if (file.isOk() && !file.value.canWrite) {
+    // Readers get the file without live editing for now.
+    return new Err(READ_ONLY);
+  }
+  return file;
+}
+
+/**
+ * @cc [owner:PopDaph,label:security;performance] live-access-recheck
+ * Re-checking an open session MUST apply the same membership, `co_edition`, workspace and write
+ * access checks as `checkLiveAccess`, with an Authenticator built for it. It MUST NOT read the file
+ * from storage: existence, type and size do not decide access, and a re-check runs for every open
+ * session.
+ */
+export async function recheckLiveAccess(
+  auth: Authenticator,
+  canonicalPath: string
+): Promise<Result<void, LiveAccessError>> {
+  const rights = await checkLiveSessionRights(auth);
+  if (rights.isErr()) {
+    return rights;
+  }
+  // TODO(co-edition step 8): a file deleted or moved during a session keeps it open, failing to
+  // save; the per-file lock and the stable file id end those sessions.
+  const dustFs = await DustFileSystem.fromScopedPath(auth, canonicalPath);
+  if (dustFs.isErr()) {
+    return new Err({ code: "unavailable", message: dustFs.error.message });
+  }
+  if (dustFs.value.checkWriteAccess(canonicalPath).isErr()) {
+    return new Err(READ_ONLY);
+  }
+  return new Ok(undefined);
 }
 
 /** The file as the live document last read or wrote it. */

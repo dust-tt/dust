@@ -7,7 +7,6 @@ import { useUpdateGroupGrantedRole } from "@app/lib/swr/groups";
 import type { GroupGrantableRole, GroupType } from "@app/types/groups";
 import { GROUP_GRANTABLE_ROLES } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ShieldTick } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
 // One row per grantable role (admin, manager). Each row maps groups to that
@@ -96,7 +95,6 @@ export function RoleProvisioningSection({
     <GovernanceSettingSection
       sectionId={ADMIN_SECTION_IDS.governance.roles}
       label={t`Roles`}
-      icon={ShieldTick}
     >
       {GROUP_GRANTABLE_ROLES.map((role) => (
         <RoleProvisioningRow

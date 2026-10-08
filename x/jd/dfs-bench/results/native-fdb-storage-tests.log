@@ -1,0 +1,12 @@
+
+running 7 tests
+test independent_records_and_snapshot_dependencies                ... ok
+test independent_clients_publish_without_lost_updates             ... ok
+test atomic_conflicts_and_stable_snapshots                        ... ok
+test ordered_scans_survive_edits_eviction_and_empty_cache_restart ... ok
+test rejected_growth_cannot_publish_partial_batch                 ... ok
+test chunk_boundaries_and_expiring_snapshots                      ... ok
+test large_publication_and_corrupt_chunks                         ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.46s
+

@@ -618,6 +618,7 @@ function useVisualizationDataHandler({
               data,
               {
                 code: "not_supported",
+                // oxlint-disable-next-line dust/noRawErrorMessageInUi -- returned to the Frame's code, not shown in Dust's UI.
                 message: referenceRes.error.message,
               },
               event.source,

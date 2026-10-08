@@ -37,7 +37,7 @@ msgstr "Consommation"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Export"
-msgstr "Export"
+msgstr "Exporter"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Ask @analyst"
@@ -578,7 +578,7 @@ msgstr "dust apps fournisseurs clés api openai azure anthropic"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "Model Providers for Dust Apps"
-msgstr "Fournisseurs de modèles pour les Dust Apps"
+msgstr "Fournisseurs de modèles pour les apps Dust"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "api key openai azure anthropic"
@@ -738,7 +738,7 @@ msgstr "Utilisation des membres"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "seats spend limit upgrade requests"
-msgstr "sièges limite de dépenses demandes de mise à niveau"
+msgstr "sièges limite de dépenses demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Members model tiers"
@@ -750,7 +750,7 @@ msgstr "niveaux de modèles membre niveau d’accès par utilisateur standard av
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade requests"
-msgstr "Demandes de mise à niveau"
+msgstr "Demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "review member requests deny"
@@ -822,15 +822,15 @@ msgstr "politique de dépenses limite par défaut réserve"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade request"
-msgstr "Demande de mise à niveau"
+msgstr "Demande d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "allow members request upgrade"
-msgstr "autoriser membres demander mise à niveau"
+msgstr "autoriser membres demander augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Require a reason for upgrade requests"
-msgstr "Exiger un motif pour les demandes de mise à niveau"
+msgstr "Exiger un motif pour les demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "justification"
@@ -894,7 +894,7 @@ msgstr "e-mail alerte réserve pourcentage"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade request emails"
-msgstr "E-mails de demande de mise à niveau"
+msgstr "E-mails de demande d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "email admins managers"

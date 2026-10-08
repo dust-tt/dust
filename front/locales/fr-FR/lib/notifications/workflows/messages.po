@@ -63,7 +63,7 @@ msgstr "Examiner"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "[Dust] Credit balance alert - your workspace balance dropped below {threshold} credits"
-msgstr "[Dust] Alerte de solde : le solde de crédits de votre workspace est passé sous {threshold} crédits"
+msgstr "[Dust] Le solde de crédits de votre workspace est passé sous {threshold} crédits"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "Your workspace's remaining credit balance has dropped below the threshold you configured."

@@ -96,10 +96,43 @@ export function formatCurrency(
   );
 }
 
+type FileSizeUnit = "byte" | "kilobyte" | "megabyte" | "gigabyte";
+
+const DEFAULT_FILE_SIZE_UNIT_SYMBOLS: Record<FileSizeUnit, string> = {
+  byte: "B",
+  kilobyte: "KB",
+  megabyte: "MB",
+  gigabyte: "GB",
+};
+
+const FILE_SIZE_UNIT_SYMBOLS_BY_LANGUAGE: Record<
+  string,
+  Record<FileSizeUnit, string>
+> = {
+  fr: {
+    byte: "o",
+    kilobyte: "Ko",
+    megabyte: "Mo",
+    gigabyte: "Go",
+  },
+};
+
+function getFileSizeUnitSymbols(
+  locale: SupportedLocale | undefined
+): Record<FileSizeUnit, string> {
+  const { language } = new Intl.Locale(
+    new Intl.NumberFormat(locale).resolvedOptions().locale
+  );
+  return (
+    FILE_SIZE_UNIT_SYMBOLS_BY_LANGUAGE[language] ??
+    DEFAULT_FILE_SIZE_UNIT_SYMBOLS
+  );
+}
+
 function formatFileSizeInUnit(
   bytes: number,
   unitBytes: number,
-  unit: string,
+  unit: FileSizeUnit,
   decimals: number,
   locale: SupportedLocale | undefined
 ): string {
@@ -111,9 +144,14 @@ function formatFileSizeInUnit(
       useGrouping: false,
     },
     locale
-  )} ${unit}`;
+  )} ${getFileSizeUnitSymbols(locale)[unit]}`;
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] file-size-unit-symbols
+ * `formatFileSize` MUST write the unit symbol of the resolved locale's language: `o`, `Ko`, `Mo`
+ * and `Go` in French, `B`, `KB`, `MB` and `GB` in every other language.
+ */
 export function formatFileSize(
   bytes: number,
   options?: { decimals?: number },
@@ -121,16 +159,16 @@ export function formatFileSize(
 ): string {
   const decimals = options?.decimals;
   if (bytes < 1024) {
-    return formatFileSizeInUnit(bytes, 1, "B", decimals ?? 0, locale);
+    return formatFileSizeInUnit(bytes, 1, "byte", decimals ?? 0, locale);
   }
   if (bytes < 1024 * 1024) {
-    return formatFileSizeInUnit(bytes, 1024, "KB", decimals ?? 1, locale);
+    return formatFileSizeInUnit(bytes, 1024, "kilobyte", decimals ?? 1, locale);
   }
   if (bytes < 1024 * 1024 * 1024) {
     return formatFileSizeInUnit(
       bytes,
       1024 * 1024,
-      "MB",
+      "megabyte",
       decimals ?? 2,
       locale
     );
@@ -138,7 +176,7 @@ export function formatFileSize(
   return formatFileSizeInUnit(
     bytes,
     1024 * 1024 * 1024,
-    "GB",
+    "gigabyte",
     decimals ?? 2,
     locale
   );

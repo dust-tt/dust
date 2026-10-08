@@ -1,4 +1,7 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
@@ -20,6 +23,7 @@ export function ZendeskRateLimitConfig({
   dataSource: DataSourceType;
 }) {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [loading, setLoading] = useState(false);
   const [rateLimitInput, setRateLimitInput] = useState("");
@@ -65,12 +69,10 @@ export function ZendeskRateLimitConfig({
       });
     } else {
       setLoading(false);
-      const err = await res.json();
-      sendNotification({
-        type: "info",
+      const err: unknown = await res.json();
+      sendApiErrorNotification({
         title: t`Failed to edit Zendesk configuration`,
-        description:
-          err.error?.connectors_error.message || t`An unknown error occurred`,
+        error: err,
       });
     }
     return true;

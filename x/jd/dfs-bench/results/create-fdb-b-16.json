@@ -1,0 +1,33 @@
+{
+  "command": [
+    "gcloud",
+    "compute",
+    "instances",
+    "create",
+    "dfs-clean-jd-20261006-fdb-b",
+    "--project",
+    "dust-dev",
+    "--zone",
+    "us-central1-b",
+    "--machine-type",
+    "c4-standard-16-lssd",
+    "--image-family",
+    "ubuntu-2404-lts-amd64",
+    "--image-project",
+    "ubuntu-os-cloud",
+    "--boot-disk-size",
+    "50GB",
+    "--boot-disk-type",
+    "hyperdisk-balanced",
+    "--no-service-account",
+    "--no-scopes",
+    "--metadata-from-file=user-data=dfs/cloud/user-data.yaml",
+    "--metadata=enable-oslogin=FALSE",
+    "--labels=owner=jd,purpose=dfs-clean-bench",
+    "--tags=dfs-clean-bench",
+    "--format=json"
+  ],
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "ERROR: (gcloud.compute.instances.create) Could not fetch resource:\n---\ncode: ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS\nerrorDetails:\n- help:\n    links:\n    - description: Troubleshooting documentation\n      url: https://cloud.google.com/compute/docs/resource-error\n- localizedMessage:\n    locale: en-US\n    message: A c4-standard-16-lssd VM instance with 2 local SSD(s) is currently unavailable\n      in the us-central1-b zone. Try requesting the VM in another zone. For more information,\n      view the troubleshooting documentation.\n- errorInfo:\n    domain: compute.googleapis.com\n    metadatas:\n      attachment: local-ssd:2\n      vmType: c4-standard-16-lssd\n      zone: us-central1-b\n      zonesAvailable: ''\n    reason: stockout\nmessage: The zone 'projects/dust-dev/zones/us-central1-b' does not have enough resources\n  available to fulfill the request.  '(resource type:compute)'.\n\n"
+}

@@ -13,18 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Cost management"
-msgstr "Cost management"
-
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Credit spend checkpoint"
-msgstr "Credit spend checkpoint"
-
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
-msgstr "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
-
 #: front/components/workspace/usage/LockedSection.tsx
 msgid "Top up your credit pool to enable these settings"
 msgstr "Top up your credit pool to enable these settings"
@@ -81,6 +69,30 @@ msgstr "Upgrade request emails"
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Email all workspace admins and managers when a member requests a spend-limit upgrade."
 msgstr "Email all workspace admins and managers when a member requests a spend-limit upgrade."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Default cost cap per skill"
+msgstr "Default cost cap per skill"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Global spending cap"
+msgstr "Global spending cap"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
 
 #: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
 msgid "Programmatic usage"
@@ -149,3 +161,11 @@ msgstr "When a member reaches their credit limit, automatically move them to the
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"
 msgstr "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Credit spend checkpoint"
+msgstr "Credit spend checkpoint"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
+msgstr "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."

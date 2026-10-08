@@ -91,12 +91,6 @@ async function listSearchableGlobalAgents(
  * Return at most limit agents, and the exact number of matching agents as total.
  */
 /**
- * @cc [owner:adrsimon,label:product] agent-search-favorites-first
- * With favoritesFirst, the current user's favorites MUST rank before every other match, each group
- * keeping the requested sort, across pages and without changing which agents match. This legacy
- * ranking option applies only in "all" selection mode.
- */
-/**
  * @cc [owner:aubin-tchoi,label:product] agent-search-favorite-selection
  * "favorites_only" restricts the authorized query to the current user's favorites.
  * "favorites_or_all" selects favorites only for empty queries, falling back when no favorites
@@ -135,7 +129,6 @@ export async function searchAgents(
     sortBy,
     sortOrder,
     facets = [],
-    favoritesFirst = false,
     selectionMode = "all",
     ...options
   }: {
@@ -148,7 +141,6 @@ export async function searchAgents(
     offset?: number;
     sortBy?: AgentSearchSort;
     sortOrder?: AgentSearchSortOrder;
-    favoritesFirst?: boolean;
     selectionMode?: AgentSearchSelectionMode;
   }
 ) {
@@ -169,11 +161,9 @@ export async function searchAgents(
   );
   const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
-  const rankFavoritesFirst = selectionMode === "all" && favoritesFirst;
   const favoriteAgentIds =
     selectionMode === "favorites_only" ||
-    (selectionMode === "favorites_or_all" && !options.searchTerm.trim()) ||
-    rankFavoritesFirst
+    (selectionMode === "favorites_or_all" && !options.searchTerm.trim())
       ? await AgentResource.listFavoriteIdsForCurrentUser(auth)
       : [];
 
@@ -200,7 +190,6 @@ export async function searchAgents(
               ? "name"
               : "relevance"),
           sortOrder,
-          favoriteAgentIds: rankFavoritesFirst ? favoriteAgentIds : [],
         }),
         ...(facets.length > 0
           ? {

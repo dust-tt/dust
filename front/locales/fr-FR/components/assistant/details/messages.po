@@ -68,7 +68,7 @@ msgstr "Infos"
 
 #: front/components/assistant/details/AgentDetailsBody.tsx
 msgid "Insights"
-msgstr "Statistiques"
+msgstr "Analyses"
 
 #: front/components/assistant/details/AgentDetailsBody.tsx
 msgid "Triggers"

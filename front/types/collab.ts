@@ -1,3 +1,6 @@
+import { dfmCommentSchema, dfmCommentsSchema } from "@app/lib/markdown/dfm";
+import { z } from "zod";
+
 /** The Yjs fragment holding a live document's body, read by the server and bound by the editor. */
 export const BODY_FRAGMENT_NAME = "body";
 
@@ -25,3 +28,132 @@ export function parseLiveDocumentName(
     canonicalPath: documentName.slice(index + 1),
   };
 }
+
+/**
+ * Comment threads in a live session travel beside the shared document, as Hocuspocus stateless
+ * messages: the browser sends commands, the server answers each one and pushes every change of
+ * the threads to all the document's browsers.
+ */
+
+const commentIdSchema = z.string().min(1);
+
+export const liveCommentCommandSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("add"),
+    commentId: commentIdSchema,
+    body: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("reply"),
+    commentId: commentIdSchema,
+    position: z.number().int().min(1),
+    body: z.string().min(1),
+  }),
+  z.object({
+    type: z.literal("resolve"),
+    commentId: commentIdSchema,
+    resolved: z.boolean(),
+  }),
+  z.object({ type: z.literal("delete"), commentId: commentIdSchema }),
+]);
+
+export type LiveCommentCommand = z.infer<typeof liveCommentCommandSchema>;
+
+export const liveCommentClientMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("threads") }),
+  z.object({
+    type: z.literal("command"),
+    requestId: z.string().min(1),
+    command: liveCommentCommandSchema,
+  }),
+]);
+
+export type LiveCommentClientMessage = z.infer<
+  typeof liveCommentClientMessageSchema
+>;
+
+export const LIVE_COMMENT_ERROR_CODES = [
+  "unavailable",
+  "not_found",
+  "thread_changed",
+  "unwritable",
+] as const;
+
+export type LiveCommentErrorCode = (typeof LIVE_COMMENT_ERROR_CODES)[number];
+
+export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("threads"), comments: dfmCommentsSchema }),
+  z.object({
+    type: z.literal("accepted"),
+    requestId: z.string(),
+    comment: dfmCommentSchema.nullable(),
+  }),
+  z.object({
+    type: z.literal("refused"),
+    requestId: z.string(),
+    error: z.enum(LIVE_COMMENT_ERROR_CODES),
+  }),
+]);
+
+export type LiveCommentServerMessage = z.infer<
+  typeof liveCommentServerMessageSchema
+>;
+
+/**
+ * Agents change a live document through the collab server's internal routes: they read the
+ * session's source, change it, then write it back conditional on the source they read.
+ */
+
+/** Where the collab server mounts the routes only reached from inside the cluster. */
+export const COLLAB_INTERNAL_ROUTES_PREFIX = "/internal";
+export const LIVE_SOURCE_READ_PATH = "/documents/read";
+export const LIVE_SOURCE_WRITE_PATH = "/documents/write";
+
+export const liveSourceReadRequestSchema = z.object({
+  workspaceId: z.string().min(1),
+  userId: z.string().min(1).optional(),
+  canonicalPath: z.string().min(1),
+});
+
+export type LiveSourceReadRequest = z.infer<typeof liveSourceReadRequestSchema>;
+
+/** What the collab server reports of a live document an agent wants to change. */
+export const liveSourceReadResponseSchema = z.discriminatedUnion("open", [
+  z.object({ open: z.literal(false) }),
+  z.object({ open: z.literal(true), source: z.string() }),
+]);
+
+export type LiveSourceReadResponse = z.infer<
+  typeof liveSourceReadResponseSchema
+>;
+
+export const LIVE_SOURCE_WRITE_RESULTS = [
+  "written",
+  "changed",
+  "closed",
+  "busy",
+] as const;
+
+/** How long a write may wait for its turn on the collab server, kept below its caller's timeout. */
+export const LIVE_SOURCE_WRITE_WAIT_MS = 5 * 1000;
+
+export type LiveSourceWriteResult = (typeof LIVE_SOURCE_WRITE_RESULTS)[number];
+
+export const liveSourceWriteRequestSchema = liveSourceReadRequestSchema.extend({
+  userId: z.string().min(1),
+  base: z.string(),
+  source: z.string(),
+});
+
+export type LiveSourceWriteRequest = z.infer<
+  typeof liveSourceWriteRequestSchema
+>;
+
+export const liveSourceWriteResponseSchema = z.discriminatedUnion("result", [
+  z.object({ result: z.enum(LIVE_SOURCE_WRITE_RESULTS) }),
+  z.object({ result: z.literal("refused"), message: z.string() }),
+]);
+
+export type LiveSourceWriteResponse = z.infer<
+  typeof liveSourceWriteResponseSchema
+>;

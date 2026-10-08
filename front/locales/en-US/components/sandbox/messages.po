@@ -466,3 +466,67 @@ msgstr "Select all"
 #: front/components/sandbox/SandboxScopeSelector.tsx
 msgid "Reset"
 msgstr "Reset"
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain cannot be empty."
+msgstr "Domain cannot be empty."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain cannot be empty."
+msgstr "{domain}: Domain cannot be empty."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain must be {maxLength} characters or less."
+msgstr "Domain must be {maxLength} characters or less."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain must be {maxLength} characters or less."
+msgstr "{domain}: Domain must be {maxLength} characters or less."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "IP addresses are not supported."
+msgstr "IP addresses are not supported."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: IP addresses are not supported."
+msgstr "{domain}: IP addresses are not supported."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+msgstr "Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+msgstr "{domain}: Use an exact domain such as api.github.com or a wildcard such as *.github.com."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Domain must have a top-level label containing a letter."
+msgstr "Domain must have a top-level label containing a letter."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Domain must have a top-level label containing a letter."
+msgstr "{domain}: Domain must have a top-level label containing a letter."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Wildcard domains must include a suffix."
+msgstr "Wildcard domains must include a suffix."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Wildcard domains must include a suffix."
+msgstr "{domain}: Wildcard domains must include a suffix."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "Wildcards must use the form *.example.com."
+msgstr "Wildcards must use the form *.example.com."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: Wildcards must use the form *.example.com."
+msgstr "{domain}: Wildcards must use the form *.example.com."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."
+msgstr "HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."
+
+#: front/components/sandbox/egress_policy_domain_error.ts
+msgid "{domain}: HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."
+msgstr "{domain}: HTTPS secret domains need at least two DNS labels separated by a dot, such as github.com or api.github.com."

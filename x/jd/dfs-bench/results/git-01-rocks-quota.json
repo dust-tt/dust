@@ -1,0 +1,12 @@
+{
+  "Metrics": {
+    "live_sst_bytes": 7050741689,
+    "pending_bytes": 0,
+    "pending_compaction_bytes": 0,
+    "persisted": 64512,
+    "persistence_age_ms": 16,
+    "published": 64512,
+    "retained_bytes": 8589925675,
+    "storage_error": null
+  }
+}

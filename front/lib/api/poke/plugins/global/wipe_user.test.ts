@@ -19,6 +19,7 @@ vi.mock("@app/lib/tracking/customerio/server", () => ({
 
 import { wipeUserPlugin } from "@app/lib/api/poke/plugins/global/wipe_user";
 import { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   ANONYMIZED_USER_EMAIL_DOMAIN,
   UserResource,
@@ -80,7 +81,30 @@ describe("wipeUserPlugin.execute", () => {
     assert(result.isOk(), result.isErr() ? result.error.message : "");
   });
 
-  it("refuses a user with a membership", async () => {
+  it("wipes a user whose memberships are all revoked", async () => {
+    const user = await UserFactory.basic();
+    const workspace = await WorkspaceFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      startAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    });
+    const revokeResult = await MembershipResource.revokeMembership({
+      user,
+      workspace,
+      endAt: new Date(Date.now() - 60 * 60 * 1000),
+    });
+    assert(revokeResult.isOk(), "expected the membership to be revoked");
+
+    const result = await wipe(user.sId);
+
+    assert(result.isOk(), result.isErr() ? result.error.message : "");
+    const anonymized = await UserResource.fetchById(user.sId);
+    expect(anonymized?.email).toBe(
+      `${user.sId}@${ANONYMIZED_USER_EMAIL_DOMAIN}`
+    );
+  });
+
+  it("refuses a user with an active membership", async () => {
     const user = await UserFactory.basic();
     const workspace = await WorkspaceFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });

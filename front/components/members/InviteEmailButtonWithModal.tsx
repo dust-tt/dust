@@ -25,6 +25,8 @@ import type {
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { clientFetch } from "@app/lib/egress/client";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import {
   mutateWorkspaceInvitations,
   sendInvitations,
@@ -74,7 +76,11 @@ const useGetEmailsListAndError = (
 
     const invalidEmails = inviteEmailsList.filter((e) => !isEmailValid(e));
     if (invalidEmails.length > 0) {
-      const invalidEmailsList = invalidEmails.join(", ");
+      const invalidEmailsList = formatList(
+        invalidEmails,
+        { type: "conjunction" },
+        getActiveLocale()
+      );
       return {
         inviteEmailsList: null,
         emailError: t`Invalid email addresses: ${invalidEmailsList}`,
@@ -424,10 +430,14 @@ export function InviteEmailButtonWithModal({
         <DialogHeader>
           <div className="flex flex-col gap-1">
             <DialogTitle>
-              <Trans>Invite new users</Trans>
+              <Trans>Invite members</Trans>
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              <Trans>Choose a new plan to continue</Trans>
+              {hasSeatSelection ? (
+                <Trans>Choose a role and a seat for the new members.</Trans>
+              ) : (
+                <Trans>Choose a role for the new members.</Trans>
+              )}
             </p>
           </div>
         </DialogHeader>

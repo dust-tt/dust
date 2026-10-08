@@ -1,0 +1,85 @@
+{
+  "client": {
+    "block_batches": 9,
+    "block_chunk_bytes": 939,
+    "block_ranges": 9,
+    "data_calls": 9,
+    "head_calls": 43,
+    "metadata_calls": 1,
+    "mutation_calls": 64513,
+    "received_bytes": 17059772,
+    "rpc_calls": 64577,
+    "sent_bytes": 286712342,
+    "snapshot_calls": 11,
+    "timings": {
+      "changes": {
+        "calls": 43,
+        "elapsed_us": 24553,
+        "max_us": 2299
+      },
+      "create": {
+        "calls": 0,
+        "elapsed_us": 0,
+        "max_us": 0
+      },
+      "data": {
+        "calls": 9,
+        "elapsed_us": 5461,
+        "max_us": 1391
+      },
+      "other": {
+        "calls": 10,
+        "elapsed_us": 14191,
+        "max_us": 5059
+      },
+      "put_files": {
+        "calls": 13,
+        "elapsed_us": 14442,
+        "max_us": 2635
+      },
+      "setattr": {
+        "calls": 6,
+        "elapsed_us": 8484,
+        "max_us": 1705
+      },
+      "truncate": {
+        "calls": 0,
+        "elapsed_us": 0,
+        "max_us": 0
+      },
+      "unlink": {
+        "calls": 32,
+        "elapsed_us": 14386,
+        "max_us": 763
+      },
+      "write": {
+        "calls": 64453,
+        "elapsed_us": 140530910,
+        "max_us": 1066277
+      }
+    }
+  },
+  "content_cache_bytes": 268435456,
+  "fuse": {
+    "buffered": {
+      "batches": 13,
+      "files": 39,
+      "max_publication_age_us": 106722,
+      "metadata_ttl_ms": 500,
+      "publication_budget_misses": 0,
+      "publication_budget_ms": 500
+    },
+    "cached_read": 42,
+    "expired_directory": 6,
+    "flush": 58,
+    "getattr": 34,
+    "lookup": 704,
+    "negative": 677,
+    "open": 58,
+    "read": 51,
+    "readdir": 10,
+    "readdirplus": 22,
+    "release": 58,
+    "write": 64480
+  }
+}

@@ -398,7 +398,7 @@ export function AnalyticsConsumptionContent({
   };
 
   const selectors = (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <ConsumptionPeriodSelector
         period={period}
         onPeriodChange={handlePeriodChange}
@@ -423,7 +423,7 @@ export function AnalyticsConsumptionContent({
       {selectors}
     </div>
   ) : (
-    <div className="flex w-full flex-row justify-between">
+    <div className="flex w-full flex-col gap-4 sm:flex-row sm:justify-between">
       <div className="flex flex-col gap-1">
         <Page.H variant="h3">{title ?? t`Analytics`}</Page.H>
         <OverviewComponent workspaceId={owner.sId} period={period} />

@@ -109,14 +109,12 @@ export const SnowflakeKeypairCredentialForm = forwardRef<
           }),
         });
       } catch (err) {
-        const e = normalizeError(err);
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to save Snowflake credentials`,
-          description: e.message,
+          error: err,
         });
         datadogLogger.error(
-          { workspaceId: owner.sId, err: e.message },
+          { workspaceId: owner.sId, err: normalizeError(err).message },
           "Snowflake keypair credential save failed: network error"
         );
         return null;

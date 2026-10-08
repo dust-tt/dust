@@ -1,0 +1,35 @@
+   Compiling dfs-poc v0.1.0 (/home/dfs/dfs)
+    Finished `release` profile [optimized + debuginfo] target(s) in 18.20s
+     Running unittests src/lib.rs (target/release/deps/dfs_poc-19a79d8df448f2aa)
+
+running 26 tests
+test lexical::ingest::tests::extraction_admits_before_reading_and_releases_scratch_before_queueing ... ok
+test lexical::ingest::tests::failed_and_unsupported_extraction_release_all_capacity ... ok
+test lexical::membership::tests::failed_growth_preserves_singleton_membership_and_its_charge ... ok
+test lexical::membership::tests::malformed_chunks_fail_before_decode_allocation ... ok
+test lexical::membership::tests::chunks_round_trip_boundaries_and_collapse_after_removal ... ok
+test lexical::projection::tests::ordered_keys_and_seek_cursors_preserve_unicode_and_embedded_zeroes ... ok
+test engine::persistence_tests::failed_flush_preserves_pending_suffix_and_stops_subsequent_publication ... ok
+test engine::persistence_tests::historical_view_pins_are_bounded_by_retained_nodes_and_cannot_outlive_logout ... ok
+test engine::export::tests::renewal_preserves_snapshot_and_never_revives_expired_authority ... ok
+test live::freshness::tests::cache_hits_do_not_extend_server_validation ... ok
+test live::freshness::tests::kernel_and_daemon_share_one_deadline ... ok
+test live::freshness::tests::slow_refresh_does_not_create_an_extra_cache_window ... ok
+test memory::tests::growth_failure_and_deadlines_preserve_existing_reservations ... ok
+test engine::persistence_tests::publication_proceeds_during_flush_and_preserves_snapshot_and_pending_suffix ... ok
+test memory::tests::shared_ownership_retains_capacity_until_the_last_owner_exits ... ok
+test memory::tests::release_wakes_waiters_and_full_queues_reject_immediately ... ok
+test mount::inodes::tests::lookup_and_capacity_limits_recover_after_forget ... ok
+test mount::inodes::tests::references_delay_reclamation_and_retirement_never_reuses_identity ... ok
+test reader::tests::access_prediction_expires_old_directories_and_authority ... ok
+test lexical::projection::tests::membership_edits_coalesce_by_chunk_and_preserve_old_snapshots ... ok
+test mount::kernel_cache::tests::partial_store_recovers_pages_or_disables_insertion_before_releasing_ordering ... ok
+test lexical::projection::tests::batches_cannot_mix_snapshot_generations_or_database_owners ... ok
+test lexical::ranking::tests::pruning_matches_native_filtered_top_k_with_deletes_ties_and_offsets ... ok
+test lexical::projection::tests::owned_snapshots_keep_the_database_and_their_generation_alive ... ok
+test lexical::projection::tests::unrecognized_projection_state_is_never_overwritten ... ok
+test lexical::lease::tests::keeper_outlives_initial_deadline_and_releases_on_finish_or_drop has been running for over 60 seconds
+test lexical::lease::tests::keeper_outlives_initial_deadline_and_releases_on_finish_or_drop ... ok
+
+test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 71.66s
+

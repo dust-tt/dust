@@ -210,7 +210,7 @@ msgstr "Lecture d’un fichier de la conversation"
 
 #: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
 msgid "... ({remainingLineCount, plural, one {# more line} other {# more lines}})"
-msgstr "... ({remainingLineCount, plural, one {# ligne de plus} other {# lignes de plus}})"
+msgstr "… ({remainingLineCount, plural, one {# ligne de plus} other {# lignes de plus}})"
 
 #: front/components/actions/mcp/details/MCPConversationFilesActionDetails.tsx
 #: front/components/actions/mcp/details/MCPExtractActionDetails.tsx
@@ -529,11 +529,11 @@ msgstr "sur toutes les périodes"
 
 #: front/components/actions/mcp/details/input_rendering.ts
 msgid "with labels {tagsInList}"
-msgstr "avec les libellés {tagsInList}"
+msgstr "avec les étiquettes {tagsInList}"
 
 #: front/components/actions/mcp/details/input_rendering.ts
 msgid "excluding labels {tagsNotList}"
-msgstr "en excluant les libellés {tagsNotList}"
+msgstr "en excluant les étiquettes {tagsNotList}"
 
 #: front/components/actions/mcp/details/input_rendering.ts
 msgid "({mimeTypesList} files)"

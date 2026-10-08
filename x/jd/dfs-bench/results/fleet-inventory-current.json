@@ -1,0 +1,98 @@
+[
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-a",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-client",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-es-a",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-rocks",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-rocks-client",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-a",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-client",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-es-a",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-b",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-es-b",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-b",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-es-b",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-c",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-fdb-es-c",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-c",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c"
+  },
+  {
+    "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/machineTypes/c4-standard-8-lssd",
+    "name": "dfs-clean-jd-20261006-tikv-es-c",
+    "status": "RUNNING",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c"
+  }
+]

@@ -1,0 +1,43 @@
+
+running 38 tests
+test delegation_retained_reads_and_expiry_enforce_current_authority ... ok
+test index_export_is_persisted_exact_and_privileged ... ok
+test index_export_rejects_failed_persistence_and_bounds_leases ... ok
+test index_export_rpc_roundtrips_without_changing_existing_wire_tags ... ok
+test journal_deltas_filter_hidden_ancestry_and_reset_policy_changes ... ok
+test namespace_limits_reject_replacement_and_delta_atomically_and_recover_after_removal ... ok
+test prefetch_planning_uses_current_namespace_after_updates_and_removal ... ok
+test publication_cases::persistence_never_compares_a_tenant_head_to_the_engine_counter ... ok
+test publication_cases::publication_wire_variants_append_to_the_existing_protocol ... ok
+test publication_cases::receipts_bind_exact_outcomes_and_persistence_without_equating_sequence_domains ... ok
+test publication_cases::recovered_receipts_require_the_exact_record_even_after_a_new_prefix_advances ... ok
+test publication_cases::revoked_authority_and_failed_storage_do_not_confirm_receipts ... ok
+test published_nodes_support_view_handle_reads_without_bypassing_current_authority ... ok
+test quotas_backpressure_and_persistence_errors_do_not_publish ... ok
+test ranges_sparse_truncate_append_and_retained_versions ... ok
+test rename_cases::corrupt_ancestry_fails_without_a_depth_cutoff ... ok
+test rename_cases::deep_trees_preserve_moves_content_authority_and_recovery ... ok
+test rename_cases::deeper_moves_preserve_mixed_subtrees_and_content ... ok
+test rename_cases::invalid_replacements_and_stale_tokens_do_not_publish ... ok
+test rename_cases::moving_directory_into_itself_or_descendants_preserves_namespace ... ok
+test rename_cases::opposing_concurrent_moves_publish_one_acyclic_result ... ok
+test rename_replacement_preserves_identity_not_destination_grants ... ok
+test reopen_and_temp_replacement_demonstrate_cas_limits ... ok
+test retry_binding_restart_outcome_and_old_handles ... ok
+test same_base_writers_conflict_and_other_file_proceeds ... ok
+test scope_tenant_and_epoch_boundaries_cannot_expand_authority ... ok
+test search_validation_matches_view_after_membership_and_grant_changes ... ok
+test shared_view_groups_overlaps_revocation_and_no_siblings ... ok
+test snapshot_working_bytes_reject_large_views_without_blocking_point_operations ... ok
+test subtree_moves_change_inheritance_and_require_grant_administration ... ok
+test view_refresh_discards_replaced_removed_and_old_incarnation_content ... ok
+test view_refresh_preserves_unaffected_content_and_tracks_projection_changes ... ok
+test view_writer_pins_preserve_version_authority_and_writer_fences ... ok
+test writer_lease_cases::exclusive_writers_share_a_generation_and_fence_all_other_content_publication ... ok
+test writer_lease_cases::expired_generations_cannot_publish_renew_or_release_their_replacement ... ok
+test writer_lease_cases::fenced_publication_and_renewal_enforce_current_read_and_write_authority ... ok
+test writer_lease_cases::restart_retires_writer_handles_and_preserves_only_published_retry_outcomes ... ok
+test writer_lease_cases::writer_open_retries_do_not_consume_handle_capacity ... ok
+
+test result: ok. 38 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.10s
+

@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import {
   ALIGN_JUSTIFY_CLASS,
   ALIGN_TEXT_CLASS,
@@ -71,6 +72,7 @@ export function DataTableSkeleton<
   density = "default",
   rowHeight = DATA_TABLE_ROW_HEIGHT_PX[density],
 }: DataTableSkeletonProps<TData, TValue, TColumnId>) {
+  const { t } = useLingui();
   const table = useReactTable({
     data: NO_ROWS,
     columns,
@@ -80,7 +82,7 @@ export function DataTableSkeleton<
   return (
     <div className="@container/table">
       <table
-        aria-label="Loading table"
+        aria-label={t`Loading table`}
         aria-busy="true"
         className="w-full table-fixed border-collapse"
       >
@@ -94,7 +96,7 @@ export function DataTableSkeleton<
                   scope="col"
                   style={{ height: DATA_TABLE_HEADER_HEIGHT_PX[density] }}
                   className={cn(
-                    "heading-sm px-2 capitalize text-foreground",
+                    "heading-sm px-2 text-foreground",
                     ALIGN_TEXT_CLASS[presets.headerAlign],
                     presets.headerClassName,
                     header.column.columnDef.meta?.className

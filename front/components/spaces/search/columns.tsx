@@ -51,7 +51,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         />
       ),
       meta: {
-        sizeRatio: 25,
+        sizeRatio: 20,
       },
     },
     {
@@ -69,7 +69,7 @@ export function makeColumnsForSearchResults(): ColumnDef<RowData, any>[] {
         />
       ),
       meta: {
-        sizeRatio: 15,
+        sizeRatio: 20,
       },
     },
     {

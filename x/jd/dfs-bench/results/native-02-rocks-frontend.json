@@ -1,0 +1,33 @@
+{
+  "command": [
+    "/srv/dfs/bin/dfsd-rocks",
+    "--credentials",
+    "/srv/dfs/config/credentials.json",
+    "--listen",
+    "10.150.0.3:7443",
+    "--tls-cert",
+    "/srv/dfs/config/server.crt",
+    "--tls-key",
+    "/srv/dfs/config/server.key",
+    "--search-listen",
+    "127.0.0.1:7446",
+    "--db",
+    "/srv/dfs/data/iterations/native-02/rocksdb",
+    "--search-index",
+    "/srv/dfs/data/iterations/native-02/tantivy",
+    "--search-token-file",
+    "/srv/dfs/config/admin.token"
+  ],
+  "metrics": {
+    "Metrics": {
+      "live_sst_bytes": 0,
+      "pending_bytes": 0,
+      "pending_compaction_bytes": 0,
+      "persisted": 0,
+      "persistence_age_ms": 90,
+      "published": 0,
+      "retained_bytes": 0,
+      "storage_error": null
+    }
+  }
+}

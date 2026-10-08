@@ -158,7 +158,9 @@ describe("resource-owned agent search indexation", () => {
       }
     );
 
-    expect(result.updatedAgentIds).toEqual([first.sId, second.sId]);
+    expect([...result.updatedAgentIds].sort()).toEqual(
+      [first.sId, second.sId].sort()
+    );
     expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledTimes(2);
     for (const agentId of [first.sId, second.sId]) {
       expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledWith({

@@ -449,6 +449,7 @@ export function useWebhookFilterGenerator({
       const parseResult = parseMatcherExpression(r.filter);
       if (parseResult.isErr()) {
         throw new Error(
+          // oxlint-disable-next-line dust/noRawErrorMessageInUi -- generated filter parse error; callers show it through `formatError`.
           `Error generating filter: ${parseResult.error.message}`
         );
       }

@@ -1,3 +1,5 @@
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { AvatarProps, AvatarStackProps } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Card, type CardVariantType } from "@sparkle/components/Card";
@@ -12,10 +14,10 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
 
-const DEFAULT_APPLY_LABEL = "Apply";
-const DEFAULT_REJECT_LABEL = "Reject";
-const DEFAULT_CHECK_LABEL = "Always allow";
-const DEFAULT_COLLAPSIBLE_LABEL = "Details";
+const DEFAULT_APPLY_LABEL = msg`Apply`;
+const DEFAULT_REJECT_LABEL = msg`Reject`;
+const DEFAULT_CHECK_LABEL = msg`Always allow`;
+const DEFAULT_COLLAPSIBLE_LABEL = msg`Details`;
 
 export type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
 export type ActionCardBlockSize = "compact" | "default";
@@ -159,6 +161,7 @@ export function ActionCardBlock({
   cardVariant,
   size = "default",
 }: ActionCardBlockProps) {
+  const { t } = useLingui();
   const [isChecked, setIsChecked] = useState(false);
   const isCompact = size === "compact";
 
@@ -205,14 +208,14 @@ export function ActionCardBlock({
       <Button
         variant="outline"
         size={elementSize}
-        label={rejectLabel ?? DEFAULT_REJECT_LABEL}
+        label={rejectLabel ?? t(DEFAULT_REJECT_LABEL)}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
         size={elementSize}
-        label={applyLabel ?? DEFAULT_APPLY_LABEL}
+        label={applyLabel ?? t(DEFAULT_APPLY_LABEL)}
         disabled={isDisabled}
         onClick={handleAcceptClick}
       />
@@ -274,7 +277,7 @@ export function ActionCardBlock({
         <Collapsible>
           <CollapsibleTrigger
             className="mb-1"
-            label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
+            label={collapsibleLabel ?? t(DEFAULT_COLLAPSIBLE_LABEL)}
             variant="secondary"
           />
           <CollapsibleContent
@@ -294,7 +297,7 @@ export function ActionCardBlock({
         >
           {hasCheck && (
             <CheckboxWithText
-              text={checkLabel ?? DEFAULT_CHECK_LABEL}
+              text={checkLabel ?? t(DEFAULT_CHECK_LABEL)}
               checked={isChecked}
               disabled={isDisabled}
               onCheckedChange={(value) => setIsChecked(value === true)}

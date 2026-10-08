@@ -13,18 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Cost management"
-msgstr "Gestion des coûts"
-
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Credit spend checkpoint"
-msgstr "Point de contrôle des dépenses de crédits"
-
-#: front/components/workspace/usage/CreditSpendCheckpointSettingsCard.tsx
-msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
-msgstr "Mettre l’agent en pause et demander à l’utilisateur de confirmer la poursuite lorsque les dépenses en tokens LLM d’un seul message atteignent {thresholdCredits} crédits."
-
 #: front/components/workspace/usage/LockedSection.tsx
 msgid "Top up your credit pool to enable these settings"
 msgstr "Rechargez votre réserve de crédits pour activer ces paramètres"
@@ -76,11 +64,35 @@ msgstr "crédits"
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Upgrade request emails"
-msgstr "E-mails de demande de mise à niveau"
+msgstr "E-mails de demande d’augmentation"
 
 #: front/components/workspace/usage/UsageNotificationsCard.tsx
 msgid "Email all workspace admins and managers when a member requests a spend-limit upgrade."
-msgstr "Envoyer un e-mail à tous les administrateurs et responsables du workspace lorsqu’un membre demande une augmentation de sa limite de dépenses."
+msgstr "Envoyer un e-mail à tous les administrateurs et managers du workspace lorsqu’un membre demande une augmentation de sa limite de dépenses."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Default cost cap per skill"
+msgstr "Plafond de coût par défaut par compétence"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en crédits). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en USD). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Global spending cap"
+msgstr "Plafond de dépenses global"
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en crédits) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
+
+#: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en USD) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
 
 #: front/components/workspace/usage/UsageProgrammaticLimitCard.tsx
 msgid "Programmatic usage"
@@ -120,23 +132,23 @@ msgstr "crédits/mois"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Upgrade request"
-msgstr "Demande de mise à niveau"
+msgstr "Demande d’augmentation"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Allow members who reach their limit to request an upgrade. Workspace admins and managers review requests on this page."
-msgstr "Autoriser les membres qui atteignent leur limite à demander une mise à niveau. Les administrateurs et responsables du workspace examinent les demandes sur cette page."
+msgstr "Autoriser les membres qui atteignent leur limite à demander une augmentation. Les administrateurs et managers du workspace examinent les demandes sur cette page."
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Enable upgrade requests to enable this setting"
-msgstr "Activez les demandes de mise à niveau pour activer ce paramètre"
+msgstr "Activez les demandes d’augmentation pour activer ce paramètre"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Require a reason for upgrade requests"
-msgstr "Exiger un motif pour les demandes de mise à niveau"
+msgstr "Exiger un motif pour les demandes d’augmentation"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Members must explain why they need an upgrade before their request can be submitted."
-msgstr "Les membres doivent expliquer pourquoi ils ont besoin d’une mise à niveau avant de pouvoir envoyer leur demande."
+msgstr "Les membres doivent expliquer pourquoi ils ont besoin d’une augmentation avant de pouvoir envoyer leur demande."
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Auto-upgrade seats"
@@ -149,3 +161,11 @@ msgstr "Lorsqu’un membre atteint sa limite de crédits, le faire passer automa
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "When a member reaches their credit limit, automatically move them to the next seat tier available in your plan (free → pro, pro → max) instead of blocking them. <0>Auto-upgrade isn't available on your current plan. Upgrade to a paid plan to enable it.</0>"
 msgstr "Lorsqu’un membre atteint sa limite de crédits, le faire passer automatiquement au niveau de siège suivant disponible dans votre forfait (free → pro, pro → max) au lieu de le bloquer. <0>La mise à niveau automatique n’est pas disponible avec votre forfait actuel. Passez à un forfait payant pour l’activer.</0>"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Credit spend checkpoint"
+msgstr "Point de contrôle des dépenses de crédits"
+
+#: front/components/workspace/usage/UsageSettingsCard.tsx
+msgid "Pause the agent and ask the user to confirm continuing once a single message's LLM token spend reaches {thresholdCredits} credits."
+msgstr "Mettre l’agent en pause et demander à l’utilisateur de confirmer la poursuite lorsque les dépenses en tokens LLM d’un seul message atteignent {thresholdCredits} crédits."

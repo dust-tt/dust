@@ -43,7 +43,7 @@ msgstr "3. Créer un rôle personnalisé"
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 msgid "Go to <0>Setup → Users/Roles → Manage Roles → New</0>. The <1>Administrator</1> role cannot be used. Your custom role must include the following permissions: <2>MCP Server Connection</2>, <3>OAuth 2.0 Access Tokens</3>, and <4>Login using OAuth 2.0 Access Tokens</4>. Assign this role to the user who will authenticate with Dust."
-msgstr "Accédez à <0>Setup → Users/Roles → Manage Roles → New</0>. Le rôle <1>Administrator</1> ne peut pas être utilisé. Votre rôle personnalisé doit inclure les permissions suivantes : <2>MCP Server Connection</2>, <3>OAuth 2.0 Access Tokens</3> et <4>Login using OAuth 2.0 Access Tokens</4>. Attribuez ce rôle à l’utilisateur qui s’authentifiera auprès de Dust."
+msgstr "Accédez à <0>Setup → Users/Roles → Manage Roles → New</0>. Le rôle <1>Administrator</1> ne peut pas être utilisé. Votre rôle personnalisé doit inclure les autorisations suivantes : <2>MCP Server Connection</2>, <3>OAuth 2.0 Access Tokens</3> et <4>Login using OAuth 2.0 Access Tokens</4>. Attribuez ce rôle à l’utilisateur qui s’authentifiera auprès de Dust."
 
 #: front/components/actions/mcp/provider_setup_instructions/NetSuiteSetupInstructions.tsx
 msgid "4. Create an integration record"
@@ -152,11 +152,11 @@ msgstr "Dans <0>Certificates & secrets → New client secret</0>, générez un s
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "4. Add API permissions"
-msgstr "4. Ajouter les permissions d’API"
+msgstr "4. Ajouter les autorisations d’API"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Under <0>API permissions</0>, search for <1>Power BI Service</1> and add these delegated permissions, then grant admin consent:"
-msgstr "Dans <0>API permissions</0>, recherchez <1>Power BI Service</1> et ajoutez ces permissions déléguées, puis accordez le consentement administrateur :"
+msgstr "Dans <0>API permissions</0>, recherchez <1>Power BI Service</1> et ajoutez ces autorisations déléguées, puis accordez le consentement administrateur :"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "5. Enable MCP in Power BI admin portal"

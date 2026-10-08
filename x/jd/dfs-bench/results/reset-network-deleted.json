@@ -1,0 +1,146 @@
+[
+  {
+    "kind": "forwarding-rules",
+    "name": "dfs-rawkv-jd-20261005-rpc",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/dfs-rawkv-jd-20261005-rpc].\n"
+  },
+  {
+    "kind": "forwarding-rules",
+    "name": "dfs-rawkv-jd-20261005-search",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/forwardingRules/dfs-rawkv-jd-20261005-search].\n"
+  },
+  {
+    "kind": "backend-services",
+    "name": "dfs-rawkv-jd-20261005-routers",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-routers].\n"
+  },
+  {
+    "kind": "backend-services",
+    "name": "dfs-rawkv-jd-20261005-search",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/backendServices/dfs-rawkv-jd-20261005-search].\n"
+  },
+  {
+    "kind": "health-checks",
+    "name": "dfs-rawkv-jd-20261005-router",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/healthChecks/dfs-rawkv-jd-20261005-router].\n"
+  },
+  {
+    "kind": "health-checks",
+    "name": "dfs-rawkv-jd-20261005-search",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/healthChecks/dfs-rawkv-jd-20261005-search].\n"
+  },
+  {
+    "kind": "instance-groups",
+    "name": "dfs-rawkv-jd-20261005-routers-a",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instanceGroups/dfs-rawkv-jd-20261005-routers-a].\n"
+  },
+  {
+    "kind": "instance-groups",
+    "name": "dfs-rawkv-jd-20261005-routers-b",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/instanceGroups/dfs-rawkv-jd-20261005-routers-b].\n"
+  },
+  {
+    "kind": "instance-groups",
+    "name": "dfs-rawkv-jd-20261005-routers-f",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/instanceGroups/dfs-rawkv-jd-20261005-routers-f].\n"
+  },
+  {
+    "kind": "addresses",
+    "name": "dfs-rawkv-jd-20261005-search-vip",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/addresses/dfs-rawkv-jd-20261005-search-vip].\n"
+  },
+  {
+    "kind": "addresses",
+    "name": "dfs-rawkv-jd-20261005-vip",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/addresses/dfs-rawkv-jd-20261005-vip].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-cluster",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-cluster].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-deny",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-deny].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-rpc-deny",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-rpc-deny].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-rpc-health",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-rpc-health].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-rpc-private",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-rpc-private].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-search-deny",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-search-deny].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-search-health",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-search-health].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-rawkv-jd-20261005-search-private",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-rawkv-jd-20261005-search-private].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-search-jd-20261002-allow-client",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-search-jd-20261002-allow-client].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-search-jd-20261002-deny-other",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-search-jd-20261002-deny-other].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-showdown-jd-20261002-private",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-showdown-jd-20261002-private].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-tantivy-jd-allow-client",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-tantivy-jd-allow-client].\n"
+  },
+  {
+    "kind": "firewall-rules",
+    "name": "dfs-tantivy-jd-deny-other",
+    "exit_code": 0,
+    "stderr": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/global/firewalls/dfs-tantivy-jd-deny-other].\n"
+  }
+]

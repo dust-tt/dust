@@ -99,6 +99,14 @@ export const formatDurationString = (durationMs: number): string => {
 };
 
 /**
+ * @cc [owner:avervaet,label:coding] precise-unlocalized-duration
+ * Renders `340ms` under one second, `1.2s` otherwise. MUST NOT be localized or rounded into
+ * larger units.
+ */
+export const formatDurationMs = (durationMs: number): string =>
+  durationMs >= 1000 ? `${(durationMs / 1000).toFixed(1)}s` : `${durationMs}ms`;
+
+/**
  * Formats a timestamp to a short date string (e.g., "Jan 15").
  * @param timestamp - The timestamp to format (number or string in milliseconds)
  * @returns A formatted string like "Jan 15"

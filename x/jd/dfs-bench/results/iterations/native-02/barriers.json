@@ -1,0 +1,20 @@
+[
+  {
+    "phase": "untar",
+    "start_time": 1791303048.1256971,
+    "states": {
+      "rocks": {
+        "ready": true,
+        "finished": null
+      },
+      "fdb": {
+        "ready": true,
+        "finished": null
+      },
+      "tikv": {
+        "ready": true,
+        "finished": null
+      }
+    }
+  }
+]

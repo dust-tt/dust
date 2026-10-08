@@ -33,7 +33,7 @@ msgstr "Enregistrer"
 
 #: front/components/assistant/details/tabs/AgentInsightsTab.tsx
 msgid "Insights"
-msgstr "Statistiques"
+msgstr "Analyses"
 
 #: front/components/assistant/details/tabs/AgentInsightsTab.tsx
 msgid "Restricted access"
@@ -41,7 +41,7 @@ msgstr "Accès restreint"
 
 #: front/components/assistant/details/tabs/AgentInsightsTab.tsx
 msgid "You need access to all spaces used by this agent to view its insights."
-msgstr "Vous devez avoir accès à tous les espaces utilisés par cet agent pour voir ses statistiques."
+msgstr "Vous devez avoir accès à tous les espaces utilisés par cet agent pour voir ses analyses."
 
 #: front/components/assistant/details/tabs/AgentInsightsTab.tsx
 msgid "Open the Info tab to review the access requirements."

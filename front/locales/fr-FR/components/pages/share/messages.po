@@ -71,7 +71,7 @@ msgstr "Vérifier"
 
 #: front/components/pages/share/SharedFramePage.tsx
 msgid "{humanFriendlyTitle} - Powered by Dust"
-msgstr "{humanFriendlyTitle} - Propulsé par Dust"
+msgstr "{humanFriendlyTitle} - Créé avec Dust"
 
 #: front/components/pages/share/SharedFramePage.tsx
 msgid "Discover what {workspaceName} built with AI. Explore now."

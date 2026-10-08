@@ -165,7 +165,11 @@ function PercentageChangeCell({ percentage }: { percentage: number | null }) {
         visual={percentage >= 0 ? ArrowNarrowUpRight : ArrowNarrowDownRight}
         size="xs"
       />
-      <span>{Math.round(Math.abs(percentage))}%</span>
+      <span>
+        {formatNumber(Math.round(Math.abs(percentage)) / 100, {
+          style: "percent",
+        })}
+      </span>
     </div>
   );
 }
@@ -199,7 +203,6 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
   }
 
   const roundedPercentage = Math.round(percentage);
-  const sign = roundedPercentage > 0 ? "+" : "";
 
   return (
     <div
@@ -209,8 +212,10 @@ function UsageVsAverageCell({ percentage }: { percentage: number | null }) {
       )}
     >
       <span>
-        {sign}
-        {roundedPercentage}%
+        {formatNumber(roundedPercentage / 100, {
+          style: "percent",
+          signDisplay: "exceptZero",
+        })}
       </span>
     </div>
   );
@@ -448,7 +453,7 @@ function buildColumns({
             meta: {
               className: cn(
                 COLLAPSED_COLUMN_CLASSES,
-                "@xs:w-36 @xs:max-w-none @xs:px-2"
+                "@xs:w-52 @xs:max-w-none @xs:px-2"
               ),
               headerAlign: "left",
             },
@@ -724,7 +729,7 @@ export function ConsumptionAttributionRowsView({
       usageVsAverage: t`Vs workspace avg`,
       costShare: t`Consumption share`,
       totalCredits: t`Total credits`,
-      vsPrev: t`vs prev`,
+      vsPrev: t`Vs prev`,
       addToFilters: t`Add to filters`,
       removeFromFilters: t`Remove from filters`,
       expandBreakdown: (name) => t`Expand breakdown for ${name}`,
@@ -1020,7 +1025,7 @@ export function ConsumptionAttributionTableView({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <h3 className="text-base font-semibold text-foreground">
           <Trans>Attribution</Trans>
         </h3>

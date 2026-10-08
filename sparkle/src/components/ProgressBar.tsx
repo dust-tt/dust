@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -70,7 +71,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
     {
       percentage,
       values,
-      label = "Progress",
+      label,
       radius = "full",
       variant = "default",
       className,
@@ -78,6 +79,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const isSegmented = values !== undefined;
     const nonNegativeValues =
       values?.map((item) => ({
@@ -103,7 +105,7 @@ export const ProgressBar = React.forwardRef<HTMLDivElement, ProgressBarProps>(
       <div
         ref={ref}
         role="progressbar"
-        aria-label={label}
+        aria-label={label ?? t`Progress`}
         aria-valuenow={normalizedValues[0]?.percentage}
         aria-valuemin={0}
         aria-valuemax={100}

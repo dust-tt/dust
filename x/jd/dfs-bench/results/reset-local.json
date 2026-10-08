@@ -1,0 +1,12 @@
+{
+  "deleted": [
+    "dfs/results",
+    "dfs-tikv/results",
+    "dfs-fdb/results",
+    "dfs-tikv/archive",
+    "dfs-tikv/benchmarks/blocks.py",
+    "dfs-tikv/benchmarks/blocks-report.py",
+    "dfs-tikv/scripts/blocks-storage.sh"
+  ],
+  "scope": "Prior benchmark evidence removed at user request; implementation source preserved."
+}
