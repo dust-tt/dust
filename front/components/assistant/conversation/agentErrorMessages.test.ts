@@ -133,6 +133,36 @@ describe("formatAgentError", () => {
     });
   });
 
+  it("has no details for the errors built on the client", () => {
+    expect(
+      formatAgentError(
+        {
+          code: "stream_error",
+          message: "Connexion perdue.",
+          metadata: { errorTitle: "Connexion perdue" },
+        },
+        WITH_LOCALISATION
+      )
+    ).toEqual({
+      title: "Connection lost",
+      description:
+        "Connection lost while generating message. Reconnect to check its progress.",
+    });
+    expect(
+      formatAgentError(
+        {
+          code: "unexpected_error",
+          message: "Erreur inattendue",
+          metadata: {},
+        },
+        WITH_LOCALISATION
+      )
+    ).toEqual({
+      title: "Something went wrong",
+      description: "An unexpected error occurred.",
+    });
+  });
+
   it("translates the title, description and details labels", async () => {
     const messages = await loadCatalog("fr-FR");
     i18n.loadAndActivate({ locale: "fr-FR", messages });

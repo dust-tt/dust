@@ -304,9 +304,16 @@ export type FormattedAgentError = {
  * `code`, `metadata.category` and the codes and brand names carried in `metadata` (`llmErrorType`,
  * `provider`, `isByok`, `blockedReason`), falling back to a translated generic message for an
  * unknown code. Wording that depends on a role follows `viewerIsAdmin`, the role of the current
- * user in the current workspace, not the role of the user who triggered the error. The server `message` and `metadata.errorTitle` MUST NOT appear in `title` or
- * `description`: the raw `code` and `message` go to `details`.
+ * user in the current workspace, not the role of the user who triggered the error. The server
+ * `message` and `metadata.errorTitle` MUST NOT appear in `title` or `description`: the raw `code`
+ * and `message` go to `details`, except for the errors built on the client
+ * (`CLIENT_BUILT_ERROR_CODES`), which have no `details`.
  */
+const CLIENT_BUILT_ERROR_CODES: ReadonlySet<string> = new Set([
+  "stream_error",
+  "unexpected_error",
+]);
+
 export function formatAgentError(
   error: GenericErrorContent,
   { hasLocalisation, viewerIsAdmin }: FormatAgentErrorOptions
@@ -321,6 +328,10 @@ export function formatAgentError(
 
   const { title, description } = getAgentErrorMessages(error, viewerIsAdmin);
   const { code, message: rawMessage } = error;
+  if (CLIENT_BUILT_ERROR_CODES.has(code)) {
+    return { title: t(title), description: t(description) };
+  }
+
   return {
     title: t(title),
     description: t(description),
