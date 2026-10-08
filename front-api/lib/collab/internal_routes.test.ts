@@ -164,6 +164,35 @@ describe("createInternalDocumentsApp", () => {
     expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
   });
 
+  it("shows an agent reading only once its user may open the document", async () => {
+    const { hocuspocus, name, request } = await openNotes();
+    const { authenticator: outsider } = await createResourceTest({});
+    const document = hocuspocus.documents.get(name);
+    if (!document) {
+      throw new Error("The document is not open.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    const agent = { agentId: "agt_1", name: "Writer" };
+    const readAs = (userId: string) =>
+      post(
+        LIVE_SOURCE_READ_PATH,
+        { ...request, userId, agent },
+        `Bearer ${SECRET}`,
+        hocuspocus
+      );
+
+    expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
+    expect(broadcast).not.toHaveBeenCalled();
+
+    expect((await readAs(request.userId)).status).toBe(200);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(broadcast.mock.calls[0][0]))).toEqual({
+      type: "agent_activity",
+      agent,
+      activity: "reading",
+    });
+  });
+
   it("serves an open document's source to a user who can only read it, never their write", async () => {
     const { hocuspocus, request } = await openNotes();
     vi.spyOn(DustFileSystem.prototype, "checkWriteAccess").mockReturnValue(

@@ -10,6 +10,7 @@ import {
 } from "@app/components/editor/document/DocumentCommentsList";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
+  DocumentLiveAgent,
   DocumentLiveStatus,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
@@ -22,6 +23,7 @@ import type { DocumentCommentsController } from "@app/components/editor/document
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { EditorContent } from "@app/components/editor/EditorContent";
+import type { LiveAgentEvent } from "@app/lib/client/live_agents";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
@@ -87,6 +89,8 @@ export const Document = (props: DocumentProps) =>
 interface DocumentViewProps extends DocumentProps {
   liveView?: {
     status: LiveStatus;
+    /** What an agent is doing in the document, as the session last announced. */
+    agent?: LiveAgentEvent | null;
     /** Bound to the shared document once synced; until then the file shows read-only. */
     binding: {
       extensions: AnyExtension[];
@@ -276,6 +280,7 @@ export const DocumentView = ({
             showCommentsToggle && !headerControlsContainer && commentsToggle
           }
         >
+          {liveView?.agent && <DocumentLiveAgent activity={liveView.agent} />}
           {liveView && <DocumentLiveStatus status={liveView.status} />}
         </DocumentStatus>
         {editor && showCommentsToggle && (

@@ -1,4 +1,6 @@
 import type { LiveStatus } from "@app/components/editor/document/types";
+import type { LiveAgentEvent } from "@app/lib/client/live_agents";
+import { liveCaretColor } from "@app/lib/client/live_session";
 import { AlertCircle, Check, Chip, cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -140,6 +142,33 @@ export const DocumentLiveStatus = ({ status }: DocumentLiveStatusProps) => {
         {icon}
       </span>
       {t(label)}
+    </span>
+  );
+};
+
+interface DocumentLiveAgentProps {
+  activity: LiveAgentEvent;
+}
+
+/** The agent at work in a live document, in its caret color, beside the session status. */
+export const DocumentLiveAgent = ({ activity }: DocumentLiveAgentProps) => {
+  const { t } = useLingui();
+  const { name } = activity.agent;
+  return (
+    <span
+      role="status"
+      className="inline-flex items-center gap-1.5 text-foreground"
+    >
+      <span
+        aria-hidden="true"
+        className="mx-1 size-1.5 shrink-0 animate-pulse rounded-full motion-reduce:animate-none"
+        style={{ backgroundColor: liveCaretColor(activity.agent.agentId) }}
+      />
+      <span className="max-w-48 truncate whitespace-nowrap">
+        {activity.activity === "editing"
+          ? t`${name} is editing`
+          : t`${name} is working…`}
+      </span>
     </span>
   );
 };

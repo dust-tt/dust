@@ -1,6 +1,7 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   DOCUMENTS_TOOLS_METADATA,
@@ -15,8 +16,17 @@ import {
   editAgentDocument,
   readAgentDocument,
 } from "@app/lib/api/files/dfm_agent_documents";
+import type { LiveAgent } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+
+/** The agent as the editors of a live document show it reading or editing. */
+const liveAgentOf = ({
+  agentConfiguration,
+}: AgentLoopRunContext): LiveAgent => ({
+  agentId: agentConfiguration.sId,
+  name: agentConfiguration.name,
+});
 
 const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
   add_comment: async (
@@ -116,7 +126,12 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       return dustFs;
     }
 
-    const read = await readAgentDocument(auth, dustFs.value, path);
+    const read = await readAgentDocument(
+      auth,
+      dustFs.value,
+      path,
+      liveAgentOf(runContext)
+    );
     if (read.isErr()) {
       return new Err(
         new MCPError(read.error.message, {
@@ -161,6 +176,7 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       oldString: old_string,
       newString: new_string,
       expectedReplacements: expected_replacements ?? 1,
+      agent: liveAgentOf(runContext),
     });
     if (edited.isErr()) {
       return new Err(

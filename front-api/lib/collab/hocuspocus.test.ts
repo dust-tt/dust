@@ -14,6 +14,7 @@ import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystemError } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Authenticator } from "@app/lib/auth";
+import { onLiveAgentActivity } from "@app/lib/client/live_agents";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import { createLiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
@@ -35,6 +36,7 @@ import {
   createCollabHocuspocus,
   readLiveSource,
   recheckAllConnections,
+  showLiveAgentActivity,
   UNLOAD_GRACE_PERIOD_MS,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
@@ -1046,6 +1048,129 @@ describe("comment threads in a live session", () => {
         vi.mocked(checkpointLiveDocument).mock.calls.at(-1) ?? [];
       const checkpointed = live ? yDocToDfm(live) : null;
       expect(checkpointed?.isOk() && checkpointed.value).toContain("edited");
+    }, 15_000);
+  });
+
+  describe("an agent's activity", () => {
+    const AGENT = { agentId: "agt_1", name: "Writer" };
+
+    /** What reaches a browser, in order: agent messages and document updates. */
+    async function watch() {
+      const { writer, hocuspocus, url } = await start();
+      const { provider } = await join(url, writer);
+      const name = toLiveDocumentName(writer.workspaceId, writer.canonicalPath);
+      const seen: string[] = [];
+      onLiveAgentActivity(provider, ({ agent, activity }) =>
+        seen.push(`${agent.name} ${activity}`)
+      );
+      provider.document.on("update", () => seen.push("update"));
+      const read = await readLiveSource(hocuspocus, name);
+      if (read.isErr() || !read.value.open) {
+        throw new Error("The document is not open.");
+      }
+      return { writer, hocuspocus, name, seen, base: read.value.source };
+    }
+
+    // With Hocuspocus's batching, an announcement sent after the change would also arrive first; this
+    // checks what the browser receives, not the order in the code.
+    it("announces an agent's edit before the edit reaches the browser", async () => {
+      const { writer, hocuspocus, seen, base } = await watch();
+
+      const written = await writeLiveSource(hocuspocus, {
+        file: writer,
+        base,
+        source: base.replace("Hello.", "Hello, edited."),
+        agent: AGENT,
+      });
+
+      expect(written).toEqual(new Ok("written"));
+      await vi.waitFor(() => expect(seen).toContain("update"));
+      expect(seen[0]).toBe("Writer editing");
+    }, 15_000);
+
+    it("sends someone else's pending change before announcing the agent's", async () => {
+      const { writer, hocuspocus, name, seen, base } = await watch();
+      const document = hocuspocus.documents.get(name);
+      if (!document) {
+        throw new Error("The document is not open.");
+      }
+
+      // Still in Hocuspocus's flush window when the agent writes, and invisible in the source.
+      document.getMap("elsewhere").set("touched", true);
+      const written = await writeLiveSource(hocuspocus, {
+        file: writer,
+        base,
+        source: base.replace("Hello.", "Hello, edited."),
+        agent: AGENT,
+      });
+
+      expect(written).toEqual(new Ok("written"));
+      await vi.waitFor(() =>
+        expect(seen).toEqual(["update", "Writer editing", "update"])
+      );
+    }, 15_000);
+
+    it("takes the announcement back when the agent's source changes nothing in the document", async () => {
+      const { writer, hocuspocus, seen, base } = await watch();
+      const bold = base.replace("Hello.", "**Hello.**");
+      await writeLiveSource(hocuspocus, { file: writer, base, source: bold });
+      await vi.waitFor(() => expect(seen).toEqual(["update"]));
+
+      // Another spelling of the same document: the editor's model does not change.
+      const written = await writeLiveSource(hocuspocus, {
+        file: writer,
+        base: bold,
+        source: bold.replace("**Hello.**", "__Hello.__"),
+        agent: AGENT,
+      });
+
+      expect(written).toEqual(new Ok("written"));
+      await vi.waitFor(() =>
+        expect(seen).toEqual(["update", "Writer editing", "Writer reading"])
+      );
+    }, 15_000);
+
+    it("keeps announcing an edit that only deletes text", async () => {
+      const { writer, hocuspocus, seen, base } = await watch();
+
+      const written = await writeLiveSource(hocuspocus, {
+        file: writer,
+        base,
+        source: base.replace("Hello.", "Hello"),
+        agent: AGENT,
+      });
+
+      expect(written).toEqual(new Ok("written"));
+      await vi.waitFor(() => expect(seen).toContain("update"));
+      expect(seen.filter((event) => event !== "update")).toEqual([
+        "Writer editing",
+      ]);
+    }, 15_000);
+
+    it("announces nothing for a write without an agent, or one that changes nothing", async () => {
+      const { writer, hocuspocus, seen, base } = await watch();
+      const edited = base.replace("Hello.", "Hello, edited.");
+
+      await writeLiveSource(hocuspocus, { file: writer, base, source: edited });
+      expect(
+        await writeLiveSource(hocuspocus, {
+          file: writer,
+          base: edited,
+          source: edited,
+          agent: AGENT,
+        })
+      ).toEqual(new Ok("written"));
+
+      await vi.waitFor(() => expect(seen).toContain("update"));
+      expect(seen.filter((event) => event !== "update")).toEqual([]);
+    }, 15_000);
+
+    it("shows an agent reading the document", async () => {
+      const { hocuspocus, name, seen } = await watch();
+
+      showLiveAgentActivity(hocuspocus, name, AGENT, "reading");
+
+      await vi.waitFor(() => expect(seen).toEqual(["Writer reading"]));
     }, 15_000);
   });
 });
