@@ -29,6 +29,7 @@ export function SettingsList({ children, className }: SettingsListProps) {
 }
 
 interface SettingsListRowProps {
+  icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   /** Trailing control for the row, e.g. a `SliderToggle` or `Input`. */
@@ -37,6 +38,7 @@ interface SettingsListRowProps {
 }
 
 function SettingsListRow({
+  icon,
   title,
   description,
   action,
@@ -49,7 +51,8 @@ function SettingsListRow({
         className
       )}
     >
-      <div className="flex min-w-0 flex-col gap-0.5">
+      {icon && <div className="shrink-0">{icon}</div>}
+      <div className="flex min-w-0 flex-col gap-0.5 grow-1">
         <span className="heading-sm text-foreground">{title}</span>
         {description && (
           <span className="copy-sm text-muted-foreground">{description}</span>

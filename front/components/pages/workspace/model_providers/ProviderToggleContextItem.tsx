@@ -3,7 +3,7 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { getModelMakerDisplayName } from "@app/types/assistant/models/providers";
 import type { WhitelistableModelMakerIdType } from "@app/types/assistant/models/types";
 import type { ProvidersSelection } from "@app/types/provider_selection";
-import { ContextItem, Icon, SliderToggle } from "@dust-tt/sparkle";
+import { Icon, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 
 interface ProviderToggleContextItemProps {
   providerId: WhitelistableModelMakerIdType;
@@ -23,10 +23,10 @@ export function ProviderToggleContextItem({
   const LogoComponent = getModelMakerLogo(providerId, isDark);
 
   return (
-    <ContextItem
-      key={providerId}
+    <SettingsList.Row
+      icon={<Icon visual={LogoComponent} size="lg" />}
       title={getModelMakerDisplayName(providerId)}
-      visual={<Icon visual={LogoComponent} size="lg" />}
+      description={<div className="truncate text-xs">{description}</div>}
       action={
         <SliderToggle
           selected={providersSelection[providerId]}
@@ -34,10 +34,6 @@ export function ProviderToggleContextItem({
           disabled={disabled}
         />
       }
-    >
-      <ContextItem.Description>
-        <span className="text-sm text-muted-foreground">{description}</span>
-      </ContextItem.Description>
-    </ContextItem>
+    />
   );
 }

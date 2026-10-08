@@ -44,6 +44,8 @@ export const ADMIN_SECTION_IDS = {
   modelProviders: {
     providers: "model-providers",
     tiers: "model-tiers",
+    members: "model-members",
+    groups: "model-groups",
     apps: "model-apps",
   },
   integrations: {

@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/pages/workspace/model_providers/AllProvidersToggle.tsx
-msgid "Make all providers available"
-msgstr "Make all providers available"
-
 #: front/components/pages/workspace/model_providers/DisableProviderDialog.tsx
 msgid "Disable {providerName}?"
 msgstr "Disable {providerName}?"
@@ -36,16 +32,16 @@ msgid "Disable provider"
 msgstr "Disable provider"
 
 #: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
-msgid "Embedding provider:"
-msgstr "Embedding provider:"
-
-#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
-msgid "Please contact us if you want to change this setting."
-msgstr "Please contact us if you want to change this setting."
+msgid "Embedding provider"
+msgstr "Embedding provider"
 
 #: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
 msgid "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
 msgstr "Embedding models are used to create numerical representations of your data powering the semantic search capabilities of your agents."
+
+#: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
+msgid "Please contact us if you want to change this setting."
+msgstr "Please contact us if you want to change this setting."
 
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
 msgid "Provider"
@@ -71,18 +67,6 @@ msgstr "Type an API key"
 msgid "Save"
 msgstr "Save"
 
-#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
-msgid "Model access tiers"
-msgstr "Model access tiers"
-
-#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
-msgid "Model access tiers let members use models up to their highest allowed tier — set per workspace, group, or member."
-msgstr "Model access tiers let members use models up to their highest allowed tier — set per workspace, group, or member."
-
-#: front/components/pages/workspace/model_providers/ModelProvidersPageContent.tsx
-msgid "Manage in Credits"
-msgstr "Manage in Credits"
-
 #: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
 msgid "Edit"
 msgstr "Edit"
@@ -103,6 +87,10 @@ msgstr "Invalid API key"
 #: front/components/pages/workspace/model_providers/ProviderConfigurationContextItem.tsx
 msgid "This key is no longer valid. Update it to restore affected agents."
 msgstr "This key is no longer valid. Update it to restore affected agents."
+
+#: front/components/pages/workspace/model_providers/ProvidersToggleList.tsx
+msgid "Make all providers available"
+msgstr "Make all providers available"
 
 #: front/components/pages/workspace/model_providers/RegionalModelsOnlyToggle.tsx
 msgid "EU-hosted models only"
