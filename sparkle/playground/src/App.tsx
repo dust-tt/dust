@@ -87,7 +87,12 @@ function StoryList({
 }
 
 function App() {
-  const [currentStory, setCurrentStory] = useState<string | null>(null);
+  // Read from the URL on first render: reading it in an effect lost the race
+  // with the effect below, which blanked the hash and sent links to the list.
+  const [currentStory, setCurrentStory] = useState<string | null>(() => {
+    const hash = window.location.hash.slice(1);
+    return stories.some((s) => s.name === hash) ? hash : null;
+  });
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") {
       return "light";
@@ -103,14 +108,6 @@ function App() {
     document.documentElement.classList.toggle("dark", isDark);
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
-
-  // Read initial hash from URL
-  useEffect(() => {
-    const hash = window.location.hash.slice(1); // Remove the #
-    if (hash && stories.some((s) => s.name === hash)) {
-      setCurrentStory(hash);
-    }
-  }, []);
 
   // Update URL hash when story changes
   useEffect(() => {
