@@ -14,12 +14,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
-msgid "Unable to generate a schedule. Please try rephrasing."
-msgstr "Unable to generate a schedule. Please try rephrasing."
-
-#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
 msgid "Generating schedule..."
 msgstr "Generating schedule..."
+
+#: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
+msgid "Unable to generate a schedule. Please try rephrasing."
+msgstr "Unable to generate a schedule. Please try rephrasing."
 
 #: front/components/agent_builder/triggers/schedule/ScheduleEditionScheduler.tsx
 msgid "{description}, in {timezoneLabel} timezone."

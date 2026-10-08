@@ -36,7 +36,7 @@ export async function getNameSuggestions({
         return new Err(errorData.error);
       }
       return new Err({
-        type: "internal_server_error",
+        type: "unexpected_error_format",
         message: `HTTP ${res.status}: Failed to get name suggestions`,
       });
     }
@@ -45,7 +45,7 @@ export async function getNameSuggestions({
     return new Ok(data);
   } catch (error) {
     return new Err({
-      type: "internal_server_error",
+      type: "unexpected_network_error",
       message:
         error instanceof Error
           ? error.message
@@ -84,7 +84,7 @@ export async function getDescriptionSuggestion({
         return new Err(errorData.error);
       }
       return new Err({
-        type: "internal_server_error",
+        type: "unexpected_error_format",
         message: `HTTP ${res.status}: Failed to get description suggestion`,
       });
     }
@@ -93,7 +93,7 @@ export async function getDescriptionSuggestion({
     return new Ok(data);
   } catch (error) {
     return new Err({
-      type: "internal_server_error",
+      type: "unexpected_network_error",
       message:
         error instanceof Error
           ? error.message

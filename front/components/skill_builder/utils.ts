@@ -42,7 +42,7 @@ export async function getSkillDescriptionSuggestion({
         return new Err(errorData.error);
       }
       return new Err({
-        type: "internal_server_error",
+        type: "unexpected_error_format",
         message: `HTTP ${res.status}: Failed to get description suggestion`,
       });
     }
@@ -51,7 +51,7 @@ export async function getSkillDescriptionSuggestion({
     return new Ok(data);
   } catch (error) {
     return new Err({
-      type: "internal_server_error",
+      type: "unexpected_network_error",
       message: normalizeError(error).message,
     });
   }
