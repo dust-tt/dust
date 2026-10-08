@@ -234,7 +234,7 @@ describe("registry", () => {
     it("front-api binds IPv4 on its dedicated port, forbids next, and runs npm run dev", () => {
       const command = SERVICE_REGISTRY["front-api"].buildCommand(mockEnv);
       expect(command).toBe(
-        "HOSTNAME=127.0.0.1 PORT=10003 COLLAB_PUBLIC_URL=ws://localhost:10000/api/collab NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev"
+        "HOSTNAME=127.0.0.1 PORT=10003 NODE_ENV=development NODE_OPTIONS=--require=./forbid-next.cjs npm run dev"
       );
     });
 

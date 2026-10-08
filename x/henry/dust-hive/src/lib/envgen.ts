@@ -90,7 +90,10 @@ export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 export VIZ_PUBLIC_URL=http://localhost:${ports.viz}
 export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:${ports.front},http://localhost:${ports.frontSpaApp}
 
-# === Co-edition collab server (agents write to live documents through it) ===
+# === Co-edition collab server ===
+# The browser joins live sessions through the proxy's /api/collab route.
+export COLLAB_PUBLIC_URL=ws://localhost:${ports.front}/api/collab
+# Agents write to live documents through it.
 export COLLAB_INTERNAL_URL=http://localhost:${ports.collab}
 export COLLAB_INTERNAL_SECRET=${randomBytes(32).toString("hex")}
 
