@@ -36,18 +36,13 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
  */
 export function registerAllTools(
   server: McpServer,
-  captureService: CaptureService | null,
-  workspaceId: string
+  captureService: CaptureService | null
 ): void {
   const handlers: ClientToolHandlers<typeof CHROME_TOOLS_METADATA> = {
     [ATTACH_TABS_TEXT_TOOL_NAME]: (params) =>
       attachTabsTextTool({ ...params, captureService }),
     [TAKE_SCREENSHOT_OR_ATTACH_FILE_TOOL_NAME]: (params) =>
-      takeScreenshotOrAttachFileTool({
-        ...params,
-        captureService,
-        workspaceId,
-      }),
+      takeScreenshotOrAttachFileTool({ ...params, captureService }),
     [LIST_BROWSER_TABS_TOOL_NAME]: () => listBrowserTabsTool(),
     [SWITCH_TO_BROWSER_TAB_TOOL_NAME]: (params) => switchBrowserTabTool(params),
     [CLOSE_BROWSER_TAB_TOOL_NAME]: (params) => closeBrowserTabTool(params),
