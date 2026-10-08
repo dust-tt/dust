@@ -10,13 +10,14 @@ export class AnthropicClaudeSonnetFiveDotFiveEuropeAgentPlatformStream extends W
   AnthropicAgentPlatformStream
 ) {
   // Vertex regional/multi-region endpoints add a 10% premium over global.
-  // https://platform.claude.com/docs/en/about-claude/pricing (2026-09-28).
+  // https://platform.claude.com/docs/en/about-claude/pricing (2026-10-08).
   static readonly tokenPricing = {
     cacheCreated: 2.75,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
     shortCacheCreated: 2.75,
     longCacheCreated: 4.4,
-    cacheHit: 0.22,
+    // Cache reads are 0.05x base input on Sonnet 5.5, not the usual 0.1x.
+    cacheHit: 0.11,
     standardInput: 2.2,
     standardOutput: 11.0,
   };
