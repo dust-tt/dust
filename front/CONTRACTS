@@ -735,14 +735,9 @@ exempt. In every `.tsx` file, a `+` with a string or template literal operand in
 children is rejected by the `noStringConcatInJsx` lint rule.
 
 @cc [owner:sfriquet,label:react;product] user-voice-text-in-ui-locale
-Text that UI code (`components/`, `hooks/`, `lib/`) composes on the user's behalf and that is shown
-as the user's own words — prefilled in the composer (`setPendingInputText`, search-param prefills)
-or posted as a visible user message (`useCreateConversationWithMessage`, `submitMessage`) — MUST be
-translated to the user's UI locale through the Lingui macros, one message per sentence: never
-hardcoded English, never English fragments or raw identifiers (`"agent"`, `"skill"`) inserted into
-a translated sentence. Serialized mentions, skill tags and names stay as is, interpolated as
-placeholders. Model-facing text the user does not see as their message (`<dust_system>` blocks,
-hidden opening messages, content fragments, agent instructions) MUST stay in English.
+Text the UI writes on the user's behalf and shows as their own words, whether posted to an agent as
+the user's message or prefilled in the composer, MUST be in the user's UI locale. Text meant only for
+the model and not shown as the user's message MUST stay in English.
 
 @cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
 Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
