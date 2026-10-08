@@ -102,6 +102,7 @@ import {
   SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { FramePublicationModel } from "@app/lib/resources/storage/models/frame_publication";
+import { FrameTrustModel } from "@app/lib/resources/storage/models/frame_trust";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupPinnedItemModel } from "@app/lib/resources/storage/models/group_pinned_items";
@@ -188,6 +189,7 @@ export function loadAllModels() {
     FileSystemMutationModel,
     FileSystemBlobCleanupModel,
     FramePublicationModel,
+    FrameTrustModel,
     SandboxFunctionModel,
     SandboxFunctionInvocationModel,
     ShareableFileModel,
