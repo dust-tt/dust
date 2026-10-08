@@ -11,6 +11,7 @@ import {
   PROVIDER_CREDENTIALS_HEALTH_UPDATED_TAG,
 } from "@app/types/notification_preferences";
 import { isString } from "@app/types/shared/utils/general";
+import { useLingui } from "@lingui/react/macro";
 import type { Novu } from "@novu/js";
 import { useEffect } from "react";
 import { mutate } from "swr";
@@ -19,6 +20,7 @@ const isActivelyViewing = (isOnConversationPage: boolean): boolean =>
   isOnConversationPage && window.document.hasFocus();
 
 export const useSetupNotifications = () => {
+  const { t } = useLingui();
   const { push } = useAppRouter();
   const { novuClient } = useNovuClient();
   const sendNotification = useSendNotification();
@@ -86,7 +88,7 @@ export const useSetupNotifications = () => {
 
           if (!allowBrowserNotification) {
             sendNotification({
-              title: notification.result.subject ?? "New notification",
+              title: notification.result.subject ?? t`New notification`,
               description: notification.result.body
                 .replaceAll("\n", " ")
                 .trim(),
@@ -98,7 +100,7 @@ export const useSetupNotifications = () => {
             !notification.result.data?.skipPushNotification &&
             allowBrowserNotification
           ) {
-            notify(notification.result.subject ?? "New notification", {
+            notify(notification.result.subject ?? t`New notification`, {
               body: notification.result.body.replaceAll("\n", " ").trim(),
               tag: notification.result.id,
               icon:
@@ -149,5 +151,6 @@ export const useSetupNotifications = () => {
     push,
     requestManualActionSound,
     sendNotification,
+    t,
   ]);
 };

@@ -1,6 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext } from "react";
 
 type PinPodBannerOptions = {
@@ -18,6 +19,7 @@ export function usePinPodBanner({
   pinnedFramePath: string | null;
   isEditor: boolean;
 }) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const updatePodMetadata = useUpdatePodMetadata({
     owner,
@@ -33,9 +35,9 @@ export function usePinPodBanner({
       const label = options?.fileName ?? path.split("/").pop() ?? path;
 
       const confirmed = await confirm({
-        title: "Pin as Pod banner?",
-        message: `"${label}" will appear at the top of this Pod for all members.`,
-        validateLabel: "Pin",
+        title: t`Pin as Pod banner?`,
+        message: t`"${label}" will appear at the top of this Pod for all members.`,
+        validateLabel: t`Pin`,
         validateVariant: "primary",
       });
       if (!confirmed) {
@@ -44,7 +46,7 @@ export function usePinPodBanner({
 
       await updatePodMetadata({ pinnedFramePath: path });
     },
-    [confirm, isEditor, updatePodMetadata]
+    [confirm, isEditor, t, updatePodMetadata]
   );
 
   const unpinFrame = useCallback(
@@ -53,14 +55,14 @@ export function usePinPodBanner({
         return;
       }
 
-      const label = options?.fileName
-        ? `"${options.fileName}"`
-        : "The pinned banner";
+      const fileName = options?.fileName;
 
       const confirmed = await confirm({
-        title: "Unpin Pod banner?",
-        message: `${label} will no longer appear at the top of this Pod.`,
-        validateLabel: "Unpin",
+        title: t`Unpin Pod banner?`,
+        message: fileName
+          ? t`"${fileName}" will no longer appear at the top of this Pod.`
+          : t`The pinned banner will no longer appear at the top of this Pod.`,
+        validateLabel: t`Unpin`,
         validateVariant: "warning",
       });
       if (!confirmed) {
@@ -69,7 +71,7 @@ export function usePinPodBanner({
 
       await updatePodMetadata({ pinnedFramePath: null });
     },
-    [confirm, isEditor, updatePodMetadata]
+    [confirm, isEditor, t, updatePodMetadata]
   );
 
   const togglePin = useCallback(

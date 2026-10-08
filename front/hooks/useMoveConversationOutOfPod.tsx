@@ -13,12 +13,14 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext } from "react";
 
 export function useMoveConversationOutOfPod(
   owner: LightWorkspaceType,
   conversationId: string | null
 ) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -41,16 +43,19 @@ export function useMoveConversationOutOfPod(
 
   return useCallback(
     async (conversation: ConversationListItemType): Promise<boolean> => {
+      const conversationTitle = getConversationDisplayTitle(conversation);
       const confirmed = await confirm({
-        title: "Remove from Pod?",
+        title: t`Remove from Pod?`,
         message: (
           <div>
-            <strong>{getConversationDisplayTitle(conversation)}</strong> will be
-            removed from the Pod. Participants who no longer have access to the
-            required spaces will be removed from the conversation.
+            <Trans>
+              <strong>{conversationTitle}</strong> will be removed from the Pod.
+              Participants who no longer have access to the required spaces will
+              be removed from the conversation.
+            </Trans>
           </div>
         ),
-        validateLabel: "Remove",
+        validateLabel: t`Remove`,
         validateVariant: "primary",
       });
 
@@ -72,7 +77,7 @@ export function useMoveConversationOutOfPod(
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error removing conversation from Pod.",
+          title: t`Error removing conversation from Pod.`,
           error: errorData,
         });
         return false;
@@ -94,8 +99,8 @@ export function useMoveConversationOutOfPod(
       void mutatePodConversationsSummary();
       void mutateConversation();
       void sendNotification({
-        title: "Conversation removed.",
-        description: "The conversation has been removed from the Pod.",
+        title: t`Conversation removed.`,
+        description: t`The conversation has been removed from the Pod.`,
         type: "success",
       });
 
@@ -109,6 +114,7 @@ export function useMoveConversationOutOfPod(
       sendApiErrorNotification,
       sendNotification,
       confirm,
+      t,
     ]
   );
 }

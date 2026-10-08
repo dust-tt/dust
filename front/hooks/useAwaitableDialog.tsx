@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useState } from "react";
 
@@ -26,6 +27,7 @@ interface DialogState {
 }
 
 export function useAwaitableDialog() {
+  const { t } = useLingui();
   const [dialogState, setDialogState] = useState<DialogState>({
     isOpen: false,
     props: null,
@@ -95,7 +97,7 @@ export function useAwaitableDialog() {
                 : undefined
             }
             rightButtonProps={{
-              label: validateLabel ?? "Ok",
+              label: validateLabel ?? t`OK`,
               variant: validateVariant ?? "primary",
               onClick: handleConfirm,
             }}

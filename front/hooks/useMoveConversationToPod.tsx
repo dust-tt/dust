@@ -13,9 +13,12 @@ import type { ConversationListItemType } from "@app/types/assistant/conversation
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext } from "react";
 
 export function useMoveConversationToPod(owner: LightWorkspaceType) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
@@ -35,16 +38,20 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
       conversation: ConversationListItemType,
       space: SpaceType
     ): Promise<boolean> => {
+      const conversationTitle = getConversationDisplayTitle(conversation);
+      const podName = space.name;
       const confirmed = await confirm({
-        title: "Move conversation to Pod",
+        title: t`Move conversation to Pod`,
         message: (
           <div>
-            The content of the conversation{" "}
-            <strong>{getConversationDisplayTitle(conversation)}</strong> will be
-            available to all members of the Pod <strong>{space.name}</strong>.
+            <Trans>
+              The content of the conversation{" "}
+              <strong>{conversationTitle}</strong> will be available to all
+              members of the Pod <strong>{podName}</strong>.
+            </Trans>
           </div>
         ),
-        validateLabel: "Move",
+        validateLabel: t`Move`,
         validateVariant: "primary",
       });
 
@@ -66,7 +73,7 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error moving conversation.",
+          title: t`Error moving conversation.`,
           error: errorData,
         });
         return false;
@@ -78,8 +85,8 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
       );
       void mutatePodConversationsSummary();
       void sendNotification({
-        title: "Conversation moved.",
-        description: "The conversation has been moved to the Pod.",
+        title: t`Conversation moved.`,
+        description: t`The conversation has been moved to the Pod.`,
         type: "success",
       });
 
@@ -92,11 +99,13 @@ export function useMoveConversationToPod(owner: LightWorkspaceType) {
       sendApiErrorNotification,
       sendNotification,
       confirm,
+      t,
     ]
   );
 }
 
 export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
 
@@ -124,15 +133,24 @@ export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
         return 0;
       }
 
+      const podName = space.name;
       const confirmed = await confirm({
-        title: "Move conversations to Pod",
+        title: t`Move conversations to Pod`,
         message: (
           <div>
-            The content of {total} conversation{total > 1 ? "s" : ""} will be
-            available to all members of the Pod <strong>{space.name}</strong>.
+            <Trans>
+              The content of{" "}
+              <Plural
+                value={total}
+                one="# conversation"
+                other="# conversations"
+              />{" "}
+              will be available to all members of the Pod{" "}
+              <strong>{podName}</strong>.
+            </Trans>
           </div>
         ),
-        validateLabel: "Move",
+        validateLabel: t`Move`,
         validateVariant: "primary",
       });
 
@@ -170,20 +188,26 @@ export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
       if (successCount === total) {
         sendNotification({
           type: "success",
-          title: "Conversations successfully moved",
-          description: `${total} conversation${total > 1 ? "s" : ""} have been moved to the Pod.`,
+          title: t`Conversations successfully moved`,
+          description: t`${plural(total, {
+            one: "# conversation has been moved to the Pod.",
+            other: "# conversations have been moved to the Pod.",
+          })}`,
         });
       } else if (successCount === 0) {
         sendNotification({
           type: "error",
-          title: "Failed to move conversations",
-          description: `Could not move the selected ${total > 1 ? "conversations" : "conversation"}.`,
+          title: t`Failed to move conversations`,
+          description: t`${plural(total, {
+            one: "Could not move the selected conversation.",
+            other: "Could not move the selected conversations.",
+          })}`,
         });
       } else {
         sendNotification({
           type: "error",
-          title: "Some conversations couldn’t be moved",
-          description: `Moved ${successCount} of ${total} conversations.`,
+          title: t`Some conversations couldn’t be moved`,
+          description: t`Moved ${successCount} of ${total} conversations.`,
         });
       }
 
@@ -195,6 +219,7 @@ export function useBulkMoveConversationsToPod(owner: LightWorkspaceType) {
       mutatePodConversationsSummary,
       sendNotification,
       confirm,
+      t,
     ]
   );
 }

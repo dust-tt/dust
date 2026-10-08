@@ -1,20 +1,28 @@
+import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   decrementNavigationLock,
   incrementNavigationLock,
 } from "@app/lib/navigation-lock";
 import { useAppRouter, useNavigationBlocker } from "@app/lib/platform";
-import React, { useCallback, useContext, useEffect } from "react";
+import { useLingui } from "@lingui/react/macro";
+import React, { useCallback, useContext, useEffect, useMemo } from "react";
 
 export function useNavigationLock(
   isEnabled = true,
-  warningData = {
-    title: "Discard your unsaved changes?",
-    message: "If you leave now, your latest edits won't be kept.",
-    validateLabel: "Discard",
-    cancelLabel: "Keep editing",
-  }
+  warningData?: ConfirmDataType
 ) {
+  const { t } = useLingui();
+  const lockWarningData = useMemo(
+    () =>
+      warningData ?? {
+        title: t`Discard your unsaved changes?`,
+        message: t`If you leave now, your latest edits won't be kept.`,
+        validateLabel: t`Discard`,
+        cancelLabel: t`Keep editing`,
+      },
+    [warningData, t]
+  );
   const router = useAppRouter();
   const confirm = useContext(ConfirmContext);
   const isNavigatingAway = React.useRef<boolean>(false);
@@ -22,8 +30,8 @@ export function useNavigationLock(
   // SPA (React Router): use useBlocker to intercept all navigation
   // (browser back/forward, link clicks, programmatic navigate()).
   const onBlock = useCallback(
-    () => confirm(warningData),
-    [confirm, warningData]
+    () => confirm(lockWarningData),
+    [confirm, lockWarningData]
   );
 
   useNavigationBlocker(isEnabled, onBlock);
@@ -45,7 +53,7 @@ export function useNavigationLock(
         return;
       }
       e.preventDefault();
-      return (e.returnValue = warningData);
+      return (e.returnValue = lockWarningData);
     };
 
     const handleBrowseAway = (url: string) => {
@@ -71,7 +79,7 @@ export function useNavigationLock(
       // This is required, otherwise the URL will change.
       history.pushState(null, "", document.location.href);
 
-      void confirm(warningData).then((result) => {
+      void confirm(lockWarningData).then((result) => {
         if (result) {
           isNavigatingAway.current = true;
           void router.back();
@@ -90,5 +98,5 @@ export function useNavigationLock(
       window.removeEventListener("beforeunload", handleWindowClose);
       router.events.off("routeChangeStart", handleBrowseAway);
     };
-  }, [isEnabled, warningData, confirm, router]);
+  }, [isEnabled, lockWarningData, confirm, router]);
 }

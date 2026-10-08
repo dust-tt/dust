@@ -15,6 +15,7 @@ import {
 } from "@app/types/pod_file_tab";
 import type { CustomResourceIconType } from "@app/types/resources_icon_names";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo } from "react";
 
 type FileTabOptions = {
@@ -37,6 +38,7 @@ export function usePodFileTabs({
   tabsOrder?: string[];
   isEditor: boolean;
 }) {
+  const { t } = useLingui();
   const confirm = useContext(ConfirmContext);
   const sendNotification = useSendNotification();
   const updatePodMetadata = useUpdatePodMetadata({
@@ -86,10 +88,11 @@ export function usePodFileTabs({
       }
 
       if (sortedTabs.length >= MAX_POD_FILE_TABS) {
+        const maxTabs = MAX_POD_FILE_TABS;
         sendNotification({
           type: "error",
-          title: "Pod tab limit reached",
-          description: `A pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`,
+          title: t`Pod tab limit reached`,
+          description: t`A Pod can have at most ${maxTabs} custom tabs.`,
         });
         return false;
       }
@@ -100,9 +103,9 @@ export function usePodFileTabs({
 
       if (!options?.skipConfirm) {
         const confirmed = await confirm({
-          title: "Add as Pod tab?",
-          message: `"${label}" will appear as a tab in this Pod for all members.`,
-          validateLabel: "Add tab",
+          title: t`Add as Pod tab?`,
+          message: t`"${label}" will appear as a tab in this Pod for all members.`,
+          validateLabel: t`Add tab`,
           validateVariant: "primary",
         });
         if (!confirmed) {
@@ -129,6 +132,7 @@ export function usePodFileTabs({
       persist,
       sendNotification,
       sortedTabs,
+      t,
     ]
   );
 
@@ -147,9 +151,9 @@ export function usePodFileTabs({
 
       if (!options?.skipConfirm) {
         const confirmed = await confirm({
-          title: "Remove Pod tab?",
-          message: `"${label}" will no longer appear as a tab in this Pod.`,
-          validateLabel: "Remove",
+          title: t`Remove Pod tab?`,
+          message: t`"${label}" will no longer appear as a tab in this Pod.`,
+          validateLabel: t`Remove`,
           validateVariant: "warning",
         });
         if (!confirmed) {
@@ -162,7 +166,7 @@ export function usePodFileTabs({
         navOrder.filter((entry) => entry !== path)
       );
     },
-    [confirm, isEditor, navOrder, persist, sortedTabs]
+    [confirm, isEditor, navOrder, persist, sortedTabs, t]
   );
 
   const toggleFileTab = useCallback(

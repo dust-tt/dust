@@ -12,6 +12,7 @@ import {
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 interface UseYAMLUploadOptions {
@@ -19,6 +20,7 @@ interface UseYAMLUploadOptions {
 }
 
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
+  const { t } = useLingui();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
@@ -34,8 +36,8 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       if (!file.name.endsWith(".yaml") && !file.name.endsWith(".yml")) {
         sendNotification({
-          title: "Invalid file type",
-          description: "Please select a YAML file (.yaml or .yml)",
+          title: t`Invalid file type`,
+          description: t`Select a YAML file (.yaml or .yml).`,
           type: "error",
         });
         return;
@@ -66,7 +68,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
         );
 
         sendApiErrorNotification({
-          title: "Agent creation failed",
+          title: t`Agent creation failed`,
           error: errorData,
         });
         setIsUploading(false);
@@ -74,6 +76,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       const result = await response.json();
+      const agentName = result.agentConfiguration.name;
 
       trackEvent({
         area: TRACKING_AREAS.BUILDER,
@@ -89,22 +92,23 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       if (result.skippedActions && result.skippedActions.length > 0) {
         sendNotification({
-          title: "Agent created with warnings",
-          description: `Agent "${result.agentConfiguration.name}" was created, but some actions were skipped.`,
+          title: t`Agent created with warnings`,
+          description: t`Agent "${agentName}" was created, but some actions were skipped.`,
           type: "info",
         });
 
         for (const skipped of result.skippedActions) {
+          const actionName = skipped.name;
           sendNotification({
-            title: `Action skipped: ${skipped.name}`,
+            title: t`Action skipped: ${actionName}`,
             description: skipped.reason,
             type: "info",
           });
         }
       } else {
         sendNotification({
-          title: "Agent created successfully",
-          description: `Agent "${result.agentConfiguration.name}" was created from YAML`,
+          title: t`Agent created successfully`,
+          description: t`Agent "${agentName}" was created from YAML.`,
           type: "success",
         });
       }
@@ -115,7 +119,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(false);
     },
-    [owner.sId, router, sendApiErrorNotification, sendNotification]
+    [owner.sId, router, sendApiErrorNotification, sendNotification, t]
   );
 
   const triggerYAMLUpload = useCallback(() => {
