@@ -8,6 +8,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
 import { compareStrings } from "@app/lib/i18n/format";
 import { classNames } from "@app/lib/utils";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
 import type { APIError } from "@app/types/error";
 import type { NotificationType } from "@dust-tt/sparkle";
@@ -280,6 +281,7 @@ function ContentNodeTreeChildren({
 
       {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
+        const sourceUrl = getSafeSourceUrl(n.sourceUrl);
         return (
           <Tree.Item
             key={n.internalId}
@@ -329,9 +331,11 @@ function ContentNodeTreeChildren({
             actions={
               <div className="mr-8 flex grow flex-row justify-between gap-2">
                 {additionalActions && additionalActions(n)}
-                {n.sourceUrl && (
+                {sourceUrl && (
                   <Button
-                    href={n.sourceUrl}
+                    href={sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     icon={LinkExternal01}
                     size="xs"
                     variant="outline"

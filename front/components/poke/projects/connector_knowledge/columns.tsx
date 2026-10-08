@@ -1,6 +1,7 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { PokeProjectKnowledgeFromConnectorItem } from "@app/lib/api/poke/projects";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Chip, LinkWrapper, Tooltip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -51,11 +52,13 @@ export function makeColumnsForProjectConnectorKnowledge(
             }
           />
         );
-        if (item.sourceUrl) {
+        const sourceUrl = getSafeSourceUrl(item.sourceUrl);
+        if (sourceUrl) {
           return (
             <LinkWrapper
-              href={item.sourceUrl}
+              href={sourceUrl}
               target="_blank"
+              rel="noopener noreferrer"
               className="text-highlight-400"
             >
               {title}

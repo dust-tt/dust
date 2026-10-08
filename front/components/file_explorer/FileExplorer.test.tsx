@@ -1,4 +1,5 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import type { ContentNodeEntry } from "@app/components/file_explorer/types";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
@@ -12,7 +13,15 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { useState } from "react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const mockClientFetch = vi.fn();
 vi.mock("@app/lib/egress/client", () => ({
@@ -491,5 +500,58 @@ describe("FileExplorer preferences", () => {
     expect(
       screen.getByRole("button", { name: "Name Z → A" })
     ).toBeInTheDocument();
+  });
+});
+
+describe("FileExplorer content node opening", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function makeNode(fileName: string, sourceUrl: string): ContentNodeEntry {
+    return {
+      kind: "node",
+      fileName,
+      path: `node:${fileName}`,
+      lastModifiedMs: null,
+      sourceUrl,
+      nodeId: `node-${fileName}`,
+      nodeDataSourceViewId: "dsv-1",
+      connectorProvider: null,
+    };
+  }
+
+  it("only opens http(s) sourceUrl values, without opener access", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+    const readme = makeFile({
+      contentType: "text/plain",
+      fileName: "readme.txt",
+      lastModifiedMs: 1,
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        files={[readme]}
+        contentNodes={[
+          makeNode("Safe doc", "https://example.com/doc"),
+          makeNode("Unsafe doc", "javascript:alert(1)"),
+        ]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    fireEvent.click(screen.getByText("Unsafe doc"));
+    expect(open).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByText("Safe doc"));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(
+      "https://example.com/doc",
+      "_blank",
+      "noopener,noreferrer"
+    );
   });
 });

@@ -30,6 +30,7 @@ import {
 } from "@app/components/file_explorer/utils";
 import type { FileExplorerScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
+import { openSourceUrl } from "@app/lib/utils/source_urls";
 import { isFilePreviewableContentType } from "@app/types/file_preview";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
@@ -321,9 +322,7 @@ export function FileExplorer({
   };
 
   const handleNodeOpen = (entry: ContentNodeEntry) => {
-    if (entry.sourceUrl) {
-      window.open(entry.sourceUrl, "_blank", "noopener,noreferrer");
-    }
+    openSourceUrl(entry.sourceUrl);
   };
 
   // Only file entries participate in prev/next navigation.

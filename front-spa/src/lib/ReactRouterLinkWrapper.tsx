@@ -1,3 +1,4 @@
+import { isSafeHref } from "@dust-tt/front/lib/utils/source_urls";
 import type { SparkleLinkProps } from "@dust-tt/sparkle";
 import { forwardRef } from "react";
 import { Link } from "react-router-dom";
@@ -13,6 +14,15 @@ export const ReactRouterLinkWrapper = forwardRef<
 ) {
   // Convert UrlObject to string if needed
   const hrefString = typeof href !== "string" ? url.format(href) : href;
+
+  // Hrefs can be bound to stored data; never render one with a script-capable scheme.
+  if (!isSafeHref(hrefString)) {
+    return (
+      <a ref={ref} {...props}>
+        {children}
+      </a>
+    );
+  }
 
   // For external links or API routes, use regular anchor
   if (
