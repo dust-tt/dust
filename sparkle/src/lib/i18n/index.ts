@@ -1,4 +1,6 @@
-// Entry point of `@dust-tt/sparkle/i18n`. The provider loads sparkle's catalogs itself.
+// Entry point of `@dust-tt/sparkle/i18n`. The provider loads sparkle's catalogs itself; apps
+// preload a locale to switch to it in the same render as their own messages.
+export { preloadSparkleLocale } from "@sparkle/lib/i18n/catalogs";
 export {
   SPARKLE_CATALOG_LOCALES,
   type SparkleCatalogLocale,

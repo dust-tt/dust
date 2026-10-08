@@ -57,3 +57,9 @@ export async function loadSparkleI18n(
   loadedI18nByLocale.set(locale, i18n);
   return i18n;
 }
+
+export async function preloadSparkleLocale(
+  locale: SparkleCatalogLocale
+): Promise<void> {
+  await loadSparkleI18n(locale);
+}

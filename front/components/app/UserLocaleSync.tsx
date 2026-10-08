@@ -4,8 +4,10 @@ import { setFormatLocale } from "@app/lib/i18n/format";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
 import type { LocaleOverride } from "@app/lib/i18n/locale_override";
 import { useLocaleOverride } from "@app/lib/i18n/locale_override";
+import { getSparkleLocale } from "@app/lib/i18n/sparkle_locale";
 import logger from "@app/logger/logger";
 import { DEFAULT_LOCALE, PSEUDO_LOCALE } from "@app/types/locale";
+import { preloadSparkleLocale } from "@dust-tt/sparkle/i18n";
 import type { Messages } from "@lingui/core";
 import { useEffect } from "react";
 
@@ -49,6 +51,12 @@ interface UserLocaleSyncProps {
  * show a loading state of its own.
  */
 /**
+ * @cc [owner:ykmsd,label:product] locale-activated-with-sparkle-catalog
+ * The resolved locale MUST NOT be activated before the sparkle locale `getSparkleLocale` maps it to
+ * is preloaded, so that front and sparkle switch locale in the same render. A failed sparkle preload
+ * counts as a failed catalog load.
+ */
+/**
  * @cc [owner:sfriquet,label:react] ready-after-resolved-locale-load
  * `onReady` MUST be called once the catalog load of the resolved locale settles, whether it
  * succeeded or failed, and MUST NOT be called for a load whose locale is no longer the resolved one.
@@ -70,8 +78,9 @@ export function UserLocaleSync({ onReady }: UserLocaleSyncProps) {
   // resolved locale.
   useEffect(() => {
     let isCurrent = true;
-    loadUiCatalog(locale)
-      .then((messages) => {
+    const sparkleLocale = getSparkleLocale(locale);
+    Promise.all([loadUiCatalog(locale), preloadSparkleLocale(sparkleLocale)])
+      .then(([messages]) => {
         if (isCurrent) {
           setFormatLocale(formatLocale);
           i18n.loadAndActivate({ locale, messages });
