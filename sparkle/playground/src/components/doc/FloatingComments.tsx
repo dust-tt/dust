@@ -137,7 +137,9 @@ export function FloatingComments({
     ? null
     : comments.find((c) => c.id === activeCommentId && !c.resolved);
 
-  if (!position || (!draft && !comment)) return null;
+  if (!position || (!draft && !comment)) {
+    return null;
+  }
 
   if (light) {
     return (
@@ -150,7 +152,9 @@ export function FloatingComments({
           width: LIGHT_CARD_WIDTH,
         }}
         onKeyDown={(e) => {
-          if (e.key === "Escape") (draft ? onCancelDraft : onClose)();
+          if (e.key === "Escape") {
+            (draft ? onCancelDraft : onClose)();
+          }
         }}
       >
         {/* Actions get their own row above the thread, never beside a name. */}
@@ -210,7 +214,9 @@ export function FloatingComments({
       )}
       style={{ top: position.top, left: position.left, width: CARD_WIDTH }}
       onKeyDown={(e) => {
-        if (e.key === "Escape") (draft ? onCancelDraft : onClose)();
+        if (e.key === "Escape") {
+          (draft ? onCancelDraft : onClose)();
+        }
       }}
     >
       <div className="flex items-start justify-between gap-2">
@@ -295,7 +301,9 @@ function ThreadInput({
   const isForAgent = value.toLowerCase().includes(mention.toLowerCase());
   const submit = () => {
     const text = value.trim();
-    if (!text) return;
+    if (!text) {
+      return;
+    }
     // A reply mentioning an agent also calls it (see DocumentPanel.reply).
     onReply(text);
     setValue("");
@@ -318,7 +326,12 @@ function ThreadInput({
           mentions.onChange(e.target.value, e.target.selectionStart);
         }}
         onKeyDown={(e) => {
-          if (mentions.onKeyDown(e)) return;
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
+          if (mentions.onKeyDown(e)) {
+            return;
+          }
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             submit();
@@ -614,7 +627,9 @@ export function CommentMarkers({
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container) {
+      return;
+    }
     const measure = () => {
       const box = container.getBoundingClientRect();
       const next: Record<string, number> = {};
@@ -645,7 +660,9 @@ export function CommentMarkers({
   const placed: Array<{ comment: DocComment; top: number; slot: number }> = [];
   for (const comment of openComments) {
     const top = tops[comment.id];
-    if (top === undefined) continue;
+    if (top === undefined) {
+      continue;
+    }
     const slot = placed.filter((p) => Math.abs(p.top - top) < 6).length;
     placed.push({ comment, top, slot });
   }

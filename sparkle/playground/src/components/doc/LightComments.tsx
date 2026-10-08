@@ -93,13 +93,20 @@ export function LightReplyInput({
           mentions.onChange(e.target.value, e.target.selectionStart);
         }}
         onKeyDown={(e) => {
-          if (mentions.onKeyDown(e)) return;
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
+          if (mentions.onKeyDown(e)) {
+            return;
+          }
           if (e.key === "Enter" && value.trim()) {
             e.preventDefault();
             onSubmit(value.trim());
             setValue("");
           }
-          if (e.key === "Escape") onCancel?.();
+          if (e.key === "Escape") {
+            onCancel?.();
+          }
         }}
       />
     </div>

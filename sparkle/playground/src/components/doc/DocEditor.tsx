@@ -3,7 +3,13 @@ import { Mark, mergeAttributes } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import StarterKit from "@tiptap/starter-kit";
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+} from "react";
 
 import { docToMarkdown, markdownToHtml } from "./docMarkdown";
 import { DOC_TYPOGRAPHY } from "./docTypography";
@@ -76,17 +82,23 @@ function findTextRange(
   doc: PMNode,
   text: string
 ): { from: number; to: number } | null {
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
   let joined = "";
   const positions: number[] = [];
   doc.descendants((node, pos) => {
     if (node.isText && node.text) {
-      for (let i = 0; i < node.text.length; i++) positions.push(pos + i);
+      for (let i = 0; i < node.text.length; i++) {
+        positions.push(pos + i);
+      }
       joined += node.text;
     }
   });
   const index = joined.indexOf(text);
-  if (index === -1) return null;
+  if (index === -1) {
+    return null;
+  }
   return { from: positions[index], to: positions[index + text.length - 1] + 1 };
 }
 
@@ -171,12 +183,15 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
     },
     ref
   ) => {
+    // The editor captures its handlers once: they read the latest props here.
     const onChangeRef = useRef(onChange);
-    onChangeRef.current = onChange;
     const onCommentClickRef = useRef(onCommentClick);
-    onCommentClickRef.current = onCommentClick;
     const readOnlyRef = useRef(readOnly);
-    readOnlyRef.current = readOnly;
+    useLayoutEffect(() => {
+      onChangeRef.current = onChange;
+      onCommentClickRef.current = onCommentClick;
+      readOnlyRef.current = readOnly;
+    });
 
     const editor = useEditor({
       extensions: [
@@ -199,7 +214,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
         // selection bar needs it), but anything that would change the text
         // is swallowed. Moving around and copying still work.
         handleKeyDown: (_view, event) => {
-          if (!readOnlyRef.current) return false;
+          if (!readOnlyRef.current) {
+            return false;
+          }
           const moves =
             /^(Arrow|Page|Home|End|Escape|Tab|Shift|Alt|Meta|Control)/.test(
               event.key
@@ -212,7 +229,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
         handleDrop: () => readOnlyRef.current,
         handleDOMEvents: {
           beforeinput: (_view, event) => {
-            if (!readOnlyRef.current) return false;
+            if (!readOnlyRef.current) {
+              return false;
+            }
             event.preventDefault();
             return true;
           },
@@ -220,7 +239,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       },
       onUpdate: ({ editor: e, transaction }) => {
         // An agent edit being replayed on screen; its result is already saved.
-        if (transaction.getMeta("agentEditReplay")) return;
+        if (transaction.getMeta("agentEditReplay")) {
+          return;
+        }
         const onlyCommentMarks = transaction.steps.every((step) => {
           const json = step.toJSON();
           return (
@@ -237,7 +258,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
 
     const hasAnchored = useRef(false);
     useEffect(() => {
-      if (!editor || hasAnchored.current || !initialAnchors?.length) return;
+      if (!editor || hasAnchored.current || !initialAnchors?.length) {
+        return;
+      }
       hasAnchored.current = true;
       const chain = editor.chain();
       for (const anchor of initialAnchors) {
@@ -257,14 +280,20 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
           editor?.commands.focus("end");
         },
         getSelectionText: () => {
-          if (!editor) return "";
+          if (!editor) {
+            return "";
+          }
           const { from, to } = editor.state.selection;
           return editor.state.doc.textBetween(from, to, "\n");
         },
         addComment: (id) => {
-          if (!editor) return null;
+          if (!editor) {
+            return null;
+          }
           const { from, to } = editor.state.selection;
-          if (from === to) return null;
+          if (from === to) {
+            return null;
+          }
           const quote = editor.state.doc.textBetween(from, to, "\n");
           // Collapse the selection: the comment takes over, so the
           // selection bar (Comment / Ask agent) shouldn't linger.
@@ -272,7 +301,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
           return quote;
         },
         removeComment: (id) => {
-          if (!editor) return;
+          if (!editor) {
+            return;
+          }
           const range = findCommentRange(editor.state.doc, id);
           if (range) {
             editor
@@ -286,9 +317,13 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
         getCommentRange: (id) =>
           editor ? findCommentRange(editor.state.doc, id) : null,
         focusComment: (id) => {
-          if (!editor) return;
+          if (!editor) {
+            return;
+          }
           const range = findCommentRange(editor.state.doc, id);
-          if (!range) return;
+          if (!range) {
+            return;
+          }
           editor.chain().setTextSelection(range.from).run();
           // ProseMirror's own scrollIntoView doesn't move the panel's scroll
           // area here; scroll the highlight itself into the middle of it.
@@ -297,7 +332,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
             ?.scrollIntoView({ block: "center", behavior: "smooth" });
         },
         setMarkdown: (markdown, comments) => {
-          if (!editor) return;
+          if (!editor) {
+            return;
+          }
           editor.commands.setContent(markdownToHtml(markdown), {
             emitUpdate: false,
           });
@@ -324,7 +361,9 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       [editor]
     );
 
-    if (!editor) return null;
+    if (!editor) {
+      return null;
+    }
 
     return (
       <div

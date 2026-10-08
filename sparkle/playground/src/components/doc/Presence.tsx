@@ -38,9 +38,13 @@ const PEOPLE_COLORS = [
 
 /** A stable colour per person; agents use Dust blue. */
 export function presenceColor(name: string, isAgent: boolean): string {
-  if (isAgent) return "var(--color-highlight-500)";
+  if (isAgent) {
+    return "var(--color-highlight-500)";
+  }
   let hash = 0;
-  for (const ch of name) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  for (const ch of name) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
   return PEOPLE_COLORS[hash % PEOPLE_COLORS.length];
 }
 
@@ -95,7 +99,9 @@ export function PresenceLayer({
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    if (!view || !container) return;
+    if (!view || !container) {
+      return;
+    }
     const measure = () => {
       const next: Record<string, ReturnType<typeof layout>> = {};
       for (const p of presences) {
@@ -116,7 +122,9 @@ export function PresenceLayer({
     <div aria-hidden className="pointer-events-none absolute inset-0 z-10">
       {presences.map((p) => {
         const b = boxes[p.id];
-        if (!b) return null;
+        if (!b) {
+          return null;
+        }
         return (
           <div key={p.id}>
             {b.rects.map((r, i) => (

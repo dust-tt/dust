@@ -9,6 +9,7 @@ export interface ChatAgent {
 }
 
 export interface ToolStep {
+  id: string;
   name: string;
   status: "running" | "done";
 }

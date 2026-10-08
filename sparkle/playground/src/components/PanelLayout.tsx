@@ -16,6 +16,7 @@ import {
   useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactElement,
@@ -217,9 +218,12 @@ function PanelSection({
   // panel's edge animates to it: text wraps once at the end width instead of
   // reflowing at every frame (e.g. leaving full screen). A closing panel
   // keeps its last width while it fades out.
-  const lastWidthRef = useRef(width);
-  if (width > 0) lastWidthRef.current = width;
-  const layoutWidth = width > 0 ? width : lastWidthRef.current;
+  const [lastWidth, setLastWidth] = useState(width);
+  if (width > 0 && width !== lastWidth) {
+    // Derived from the previous render's props (React's documented pattern).
+    setLastWidth(width);
+  }
+  const layoutWidth = width > 0 ? width : lastWidth;
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -304,7 +308,7 @@ function ResizeHandle({
         {visible ? (
           <>
             <div className="absolute inset-y-0 -left-[5px] -right-[5px]" />
-            <div className="relative z-[1] w-px bg-primary-100 transition-all duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
+            <div className="relative z-[1] w-px bg-primary-100 transition-[width,background] duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
             {/* Grip copied from production (Sparkle's ResizableHandle withHandle). */}
             <div className="absolute left-1/2 top-1/2 z-[2] flex h-6 w-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-border bg-background" />
           </>
@@ -346,6 +350,32 @@ const PanelFullscreenContext = createContext<PanelFullscreenValue>({
 
 export function usePanelFullscreen(): PanelFullscreenValue {
   return useContext(PanelFullscreenContext);
+}
+
+function PanelFullscreenProvider({
+  index,
+  isFullscreen,
+  setFullscreenIdx,
+  children,
+}: {
+  index: number;
+  isFullscreen: boolean;
+  setFullscreenIdx: (index: number | null) => void;
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => ({
+      isFullscreen,
+      setFullscreen: (fullscreen: boolean) =>
+        setFullscreenIdx(fullscreen ? index : null),
+    }),
+    [index, isFullscreen, setFullscreenIdx]
+  );
+  return (
+    <PanelFullscreenContext.Provider value={value}>
+      {children}
+    </PanelFullscreenContext.Provider>
+  );
 }
 
 // ── PanelLayoutNav ────────────────────────────────────────────────────────────
@@ -1098,15 +1128,13 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                       <PanelTopBar left={topBarLeft} right={topBarRight} />
                     }
                     content={
-                      <PanelFullscreenContext.Provider
-                        value={{
-                          isFullscreen: effectiveFullscreen === i,
-                          setFullscreen: (fullscreen) =>
-                            setFullscreenIdx(fullscreen ? i : null),
-                        }}
+                      <PanelFullscreenProvider
+                        index={i}
+                        isFullscreen={effectiveFullscreen === i}
+                        setFullscreenIdx={setFullscreenIdx}
                       >
                         {panel.props.children}
-                      </PanelFullscreenContext.Provider>
+                      </PanelFullscreenProvider>
                     }
                   />
                 </Fragment>

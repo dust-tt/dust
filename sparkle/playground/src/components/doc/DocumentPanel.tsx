@@ -18,7 +18,13 @@ import {
   Robot,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 
 import { usePanelFullscreen } from "../PanelLayout";
@@ -71,7 +77,9 @@ function rewrittenPassage(
   after: string,
   quote: string
 ): string | null {
-  if (plainText(after).includes(quote)) return null;
+  if (plainText(after).includes(quote)) {
+    return null;
+  }
   const blocks = (md: string) =>
     md
       .split(/\n\s*\n/)
@@ -93,8 +101,12 @@ function skipWords(text: string, index: number, step: 1 | -1, count: number) {
   const at = () => (step > 0 ? text[i] : text[i - 1]);
   const inText = () => (step > 0 ? i < text.length : i > 0);
   for (let n = 0; n < count; n++) {
-    while (inText() && /\s/.test(at())) i += step;
-    while (inText() && !/\s/.test(at())) i += step;
+    while (inText() && /\s/.test(at())) {
+      i += step;
+    }
+    while (inText() && !/\s/.test(at())) {
+      i += step;
+    }
   }
   return i;
 }
@@ -105,11 +117,14 @@ function skipWords(text: string, index: number, step: 1 | -1, count: number) {
  */
 function revealBlock(view: EditorView, pos: number, area: HTMLElement | null) {
   const element = view.nodeDOM(view.state.doc.resolve(pos).before());
-  if (!(element instanceof HTMLElement) || !area) return false;
+  if (!(element instanceof HTMLElement) || !area) {
+    return false;
+  }
   const box = element.getBoundingClientRect();
   const bounds = area.getBoundingClientRect();
-  if (box.top > bounds.top + 40 && box.bottom < bounds.bottom - 40)
+  if (box.top > bounds.top + 40 && box.bottom < bounds.bottom - 40) {
     return false;
+  }
   element.scrollIntoView({ block: "center", behavior: "smooth" });
   return true;
 }
@@ -277,11 +292,15 @@ export function DocumentPanel({
 
   // Kept in a ref: callers may pass a new function on every render.
   const loadDocumentRef = useRef(loadDocument);
-  loadDocumentRef.current = loadDocument;
+  useLayoutEffect(() => {
+    loadDocumentRef.current = loadDocument;
+  });
   const readContent = useCallback(() => loadDocumentRef.current(), []);
 
   useEffect(() => {
-    if (session) return;
+    if (session) {
+      return;
+    }
     readContent()
       .then((markdown) =>
         onSessionCreate({
@@ -297,7 +316,9 @@ export function DocumentPanel({
   // The agent edits the document directly: its version replaces the
   // editor's content, keeping comments anchored where their text survives.
   const sessionRef = useRef(session);
-  sessionRef.current = session;
+  useLayoutEffect(() => {
+    sessionRef.current = session;
+  });
   // Who is editing right now (carets + name tags, see Presence.tsx).
   const [presences, setPresences] = useState<Presence[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -397,7 +418,9 @@ export function DocumentPanel({
       ) {
         const max = Math.min(oldText.length, newText.length);
         let same = 0;
-        while (same < max && oldText[same] === newText[same]) same++;
+        while (same < max && oldText[same] === newText[same]) {
+          same++;
+        }
         let tail = 0;
         while (
           tail < max - same &&
@@ -414,7 +437,9 @@ export function DocumentPanel({
         contextFrom = start + skipWords(newText, same, -1, 3);
         contextTo = start + skipWords(newText, cutNew - start, 1, 3);
       }
-      if (revealBlock(view, from, scrollAreaRef.current)) await sleep(450);
+      if (revealBlock(view, from, scrollAreaRef.current)) {
+        await sleep(450);
+      }
       upsertPresence({
         id,
         name: by.name,
@@ -515,9 +540,13 @@ export function DocumentPanel({
   // conversation): reload it and apply the new version.
   const seenRunCount = useRef(agentRunCount);
   useEffect(() => {
-    if (agentRunCount === seenRunCount.current || !session) return;
+    if (agentRunCount === seenRunCount.current || !session) {
+      return;
+    }
     seenRunCount.current = agentRunCount;
-    if (isAgentRunning) return; // A comment edit applies its own result.
+    if (isAgentRunning) {
+      return; // A comment edit applies its own result.
+    }
     readContent()
       .then((latest) => {
         const current = sessionRef.current;
@@ -571,8 +600,9 @@ export function DocumentPanel({
       comment.author,
       ...comment.replies.map((r) => r.author),
     ]) {
-      if (author.name === YOU.name || fileContributors.has(author.name))
+      if (author.name === YOU.name || fileContributors.has(author.name)) {
         continue;
+      }
       fileContributors.set(author.name, {
         ...author,
         kind: findAgent(author.name) ? "agent" : "person",
@@ -625,7 +655,9 @@ export function DocumentPanel({
   };
 
   const saveSuggestion = (text: string, note: string) => {
-    if (!draft) return;
+    if (!draft) {
+      return;
+    }
     updateComments((comments) => [
       ...comments,
       {
@@ -704,7 +736,9 @@ export function DocumentPanel({
   // sentence on screen, for the viewer to accept or reject.
   const simulateSuggestion = async () => {
     const view = editorRef.current?.getView();
-    if (!view || isSimulating) return;
+    if (!view || isSimulating) {
+      return;
+    }
     // The last three words of a paragraph's first sentence (no line breaks,
     // and a real sentence end, not "U.S.").
     const SENTENCE_END = /[a-z]{2}[.!?](\s|$)/;
@@ -712,11 +746,15 @@ export function DocumentPanel({
       view,
       (text) => !text.includes("\n") && SENTENCE_END.test(text)
     );
-    if (!target) return;
+    if (!target) {
+      return;
+    }
     const end = target.text.search(SENTENCE_END) + 2;
     const words = [...target.text.slice(0, end).matchAll(/\S+/g)];
     const first = words[Math.max(0, words.length - 3)];
-    if (first?.index === undefined) return;
+    if (first?.index === undefined) {
+      return;
+    }
     const from = target.from + first.index;
     const to = target.from + end;
     const quote = view.state.doc.textBetween(from, to);
@@ -763,7 +801,9 @@ export function DocumentPanel({
         fits(view.state.doc.textBetween(b.from, b.to, "", "\n"))
     );
     const onScreen = paragraphs.filter((b) => {
-      if (!area) return true;
+      if (!area) {
+        return true;
+      }
       const { top } = view.coordsAtPos(b.to);
       return top > area.top + 60 && top < area.bottom - 80;
     });
@@ -778,11 +818,15 @@ export function DocumentPanel({
   // shown with the same replay as an agent edit from a comment.
   const simulateAgentEdit = async () => {
     const view = editorRef.current?.getView();
-    if (!view || isSimulating) return;
+    if (!view || isSimulating) {
+      return;
+    }
     setIsSimulating(true);
     try {
       const target = await visibleParagraph(view);
-      if (!target) return;
+      if (!target) {
+        return;
+      }
       const oldSlice = view.state.doc.slice(target.from, target.to);
       const phrase =
         SIMULATED_AGENT_EDITS[
@@ -804,7 +848,9 @@ export function DocumentPanel({
   // paragraph, so presence (caret, name tag, highlight) can be seen.
   const simulateCollaborator = async () => {
     const view = editorRef.current?.getView();
-    if (!view || isSimulating) return;
+    if (!view || isSimulating) {
+      return;
+    }
     setIsSimulating(true);
     try {
       const people = mentionCandidates.inThisFile.filter(
@@ -813,7 +859,9 @@ export function DocumentPanel({
       const pool = people.length > 0 ? people : WORKSPACE_PEOPLE;
       const person = pool[Math.floor(Math.random() * pool.length)];
       const target = await visibleParagraph(view);
-      if (!target) return;
+      if (!target) {
+        return;
+      }
       const phrase =
         SIMULATED_EDITS[Math.floor(Math.random() * SIMULATED_EDITS.length)];
       const id = `person-${Date.now()}`;
@@ -842,7 +890,9 @@ export function DocumentPanel({
   const mentionedAgent = (text: string): DocAuthor | null => {
     for (const [, name] of text.matchAll(/(?:^|\s)@([\w.-]+)/g)) {
       const agent = findAgent(name);
-      if (agent) return agent;
+      if (agent) {
+        return agent;
+      }
     }
     return null;
   };
@@ -922,7 +972,9 @@ export function DocumentPanel({
   };
 
   const saveDraft = (body: string) => {
-    if (!draft) return;
+    if (!draft) {
+      return;
+    }
     const comment = {
       id: draft.id,
       quote: draft.quote,
@@ -935,11 +987,15 @@ export function DocumentPanel({
     updateComments((comments) => [...comments, comment]);
     setDraft(null);
     const agent = mentionedAgent(body);
-    if (agent) void callAgentInThread({ comment, request: body, agent });
+    if (agent) {
+      void callAgentInThread({ comment, request: body, agent });
+    }
   };
 
   const cancelDraft = () => {
-    if (draft) editorRef.current?.removeComment(draft.id);
+    if (draft) {
+      editorRef.current?.removeComment(draft.id);
+    }
     setDraft(null);
     setActiveCommentId(null);
   };
@@ -978,7 +1034,9 @@ export function DocumentPanel({
                     onOpenChange={setIsCommentsListOpen}
                     onResolve={resolveComment}
                     onPick={(id) => {
-                      if (!isListThreads) setIsCommentsListOpen(false);
+                      if (!isListThreads) {
+                        setIsCommentsListOpen(false);
+                      }
                       setActiveCommentId(id);
                       editorRef.current?.focusComment(id);
                     }}
@@ -1197,7 +1255,9 @@ export function DocumentPanel({
                         if (quote) {
                           setDraft({ id, quote, suggest: true });
                           setActiveCommentId(id);
-                          if (!isFloating) setShowComments(true);
+                          if (!isFloating) {
+                            setShowComments(true);
+                          }
                         }
                       }}
                       onCommentSelection={() => {
@@ -1206,12 +1266,16 @@ export function DocumentPanel({
                         if (quote) {
                           setDraft({ id, quote });
                           setActiveCommentId(id);
-                          if (!isFloating) setShowComments(true);
+                          if (!isFloating) {
+                            setShowComments(true);
+                          }
                         }
                       }}
                       onCommentClick={(id) => {
                         setActiveCommentId(id);
-                        if (id && !isFloating) setShowComments(true);
+                        if (id && !isFloating) {
+                          setShowComments(true);
+                        }
                       }}
                     />
                   </div>

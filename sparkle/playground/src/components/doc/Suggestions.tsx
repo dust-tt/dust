@@ -42,7 +42,9 @@ export function wordDiff(before: string, after: string) {
   const a = before.split(/(\s+)/);
   const b = after.split(/(\s+)/);
   let head = 0;
-  while (head < a.length && head < b.length && a[head] === b[head]) head++;
+  while (head < a.length && head < b.length && a[head] === b[head]) {
+    head++;
+  }
   let tail = 0;
   while (
     tail < a.length - head &&
@@ -74,7 +76,9 @@ export function narrowSuggestion(quote: string, text: string) {
   const a = quote.split(/(\s+)/);
   const b = text.split(/(\s+)/);
   let head = 0;
-  while (head < a.length && head < b.length && a[head] === b[head]) head++;
+  while (head < a.length && head < b.length && a[head] === b[head]) {
+    head++;
+  }
   let tail = 0;
   while (
     tail < a.length - head &&
@@ -92,9 +96,12 @@ export function narrowSuggestion(quote: string, text: string) {
   }
   // Insertion: anchor on the word before it (and the spaces up to it).
   let word = head - 1;
-  while (word >= 0 && !a[word].trim()) word--;
-  if (word < 0)
+  while (word >= 0 && !a[word].trim()) {
+    word--;
+  }
+  if (word < 0) {
     return { start: 0, end: quote.length, suggestion: text, insert: false };
+  }
   return { start: offset(word), end, suggestion: added, insert: true };
 }
 
@@ -148,7 +155,9 @@ export function SuggestionBlock({
 }) {
   const { canEdit, onAccept, onReject } = useContext(SuggestionContext);
   const suggestion = comment.suggestion;
-  if (!suggestion) return null;
+  if (!suggestion) {
+    return null;
+  }
   return (
     <div className="flex flex-col gap-2">
       <div className="text-xs font-medium text-muted-foreground">
@@ -215,11 +224,16 @@ export function SuggestionComposer({
   const changed = text.trim() !== quote.trim();
   const submit = () => changed && onSubmit(text.trim(), note.trim());
   const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.nativeEvent.isComposing) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
     }
-    if (e.key === "Escape") onCancel();
+    if (e.key === "Escape") {
+      onCancel();
+    }
   };
   return (
     <div className="flex flex-col gap-2">

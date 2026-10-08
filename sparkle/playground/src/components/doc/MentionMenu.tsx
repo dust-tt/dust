@@ -99,8 +99,12 @@ export function useMentions({
   // 0: name starts with the query, 1: a word does, 2: contains it.
   const rank = (c: MentionCandidate) => {
     const name = c.name.toLowerCase();
-    if (name.startsWith(query)) return 0;
-    if (name.split(/[\s._/-]+/).some((w) => w.startsWith(query))) return 1;
+    if (name.startsWith(query)) {
+      return 0;
+    }
+    if (name.split(/[\s._/-]+/).some((w) => w.startsWith(query))) {
+      return 1;
+    }
     return name.includes(query) ? 2 : -1;
   };
   const sections = (Object.keys(LABELS) as (keyof MentionCandidates)[])
@@ -127,7 +131,9 @@ export function useMentions({
   );
 
   const select = (candidate: MentionCandidate) => {
-    if (!active) return;
+    if (!active) {
+      return;
+    }
     const end = active.start + 1 + active.query.length;
     const insert = `@${candidate.name} `;
     const next = value.slice(0, active.start) + insert + value.slice(end);
@@ -142,7 +148,9 @@ export function useMentions({
   };
 
   const onKeyDown = (e: KeyboardEvent<Field>): boolean => {
-    if (!isOpen || !active) return false;
+    if (!isOpen || !active) {
+      return false;
+    }
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
       e.preventDefault();
       const step = e.key === "ArrowDown" ? 1 : -1;

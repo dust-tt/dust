@@ -14,6 +14,7 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -625,7 +626,9 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
   ) => {
     // useEditor captures editorProps once, so read the latest callback via a ref.
     const onSubmitRef = useRef(onSubmit);
-    onSubmitRef.current = onSubmit;
+    useLayoutEffect(() => {
+      onSubmitRef.current = onSubmit;
+    });
     const hasTopBar = Boolean(topBar);
     const editorVariant =
       hasTopBar && variant === "default" ? "embedded" : variant;

@@ -11,10 +11,18 @@ import { SuggestionBlock, SuggestionComposer } from "./Suggestions";
 
 export function formatTime(date: Date): string {
   const minutes = Math.round((Date.now() - date.getTime()) / 60000);
-  if (minutes < 1) return "Just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  if (minutes < 24 * 60) return `${Math.round(minutes / 60)} h ago`;
-  if (minutes < 48 * 60) return "Yesterday";
+  if (minutes < 1) {
+    return "Just now";
+  }
+  if (minutes < 60) {
+    return `${minutes} min ago`;
+  }
+  if (minutes < 24 * 60) {
+    return `${Math.round(minutes / 60)} h ago`;
+  }
+  if (minutes < 48 * 60) {
+    return "Yesterday";
+  }
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
@@ -54,12 +62,19 @@ export function Composer({
           mentions.onChange(e.target.value, e.target.selectionStart);
         }}
         onKeyDown={(e) => {
-          if (mentions.onKeyDown(e)) return;
+          if (e.nativeEvent.isComposing) {
+            return;
+          }
+          if (mentions.onKeyDown(e)) {
+            return;
+          }
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             submit();
           }
-          if (e.key === "Escape") onCancel?.();
+          if (e.key === "Escape") {
+            onCancel?.();
+          }
         }}
       />
       <div className="flex justify-end gap-2">
@@ -143,7 +158,19 @@ export function CommentCard({
           ? "border-golden-300 bg-background shadow-sm"
           : "border-border bg-muted-background/40 hover:bg-muted-background"
       )}
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => {
+        // Only the card itself: keys typed in its reply field stay there.
+        if (
+          e.target === e.currentTarget &&
+          (e.key === "Enter" || e.key === " ")
+        ) {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       {showQuote && !comment.suggestion && <Quote text={comment.quote} />}
       <Byline author={comment.author} date={comment.createdAt} />

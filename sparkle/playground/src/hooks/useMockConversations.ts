@@ -128,7 +128,9 @@ function withPassageReworked(document: string, passage: string): string {
     // A passage over several blocks: go by its start.
     index = blocks.findIndex((b) => plain(b).includes(quote.slice(0, 30)));
   }
-  if (index === -1) return document;
+  if (index === -1) {
+    return document;
+  }
   const block = blocks[index].trimEnd();
   const addition =
     PASSAGE_ADDITIONS.find((a) => !block.includes(a.trim())) ??
@@ -302,10 +304,15 @@ export function useMockConversations(): Conversations {
 
       await sleep(700);
       for (const name of reply.tools) {
-        if (!isMounted.current) return;
+        if (!isMounted.current) {
+          return;
+        }
         updateReply((m) => ({
           ...m,
-          tools: [...m.tools, { name, status: "running" }],
+          tools: [
+            ...m.tools,
+            { id: crypto.randomUUID(), name, status: "running" },
+          ],
         }));
         await sleep(1200);
         updateReply((m) => ({
@@ -388,7 +395,9 @@ export function useMockConversations(): Conversations {
   const readFile = useCallback(
     async (conversation: Conversation, fileKey: string) => {
       const text = files.current.get(`${conversation.id}:${fileKey}`);
-      if (text === undefined) throw new Error("This document doesn't exist.");
+      if (text === undefined) {
+        throw new Error("This document doesn't exist.");
+      }
       return text;
     },
     []

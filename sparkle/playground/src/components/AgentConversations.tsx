@@ -72,17 +72,16 @@ function usePerConversationSetting<T extends string>(storageKey: string) {
   });
   const setValue = useCallback(
     (conversationId: string, value: T) =>
-      setValues((prev) => {
-        const next = { ...prev, [conversationId]: value };
-        try {
-          localStorage.setItem(storageKey, JSON.stringify(next));
-        } catch {
-          // Not persisted (storage unavailable); still applies for this visit.
-        }
-        return next;
-      }),
-    [storageKey]
+      setValues((prev) => ({ ...prev, [conversationId]: value })),
+    []
   );
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(values));
+    } catch {
+      // Not persisted (storage unavailable); still applies for this visit.
+    }
+  }, [storageKey, values]);
   return [values, setValue] as const;
 }
 
@@ -110,7 +109,9 @@ function conversationFiles(conversation: Conversation): ChatFile[] {
   for (const message of conversation.messages) {
     if (message.role === "agent") {
       for (const file of message.files) {
-        if (!byKey.has(file.key)) byKey.set(file.key, file);
+        if (!byKey.has(file.key)) {
+          byKey.set(file.key, file);
+        }
       }
     }
   }
@@ -126,9 +127,13 @@ function toolLabel(name: string): string {
 }
 
 function agentStatusLabel(message: AgentMessage): string | null {
-  if (message.status !== "streaming") return null;
+  if (message.status !== "streaming") {
+    return null;
+  }
   const runningTool = message.tools.find((t) => t.status === "running");
-  if (runningTool) return `${toolLabel(runningTool.name)}…`;
+  if (runningTool) {
+    return `${toolLabel(runningTool.name)}…`;
+  }
   return message.content ? "Writing…" : "Thinking…";
 }
 
@@ -213,9 +218,9 @@ function AgentMessageBody({
     <div className="flex flex-col gap-3">
       {message.tools.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
-          {message.tools.map((tool, index) => (
+          {message.tools.map((tool) => (
             <Chip
-              key={index}
+              key={tool.id}
               size="xs"
               label={toolLabel(tool.name)}
               icon={Settings01}
@@ -430,9 +435,13 @@ export function AgentConversations({
   };
 
   useEffect(() => {
-    if (!openDocumentOnLoad) return;
+    if (!openDocumentOnLoad) {
+      return;
+    }
     const [document] = conversationFiles(active);
-    if (document) openFileInPanel(document);
+    if (document) {
+      openFileInPanel(document);
+    }
     // Runs once, on load.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -443,7 +452,9 @@ export function AgentConversations({
   };
 
   const handleSend = (text: string) => {
-    if (active.isRunning) return;
+    if (active.isRunning) {
+      return;
+    }
     const docSession = docKey ? docSessions[docKey] : undefined;
     void send(
       active,
@@ -455,7 +466,9 @@ export function AgentConversations({
     );
   };
 
-  const navContent = (
+  // `onNavClose` hides the sidebar when it overlays the panels (narrow
+  // screens), once a conversation is picked or created.
+  const renderNav = (onNavClose: () => void) => (
     <div className="flex min-h-0 flex-1 flex-col bg-app-background">
       <ScrollArea className="flex-1">
         <ScrollBar orientation="vertical" size="minimal" />
@@ -470,6 +483,7 @@ export function AgentConversations({
             onClick={() => {
               startNewConversation();
               closeSidePanels();
+              onNavClose();
             }}
           />
         </div>
@@ -480,7 +494,10 @@ export function AgentConversations({
               label={conversation.title}
               labelAnimation={conversation.isRunning ? "streaming" : "none"}
               selected={conversation.id === active.id}
-              onClick={() => selectConversation(conversation.id)}
+              onClick={() => {
+                selectConversation(conversation.id);
+                onNavClose();
+              }}
             />
           ))}
         </NavigationList>
@@ -490,13 +507,7 @@ export function AgentConversations({
 
   return (
     <PanelLayout>
-      <PanelLayoutNav>
-        {(onNavClose) => (
-          <div className="flex min-h-0 flex-1 flex-col" onClick={onNavClose}>
-            {navContent}
-          </div>
-        )}
-      </PanelLayoutNav>
+      <PanelLayoutNav>{renderNav}</PanelLayoutNav>
 
       <PanelLayoutPanel
         label={active.title}
@@ -555,7 +566,9 @@ export function AgentConversations({
           files={files.map(toDataSource)}
           onFileOpen={(dataSource) => {
             const file = files.find((f) => f.key === dataSource.id);
-            if (file) openFileInPanel(file);
+            if (file) {
+              openFileInPanel(file);
+            }
           }}
         />
       </PanelLayoutPanel>
