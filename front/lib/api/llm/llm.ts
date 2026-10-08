@@ -410,7 +410,12 @@ export abstract class LLM<
         });
 
         if (currentEvent.type === "error") {
-          const errorType = currentEvent.content.type;
+          const isFlexUnavailable = isFlexUnavailableError(
+            currentEvent.content.originalError
+          );
+          const errorType = isFlexUnavailable
+            ? "flex_unavailable"
+            : currentEvent.content.type;
           const errorSource = currentEvent.content.errorSource;
 
           this.emitStreamAttemptTelemetry({
@@ -429,11 +434,7 @@ export abstract class LLM<
             ],
           });
 
-          logger[
-            isFlexUnavailableError(currentEvent.content.originalError)
-              ? "warn"
-              : "error"
-          ](
+          logger[isFlexUnavailable ? "warn" : "error"](
             {
               llmEventType: "error",
               router: this.router,
