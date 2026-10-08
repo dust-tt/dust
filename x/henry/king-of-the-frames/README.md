@@ -12,6 +12,10 @@ eight-reviewer workflow, credential setup, private Google Forms, logs, and safe 
 below also cover historical/manual workflows; do not rely on their compatibility defaults for a new
 run. Real run state and credentials live under ignored `work/` directories, not in a fresh clone.
 
+For the smaller Opus 5.5 / Opus 5 / Sol 6.1 / Astra repeated-run comparison, use
+[MINI_EVAL.md](./MINI_EVAL.md). It covers fresh preparation, public-API execution,
+cost and timing exports, recovery, and qualitative review without Slack or Forms publication.
+
 ## Dataset format
 
 The primary input is JSONL with one object per evaluation item:
