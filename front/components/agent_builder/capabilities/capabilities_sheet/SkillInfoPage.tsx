@@ -1,52 +1,159 @@
-import {
-  SkillDetailsContent,
-  SkillDetailsHeader,
-  SkillLoadError,
-} from "@app/components/skills/SkillDetailsBody";
-import { useSkill } from "@app/lib/swr/skill_configurations";
+import { useSpacesContext } from "@app/components/shared/SpacesContext";
+import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
+import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
+import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
+import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import { hasRelations } from "@app/lib/skill";
+import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { Spinner } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  InfoCircle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  Users01,
+} from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
+import { useMemo, useState } from "react";
+
+type SkillTabType = "info" | "editors";
 
 interface SkillInfoPageProps {
-  skillId: string;
+  skill: SkillWithRelationsType;
   owner: WorkspaceType;
   user: UserType;
   onClose: () => void;
 }
 
 export function SkillInfoPage({
-  skillId,
+  skill,
   owner,
   user,
   onClose,
 }: SkillInfoPageProps) {
-  const { skill, isSkillError, isSkillNotFound, mutateSkill } = useSkill({
-    workspaceId: owner.sId,
-    skillId,
-    withRelations: true,
-  });
+  const { t } = useLingui();
+  const [selectedTab, setSelectedTab] = useState<SkillTabType>("info");
+  const showEditorsTabs = skill.canAdministrate;
 
-  if (isSkillError) {
-    return (
-      <SkillLoadError
-        reason={isSkillNotFound ? "not_found" : "unavailable"}
-        onRetry={mutateSkill}
-      />
-    );
-  }
+  return (
+    <div className="flex h-full flex-col gap-4">
+      {skill.status !== "archived" && (
+        <div className="-ml-1.5">
+          <SkillDetailsButtonBar
+            owner={owner}
+            skill={skill}
+            onClose={onClose}
+          />
+        </div>
+      )}
 
-  if (!skill) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
+      {showEditorsTabs ? (
+        <Tabs value={selectedTab}>
+          <TabsList border={false}>
+            <TabsTrigger
+              value="info"
+              label={t`Info`}
+              icon={InfoCircle}
+              onClick={() => setSelectedTab("info")}
+            />
+            <TabsTrigger
+              value="editors"
+              label={t`Editors`}
+              icon={Users01}
+              onClick={() => setSelectedTab("editors")}
+            />
+          </TabsList>
+          <div className="mt-4">
+            <TabsContent value="info">
+              <SkillInfoContent owner={owner} skill={skill} />
+            </TabsContent>
+            <TabsContent value="editors">
+              {hasRelations(skill) && (
+                <SkillEditorsTab
+                  key={skill.sId}
+                  skill={skill}
+                  owner={owner}
+                  user={user}
+                />
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
+      ) : (
+        <SkillInfoContent owner={owner} skill={skill} />
+      )}
+    </div>
+  );
+}
+
+function SkillInfoContent({
+  owner,
+  skill,
+}: {
+  owner: WorkspaceType;
+  skill: SkillWithRelationsType;
+}) {
+  const { spaces } = useSpacesContext();
+
+  const editedAt = useMemo(() => {
+    if (!skill.updatedAt) {
+      return null;
+    }
+    return formatTimestampToFriendlyDate(skill.updatedAt, "compactWithDay");
+  }, [skill.updatedAt]);
+
+  const editedBy = useMemo(
+    () => skill.relations.editedByUser?.fullName ?? null,
+    [skill.relations.editedByUser?.fullName]
+  );
+
+  const editorAvatars = useMemo(() => {
+    const seen = new Set<string>();
+    const users: UserType[] = [];
+    const maybePush = (u: UserType | null | undefined) => {
+      if (!u || seen.has(u.sId)) {
+        return;
+      }
+      seen.add(u.sId);
+      users.push(u);
+    };
+    maybePush(skill.relations.editedByUser);
+    for (const editor of skill.relations.editors ?? []) {
+      maybePush(editor);
+    }
+    return users.map((editor) => ({
+      name: editor.fullName,
+      visual: editor.image ?? undefined,
+      isRounded: true,
+    }));
+  }, [skill.relations.editedByUser, skill.relations.editors]);
 
   return (
     <div className="flex flex-col gap-4">
-      <SkillDetailsHeader skill={skill} owner={owner} onClose={onClose} />
-      <SkillDetailsContent skill={skill} owner={owner} user={user} />
+      {editedBy && editedAt && (
+        <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
+          <div>
+            <Trans>
+              Last edited {editedAt} by {editedBy}
+            </Trans>
+          </div>
+          {editorAvatars.length > 0 && (
+            <Avatar.Stack
+              avatars={editorAvatars}
+              nbVisibleItems={3}
+              size="sm"
+            />
+          )}
+        </div>
+      )}
+      <SkillInfoTab
+        owner={owner}
+        skill={skill}
+        showDescription={false}
+        spaces={spaces}
+      />
     </div>
   );
 }
