@@ -8,6 +8,8 @@ interface CreditLimitNumberInputProps {
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   suffix?: string;
+  description?: string;
+  placeholder?: string;
 }
 
 export function CreditLimitNumberInput({
@@ -16,6 +18,8 @@ export function CreditLimitNumberInput({
   validationMessage,
   onChange,
   suffix,
+  description,
+  placeholder,
 }: CreditLimitNumberInputProps) {
   const { t } = useLingui();
   return (
@@ -24,14 +28,14 @@ export function CreditLimitNumberInput({
       type="text"
       inputMode="numeric"
       pattern="[0-9]*"
-      placeholder="--"
+      placeholder={placeholder ?? "--"}
       disabled={readOnly}
       value={value !== "" ? formatNumber(Number(value)) : ""}
       onChange={(e) => {
         onChange(e.target.value.replace(/[^\d]/g, ""));
       }}
       isError={validationMessage !== null}
-      message={validationMessage ?? undefined}
+      message={validationMessage ?? description}
       messageStatus={validationMessage !== null ? "error" : undefined}
       suffix={suffix ?? t`credits/month`}
       isUnit
@@ -63,6 +67,8 @@ interface CreditLimitInputProps {
   isActive?: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
+  description?: string;
+  placeholder?: string;
   // Small text action rendered on the opposite end of the label row (e.g. to
   // clear the field). Omit when the field has nothing to clear back to.
   action?: { label: string; onClick: () => void };
@@ -76,6 +82,8 @@ export function CreditLimitInput({
   isActive = false,
   validationMessage,
   onChange,
+  description,
+  placeholder,
   action,
 }: CreditLimitInputProps) {
   const input = (
@@ -84,6 +92,8 @@ export function CreditLimitInput({
       readOnly={readOnly}
       validationMessage={validationMessage}
       onChange={onChange}
+      description={description}
+      placeholder={placeholder}
     />
   );
   return (

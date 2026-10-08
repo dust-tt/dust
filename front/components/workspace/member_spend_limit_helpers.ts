@@ -1,5 +1,9 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatNumber } from "@app/lib/i18n/format";
+import {
+  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+} from "@app/types/api/groups/shared_usage_limit";
 import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -60,6 +64,16 @@ export function parseCreditsInput(raw: string): ParsedCredits<number | null> {
     raw,
     MIN_USER_SPEND_LIMIT_AWU_CREDITS,
     MAX_USER_SPEND_LIMIT_AWU_CREDITS
+  );
+}
+
+export function parseSharedUsageLimitInput(
+  raw: string
+): ParsedCredits<number | null> {
+  return parseBoundedCreditsInput(
+    raw,
+    MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+    MAX_SHARED_USAGE_LIMIT_AWU_CREDITS
   );
 }
 

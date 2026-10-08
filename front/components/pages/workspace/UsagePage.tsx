@@ -1259,14 +1259,15 @@ export function UsagePage() {
                   owner={owner}
                   showSpendLimitColumn
                   showModelTiersColumn={isWorkspaceAdmin}
-                  showSharedUsageLimitColumn={
-                    isWorkspaceAdmin && hasFeature("group_limits")
+                  showSharedUsageLimitColumn={hasFeature("group_limits")}
+                  canEditSharedUsageLimit
+                  seatOptions={
+                    isWorkspaceAdmin &&
+                    groupSeatProvisioningEnabled &&
+                    grantableSeatTypes.length > 0
+                      ? { grantableSeatTypes, seatPlans }
+                      : undefined
                   }
-                  showSeatColumn={
-                    isWorkspaceAdmin && groupSeatProvisioningEnabled
-                  }
-                  seatPlans={seatPlans}
-                  grantableSeatTypes={grantableSeatTypes}
                 />
               </AdminSectionAnchor>
             </TabsContent>

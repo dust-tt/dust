@@ -336,7 +336,6 @@ export function NonCreditPricedUsagePage() {
                 showSpendLimitColumn={false}
                 showModelTiersColumn={isWorkspaceAdmin}
                 showSharedUsageLimitColumn={false}
-                showSeatColumn={false}
               />
             </AdminSectionAnchor>
           </TabsContent>

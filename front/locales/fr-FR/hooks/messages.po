@@ -17,6 +17,22 @@ msgstr ""
 msgid "We couldn't check which users are already members"
 msgstr "Impossible de vérifier quels utilisateurs sont déjà membres"
 
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Failed to update the group budget"
+msgstr "Échec de la mise à jour du budget du groupe"
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s budget has been removed."
+msgstr "Le budget de {groupName} a été supprimé."
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s budget is now {amount} credits per billing cycle."
+msgstr "Le budget de {groupName} est désormais de {amount} crédits par cycle de facturation."
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Group budget updated"
+msgstr "Budget du groupe mis à jour"
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Impossible d’enregistrer la langue"

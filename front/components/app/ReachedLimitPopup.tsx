@@ -399,16 +399,16 @@ function getLimitPromptForCode(
 
     case "group_shared_usage_limit_reached":
       return {
-        title: t(msg`Shared usage limit reached`),
+        title: t(msg`Group budget reached`),
         validateLabel: t(msg`Ok`),
         children: (
           <Page.P>
             {isAdmin
               ? t(
-                  msg`Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page.`
+                  msg`Your group has reached its budget. You can adjust group budgets on the usage page.`
                 )
               : t(
-                  msg`Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it.`
+                  msg`Your group has reached its budget. Please contact your group managers or administrator to increase it.`
                 )}
           </Page.P>
         ),

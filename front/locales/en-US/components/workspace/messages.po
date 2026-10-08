@@ -74,8 +74,8 @@ msgstr "Archiving will cancel their pending runs and suspend their editors' acce
 #: front/components/workspace/ChangeSeatModal.tsx
 #: front/components/workspace/DirectorySync.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
 #: front/components/workspace/UpgradePlanDialog.tsx
 #: front/components/workspace/UpgradeRequests.tsx
 #: front/components/workspace/WorkspaceAccessPanel.tsx
@@ -674,7 +674,6 @@ msgid "For older credits, <0>contact support</0>."
 msgstr "For older credits, <0>contact support</0>."
 
 #: front/components/workspace/CreditLimitInput.tsx
-#: front/components/workspace/GroupSpendLimitCell.tsx
 msgid "credits/month"
 msgstr "credits/month"
 
@@ -878,8 +877,70 @@ msgid "Saving..."
 msgstr "Saving..."
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Save"
 msgstr "Save"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgctxt "remove a credit limit, button label"
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Remove group seat"
+msgstr "Remove group seat"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
+msgstr "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Remove seat"
+msgstr "Remove seat"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Shared by all members."
+msgstr "Shared by all members."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "This group has no budget."
+msgstr "This group has no budget."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Shared by all members. {usedCredits} credits used so far this cycle."
+msgstr "Shared by all members. {usedCredits} credits used so far this cycle."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Group budget"
+msgstr "Group budget"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Grant {reviewSeatName} to {groupName}"
+msgstr "Grant {reviewSeatName} to {groupName}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Edit limits for {groupName}"
+msgstr "Edit limits for {groupName}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Granted seat"
+msgstr "Granted seat"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Limit per member"
+msgstr "Limit per member"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "No limit"
+msgstr "No limit"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Caps what each member can spend."
+msgstr "Caps what each member can spend."
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
@@ -909,27 +970,6 @@ msgstr "Browser Extension Tools"
 msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
 msgstr "Whether the Dust browser extension is allowed to list and read browser tabs."
 
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Remove group seat"
-msgstr "Remove group seat"
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
-msgstr "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-#: front/components/workspace/MembersUsageTable.tsx
-msgid "Remove seat"
-msgstr "Remove seat"
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Grant {reviewSeatName} to {groupName}"
-msgstr "Grant {reviewSeatName} to {groupName}"
-
-#: front/components/workspace/GroupSpendLimitCell.tsx
-msgid "No limit"
-msgstr "No limit"
-
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Group"
@@ -942,22 +982,6 @@ msgid "Members"
 msgstr "Members"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Granted seat"
-msgstr "Granted seat"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Limit per member"
-msgstr "Limit per member"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Spend limit"
-msgstr "Spend limit"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Shared limit"
-msgstr "Shared limit"
-
-#: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models tier"
 msgstr "Models tier"
@@ -967,8 +991,8 @@ msgid "A group's monthly spend limit applies to each of its members. When a memb
 msgstr "A group's monthly spend limit applies to each of its members. When a member belongs to several groups, the highest limit is used."
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "A shared limit caps what all the group's members spend together."
-msgstr "A shared limit caps what all the group's members spend together."
+msgid "A group budget caps what all the group's members spend together."
+msgstr "A group budget caps what all the group's members spend together."
 
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Limit"
@@ -1510,8 +1534,8 @@ msgid "This will not change your invoice."
 msgstr "This will not change your invoice."
 
 #: front/components/workspace/SharedUsageLimitCell.tsx
-msgid "Shared limit usage"
-msgstr "Shared limit usage"
+msgid "Group budget usage"
+msgstr "Group budget usage"
 
 #: front/components/workspace/SharedUsageLimitCell.tsx
 msgid "{usedLabel} of {limitLabel} credits used"

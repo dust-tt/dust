@@ -38,15 +38,16 @@ import type {
   SharedUsageLimit,
   SetSharedUsageLimitResponse,
 } from "@app/types/api/groups/shared_usage_limit";
+import {
+  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+} from "@app/types/api/groups/shared_usage_limit";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-
-export const MIN_SHARED_USAGE_LIMIT_AWU_CREDITS = 0;
-export const MAX_SHARED_USAGE_LIMIT_AWU_CREDITS = 100_000_000;
 
 type SharedUsageLimitErrorType =
   | "shared_usage_limits_not_enabled"

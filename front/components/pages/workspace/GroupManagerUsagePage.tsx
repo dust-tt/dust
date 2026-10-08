@@ -9,7 +9,11 @@ import type { DefaultUserSpendLimitState } from "@app/components/workspace/Works
 import { useQueryParams } from "@app/hooks/useQueryParams";
 import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useAuth,
+  useFeatureFlags,
+  useWorkspace,
+} from "@app/lib/auth/AuthContext";
 import { isFreePlan } from "@app/lib/plans/plan_codes";
 import { useGroups } from "@app/lib/swr/groups";
 import { useMembersUsage } from "@app/lib/swr/memberships";
@@ -33,6 +37,7 @@ export function GroupManagerUsagePage() {
   const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription, groupManagement } = useAuth();
+  const { hasFeature } = useFeatureFlags();
   const { tab: tabParam } = useQueryParams(["tab"]);
   const tab = tabParam.value === "groups" ? "groups" : "members";
   const setTab = (next: "members" | "groups") => {
@@ -243,6 +248,9 @@ export function GroupManagerUsagePage() {
                 visibleGroupIds={visibleGroupIds}
                 editableGroupIds={editableGroupIds}
                 showSpendLimitColumn={isCreditPriced}
+                showSharedUsageLimitColumn={
+                  isCreditPriced && hasFeature("group_limits")
+                }
               />
             </AdminSectionAnchor>
           </TabsContent>

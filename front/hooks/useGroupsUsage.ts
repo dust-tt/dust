@@ -4,6 +4,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
+export function groupsUsageUrl(workspaceId: string) {
+  return `/api/w/${workspaceId}/credits/groups-usage`;
+}
+
 export function useGroupsUsage({
   owner,
   disabled,
@@ -15,7 +19,7 @@ export function useGroupsUsage({
   const groupsUsageFetcher: Fetcher<GetGroupsUsageResponseBody> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/credits/groups-usage`,
+    groupsUsageUrl(owner.sId),
     groupsUsageFetcher,
     { disabled }
   );
