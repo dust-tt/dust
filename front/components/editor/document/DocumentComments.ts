@@ -419,6 +419,8 @@ declare module "@tiptap/core" {
       setCommentResolved: (id: string, resolved: boolean) => ReturnType;
       /** Removes the comment and every mark that anchors it. */
       deleteComment: (id: string) => ReturnType;
+      /** Replaces every thread, keeping the marks; a live document gets its threads this way. */
+      setCommentThreads: (comments: DfmComment[]) => ReturnType;
       /** Replaces the commented text with inline content that keeps the comment. */
       applyCommentSuggestion: (
         id: string,
@@ -725,8 +727,10 @@ export const DocumentCommentMark = Mark.create<{ holdsThreads: boolean }>({
  * @cc [owner:tdraier,label:product] document-comments-in-doc
  * While the document is open, comment threads MUST live in the document's `comments`
  * attribute as DFM threads and anchor to text through comment marks, so dirty tracking and
- * autosave cover comment changes. Deleting a comment MUST remove its marks. Resolving MUST keep
- * them so the thread can be reopened in place.
+ * autosave cover comment changes. Deleting a comment MUST remove its marks; in a live document,
+ * whose threads the session sends, the editor deleting it MUST remove them through the shared
+ * document, and replacing the threads MUST NOT. Resolving MUST keep them so the thread can be
+ * reopened in place.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-highlights
@@ -898,6 +902,15 @@ export const DocumentComments = Extension.create({
             COMMENTS_ATTRIBUTE,
             comments.filter((comment) => comment.id !== id)
           );
+          tr.setMeta("addToHistory", false);
+        }
+        return true;
+      },
+    setCommentThreads:
+      (comments) =>
+      ({ tr, dispatch }) => {
+        if (dispatch) {
+          tr.setDocAttribute(COMMENTS_ATTRIBUTE, comments);
           tr.setMeta("addToHistory", false);
         }
         return true;

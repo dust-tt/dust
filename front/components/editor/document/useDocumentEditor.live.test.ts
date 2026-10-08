@@ -1,12 +1,20 @@
 import { documentSchema } from "@app/components/editor/document/content";
 import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
-import { withoutDocumentJSONComments } from "@app/components/editor/document/DocumentComments";
+import {
+  getDocumentComments,
+  getDocumentJSONComments,
+  withoutDocumentJSONComments,
+} from "@app/components/editor/document/DocumentComments";
 import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { prosemirrorJSONToYXmlFragment } from "@tiptap/y-tiptap";
 import { describe, expect, it, vi } from "vitest";
@@ -24,12 +32,57 @@ function sharedDocumentFor(source: string) {
     withoutDocumentJSONComments(loaded.value.content),
     document.getXmlFragment(BODY_FRAGMENT_NAME)
   );
-  return { document, commentIds: getMarkedCommentIds(loaded.value.content) };
+  return {
+    document,
+    commentIds: getMarkedCommentIds(loaded.value.content),
+    fileThreads: getDocumentJSONComments(loaded.value.content),
+  };
+}
+
+const SESSION_THREADS: DfmComment[] = [
+  {
+    id: "c-live",
+    status: "resolved",
+    messages: [
+      {
+        author: { kind: "user", id: "usr_daph", name: "Daph" },
+        createdAt: "2026-01-01T00:00:00.000Z",
+        body: "From the session.",
+      },
+    ],
+  },
+];
+
+/** A session's comment side, whose thread pushes the test makes. */
+function fakeCommentChannel() {
+  const listeners = new Set<(comments: DfmComment[]) => void>();
+  let threads: DfmComment[] | null = null;
+  const channel: LiveCommentChannel = {
+    getThreads: () => threads,
+    onThreads: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    send: async () => new Err("unavailable"),
+    close: () => {
+      threads = null;
+      listeners.clear();
+    },
+  };
+  const push = (comments: DfmComment[]) => {
+    threads = comments;
+    listeners.forEach((listener) => listener(comments));
+  };
+  return { channel, push };
 }
 
 function renderLiveEditor(
   document: Y.Doc,
-  { onSave = vi.fn(), initialContent = FIXTURE } = {}
+  {
+    onSave = vi.fn(),
+    initialContent = FIXTURE,
+    comments = fakeCommentChannel().channel,
+  } = {}
 ) {
   return renderHook(() =>
     useDocumentEditor({
@@ -44,6 +97,7 @@ function renderLiveEditor(
           document,
           awareness: null,
           user: { name: "Daph", color: "#0ea5e9" },
+          comments,
         }),
         connected: true,
       },
@@ -87,6 +141,106 @@ describe("useDocumentEditor in a live session", () => {
 
     expect(getMarkedCommentIds(editor.getJSON())).toEqual(commentIds);
     expect(result.current.editable).toBe(true);
+  });
+
+  it("shows the file's threads until the session sends its own", async () => {
+    const { document, fileThreads } = sharedDocumentFor(FIXTURE);
+    expect(fileThreads.length).toBeGreaterThan(0);
+
+    const { result } = renderLiveEditor(document);
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+
+    expect(getDocumentComments(editor.state.doc)).toEqual(fileThreads);
+  });
+
+  // Checked right after construction: TipTap emits `create` a tick later, which a `waitFor`
+  // would let run first.
+  it("shows the threads the session sent before the editor existed, from its mount", () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    push(SESSION_THREADS);
+
+    const editor = new Editor({
+      extensions: buildLiveDocumentExtensions({
+        t: (descriptor) => descriptor.id ?? "",
+        document,
+        awareness: null,
+        user: { name: "Daph", color: "#0ea5e9" },
+        comments: channel,
+      }),
+    });
+
+    try {
+      expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it("shows the threads the session sends, without touching the shared document", async () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const { result } = renderLiveEditor(document, { comments: channel });
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+    const before = Y.encodeStateVector(document);
+
+    act(() => push(SESSION_THREADS));
+
+    expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
+    expect(Y.encodeStateVector(document)).toEqual(before);
+  });
+
+  it("shows the session's last threads in an editor mounted once the channel has closed", () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const extensions = buildLiveDocumentExtensions({
+      t: (descriptor) => descriptor.id ?? "",
+      document,
+      awareness: null,
+      user: { name: "Daph", color: "#0ea5e9" },
+      comments: channel,
+    });
+    const lost = new Editor({ extensions });
+    push(SESSION_THREADS);
+    channel.close();
+    lost.destroy();
+
+    const remounted = new Editor({ extensions });
+
+    try {
+      expect(channel.getThreads()).toBeNull();
+      expect(getDocumentComments(remounted.state.doc)).toEqual(SESSION_THREADS);
+    } finally {
+      remounted.destroy();
+    }
+  });
+
+  it("leaves the document untouched when the session sends the threads it shows", async () => {
+    const { document, fileThreads } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const { result } = renderLiveEditor(document, { comments: channel });
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+    const transactions = vi.fn();
+    editor.on("transaction", transactions);
+
+    act(() => push(structuredClone(fileThreads)));
+    act(() => push(SESSION_THREADS));
+    act(() => push(structuredClone(SESSION_THREADS)));
+
+    expect(transactions).toHaveBeenCalledTimes(1);
+    expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
   });
 
   it("keeps the anchors through a remote edit, in the editor and the shared document", async () => {

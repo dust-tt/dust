@@ -2,6 +2,9 @@ import type {
   DocumentLiveSession,
   LiveStatus,
 } from "@app/components/editor/document/types";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import { createLiveCommentChannel } from "@app/lib/client/live_comments";
+import type { DfmComment } from "@app/lib/markdown/dfm";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
@@ -12,6 +15,7 @@ export interface LiveConnection {
   id: number;
   document: Y.Doc;
   provider: HocuspocusProvider;
+  comments: LiveCommentChannel;
   close: () => void;
 }
 
@@ -26,7 +30,8 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
  * or the server closing the document, its connection MUST NOT reconnect: the server may hold
  * another copy of the document by then, and merging the old one into it would duplicate the
  * content. A fresh document and connection MUST take over, and the old document stays on
- * screen, read-only, until the new one has synced.
+ * screen, read-only, until the new one has synced. The fresh connection's comments MUST start
+ * from the threads last received by an earlier connection to the same document and user, if any.
  * Joining another document, or as another user, MUST close the current connection at once.
  */
 export function useLiveSession(live: DocumentLiveSession | undefined): {
@@ -39,6 +44,9 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
   const shownRef = useRef<LiveConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
   const failuresRef = useRef(0);
+  // TODO(co-edition): the threads also live in the channel and the editor; one store per session,
+  // outliving its connections, would replace this copy taken before each close.
+  const lastThreadsRef = useRef<DfmComment[] | null>(null);
 
   const url = live?.url;
   const documentName = live?.documentName;
@@ -51,6 +59,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
       shownRef.current?.close();
       shownRef.current = null;
       failuresRef.current = 0;
+      lastThreadsRef.current = null;
       setConnection(null);
       setStatus("connecting");
     },
@@ -71,11 +80,13 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     let closed = false;
     let destroyed = false;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let comments: LiveCommentChannel | null = null;
     const close = () => {
       if (destroyed) {
         return;
       }
       destroyed = true;
+      comments?.close();
       if (!closed) {
         closed = true;
         provider.destroy();
@@ -88,6 +99,8 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         return;
       }
       closed = true;
+      lastThreadsRef.current = comments?.getThreads() ?? lastThreadsRef.current;
+      comments?.close();
       provider.destroy();
       if (synced) {
         setStatus("offline");
@@ -110,7 +123,14 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         }
         synced = true;
         failuresRef.current = 0;
-        const next = { id: nextConnectionId++, document, provider, close };
+        comments = createLiveCommentChannel(provider, lastThreadsRef.current);
+        const next = {
+          id: nextConnectionId++,
+          document,
+          provider,
+          comments,
+          close,
+        };
         shownRef.current = next;
         setConnection(next);
         setStatus("live");
