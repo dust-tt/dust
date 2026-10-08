@@ -225,15 +225,15 @@ export function AgentPicker({
           </div>
         ) : searchedAgents.length > 0 ? (
           <>
-            {searchedAgents.map((c) => {
-              const isSelected = c.sId === selectedAgentId;
+            {searchedAgents.map((agent) => {
+              const isSelected = agent.sId === selectedAgentId;
               return (
                 <DropdownMenuItem
-                  key={`agent-picker-${c.sId}`}
+                  key={`agent-picker-${agent.sId}`}
                   icon={() => (
-                    <Avatar size="xs" visual={c.pictureUrl} lazyLoad />
+                    <Avatar size="xs" visual={agent.pictureUrl} lazyLoad />
                   )}
-                  label={c.name}
+                  label={agent.name}
                   truncateText
                   className={`group py-1 notranslate ${
                     isSelected ? "bg-primary-100" : ""
@@ -265,7 +265,7 @@ export function AgentPicker({
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
-                            onAgentDetailsClick(c.sId);
+                            onAgentDetailsClick(agent.sId);
                             setIsOpen(false);
                           }}
                         />
@@ -279,7 +279,7 @@ export function AgentPicker({
                       onDeselect?.();
                       return;
                     }
-                    onItemClick(c);
+                    onItemClick(agent);
                     setSearchText("");
                     setIsOpen(false);
                   }}
