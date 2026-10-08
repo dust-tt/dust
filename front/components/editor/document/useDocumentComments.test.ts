@@ -6,7 +6,10 @@ import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
-import type { LiveCommentCommand } from "@app/types/collab";
+import type {
+  LiveCommentCommand,
+  LiveCommentErrorCode,
+} from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -91,7 +94,7 @@ const SIGNED_AT = "2026-10-05T12:00:00.000Z";
 function liveChannel(
   answer: (
     command: LiveCommentCommand
-  ) => Result<DfmComment | null, "unavailable" | "thread_changed">
+  ) => Result<DfmComment | null, LiveCommentErrorCode>
 ) {
   const send = vi.fn(async (command: LiveCommentCommand) => answer(command));
   const channel: LiveCommentChannel = {
@@ -463,7 +466,7 @@ describe("useDocumentComments", () => {
       expect(send).not.toHaveBeenCalled();
     });
 
-    it("reports a resolve or delete the session refuses, keeping the thread", async () => {
+    it("reports a resolve or delete the session refuses, keeping the thread and its marks", async () => {
       const { channel } = liveChannel(() => new Err("unavailable"));
       const { result } = await renderCommentedEditor(SOURCE, {
         live: channel,
@@ -485,21 +488,119 @@ describe("useDocumentComments", () => {
       expect(result.current.comments.comments.map(({ id }) => id)).toEqual([
         "c1",
       ]);
+      expect(getMarkedCommentIds(editor.getJSON())).toEqual(new Set(["c1"]));
+    });
+
+    it("removes the marks of a thread the session no longer has", async () => {
+      const { channel } = liveChannel(() => new Err("not_found"));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+
+      await act(async () => {
+        expect((await result.current.comments.remove("c1", null)).isOk()).toBe(
+          true
+        );
+      });
+
       expect(getMarkedCommentIds(editor.getJSON()).size).toBe(0);
     });
 
-    it("keeps an applied suggestion's text and reports the resolution the session refuses", async () => {
-      const { channel, send } = liveChannel(() => new Err("unavailable"));
+    it("reports a command that could not be sent instead of throwing", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      send.mockRejectedValue(new Error("No crypto.randomUUID here."));
       const { result } = await renderCommentedEditor(SOURCE, {
         live: channel,
       });
 
       await act(async () => {
+        const resolved = await result.current.comments.setResolved(
+          "c1",
+          true,
+          null
+        );
+        expect(resolved.isErr() && resolved.error).toBe(
+          "Commenting is unavailable."
+        );
+      });
+    });
+
+    it("deletes a thread the session accepted without returning it", async () => {
+      const { channel, send } = liveChannel(() => new Ok(null));
+      const { result } = await renderCommentedEditor("Hello brave world.\n", {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      act(() => {
+        select(editor, "brave");
+        result.current.comments.startDraft();
+      });
+
+      await act(async () => {
         expect(
-          (
-            await result.current.comments.applySuggestion("c1", "here", null)
-          ).isErr()
+          (await result.current.comments.submitDraft("Too bold?")).isErr()
         ).toBe(true);
+      });
+
+      const [[added], [deleted]] = send.mock.calls;
+      expect(deleted).toEqual({ type: "delete", commentId: added.commentId });
+    });
+
+    it("comments in a document holding marks whose thread is gone", async () => {
+      const { channel, send } = liveChannel(
+        (command) =>
+          new Ok(
+            command.type === "add"
+              ? sessionThread(command.commentId, command.body)
+              : null
+          )
+      );
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+      const editor = result.current.document.editor;
+      if (!editor) {
+        throw new Error("Editor did not mount.");
+      }
+      act(() => {
+        editor.commands.setCommentThreads([]);
+      });
+      expect(getMarkedCommentIds(editor.getJSON())).toEqual(new Set(["c1"]));
+
+      act(() => {
+        select(editor, "Hi");
+        result.current.comments.startDraft();
+      });
+      await act(async () => {
+        expect(
+          (await result.current.comments.submitDraft("Too bold?")).isOk()
+        ).toBe(true);
+      });
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps an applied suggestion's text and reports why the session refused its resolution", async () => {
+      const { channel, send } = liveChannel(() => new Err("not_found"));
+      const { result } = await renderCommentedEditor(SOURCE, {
+        live: channel,
+      });
+
+      await act(async () => {
+        const applied = await result.current.comments.applySuggestion(
+          "c1",
+          "here",
+          null
+        );
+        expect(applied.isErr() && applied.error).toContain(
+          "This comment was deleted."
+        );
       });
 
       expect(send).toHaveBeenCalledWith({
@@ -718,6 +819,39 @@ describe("useDocumentComments", () => {
     );
 
     expect(verify.mock.calls.map(([, , index]) => index)).toEqual([0, 1]);
+  });
+
+  it("keeps the answer for unchanged messages while new ones are checked", async () => {
+    const verify = vi.fn(
+      (_commentId: string, _messages: DfmMessage[], index: number) =>
+        index === 0
+          ? Promise.resolve(true)
+          : new Promise<boolean>(() => undefined)
+    );
+    const { result } = await renderCommentedEditor(SOURCE, { verify });
+    await waitFor(() =>
+      expect(result.current.comments.isVerified("c1", 0)).toBe(true)
+    );
+
+    await act(async () => {
+      await result.current.comments.reply("c1", "Not at all.");
+    });
+
+    expect(result.current.comments.isVerified("c1", 0)).toBe(true);
+    expect(result.current.comments.isVerified("c1", 1)).toBeNull();
+  });
+
+  it("checks a reply's savability once when nothing writes it elsewhere", async () => {
+    const isSavable = vi.fn(() => true);
+    const { result } = await renderCommentedEditor(SOURCE, { isSavable });
+
+    await act(async () => {
+      expect(
+        (await result.current.comments.reply("c1", "Not at all.")).isOk()
+      ).toBe(true);
+    });
+
+    expect(isSavable).toHaveBeenCalledTimes(1);
   });
 
   it("reads messages as unknown again while a new verifier checks them", async () => {

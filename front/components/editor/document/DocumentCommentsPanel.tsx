@@ -128,7 +128,7 @@ interface SuggestionCardProps {
   quote: string | undefined;
   suggestion: string;
   renderBody: (body: string) => ReactNode;
-  onApply?: () => Promise<Result<void, string>>;
+  onApply?: () => Promise<Result<void, string> | null>;
 }
 
 /**
@@ -162,9 +162,11 @@ const SuggestionCard = ({
             label={t`Apply`}
             onClick={(event) => {
               event.stopPropagation();
-              void onApply().then((applied) =>
-                setError(applied.isErr() ? applied.error : null)
-              );
+              void onApply().then((applied) => {
+                if (applied) {
+                  setError(applied.isErr() ? applied.error : null);
+                }
+              });
             }}
           />
         )}
@@ -196,7 +198,9 @@ interface MessageBodyProps {
   body: string;
   quote: string | undefined;
   renderBody: (body: string) => ReactNode;
-  onApplySuggestion?: (suggestion: string) => Promise<Result<void, string>>;
+  onApplySuggestion?: (
+    suggestion: string
+  ) => Promise<Result<void, string> | null>;
 }
 
 /**
@@ -359,9 +363,31 @@ const CommentThread = ({
   const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pending = useRef(false);
   const [first, ...replies] = comment.messages;
-  const showResult = (result: Promise<Result<void, string>>) =>
-    void result.then((done) => setError(done.isErr() ? done.error : null));
+  // Each action waits for the session; a second click would repeat it on a thread not yet updated.
+  const runAlone = async (
+    action: () => Promise<Result<void, string>>
+  ): Promise<Result<void, string> | null> => {
+    if (pending.current) {
+      return null;
+    }
+    pending.current = true;
+    try {
+      return await action();
+    } finally {
+      pending.current = false;
+    }
+  };
+  const showResult = (action: () => Promise<Result<void, string>>) =>
+    void runAlone(action).then((done) => {
+      if (done) {
+        setError(done.isErr() ? done.error : null);
+      }
+    });
+  const applySuggestion =
+    onApplySuggestion &&
+    ((suggestion: string) => runAlone(() => onApplySuggestion(suggestion)));
   const resolved = comment.status === "resolved";
   const authorName = first.author.name;
 
@@ -408,13 +434,13 @@ const CommentThread = ({
               <PanelIconButton
                 label={resolved ? t`Reopen` : t`Resolve`}
                 icon={resolved ? ReverseLeft : Check}
-                onClick={() => showResult(onSetResolved(!resolved))}
+                onClick={() => showResult(() => onSetResolved(!resolved))}
                 mountPortalContainer={mountPortalContainer}
               />
               <PanelIconButton
                 label={t`Delete comment`}
                 icon={Trash01}
-                onClick={() => showResult(onDelete())}
+                onClick={() => showResult(onDelete)}
                 mountPortalContainer={mountPortalContainer}
               />
             </div>
@@ -444,7 +470,7 @@ const CommentThread = ({
           body={first.body}
           quote={quote}
           renderBody={renderBody}
-          onApplySuggestion={onApplySuggestion}
+          onApplySuggestion={applySuggestion}
         />
         {replies.length > 0 && (
           <ul className="flex flex-col gap-2.5 border-l border-border pl-3">
@@ -464,7 +490,7 @@ const CommentThread = ({
                   body={reply.body}
                   quote={quote}
                   renderBody={renderBody}
-                  onApplySuggestion={onApplySuggestion}
+                  onApplySuggestion={applySuggestion}
                 />
               </li>
             ))}
@@ -521,7 +547,8 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus MUST
  * return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
  * neighbouring thread or to the panel heading; a refused one MUST show the reason on its thread
- * instead. Opening or closing the panel MUST NOT change the document.
+ * instead. While a thread's resolve, reopen, delete or suggestion is pending, further clicks on
+ * them MUST be ignored. Opening or closing the panel MUST NOT change the document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comments-panel-avatars

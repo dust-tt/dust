@@ -5,10 +5,10 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
-  COMMENT_MARK_NAME,
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
+  withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
@@ -108,24 +108,6 @@ export function replaceYDocContent(
   return new Ok(getDocumentJSONComments(content));
 }
 
-const withoutOrphanAnchors = (
-  content: JSONContent,
-  threadIds: Set<string>
-): JSONContent => {
-  const { marks, content: children, ...node } = content;
-  const kept = marks?.filter(
-    (mark) =>
-      mark.type !== COMMENT_MARK_NAME || threadIds.has(String(mark.attrs?.id))
-  );
-  return {
-    ...node,
-    ...(kept && kept.length > 0 && { marks: kept }),
-    ...(children && {
-      content: children.map((child) => withoutOrphanAnchors(child, threadIds)),
-    }),
-  };
-};
-
 /**
  * @cc [owner:tdraier,label:product] co-edition-orphan-anchors-dropped
  * `yDocToDfm` MUST write without the comment marks whose id has no thread in `comments`, so a
@@ -154,6 +136,9 @@ export function yDocToDfm({
   const threadIds = new Set(comments.map(({ id }) => id));
   return saveDfm(
     envelope.data,
-    withDocumentJSONComments(withoutOrphanAnchors(content, threadIds), comments)
+    withDocumentJSONComments(
+      withoutOrphanCommentMarks(content, threadIds),
+      comments
+    )
   );
 }

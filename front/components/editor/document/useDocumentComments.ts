@@ -14,6 +14,7 @@ import {
   getDraftInlineContent,
   getSuggestableCommentIds,
   scrollToCommentHighlight,
+  withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
@@ -52,10 +53,9 @@ interface UseDocumentCommentsProps {
 }
 
 interface Verification {
-  /** The threads and verifier the results belong to; results for others are stale. */
-  comments: DfmComment[];
+  /** The verifier the results belong to; results from another are stale. */
   verify: DfmMessageVerifier;
-  /** Whether each message verified, by `${commentId}:${index}`. */
+  /** Whether each message verified, by `verificationKey`. */
   results: Map<string, boolean>;
 }
 
@@ -98,10 +98,23 @@ const UNSUGGESTABLE_MESSAGE = msg`Suggestions can only replace text within one p
 const UNAPPLICABLE_MESSAGE = msg`This suggestion can't replace the commented text. Another comment may cover part of it.`;
 const DELETED_MESSAGE = msg`This comment was deleted.`;
 const THREAD_CHANGED_MESSAGE = msg`This thread changed while sending. Send again.`;
-const UNRESOLVED_SUGGESTION_MESSAGE = msg`The suggestion was applied, but the comment couldn't be resolved.`;
 
-// The length of an Ed25519 signature in base64url, which a message the server signs carries.
-const SIGNATURE_PLACEHOLDER = "A".repeat(86);
+const ED25519_BASE64URL_SIGNATURE_PLACEHOLDER = "A".repeat(86);
+
+const withMessage = (
+  commentId: string,
+  thread: DfmComment | undefined,
+  added: DfmMessage
+): DfmComment =>
+  thread
+    ? { ...thread, messages: [...thread.messages, added] }
+    : { id: commentId, status: "open", messages: [added] };
+
+const localMessage = (writer: DfmAuthor, body: string): DfmMessage => ({
+  author: writer,
+  createdAt: new Date().toISOString(),
+  body,
+});
 
 /** What a message's signature covers besides the file: its thread, place and previous message. */
 const verificationKey = (comment: DfmComment, index: number) =>
@@ -164,8 +177,9 @@ export interface PanelFocusRequest {
 /**
  * @cc [owner:tdraier,label:security] document-comment-verification
  * With a verifier, each message MUST read as verified or unverified from the current verifier's
- * answer for the threads currently shown, and as unknown while that answer is pending. Without a
- * verifier, every message MUST read as unknown, never as verified.
+ * answer for that message at its place in its thread after the same previous message, and as
+ * unknown while that answer is pending. Without a verifier, every message MUST read as unknown,
+ * never as verified.
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-suggestion
@@ -182,12 +196,15 @@ export interface PanelFocusRequest {
  * With `live`, posting, replying to, resolving and deleting comments MUST go through the session
  * and MUST NOT change the threads in the document, which only the session sends, with two
  * exceptions: a new thread MUST be anchored to the draft once the session created it, or deleted
- * from the session when it can no longer be anchored, and deleting MUST remove the comment's
- * marks before asking the session. A new comment or reply the codec could not write, or the
- * document would no longer save with, MUST be refused before the session sees it, checked with
- * the current author and a full-length signature. Every refusal from the session MUST be returned
- * with a reason; applying a suggestion whose resolution the session refuses MUST keep the text
- * change and return that reason.
+ * from the session when it can no longer be anchored or the session accepted it without
+ * returning it, and deleting MUST remove the comment's marks once the session deleted the thread
+ * or answered that it has none, never before. A new comment or reply the codec could not write,
+ * or the document would no longer save with, MUST be refused before the session sees it, checked
+ * with the current author and a full-length signature, and without the comment marks that have no
+ * thread, which the session drops when it writes the file. Every refusal from the session, and a
+ * command that could not be sent, MUST be returned with a reason, never thrown; applying a
+ * suggestion whose resolution the session refuses MUST keep the text change and return that
+ * reason.
  */
 export const useDocumentComments = ({
   editor,
@@ -237,11 +254,7 @@ export const useDocumentComments = ({
     null
   );
   const [verification, setVerification] = useState<Verification | null>(null);
-  // Results by verificationKey, so a new threads array re-checks only the messages it changed.
-  const verified = useRef<{
-    verify: DfmMessageVerifier;
-    results: Map<string, boolean>;
-  } | null>(null);
+  const latestVerification = useRef<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const canWrite = canComment && author !== undefined;
@@ -251,43 +264,50 @@ export const useDocumentComments = ({
     [comments]
   );
 
-  // Signature checks are asynchronous WebCrypto calls; results are kept with the threads they
-  // checked, so an edit never shows a stale answer.
+  // Signature checks are asynchronous WebCrypto calls; results are kept by what each signature
+  // covers, so new threads only wait for the messages they changed.
+  const verifiedByPosition = useMemo(() => {
+    const results = new Map<string, boolean>();
+    if (!verify || verification?.verify !== verify) {
+      return results;
+    }
+    for (const comment of comments) {
+      comment.messages.forEach((_, index) => {
+        const valid = verification.results.get(verificationKey(comment, index));
+        if (valid !== undefined) {
+          results.set(`${comment.id}:${index}`, valid);
+        }
+      });
+    }
+    return results;
+  }, [comments, verification, verify]);
+
   useEffect(() => {
     if (!verify) {
       return;
     }
     let cancelled = false;
     const known =
-      verified.current?.verify === verify ? verified.current.results : null;
+      latestVerification.current?.verify === verify
+        ? latestVerification.current.results
+        : null;
     void concurrentExecutor(
       comments.flatMap((comment) =>
         comment.messages.map((_, index) => ({ comment, index }))
       ),
       async ({ comment, index }) => {
         const key = verificationKey(comment, index);
-        return {
-          position: `${comment.id}:${index}`,
+        return [
           key,
-          valid:
-            known?.get(key) ??
+          known?.get(key) ??
             (await verify(comment.id, comment.messages, index)),
-        };
+        ] as const;
       },
       { concurrency: 8 }
     ).then((entries) => {
       if (!cancelled) {
-        verified.current = {
-          verify,
-          results: new Map(entries.map(({ key, valid }) => [key, valid])),
-        };
-        setVerification({
-          comments,
-          verify,
-          results: new Map(
-            entries.map(({ position, valid }) => [position, valid])
-          ),
-        });
+        latestVerification.current = { verify, results: new Map(entries) };
+        setVerification(latestVerification.current);
       }
     });
     return () => {
@@ -333,20 +353,20 @@ export const useDocumentComments = ({
     }
   };
 
-  const withMessage = (
-    commentId: string,
-    thread: DfmComment | undefined,
-    added: DfmMessage
-  ): DfmComment =>
-    thread
-      ? { ...thread, messages: [...thread.messages, added] }
-      : { id: commentId, status: "open", messages: [added] };
+  // A live document keeps marks whose thread is gone; the session drops them when it saves.
+  const wouldSave = (document: Node): boolean => {
+    const json = document.toJSON();
+    return isSavable(
+      live
+        ? withoutOrphanCommentMarks(
+            json,
+            new Set(getDocumentComments(document).map(({ id }) => id))
+          )
+        : json
+    );
+  };
 
-  const localMessage = (writer: DfmAuthor, body: string): DfmMessage => ({
-    author: writer,
-    createdAt: new Date().toISOString(),
-    body,
-  });
+  const writtenAsChecked = !sign && !live;
 
   /**
    * Refuses a new message to `thread`, or a new thread `commentId`, before anyone writes it: when
@@ -361,8 +381,9 @@ export const useDocumentComments = ({
     body: string
   ): Result<void, string> => {
     const local = localMessage(writer, body);
-    const message =
-      sign || live ? { ...local, signature: SIGNATURE_PLACEHOLDER } : local;
+    const message = writtenAsChecked
+      ? local
+      : { ...local, signature: ED25519_BASE64URL_SIGNATURE_PLACEHOLDER };
     const added = withMessage(commentId, thread, message);
     if (!isWritableThread(added)) {
       return new Err(t(UNSAVABLE_MESSAGE));
@@ -375,9 +396,7 @@ export const useDocumentComments = ({
     if (!next) {
       return new Err(t(thread ? DELETED_MESSAGE : UNANCHORED_MESSAGE));
     }
-    return isSavable(next.toJSON())
-      ? new Ok(undefined)
-      : new Err(t(UNSAVABLE_MESSAGE));
+    return wouldSave(next) ? new Ok(undefined) : new Err(t(UNSAVABLE_MESSAGE));
   };
 
   /**
@@ -440,7 +459,7 @@ export const useDocumentComments = ({
       if (!next) {
         return new Err(t(DELETED_MESSAGE));
       }
-      if (!isSavable(next.toJSON())) {
+      if (!writtenAsChecked && !wouldSave(next)) {
         return new Err(t(UNSAVABLE_MESSAGE));
       }
       editor.commands.replyToComment(thread.id, written.value);
@@ -463,46 +482,58 @@ export const useDocumentComments = ({
   ): CommentCommands => {
     const send = async (
       command: LiveCommentCommand
+    ): Promise<Result<DfmComment | null, LiveCommentErrorCode>> => {
+      try {
+        return await channel.send(command);
+      } catch {
+        return new Err("unavailable");
+      }
+    };
+    const sendForReason = async (
+      command: LiveCommentCommand
     ): Promise<Result<void, string>> => {
-      const sent = await channel.send(command);
+      const sent = await send(command);
       return sent.isOk()
         ? new Ok(undefined)
         : new Err(liveErrorMessage(sent.error));
     };
+    // TODO(co-edition): a delete sent once the channel has closed never reaches the session, so
+    // a thread created just before a disconnect stays there without an anchor.
+    const discard = (id: string) => {
+      void send({ type: "delete", commentId: id });
+    };
     return {
       add: async (id, body) => {
-        const created = await channel.send({
-          type: "add",
-          commentId: id,
-          body,
-        });
+        const created = await send({ type: "add", commentId: id, body });
         if (created.isErr()) {
           return new Err(liveErrorMessage(created.error));
         }
-        return created.value
-          ? new Ok(created.value)
-          : new Err(t(UNAVAILABLE_MESSAGE));
+        if (!created.value) {
+          discard(id);
+          return new Err(t(UNAVAILABLE_MESSAGE));
+        }
+        return new Ok(created.value);
       },
       // The session refuses the reply once the thread has moved past what was shown.
       reply: (thread, body) =>
-        send({
+        sendForReason({
           type: "reply",
           commentId: thread.id,
           position: thread.messages.length,
           body,
         }),
       setResolved: (id, resolved) =>
-        send({ type: "resolve", commentId: id, resolved }),
-      // Marks go first: a thread without marks is valid, a mark without its thread is not.
-      remove: (id) => {
+        sendForReason({ type: "resolve", commentId: id, resolved }),
+      // A thread already gone is what a delete asks for.
+      remove: async (id) => {
+        const deleted = await send({ type: "delete", commentId: id });
+        if (deleted.isErr() && deleted.error !== "not_found") {
+          return new Err(liveErrorMessage(deleted.error));
+        }
         editor.commands.removeCommentMarks(id);
-        return send({ type: "delete", commentId: id });
+        return new Ok(undefined);
       },
-      // TODO(co-edition): a delete sent once the channel has closed never reaches the session, so
-      // a thread created just before a disconnect stays there without an anchor.
-      discard: (id) => {
-        void channel.send({ type: "delete", commentId: id });
-      },
+      discard,
     };
   };
 
@@ -524,7 +555,7 @@ export const useDocumentComments = ({
     if (!draft || !next) {
       return new Err(t(UNANCHORED_MESSAGE));
     }
-    if (!isSavable(next.toJSON())) {
+    if (!writtenAsChecked && !wouldSave(next)) {
       return new Err(t(UNSAVABLE_MESSAGE));
     }
     editor.chain().addComment(comment).focus().setTextSelection(draft.to).run();
@@ -550,11 +581,7 @@ export const useDocumentComments = ({
   return {
     /** Whether a message's signature checked out, or null while unknown. */
     isVerified: (commentId: string, index: number): boolean | null =>
-      verify &&
-      verification?.comments === comments &&
-      verification.verify === verify
-        ? (verification.results.get(`${commentId}:${index}`) ?? null)
-        : null,
+      verifiedByPosition.get(`${commentId}:${index}`) ?? null,
     comments,
     unresolved,
     quotes: state.quotes,
@@ -727,7 +754,7 @@ export const useDocumentComments = ({
             : t(UNSUGGESTABLE_MESSAGE)
         );
       }
-      if (!isSavable(next.toJSON())) {
+      if (!wouldSave(next)) {
         return new Err(t`This suggestion can't be saved in this document.`);
       }
       // Two transactions: the text change is undoable, the resolution stays out of history.
@@ -740,7 +767,10 @@ export const useDocumentComments = ({
       }
       const resolved = await commandsFor(editor, author).setResolved(id, true);
       if (resolved.isErr()) {
-        return new Err(t(UNRESOLVED_SUGGESTION_MESSAGE));
+        const reason = resolved.error;
+        return new Err(
+          t`The suggestion was applied, but the comment couldn't be resolved. ${reason}`
+        );
       }
       requestFocus(focusNext);
       return new Ok(undefined);

@@ -14,7 +14,6 @@ import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
 const COMMENTS_ATTRIBUTE = "comments";
-// Names the comment whose marks a transaction strips on purpose, past the edge protection.
 const REMOVED_COMMENT_MARKS_META = "removedCommentMarks";
 
 const HIGHLIGHT_CLASS = cn(
@@ -91,6 +90,27 @@ export const withoutDocumentJSONComments = ({
 }: JSONContent): JSONContent => {
   const { [COMMENTS_ATTRIBUTE]: _comments, ...rest } = attrs ?? {};
   return Object.keys(rest).length > 0 ? { ...document, attrs: rest } : document;
+};
+
+/** The document without the comment marks whose id is not in `threadIds`. */
+export const withoutOrphanCommentMarks = (
+  content: JSONContent,
+  threadIds: Set<string>
+): JSONContent => {
+  const { marks, content: children, ...node } = content;
+  const kept = marks?.filter(
+    (mark) =>
+      mark.type !== COMMENT_MARK_NAME || threadIds.has(String(mark.attrs?.id))
+  );
+  return {
+    ...node,
+    ...(kept && kept.length > 0 && { marks: kept }),
+    ...(children && {
+      content: children.map((child) =>
+        withoutOrphanCommentMarks(child, threadIds)
+      ),
+    }),
+  };
 };
 
 /** Comment ids of every highlight wrapping the clicked element. */
