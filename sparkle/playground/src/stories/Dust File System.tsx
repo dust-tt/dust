@@ -9,6 +9,7 @@ import {
   Clock,
   Cube01,
   CubeOutline,
+  Counter,
   Dialog,
   DialogContent,
   DotsHorizontal,
@@ -77,6 +78,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { AvatarCounter } from "../components/AvatarCounter";
 import { ToolDetailsSheet } from "../components/BuildDetails";
 import type { CommandPaletteItem } from "../components/CommandPalette";
 import { CommandPalette } from "../components/CommandPalette";
@@ -203,6 +205,12 @@ type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
 };
+
+/**
+ * How many Pods the sidebar keeps. The workspace holds sixty; someone who has
+ * been here a while is in a good number of them, and the list should look it.
+ */
+const SIDEBAR_POD_COUNT = 20;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -390,7 +398,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // put there, not because the user takes part in it. Every other Pod is
   // reached from the browse menu or from Files.
   const [favoritePodIds, setFavoritePodIds] = useState<Set<string>>(
-    () => new Set(model.pods.slice(0, 6).map((pod) => pod.id))
+    () => new Set(model.pods.slice(0, SIDEBAR_POD_COUNT).map((pod) => pod.id))
   );
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
@@ -2145,20 +2153,6 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                   setP4View(null);
                 }}
               />
-              <NavigationListItem
-                label="Requests"
-                icon={MessageQuestionCircle}
-                selected={p2View.kind === "requests"}
-                count={
-                  pendingRequestCount > 0 ? pendingRequestCount : undefined
-                }
-                onClick={() => {
-                  setP2View({ kind: "requests" });
-                  setStickyRequestIds(new Set());
-                  setP3View(null);
-                  setP4View(null);
-                }}
-              />
               {/* Two controls on one line: the row goes to the list, the
                   button starts a conversation. Nesting the button inside the
                   row cost the label 7px it could not spare. */}
@@ -2392,11 +2386,16 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           <div className="group flex cursor-pointer items-center justify-between gap-2">
             <span className="sr-only">Open user menu</span>
             <div className="flex gap-2 items-center min-w-0">
-              <Avatar
+              {/* The count rides the avatar too: inside a closed menu it is a
+                  count nobody sees. */}
+              <AvatarCounter
                 name={user.fullName}
                 visual={user.portrait}
                 size="sm"
                 isRounded
+                count={pendingRequestCount}
+                variant="highlight"
+                badgeLabel={`${pendingRequestCount} pending requests`}
               />
               <div className="flex min-w-0 flex-1 flex-col items-start text-left">
                 <span className="heading-sm w-full truncate text-foreground">
@@ -2426,11 +2425,24 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
             }}
           />
           <DropdownMenuItem
-            label="Administration"
-            icon={Settings01}
+            label="Requests"
+            icon={MessageQuestionCircle}
+            endComponent={
+              pendingRequestCount > 0 ? (
+                <Counter
+                  value={pendingRequestCount}
+                  size="xs"
+                  variant="highlight"
+                />
+              ) : undefined
+            }
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
+              setP2View({ kind: "requests" });
+              setStickyRequestIds(new Set());
+              setP3View(null);
+              setP4View(null);
             }}
           />
           <DropdownMenuSub>
