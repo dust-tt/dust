@@ -1,3 +1,4 @@
+import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
 import type { LiveCheckpoint, LiveFile } from "@app/lib/api/collab/live_file";
 import {
   checkLiveAccess,
@@ -7,16 +8,29 @@ import {
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  setTimeoutAsync,
+} from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import { parseLiveDocumentName } from "@app/types/collab";
+import type {
+  LiveCommentErrorCode,
+  LiveCommentServerMessage,
+} from "@app/types/collab";
+import {
+  liveCommentClientMessageSchema,
+  parseLiveDocumentName,
+} from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
+const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
@@ -25,7 +39,21 @@ interface LiveSession {
   checkpointFailed: boolean;
   lastChangedBy: LiveFile | undefined;
   graceTimer: ReturnType<typeof setTimeout> | undefined;
+  commentCommands: Promise<void>;
 }
+
+const serverMessage = (message: LiveCommentServerMessage) =>
+  JSON.stringify(message);
+
+const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
+  serverMessage({ type: "refused", requestId, error });
+
+type CommandResult = Awaited<ReturnType<typeof applyLiveCommentCommand>>;
+
+const commandRequestSchema = z.object({
+  type: z.literal("command"),
+  requestId: z.string().min(1),
+});
 
 /** Logs why a connection or a load is refused, then rejects it the way Hocuspocus expects. */
 function refuse(documentName: string, reason: string): never {
@@ -87,17 +115,29 @@ export async function authenticateConnection(
 /**
  * @cc [owner:tdraier,label:product;concurrency] collab-document-lifecycle
  * Every load MUST read the file: no Yjs state outlives its Hocuspocus document. A store MUST
- * checkpoint the document with the threads and checkpoint of its load, through the connection that
- * last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
+ * checkpoint the document with the session's threads and last checkpoint, through the connection
+ * that last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
  * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
  * unless a connection is open or its last checkpoint failed. A direct connection that leaves
  * during that period does not extend it.
  */
+/**
+ * @cc [owner:tdraier,label:security;product] collab-comment-threads
+ * A connection MUST receive the session's threads when it asks. A comment command MUST be applied
+ * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
+ * answered to that connection only. Once accepted, the new threads MUST be sent to every
+ * connection of the document and the document stored, so the checkpoint writes them, through the
+ * connection that last changed its text, or through the commenter's when none did. A command its
+ * document unloaded before it finished MUST change nothing. Every command carrying a request id
+ * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
+ * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
+ * the later ones. Any other message that is not a valid client message MUST be ignored.
+ */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const sessions = new WeakMap<Document, LiveSession>();
 
-  return new Hocuspocus<LiveFile>({
+  const hocuspocus = new Hocuspocus<LiveFile>({
     // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const parsed = parseLiveDocumentName(documentName);
@@ -139,6 +179,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         checkpointFailed: false,
         lastChangedBy: undefined,
         graceTimer: undefined,
+        commentCommands: Promise.resolve(),
       });
       return live.doc;
     },
@@ -229,7 +270,115 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
         }
       }, UNLOAD_GRACE_PERIOD_MS);
     },
+
+    async onStateless({ connection, document, documentName, payload }) {
+      const session = sessions.get(document);
+      const file: LiveFile = connection.context;
+      const json = safeParseJSON(payload);
+      const message = json.isOk()
+        ? liveCommentClientMessageSchema.safeParse(json.value)
+        : null;
+      if (!session || !message?.success) {
+        logger.info(
+          { documentName, workspaceId: file.workspaceId },
+          "Collab stateless message ignored"
+        );
+        const request = json.isOk()
+          ? commandRequestSchema.safeParse(json.value)
+          : null;
+        if (request?.success) {
+          connection.sendStateless(
+            refusedMessage(request.data.requestId, "unavailable")
+          );
+        }
+        return;
+      }
+      if (message.data.type === "threads") {
+        connection.sendStateless(
+          serverMessage({ type: "threads", comments: session.comments })
+        );
+        return;
+      }
+
+      const { requestId, command } = message.data;
+      const logFailure = (err: unknown) =>
+        logger.error(
+          {
+            err: normalizeError(err),
+            documentName,
+            workspaceId: file.workspaceId,
+          },
+          "Collab comment command failed"
+        );
+      const apply = async (): Promise<CommandResult> => {
+        try {
+          const applied = await Promise.race([
+            applyLiveCommentCommand(file, session.comments, command),
+            setTimeoutAsync(COMMENT_COMMAND_TIMEOUT_MS),
+          ]);
+          if (applied === "timeout") {
+            logger.error(
+              { documentName, workspaceId: file.workspaceId },
+              "Collab comment command timed out"
+            );
+            return new Err("unavailable");
+          }
+          return applied;
+        } catch (err) {
+          logFailure(err);
+          return new Err("unavailable");
+        }
+      };
+      const run = async () => {
+        // Unloaded while the command waited or ran: a reload reads the file into a new document,
+        // and storing this one would cancel that document's debounced store, keyed by name.
+        const result: CommandResult = document.isDestroyed
+          ? new Err("unavailable")
+          : await apply();
+        if (document.isDestroyed || result.isErr()) {
+          connection.sendStateless(
+            refusedMessage(
+              requestId,
+              result.isErr() ? result.error : "unavailable"
+            )
+          );
+          return;
+        }
+
+        // TODO(co-edition): refuse commands while `session.checkpointFailed`: an accepted comment
+        // only lives in memory until a checkpoint succeeds, and is lost if none ever does.
+        // TODO(co-edition): a command still applies after its sender left, whose channel already
+        // answered it `unavailable`; a retried `add` then makes a second thread.
+        session.comments = result.value.comments;
+        session.lastChangedBy ??= file;
+        // TODO(co-edition): broadcast only the changed thread rather than every thread to every
+        // connection.
+        document.broadcastStateless(
+          serverMessage({ type: "threads", comments: session.comments })
+        );
+        connection.sendStateless(
+          serverMessage({
+            type: "accepted",
+            requestId,
+            comment: result.value.created,
+          })
+        );
+        void hocuspocus.storeDocumentHooks(document, {
+          clientsCount: document.getConnectionsCount(),
+          document,
+          documentName,
+          instance: hocuspocus,
+          lastContext: file,
+          lastTransactionOrigin: undefined,
+        });
+      };
+      session.commentCommands = session.commentCommands
+        .then(run)
+        .catch(logFailure);
+    },
   });
+
+  return hocuspocus;
 }
 
 /**

@@ -1,12 +1,17 @@
+import { createServer } from "node:http";
+import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
 import {
+  checkLiveAccess,
   checkpointLiveDocument,
   loadLiveDocument,
 } from "@app/lib/api/collab/live_file";
 import { mintLiveTicket } from "@app/lib/api/collab/tickets";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
+import type { LiveCommentChannel } from "@app/lib/client/live_comments";
+import { createLiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -22,13 +27,27 @@ import {
   createCollabHocuspocus,
   UNLOAD_GRACE_PERIOD_MS,
 } from "@front-api/lib/collab/hocuspocus";
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import type { WebSocketLike } from "@hocuspocus/server";
+import type { Peer } from "crossws";
+import crossws from "crossws/adapters/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-vi.mock("@app/lib/api/collab/live_file", async (importActual) => ({
-  ...(await importActual<typeof import("@app/lib/api/collab/live_file")>()),
-  loadLiveDocument: vi.fn(),
-  checkpointLiveDocument: vi.fn(),
+vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
+  const actual =
+    await importActual<typeof import("@app/lib/api/collab/live_file")>();
+  return {
+    ...actual,
+    loadLiveDocument: vi.fn(),
+    checkpointLiveDocument: vi.fn(),
+    // Real until a test stubs it: minting a ticket and connecting both check access.
+    checkLiveAccess: vi.fn(actual.checkLiveAccess),
+  };
+});
+
+vi.mock("@app/lib/api/collab/live_comments", () => ({
+  applyLiveCommentCommand: vi.fn(),
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
@@ -75,16 +94,20 @@ async function loadSource() {
   });
 }
 
+function checkpointNextRevision() {
+  vi.mocked(checkpointLiveDocument).mockImplementation(
+    async (_file, _live, last) =>
+      new Ok({
+        revision: String(Number(last.revision) + 1),
+        content: "written",
+      })
+  );
+}
+
 describe("createCollabHocuspocus", () => {
   beforeEach(() => {
     vi.mocked(loadLiveDocument).mockImplementation(loadSource);
-    vi.mocked(checkpointLiveDocument).mockImplementation(
-      async (_file, _live, last) =>
-        new Ok({
-          revision: String(Number(last.revision) + 1),
-          content: "written",
-        })
-    );
+    checkpointNextRevision();
   });
 
   afterEach(() => {
@@ -266,15 +289,15 @@ describe("createCollabHocuspocus", () => {
   });
 });
 
-describe("authenticateConnection", () => {
-  async function ticketFor(auth: Authenticator, path: string) {
-    const ticket = await mintLiveTicket(auth, path);
-    if (ticket.isErr()) {
-      throw new Error(ticket.error.message);
-    }
-    return ticket.value;
+async function ticketFor(auth: Authenticator, path: string) {
+  const ticket = await mintLiveTicket(auth, path);
+  if (ticket.isErr()) {
+    throw new Error(ticket.error.message);
   }
+  return ticket.value;
+}
 
+describe("authenticateConnection", () => {
   it("opens the ticket's file for its user, once", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     await FeatureFlagFactory.basic(auth, "co_edition");
@@ -398,4 +421,253 @@ describe("authenticateConnection", () => {
 
     expect(result.isErr() && result.error).toBe("Invalid or expired ticket.");
   });
+});
+
+function isWebSocketLike(socket: unknown): socket is WebSocketLike {
+  return typeof socket === "object" && socket !== null && "send" in socket;
+}
+
+/** Serves the Hocuspocus instance over WebSockets, as the collab server does. */
+async function serve(hocuspocus: ReturnType<typeof createCollabHocuspocus>) {
+  const connections = new WeakMap<
+    Peer,
+    ReturnType<typeof hocuspocus.handleConnection>
+  >();
+  const ws = crossws({
+    hooks: {
+      open(peer) {
+        if (isWebSocketLike(peer.websocket)) {
+          connections.set(
+            peer,
+            hocuspocus.handleConnection(peer.websocket, peer.request)
+          );
+        }
+      },
+      message(peer, message) {
+        connections.get(peer)?.handleMessage(message.uint8Array());
+      },
+      close(peer, event) {
+        connections.get(peer)?.handleClose({
+          code: event.code ?? 1005,
+          reason: event.reason ?? "",
+        });
+      },
+    },
+  });
+  const server = createServer();
+  server.on("upgrade", (request, socket, head) =>
+    ws.handleUpgrade(request, socket, head)
+  );
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  const address = server.address();
+  if (address === null || typeof address === "string") {
+    throw new Error("The test server has no port.");
+  }
+  return {
+    url: `ws://127.0.0.1:${address.port}`,
+    close: () => server.close(),
+  };
+}
+
+// TODO(co-edition): cover commands applied one at a time per document, a message that is not a
+// client message, a command whose document unloads before it finishes, and a command that times
+// out.
+describe("comment threads in a live session", () => {
+  const THREAD: DfmComment = {
+    id: "c1",
+    status: "open",
+    messages: [
+      {
+        author: { kind: "user", id: "usr_tom", name: "Tom" },
+        createdAt: "2026-10-05T12:00:00.000Z",
+        body: "Why Friday?",
+      },
+    ],
+  };
+  const CREATED: DfmComment = { ...THREAD, id: "c2" };
+  const providers: HocuspocusProvider[] = [];
+  const channels: LiveCommentChannel[] = [];
+  let close: () => void = () => undefined;
+
+  beforeEach(() => {
+    checkpointNextRevision();
+  });
+
+  afterEach(() => {
+    channels.forEach((channel) => channel.close());
+    providers.forEach((provider) => provider.destroy());
+    close();
+    vi.restoreAllMocks();
+    vi.mocked(checkLiveAccess).mockReset();
+  });
+
+  // The socket handlers run outside the test's database transaction: authentication and the
+  // commands, tested on their own, are stubbed.
+  async function start() {
+    const writer = await liveFile(true);
+    await FeatureFlagFactory.basic(writer.auth, "co_edition");
+    vi.spyOn(Authenticator, "fromUserIdAndWorkspaceId").mockResolvedValue(
+      writer.auth
+    );
+    vi.mocked(checkLiveAccess).mockResolvedValue(new Ok(writer));
+    vi.mocked(loadLiveDocument).mockImplementation(async () => {
+      const live = dfmToYDoc(SOURCE);
+      if (live.isErr()) {
+        throw new Error(live.error);
+      }
+      return new Ok({
+        live: { doc: live.value.doc, comments: [THREAD] },
+        checkpoint: { revision: "1", content: "" },
+      });
+    });
+    vi.mocked(applyLiveCommentCommand).mockImplementation(
+      async (_file, comments, command) =>
+        command.type === "add"
+          ? new Ok({ comments: [...comments, CREATED], created: CREATED })
+          : new Err("thread_changed")
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const server = await serve(hocuspocus);
+    close = server.close;
+    return { writer, hocuspocus, url: server.url };
+  }
+
+  async function join(url: string, writer: LiveFile) {
+    // Each connection redeems a ticket of its own, a reconnection included.
+    const tickets = [
+      await ticketFor(writer.auth, writer.canonicalPath),
+      await ticketFor(writer.auth, writer.canonicalPath),
+    ];
+    const provider = new HocuspocusProvider({
+      url,
+      name: `${writer.workspaceId}:${writer.canonicalPath}`,
+      token: () => tickets.shift() ?? "",
+      document: new Y.Doc(),
+    });
+    providers.push(provider);
+    await new Promise<void>((resolve) => provider.on("synced", resolve));
+    const channel = createLiveCommentChannel(provider);
+    channels.push(channel);
+    await vi.waitFor(() => expect(channel.getThreads()).not.toBeNull());
+    return { channel, provider };
+  }
+
+  it("serves the threads, applies a command for every connection and checkpoints it", async () => {
+    const { writer, url } = await start();
+    const { channel: mine } = await join(url, writer);
+    const { channel: theirs } = await join(url, writer);
+    expect(mine.getThreads()).toEqual([THREAD]);
+
+    const added = await mine.send({
+      type: "add",
+      commentId: "c2",
+      body: "Ship it.",
+    });
+    expect(added.isOk() && added.value).toEqual(CREATED);
+    const [file] = vi.mocked(applyLiveCommentCommand).mock.calls[0];
+    expect(file.auth).toBe(writer.auth);
+    expect(file.canonicalPath).toBe(writer.canonicalPath);
+
+    await vi.waitFor(() =>
+      expect(theirs.getThreads()).toEqual([THREAD, CREATED])
+    );
+    await vi.waitFor(
+      () =>
+        expect(
+          vi.mocked(checkpointLiveDocument).mock.calls.at(-1)?.[1].comments
+        ).toEqual([THREAD, CREATED]),
+      { timeout: 5_000 }
+    );
+
+    const refused = await theirs.send({
+      type: "reply",
+      commentId: "c1",
+      position: 2,
+      body: "Late.",
+    });
+    expect(refused.isErr() && refused.error).toBe("thread_changed");
+    expect(theirs.getThreads()).toEqual([THREAD, CREATED]);
+
+    const invalid = await mine.send({
+      type: "add",
+      commentId: "c3",
+      body: "",
+    });
+    expect(invalid.isErr() && invalid.error).toBe("unavailable");
+    expect(applyLiveCommentCommand).toHaveBeenCalledTimes(2);
+
+    mine.close();
+    expect(mine.getThreads()).toBeNull();
+    const late = await mine.send({ type: "delete", commentId: "c2" });
+    expect(late.isErr() && late.error).toBe("unavailable");
+  }, 15_000);
+
+  it("checkpoints a comment through the connection that last changed the text", async () => {
+    const { writer, hocuspocus, url } = await start();
+    const { channel } = await join(url, writer);
+    const editor = await liveFile(true);
+    const editing = await hocuspocus.openDirectConnection(
+      `${writer.workspaceId}:${writer.canonicalPath}`,
+      editor
+    );
+    await editing.transact((doc) => typeInto(doc, "Edit."));
+
+    const added = await channel.send({
+      type: "add",
+      commentId: "c2",
+      body: "Ship it.",
+    });
+    expect(added.isOk()).toBe(true);
+
+    await vi.waitFor(
+      () => {
+        const [through, live] =
+          vi.mocked(checkpointLiveDocument).mock.calls.at(-1) ?? [];
+        expect(live?.comments).toEqual([THREAD, CREATED]);
+        expect(through).toBe(editor);
+      },
+      { timeout: 5_000 }
+    );
+    await editing.disconnect();
+  }, 15_000);
+
+  it("fails the commands a lost connection waits for, then asks for the threads again", async () => {
+    const { writer, url } = await start();
+    const mine = await join(url, writer);
+    const { channel: theirs } = await join(url, writer);
+    let release = () => {};
+    vi.mocked(applyLiveCommentCommand).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(new Err("thread_changed"));
+        })
+    );
+
+    const waiting = mine.channel.send({ type: "delete", commentId: "c1" });
+    await vi.waitFor(() =>
+      expect(applyLiveCommentCommand).toHaveBeenCalledTimes(1)
+    );
+    mine.provider.disconnect();
+    const lost = await waiting;
+    expect(lost.isErr() && lost.error).toBe("unavailable");
+    const offline = await mine.channel.send({
+      type: "delete",
+      commentId: "c1",
+    });
+    expect(offline.isErr() && offline.error).toBe("unavailable");
+
+    release();
+    const added = await theirs.send({
+      type: "add",
+      commentId: "c2",
+      body: "Ship it.",
+    });
+    expect(added.isOk()).toBe(true);
+    expect(mine.channel.getThreads()).toEqual([THREAD]);
+
+    await mine.provider.connect();
+    await vi.waitFor(() =>
+      expect(mine.channel.getThreads()).toEqual([THREAD, CREATED])
+    );
+  }, 15_000);
 });
