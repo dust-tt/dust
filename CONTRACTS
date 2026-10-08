@@ -306,7 +306,9 @@ that already uses `io-ts`, prefer migrating its codecs to `zod` if the change is
 codec is shared across many consumers, leave the migration to a dedicated PR.
 
 For error formatting, use `fromError` from `zod-validation-error` to produce a readable message
-from a `ZodError`.
+from a `ZodError` in messages that are not shown in the UI (API errors, logs, text sent to models).
+`fromError` output is English and cannot be translated: an error shown to the user is a translated
+message built from the `ZodError` issues (e.g. their `path`), never the `fromError` text.
 
 Example:
 

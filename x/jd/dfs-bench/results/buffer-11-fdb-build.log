@@ -1,0 +1,10 @@
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+    Blocking waiting for file lock on package cache
+   Compiling dfs-fdb v0.1.0 (/home/dfs/dfs-fdb)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3m 15s
+  Executable tests/buffered.rs (target/release/deps/buffered-448e166dc58545f4)
+  Executable tests/codec.rs (target/release/deps/codec-35af00d6ad3eb7ec)
+  Executable tests/engine.rs (target/release/deps/engine-d01b2505c5bc2afd)
+  Executable tests/indexing.rs (target/release/deps/indexing-5f72b093196a7a93)

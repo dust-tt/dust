@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# One-time, persistent setup: the bucket holding Terraform state, FDB backups and results, and
+# the registry holding implementation images.
+# Storage only, no compute. Safe to re-run.
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+if gcloud storage buckets describe "gs://$BUCKET" >/dev/null 2>&1; then
+  log "bucket gs://$BUCKET already exists"
+else
+  log "creating gs://$BUCKET"
+  gcloud storage buckets create "gs://$BUCKET" --project "$PROJECT" --location "$REGION" \
+    --uniform-bucket-level-access --public-access-prevention
+  gcloud storage buckets update "gs://$BUCKET" --update-labels=dfs-bench=true,owner=henry
+fi
+
+if gcloud artifacts repositories describe dfs-bench --location "$REGION" >/dev/null 2>&1; then
+  log "registry $REGISTRY already exists"
+else
+  log "creating registry $REGISTRY"
+  gcloud artifacts repositories create dfs-bench --location "$REGION" --repository-format docker \
+    --labels=dfs-bench=true,owner=henry
+fi

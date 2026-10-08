@@ -90,6 +90,8 @@ export function useCatalogSearch({
     async ([, workspaceId, request]: CatalogPageKey): Promise<CatalogPage> => {
       const agentOffset = request.agents?.offset;
       const skillOffset = request.skills?.offset;
+      const selectionMode =
+        request.query.view === "favorites" ? "favorites_only" : "all";
       const agentsPromise: Promise<SearchAgentsResponseBody | null> =
         agentOffset === undefined
           ? Promise.resolve(null)
@@ -97,6 +99,7 @@ export function useCatalogSearch({
               `/api/w/${workspaceId}/assistant/agent_configurations/search`,
               {
                 ...request.query.agentFilters,
+                selectionMode,
                 query: request.query.searchTerm,
                 searchType: "name",
                 offset: agentOffset,
@@ -113,6 +116,7 @@ export function useCatalogSearch({
               `/api/w/${workspaceId}/skills/search`,
               {
                 ...request.query.skillFilters,
+                selectionMode,
                 query: request.query.searchTerm,
                 searchType: "name",
                 offset: skillOffset,
@@ -149,7 +153,7 @@ export function useCatalogSearch({
     [fetcherWithBody]
   );
 
-  const { data, error, isLoading, isValidating, size, setSize } =
+  const { data, error, isLoading, isValidating, size, setSize, mutate } =
     useSWRInfiniteWithDefaults<CatalogPageKey | null, CatalogPage>(
       getKey,
       fetchPage,
@@ -183,5 +187,6 @@ export function useCatalogSearch({
     isLoadingMore: isValidating && items.length > 0,
     hasError: Boolean(error),
     loadMore,
+    mutate,
   };
 }

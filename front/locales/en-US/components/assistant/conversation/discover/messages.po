@@ -223,3 +223,115 @@ msgstr "Position {positionNumber}"
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Hide this suggestion"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Find important emails I haven't replied to"
+msgstr "Find important emails I haven't replied to"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Go through my inbox from the last 7 days and list the emails I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+msgstr "Go through my inbox from the last 7 days and list the emails I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Find important DMs I haven't replied to"
+msgstr "Find important DMs I haven't replied to"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Go through my direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+msgstr "Go through my direct messages from the last 7 days and list the ones I have not replied to that need an answer from me. Group them by urgency, say who is waiting and since when, and suggest a one-line reply for each."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the most important news in my industry"
+msgstr "Catch me up on the most important news in my industry"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the most important news in our industry from the last 7 days. Use our own documents to work out what industry we are in and who our competitors are, then search the web. Give me the five stories that matter most to us, why each one matters, and sources."
+msgstr "Catch me up on the most important news in our industry from the last 7 days. Use our own documents to work out what industry we are in and who our competitors are, then search the web. Give me the five stories that matter most to us, why each one matters, and sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the AI news that matters most"
+msgstr "Catch me up on the AI news that matters most"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Catch me up on the AI news from the last 7 days that matters most: model releases, product launches, funding and regulation. Keep the five stories with real impact, say in one line why each one matters for a company like ours, and link the sources."
+msgstr "Catch me up on the AI news from the last 7 days that matters most: model releases, product launches, funding and regulation. Keep the five stories with real impact, say in one line why each one matters for a company like ours, and link the sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me what's new in Dust"
+msgstr "Show me what's new in Dust"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Read the Dust changelog at https://docs.dust.tt/docs/changelog and tell me what shipped over the last month. Keep the five changes most useful to me, say in one line what each one lets me do, and link each entry."
+msgstr "Read the Dust changelog at https://docs.dust.tt/docs/changelog and tell me what shipped over the last month. Keep the five changes most useful to me, say in one line what each one lets me do, and link each entry."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Build an agent for a task I keep repeating"
+msgstr "Build an agent for a task I keep repeating"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me build an agent for a task I keep repeating. Ask me what the task is, what it needs to read and what it should produce, then create the agent with me and show me how to use it."
+msgstr "Help me build an agent for a task I keep repeating. Ask me what the task is, what it needs to read and what it should produce, then create the agent with me and show me how to use it."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me identify and prioritize my key priorities for the week"
+msgstr "Help me identify and prioritize my key priorities for the week"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me identify and prioritize my key priorities for this week. Look at what is on my plate from my calendar, messages and our documents where you can reach them, then rank the top five by impact and urgency, and flag what I can drop or delegate."
+msgstr "Help me identify and prioritize my key priorities for this week. Look at what is on my plate from my calendar, messages and our documents where you can reach them, then rank the top five by impact and urgency, and flag what I can drop or delegate."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me how my team is using Dust"
+msgstr "Show me how my team is using Dust"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Show me how my team is using Dust this month: active members, the agents and skills they lean on, and how that compares with last month. Point out who has not started yet."
+msgstr "Show me how my team is using Dust this month: active members, the agents and skills they lean on, and how that compares with last month. Point out who has not started yet."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Create a Pod for my team project"
+msgstr "Create a Pod for my team project"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Help me create a Pod for my team project. Ask me what the project is and who is working on it, then create the Pod with a clear description and add the right people."
+msgstr "Help me create a Pod for my team project. Ask me what the project is and who is working on it, then create the Pod with a clear description and add the right people."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Get me ready for my next customer meeting"
+msgstr "Get me ready for my next customer meeting"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Get me ready for my next customer meeting: who is attending, what we discussed last time, open action items on my side, and two or three points I should raise. Keep it to one page."
+msgstr "Get me ready for my next customer meeting: who is attending, what we discussed last time, open action items on my side, and two or three points I should raise. Keep it to one page."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research an account before I reach out"
+msgstr "Research an account before I reach out"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research the company I name before I reach out: what they do, recent news, who the likely buyers are, and what we already know about them in our own documents. Finish with three angles for a first message."
+msgstr "Research the company I name before I reach out: what they do, recent news, who the likely buyers are, and what we already know about them in our own documents. Finish with three angles for a first message."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research how our competitors position themselves"
+msgstr "Research how our competitors position themselves"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Research how our competitors have positioned themselves over the last year: the players that gained ground, what they shipped, how they talk about it, and where we are exposed. Use our own documents and the web, and write it up with sources."
+msgstr "Research how our competitors have positioned themselves over the last year: the players that gained ground, what they shipped, how they talk about it, and where we are exposed. Use our own documents and the web, and write it up with sources."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Turn a spreadsheet into an analysis"
+msgstr "Turn a spreadsheet into an analysis"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Take the spreadsheet I attach, clean it up, and tell me what it says: the three numbers that matter, how they moved, and what looks off. Give me back a sheet with the analysis alongside the data."
+msgstr "Take the spreadsheet I attach, clean it up, and tell me what it says: the three numbers that matter, how they moved, and what looks off. Give me back a sheet with the analysis alongside the data."
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Draft a document from our own knowledge"
+msgstr "Draft a document from our own knowledge"
+
+#: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
+msgid "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."
+msgstr "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."

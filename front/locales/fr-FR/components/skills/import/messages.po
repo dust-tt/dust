@@ -79,7 +79,7 @@ msgstr "Importer des fichiers .zip ou .skill"
 
 #: front/components/skills/import/ImportFromFilesTab.tsx
 msgid "Uploading files..."
-msgstr "Importation des fichiers…"
+msgstr "Import des fichiers…"
 
 #: front/components/skills/import/ImportFromFilesTab.tsx
 msgid "Drag and drop or click to upload"
@@ -103,7 +103,7 @@ msgstr "Ce fichier doit contenir le nom et la description de la compétence au f
 
 #: front/components/skills/import/ImportFromFilesTab.tsx
 msgid "Read more about importing skills <0>here</0>."
-msgstr "En savoir plus sur l’importation de compétences <0>ici</0>."
+msgstr "En savoir plus sur l’import de compétences <0>ici</0>."
 
 #: front/components/skills/import/ImportFromRepositoryTab.tsx
 msgid "GitHub connection can't access this repository"
@@ -164,7 +164,7 @@ msgstr "Importer"
 
 #: front/components/skills/import/ImportSkillsDialog.tsx
 msgid "Importing skills"
-msgstr "Importation des compétences"
+msgstr "Import des compétences"
 
 #: front/components/skills/import/formSchema.ts
 msgid "Select at least one skill to import"

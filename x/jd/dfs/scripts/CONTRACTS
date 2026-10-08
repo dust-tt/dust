@@ -1,0 +1,14 @@
+@cc [owner:id13,label:testing;security;performance] grant-propagation-evidence
+Grant propagation experiments MUST identify the tested principal and credential mode, distinguish mutation acknowledgment from observed client convergence, and retain denied operations and timeouts. NFS comparisons MUST state the permission model and MUST NOT treat retained-descriptor behavior as equivalent to DFS grant revocation without testing it. Administrative setup privileges MUST NOT be used for measured user access.
+
+@cc [owner:id13,label:testing;performance] rename-comparison-provenance
+Rename optimization comparisons MUST execute on GCP dust-dev, use one client binary across backend variants, alternate before/after order across repeated rounds, and isolate each cell in a fresh database. Reports MUST retain server and client hashes, baseline and optimized engine sources, request-level samples, phase timings, and clean-restart namespace verification. Deeper moves MUST remain a separate workload from lateral moves.
+
+@cc [owner:id13,label:testing;performance] bounded-benchmark-sampling
+The kernel-cache benchmark MUST preserve every collected memory sample without retaining the complete sample history in process memory, including during final result serialization. Sampling failures MUST prevent a successful result. The result JSON MUST retain the complete ordered memory_samples array and existing workload metadata so report consumers can verify resource limits and correctness.
+
+@cc [owner:id13,label:testing] isolated-smoke-runs
+Each smoke-suite invocation MUST allocate a fresh runtime directory, even when multiple invocations start in the same clock second. Credentials, databases, mountpoints, and results MUST NOT be reused across such invocations.
+
+@cc [owner:id13,label:testing;performance] client-cache-comparison-provenance
+Client-cache comparisons MUST preserve the requested 24 workload rows and their output validation. Phase counters, synchronization between clients, and result validation MUST remain outside timed actions. Concurrent clients MUST have separate mountpoints and application-plus-daemon memory cgroups with equal limits and disabled swap. Concurrent full-suite clients sharing a corpus MUST rendezvous between rows so writes cannot overlap another client's read-only traversal. Comparisons MUST retain binary and corpus hashes, actual cache settings, historical versus current fsync semantics, client counts, run order, and server persistence metrics. Fresh mounts MUST NOT be described as globally cold caches. Each comparison cell MUST start from a fresh copy of the same persisted seed database; repeated variant order MUST alternate.

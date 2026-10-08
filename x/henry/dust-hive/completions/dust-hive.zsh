@@ -24,10 +24,12 @@
 #   dhcd  - cd into environment worktree (changes dir in current shell)
 
 _dust_hive_services=(
-  sdk sparkle front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front sdk sparkle front-api marketing proxy core oauth connectors front-workers front-spa-poke
+  front-spa-app viz storybook sqlite-worker collab
 )
 _dust_hive_warm_state_services=(
-  front-api core oauth connectors front-workers front-spa-poke front-spa-app viz
+  front-api marketing proxy core oauth connectors front-workers front-spa-poke front-spa-app viz
+  storybook sqlite-worker collab
 )
 # Avoid invoking the Bun CLI from completion; derive state from PID files plus one Docker scan.
 
@@ -366,6 +368,7 @@ _dust-hive() {
         'setup:Check prerequisites and guide initial setup'
         'doctor:Check prerequisites (non-interactive)'
         'cache:Show binary cache status'
+        'autostart:Choose which services warm starts automatically'
         'refresh:Restore node_modules links in worktree'
         'forward:Manage OAuth port forwarding'
         'sync:Pull latest main, rebuild binaries, refresh deps'
@@ -509,6 +512,12 @@ _dust-hive() {
             '--non-interactive[Run without prompts]'
           ;;
         doctor|cache)
+          ;;
+        autostart)
+          _arguments \
+            '-l[Print the current autostart configuration]' \
+            '--list[Print the current autostart configuration]' \
+            '--reset[Restore the default autostart services]'
           ;;
         refresh)
           _arguments '1::name:_dust_hive_envs'

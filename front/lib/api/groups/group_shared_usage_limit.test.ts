@@ -12,7 +12,6 @@ import {
 import {
   areGroupSharedUsageLimitsEnabled,
   isGroupSharedUsageLimitReached,
-  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
   recordGroupSharedUsage,
   resolveSharedUsageLimitGroupForUser,
   resolveSharedUsageLimitGroupsForUsers,
@@ -47,6 +46,7 @@ import {
 } from "@app/tests/utils/metronome_contracts";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { MAX_SHARED_USAGE_LIMIT_AWU_CREDITS } from "@app/types/api/groups/shared_usage_limit";
 import type { SharedUsageLimit } from "@app/types/api/groups/shared_usage_limit";
 import type { WithAccessControl } from "@app/types/resource_permissions";
 import { Err, Ok } from "@app/types/shared/result";
@@ -490,7 +490,7 @@ describe("setGroupSharedUsageLimit", () => {
       expect(result.isErr() && result.error.type).toBe("invalid_group_kind");
     });
 
-    it("refuses non-admins, including members with usage-limit rights", async () => {
+    it("refuses regular members", async () => {
       const { workspace, auth } = await setup();
       const engineering = await GroupFactory.regularManual(
         workspace,

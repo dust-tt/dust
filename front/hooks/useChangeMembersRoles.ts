@@ -5,14 +5,14 @@ import {
 import { clientFetch } from "@app/lib/egress/client";
 import { useMembers, useSearchMembers } from "@app/lib/swr/memberships";
 import type {
+  LightUserType,
   LightWorkspaceType,
   RoleType,
-  UserTypeWithWorkspace,
 } from "@app/types/user";
 import { useCallback } from "react";
 
 type HandleMembersRoleChangeParams = {
-  members: UserTypeWithWorkspace[];
+  members: LightUserType[];
   role: RoleType;
 };
 

@@ -1,7 +1,5 @@
 import { listDiscoveryForYouItems } from "@app/lib/api/discovery";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import { Authenticator } from "@app/lib/auth";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { GetDiscoveryForYouResponseBody } from "@app/types/api/discovery";
 import { Err, Ok } from "@app/types/shared/result";
@@ -34,23 +32,8 @@ describe("GET /api/w/:wId/discovery/for_you", () => {
     expect(response.status).toBe(401);
   });
 
-  it("rejects workspaces without the discovery homepage flag", async () => {
-    const { workspace } = await createPrivateApiMockRequest();
-
-    const response = await honoApp.request(
-      `/api/w/${workspace.sId}/discovery/for_you`
-    );
-
-    expect(response.status).toBe(403);
-    expect(mockedListForYou).not.toHaveBeenCalled();
-  });
-
   it("returns the viewer-filtered For You items", async () => {
     const { auth, workspace } = await createPrivateApiMockRequest();
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
     const body: GetDiscoveryForYouResponseBody = {
       items: [
         {
@@ -78,10 +61,6 @@ describe("GET /api/w/:wId/discovery/for_you", () => {
 
   it("returns an internal error when For You candidates cannot be loaded", async () => {
     const { workspace } = await createPrivateApiMockRequest();
-    const adminAuth = await Authenticator.internalAdminForWorkspace(
-      workspace.sId
-    );
-    await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
     mockedListForYou.mockResolvedValue(
       new Err(
         new ElasticsearchError("query_error", "Failed to query for-you usage")

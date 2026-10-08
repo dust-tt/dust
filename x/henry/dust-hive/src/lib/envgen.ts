@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
 import { CONFIG_ENV_PATH, getEnvFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
@@ -82,11 +83,19 @@ export REDIS_CACHE_URI=redis://localhost:${ports.redis}
 export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
+export FDB_PORT=${ports.fdb}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 
 # === Viz service ===
 export VIZ_PUBLIC_URL=http://localhost:${ports.viz}
 export ALLOWED_VISUALIZATION_ORIGIN=http://localhost:3000,http://localhost:3011,http://localhost:${ports.front},http://localhost:${ports.frontSpaApp}
+
+# === Co-edition collab server ===
+# The browser joins live sessions through the proxy's /api/collab route.
+export COLLAB_PUBLIC_URL=ws://localhost:${ports.front}/api/collab
+# Agents write to live documents through it.
+export COLLAB_INTERNAL_URL=http://localhost:${ports.collab}
+export COLLAB_INTERNAL_SECRET=${randomBytes(32).toString("hex")}
 
 # === Region & auth overrides (used by front cross-region and Dust CLI) ===
 export DUST_US_URL=http://localhost:${ports.front}

@@ -15,7 +15,7 @@
 #   20-core     — Rust services (core-api, sqlite-workers, oauth)
 #   40-sdk      — build watchers (sparkle, sdks-js) — readiness gates for 00-front
 #   90-optional — disabled-by-default extras
-#   99-infra    — Docker infrastructure (postgres, redis, elasticsearch, qdrant, temporal)
+#   99-infra    — Docker infrastructure (postgres, redis, elasticsearch, qdrant, fdb, temporal)
 
 version: "0.5"
 
@@ -89,6 +89,20 @@ processes:
     readiness_probe:
       exec:
         command: "nc -z localhost 6333"
+      period_seconds: 3
+      failure_threshold: 120
+
+  # An open port is not enough for FoundationDB: the database only exists once
+  # fdb_init has run `configure new`, so probe its status instead.
+  infra-fdb:
+    command: |
+      docker compose up -d fdb fdb_init
+      docker compose logs -f fdb fdb_init
+    working_dir: "${DUST_DEV_ROOT}"
+    namespace: 99-infra
+    readiness_probe:
+      exec:
+        command: "docker compose exec -T fdb fdbcli --exec 'status minimal' | grep -q 'The database is available'"
       period_seconds: 3
       failure_threshold: 120
 

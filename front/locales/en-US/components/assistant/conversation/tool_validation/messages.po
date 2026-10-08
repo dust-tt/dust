@@ -143,12 +143,12 @@ msgid "No assignee"
 msgstr "No assignee"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
-msgid "Review the <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} below before adding them to <1>{podName}</1>."
-msgstr "Review the <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} below before adding them to <1>{podName}</1>."
+msgid "{taskCount, plural, one {Review the <0>#</0> task below before adding it to <1>{podName}</1>.} other {Review the <2>#</2> tasks below before adding them to <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {Review the <0>#</0> task below before adding it to <1>{podName}</1>.} other {Review the <2>#</2> tasks below before adding them to <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
-msgid "The agent wants to create <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
-msgstr "The agent wants to create <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+msgid "{taskCount, plural, one {The agent wants to create <0>#</0> task in <1>{podName}</1>.} other {The agent wants to create <2>#</2> tasks in <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {The agent wants to create <0>#</0> task in <1>{podName}</1>.} other {The agent wants to create <2>#</2> tasks in <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
 msgid "{doneCount, plural, one {# will be marked as done immediately.} other {# will be marked as done immediately.}}"
@@ -212,8 +212,8 @@ msgid "Could not load the current task details."
 msgstr "Could not load the current task details."
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
-msgid "The agent wants to update <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
-msgstr "The agent wants to update <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
+msgid "{taskCount, plural, one {The agent wants to update <0>#</0> task in <1>{podName}</1>.} other {The agent wants to update <2>#</2> tasks in <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {The agent wants to update <0>#</0> task in <1>{podName}</1>.} other {The agent wants to update <2>#</2> tasks in <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgid "{doneCount, plural, one {# will be marked as done.} other {# will be marked as done.}}"

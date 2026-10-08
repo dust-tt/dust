@@ -6,10 +6,14 @@ import {
 import {
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
+  replaceYDocContent,
+  yDocCommentedTexts,
   yDocToDfm,
 } from "@app/lib/api/collab/ydoc";
+import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import type { LocalTransactionOrigin } from "@hocuspocus/server";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
@@ -109,6 +113,29 @@ describe("dfmToYDoc and yDocToDfm", () => {
     expect(saved.value).not.toContain("forged");
   });
 
+  it("write without the anchors of threads the session no longer holds", () => {
+    const live = dfmToYDoc(FIXTURE);
+    expect(live.isOk()).toBe(true);
+    if (!live.isOk()) {
+      return;
+    }
+    const { doc, comments } = live.value;
+    expect(comments.length).toBeGreaterThan(1);
+    const [removed, ...kept] = comments;
+
+    const saved = yDocToDfm({ doc, comments: kept });
+    expect(saved.isOk()).toBe(true);
+    if (!saved.isOk()) {
+      return;
+    }
+    expect(FIXTURE).toContain(`:comment-start{id=${removed.id}}`);
+    expect(saved.value).not.toContain(`id=${removed.id}`);
+    for (const { id } of kept) {
+      const anchor = `:comment-start{id=${id}}`;
+      expect(saved.value.includes(anchor)).toBe(FIXTURE.includes(anchor));
+    }
+  });
+
   it("refuse a body the binding cannot read", () => {
     const live = dfmToYDoc(FIXTURE);
     expect(live.isOk()).toBe(true);
@@ -145,5 +172,126 @@ describe("dfmToYDoc and yDocToDfm", () => {
     doc.getXmlFragment(BODY_FRAGMENT_NAME);
 
     expect(yDocToDfm({ doc, comments: [] }).isErr()).toBe(true);
+  });
+});
+
+describe("replaceYDocContent", () => {
+  const ORIGIN: LocalTransactionOrigin = { source: "local", context: "agent" };
+  const BEFORE =
+    "---\ntitle: x\n---\n\n# Title\n\nFirst paragraph.\n\nSecond paragraph.\n";
+
+  function loadLive(source: string) {
+    const live = dfmToYDoc(source);
+    if (live.isErr()) {
+      throw new Error(live.error);
+    }
+    return live.value;
+  }
+
+  it.each(FIXTURES)(
+    "write $name as dfmToYDoc would, threads included",
+    ({ source }) => {
+      const { doc } = loadLive(BEFORE);
+
+      const comments = replaceYDocContent(doc, source, ORIGIN);
+
+      expect(comments.isOk()).toBe(true);
+      if (comments.isOk()) {
+        expect(yDocToDfm({ doc, comments: comments.value })).toEqual(
+          savedByEditor(source)
+        );
+      }
+    }
+  );
+
+  it("change only what differs, in one transaction with the origin, reaching a remote copy", () => {
+    const { doc, comments } = loadLive(BEFORE);
+    const remote = new Y.Doc();
+    Y.applyUpdate(remote, Y.encodeStateAsUpdate(doc));
+    const untouched = remote.getXmlFragment(BODY_FRAGMENT_NAME).get(1);
+    const origins: unknown[] = [];
+    doc.on("update", (update: Uint8Array, origin: unknown) => {
+      origins.push(origin);
+      Y.applyUpdate(remote, update);
+    });
+
+    const replaced = replaceYDocContent(
+      doc,
+      BEFORE.replace("Second paragraph.", "Second paragraph, edited."),
+      ORIGIN
+    );
+
+    expect(replaced.isOk()).toBe(true);
+    expect(origins).toEqual([ORIGIN]);
+    expect(remote.getXmlFragment(BODY_FRAGMENT_NAME).get(1)).toBe(untouched);
+    expect(yDocToDfm({ doc: remote, comments })).toEqual(
+      savedByEditor(
+        BEFORE.replace("Second paragraph.", "Second paragraph, edited.")
+      )
+    );
+  });
+
+  it("change nothing when the source is the same", () => {
+    const { doc } = loadLive(BEFORE);
+    const updates: Uint8Array[] = [];
+    doc.on("update", (update: Uint8Array) => updates.push(update));
+
+    expect(replaceYDocContent(doc, BEFORE, ORIGIN).isOk()).toBe(true);
+    expect(updates).toEqual([]);
+  });
+
+  it("refuse a file the editor refuses, with the same reason, changing nothing", () => {
+    const table = "| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const editor = loadDfm(table);
+    const { doc, comments } = loadLive(BEFORE);
+
+    const replaced = replaceYDocContent(doc, table, ORIGIN);
+
+    expect(editor.isErr() && replaced.isErr()).toBe(true);
+    if (editor.isErr() && replaced.isErr()) {
+      expect(replaced.error).toBe(editor.error);
+    }
+    expect(yDocToDfm({ doc, comments })).toEqual(savedByEditor(BEFORE));
+  });
+});
+
+describe("yDocCommentedTexts", () => {
+  it("give the text a comment covers as the editor shows it, across blocks", () => {
+    const source = serializeDfm({
+      frontMatter: null,
+      body: "Ship :comment-start{id=c1}on **Friday**.\n\nThen tell:comment-end{id=c1} the team.",
+      comments: [
+        {
+          id: "c1",
+          status: "open",
+          messages: [
+            {
+              author: { kind: "user", id: "usr_tom", name: "Tom" },
+              createdAt: "2026-10-05T12:00:00.000Z",
+              body: "Why?",
+            },
+          ],
+        },
+      ],
+    });
+    if (source.isErr()) {
+      throw source.error;
+    }
+    const live = dfmToYDoc(source.value);
+    if (live.isErr()) {
+      throw new Error(live.error);
+    }
+
+    expect(yDocCommentedTexts(live.value.doc)).toEqual(
+      new Map([["c1", "on Friday. Then tell"]])
+    );
+  });
+
+  it("give nothing for a body the binding cannot read", () => {
+    const doc = new Y.Doc();
+    // The typings forbid this shape, but a client can send it.
+    doc.getXmlFragment(BODY_FRAGMENT_NAME).insert(0, [new Y.Map()] as never);
+
+    expect(yDocCommentedTexts(doc)).toEqual(new Map());
   });
 });

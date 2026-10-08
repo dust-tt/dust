@@ -39,7 +39,7 @@ export function SharedUsageLimitCell({ usage }: SharedUsageLimitCellProps) {
       </div>
       <div className="flex h-3 w-full items-center">
         <ProgressBar
-          aria-label={t`Shared limit usage`}
+          aria-label={t`Group budget usage`}
           aria-valuenow={percentage}
           aria-valuetext={t`${usedLabel} of ${limitLabel} credits used`}
           className="h-1 w-full gap-px"

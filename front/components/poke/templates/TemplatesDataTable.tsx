@@ -43,6 +43,7 @@ function prepareTemplatesForDisplay(
 function makeColumnsForTemplates() {
   return [
     {
+      header: "ID",
       accessorKey: "id",
       cell: (info: Info) => {
         const id: string = info.row.getValue("id");
@@ -57,12 +58,14 @@ function makeColumnsForTemplates() {
       },
     },
     {
+      header: "Name",
       accessorKey: "name",
       cell: (info: Info) => (
         <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
       ),
     },
     {
+      header: "Visibility",
       accessorKey: "visibility",
       cell: (info: Info) => (
         <DataTable.CellContent>
@@ -80,6 +83,7 @@ function makeColumnsForTemplates() {
       ),
     },
     {
+      header: "Tags",
       accessorKey: "tags",
       cell: (info: Info) => {
         const tags: TemplateTagCodeType[] = info.row.getValue("tags");

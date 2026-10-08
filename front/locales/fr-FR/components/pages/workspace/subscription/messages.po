@@ -87,7 +87,7 @@ msgstr "Contactez votre responsable de compte pour assurer la continuité du ser
 
 #: front/components/pages/workspace/subscription/SubscriptionPage.tsx
 msgid "Connections will be deleted and members will be revoked. Details <0>here</0>."
-msgstr "Les connexions seront supprimées et les membres révoqués. Plus de détails <0>ici</0>."
+msgstr "Les connexions seront supprimées et l’accès des membres sera révoqué. Plus de détails <0>ici</0>."
 
 #: front/components/pages/workspace/subscription/SubscriptionPage.tsx
 msgid "Resume subscription"

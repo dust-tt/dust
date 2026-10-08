@@ -1,8 +1,8 @@
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { syncSeatCount } from "@app/lib/metronome/seats";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -81,7 +81,7 @@ vi.mock("@app/lib/utils/cache", () => ({
   bestEffortInvalidateCacheWithRedis: () => async () => {},
 }));
 
-const WORKSPACE = { sId: "ws_1", id: 1 } as unknown as LightWorkspaceType;
+const WORKSPACE = LightWorkspaceFactory.build({ sId: "ws_1", id: 1 });
 
 function makeContract(
   subs: Array<{

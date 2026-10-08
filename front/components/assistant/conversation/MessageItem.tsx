@@ -32,6 +32,7 @@ import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { UserType } from "@app/types/user";
 import { cn } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import React, { useMemo } from "react";
 
@@ -103,6 +104,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }: MessageItemProps,
     ref
   ) {
+    const { t } = useLingui();
     const sId = data.sId;
 
     const methods = useVirtuosoMethods<
@@ -194,8 +196,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const hasImageCitation =
       isUserMessage(data) &&
       visibleContentFragments.some((fragment) => {
-        const attachmentCitation =
-          contentFragmentToAttachmentCitation(fragment);
+        const attachmentCitation = contentFragmentToAttachmentCitation(
+          fragment,
+          t
+        );
         return (
           attachmentCitation.type === "file" &&
           isSupportedImageContentType(attachmentCitation.contentType)
@@ -205,8 +209,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     const citations =
       isUserMessage(data) && visibleContentFragments.length > 0
         ? visibleContentFragments.map((contentFragment, index) => {
-            const attachmentCitation =
-              contentFragmentToAttachmentCitation(contentFragment);
+            const attachmentCitation = contentFragmentToAttachmentCitation(
+              contentFragment,
+              t
+            );
 
             return (
               <AttachmentCitation

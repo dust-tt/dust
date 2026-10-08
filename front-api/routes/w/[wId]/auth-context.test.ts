@@ -1,3 +1,4 @@
+import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -6,7 +7,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("GET /api/w/:wId/auth-context group management", () => {
   it("returns only eligible managed groups when enabled", async () => {
@@ -82,5 +83,35 @@ describe("GET /api/w/:wId/auth-context user locale", () => {
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
 
     expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+  });
+});
+
+describe("GET /api/w/:wId/auth-context collab URL", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("returns no collab URL where live editing is not deployed", async () => {
+    vi.spyOn(config, "getCollabPublicUrl").mockReturnValue(undefined);
+    const { workspace } = await createPrivateApiMockRequest();
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/auth-context`
+    );
+
+    expect((await response.json()).collabUrl).toBeUndefined();
+  });
+
+  it("returns the cell's collab URL where it is deployed", async () => {
+    vi.spyOn(config, "getCollabPublicUrl").mockReturnValue(
+      "wss://dust.tt/api/collab"
+    );
+    const { workspace } = await createPrivateApiMockRequest();
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/auth-context`
+    );
+
+    expect((await response.json()).collabUrl).toBe("wss://dust.tt/api/collab");
   });
 });

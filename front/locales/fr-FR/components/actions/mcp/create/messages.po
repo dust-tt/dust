@@ -86,7 +86,7 @@ msgstr "Erreur du serveur {domain}"
 
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "Success"
-msgstr "Succès"
+msgstr "Terminé"
 
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "{serverName} added successfully."
@@ -103,6 +103,10 @@ msgstr "Impossible d’ajouter l’outil"
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "Configure {toolName}"
 msgstr "Configurer {toolName}"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Configure an MCP server"
+msgstr "Configurer un serveur MCP"
 
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "Tool name"
@@ -146,7 +150,7 @@ msgstr "Personnaliser les périmètres OAuth"
 
 #: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
 msgid "Select which permissions to request. Required scopes cannot be removed."
-msgstr "Sélectionnez les permissions à demander. Les périmètres obligatoires ne peuvent pas être retirés."
+msgstr "Sélectionnez les autorisations à demander. Les périmètres obligatoires ne peuvent pas être retirés."
 
 #: front/components/actions/mcp/create/OAuthScopeCustomizationDialog.tsx
 msgctxt "OAuth scope badge"

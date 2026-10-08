@@ -13,11 +13,9 @@ import {
   useDfmMessageVerifier,
   useSignDfmCommentMessage,
 } from "@app/hooks/useDfmCommentSignatures";
+import { useLiveTicket } from "@app/hooks/useLiveTicket";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import {
-  getLiveSessionUrl,
-  liveCaretColor,
-} from "@app/lib/client/live_session";
+import { liveCaretColor } from "@app/lib/client/live_session";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
@@ -394,15 +392,18 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
     ];
   }, [owner, editor.path]);
 
-  const liveUrl = getLiveSessionUrl();
+  const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
   const live =
-    editor.live && liveUrl && user
+    editor.liveUrl && user
       ? {
-          url: liveUrl,
+          url: editor.liveUrl,
           documentName: toLiveDocumentName(owner.sId, editor.path),
-          // Dev-only token: the user id. Real tickets come with the session's auth.
-          token: user.sId,
-          user: { name: user.fullName, color: liveCaretColor(user.sId) },
+          getTicket: getLiveTicket,
+          user: {
+            id: user.sId,
+            name: user.fullName,
+            color: liveCaretColor(user.sId),
+          },
         }
       : undefined;
 

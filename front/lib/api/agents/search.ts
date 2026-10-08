@@ -20,6 +20,7 @@ import type {
   AgentSearchFacetValues,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
+  AgentSearchSelectionMode,
   AgentSearchSort,
   AgentSearchSortOrder,
   AgentSearchTermsFacet,
@@ -90,9 +91,13 @@ async function listSearchableGlobalAgents(
  * Return at most limit agents, and the exact number of matching agents as total.
  */
 /**
- * @cc [owner:adrsimon,label:product] agent-search-favorites-first
- * With favoritesFirst, the current user's favorites MUST rank before every other match, each group
- * keeping the requested sort, across pages and without changing which agents match.
+ * @cc [owner:aubin-tchoi,label:product] agent-search-favorite-selection
+ * "favorites_only" restricts the authorized query to the current user's favorites.
+ * "favorites_or_all" selects favorites only for empty queries, falling back when no favorites
+ * match in total, not merely on the requested page. Nonempty queries and "all" search normally.
+ * Filters, facets and pagination apply to the selected results. isFavoritesOnly reports the
+ * selected mode. Only favorites selected by "favorites_or_all" default to name sort;
+ * otherwise relevance is the default. Explicit sort options take precedence.
  */
 /**
  * @cc [owner:tdraier,label:security] unrestricted-agent-search-requires-admin
@@ -124,7 +129,7 @@ export async function searchAgents(
     sortBy,
     sortOrder,
     facets = [],
-    favoritesFirst = false,
+    selectionMode = "all",
     ...options
   }: {
     searchTerm: string;
@@ -136,7 +141,7 @@ export async function searchAgents(
     offset?: number;
     sortBy?: AgentSearchSort;
     sortOrder?: AgentSearchSortOrder;
-    favoritesFirst?: boolean;
+    selectionMode?: AgentSearchSelectionMode;
   }
 ) {
   if (options.permissionFiltering === "unrestricted" && !auth.isAdmin()) {
@@ -156,31 +161,69 @@ export async function searchAgents(
   );
   const globalAgentIds = globalAgents.map((agent) => agent.sId);
   const query = buildAgentSearchQuery(auth, { ...options, globalAgentIds });
-  const favoriteAgentIds = favoritesFirst
-    ? await AgentResource.listFavoriteIdsForCurrentUser(auth)
-    : [];
+  const favoriteAgentIds =
+    selectionMode === "favorites_only" ||
+    (selectionMode === "favorites_or_all" && !options.searchTerm.trim())
+      ? await AgentResource.listFavoriteIdsForCurrentUser(auth)
+      : [];
 
-  const result = await withEs((client) =>
-    client.search<AgentSearchDocument, AgentSearchAggregations>({
-      index: AGENT_SEARCH_ALIAS_NAME,
-      _source: true,
-      query,
-      from: offset,
-      size: limit,
-      track_total_hits: true,
-      sort: buildAgentDefaultSort({ sortBy, sortOrder, favoriteAgentIds }),
-      ...(facets.length > 0
-        ? {
-            aggs: Object.fromEntries(
-              facets.map((facet) => [facet, buildFacetAggregation(facet)])
-            ),
-          }
-        : {}),
-    })
-  );
+  const fetchResults = (restrictToFavorites: boolean) =>
+    withEs((client) =>
+      client.search<AgentSearchDocument, AgentSearchAggregations>({
+        index: AGENT_SEARCH_ALIAS_NAME,
+        _source: true,
+        query: restrictToFavorites
+          ? {
+              bool: {
+                must: [query],
+                filter: [{ terms: { agent_id: favoriteAgentIds } }],
+              },
+            }
+          : query,
+        from: offset,
+        size: limit,
+        track_total_hits: true,
+        sort: buildAgentDefaultSort({
+          sortBy:
+            sortBy ??
+            (selectionMode === "favorites_or_all" && restrictToFavorites
+              ? "name"
+              : "relevance"),
+          sortOrder,
+        }),
+        ...(facets.length > 0
+          ? {
+              aggs: Object.fromEntries(
+                facets.map((facet) => [facet, buildFacetAggregation(facet)])
+              ),
+            }
+          : {}),
+      })
+    );
+
+  let restrictToFavorites =
+    selectionMode === "favorites_only" ||
+    (selectionMode === "favorites_or_all" && favoriteAgentIds.length > 0);
+  let result = await fetchResults(restrictToFavorites);
   if (result.isErr()) {
     return result;
   }
+
+  const matchingFavorites = result.value.hits.total;
+  if (
+    selectionMode === "favorites_or_all" &&
+    restrictToFavorites &&
+    (isNumber(matchingFavorites)
+      ? matchingFavorites
+      : (matchingFavorites?.value ?? 0)) === 0
+  ) {
+    restrictToFavorites = false;
+    result = await fetchResults(false);
+    if (result.isErr()) {
+      return result;
+    }
+  }
+
   const { hits, total } = result.value.hits;
   const totalCount = isNumber(total) ? total : (total?.value ?? 0);
   const { aggregations } = result.value;
@@ -214,6 +257,7 @@ export async function searchAgents(
     }),
     total: totalCount,
     hasMore: offset + hits.length < totalCount,
+    isFavoritesOnly: restrictToFavorites,
     facets: facetValues,
   });
 }

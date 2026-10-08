@@ -16,10 +16,8 @@ import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
-import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
 import { TopUpsHistoryTable } from "@app/components/workspace/TopUpsHistoryTable";
 import { UpgradeRequests } from "@app/components/workspace/UpgradeRequests";
-import { CreditSpendCheckpointSettingsCard } from "@app/components/workspace/usage/CreditSpendCheckpointSettingsCard";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import { UsageNotificationsCard } from "@app/components/workspace/usage/UsageNotificationsCard";
 import { UsageProgrammaticLimitCard } from "@app/components/workspace/usage/UsageProgrammaticLimitCard";
@@ -49,8 +47,8 @@ import {
   buildModelTierDefinitionByName,
   expandMaxTierName,
 } from "@app/lib/client/model_tiers";
-import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatNumber } from "@app/lib/i18n/format";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
@@ -97,7 +95,6 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import {
-  isCreditPricedPlan,
   isSubscriptionCancellationScheduled,
   isSubscriptionMetronomeBilled,
 } from "@app/types/plan";
@@ -182,16 +179,16 @@ const DEFAULT_PAGE_SIZE = 25;
 // Sparkle renders TabsContent as `contents`, so `block` is required for the min-height to apply.
 const TAB_CONTENT_CLASS = "block min-h-panel";
 
+/**
+ * Credits admin page for credit-priced workspaces. Non–credit-priced workspaces
+ * use NonCreditPricedUsagePage instead (selected at the /credits route).
+ */
 export function UsagePage() {
   const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const groupSeatProvisioningEnabled = hasFeature("group_seat_provisioning");
-  const isCreditPriced = isCreditPricedPlan(subscription.plan);
-  // Workspaces off a credit plan see this page without the credit pool, seat
-  // and credits columns, spend limits and upgrade requests. Credit actions (top
-  // up, invite, seat changes) are disabled for them; model tiers stay editable.
   // A cancelled subscription already has its end date scheduled with
   // Metronome; scheduling a seat change on top of it can land past that end
   // date and get rejected. Block seat changes until the subscription is
@@ -253,7 +250,6 @@ export function UsagePage() {
 
   const { myUsage } = useMyUsage({
     workspaceId: owner.sId,
-    disabled: !isCreditPriced,
   });
   const openChangeMySeatParam = useSearchParam("openChangeMySeat");
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
@@ -312,7 +308,6 @@ export function UsagePage() {
     []
   );
   const isWorkspaceAdmin = isAdmin(owner);
-  const hasSelfImprovement = useIsSelfImprovementAvailable();
   const [membersTab, setMembersTab] = useState<"members" | "requests">(
     "members"
   );
@@ -322,7 +317,7 @@ export function UsagePage() {
     if (value === "groups") {
       return "groups";
     }
-    if (value === "top-ups" && isWorkspaceAdmin && isCreditPriced) {
+    if (value === "top-ups" && isWorkspaceAdmin) {
       return "top-ups";
     }
     if (value === "settings" && isWorkspaceAdmin) {
@@ -336,7 +331,6 @@ export function UsagePage() {
   const { upgradeRequests, isUpgradeRequestsLoading, isUpgradeRequestsError } =
     useUpgradeRequests({
       workspaceId: owner.sId,
-      disabled: !isCreditPriced,
       searchTerm,
       groupId: groupFilter ?? undefined,
     });
@@ -369,10 +363,10 @@ export function UsagePage() {
 
   // Auto-open the "change my seat" modal when arriving from a blocked-state
   useEffect(() => {
-    if (isCreditPriced && openChangeMySeatParam !== null && myUsage !== null) {
+    if (openChangeMySeatParam !== null && myUsage !== null) {
       setChangeSeatMember(myUsage);
     }
-  }, [isCreditPriced, openChangeMySeatParam, myUsage]);
+  }, [openChangeMySeatParam, myUsage]);
 
   const {
     awuPoolCurrentCycle,
@@ -380,7 +374,6 @@ export function UsagePage() {
     mutateAwuPoolCurrentCycle,
   } = useAwuPoolCurrentCycle({
     workspaceId: owner.sId,
-    disabled: !isCreditPriced,
   });
   const totalRemainingCredits = awuPoolCurrentCycle?.totalRemainingCredits ?? 0;
   const totalActiveCredits = awuPoolCurrentCycle?.totalActiveCredits ?? 0;
@@ -765,7 +758,6 @@ export function UsagePage() {
 
   const { seatPlans, isSeatPlanLoading, isSeatPlanError } = useSeatPlan({
     workspaceId: owner.sId,
-    disabled: !isCreditPriced,
   });
 
   const isSeatBased = Object.keys(seatPlans).length > 1;
@@ -805,7 +797,6 @@ export function UsagePage() {
 
   const { usageSettings } = useUsageSettings({
     workspaceId: owner.sId,
-    disabled: !isCreditPriced,
   });
 
   const plan = subscription.plan;
@@ -839,6 +830,8 @@ export function UsagePage() {
         )
       : 0);
 
+  const usedPercent = formatNumber(usedPercentage / 100, { style: "percent" });
+
   const cycleElapsedPercentage = consumptionOverview
     ? cycleElapsedPercent(consumptionOverview.period)
     : 0;
@@ -865,7 +858,7 @@ export function UsagePage() {
       icon={Plus}
       size="sm"
       variant="outline"
-      disabled={!isCreditPriced || !usageSettings.topUpEnabled}
+      disabled={!usageSettings.topUpEnabled}
       onClick={() => setShowBuyCreditDialog(true)}
     />
   ) : null;
@@ -925,9 +918,9 @@ export function UsagePage() {
       members={membersUsage}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
-      showSeatAndCredits={isCreditPriced}
+      showSeatAndCredits
       seatActionsDisabled={isSubscriptionCancelled}
-      showSpendLimit={isCreditPriced && !isFreePlanWorkspace}
+      showSpendLimit={!isFreePlanWorkspace}
       showModelTiersColumn={isWorkspaceAdmin}
       userModelTierSelectionByUserId={userModelTierSelectionByUserId}
       userAllowedModelTiersByUserId={userAllowedModelTiersByUserId}
@@ -951,7 +944,7 @@ export function UsagePage() {
       sorting={effectiveSorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
-      enableSelection={isCreditPriced}
+      enableSelection
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
       hasPool={hasPool}
@@ -972,7 +965,6 @@ export function UsagePage() {
           ? handleBatchChangeSeat
           : undefined
       }
-      disabled={!isCreditPriced}
     />
   );
 
@@ -1008,6 +1000,13 @@ export function UsagePage() {
                     variant="highlight-ghost"
                     href={`/w/${owner.sId}/analytics/consumption`}
                   />
+                  {isWorkspaceAdmin ? (
+                    <AdminSectionAnchor
+                      sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+                    >
+                      <div className="flex justify-end">{topUpButton}</div>
+                    </AdminSectionAnchor>
+                  ) : null}
                 </div>
               }
               description={t`Control credit consumption across your workspace.`}
@@ -1027,9 +1026,17 @@ export function UsagePage() {
                       variant="highlight-ghost"
                       href={`/w/${owner.sId}/analytics/consumption`}
                     />
+                    {isWorkspaceAdmin ? (
+                      <AdminSectionAnchor
+                        sectionId={ADMIN_SECTION_IDS.usage.addCredits}
+                      >
+                        <div className="flex justify-end">{topUpButton}</div>
+                      </AdminSectionAnchor>
+                    ) : null}
                   </div>
                 </div>
               }
+              description={t`Control credit consumption across your workspace.`}
             />
           )}
 
@@ -1046,7 +1053,7 @@ export function UsagePage() {
             />
           )}
 
-          {isCreditPriced && showConsumptionAnalytics ? (
+          {showConsumptionAnalytics ? (
             <div className="flex flex-col gap-4">
               <h2 className="heading-sm text-foreground">
                 <Trans>Credit Pool</Trans>
@@ -1118,7 +1125,7 @@ export function UsagePage() {
                     />
                     <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
                       <span>
-                        <Trans>{usedPercentage}% used</Trans>
+                        <Trans>{usedPercent} used</Trans>
                       </span>
                       {resetAt && (
                         <span>
@@ -1171,27 +1178,7 @@ export function UsagePage() {
             </div>
           ) : null}
 
-          {isWorkspaceAdmin ? (
-            <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.addCredits}>
-              <div className="flex justify-end">
-                {isCreditPriced ? (
-                  topUpButton
-                ) : (
-                  // Non–credit-priced plans still purchase on the legacy page.
-                  <Button
-                    label={t`Add credits`}
-                    icon={Plus}
-                    size="sm"
-                    variant="outline"
-                    href={`/w/${owner.sId}/developers/credits-usage`}
-                  />
-                )}
-              </div>
-            </AdminSectionAnchor>
-          ) : null}
-          {isCreditPriced ? (
-            <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-          ) : null}
+          <CreditPoolCards owner={owner} disabled={false} />
 
           <Tabs
             value={usageTab}
@@ -1207,7 +1194,7 @@ export function UsagePage() {
             <TabsList>
               <TabsTrigger value="members" label={t`Members`} />
               <TabsTrigger value="groups" label={t`Groups`} />
-              {isWorkspaceAdmin && isCreditPriced && (
+              {isWorkspaceAdmin && (
                 <TabsTrigger value="top-ups" label={t`Top-ups history`} />
               )}
               {isWorkspaceAdmin && (
@@ -1235,40 +1222,34 @@ export function UsagePage() {
                           groupId={groupFilter}
                         />
                       )}
-                      {isCreditPriced && seatFilterDropdown}
+                      {seatFilterDropdown}
                     </>
                   }
                   membersTable={membersTable}
                   selectionBanner={selectionBanner}
-                  requests={
-                    isCreditPriced
-                      ? {
-                          count: upgradeRequests.length,
-                          activeTab: membersTab,
-                          onTabChange: setMembersTab,
-                          table: (
-                            <UpgradeRequests
-                              owner={owner}
-                              requests={upgradeRequests}
-                              isLoading={isUpgradeRequestsLoading}
-                              isError={isUpgradeRequestsError}
-                              groups={groups}
-                              seatUpgrade={{
-                                plans: seatPlans,
-                                isLoading: isSeatPlanLoading,
-                                isError: !!isSeatPlanError,
-                                isManagedByGroup: isSeatManagedByGroup,
-                                onSavingChange: handleSeatChangePendingChange,
-                              }}
-                              onSpendLimitSavingChange={
-                                handleUsagePendingChange
-                              }
-                              onSaved={clearSelection}
-                            />
-                          ),
-                        }
-                      : undefined
-                  }
+                  requests={{
+                    count: upgradeRequests.length,
+                    activeTab: membersTab,
+                    onTabChange: setMembersTab,
+                    table: (
+                      <UpgradeRequests
+                        owner={owner}
+                        requests={upgradeRequests}
+                        isLoading={isUpgradeRequestsLoading}
+                        isError={isUpgradeRequestsError}
+                        groups={groups}
+                        seatUpgrade={{
+                          plans: seatPlans,
+                          isLoading: isSeatPlanLoading,
+                          isError: !!isSeatPlanError,
+                          isManagedByGroup: isSeatManagedByGroup,
+                          onSavingChange: handleSeatChangePendingChange,
+                        }}
+                        onSpendLimitSavingChange={handleUsagePendingChange}
+                        onSaved={clearSelection}
+                      />
+                    ),
+                  }}
                 />
               </AdminSectionAnchor>
             </TabsContent>
@@ -1276,25 +1257,22 @@ export function UsagePage() {
               <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.groups}>
                 <GroupsUsageTable
                   owner={owner}
-                  showSpendLimitColumn={isCreditPriced}
+                  showSpendLimitColumn
                   showModelTiersColumn={isWorkspaceAdmin}
-                  showSharedUsageLimitColumn={
-                    isCreditPriced &&
+                  showSharedUsageLimitColumn={hasFeature("group_limits")}
+                  canEditSharedUsageLimit
+                  seatOptions={
                     isWorkspaceAdmin &&
-                    hasFeature("group_limits")
+                    groupSeatProvisioningEnabled &&
+                    grantableSeatTypes.length > 0
+                      ? { grantableSeatTypes, seatPlans }
+                      : undefined
                   }
-                  showSeatColumn={
-                    isCreditPriced &&
-                    isWorkspaceAdmin &&
-                    groupSeatProvisioningEnabled
-                  }
-                  seatPlans={seatPlans}
-                  grantableSeatTypes={grantableSeatTypes}
                 />
               </AdminSectionAnchor>
             </TabsContent>
 
-            {isWorkspaceAdmin && isCreditPriced && (
+            {isWorkspaceAdmin && (
               <TabsContent value="top-ups" className={TAB_CONTENT_CLASS}>
                 <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.usage.topUps}>
                   <TopUpsHistoryTable owner={owner} />
@@ -1311,64 +1289,32 @@ export function UsagePage() {
                 }
               >
                 <Page.Vertical align="stretch" gap="xl">
-                  {isCreditPriced && (
-                    <AdminSectionAnchor
-                      sectionId={ADMIN_SECTION_IDS.usage.spendingPolicies}
-                    >
-                      <UsageSettingsCard
-                        workspaceId={owner.sId}
-                        hasPool={hasPool}
-                        seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
-                      />
-                    </AdminSectionAnchor>
-                  )}
                   <AdminSectionAnchor
-                    sectionId={ADMIN_SECTION_IDS.usage.costManagement}
+                    sectionId={ADMIN_SECTION_IDS.usage.spendingPolicies}
                   >
-                    <CreditSpendCheckpointSettingsCard
+                    <UsageSettingsCard
                       workspaceId={owner.sId}
+                      hasPool={hasPool}
+                      seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
                     />
                   </AdminSectionAnchor>
-                  {/* Always mounted so search deep links resolve on all plans. */}
-                  {isCreditPriced ? (
-                    <LockedSection
-                      locked={!isAwuPoolCurrentCycleLoading && !hasPool}
-                      className="flex flex-col gap-8"
-                    >
-                      <AdminSectionAnchor
-                        sectionId={ADMIN_SECTION_IDS.usage.programmatic}
-                      >
-                        <div className="flex flex-col gap-8">
-                          <UsageProgrammaticLimitCard workspaceId={owner.sId} />
-                          {hasSelfImprovement && (
-                            <SelfImprovingSkillsSettingsSection
-                              owner={owner}
-                              showToggles={false}
-                            />
-                          )}
-                        </div>
-                      </AdminSectionAnchor>
-                      <AdminSectionAnchor
-                        sectionId={ADMIN_SECTION_IDS.usage.notifications}
-                      >
-                        <UsageNotificationsCard workspaceId={owner.sId} />
-                      </AdminSectionAnchor>
-                    </LockedSection>
-                  ) : (
+                  <LockedSection
+                    locked={!isAwuPoolCurrentCycleLoading && !hasPool}
+                    className="flex flex-col gap-8"
+                  >
                     <AdminSectionAnchor
                       sectionId={ADMIN_SECTION_IDS.usage.programmatic}
                     >
                       <div className="flex flex-col gap-8">
-                        <UsageProgrammaticLimitCard workspaceId={owner.sId} />
-                        {hasSelfImprovement && (
-                          <SelfImprovingSkillsSettingsSection
-                            owner={owner}
-                            showToggles={false}
-                          />
-                        )}
+                        <UsageProgrammaticLimitCard owner={owner} />
                       </div>
                     </AdminSectionAnchor>
-                  )}
+                    <AdminSectionAnchor
+                      sectionId={ADMIN_SECTION_IDS.usage.notifications}
+                    >
+                      <UsageNotificationsCard workspaceId={owner.sId} />
+                    </AdminSectionAnchor>
+                  </LockedSection>
                 </Page.Vertical>
               </TabsContent>
             )}

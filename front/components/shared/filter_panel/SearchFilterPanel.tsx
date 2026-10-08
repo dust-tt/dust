@@ -13,6 +13,7 @@ import type {
 import {
   getSearchFilterActiveUsersCount,
   getSearchFilterCategoryLabels,
+  getSearchFilterSearchPlaceholders,
   getSearchFilterOptions,
   toUsageFilterOption,
 } from "@app/components/shared/filter_panel/searchFilter";
@@ -75,12 +76,14 @@ export function SearchFilterPanel<Category extends SearchFilterCategory>({
   const { t } = useLingui();
   const { user } = useAuth();
   const categoryLabels = useMemo(() => getSearchFilterCategoryLabels(t), [t]);
+  const searchPlaceholders = getSearchFilterSearchPlaceholders(t);
 
   return (
     <FilterPanel
       panel={panel}
       categories={categories}
       categoryLabels={categoryLabels}
+      searchPlaceholders={searchPlaceholders}
       filter={filter}
       onFilterChange={onFilterChange}
       activeCategoryOptions={getSearchFilterOptions(

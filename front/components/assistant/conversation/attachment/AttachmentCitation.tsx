@@ -7,6 +7,8 @@ import { PreviewableCitation } from "@app/components/assistant/conversation/atta
 import type { AttachmentCitation } from "@app/components/assistant/conversation/attachment/types";
 import { isAudioContentType } from "@app/components/assistant/conversation/attachment/utils";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
+import { formatNumber } from "@app/lib/i18n/format";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import { isFrameContentType } from "@app/types/files";
 import { Icon, useTranscribingProgress } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -50,10 +52,16 @@ export function AttachmentCitation({
 
   const getLoadingLabel = (): string | undefined => {
     if (isTransferringBytes) {
-      return t`Uploading… ${uploadProgress}%`;
+      const uploadPercent = formatNumber(uploadProgress / 100, {
+        style: "percent",
+      });
+      return t`Uploading… ${uploadPercent}`;
     }
     if (isTranscribingAudio && transcriptionProgress !== null) {
-      return t`Transcribing… ${transcriptionProgress}%`;
+      const transcriptionPercent = formatNumber(transcriptionProgress / 100, {
+        style: "percent",
+      });
+      return t`Transcribing… ${transcriptionPercent}`;
     }
     // Bytes are in but the request is still open: the server is extracting/converting the file.
     if (isLoading && uploadProgress === 100) {
@@ -80,7 +88,7 @@ export function AttachmentCitation({
         )}
       </div>
     );
-    const nodeUrl = attachmentCitation.sourceUrl;
+    const nodeUrl = getSafeSourceUrl(attachmentCitation.sourceUrl);
     const nodeBase = {
       icon: attachmentCitation.visual,
       title: attachmentCitation.title,
@@ -97,7 +105,8 @@ export function AttachmentCitation({
     );
   }
 
-  const { fileId, contentType, title, sourceUrl } = attachmentCitation;
+  const { fileId, contentType, title } = attachmentCitation;
+  const sourceUrl = getSafeSourceUrl(attachmentCitation.sourceUrl);
   const filePath =
     "filePath" in attachmentCitation ? attachmentCitation.filePath : undefined;
 

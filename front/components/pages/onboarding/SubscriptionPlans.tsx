@@ -173,7 +173,7 @@ export function FreePlanCard({ onStartFree }: FreePlanCardProps) {
     <PlanCard
       icon={LayerSingle}
       seatType="free"
-      name="Free"
+      name={seatTypeDisplayName("free", t)}
       credits={formatNumber(FREE_SEAT_LIFETIME_AWU_CREDITS)}
       creditsLabel={t`credits`}
       priceLabel={t`One-time · never expires`}

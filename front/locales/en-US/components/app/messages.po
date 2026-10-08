@@ -38,8 +38,8 @@ msgid "{usedCredits} of {limitCredits} used on your current plan"
 msgstr "{usedCredits} of {limitCredits} used on your current plan"
 
 #: front/components/app/CreditUsage.tsx
-msgid "Resets {resetDay}"
-msgstr "Resets {resetDay}"
+msgid "{resetDayKind, select, relative {Resets {resetDay}} weekday {Resets on {resetDay}} other {Resets on {resetDay}}}"
+msgstr "{resetDayKind, select, relative {Resets {resetDay}} weekday {Resets on {resetDay}} other {Resets on {resetDay}}}"
 
 #: front/components/app/CreditUsage.tsx
 msgid "Resets on a rolling {windowDays}-day basis"
@@ -458,16 +458,16 @@ msgid "You have reached your personal usage cap. Please contact your administrat
 msgstr "You have reached your personal usage cap. Please contact your administrator to increase it."
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Shared usage limit reached"
-msgstr "Shared usage limit reached"
+msgid "Group budget reached"
+msgstr "Group budget reached"
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page."
-msgstr "Your group has reached its shared usage limit. You can adjust shared usage limits on the usage page."
+msgid "Your group has reached its budget. You can adjust group budgets on the usage page."
+msgstr "Your group has reached its budget. You can adjust group budgets on the usage page."
 
 #: front/components/app/ReachedLimitPopup.tsx
-msgid "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
-msgstr "Your group has reached its shared usage limit. Please contact your group managers or administrator to increase it."
+msgid "Your group has reached its budget. Please contact your group managers or administrator to increase it."
+msgstr "Your group has reached its budget. Please contact your group managers or administrator to increase it."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Cancel"

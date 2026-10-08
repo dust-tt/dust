@@ -1,8 +1,9 @@
 import { getDockerProjectName } from "./docker";
 import type { Environment } from "./environment";
 import { getRunningServices, isServiceRunning } from "./process";
-import { WARM_SERVICES } from "./registry";
+import { getWarmServices } from "./registry";
 import type { ServiceName } from "./services";
+import { loadSettings } from "./settings";
 
 export type EnvironmentState = "stopped" | "cold" | "warm";
 
@@ -62,7 +63,8 @@ export function detectWarnings(
   buildWatchersRunning: boolean,
   dockerRunning: boolean,
   appServicesRunning: boolean,
-  runningAppServices: ServiceName[]
+  runningAppServices: ServiceName[],
+  warmServices: readonly ServiceName[]
 ): string[] {
   const warnings: string[] = [];
 
@@ -88,7 +90,7 @@ export function detectWarnings(
   }
 
   // Check for partially running app services
-  const missingServices = WARM_SERVICES.filter((s) => !runningAppServices.includes(s));
+  const missingServices = warmServices.filter((s) => !runningAppServices.includes(s));
   if (missingServices.length > 0 && runningAppServices.length > 0) {
     warnings.push(`Missing services: ${missingServices.join(", ")}`);
   }
@@ -113,7 +115,8 @@ export async function getStateInfo(env: Environment): Promise<StateInfo> {
     buildWatchersRunning,
     dockerRunning,
     appServicesRunning,
-    runningAppServices
+    runningAppServices,
+    getWarmServices(await loadSettings())
   );
 
   return {

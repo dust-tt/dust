@@ -1,0 +1,48 @@
+@cc [owner:spolu,label:security] v5-tenant-isolation
+Storage keys and authorization MUST be tenant-scoped. Filesystem RPCs MUST derive tenant and at most
+512 grants from an active session. Cached access MUST be session-scoped and expire with that session.
+
+@cc [owner:spolu,label:concurrency;backend] v5-minimal-atomic-groups
+File edits MUST use one file transaction. Create/remove MUST atomically change parent and target;
+rename MUST atomically change source/destination parents, target, and replacement when present.
+Independent groups MUST NOT share a transaction. Metadata, blocks, and indexes MUST stay coherent.
+
+@cc [owner:spolu,label:backend;concurrency] v5-durable-server
+Servers MUST acknowledge mutations only after FDB commits and MUST retain no content/metadata read
+cache or writeback overlay between requests. Complete tenant permission trees MAY authorize within
+their configured age bound; all other filesystem invariants MUST use current conflict-tracked FDB
+state. Mutations with unknown commit outcomes MUST NOT be automatically replayed.
+
+@cc [owner:spolu,label:concurrency] v5-object-fsync
+Ordinary client mutations MAY acknowledge bounded RAM acceptance. Fsync MUST dispatch and await only
+a finite prefix of the target object's edits and required namespace prerequisites, across handles.
+It MUST NOT drain unrelated objects or a parent queue. Known deferred errors MUST reach fsync.
+
+@cc [owner:spolu,label:performance;security] v5-client-freshness
+Client-controlled write buffering W and read/authorization cache validity C MUST satisfy W+C<=1000ms,
+initially W=200ms and C=800ms. Server/network waits are excluded. Cache validity starts at request send;
+tentative new objects instead start their own C at local acceptance, without inheriting parent expiry.
+Hits, edits and block fills MUST NOT renew validity. More writes MUST NOT postpone the oldest dispatch
+window. RAM acceptance MAY rely on a valid child after its parent expires; the server MUST recheck
+authority using one fresh-enough complete tree generation or a complete current FDB proof.
+
+@cc [owner:spolu,label:concurrency] v5-revision-coherence
+Each committed object modification MUST change its revision. Retained blocks MUST be used only with
+matching freshly authorized metadata. Reads MUST NOT mix revisions or expose tails after truncation.
+Client generations MUST prevent late replies from overwriting newer edits or resurrecting removals.
+
+@cc [owner:spolu,label:security;concurrency] v5-directory-membership-reuse
+An expired directory page MAY renew its names and child attributes together only after Validate
+confirms its listing counter and authorization generation from one coherent view. Child attribute
+edits MUST change the parent's listing counter without changing its public attributes/revision.
+Root/shared projections MUST re-list. Local overlays and generations MUST fence late responses.
+
+@cc [owner:spolu,label:performance] v5-bounded-client-memory
+Client metadata, blocks, pages, queued/in-flight writes and bookkeeping MUST share one configured
+memory budget, including reserved transient space, without a separate dirty-data cap. Admission MUST
+evict clean state before waiting for memory; acknowledged dirty data MUST NOT be evicted silently.
+Directory prefetch MUST be bounded by pages and bytes.
+
+@cc [owner:spolu,label:architecture] v5-userspace-cache
+FUSE MUST use direct I/O, zero metadata/name TTLs, and no kernel writeback or directory caching.
+Userspace owns caching and expiry. Shared writable mmap is unsupported.

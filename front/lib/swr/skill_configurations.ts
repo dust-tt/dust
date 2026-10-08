@@ -24,7 +24,6 @@ import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
   GetSkillsResponseBody,
-  GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
   SearchSkillsResponseBody,
   SkillSearchFacet,
@@ -53,8 +52,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import { useSWRConfig } from "swr";
-import type { SWRMutationConfiguration } from "swr/mutation";
-import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
 const SEARCH_SKILLS_DEBOUNCE_MS = 250;
@@ -408,56 +405,6 @@ export function useSearchSkillsInfinite({
     isSkillsLoading,
     hasMore,
     loadMore,
-  };
-}
-
-export function useSkillsWithRelations({
-  owner,
-  disabled,
-  status,
-  onlyCustom,
-  bypassEditorVisibility,
-  withUsage,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  status: SkillStatus;
-  onlyCustom?: boolean;
-  // Admin-only: bypass the editor-visibility rule and also list unpublished
-  // (editors-only) skills the caller does not edit.
-  bypassEditorVisibility?: boolean;
-  withUsage?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
-
-  const queryParams = new URLSearchParams({
-    withRelations: "true",
-    status,
-  });
-  if (onlyCustom) {
-    queryParams.set("onlyCustom", "true");
-  }
-  if (bypassEditorVisibility) {
-    queryParams.set("bypassEditorVisibility", "true");
-  }
-  if (withUsage) {
-    queryParams.set("withUsage", "true");
-  }
-
-  const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(
-      `/api/w/${owner.sId}/skills?${queryParams.toString()}`,
-      skillsFetcher,
-      { disabled }
-    );
-
-  return {
-    skillsWithRelations: data?.skills ?? emptyArray(),
-    isSkillsWithRelationsLoading: isLoading,
-    mutateSkillsWithRelations: mutate,
-    mutateSkillsWithRelationsRegardlessOfQueryParams:
-      mutateRegardlessOfQueryParams,
   };
 }
 
@@ -818,30 +765,6 @@ export function useSkillHistory({
     isSkillHistoryLoading: !error && !data && !disabled,
     isSkillHistoryError: error,
     mutateSkillHistory: mutate,
-  };
-}
-
-export function useSkillWithRelations(
-  owner: LightWorkspaceType,
-  options?: SWRMutationConfiguration<
-    GetSkillWithRelationsResponseBody,
-    Error,
-    string,
-    string
-  >
-) {
-  const { fetcher } = useFetcher();
-  const { trigger, isMutating } = useSWRMutation(
-    `/api/w/${owner.sId}/skills`,
-    async (url: string, { arg }: { arg: string }) => {
-      return fetcher(`${url}/${arg}?withRelations=true`);
-    },
-    options
-  );
-
-  return {
-    fetchSkillWithRelations: trigger,
-    isLoading: isMutating,
   };
 }
 

@@ -1,0 +1,7 @@
+syntax = "proto3";
+package dfs;
+message Frame { bytes payload = 1; }
+service Dfs {
+  rpc Call(Frame) returns (Frame);
+  rpc Snapshot(Frame) returns (stream Frame);
+}

@@ -1,6 +1,6 @@
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
-  ensureIsManager,
+  ensureCanReadAnalyticsOfAllGroups,
   ensureIsUser,
 } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -44,7 +44,7 @@ function mountSharedConsumptionRoutes(
 
 export function createWorkspaceConsumptionRoutes() {
   const app = consumptionAnalyticsApp();
-  app.use(ensureIsManager());
+  app.use(ensureCanReadAnalyticsOfAllGroups());
 
   mountSharedConsumptionRoutes(app);
   app.route("/export-raw", exportRawRoute);

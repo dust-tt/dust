@@ -5,7 +5,6 @@ import { useUser } from "@app/lib/swr/user";
 import type { PodTaskActorType, PodTaskType } from "@app/types/project_task";
 import { POD_MANAGER_AGENT_SID } from "@app/types/project_task";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { isString } from "@app/types/shared/utils/general";
 import type {
   LightWorkspaceType,
   UserTypeWithWorkspaces,
@@ -23,47 +22,43 @@ import {
   SlackLogo,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, select } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useMemo } from "react";
 
 // ── Metadata tooltip ──────────────────────────────────────────────────────────
 
-const ACTOR_LABELS = {
-  someone: msg({ message: "someone", context: "task actor" }),
-  agent: msg({ message: "an agent", context: "task actor" }),
-  you: msg({ message: "you", context: "task actor" }),
-  user: msg({ message: "a user", context: "task actor" }),
-};
+type TaskActor =
+  | { kind: "someone" | "agent" | "you" | "user" }
+  | { kind: "named"; name: string };
 
-function formatActorLabel(
+function getTaskActor(
   type: PodTaskActorType | null,
   agentId: string | null,
   userId: string | null,
 
   agentNameById: Map<string, string>,
   currentUser: UserTypeWithWorkspaces | null
-): MessageDescriptor | string {
+): TaskActor {
   if (!type) {
-    return ACTOR_LABELS.someone;
+    return { kind: "someone" };
   }
   switch (type) {
     case "agent":
       if (agentId === POD_MANAGER_AGENT_SID || agentId === "project_manager") {
-        return "Dust";
+        return { kind: "named", name: "Dust" };
       }
       const name = agentId ? agentNameById.get(agentId) : null;
-      return name || ACTOR_LABELS.agent;
+      return name ? { kind: "named", name } : { kind: "agent" };
     case "user":
       if (userId === currentUser?.sId) {
-        return ACTOR_LABELS.you;
+        return { kind: "you" };
       }
-      return ACTOR_LABELS.user;
+      return { kind: "user" };
     default:
       assertNeverAndIgnore(type);
-      return ACTOR_LABELS.someone;
+      return { kind: "someone" };
   }
 }
 
@@ -85,32 +80,46 @@ export function TaskMetadataTooltip({
   const { t } = useLingui();
   const { user } = useUser();
 
-  const translateActorLabel = (actorLabel: MessageDescriptor | string) =>
-    isString(actorLabel) ? actorLabel : t(actorLabel);
-
-  const creatorLabel = translateActorLabel(
-    formatActorLabel(
-      task.createdByType,
-      task.createdByAgentConfigurationId,
-      task.createdByUserId,
-      agentNameById,
-      user
-    )
+  const creator = getTaskActor(
+    task.createdByType,
+    task.createdByAgentConfigurationId,
+    task.createdByUserId,
+    agentNameById,
+    user
   );
-  const doneLabel = task.markedAsDoneByType
-    ? translateActorLabel(
-        formatActorLabel(
-          task.markedAsDoneByType,
-          task.markedAsDoneByAgentConfigurationId,
-          task.markedAsDoneByUserId,
-          agentNameById,
-          user
-        )
+  const doneBy = task.markedAsDoneByType
+    ? getTaskActor(
+        task.markedAsDoneByType,
+        task.markedAsDoneByAgentConfigurationId,
+        task.markedAsDoneByUserId,
+        agentNameById,
+        user
       )
     : null;
   const createdAt = formatFriendlyDate(task.createdAt);
   const doneAt = task.doneAt ? formatFriendlyDate(task.doneAt) : null;
   const taskId = task.sId;
+  const creatorKind = creator.kind;
+  const creatorName = creator.kind === "named" ? creator.name : "";
+  const createdLabel = t`${select(creatorKind, {
+    someone: `Created by someone · ${createdAt}`,
+    agent: `Created by an agent · ${createdAt}`,
+    you: `Created by you · ${createdAt}`,
+    user: `Created by a user · ${createdAt}`,
+    other: `Created by ${creatorName} · ${createdAt}`,
+  })}`;
+  const doneByKind = doneBy?.kind ?? "someone";
+  const doneByName = doneBy?.kind === "named" ? doneBy.name : "";
+  const doneLabel =
+    doneAt && doneBy
+      ? t`${select(doneByKind, {
+          someone: `Done by someone · ${doneAt}`,
+          agent: `Done by an agent · ${doneAt}`,
+          you: `Done by you · ${doneAt}`,
+          user: `Done by a user · ${doneAt}`,
+          other: `Done by ${doneByName} · ${doneAt}`,
+        })}`
+      : null;
 
   const isAssistantWorkInProgress =
     !!task.conversationId && task.status === "in_progress";
@@ -122,18 +131,8 @@ export function TaskMetadataTooltip({
           <Trans>An agent is working on this task.</Trans>
         </div>
       )}
-      <div className="text-xs">
-        <Trans>
-          Created by {creatorLabel} · {createdAt}
-        </Trans>
-      </div>
-      {doneAt && doneLabel && (
-        <div className="text-xs">
-          <Trans>
-            Done by {doneLabel} · {doneAt}
-          </Trans>
-        </div>
-      )}
+      <div className="text-xs">{createdLabel}</div>
+      {doneLabel && <div className="text-xs">{doneLabel}</div>}
       {task.actorRationale && (
         <div className="max-w-xs text-xs italic opacity-80">
           {task.actorRationale}

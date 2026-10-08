@@ -1,5 +1,8 @@
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { formatFileSize } from "@app/lib/i18n/format";
 import {
   useDataSourceViewTable,
@@ -60,6 +63,7 @@ export const TableUploadOrEditModal = ({
   owner,
 }: TableUploadOrEditModalProps) => {
   const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -286,17 +290,16 @@ export const TableUploadOrEditModal = ({
         }));
         setIsBigFile(isBigFileSize(selectedFile.size));
       } catch (error) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Error uploading file`,
-          description: error instanceof Error ? error.message : String(error),
+          error,
         });
       } finally {
         e.target.value = "";
         fileUploaderService.resetUpload();
       }
     },
-    [fileUploaderService, sendNotification, t]
+    [fileUploaderService, sendApiErrorNotification, sendNotification, t]
   );
 
   // Effect: Validate the table state when inputs change

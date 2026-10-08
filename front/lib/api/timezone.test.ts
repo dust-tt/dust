@@ -1,11 +1,27 @@
+import type { ToolContext } from "@app/lib/actions/types";
 import {
   dayBoundaryInTimezone,
+  getConversationUserTimezone,
   isValidTimezone,
   localTimeOfDayToUtc,
   parseCalendarDate,
   timezoneSchema,
 } from "@app/lib/api/timezone";
-import { describe, expect, it } from "vitest";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { getTestStreamEndpoint } from "@app/tests/utils/models";
+import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
+import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
+import assert from "assert";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("isValidTimezone", () => {
   it("accepts valid IANA timezones", () => {
@@ -146,5 +162,120 @@ describe("timezoneSchema", () => {
 
   it("rejects an invalid timezone", () => {
     expect(timezoneSchema.safeParse("Not/AZone").success).toBe(false);
+  });
+});
+
+describe("getConversationUserTimezone", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  async function agentLoopContext(timezones: string[]): Promise<ToolContext> {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [new Date()],
+    });
+    const userMessage = conversation.content.flat().find(isUserMessageType);
+    const agentMessage = conversation.content.flat().find(isAgentMessageType);
+    assert(userMessage);
+    assert(agentMessage);
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+    });
+    const { model, ...agentConfiguration } = agent;
+    return {
+      runContext: {
+        contextType: "agent_loop",
+        action,
+        agentConfiguration,
+        modelInfo: { endpoint: getTestStreamEndpoint(model.modelId), ...model },
+        agentMessage,
+        conversation: {
+          ...conversation,
+          content: timezones.flatMap((timezone) => [
+            [{ ...userMessage, context: { ...userMessage.context, timezone } }],
+            [agentMessage],
+          ]),
+        },
+        stepContext: {
+          citationsCount: 0,
+          citationsOffset: 0,
+          retrievalTopK: 10,
+          resumeState: null,
+          websearchResultCount: 0,
+        },
+        toolConfiguration: action.toolConfiguration,
+        userMessage,
+      },
+    };
+  }
+
+  async function sandboxContext(
+    timezone: string | undefined
+  ): Promise<ToolContext> {
+    const { auth, workspace, invocation, globalSpace, podSpace } =
+      await createPersistedSandboxFunctionInvocationTokenTestContext();
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "common_utilities",
+      useCase: null,
+    });
+    const view = await MCPServerViewFactory.create(
+      workspace,
+      server.id,
+      globalSpace
+    );
+    const action = await SandboxFunctionMCPActionFactory.create(auth, {
+      invocation,
+      mcpServerView: view,
+    });
+    vi.spyOn(invocation, "getContext").mockResolvedValue(
+      timezone ? { timezone } : undefined
+    );
+    return {
+      runContext: {
+        contextType: "sandbox_function",
+        action,
+        invocation,
+        pod: podSpace,
+        toolConfiguration: action.toolConfiguration,
+      },
+    };
+  }
+
+  it("returns the latest user message timezone in an agent loop", async () => {
+    expect(
+      await getConversationUserTimezone(
+        await agentLoopContext(["Europe/Paris", "America/New_York"])
+      )
+    ).toBe("America/New_York");
+  });
+
+  it("returns the reported value without normalizing it", async () => {
+    expect(
+      await getConversationUserTimezone(await agentLoopContext(["GMT+02:00"]))
+    ).toBe("GMT+02:00");
+  });
+
+  it("returns the invocation timezone in a sandbox function", async () => {
+    expect(
+      await getConversationUserTimezone(await sandboxContext("Asia/Tokyo"))
+    ).toBe("Asia/Tokyo");
+  });
+
+  it("returns null when no timezone is available", async () => {
+    expect(
+      await getConversationUserTimezone(await agentLoopContext([]))
+    ).toBeNull();
+    expect(
+      await getConversationUserTimezone(await sandboxContext(undefined))
+    ).toBeNull();
+    expect(await getConversationUserTimezone(undefined)).toBeNull();
   });
 });

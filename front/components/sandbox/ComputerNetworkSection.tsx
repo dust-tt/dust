@@ -1,6 +1,8 @@
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { MultiPodNetworkSection } from "@app/components/sandbox/MultiPodNetworkSection";
 import type { SandboxScopeSelection } from "@app/components/sandbox/SandboxScopeSelector";
 import { SandboxScopeSelector } from "@app/components/sandbox/SandboxScopeSelector";
+import { ADMIN_SECTION_IDS } from "@app/lib/admin/adminSectionIds";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useEgressPolicyPods } from "@app/lib/swr/sandbox";
 import { ContentMessage, InfoCircle } from "@dust-tt/sparkle";
@@ -44,9 +46,9 @@ export function ComputerNetworkSection({
       : null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="heading-xl text-foreground">
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.computer.network}>
+      <div className="flex flex-row gap-4">
+        <div className="heading-base text-foreground flex-1">
           <Trans>Network</Trans>
         </div>
         <div className="shrink-0">
@@ -59,6 +61,7 @@ export function ComputerNetworkSection({
           />
         </div>
       </div>
+
       {scopeCount === 0 ? (
         <ContentMessage
           variant="info"
@@ -74,6 +77,6 @@ export function ComputerNetworkSection({
           selectedPods={selectedPods}
         />
       )}
-    </div>
+    </AdminSectionAnchor>
   );
 }

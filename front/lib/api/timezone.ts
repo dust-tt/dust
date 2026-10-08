@@ -1,4 +1,10 @@
+import type { ToolContext } from "@app/lib/actions/types";
+import {
+  isAgentLoopRunContext,
+  isSandboxFunctionRunContext,
+} from "@app/lib/actions/types";
 import logger from "@app/logger/logger";
+import { isUserMessageType } from "@app/types/assistant/conversation";
 import { TZDate } from "@date-fns/tz";
 import { z } from "zod";
 
@@ -131,3 +137,26 @@ export const timezoneSchema = z
   .refine((timezone) => isValidTimezone(timezone), {
     message: "Invalid IANA timezone",
   });
+
+/**
+ * @cc [owner:avervaet,label:product] raw-user-timezone-or-null
+ * Returns the client-reported timezone unvalidated, or `null` when none. MUST NOT fall back to a
+ * server-side default.
+ */
+export async function getConversationUserTimezone(
+  toolContext?: ToolContext
+): Promise<string | null> {
+  if (isAgentLoopRunContext(toolContext?.runContext)) {
+    const userMessage = toolContext.runContext.conversation.content
+      .flat()
+      .findLast(isUserMessageType);
+    return userMessage?.context.timezone ?? null;
+  }
+
+  if (isSandboxFunctionRunContext(toolContext?.runContext)) {
+    const context = await toolContext.runContext.invocation.getContext();
+    return context?.timezone ?? null;
+  }
+
+  return null;
+}

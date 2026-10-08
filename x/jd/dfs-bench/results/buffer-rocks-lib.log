@@ -1,0 +1,19 @@
+
+running 14 tests
+test engine::export::tests::renewal_preserves_snapshot_and_never_revives_expired_authority ... ok
+test engine::persistence_tests::failed_flush_preserves_pending_suffix_and_stops_subsequent_publication ... ok
+test engine::persistence_tests::historical_view_pins_are_bounded_by_retained_nodes_and_cannot_outlive_logout ... ok
+test engine::persistence_tests::publication_proceeds_during_flush_and_preserves_snapshot_and_pending_suffix ... ok
+test live::freshness::tests::cache_hits_do_not_extend_server_validation ... ok
+test live::freshness::tests::kernel_and_daemon_share_one_deadline ... ok
+test live::freshness::tests::slow_refresh_does_not_create_an_extra_cache_window ... ok
+test memory::tests::growth_failure_and_deadlines_preserve_existing_reservations ... ok
+test memory::tests::release_wakes_waiters_and_full_queues_reject_immediately ... ok
+test memory::tests::shared_ownership_retains_capacity_until_the_last_owner_exits ... ok
+test mount::inodes::tests::lookup_and_capacity_limits_recover_after_forget ... ok
+test mount::inodes::tests::references_delay_reclamation_and_retirement_never_reuses_identity ... ok
+test mount::kernel_cache::tests::partial_store_recovers_pages_or_disables_insertion_before_releasing_ordering ... ok
+test reader::tests::access_prediction_expires_old_directories_and_authority ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+

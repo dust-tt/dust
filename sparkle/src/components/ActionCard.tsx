@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Card, CardActionButton } from "@sparkle/components/Card";
@@ -126,6 +127,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const diffChip = diffStatus ? DIFF_CHIP_CONFIG[diffStatus] : null;
 
     return (
@@ -164,7 +166,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                   <Chip
                     size="mini"
                     color="success"
-                    label="ADDED"
+                    label={t`Added`}
                     className={cn(FADE_TRANSITION_CLASSES, "opacity-100")}
                   />
                 )}
@@ -183,7 +185,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
                     size="xs"
                     variant="outline"
                     icon={Plus}
-                    label="Add"
+                    label={t`Add`}
                     className={cn(FADE_TRANSITION_CLASSES, "flex-shrink-0")}
                   />
                 )}

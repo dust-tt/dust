@@ -114,18 +114,22 @@ describe("extractFileRefs", () => {
     ]);
   });
 
-  it("extracts package-relative paths only in ./asset.ext form", () => {
+  it("extracts package-relative paths only in ./path.ext form (non-source/module)", () => {
     const code = `
       import Chart from "./Chart";
       const GAMES_CSV_PATH = "./data.csv";
       const f = useFile(GAMES_CSV_PATH);
       const withDot = useFile("./report.csv");
       const bare = useFile("report.csv");
+      const unknown = useFile("./assets/file.something");
+      const source = useFile("./Chart.tsx");
+      const noExt = useFile("./foo");
       return <Image fileId="./assets/logo.png" />;
     `;
     expect(extractFileRefs(code)).toEqual([
       { type: "frameRelative", relativePath: "data.csv" },
       { type: "frameRelative", relativePath: "report.csv" },
+      { type: "frameRelative", relativePath: "assets/file.something" },
       { type: "frameRelative", relativePath: "assets/logo.png" },
     ]);
   });

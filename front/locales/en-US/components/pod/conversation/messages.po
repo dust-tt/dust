@@ -162,5 +162,9 @@ msgid "Open in full screen"
 msgstr "Open in full screen"
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
 msgid "Show"
 msgstr "Show"

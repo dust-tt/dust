@@ -34,8 +34,8 @@ msgid "View all models for {selectedRowName}"
 msgstr "View all models for {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
-msgid "View all reasoning effort for {selectedRowName}"
-msgstr "View all reasoning effort for {selectedRowName}"
+msgid "View all reasoning efforts for {selectedRowName}"
+msgstr "View all reasoning efforts for {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "View all tools for {selectedRowName}"
@@ -82,8 +82,8 @@ msgid "Total credits"
 msgstr "Total credits"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
-msgid "vs prev"
-msgstr "vs prev"
+msgid "Vs prev"
+msgstr "Vs prev"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Add to filters"
@@ -141,12 +141,12 @@ msgid "Target consumption"
 msgstr "Target consumption"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
-msgid "{deltaAmount} ahead of target"
-msgstr "{deltaAmount} ahead of target"
+msgid "{deltaCreditCount, plural, one {{deltaAmount} credit ahead of target} other {{deltaAmount} credits ahead of target}}"
+msgstr "{deltaCreditCount, plural, one {{deltaAmount} credit ahead of target} other {{deltaAmount} credits ahead of target}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
-msgid "{deltaAmount} behind target"
-msgstr "{deltaAmount} behind target"
+msgid "{deltaCreditCount, plural, one {{deltaAmount} credit behind target} other {{deltaAmount} credits behind target}}"
+msgstr "{deltaCreditCount, plural, one {{deltaAmount} credit behind target} other {{deltaAmount} credits behind target}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionBurnUpChart.tsx
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
@@ -171,24 +171,24 @@ msgid "This month (partial)"
 msgstr "This month (partial)"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far today"
-msgstr "{total} so far today"
+msgid "{creditCount, plural, one {{total} credit so far today} other {{total} credits so far today}}"
+msgstr "{creditCount, plural, one {{total} credit so far today} other {{total} credits so far today}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far this week"
-msgstr "{total} so far this week"
+msgid "{creditCount, plural, one {{total} credit so far this week} other {{total} credits so far this week}}"
+msgstr "{creditCount, plural, one {{total} credit so far this week} other {{total} credits so far this week}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} so far this month"
-msgstr "{total} so far this month"
+msgid "{creditCount, plural, one {{total} credit so far this month} other {{total} credits so far this month}}"
+msgstr "{creditCount, plural, one {{total} credit so far this month} other {{total} credits so far this month}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Active users"
 msgstr "Active users"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
-msgid "{total} total"
-msgstr "{total} total"
+msgid "{creditCount, plural, one {{total} credit total} other {{total} credits total}}"
+msgstr "{creditCount, plural, one {{total} credit total} other {{total} credits total}}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Consumption"
@@ -299,16 +299,8 @@ msgid "Used this period"
 msgstr "Used this period"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedTotalCredits} credits"
-msgstr "{formattedTotalCredits} credits"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "{usedPercentage}% of {capCredits} cap"
 msgstr "{usedPercentage}% of {capCredits} cap"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedAverageCost} credits / message"
-msgstr "{formattedAverageCost} credits / message"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Top agent"
@@ -331,16 +323,8 @@ msgid "Total cost"
 msgstr "Total cost"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{totalCost} credits"
-msgstr "{totalCost} credits"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Avg. cost/msg"
 msgstr "Avg. cost/msg"
-
-#: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
-msgid "{formattedAverageCost} credits"
-msgstr "{formattedAverageCost} credits"
 
 #: front/components/workspace/analytics/consumption/consumptionDimensions.ts
 msgid "Messages"

@@ -24,6 +24,14 @@ export interface DockerComposeOverride {
     kibana: {
       ports: string[];
     };
+    fdb: {
+      ports: string[];
+      environment: { FDB_PORT: string };
+      volumes: string[];
+    };
+    fdb_init: {
+      environment: { FDB_PORT: string };
+    };
     "apache-tika": {
       ports: string[];
     };
@@ -31,7 +39,7 @@ export interface DockerComposeOverride {
   volumes: Record<string, null>;
 }
 
-const VOLUME_KEYS = ["pgsql", "qdrant", "elasticsearch"] as const;
+const VOLUME_KEYS = ["pgsql", "qdrant", "elasticsearch", "fdb"] as const;
 type VolumeKey = (typeof VOLUME_KEYS)[number];
 
 function getVolumeName(envName: string, volume: VolumeKey): string {
@@ -67,6 +75,16 @@ export function generateDockerComposeOverride(
       },
       kibana: {
         ports: [`${ports.kibana}:5601`],
+      },
+      // FoundationDB advertises its own port to clients, so the container must listen on the
+      // same port number the host publishes (not 4500 behind a remapped host port).
+      fdb: {
+        ports: [`${ports.fdb}:${ports.fdb}`],
+        environment: { FDB_PORT: String(ports.fdb) },
+        volumes: [`${getVolumeName(name, "fdb")}:/var/fdb/data`],
+      },
+      fdb_init: {
+        environment: { FDB_PORT: String(ports.fdb) },
       },
       "apache-tika": {
         ports: [`${ports.apacheTika}:9998`],

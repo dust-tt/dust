@@ -1,0 +1,401 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-05 10:47+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/components/ActionCard.tsx
+msgid "Added"
+msgstr "Ajouté"
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr "Ajouter"
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: src/components/Bar.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr "Supprimer"
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr "Partager"
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr "Fil d’Ariane"
+
+#: src/components/Chip.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr "Que souhaitez-vous accomplir ?"
+
+#: src/components/ConversationListItem.tsx
+msgid "{mentionCount, plural, one {# Mention} other {# Mentions}}"
+msgstr "{mentionCount, plural, one {# mention} other {# mentions}}"
+
+#: src/components/ConversationListItem.tsx
+msgctxt "follows the mention count, e.g. 2 Mentions in 5 unreads"
+msgid "{unreadCount, plural, one {in # unread} other {in # unreads}}"
+msgstr "{unreadCount, plural, one {sur # non lu} other {sur # non lus}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})"
+msgstr "({replyCount, plural, one {# réponse} other {# réponses}})"
+
+#: src/components/ConversationListItem.tsx
+msgid "{replyCount, plural, one {# Reply} other {# Replies}}"
+msgstr "{replyCount, plural, one {# réponse} other {# réponses}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "{unreadCount, plural, one {# Unread} other {# Unread}}"
+msgstr "{unreadCount, plural, one {# non lu} other {# non lus}}"
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {# reply} other {# replies}})."
+msgstr "({replyCount, plural, one {# réponse} other {# réponses}})."
+
+#: src/components/ConversationListItem.tsx
+msgid "Last by <0>{lastMessageBy}</0>."
+msgstr "Dernier message de <0>{lastMessageBy}</0>."
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr "Actions du message"
+
+#: src/components/DataTable/ScrollableDataTable.tsx
+msgid "Loading more data…"
+msgstr "Chargement de données supplémentaires…"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select {label}"
+msgstr "Sélectionner {label}"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select row"
+msgstr "Sélectionner la ligne"
+
+#: src/components/DataTable/selection.tsx
+msgid "Select all rows"
+msgstr "Sélectionner toutes les lignes"
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr "Chargement du tableau"
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr "Afficher moins"
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr "Afficher plus"
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr "Icône du site web"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr "Création de l’image"
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr "Image générée"
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgid "Download"
+msgstr "Télécharger"
+
+#: src/components/InputWithSave.tsx
+#: src/components/LegacyInputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr "Enregistrer"
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr "Chargement"
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr "Charger plus"
+
+#: src/components/LoadMore.tsx
+#: src/components/Pagination.tsx
+msgid "{rowCount, plural, one {# item} other {# items}}"
+msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {#+ élément} other {#+ éléments}}"
+
+#: src/components/LoadMore.tsx
+msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
+msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/MessageCard.tsx
+msgid "New on Dust"
+msgstr "Nouveau sur Dust"
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr "Ignorer"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Previous page"
+msgstr "Page précédente"
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+msgid "Next page"
+msgstr "Page suivante"
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr "Masquer"
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr "Tout afficher"
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr "Ignorer la notification"
+
+#: src/components/Notification.tsx
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Details"
+msgstr "Détails"
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
+msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {#+ élément} other {#+ éléments}}"
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
+msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr "Progression"
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr "Rechercher"
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search result} other {# search results}} (out of {totalItems})."
+msgstr "{itemCount, plural, one {# résultat} other {# résultats}} (sur {totalItems})."
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {# search result.} other {# search results.}}"
+msgstr "{itemCount, plural, one {# résultat.} other {# résultats.}}"
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr "Tout sélectionner"
+
+#: src/components/Toolbar.tsx
+msgid "Insert link"
+msgstr "Insérer un lien"
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr "Ajoutez un lien à votre message avec un texte personnalisé."
+
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr "Texte"
+
+#: src/components/Toolbar.tsx
+msgid "Link"
+msgstr "Lien"
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: src/components/VoicePicker.tsx
+msgid "{progress}%"
+msgstr "{progress} %"
+
+#: src/components/VoicePicker.tsx
+msgctxt "verb, stop recording"
+msgid "Stop"
+msgstr "Arrêter"
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr "Transcription…"
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr "Relâchez pour arrêter"
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr "Arrêter l’enregistrement"
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or press and hold to record"
+msgstr "Cliquez, ou maintenez appuyé pour enregistrer"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Apply"
+msgstr "Appliquer"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Reject"
+msgstr "Refuser"
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Always allow"
+msgstr "Toujours autoriser"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the diagram's raw source code"
+msgid "Markdown"
+msgstr "Markdown"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the rendered diagram"
+msgid "Mermaid"
+msgstr "Mermaid"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the diagram's raw source code"
+msgid "Switch to Markdown"
+msgstr "Passer en Markdown"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the rendered diagram"
+msgid "Switch to Mermaid"
+msgstr "Passer en Mermaid"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Raw JSON"
+msgstr "JSON brut"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Pretty JSON"
+msgstr "JSON formaté"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON source text"
+msgid "Switch to Raw JSON"
+msgstr "Passer en JSON brut"
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON as a formatted tree"
+msgid "Switch to Pretty View"
+msgstr "Passer en JSON formaté"
+
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgctxt "verb, copy to clipboard"
+msgid "Copy"
+msgstr "Copier"
+
+#: src/components/markdown/List.tsx
+msgid "Done"
+msgstr "Terminé"
+
+#: src/components/markdown/List.tsx
+msgid "Step {number}"
+msgstr "Étape {number}"
+
+#: src/components/markdown/List.tsx
+msgid "To do"
+msgstr "À faire"
+
+#: src/components/markdown/Markdown.tsx
+msgid "There was an error parsing this markdown content"
+msgstr "Une erreur est survenue lors de l’analyse de ce contenu Markdown"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, show hidden JSON content"
+msgid "expand"
+msgstr "développer"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Maximum depth reached"
+msgstr "Profondeur maximale atteinte"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "a null JSON value"
+msgid "empty"
+msgstr "vide"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Yes"
+msgstr "Oui"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "No"
+msgstr "Non"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, hide JSON content"
+msgid "collapse"
+msgstr "réduire"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "expand ({hiddenCharCount, plural, one {# more character} other {# more characters}})"
+msgstr "développer ({hiddenCharCount, plural, one {# caractère de plus} other {# caractères de plus}})"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "empty list"
+msgstr "liste vide"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Item {itemNumber}"
+msgstr "Élément {itemNumber}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenItemCount, plural, one {# more item} other {# more items}}"
+msgstr "{hiddenItemCount, plural, one {# élément de plus} other {# éléments de plus}}"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "an empty JSON object"
+msgid "empty"
+msgstr "vide"
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
+msgstr "{hiddenPropertyCount, plural, one {# propriété de plus} other {# propriétés de plus}}"
+
+#: src/lib/SafeSuspense.tsx
+msgid "Failed to load. Please reload the page."
+msgstr "Échec du chargement. Veuillez recharger la page."

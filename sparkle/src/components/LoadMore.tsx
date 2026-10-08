@@ -1,3 +1,4 @@
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -37,10 +38,11 @@ export function LoadMore({
   isLoading = false,
   onLoadMore,
   onShowLess,
-  label = "Load more",
-  loadingLabel = "Loading",
-  showLessLabel = "Show less",
+  label,
+  loadingLabel,
+  showLessLabel,
 }: LoadMoreProps) {
+  const { t } = useLingui();
   // When the total is known and everything is loaded, there is nothing left to
   // fetch: keep the details, hide the control (same behavior as Pagination).
   const loadMoreIsHidden =
@@ -59,7 +61,7 @@ export function LoadMore({
         >
           {isLoading ? (
             <span>
-              {loadingLabel}
+              {loadingLabel ?? t`Loading`}
               {LOADING_DOT_DELAY_CLASS_NAMES.map((delayClassName) => (
                 <span
                   key={delayClassName}
@@ -73,7 +75,7 @@ export function LoadMore({
               ))}
             </span>
           ) : (
-            label
+            (label ?? t`Load more`)
           )}
         </button>
         {onShowLess && (
@@ -83,7 +85,7 @@ export function LoadMore({
             onClick={onShowLess}
             disabled={isLoading}
           >
-            {showLessLabel}
+            {showLessLabel ?? t`Show less`}
           </button>
         )}
       </div>
@@ -95,11 +97,19 @@ export function LoadMore({
           showDetails ? "visible" : "collapse"
         )}
       >
-        {totalRowCount === undefined
-          ? `${rowCount} item${rowCount === 1 ? "" : "s"}`
-          : `Showing ${rowCount} of ${totalRowCount}${
-              totalRowCountIsCapped ? "+" : ""
-            } item${totalRowCount === 1 ? "" : "s"}`}
+        {totalRowCount === undefined ? (
+          <Plural value={rowCount} one="# item" other="# items" />
+        ) : totalRowCountIsCapped ? (
+          <Trans>
+            Showing {rowCount} of{" "}
+            <Plural value={totalRowCount} one="#+ item" other="#+ items" />
+          </Trans>
+        ) : (
+          <Trans>
+            Showing {rowCount} of{" "}
+            <Plural value={totalRowCount} one="# item" other="# items" />
+          </Trans>
+        )}
       </span>
     </div>
   );

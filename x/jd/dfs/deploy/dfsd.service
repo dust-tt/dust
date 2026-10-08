@@ -1,0 +1,23 @@
+[Unit]
+Description=DFS proof of concept server
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/var/lib/dfs
+
+[Service]
+Type=simple
+User=dfs
+Group=dfs
+EnvironmentFile=/etc/dfs/server.env
+ExecStart=/opt/dfs/dfsd --db ${DFS_DB} --credentials ${DFS_CREDENTIALS} --listen ${DFS_LISTEN} --tls-cert ${DFS_TLS_CERT} --tls-key ${DFS_TLS_KEY}
+Restart=on-failure
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dfs
+PrivateTmp=true
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

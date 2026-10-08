@@ -1,0 +1,35 @@
+@cc [owner:id13,label:security] lexical-authority
+Queries MUST bind a current DFS session and tenant. Current grants and scope MUST restrict candidates before offset and top-k. Body results require READ. Permission bitmap caches MUST be bounded and keyed by current policy generation, namespace generation, principal, scope, and the published index generation. Current candidate validation MUST suppress changed versions and namespaces; policy changes during retrieval MUST suppress the page. Failed authority reads MUST fail closed.
+
+@cc [owner:id13,label:backend;concurrency] lexical-publication
+A single writer MUST publish an immutable metadata snapshot with its corresponding Tantivy searcher only after the source prefix, metadata artifact, and Tantivy commit are durable. Commit payloads MUST identify the metadata artifact and source boundary. Failed updates MUST leave existing readers on the previous publication and rollback pending mutations. Recovery MUST validate payloads and rebuild after source incarnation changes. Slots MUST NOT be reused within a generation.
+
+@cc [owner:id13,label:performance] lexical-incremental-work
+Idle refreshes MUST read only the source head. Ordinary content updates MUST export and extract only affected files. Grant and group changes MUST NOT read source content, modify postings, or rebuild namespace indexes. Renames MUST NOT re-tokenize unchanged body versions. Searches MUST NOT enumerate DFS nodes or perform remote calls during ranking.
+
+@cc [owner:id13,label:product] lexical-query-semantics
+Each supported nonempty UTF-8 file MUST have one body document. Word and phrase queries use Tantivy tokenization and native scores. Literal substring queries MUST verify exact case-sensitive containment before pagination. Exact and prefix names retain case sensitivity. Unsupported requests MUST fail explicitly.
+
+@cc [owner:id13,label:performance;security] lexical-bounds
+The HTTP service MUST bind to loopback behind TLS, admit at most eight searches, retain admission until blocking work actually exits, bound requests to 16 KiB, page size to 100, offset to 10000, extraction to eight MiB per file, and responses to sixteen MiB. Search execution MUST check its deadline during candidate collection. Diagnostics MUST exclude credentials, queries, content, and permission labels.
+
+@cc [owner:id13,label:performance;concurrency] lexical-ingestion-budget
+Extraction, queued documents, and actively consumed ingestion documents MUST share a byte budget covering owned body capacity, document storage, and temporary content-read buffers. Extraction MUST acquire that capacity before allocating or reading the body. Unsupported content and failed reads MUST release their reservations. Successful extraction MUST transfer its body reservation to the queued document without reacquiring capacity. A body MUST have one owned allocation shared by its text and trigram field views. Admission MUST remain held until the document is dropped, including writer failures and rollback. Capacity waits MUST have a finite deadline. This budget MUST NOT be represented as a bound on source metadata, writer postings, allocator retention, or process memory.
+
+@cc [owner:id13,label:security;performance] lexical-ranked-pruning
+Only live, currently permitted, predicate-verified candidates MAY enter the ranking heap or raise the pruning threshold. Permission predicates MUST be fallible; failed permission reads or missing/invalid slots MUST discard the page even after earlier hits were accepted. Per-segment traversal and cross-segment merge MUST preserve native scores, ascending document-address ties, and offset semantics. Deadline or literal-verification failures MUST discard the page. Ranking storage MUST remain bounded by the maximum supported offset plus page size.
+
+@cc [owner:id13,label:security;performance] lexical-exact-phrase-bound
+Phrase-score upper bounds MUST be limited to exact zero-slop phrases built by this module. Bounds MUST use the identical native phrase BM25 weight, field norm, and a constituent term frequency, which cannot be smaller than the exact phrase frequency. Only candidates whose upper bound can beat the accepted top-k threshold may require positional verification; accepted results MUST retain native phrase matching and scores. Sloppy or differently scored phrases MUST use the generic path.
+
+@cc [owner:id13,label:backend;concurrency] lexical-export-lifetime
+Source extraction MUST keep its original snapshot lease renewed independently of synchronous indexing work. Every exit MUST stop the renewal worker and release the lease. Extraction MUST successfully finish the lease before committing or publishing a new generation; renewal or authority failure MUST retain the previous publication.
+
+@cc [owner:id13,label:backend;performance] persistent-membership-chunks
+Persistent memberships MUST use exact offsets within one 4096-slot block. Empty chunks MUST delete their storage key; singletons MUST avoid a bitmap allocation. Decoding MUST validate the version, encoded length, container count, offset range, and strict member ordering before allocating a Roaring container. Chunk construction, mutation growth, and encoded buffers MUST acquire byte reservations before allocation; failed growth MUST preserve membership. Heap accounting MUST cover reported container capacity and a conservative allowance for private container bookkeeping. Shared readers MUST retain their matching database snapshot; a membership update MUST NOT mutate an older reader's chunk.
+
+@cc [owner:id13,label:backend;concurrency] projection-storage-snapshots
+Projection storage MUST atomically advance its generation with each synced batch and reject stale expected versions or decreasing slot high-water marks. Every batch MUST retain the database owner and generation of the snapshot from which it was constructed; callers MUST NOT substitute a later expected version at apply time. Membership editors MUST reject batches from another owner or generation. A snapshot MUST retain its database owner and original generation without fabricated static lifetimes. Uncertain apply outcomes MUST fence further writes until recovery. Low-level projection apply MUST NOT be treated as a published search generation without the paired Tantivy/source commit protocol. Unknown formats or nonempty databases missing projection state MUST fail rather than initialize over existing data.
+
+@cc [owner:id13,label:backend;performance] projection-storage-bounds
+Projection keys, values, and apply batches MUST have explicit size bounds checked before copying into owned buffers. Variable text keys MUST preserve original UTF-8 bytes, prefix ordering, and embedded zeroes; slot/block suffixes MUST use big-endian order. Seek-after scans MUST retain one snapshot, enforce their deadline, reject foreign-prefix cursors, and surface iterator failures. Callers retaining borrowed scan rows MUST separately admit that storage. Internal state keys MUST be inaccessible through ordinary batch mutation methods.

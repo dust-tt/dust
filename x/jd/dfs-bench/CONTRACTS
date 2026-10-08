@@ -1,0 +1,17 @@
+@cc [owner:id13,label:testing;performance] clean-isolated-comparison
+Each measured system MUST have its own client and storage hosts. Corpus extraction MUST start with an empty destination. Reports MUST identify the actual machine, storage placement, replication, memory limits, cache settings, binaries and corpus used; first invocation MUST NOT be described as a controlled cold-cache measurement.
+
+@cc [owner:id13,label:testing;concurrency] parallel-phase-barriers
+Untar, filesystem and search phases MUST each wait for all three systems to become ready. Release records MUST be published atomically and specify a common future start time. Client evidence MUST retain actual phase start times.
+
+@cc [owner:id13,label:testing] validated-evidence
+Completed comparisons MUST require all clients and workload validators to pass. Timing samples MUST exclude result validation. Interrupted or failed phases MUST remain identifiable and MUST NOT be reported as successful results. Resuming after a completed extraction MUST preserve its original samples and disclose which harness and resource-counter interval each phase used.
+
+@cc [owner:id13,label:security] benchmark-resource-ownership
+Cleanup MUST target only explicitly identified JD DFS benchmark resources in dust-dev. Other owners' fleets MUST remain untouched. Published evidence MUST NOT contain tokens, private keys or database contents.
+
+@cc [owner:id13,label:error-handling] benchmark-process-failures
+These standalone Python benchmark processes MAY raise exceptions and catch them at their process boundary to preserve failed-run evidence before exiting unsuccessfully. Index readiness MAY retry transient query failures until its explicit deadline; it MUST fail if readiness cannot be established.
+
+@cc [owner:id13,label:testing] git-workload-evidence
+Git benchmarks MUST record the source transport, exact command, exit status and checked-out commit when available. Failed clones MUST NOT be reported as successful extraction or used as complete search corpora. Search comparisons MUST validate outputs against the same commit on an independent native-filesystem checkout; any fallback checkout MUST be separately labeled.

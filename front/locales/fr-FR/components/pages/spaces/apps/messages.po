@@ -45,11 +45,11 @@ msgstr "Description"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Description needed to use in Agent Builder - helps agents understand when to use your app."
-msgstr "Description nécessaire pour l’utiliser dans l’Agent Builder - elle aide les agents à comprendre quand utiliser votre app."
+msgstr "Description nécessaire pour l’utiliser dans l’éditeur d’agent - elle aide les agents à comprendre quand utiliser votre app."
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Updating..."
-msgstr "Mise à jour..."
+msgstr "Mise à jour…"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 #: front/components/pages/spaces/apps/DatasetPage.tsx
@@ -58,7 +58,7 @@ msgstr "Mettre à jour"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Deleting..."
-msgstr "Suppression..."
+msgstr "Suppression…"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Delete"
@@ -82,7 +82,7 @@ msgstr "Erreur : {runErrorMessage}"
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Canceling..."
-msgstr "Annulation..."
+msgstr "Annulation…"
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Cancel"
@@ -90,7 +90,7 @@ msgstr "Annuler"
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgid "Running"
-msgstr "En cours d’exécution"
+msgstr "En cours"
 
 #: front/components/pages/spaces/apps/AppViewPage.tsx
 msgctxt "button label, verb"
@@ -151,7 +151,7 @@ msgstr "Hash de la spécification :"
 
 #: front/components/pages/spaces/apps/RunPage.tsx
 msgid "Restoring..."
-msgstr "Restauration..."
+msgstr "Restauration…"
 
 #: front/components/pages/spaces/apps/RunPage.tsx
 msgid "Restore"

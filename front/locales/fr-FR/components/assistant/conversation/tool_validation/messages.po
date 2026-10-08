@@ -143,12 +143,12 @@ msgid "No assignee"
 msgstr "Aucun responsable"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
-msgid "Review the <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} below before adding them to <1>{podName}</1>."
-msgstr "<0>{taskCount}</0> {taskCount, plural, one {tâche à vérifier ci-dessous avant de l’ajouter} many {tâches à vérifier ci-dessous avant de les ajouter} other {tâches à vérifier ci-dessous avant de les ajouter}} à <1>{podName}</1>."
+msgid "{taskCount, plural, one {Review the <0>#</0> task below before adding it to <1>{podName}</1>.} other {Review the <2>#</2> tasks below before adding them to <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {Vérifiez <0>#</0> tâche ci-dessous avant de l’ajouter à <1>{podName}</1>.} many {Vérifiez les <2>#</2> tâches ci-dessous avant de les ajouter à <3>{podName}</3>.} other {Vérifiez les <2>#</2> tâches ci-dessous avant de les ajouter à <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
-msgid "The agent wants to create <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
-msgstr "L’agent souhaite créer <0>{taskCount}</0> {taskCount, plural, one {tâche} many {tâches} other {tâches}} dans <1>{podName}</1>."
+msgid "{taskCount, plural, one {The agent wants to create <0>#</0> task in <1>{podName}</1>.} other {The agent wants to create <2>#</2> tasks in <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {L’agent souhaite créer <0>#</0> tâche dans <1>{podName}</1>.} many {L’agent souhaite créer <2>#</2> tâches dans <3>{podName}</3>.} other {L’agent souhaite créer <2>#</2> tâches dans <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails.tsx
 msgid "{doneCount, plural, one {# will be marked as done immediately.} other {# will be marked as done immediately.}}"
@@ -179,7 +179,7 @@ msgstr "Responsable"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgid "Unassign"
-msgstr "Désassigner"
+msgstr "Retirer l’attribution"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgctxt "marked done by"
@@ -212,8 +212,8 @@ msgid "Could not load the current task details."
 msgstr "Impossible de charger les détails actuels de la tâche."
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
-msgid "The agent wants to update <0>{taskCount}</0> {taskCount, plural, one {task} other {tasks}} in <1>{podName}</1>."
-msgstr "L’agent souhaite modifier <0>{taskCount}</0> {taskCount, plural, one {tâche} many {tâches} other {tâches}} dans <1>{podName}</1>."
+msgid "{taskCount, plural, one {The agent wants to update <0>#</0> task in <1>{podName}</1>.} other {The agent wants to update <2>#</2> tasks in <3>{podName}</3>.}}"
+msgstr "{taskCount, plural, one {L’agent souhaite modifier <0>#</0> tâche dans <1>{podName}</1>.} many {L’agent souhaite modifier <2>#</2> tâches dans <3>{podName}</3>.} other {L’agent souhaite modifier <2>#</2> tâches dans <3>{podName}</3>.}}"
 
 #: front/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails.tsx
 msgid "{doneCount, plural, one {# will be marked as done.} other {# will be marked as done.}}"

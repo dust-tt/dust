@@ -14,10 +14,6 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/workspace/settings/AuditLogsToggle.tsx
-msgid "Audit"
-msgstr "Audit"
-
-#: front/components/workspace/settings/AuditLogsToggle.tsx
 msgid "Audit logs"
 msgstr "Journaux d’audit"
 
@@ -148,8 +144,8 @@ msgid "Inactivity threshold"
 msgstr "Seuil d’inactivité"
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
-msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule are excluded."
-msgstr "Durée pendant laquelle un agent doit rester sans mention avant d’être archivé. Les agents planifiés sont exclus."
+msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Durée pendant laquelle un agent doit rester sans mention avant d’être archivé. Les agents planifiés ou avec un réveil en attente sont exclus."
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
 msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
@@ -283,6 +279,30 @@ msgstr "URL de conversation privées par défaut"
 msgid "Whether conversation URLs are private by default, limiting access to participants"
 msgstr "Détermine si les URL de conversation sont privées par défaut, ce qui limite l’accès aux participants"
 
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Default cost cap per skill"
+msgstr "Plafond de coût par défaut par compétence"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en crédits). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en USD). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Global spending cap"
+msgstr "Plafond de dépenses global"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en crédits) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en USD) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
+
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Name"
 msgstr "Nom"
@@ -331,53 +351,25 @@ msgstr "Rechercher des compétences…"
 msgid "No active skills."
 msgstr "Aucune compétence active."
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "credits"
-msgstr "crédits"
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Self-improving skills"
+msgstr "Compétences auto-améliorantes"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Settings"
-msgstr "Paramètres"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Allow self-improving skills"
 msgstr "Autoriser les compétences auto-améliorantes"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
 msgstr "Autoriser Dust à analyser les conversations pour améliorer les compétences de votre workspace. Dust n’utilise pas les conversations pour entraîner des modèles."
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Enable batch processing"
 msgstr "Activer le traitement par lots"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
 msgstr "Les conversations sont envoyées par lots pour réduire les coûts. Les données peuvent rester sur les serveurs du fournisseur de LLM jusqu’à plusieurs heures avant leur traitement. Désactivez cette option pour garantir la suppression immédiate des données (compatible ZDR). Cela augmentera le tarif de votre forfait."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Default cost cap per skill"
-msgstr "Plafond de coût par défaut par compétence"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
-msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en crédits). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
-msgstr "Coût maximal par compétence et par exécution d’auto-amélioration (en USD). Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée pour cette compétence."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Global spending cap"
-msgstr "Plafond de dépenses global"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
-msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en crédits) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
-msgstr "Les compétences auto-améliorantes sont facturées comme l’utilisation via l’API. Il s’agit du coût maximal par mois (en USD) de la fonctionnalité pour l’ensemble des compétences. Une fois atteint, aucune nouvelle exécution d’auto-amélioration n’est lancée avant le prochain mois de facturation."
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
 msgid "\"Sent via Agent\" Slack footer"
@@ -397,7 +389,7 @@ msgstr "Détermine si les membres peuvent utiliser la transcription vocale dans 
 
 #: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
 msgid "Workspace Analyst"
-msgstr "Analyst du workspace"
+msgstr "Agent Analyst du workspace"
 
 #: front/components/workspace/settings/WorkspaceAnalyticsToggle.tsx
 msgid "Whether workspace admins get the Analyst agent and analytics tools to explore how the workspace is used"
@@ -470,3 +462,7 @@ msgstr "Enregistrement…"
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Save"
 msgstr "Enregistrer"
+
+#: front/components/workspace/settings/selfImprovingSkillsCapUtils.ts
+msgid "credits"
+msgstr "crédits"

@@ -35,15 +35,15 @@ msgstr "Limite d’API du service connecté atteinte. Réessayez dans un instant
 
 #: front/components/ContentNodeTree.tsx
 msgid "Failed to retrieve permissions due to a revoked authorization. Please re-authorize the connection."
-msgstr "Impossible de récupérer les permissions, car l’autorisation a été révoquée. Autorisez à nouveau la connexion."
+msgstr "Impossible de récupérer les autorisations, car l’autorisation a été révoquée. Autorisez à nouveau la connexion."
 
 #: front/components/ContentNodeTree.tsx
 msgid "The connected account does not have sufficient permissions. Please re-authorize the connection with an administrator account."
-msgstr "Le compte connecté n’a pas les permissions suffisantes. Autorisez à nouveau la connexion avec un compte administrateur."
+msgstr "Le compte connecté n’a pas les autorisations suffisantes. Autorisez à nouveau la connexion avec un compte administrateur."
 
 #: front/components/ContentNodeTree.tsx
 msgid "Failed to retrieve permissions due to an unexpected error. The resource may have been deleted, moved, or its sharing permissions changed."
-msgstr "Impossible de récupérer les permissions en raison d’une erreur inattendue. La ressource a peut-être été supprimée, déplacée, ou ses permissions de partage ont changé."
+msgstr "Impossible de récupérer les autorisations en raison d’une erreur inattendue. La ressource a peut-être été supprimée, déplacée, ou ses autorisations de partage ont changé."
 
 #: front/components/ContentNodeTree.tsx
 #: front/components/DataSourceViewPermissionTree.tsx
@@ -101,7 +101,7 @@ msgstr "Les tableurs n’exposent pas de contenu brut."
 
 #: front/components/DataSourceViewDocumentModal.tsx
 msgid "They are made available in Dust via the `Table Query` action in assistants."
-msgstr "Ils sont accessibles dans Dust via l’action `Table Query` des assistants."
+msgstr "Ils sont accessibles dans Dust via l’action `Table Query` des agents."
 
 #: front/components/DataSourceViewDocumentModal.tsx
 msgid "Otherwise, this is unexpected."
@@ -153,7 +153,7 @@ msgstr "La limite exacte dépend de votre forfait."
 
 #: front/components/FairUsageModal.tsx
 msgid "Fair use principles for user seats"
-msgstr "Principes d’utilisation équitable des sièges utilisateur"
+msgstr "Principes d’usage raisonnable des sièges utilisateur"
 
 #: front/components/FairUsageModal.tsx
 msgid "Each user seat at Dust is tied to a specific human user, and is destined to be used by that person only, for the purposes of typing and sending messages manually (as opposed to using programmatic methods such as scripts, API calls, etc. which is covered separately)."
@@ -161,7 +161,7 @@ msgstr "Chaque siège utilisateur Dust est lié à une personne précise et doit
 
 #: front/components/FairUsageModal.tsx
 msgid "To prevent abuse, a \"fair use\" limit applies to each user seat."
-msgstr "Pour éviter les abus, une limite d’« utilisation équitable » s’applique à chaque siège utilisateur."
+msgstr "Pour éviter les abus, une limite d’« usage raisonnable » s’applique à chaque siège utilisateur."
 
 #: front/components/FairUsageModal.tsx
 msgid "This limit should be understood as a way to prevent abuse, not as an allowed quota."
@@ -169,7 +169,7 @@ msgstr "Cette limite sert à prévenir les abus et ne doit pas être considéré
 
 #: front/components/FairUsageModal.tsx
 msgid "In particular, it is considered unfair to share a single seat between multiple people."
-msgstr "En particulier, partager un même siège entre plusieurs personnes est considéré comme une utilisation non équitable."
+msgstr "En particulier, partager un même siège entre plusieurs personnes est considéré comme contraire à l’usage raisonnable."
 
 #: front/components/FairUsageModal.tsx
 msgid "Can messages be sent programmatically with Dust?"
@@ -181,7 +181,7 @@ msgstr "Oui, et cet usage est encouragé."
 
 #: front/components/FairUsageModal.tsx
 msgid "However, such messages are not covered by individual user seats and fair use limits, and are billed separately."
-msgstr "Cependant, ces messages ne relèvent pas des sièges utilisateur individuels ni des limites d’utilisation équitable, et sont facturés séparément."
+msgstr "Cependant, ces messages ne relèvent pas des sièges utilisateur individuels ni des limites d’usage raisonnable, et sont facturés séparément."
 
 #: front/components/FairUsageModal.tsx
 msgid "Dust plans already include monthly credits for programmatic usage, and more credits can be purchased if needed, see [Programmatic usage at Dust]({PROGRAMMATIC_USAGE_URL})."
@@ -189,7 +189,7 @@ msgstr "Les forfaits Dust incluent déjà des crédits mensuels pour l’utilisa
 
 #: front/components/FairUsageModal.tsx
 msgid "Dust's fair use policy"
-msgstr "Politique d’utilisation équitable de Dust"
+msgstr "Politique d’usage raisonnable de Dust"
 
 #: front/components/NodePathTooltip.tsx
 msgid "Folders"
@@ -210,7 +210,7 @@ msgstr "Explorer"
 
 #: front/components/UserMenu.tsx
 msgid "Success !"
-msgstr "Succès !"
+msgstr "C’est fait !"
 
 #: front/components/UserMenu.tsx
 msgid "Role updated to {role} (reloading...)"
@@ -533,8 +533,8 @@ msgid "Dust builds a personal memory from your conversations and uses it to tail
 msgstr "Dust constitue une mémoire personnelle à partir de vos conversations et l’utilise pour adapter ses prochaines réponses."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
-msgstr "Le contenu de votre mémoire enregistrée peut apparaître dans les réponses envoyées vers Slack et d’autres intégrations externes."
+msgid "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
+msgstr "Les agents utilisent votre mémoire pour répondre : leurs réponses, y compris dans Slack, peuvent donc en refléter le contenu."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"

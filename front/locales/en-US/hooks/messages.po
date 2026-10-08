@@ -13,6 +13,26 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useSearchMembersByEmails.ts
+msgid "We couldn't check which users are already members"
+msgstr "We couldn't check which users are already members"
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Failed to update the group budget"
+msgstr "Failed to update the group budget"
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s budget has been removed."
+msgstr "{groupName}'s budget has been removed."
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "{groupName}'s budget is now {amount} credits per billing cycle."
+msgstr "{groupName}'s budget is now {amount} credits per billing cycle."
+
+#: front/hooks/useUpdateGroupSharedUsageLimit.ts
+msgid "Group budget updated"
+msgstr "Group budget updated"
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"

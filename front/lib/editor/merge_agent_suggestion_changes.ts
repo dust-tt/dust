@@ -1,3 +1,5 @@
+import type { MarkdownPipeline } from "@app/lib/editor/skill_instructions_html";
+import { applyInstructionEditsToHtml } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -167,4 +169,38 @@ export function mergeAgentEdits(
   }
 
   return new Ok(merged);
+}
+
+interface AgentInstructions {
+  instructions: string | null;
+  instructionsHtml: string | null;
+}
+
+/** Carries the agent's current instructions over untouched when no suggestion edits them. */
+export function resolveInstructionsEdits(
+  agent: AgentInstructions,
+  edits: InstructionsSuggestionSchemaType[],
+  getPipeline: () => MarkdownPipeline
+): Result<AgentInstructions, DustError<"invalid_request_error">> {
+  if (edits.length === 0) {
+    return new Ok({
+      instructions: agent.instructions,
+      instructionsHtml: agent.instructionsHtml,
+    });
+  }
+
+  if (!agent.instructionsHtml) {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "The agent this suggestion targets has no block-structured instructions."
+      )
+    );
+  }
+
+  return applyInstructionEditsToHtml(
+    agent.instructionsHtml,
+    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
+    getPipeline()
+  );
 }

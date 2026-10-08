@@ -5,17 +5,21 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
+  getCommentedTexts,
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
+  withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LocalTransactionOrigin } from "@hocuspocus/server";
 import type { JSONContent } from "@tiptap/core";
 import {
   prosemirrorJSONToYXmlFragment,
+  updateYFragment,
   yXmlFragmentToProsemirrorJSON,
 } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
@@ -64,6 +68,52 @@ export function dfmToYDoc(source: string): Result<LiveDocument, string> {
   return new Ok({ doc, comments: getDocumentJSONComments(content) });
 }
 
+/**
+ * @cc [owner:tdraier,label:product;concurrency] co-edition-ydoc-replace
+ * `replaceYDocContent` MUST change `doc` so that `yDocToDfm`, with the threads it returns, gives
+ * what it gives for `dfmToYDoc(source)`, in one transaction with `origin`, leaving what is equal
+ * in place so the people editing keep their cursors. It MUST refuse a file `loadDfm` refuses, with
+ * the same reason, without changing `doc`.
+ */
+export function replaceYDocContent(
+  doc: Y.Doc,
+  source: string,
+  origin: LocalTransactionOrigin
+): Result<DfmComment[], string> {
+  const loaded = loadDfm(source);
+  if (loaded.isErr()) {
+    return loaded;
+  }
+  const { envelope, content } = loaded.value;
+
+  const body = documentSchema.nodeFromJSON(
+    withoutDocumentJSONComments(content)
+  );
+  doc.transact(() => {
+    updateYFragment(doc, doc.getXmlFragment(BODY_FRAGMENT_NAME), body, {
+      mapping: new Map(),
+      isOMark: new Map(),
+    });
+    // Setting an unchanged value would still send an update to every editor.
+    const map = doc.getMap(ENVELOPE_MAP_NAME);
+    if (map.get("frontMatter") !== envelope.frontMatter) {
+      map.set("frontMatter", envelope.frontMatter);
+    }
+    if (
+      JSON.stringify(map.get("anchorOrder")) !==
+      JSON.stringify(envelope.anchorOrder)
+    ) {
+      map.set("anchorOrder", envelope.anchorOrder);
+    }
+  }, origin);
+  return new Ok(getDocumentJSONComments(content));
+}
+
+/**
+ * @cc [owner:tdraier,label:product] co-edition-orphan-anchors-dropped
+ * `yDocToDfm` MUST write without the comment marks whose id has no thread in `comments`, so a
+ * mark left without its thread, by an undo or a failed comment command, never blocks a save.
+ */
 export function yDocToDfm({
   doc,
   comments,
@@ -84,5 +134,30 @@ export function yDocToDfm({
   } catch {
     return new Err("The live document has an unreadable body.");
   }
-  return saveDfm(envelope.data, withDocumentJSONComments(content, comments));
+  const threadIds = new Set(comments.map(({ id }) => id));
+  return saveDfm(
+    envelope.data,
+    withDocumentJSONComments(
+      withoutOrphanCommentMarks(content, threadIds),
+      comments
+    )
+  );
+}
+
+/**
+ * @cc [owner:tdraier,label:product] co-edition-commented-texts
+ * `yDocCommentedTexts` MUST return, for each comment marked in `doc`, the text `getCommentedTexts`
+ * gives the editor for it, and nothing when the body cannot be read.
+ */
+export function yDocCommentedTexts(doc: Y.Doc): Map<string, string> {
+  // A client can send structures the binding or the schema cannot read back.
+  try {
+    return getCommentedTexts(
+      documentSchema.nodeFromJSON(
+        yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(BODY_FRAGMENT_NAME))
+      )
+    );
+  } catch {
+    return new Map();
+  }
 }

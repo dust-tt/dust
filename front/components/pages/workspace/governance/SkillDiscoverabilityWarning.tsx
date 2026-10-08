@@ -1,3 +1,5 @@
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { formatList } from "@app/lib/i18n/format";
 import type { GovernancePermissionsByKey } from "@app/types/api/governance";
 import { capabilityKey } from "@app/types/group_permissions";
 import type { GroupType } from "@app/types/groups";
@@ -85,7 +87,11 @@ export const SkillDiscoverabilityWarning = ({
   }
 
   const groupCount = subject.length;
-  const groupNames = subject.join(", ");
+  const groupNames = formatList(
+    subject,
+    { type: "conjunction" },
+    getActiveLocale()
+  );
 
   return (
     <div className="w-full p-4">

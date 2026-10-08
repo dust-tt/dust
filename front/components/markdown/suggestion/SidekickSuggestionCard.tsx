@@ -10,7 +10,7 @@ import {
   AgentSuggestionActionCard,
   mapSuggestionStateToCardState,
 } from "@app/components/markdown/suggestion/AgentSuggestionActionCard";
-import { REASONING_EFFORT_LABELS } from "@app/components/model_picker/modelPickerUtils";
+import { LOWERCASE_REASONING_EFFORT_LABELS } from "@app/components/model_picker/modelPickerUtils";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getDefaultMCPAction } from "@app/components/shared/tools_picker/formDefaults";
 import { getBlockOuterHtml } from "@app/components/shared/utils";
@@ -48,7 +48,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEditor } from "@tiptap/react";
 import { memo, useMemo } from "react";
@@ -352,6 +352,7 @@ function SkillSuggestionCard({ agentSuggestion }: SkillSuggestionCardProps) {
             description: skill.userFacingDescription,
             icon: skill.icon,
             availability: skill.availability,
+            requestedSpaceIds: skill.requestedSpaceIds,
             canWrite: skill.canWrite,
           };
           setValue("skills", [...currentSkills, newSkill], {
@@ -449,18 +450,18 @@ function ModelSuggestionCard({ agentSuggestion }: ModelSuggestionCardProps) {
   const effort =
     suggestion.reasoningEffort ?? relations.model?.defaultReasoningEffort;
   const formattedReasoning = effort
-    ? t(REASONING_EFFORT_LABELS[effort])
-    : t({ message: "Default", context: "reasoning effort" });
+    ? t(LOWERCASE_REASONING_EFFORT_LABELS[effort])
+    : t({ message: "default", context: "reasoning effort, lowercase" });
 
   return (
     <ActionCardBlock
       title={
         isReasoningOnlyChange
-          ? t`Change model reasoning to: ${formattedReasoning}`
+          ? t`Change reasoning effort to: ${formattedReasoning}`
           : t`Change model to: ${modelName}`
       }
-      acceptedTitle={t`Model changed to ${modelName} with ${formattedReasoning} reasoning`}
-      rejectedTitle={t`${modelName} model with ${formattedReasoning} reasoning suggestion rejected`}
+      acceptedTitle={t`Model changed to ${modelName} with reasoning effort: ${formattedReasoning}`}
+      rejectedTitle={t`Suggestion rejected for model ${modelName} with reasoning effort: ${formattedReasoning}`}
       description={analysis ?? undefined}
       state={cardState}
       applyLabel={t`Accept`}
@@ -485,7 +486,11 @@ function formatNodeScopeTitles(
   const visible = nodes.slice(0, MAX_VISIBLE_NODES);
   const rest = nodes.length - MAX_VISIBLE_NODES;
   const titles = visible.map((n) => n.title).join(", ");
-  return rest > 0 ? t(msg`${titles} (+${rest} more)`) : titles;
+  return rest > 0
+    ? t(
+        msg`${titles} ${plural(rest, { one: "(+# more)", other: "(+# more)" })}`
+      )
+    : titles;
 }
 
 function buildNewKnowledgeAction(

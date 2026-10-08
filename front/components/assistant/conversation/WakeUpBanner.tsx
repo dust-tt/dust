@@ -1,5 +1,5 @@
+import { describeWakeUpSchedule } from "@app/lib/client/wakeup_schedule";
 import { useCancelWakeUp } from "@app/lib/swr/wakeups";
-import { describeWakeUpSchedule } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -30,7 +30,7 @@ export const WakeUpBanner = ({
 }: WakeUpBannerProps) => {
   const { t } = useLingui();
   const { cancelWakeUp } = useCancelWakeUp({ owner, conversationId });
-  const scheduleDescription = describeWakeUpSchedule(wakeUp);
+  const scheduleDescription = describeWakeUpSchedule(wakeUp, t);
 
   return (
     <ContentMessageInline

@@ -8,6 +8,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
+import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
@@ -29,9 +30,9 @@ export async function createMCPAction(
     stepContext,
   }: {
     actionConfiguration: MCPToolConfigurationType;
-    agentMessage: AgentMessageType;
+    agentMessage: Pick<AgentMessageType, "agentMessageId">;
     augmentedInputs: Record<string, unknown>;
-    conversation: ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType | ConversationResource;
     status: ToolExecutionStatus;
     stepContent: AgentStepContentResource;
     stepContext: StepContext;

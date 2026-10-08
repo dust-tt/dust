@@ -14,13 +14,17 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/assistant/conversation/attachment/AttachmentCitation.tsx
-msgid "Uploading… {uploadProgress}%"
-msgstr "Uploading… {uploadProgress}%"
+msgid "Uploading… {uploadPercent}"
+msgstr "Uploading… {uploadPercent}"
 
 #: front/components/assistant/conversation/attachment/AttachmentCitation.tsx
-msgid "Transcribing… {transcriptionProgress}%"
-msgstr "Transcribing… {transcriptionProgress}%"
+msgid "Transcribing… {transcriptionPercent}"
+msgstr "Transcribing… {transcriptionPercent}"
 
 #: front/components/assistant/conversation/attachment/AttachmentCitation.tsx
 msgid "Processing…"
 msgstr "Processing…"
+
+#: front/components/assistant/conversation/attachment/utils.tsx
+msgid "{fragmentTitle} (no longer available)"
+msgstr "{fragmentTitle} (no longer available)"

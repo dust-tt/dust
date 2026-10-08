@@ -11,7 +11,6 @@ import type { PlanType } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
-  Checkbox,
   Chip,
   Dialog,
   DialogContainer,
@@ -19,16 +18,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Label,
   LoadingBlock,
-  Lock01,
-  Page,
+  SettingsList,
+  SliderToggle,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
 
-import { WorkspaceSection } from "../WorkspaceSection";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 
 interface WorkOSSSOConnectionProps {
   domains: Organization["domains"];
@@ -58,103 +56,103 @@ export default function WorkOSSSOConnection({
   const isSSOConfigured = ssoStatus?.status === "configured";
 
   return (
-    <WorkspaceSection
-      title={t`Authentication and access`}
-      icon={Lock01}
-      sectionId={ADMIN_SECTION_IDS.identity.sso}
-    >
-      <div className="flex w-full flex-row items-center gap-2">
-        <div className="flex-1">
-          <div className="flex flex-row items-center gap-2">
-            <Page.H variant="h5">
-              <Trans>Single Sign-On (SSO)</Trans>
-            </Page.H>
-            {isSSOConfigured && (
-              <>
-                <Chip label={t`Enabled`} color="success" size="xs" />
-                <span className="text-base font-normal text-muted-foreground">
-                  {ssoStatus.connection?.type}
-                </span>
-              </>
-            )}
-          </div>
-          <Page.P variant="secondary">
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.sso}>
+      <span className="heading-base text-foreground">
+        <Trans>Authentication and access</Trans>
+      </span>
+      <SettingsList>
+        <SettingsList.Row
+          title={
+            <>
+              <Trans>Single Sign-On (SSO)</Trans>{" "}
+              {isSSOConfigured && (
+                <>
+                  <Chip label={t`Enabled`} color="success" size="xs" />
+                  <span className="text-base font-normal text-muted-foreground">
+                    {ssoStatus.connection?.type}
+                  </span>
+                </>
+              )}
+            </>
+          }
+          description={
             <Trans>
               Manage your enterprise Identity Provider (IdP) settings and user
               provisioning via WorkOS.
             </Trans>
-          </Page.P>
-        </div>
-        <div className="flex justify-end gap-2">
-          {isLoadingSSO ? (
-            <LoadingBlock className="h-8 w-32 rounded-xl" />
-          ) : isSSOConfigured ? (
-            <>
-              <Button
-                label={t`Configure SSO`}
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  window.open(ssoStatus?.setupLink, "_blank");
-                }}
-              />
+          }
+          action={
+            <div className="flex justify-end gap-2">
+              {isLoadingSSO ? (
+                <LoadingBlock className="h-8 w-32 rounded-xl" />
+              ) : isSSOConfigured ? (
+                <>
+                  <Button
+                    label={t`Configure SSO`}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      window.open(ssoStatus?.setupLink, "_blank");
+                    }}
+                  />
 
-              <Button
-                label={t`De-activate SSO`}
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setShowDisableWorkOSSSOConnectionModal(true);
-                }}
-              />
-            </>
-          ) : (
-            <Button
-              label={t`Activate SSO`}
-              size="sm"
-              variant="primary"
-              tooltip={
-                domains.length === 0 ? t`Add a domain to enable SSO` : undefined
-              }
-              disabled={
-                isSSOConfigured || !domains.length || !ssoStatus?.setupLink
-              }
-              onClick={() => {
-                if (!isUpgraded(plan)) {
-                  setShowUpgradePlanDialog(true);
-                } else {
-                  window.open(ssoStatus?.setupLink, "_blank");
-                }
-              }}
-            />
-          )}
-        </div>
-      </div>
-      {/* TODO(workos): Remove this once we have a clear way to enforce SSO with workos */}
-      {isSSOConfigured ? (
-        <div className="w-full space-y-4">
-          <div className="flex flex-col space-y-4">
-            <div className="flex flex-row items-center space-x-2">
-              <Checkbox
-                id="sso-enforced"
-                checked={owner.ssoEnforced}
-                onClick={async () => {
-                  setIsToggleEnforceEnterpriseConnectionModalOpened(true);
-                }}
-              />
-              <Label htmlFor="sso-enforced" className="text-md font-normal">
-                <Trans>Enforce SSO login</Trans>
-              </Label>
+                  <Button
+                    label={t`De-activate SSO`}
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowDisableWorkOSSSOConnectionModal(true);
+                    }}
+                  />
+                </>
+              ) : (
+                <Button
+                  label={t`Activate SSO`}
+                  size="sm"
+                  variant="primary"
+                  tooltip={
+                    domains.length === 0
+                      ? t`Add a domain to enable SSO`
+                      : undefined
+                  }
+                  disabled={
+                    isSSOConfigured || !domains.length || !ssoStatus?.setupLink
+                  }
+                  onClick={() => {
+                    if (!isUpgraded(plan)) {
+                      setShowUpgradePlanDialog(true);
+                    } else {
+                      window.open(ssoStatus?.setupLink, "_blank");
+                    }
+                  }}
+                />
+              )}
             </div>
-            <Page.P variant="secondary">
+          }
+        />
+        {/* TODO(workos): Remove this once we have a clear way to enforce SSO with workos */}
+        {isSSOConfigured ? (
+          <SettingsList.Row
+            title={<Trans>Enforce SSO login</Trans>}
+            description={
               <Trans>
                 When SSO is enforced, users will no longer be able to use social
                 logins and will be redirected to the SSO portal.
               </Trans>
-            </Page.P>
-          </div>
-        </div>
-      ) : null}
+            }
+            action={
+              <SliderToggle
+                selected={owner.ssoEnforced}
+                onClick={async () => {
+                  setIsToggleEnforceEnterpriseConnectionModalOpened(
+                    !owner.ssoEnforced
+                  );
+                }}
+              />
+            }
+          />
+        ) : null}
+      </SettingsList>
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -181,7 +179,7 @@ export default function WorkOSSSOConnection({
         owner={owner}
         ssoStatus={ssoStatus}
       />
-    </WorkspaceSection>
+    </AdminSectionAnchor>
   );
 }
 

@@ -18,7 +18,6 @@ import type {
   WebhookSourceWithSystemViewAndUsageType,
 } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
 import { cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -216,8 +215,8 @@ export const AdminTriggersList = ({
 
           return (
             <DataTable.CellContent
-              avatarUrl={editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
-              avatarTooltipLabel={editedByUser?.fullName ?? undefined}
+              avatarName={editedByUser?.fullName ?? undefined}
+              avatarUrl={editedByUser?.imageUrl ?? undefined}
               roundedAvatar
             />
           );

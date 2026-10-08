@@ -1,6 +1,8 @@
-import { mergeAgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import {
+  mergeAgentEdits,
+  resolveInstructionsEdits,
+} from "@app/lib/editor/merge_agent_suggestion_changes";
 import type { MarkdownPipeline } from "@app/lib/editor/skill_instructions_html";
-import { applyInstructionEditsToHtml } from "@app/lib/editor/skill_instructions_html";
 import { DustError } from "@app/lib/error";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
@@ -8,7 +10,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
   AgentSuggestionType,
-  InstructionsSuggestionSchemaType,
   ModelSuggestionType,
   SkillsSuggestionType,
   SubAgentSuggestionType,
@@ -46,37 +47,6 @@ interface PreviewAgentSuggestionsInput {
   agent: PreviewedAgentFields;
   suggestions: AgentSuggestionType[];
   pipeline: MarkdownPipeline;
-}
-
-function previewInstructions(
-  agent: PreviewedAgentFields,
-  edits: InstructionsSuggestionSchemaType[],
-  pipeline: MarkdownPipeline
-): Result<
-  Pick<PreviewedAgentFields, "instructions" | "instructionsHtml">,
-  DustError<"invalid_request_error">
-> {
-  if (edits.length === 0) {
-    return new Ok({
-      instructions: agent.instructions,
-      instructionsHtml: agent.instructionsHtml,
-    });
-  }
-
-  if (!agent.instructionsHtml) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "The agent this suggestion targets has no block-structured instructions."
-      )
-    );
-  }
-
-  return applyInstructionEditsToHtml(
-    agent.instructionsHtml,
-    edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
-    pipeline
-  );
 }
 
 function previewModel(
@@ -194,10 +164,10 @@ export function previewAgentSuggestions({
     structuredOutput,
   } = edits.value;
 
-  const instructionsRes = previewInstructions(
+  const instructionsRes = resolveInstructionsEdits(
     agent,
     instructions ?? [],
-    pipeline
+    () => pipeline
   );
   if (instructionsRes.isErr()) {
     return instructionsRes;

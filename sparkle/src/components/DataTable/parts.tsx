@@ -97,7 +97,7 @@ export function Head({
       type="button"
       onClick={onSort}
       className={cn(
-        "heading-sm flex w-full min-w-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs capitalize text-foreground",
+        "heading-sm flex w-full min-w-0 cursor-pointer items-center gap-1 whitespace-nowrap rounded-xs text-foreground",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
         ALIGN_JUSTIFY_CLASS[presets.headerAlign]
       )}
@@ -128,7 +128,7 @@ export function Head({
           : undefined
       }
       className={cn(
-        "heading-sm px-2 capitalize",
+        "heading-sm px-2",
         DENSITY_HEADER_HEIGHT_CLASS[layout.density],
         ALIGN_TEXT_CLASS[presets.headerAlign],
         "text-foreground",

@@ -376,6 +376,61 @@ describe("computeAuthorizedFileAccess", () => {
     expect(mockFs.stat).toHaveBeenCalledWith(canonicalPath);
   });
 
+  it("allowlists package-relative unknown extensions that exist under packageRoot", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [new Date()],
+    });
+
+    const frameFile = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 100,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      })}MyFrame/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const frameContent = `useFile("./assets/file.something");`;
+    const canonicalPath = `conversation-${conversation.sId}/MyFrame/assets/file.something`;
+
+    const mockFs = {
+      stat: vi.fn().mockResolvedValue(
+        new Ok({
+          contentType: "application/octet-stream",
+          sizeBytes: 12,
+          isDirectory: false,
+        })
+      ),
+      read: vi.fn(),
+    };
+
+    vi.spyOn(DustFileSystem, "fromScopedPath").mockResolvedValue(
+      new Ok(mockFs as unknown as DustFileSystem)
+    );
+
+    const result = await frameFile.computeAuthorizedFileAccess(auth, {
+      frameContent,
+    });
+    assert(result.isOk());
+
+    expect(result.value.refs).toEqual([
+      {
+        kind: "frame_relative_path",
+        ref: "./assets/file.something",
+        fileName: "file.something",
+      },
+    ]);
+    expect(result.value.unverifiableRefs).toBeUndefined();
+    expect(mockFs.stat).toHaveBeenCalledWith(canonicalPath);
+  });
+
   it("merges refs from nested frame imports", async () => {
     const { authenticator: auth } = await createResourceTest({});
 

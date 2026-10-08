@@ -1,4 +1,5 @@
 import { PaymentMethodRow } from "@app/components/checkout/PaymentMethodRow";
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import { useDocumentScrollMode } from "@app/hooks/useDocumentScrollMode";
 import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import config from "@app/lib/api/config";
@@ -13,6 +14,7 @@ import {
   useRedirectAwayFromCheckoutIfAlreadyPaid,
   useUserBillingCurrency,
 } from "@app/lib/client/subscription";
+import { formatNumber } from "@app/lib/i18n/format";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -726,8 +728,8 @@ function CheckoutSuccessPage({
 }: CheckoutSuccessPageProps) {
   const { t } = useLingui();
   const router = useAppRouter();
-  const planName = seatType === "max" ? "Max" : "Pro";
-  const monthlyCredits = seatType === "max" ? "40,000" : "8,000";
+  const planName = seatTypeDisplayName(seatType === "max" ? "max" : "pro", t);
+  const monthlyCredits = formatNumber(seatType === "max" ? 40_000 : 8_000);
 
   return (
     <main className="flex h-screen flex-col items-center justify-center gap-4 bg-white px-6 pb-24 pt-6">

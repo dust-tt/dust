@@ -143,7 +143,7 @@ export function handleCreateMCPServerDialogSubmitError({
       const title = providerName
         ? t(msg`Failed to connect ${providerName}`)
         : t(msg`Failed to connect OAuth provider`);
-      sendNotification(title, error.message);
+      sendApiErrorNotification({ title, error: error.cause });
       setIsLoading(false);
       return;
     }

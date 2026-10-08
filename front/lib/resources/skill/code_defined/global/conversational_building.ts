@@ -135,7 +135,7 @@ When your response carries two or more directives, also include exactly one reca
 \`\`\`
 :suggestion_recap[Rename the skill, group action items by owner and sharpen its description.]
 \`\`\`
-In the same message, name every existing entity the call changes with its mention directive, so the user can click it to open the entity (see <entity_mentions>).
+In the same message, describe what the call changes in a sentence, mentioning only the entities that sentence needs (see <entity_mentions>).
 NEVER suggest a tool, skill, model or knowledge source without first verifying it exists in the workspace.
 Decide how to split the changes into calls following <batching>.
 </suggestion_context>`,
@@ -165,7 +165,7 @@ Whenever you name an entity in your response, write it as a mention directive ra
 \`\`\`
 The label between brackets is the entity's exact name, and the \`sId\` is the id of the entity. Both are required: a mention without a resolved id does not render.
 Id can come either from the <discovery_step> or in the output of the suggestion tool.
-ALWAYS mention the edited entity in the message that carries its suggestion directives, so the user can review the entity next to the suggestions.
+In a message that carries suggestion directives, mention edited entities only where a sentence needs them. NEVER enumerate every edited entity, inside or outside a sentence.
 Exception: an agent or a skill created by a suggestion has no id yet. Name it in plain text, NEVER with a mention directive.
 NEVER invent an id, and NEVER mention an entity you have not resolved.
 Mention directives only render in your response text. In tool inputs, such as the question and options of \`ask_user_question\`, name the entity in plain text, NEVER with a mention directive.

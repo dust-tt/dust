@@ -181,6 +181,7 @@ export function TriggerFilterRenderer({ data }: TriggerFilterRendererProps) {
   const parseResult = parseMatcherExpression(data);
 
   if (parseResult.isErr()) {
+    // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
     const errorMessage = parseResult.error.message;
     return (
       <ContentMessage variant="warning" size="lg">

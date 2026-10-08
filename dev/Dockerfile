@@ -180,6 +180,26 @@ RUN set -eu \
   && tar -xzf /tmp/qdrant.tar.gz -C /opt/qdrant \
   && rm /tmp/qdrant.tar.gz
 
+# FoundationDB — server and CLI for the dfs filesystem, client library for anything linking it.
+# Raw release binaries, not the .deb: the package expects systemd/fdbmonitor.
+ARG FDB_VERSION=7.3.69
+RUN set -eu \
+  && case "${TARGETARCH}" in \
+       amd64) fdb_arch="x86_64"; fdbserver_sha256="490dd8de050b3883103ae7513deacde332c75e9a5f06e1897360d21f438b1e17"; fdbcli_sha256="c679051460b7c6f630213f443c523b8881403d4d8d9ce397aa584e12fed65888"; libfdb_c_sha256="7ceb4b1ed4a8646fa57a3d3dbc3f009143424648aa525f24f0498f8650f5e8fc" ;; \
+       arm64) fdb_arch="aarch64"; fdbserver_sha256="0890e3abf4e3abbb391d67de38290033daf0641b42ca1de29d62c3bae912d4f2"; fdbcli_sha256="5e3ce12a2ea1198323be64959b03bf1fdcca0764e79265aafae703d631cb88dc"; libfdb_c_sha256="151280c0920484ec455444e5bb688c9219babe67f07d320e155adb2eb8e55b8e" ;; \
+       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && fdb_url="https://github.com/apple/foundationdb/releases/download/${FDB_VERSION}" \
+  && curl -fsSLo /usr/local/bin/fdbserver "${fdb_url}/fdbserver.${fdb_arch}" \
+  && curl -fsSLo /usr/local/bin/fdbcli "${fdb_url}/fdbcli.${fdb_arch}" \
+  && curl -fsSLo /usr/local/lib/libfdb_c.so "${fdb_url}/libfdb_c.${fdb_arch}.so" \
+  && echo "${fdbserver_sha256}  /usr/local/bin/fdbserver" | sha256sum -c - \
+  && echo "${fdbcli_sha256}  /usr/local/bin/fdbcli" | sha256sum -c - \
+  && echo "${libfdb_c_sha256}  /usr/local/lib/libfdb_c.so" | sha256sum -c - \
+  && chmod 0755 /usr/local/bin/fdbserver /usr/local/bin/fdbcli /usr/local/lib/libfdb_c.so \
+  && ldconfig \
+  && fdbcli --version
+
 # Elasticsearch 8.x + ICU plugin
 ARG ES_VERSION=8.11.3
 RUN set -eu \

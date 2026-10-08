@@ -29,7 +29,16 @@ describe("dust_mcp_server_settings", () => {
         "cursor://anysphere.cursor-mcp/oauth/callback"
       ).isOk()
     ).toBe(true);
-    expect(validateDustMcpServerRedirectUri("not-a-uri").isErr()).toBe(true);
+  });
+
+  it("returns an error code for invalid redirect URIs", () => {
+    const missingScheme = validateDustMcpServerRedirectUri("not-a-uri");
+    expect(missingScheme.isErr() && missingScheme.error.code).toBe(
+      "missing_scheme"
+    );
+
+    const empty = validateDustMcpServerRedirectUri("   ");
+    expect(empty.isErr() && empty.error.code).toBe("empty_redirect_uri");
   });
 
   it("rejects duplicate redirect URIs", () => {
@@ -38,7 +47,7 @@ describe("dust_mcp_server_settings", () => {
       "http://localhost:*",
     ]);
 
-    expect(result.isErr()).toBe(true);
+    expect(result.isErr() && result.error.code).toBe("duplicate_redirect_uri");
   });
 
   describe("redirectUriMatchesAllowedPattern", () => {

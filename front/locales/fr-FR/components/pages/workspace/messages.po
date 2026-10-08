@@ -32,27 +32,28 @@ msgid "Slack workflows"
 msgstr "Workflows Slack"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Analytics"
+msgstr "Statistiques"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"
 msgstr "Consommation"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Export"
-msgstr "Export"
+msgstr "Exporter"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Ask @analyst"
 msgstr "Demander à @analyst"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
-msgid "Analytics"
-msgstr "Statistiques"
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Explore"
 msgstr "Explorer"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Credits"
 msgstr "Crédits"
@@ -63,6 +64,7 @@ msgstr "Gérez les limites de crédits des membres et des groupes de votre péri
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Members"
@@ -70,6 +72,7 @@ msgstr "Membres"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Groups"
@@ -133,6 +136,31 @@ msgstr "Niveaux d’accès"
 msgid "App Credentials"
 msgstr "Identifiants des apps"
 
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Breakdown in analytics"
+msgstr "Détail dans les statistiques"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Add credits"
+msgstr "Ajouter des crédits"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Control credit consumption across your workspace."
+msgstr "Contrôlez la consommation de crédits dans votre workspace."
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+msgid "Programmatic usage"
+msgstr "Utilisation via l’API"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Settings"
+msgstr "Paramètres"
+
 #: front/components/pages/workspace/SecurityPage.tsx
 msgid "Security"
 msgstr "Sécurité"
@@ -174,25 +202,12 @@ msgid "Cancel"
 msgstr "Annuler"
 
 #: front/components/pages/workspace/UsagePage.tsx
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "Add credits"
-msgstr "Ajouter des crédits"
-
-#: front/components/pages/workspace/UsagePage.tsx
 msgid "No seat"
 msgstr "Aucun siège"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "All seats"
 msgstr "Tous les sièges"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Breakdown in analytics"
-msgstr "Détail dans les statistiques"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Control credit consumption across your workspace."
-msgstr "Contrôlez la consommation de crédits dans votre workspace."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Change my seat"
@@ -227,8 +242,8 @@ msgid "Off target"
 msgstr "Hors objectif"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "{usedPercentage}% used"
-msgstr "{usedPercentage} % utilisé"
+msgid "{usedPercent} used"
+msgstr "{usedPercent} utilisé"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Resets {resetAtFormatted}"
@@ -250,10 +265,6 @@ msgstr "{overageCredits, plural, one {{overageCreditsFormatted} crédit de dépa
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Top-ups history"
 msgstr "Historique des recharges"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Settings"
-msgstr "Paramètres"
 
 #: front/components/pages/workspace/WorkspaceBrandingPage.tsx
 msgid "Branding"
@@ -578,7 +589,7 @@ msgstr "dust apps fournisseurs clés api openai azure anthropic"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "Model Providers for Dust Apps"
-msgstr "Fournisseurs de modèles pour les Dust Apps"
+msgstr "Fournisseurs de modèles pour les apps Dust"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "api key openai azure anthropic"
@@ -738,7 +749,7 @@ msgstr "Utilisation des membres"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "seats spend limit upgrade requests"
-msgstr "sièges limite de dépenses demandes de mise à niveau"
+msgstr "sièges limite de dépenses demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Members model tiers"
@@ -750,7 +761,7 @@ msgstr "niveaux de modèles membre niveau d’accès par utilisateur standard av
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade requests"
-msgstr "Demandes de mise à niveau"
+msgstr "Demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "review member requests deny"
@@ -822,15 +833,15 @@ msgstr "politique de dépenses limite par défaut réserve"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade request"
-msgstr "Demande de mise à niveau"
+msgstr "Demande d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "allow members request upgrade"
-msgstr "autoriser membres demander mise à niveau"
+msgstr "autoriser membres demander augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Require a reason for upgrade requests"
-msgstr "Exiger un motif pour les demandes de mise à niveau"
+msgstr "Exiger un motif pour les demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "justification"
@@ -894,7 +905,7 @@ msgstr "e-mail alerte réserve pourcentage"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade request emails"
-msgstr "E-mails de demande de mise à niveau"
+msgstr "E-mails de demande d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "email admins managers"

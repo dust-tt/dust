@@ -97,6 +97,7 @@ export type KnownModelLLMId =
   | "claude-sonnet-4-6"
   | "claude-sonnet-5"
   | "claude-sonnet-5-5"
+  | "claude-haiku-5-5"
   | "mistral-large-latest"
   | "mistral-large-4"
   | "mistral-medium"
@@ -505,6 +506,7 @@ const USER_MESSAGE_ORIGINS = [
   "api",
   "cli",
   "cli_programmatic",
+  "document_comment",
   "email",
   "excel",
   "extension",
@@ -3646,6 +3648,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
+  | "AirbyteLogo"
   | "AirtableLogo"
   | "AmplitudeLogo"
   | "ApifyLogo"

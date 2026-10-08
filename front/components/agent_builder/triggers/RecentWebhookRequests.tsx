@@ -135,7 +135,7 @@ function RecentWebhookRequestsContent({
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>
                 <div className="my-2 flex w-full items-center justify-between gap-4">
-                  {formatCalendarDateTime(new Date(request.timestamp))}
+                  {formatCalendarDateTime(new Date(request.timestamp), t)}
                   <WebhookRequestStatusBadge status={request.status} />
                 </div>
               </CollapsibleTrigger>

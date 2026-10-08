@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Usage: bin/up [run_id] [-- extra terraform args, e.g. -var fdb_nodes_per_zone=1]
+# Creates the GKE cluster, the FDB operator and a healthy FDB cluster. Tear down with bin/down.
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(date -u +%Y%m%d-%H%M)}"
+shift || true
+[[ "${1:-}" == "--" ]] && shift
+CLUSTER="$(cluster_name "$RUN_ID")"
+
+if [[ -f "$STATE_DIR/current-run" && "$(cat "$STATE_DIR/current-run")" != "$RUN_ID" ]]; then
+  die "run $(cat "$STATE_DIR/current-run") is still up; bin/down it first"
+fi
+
+log "sweeping stale runs first"
+"$BENCH_DIR/bin/sweep"
+
+echo "$RUN_ID" >"$STATE_DIR/current-run"
+log "run $RUN_ID: cluster $CLUSTER (tear down with bin/down)"
+
+tf_init "$RUN_ID"
+tf apply -input=false -auto-approve -var "run_id=$RUN_ID" "$@"
+
+fetch_credentials "$RUN_ID"
+kubectl apply -f "$BENCH_DIR/k8s/namespaces.yaml"
+sed "s/__RUN_ID__/$RUN_ID/" "$BENCH_DIR/k8s/storageclass.yaml" | kubectl apply -f -
+
+log "installing FDB operator $FDB_OPERATOR_VERSION"
+OPERATOR_URL="https://raw.githubusercontent.com/FoundationDB/fdb-kubernetes-operator/$FDB_OPERATOR_VERSION"
+for crd in foundationdbclusters foundationdbbackups foundationdbrestores; do
+  kubectl apply --server-side -f "$OPERATOR_URL/config/crd/bases/apps.foundationdb.org_$crd.yaml"
+done
+# The operator watches its own namespace; the sample leaves a placeholder namespace to fill in.
+curl -sfSL "$OPERATOR_URL/config/samples/deployment.yaml" |
+  sed 's/namespace: metadata.namespace/namespace: fdb/' |
+  kubectl apply -n fdb -f -
+kubectl -n fdb rollout status deploy/fdb-kubernetes-operator-controller-manager --timeout=5m
+
+log "creating FDB cluster"
+create_fdb
+
+"$BENCH_DIR/bin/status" "$RUN_ID"
+log "up: run $RUN_ID ready"

@@ -12,6 +12,8 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, DataTable, Plus, Spinner, Terminal } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
@@ -29,10 +31,13 @@ type RowData = {
   onClick?: () => void;
 };
 
-const getTableColumns = (): ColumnDef<RowData, string>[] => {
+const getTableColumns = (
+  t: (descriptor: MessageDescriptor) => string
+): ColumnDef<RowData, string>[] => {
   return [
     {
       id: "name",
+      header: t(msg`Name`),
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent icon={info.row.original.icon}>
           {info.getValue()}
@@ -45,6 +50,7 @@ const getTableColumns = (): ColumnDef<RowData, string>[] => {
     },
     {
       id: "description",
+      header: t(msg`Description`),
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent>{info.getValue()}</DataTable.CellContent>
       ),
@@ -128,7 +134,7 @@ export const SpaceAppsList = ({
     );
   }
 
-  const columns = getTableColumns();
+  const columns = getTableColumns(t);
   const isEmpty = rows.length === 0;
 
   const actionButtons = (

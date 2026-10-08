@@ -111,7 +111,7 @@ function SelectedAgentPill({
       aria-label={t`Selected agent: ${selectedAgentName}`}
       aria-disabled={isInputDisabled}
       className={cn(
-        "inline-flex box-border items-center rounded-full heading-xs px-2 gap-1.5 text-primary-900 transition-colors duration-200",
+        "inline-flex box-border items-center rounded-full heading-sm px-2 gap-1.5 text-primary-900 transition-colors duration-200",
         buttonSize === "xs" ? "h-6" : "h-8",
         INPUT_BAR_PILL_SURFACE_CLASSNAME,
         isWidthConstrained && "pl-1",
@@ -197,7 +197,7 @@ function InputBarAgentButton({
       agents={allAgents}
       selectedAgentId={selectedAgent?.id}
       onDeselect={onAgentRemove}
-      favoritesFirst
+      showFavoritesFirst
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={showFooterButtons}

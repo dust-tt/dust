@@ -27,3 +27,7 @@ msgstr "Lora"
 msgctxt "font name"
 msgid "OpenDyslexic"
 msgstr "OpenDyslexic"
+
+#: front/components/sparkle/OnboardingLayout.tsx
+msgid "Dust - Onboarding"
+msgstr "Dust - Onboarding"

@@ -41,7 +41,18 @@ export const DiscoverContainer = forwardRef<
   const [tab, setTab] = useState<DiscoverTab>("Featured");
   const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
   const onPin = isAdmin(owner) ? setPinTarget : undefined;
-  const [detailsTarget, setDetailsTarget] = useState<CatalogItem | null>(null);
+  const [detailsTarget, setDetailsTarget] = useState<{
+    item: CatalogItem;
+    onClose?: () => void;
+  } | null>(null);
+  const showDetails = (item: CatalogItem, onClose?: () => void) => {
+    setDetailsTarget({ item, onClose });
+  };
+  const closeDetails = () => {
+    // Favorite changes made in the sheet must be reflected in the catalog.
+    detailsTarget?.onClose?.();
+    setDetailsTarget(null);
+  };
 
   return (
     <div
@@ -70,7 +81,7 @@ export const DiscoverContainer = forwardRef<
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
             onPin={onPin}
-            onDetails={setDetailsTarget}
+            onDetails={showDetails}
             onFindMore={() => setTab("Catalog")}
           />
         </TabsContent>
@@ -80,7 +91,7 @@ export const DiscoverContainer = forwardRef<
             onAgentClick={onAgentConfigurationClick}
             onSkillClick={onSkillClick}
             onPin={onPin}
-            onDetails={setDetailsTarget}
+            onDetails={showDetails}
             onFiltersChange={onFiltersChange}
           />
         </TabsContent>
@@ -89,17 +100,21 @@ export const DiscoverContainer = forwardRef<
         owner={owner}
         user={user}
         agentId={
-          detailsTarget?.kind === "agent" ? detailsTarget.agent.sId : null
+          detailsTarget?.item.kind === "agent"
+            ? detailsTarget.item.agent.sId
+            : null
         }
-        onClose={() => setDetailsTarget(null)}
+        onClose={closeDetails}
       />
       <SkillDetailsSheet
         owner={owner}
         user={user}
         skillId={
-          detailsTarget?.kind === "skill" ? detailsTarget.skill.sId : null
+          detailsTarget?.item.kind === "skill"
+            ? detailsTarget.item.skill.sId
+            : null
         }
-        onClose={() => setDetailsTarget(null)}
+        onClose={closeDetails}
       />
       {pinTarget && (
         <DiscoverPinDialog

@@ -1,6 +1,6 @@
 ---
 name: dust-translate
-description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/**/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
+description: Translate or fix Dust product UI translations in the Lingui catalogs (`front/locales/*/**/messages.po` and `sparkle/src/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
 ---
 
 # Translating the product UI
@@ -16,9 +16,14 @@ Some supported locales reuse another locale's catalog (`CATALOG_LOCALE_BY_LOCALE
 the `en-US` messages and only changes date and number formatting. Never create a catalog or write
 translations for them.
 
+Sparkle components have their own catalogs, one per locale entry of `SPARKLE_CATALOG_LOCALES`, at
+`sparkle/src/locales/{locale}/messages.po`, with the same `en-US` source-locale rule. Run the
+commands below from `sparkle/` for them. `i18n:check` does not compare sparkle and front catalogs:
+translate a message they share (`Cancel`, `Loading`) the same way in both by hand.
+
 ## Procedure
 
-1. Run `npm run i18n:extract` from `front/` so the catalogs match the code.
+1. Run `npm run i18n:extract` from `front/` (or `sparkle/`) so the catalogs match the code.
 2. For each entry with an empty `msgstr`:
    - Read the `#:` file reference and the code around the string: know whether it is a button,
      a title, a description or a toast, and what it refers to.
@@ -26,7 +31,7 @@ translations for them.
    - Translate following the locale style guide and the glossary in `references/`.
 3. To fix an existing translation, edit its `msgstr` only. Never edit `msgid`, `msgctxt` or the
    `#:` references: they are generated from the code.
-4. Run `npm run i18n:check` from `front/`.
+4. Run `npm run i18n:check` from the same directory.
 
 ## Rules for every locale
 

@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { CARD_SHADOW } from "@sparkle/components/Card";
 import { cn } from "@sparkle/lib/utils";
@@ -9,7 +10,7 @@ export interface MessageCardProps {
   haveImage?: boolean;
   /** URL of the image displayed in the top section (requires `haveImage`). */
   imageSrc?: string;
-  /** Title shown above the announcement message. */
+  /** Title shown above the announcement message. Defaults to "New on Dust". */
   announcementTitle?: string;
   /** The main announcement message. */
   announcementMessage: string;
@@ -35,7 +36,7 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
       className,
       haveImage = false,
       imageSrc,
-      announcementTitle = "New on Dust",
+      announcementTitle,
       announcementMessage,
       learnMoreHref,
       onLearnMore,
@@ -45,6 +46,7 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const handleLearnMore = () => {
       if (onLearnMore) {
         onLearnMore();
@@ -74,7 +76,7 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
 
         <div className="p-4">
           <div className="mb-2 text-sm font-medium text-primary">
-            {announcementTitle}
+            {announcementTitle ?? t`New on Dust`}
           </div>
           <h4 className="mb-4 text-lg font-medium leading-tight text-foreground">
             {announcementMessage}
@@ -84,14 +86,14 @@ export const MessageCard = React.forwardRef<HTMLDivElement, MessageCardProps>(
               variant="highlight"
               size="sm"
               onClick={handleLearnMore}
-              label="Learn more"
+              label={t`Learn more`}
             />
             {dismissible && onDismiss && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={onDismiss}
-                label="Dismiss"
+                label={t`Dismiss`}
               />
             )}
           </div>

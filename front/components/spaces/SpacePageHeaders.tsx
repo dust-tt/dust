@@ -68,7 +68,7 @@ export function SpacePageHeader({
 
   return (
     <div className="flex w-full flex-col gap-5">
-      <div className="flex h-9 w-full items-center justify-between gap-2">
+      <div className="flex min-h-9 w-full flex-wrap items-center justify-between gap-2">
         <SpaceBreadCrumbs
           space={space}
           category={category}
@@ -77,7 +77,10 @@ export function SpacePageHeader({
           parentId={parentId}
         />
         <div>
-          <div id={ACTION_BUTTONS_CONTAINER_ID} className="flex gap-2" />
+          <div
+            id={ACTION_BUTTONS_CONTAINER_ID}
+            className="flex flex-wrap gap-2"
+          />
           <div id={TRIGGER_BUTTONS_CONTAINER_ID} className="flex gap-2" />
         </div>
       </div>

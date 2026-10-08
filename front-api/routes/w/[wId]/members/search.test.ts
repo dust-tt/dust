@@ -382,6 +382,67 @@ describe("GET /api/w/:wId/members/search", () => {
   });
 });
 
+function postSearchByEmails(wId: string, emails: string[]) {
+  return honoApp.request(`/api/w/${wId}/members/search`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ emails }),
+  });
+}
+
+describe("POST /api/w/:wId/members/search", () => {
+  it("returns the members matching the emails exactly, without ModelIds", async () => {
+    const { workspace } = await setup();
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all(
+      users.map((u) =>
+        MembershipFactory.associate(workspace, u, { role: "user" })
+      )
+    );
+
+    const response = await postSearchByEmails(workspace.sId, [
+      users[0].email,
+      users[1].email,
+    ]);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.members.map((m: { email: string }) => m.email).sort()).toEqual(
+      [users[0].email, users[1].email].sort()
+    );
+    expect(data.members[0].role).toBe("user");
+    expect(data.members[0].id).toBeUndefined();
+    expect(data.members[0].workspace).toBeUndefined();
+  });
+
+  it("returns 400 when too many emails provided", async () => {
+    const { workspace } = await setup();
+
+    const tooManyEmails = Array.from(
+      { length: MAX_SEARCH_EMAILS + 1 },
+      (_, i) => `user${i}@example.com`
+    );
+
+    const response = await postSearchByEmails(workspace.sId, tooManyEmails);
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when no emails are provided", async () => {
+    const { workspace } = await setup();
+
+    const response = await postSearchByEmails(workspace.sId, []);
+
+    expect(response.status).toBe(400);
+  });
+});
+
 describe("managed People reads", () => {
   it("scopes reads and pagination while preserving the directory picker", async () => {
     const { workspace, user } = await setup("user");

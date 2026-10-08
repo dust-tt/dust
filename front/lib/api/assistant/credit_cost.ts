@@ -1,6 +1,5 @@
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import {
   makeFairUseAwuCreditsRateLimitKeyForUser,
   makeFairUseFixedWindowBounds,
@@ -173,7 +172,7 @@ export async function computeAndStoreAgentMessageCredits(
   const costCredits = computeAgentMessageCredits({
     runUsages,
     actions: actions.map((action) => ({
-      toolName: getToolNameFromFunctionCallName(action.functionCallName),
+      toolName: action.toolName,
       internalMCPServerName: action.metadata.internalMCPServerName,
       mcpServerId: action.metadata.mcpServerId ?? null,
       status: action.status,

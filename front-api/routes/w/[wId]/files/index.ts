@@ -10,6 +10,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import file from "./[fileId]";
+import collabTickets from "./collab-tickets";
 import commentSignatures from "./comment-signatures";
 import canonicalPath from "./path/[...canonicalPath]";
 
@@ -229,6 +230,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
   return ctx.json({ file: newFile.toJSONWithUploadUrl(auth) });
 });
 
+app.route("/collab-tickets", collabTickets);
 app.route("/comment-signatures", commentSignatures);
 app.route("/path", canonicalPath);
 app.route("/:fileId", file);

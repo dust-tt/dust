@@ -5,7 +5,11 @@ import {
   DustFileSystem,
   DustFileSystemError,
 } from "@app/lib/api/file_system/dust_file_system";
-import { readCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
+import {
+  isPathWritableContentType,
+  readCanonicalFileContent,
+  WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
+} from "@app/lib/api/files/file_system_ops";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
@@ -16,7 +20,7 @@ import {
   parseDfm,
   serializeDfm,
 } from "@app/lib/markdown/dfm";
-import { streamToBuffer } from "@app/lib/utils/streams";
+import { streamToBoundedBuffer, streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
@@ -40,7 +44,9 @@ export type DfmCommentSignatureErrorCode =
   | "unsigned_message"
   | "altered_message"
   | "moved_message"
-  | "unreadable_file";
+  | "unreadable_file"
+  | "unsupported_content_type"
+  | "file_too_large";
 
 export class DfmCommentSignatureError extends Error {
   constructor(
@@ -52,7 +58,24 @@ export class DfmCommentSignatureError extends Error {
   }
 }
 
-type SignedMessageFields = Pick<DfmMessage, "author" | "createdAt" | "body">;
+export type SignedMessageFields = Pick<
+  DfmMessage,
+  "author" | "createdAt" | "body"
+>;
+
+const isValidThreadPlace = (
+  position: number,
+  previous: SignedMessageFields | null
+) =>
+  Number.isInteger(position) &&
+  position >= 0 &&
+  (position === 0) === (previous === null);
+
+const invalidPositionError = () =>
+  new DfmCommentSignatureError(
+    "invalid_position",
+    "This comment's place in its thread is not valid."
+  );
 
 let signingKey: { encoded: string; key: KeyObject } | null = null;
 
@@ -135,17 +158,8 @@ export async function signDfmCommentMessage(
     );
   }
 
-  if (
-    !Number.isInteger(position) ||
-    position < 0 ||
-    (position === 0) !== (previous === null)
-  ) {
-    return new Err(
-      new DfmCommentSignatureError(
-        "invalid_position",
-        "This comment's place in its thread is not valid."
-      )
-    );
+  if (!isValidThreadPlace(position, previous)) {
+    return new Err(invalidPositionError());
   }
 
   return signMessage(auth, {
@@ -164,12 +178,13 @@ export async function signDfmCommentMessage(
 /**
  * @cc [owner:tdraier,label:security] dfm-comment-signing-by-agent
  * A message signed for an agent MUST be attributed to `agent:<sId>` of the given agent
- * configuration, named `@<agent name>`, at the current time, as the first message of a new
- * thread in the file at `filePath`. Callers MUST pass the agent running the tool, never one
- * named by the tool input, and MUST store the message only through a write to `filePath` that
- * passed its own write-access check, never return it otherwise. It MUST be refused outside a
- * workspace with `co_edition` or when the codec cannot write it. Without a signing key it MUST
- * be returned unsigned.
+ * configuration, named `@<agent name>`, at the current time, at `position` in its thread after
+ * `previous` (the first message of a new thread at position 0, with no previous), in the file at
+ * `filePath`. Callers MUST pass the agent running the tool, never one named by the tool input,
+ * and MUST store the message only through a write to `filePath` that passed its own
+ * write-access check, never return it otherwise. It MUST be refused outside a workspace with
+ * `co_edition`, at a place in the thread that is not valid, or when the codec cannot write it.
+ * Without a signing key it MUST be returned unsigned.
  */
 export async function signDfmAgentCommentMessage(
   auth: Authenticator,
@@ -177,11 +192,15 @@ export async function signDfmAgentCommentMessage(
     agent,
     filePath,
     commentId,
+    position,
+    previous,
     body,
   }: {
     agent: Pick<LightAgentConfigurationType, "sId" | "name">;
     filePath: string;
     commentId: string;
+    position: number;
+    previous: SignedMessageFields | null;
     body: string;
   }
 ): Promise<Result<DfmMessage, DfmCommentSignatureError>> {
@@ -193,12 +212,15 @@ export async function signDfmAgentCommentMessage(
       )
     );
   }
+  if (!isValidThreadPlace(position, previous)) {
+    return new Err(invalidPositionError());
+  }
 
   return signMessage(auth, {
     filePath,
     commentId,
-    position: 0,
-    previous: null,
+    position,
+    previous,
     message: {
       author: { kind: "agent", id: agent.sId, name: `@${agent.name}` },
       createdAt: new Date().toISOString(),
@@ -488,13 +510,18 @@ export interface MarkdownCommentsCheck {
  * the accepted new messages. For a write it does not validate, `newMessages` MUST be null, and
  * in a workspace with `co_edition` the write MUST be bound to the stored state it was classified
  * against: it MUST return the stored file's revision, or for an absent file the revision that
- * only matches an absent file, and MUST validate the write instead when storage has no revision.
+ * only matches an absent file, and MUST validate the write instead when storage has no revision,
+ * refusing it with `file_too_large`, without reading past the limit, when the stored file exceeds
+ * the write size limit. A write to a file stored with a content type other than `text/*` or
+ * `application/json` MUST be refused with `unsupported_content_type` without reading the file.
  * A stored file that still exists but cannot be read MUST refuse the write with
  * `unreadable_file`, never count as absent; one deleted before it could be read counts as absent.
  * Other writes, such as archive extraction and sandbox or plain agent file writes, are not
  * validated: what they bring can only read as unverified, since signatures bind the file and the
- * thread order. The one exception is `documents.add_comment`, which adds a message the server
- * itself signs for the running agent (`dfm-comment-signing-by-agent`).
+ * thread order. The exceptions are `documents.add_comment` and `documents.reply_to_comment`,
+ * which add a message the server itself signs for the running agent
+ * (`dfm-comment-signing-by-agent`), and `documents.edit_document`, which only changes the body
+ * and leaves every comment thread as stored (`dfm-agent-document-edit`).
  */
 export async function validateMarkdownCommentsForWrite(
   auth: Authenticator,
@@ -513,6 +540,18 @@ export async function validateMarkdownCommentsForWrite(
     return new Err(unreadableFileError());
   }
   const stored = read.value;
+  if (
+    stored &&
+    !isPathWritableContentType(stripMimeParameters(stored.contentType))
+  ) {
+    stored.stream.on("error", () => undefined).destroy();
+    return new Err(
+      new DfmCommentSignatureError(
+        "unsupported_content_type",
+        "Only text and JSON files can be updated through this endpoint."
+      )
+    );
+  }
 
   // The editor opens a file by its stored content type, so a file stored as Markdown is
   // validated whatever its name and the request's content type.
@@ -538,8 +577,23 @@ export async function validateMarkdownCommentsForWrite(
   let storedText: string | null = null;
   let storedRevision = stored?.revision;
   if (stored) {
-    const buffer = await streamToBuffer(stored.stream);
+    // Validating a file that is not Markdown is the fallback for storage without revisions, so
+    // its read is bounded like the write itself.
+    const buffer = isMarkdown
+      ? await streamToBuffer(stored.stream)
+      : await streamToBoundedBuffer(
+          stored.stream,
+          WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
+        );
     if (buffer.isOk()) {
+      if (buffer.value === null) {
+        return new Err(
+          new DfmCommentSignatureError(
+            "file_too_large",
+            `This file exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit and cannot be updated.`
+          )
+        );
+      }
       storedText = decodeBuffer(buffer.value);
     } else {
       // A file deleted between its lookup and its read is absent, not unreadable.

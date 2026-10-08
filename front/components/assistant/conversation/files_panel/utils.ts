@@ -4,6 +4,7 @@ import {
   isContentNodeAttachmentType,
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { getSafeSourceUrl, openSourceUrl } from "@app/lib/utils/source_urls";
 import {
   frameSlideshowContentType,
   isFrameContentType,
@@ -52,7 +53,8 @@ export function conversationAttachmentToRow(
       onClick: () => onFileClick(item),
     };
   } else if (isContentNodeAttachmentType(item)) {
-    const { title, contentType, sourceUrl, isInProjectContext, creator } = item;
+    const { title, contentType, isInProjectContext, creator } = item;
+    const sourceUrl = getSafeSourceUrl(item.sourceUrl);
     return {
       title,
       contentType,
@@ -62,9 +64,7 @@ export function conversationAttachmentToRow(
       isInProjectContext,
       creator,
       date: null,
-      onClick: sourceUrl
-        ? () => window.open(sourceUrl, "_blank", "noopener,noreferrer")
-        : undefined,
+      onClick: sourceUrl ? () => openSourceUrl(sourceUrl) : undefined,
     };
   } else {
     assertNever(item);

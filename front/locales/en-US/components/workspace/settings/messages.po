@@ -14,10 +14,6 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/workspace/settings/AuditLogsToggle.tsx
-msgid "Audit"
-msgstr "Audit"
-
-#: front/components/workspace/settings/AuditLogsToggle.tsx
 msgid "Audit logs"
 msgstr "Audit logs"
 
@@ -148,8 +144,8 @@ msgid "Inactivity threshold"
 msgstr "Inactivity threshold"
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
-msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule are excluded."
-msgstr "How long an agent has to go unmentioned before it's archived. Agents with a schedule are excluded."
+msgid "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
+msgstr "How long an agent has to go unmentioned before it's archived. Agents with a schedule or a pending wake-up are excluded."
 
 #: front/components/workspace/settings/InactiveAgentArchival.tsx
 msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAYS}"
@@ -283,6 +279,30 @@ msgstr "Private conversation URLs by default"
 msgid "Whether conversation URLs are private by default, limiting access to participants"
 msgstr "Whether conversation URLs are private by default, limiting access to participants"
 
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Default cost cap per skill"
+msgstr "Default cost cap per skill"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+msgstr "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Global spending cap"
+msgstr "Global spending cap"
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+
+#: front/components/workspace/settings/SelfImprovingSkillsCapsSection.tsx
+msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
+
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Name"
 msgstr "Name"
@@ -331,53 +351,25 @@ msgstr "Search skills..."
 msgid "No active skills."
 msgstr "No active skills."
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "credits"
-msgstr "credits"
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
+msgid "Self-improving skills"
+msgstr "Self-improving skills"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Settings"
-msgstr "Settings"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Allow self-improving skills"
 msgstr "Allow self-improving skills"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
 msgstr "Allow Dust to analyze conversations to improve your workspace's skills. Dust does not use conversations to train models."
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Enable batch processing"
 msgstr "Enable batch processing"
 
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
+#: front/components/workspace/settings/SelfImprovingSkillsTogglesSection.tsx
 msgid "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
 msgstr "Conversations are sent in batches to reduce costs. Data may remain on LLM provider servers for up to several hours before processing. Disable to ensure immediate data deletion (ZDR-compatible). This will increase your plan's pricing."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Default cost cap per skill"
-msgstr "Default cost cap per skill"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
-msgstr "Maximum cost per skill per self-improvement run (in credits). Once reached, no further self-improvement runs are started for that skill."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
-msgstr "Maximum cost per skill per self-improvement run (in USD). Once reached, no further self-improvement runs are started for that skill."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Global spending cap"
-msgstr "Global spending cap"
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
-msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in credits) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
-
-#: front/components/workspace/settings/SelfImprovingSkillsSettingsSection.tsx
-msgid "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
-msgstr "Self-improving skills is priced as programmatic usage. This is the maximum cost per month (in USD) for the feature across all skills. Once reached, no new self-improving runs are started until the next billing month."
 
 #: front/components/workspace/settings/SlackPersonalFooterRemovalToggle.tsx
 msgid "\"Sent via Agent\" Slack footer"
@@ -470,3 +462,7 @@ msgstr "Saving..."
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Save"
 msgstr "Save"
+
+#: front/components/workspace/settings/selfImprovingSkillsCapUtils.ts
+msgid "credits"
+msgstr "credits"

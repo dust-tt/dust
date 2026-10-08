@@ -8,7 +8,8 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
+import type { ApiKeySpendCapStatus } from "@app/lib/spend_limits/api_key_cap_status";
+import { getApiKeysSpendCapStatuses } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -16,6 +17,8 @@ import {
 } from "@app/lib/utils/cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { LightGroupType } from "@app/types/groups";
+import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -175,14 +178,18 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   static async makeNew(
     blob: Omit<CreationAttributes<KeyModel>, "secret" | "groupIds">,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ) {
     const secret = this.createNewSecret();
-    const key = await KeyResource.model.create({
-      ...blob,
-      groupIds: groups.map((g) => g.id),
-      secret,
-    });
+    const key = await KeyResource.model.create(
+      {
+        ...blob,
+        groupIds: groups.map((g) => g.id),
+        secret,
+      },
+      { transaction }
+    );
 
     return new this(KeyResource.model, key.get());
   }
@@ -367,7 +374,8 @@ export class KeyResource extends BaseResource<KeyModel> {
   private toJSON(
     requestingUserModelId: ModelId,
     spaces: SpaceType[],
-    isSpendCapped: boolean
+    analyticsGroups: LightGroupType[],
+    { isSpendCapped, monthlyUsageMicroUsd }: ApiKeySpendCapStatus
   ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
@@ -393,9 +401,11 @@ export class KeyResource extends BaseResource<KeyModel> {
       secret,
       status: this.status,
       spaces,
+      analyticsGroups,
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
+      monthlyUsageMicroUsd,
       isSpendCapped,
     };
   }
@@ -476,21 +486,92 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
+  /**
+   * The groups whose analytics each of `keys` can read, keyed by key model id.
+   *
+   * A key reads a group's analytics through a regular_auto group in its `groupIds` holding an
+   * `analytics_reader` grant on that group, so the groups are reverse-mapped from those grants.
+   *
+   * Display-only: it never feeds back into authorization.
+   */
+  private static async listAnalyticsGroupsByKeyModelId(
+    auth: Authenticator,
+    keys: KeyResource[]
+  ): Promise<Map<ModelId, LightGroupType[]>> {
+    const groupModelIds = [...new Set(keys.flatMap((key) => key.groupIds))];
+    if (groupModelIds.length === 0) {
+      return new Map();
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      { groupModelIds, grantType: "analytics_reader", resourceType: "group" }
+    );
+    if (grants.length === 0) {
+      return new Map();
+    }
+
+    const targets = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      [...new Set(grants.map((grant) => grant.resourceId))],
+      { groupKinds: [...CAP_ELIGIBLE_GROUP_KINDS] }
+    );
+    const targetByModelId = new Map(
+      targets
+        .filter((group) => auth.can("read", group))
+        .map((group) => [group.id, group.toLightJSON()])
+    );
+
+    const targetsByGroupModelId = new Map<ModelId, LightGroupType[]>();
+    for (const grant of grants) {
+      const target = targetByModelId.get(grant.resourceId);
+      if (!target) {
+        continue;
+      }
+      const existing = targetsByGroupModelId.get(grant.groupId);
+      if (existing) {
+        existing.push(target);
+      } else {
+        targetsByGroupModelId.set(grant.groupId, [target]);
+      }
+    }
+
+    return new Map(
+      keys.map((key) => {
+        const groups = new Map(
+          key.groupIds
+            .flatMap(
+              (groupModelId) => targetsByGroupModelId.get(groupModelId) ?? []
+            )
+            .map((group) => [group.id, group])
+        );
+
+        return [
+          key.id,
+          [...groups.values()].sort((a, b) => a.name.localeCompare(b.name)),
+        ];
+      })
+    );
+  }
+
   static async toJSONWithSpaces(
     auth: Authenticator,
     keys: KeyResource[],
     requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const [spacesByKeyModelId, spendCappedByModelId] = await Promise.all([
-      this.listSpacesByKeyModelId(auth, keys),
-      getApiKeysSpendCappedByModelId(auth, keys),
-    ]);
+    const [spacesByKeyModelId, analyticsGroupsByKeyModelId, spendCapStatuses] =
+      await Promise.all([
+        this.listSpacesByKeyModelId(auth, keys),
+        this.listAnalyticsGroupsByKeyModelId(auth, keys),
+        getApiKeysSpendCapStatuses(auth, keys),
+      ]);
 
-    return keys.map((key) =>
+    return keys.map((key, i) =>
       key.toJSON(
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
-        spendCappedByModelId.get(key.id) ?? false
+        analyticsGroupsByKeyModelId.get(key.id) ?? [],
+        spendCapStatuses[i]
       )
     );
   }

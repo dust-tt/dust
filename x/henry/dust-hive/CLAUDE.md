@@ -53,6 +53,7 @@ src/
 ├── index.ts           # CLI entry point
 ├── forward-daemon.ts  # TCP forwarder daemon (ports 3000,3001,3002,3006 → env)
 ├── commands/          # Command implementations (all MVP commands complete)
+│   ├── autostart.ts   # Choose which services warm starts
 │   ├── cache.ts       # Cache management (show cache status)
 │   ├── cool.ts        # Pause services + docker, keep SDK
 │   ├── destroy.ts     # Remove environment
@@ -152,7 +153,7 @@ tests/
 | Command | Description |
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm, --no-attach, --wait |
-| `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
+| `warm` | Start docker + autostart services (auto-forwards port 3000, supports --no-forward/--force-ports) |
 | `cool` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME]` | Resume stopped env (start SDK watch) |
 | `stop [NAME]` | Full stop + remove docker containers |
@@ -167,6 +168,7 @@ tests/
 | `setup` | Check prerequisites and guide initial setup |
 | `doctor` | Check prerequisites (non-interactive) |
 | `cache` | Show binary cache status |
+| `autostart [-l] [--reset]` | Choose which services `warm` starts (stored in `~/.dust-hive/settings.json`) |
 | `forward` | Manage OAuth port forwarding (ports 3000,3001,3002,3006 → env) |
 | `sync` | Pull latest main, rebuild binaries, refresh deps |
 | `seed-config` | Extract user data from existing DB for seeding new environments |

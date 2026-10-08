@@ -35,7 +35,7 @@ app.post(
       facets,
       sortBy,
       sortOrder,
-      favoritesFirst,
+      selectionMode,
     } = ctx.req.valid("json");
     const result = await searchAgentListings(auth, {
       searchTerm: query,
@@ -44,7 +44,7 @@ app.post(
       offset,
       sortBy,
       sortOrder,
-      favoritesFirst,
+      selectionMode,
       permissionFiltering,
       facets,
       filters: {

@@ -10,9 +10,10 @@ import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/co
 import {
   formatCredits,
   formatCreditsCompact,
-  formatCreditValue,
+  roundCredits,
 } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
 import { useMemo } from "react";
@@ -84,20 +85,27 @@ function ConsumptionBurnUpTooltip({
   ];
 
   const delta = datum.target !== null ? datum.actual - datum.target : null;
-  const deltaAmount =
-    delta !== null ? formatCreditValue(Math.abs(delta)) : null;
+  let footer: string | undefined;
+  if (delta !== null) {
+    const deltaAmount = formatCredits(Math.abs(delta));
+    const deltaCreditCount = roundCredits(Math.abs(delta));
+    footer =
+      delta > 0
+        ? t`${plural(deltaCreditCount, {
+            one: `${deltaAmount} credit ahead of target`,
+            other: `${deltaAmount} credits ahead of target`,
+          })}`
+        : t`${plural(deltaCreditCount, {
+            one: `${deltaAmount} credit behind target`,
+            other: `${deltaAmount} credits behind target`,
+          })}`;
+  }
 
   return (
     <ChartTooltipCard
       title={formatConsumptionDate(datum.timestamp, getActiveLocale())}
       rows={rows}
-      footer={
-        delta !== null
-          ? delta > 0
-            ? t`${deltaAmount} ahead of target`
-            : t`${deltaAmount} behind target`
-          : undefined
-      }
+      footer={footer}
     />
   );
 }

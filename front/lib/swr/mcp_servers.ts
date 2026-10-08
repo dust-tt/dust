@@ -1,3 +1,4 @@
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -864,6 +865,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     connectionType: "personal",
   });
   const cellContext = useCellContext();
+  const formatErrorDescription = useFormatErrorDescription();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -924,7 +926,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       });
 
       if (cRes.isErr()) {
-        return { success: false, error: cRes.error.message };
+        return { success: false, error: formatErrorDescription(cRes.error) };
       }
 
       const result = await createMCPServerConnection({
@@ -1118,6 +1120,7 @@ export function useAddMCPServerToSpace(
   options?: { skipNotification?: boolean }
 ) {
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateMCPServers } = useMCPServers({
     owner,
   });
@@ -1136,24 +1139,24 @@ export function useAddMCPServerToSpace(
           );
 
           if (!response.ok) {
-            const body = await response.json();
-            throw new Error(body.error?.message || "Unknown error");
+            if (!options?.skipNotification) {
+              sendApiErrorNotification({
+                title: `Failed to add actions to space ${space.name}`,
+                error: await response.json(),
+              });
+            }
+            // Throwing rolls back the optimistic update.
+            throw new Error(
+              `Failed to add ${getMcpServerDisplayName(server)} to the ${space.name} space.`
+            );
           }
 
           if (!options?.skipNotification) {
-            if (response.ok) {
-              sendNotification({
-                type: "success",
-                title: `Actions added to space ${space.name}`,
-                description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
-              });
-            } else {
-              sendNotification({
-                type: "error",
-                title: `Failed to add actions to space ${space.name}`,
-                description: `Could not add ${getMcpServerDisplayName(server)} to the ${space.name} space. Please try again.`,
-              });
-            }
+            sendNotification({
+              type: "success",
+              title: `Actions added to space ${space.name}`,
+              description: `${getMcpServerDisplayName(server)} has been added to the ${space.name} space successfully.`,
+            });
           }
           return getOptimisticDataForCreate(data, server, space);
         },
@@ -1165,7 +1168,13 @@ export function useAddMCPServerToSpace(
         }
       );
     },
-    [sendNotification, owner, mutateMCPServers, options?.skipNotification]
+    [
+      sendNotification,
+      sendApiErrorNotification,
+      owner,
+      mutateMCPServers,
+      options?.skipNotification,
+    ]
   );
 
   return { addToSpace: createView };

@@ -445,6 +445,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
   }
 
+  get referencedSkillId(): string | null {
+    const data = parseAgentSuggestionData({
+      kind: this.kind,
+      suggestion: this.suggestion,
+    });
+    return data.kind === "skills" ? data.suggestion.skillId : null;
+  }
+
   toJSON(): AgentSuggestionType {
     const suggestionData = parseAgentSuggestionData({
       kind: this.kind,

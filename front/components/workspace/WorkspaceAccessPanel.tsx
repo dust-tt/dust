@@ -1,4 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
+import { AdminSectionAnchor } from "@app/components/layouts/AdminSectionAnchor";
 import { AuditLogsSection } from "@app/components/workspace/AuditLogsSection";
 import UserProvisioning from "@app/components/workspace/DirectorySync";
 import { AutoJoinToggle } from "@app/components/workspace/sso/AutoJoinToggle";
@@ -18,7 +19,6 @@ import {
   Chip,
   DataTable,
   EmptyCTA,
-  Globe01,
   IconButton,
   LoadingBlock,
   Page,
@@ -30,8 +30,6 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext } from "@tanstack/react-table";
 import type { Organization } from "@workos-inc/node";
 import React from "react";
-
-import { WorkspaceSection } from "./WorkspaceSection";
 
 interface WorkspaceAccessPanelProps {
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -110,11 +108,10 @@ function DomainVerification({
 }: DomainVerificationProps) {
   const { t } = useLingui();
   return (
-    <WorkspaceSection
-      icon={Globe01}
-      title={t`Domain Verification`}
-      sectionId={ADMIN_SECTION_IDS.identity.domain}
-    >
+    <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.domain}>
+      <span className="heading-base text-foreground">
+        <Trans>Domain Verification</Trans>
+      </span>
       <Page.P variant="secondary">
         <Trans>
           Verify your company domains to enable Single Sign-On (SSO), automatic
@@ -143,7 +140,7 @@ function DomainVerification({
           owner={owner}
         />
       )}
-    </WorkspaceSection>
+    </AdminSectionAnchor>
   );
 }
 
@@ -261,7 +258,7 @@ function DomainVerificationTable({
 
   return (
     <div className="flex w-auto flex-col gap-6">
-      <DataTable className="pt-6" columns={columns} data={data} />
+      <DataTable columns={columns} data={data} />
       {addDomainLink && (
         <div>
           <Button

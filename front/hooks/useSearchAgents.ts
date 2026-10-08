@@ -1,9 +1,15 @@
 import { useDebounce } from "@app/hooks/useDebounce";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  useFetcher,
+  useSWRInfiniteWithDefaults,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   AgentSearchFacet,
   AgentSearchFilters,
   AgentSearchPermissionFiltering,
+  AgentSearchSelectionMode,
   AgentSearchSort,
   AgentSearchSortOrder,
   SearchAgentsResponseBody,
@@ -34,7 +40,7 @@ export function useSearchAgents({
   permissionFiltering,
   filters,
   facets,
-  favoritesFirst,
+  selectionMode,
   disabled,
   keepPreviousData = true,
   debounceMs = SEARCH_AGENTS_DEBOUNCE_MS,
@@ -50,7 +56,7 @@ export function useSearchAgents({
   permissionFiltering?: AgentSearchPermissionFiltering;
   filters?: AgentSearchFilters;
   facets?: AgentSearchFacet[];
-  favoritesFirst?: boolean;
+  selectionMode?: AgentSearchSelectionMode;
   disabled?: boolean;
   /** When false, clear results while the next query loads (e.g. command palette). */
   keepPreviousData?: boolean;
@@ -89,7 +95,7 @@ export function useSearchAgents({
     sortOrder,
     permissionFiltering,
     facets,
-    favoritesFirst,
+    selectionMode,
   };
   const agentsFetcher: () => Promise<SearchAgentsResponseBody> = () =>
     fetcherWithBody([url, body, "POST"]);
@@ -123,5 +129,113 @@ export function useSearchAgents({
     isAgentsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
     mutateRegardlessOfQueryParams,
+  };
+}
+
+type SearchAgentsPageKey = [
+  url: string,
+  body: {
+    query: string;
+    offset: number;
+    limit: number;
+    sortBy?: AgentSearchSort;
+    permissionFiltering?: AgentSearchPermissionFiltering;
+    selectionMode?: AgentSearchSelectionMode;
+  },
+];
+
+/**
+ * Paginated variant of useSearchAgents: pages of `limit` agents are appended on loadMore.
+ * Pagination resets whenever the search term or any search parameter changes.
+ */
+export function useSearchAgentsInfinite({
+  owner,
+  searchTerm,
+  limit,
+  sortBy,
+  permissionFiltering,
+  selectionMode,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  searchTerm: string;
+  limit: number;
+  sortBy?: AgentSearchSort;
+  permissionFiltering?: AgentSearchPermissionFiltering;
+  selectionMode?: AgentSearchSelectionMode;
+  disabled?: boolean;
+}) {
+  const { fetcherWithBody } = useFetcher();
+  const query = searchTerm.slice(0, SEARCH_AGENTS_QUERY_MAX_LENGTH);
+  const { debouncedValue: debouncedSearchTerm, setValue: setSearchTerm } =
+    useDebounce(query, { delay: SEARCH_AGENTS_DEBOUNCE_MS });
+  const isDebouncing = query !== debouncedSearchTerm;
+
+  useEffect(() => {
+    setSearchTerm(query);
+  }, [query, setSearchTerm]);
+
+  const getKey = useCallback(
+    (
+      pageIndex: number,
+      previousPage: SearchAgentsResponseBody | null
+    ): SearchAgentsPageKey | null => {
+      if (previousPage && !previousPage.hasMore) {
+        return null;
+      }
+
+      return [
+        `/api/w/${owner.sId}/assistant/agent_configurations/search`,
+        {
+          query: debouncedSearchTerm,
+          offset: pageIndex * limit,
+          limit,
+          sortBy,
+          permissionFiltering,
+          selectionMode,
+        },
+      ];
+    },
+    [
+      owner.sId,
+      debouncedSearchTerm,
+      limit,
+      sortBy,
+      permissionFiltering,
+      selectionMode,
+    ]
+  );
+
+  const { data, error, size, setSize, isLoading } = useSWRInfiniteWithDefaults(
+    getKey,
+    ([url, body]: SearchAgentsPageKey): Promise<SearchAgentsResponseBody> =>
+      fetcherWithBody([url, body, "POST"]),
+    {
+      disabled: disabled || isDebouncing,
+      revalidateFirstPage: false,
+      // Keep results visible while the next query debounces or loads.
+      keepPreviousData: true,
+    }
+  );
+
+  const hasMore = data?.at(-1)?.hasMore ?? false;
+  const isAgentsLoading = !disabled && (isDebouncing || isLoading);
+  const isLoadingMore =
+    !disabled && !isAgentsLoading && !error && size > (data?.length ?? 0);
+  const loadMore = useCallback(() => {
+    if (!disabled && !isAgentsLoading && !isLoadingMore && !error && hasMore) {
+      void setSize(size + 1);
+    }
+  }, [disabled, isAgentsLoading, isLoadingMore, error, hasMore, setSize, size]);
+
+  return {
+    agents:
+      (disabled ? undefined : data?.flatMap((page) => page.agents)) ??
+      emptyArray<SearchAgentsResponseBody["agents"][number]>(),
+    hasMore,
+    isAgentsError: !!error,
+    isAgentsLoading,
+    isLoadingMore,
+    loadMore,
   };
 }

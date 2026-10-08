@@ -115,6 +115,7 @@ async function handleUpdatePermissions(
   owner: LightWorkspaceType,
   extraConfig: Record<string, string>,
   sendNotification: (notification: NotificationType) => void,
+  sendApiErrorNotification: (args: { title: string; error: unknown }) => void,
   cellInfo: CellInfo | null,
   t: (descriptor: MessageDescriptor) => string
 ) {
@@ -127,10 +128,9 @@ async function handleUpdatePermissions(
     cellInfo,
   });
   if (connectionRes.isErr()) {
-    sendNotification({
-      type: "error",
+    sendApiErrorNotification({
       title: t(msg`Failed to update the permissions`),
-      description: connectionRes.error.message,
+      error: connectionRes.error,
     });
     return;
   }
@@ -995,7 +995,7 @@ export function ConnectorPermissionsModal({
 
         if (!r.ok) {
           sendApiErrorNotification({
-            title: "Failed to update permissions",
+            title: t`Failed to update the permissions`,
             error: await r.json(),
           });
           return;
@@ -1327,6 +1327,7 @@ export function ConnectorPermissionsModal({
                     owner,
                     extraConfig,
                     sendNotification,
+                    sendApiErrorNotification,
                     cellContext.cellInfo,
                     t
                   );

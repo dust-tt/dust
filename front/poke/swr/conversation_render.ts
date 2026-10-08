@@ -50,7 +50,6 @@ export function usePokeRenderConversation({
       );
       const data = await response.json();
       if (!response.ok) {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         setRenderError(data.error?.message || "Failed to render conversation");
         return;
       }

@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
-msgid "{contextUsagePercentage}% of context used. <0>Learn more</0>"
-msgstr "{contextUsagePercentage}% of context used. <0>Learn more</0>"
+msgid "{contextUsagePercent} of context used. <0>Learn more</0>"
+msgstr "{contextUsagePercent} of context used. <0>Learn more</0>"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
 msgid "Compacting"
@@ -202,3 +202,11 @@ msgstr "You've used 80% of your usage limit. You'll be automatically upgraded wh
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "You've used 80% of your usage limit"
 msgstr "You've used 80% of your usage limit"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted ({count})"
+msgstr "Pasted ({count})"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted"
+msgstr "Pasted"

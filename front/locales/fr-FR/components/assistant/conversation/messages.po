@@ -35,7 +35,7 @@ msgstr "Vous ne pouvez pas envoyer de message à un agent en attente d’un rév
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Skipping…"
-msgstr "Passage…"
+msgstr "Interruption…"
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Stopping…"
@@ -60,8 +60,8 @@ msgid "This conversation belongs to an archived Pod. No new messages can be sent
 msgstr "Cette conversation appartient à un Pod archivé. Vous ne pouvez plus envoyer de messages."
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
-msgid "{blockedActionCount, plural, one {<0>{blockedActionCount} manual action</0> required} other {<1>{blockedActionCount} manual actions</1> required}}"
-msgstr "{blockedActionCount, plural, one {<0>{blockedActionCount} action manuelle</0> requise} other {<1>{blockedActionCount} actions manuelles</1> requises}}"
+msgid "{blockedActionCount, plural, one {<0># manual action</0> required} other {<1># manual actions</1> required}}"
+msgstr "{blockedActionCount, plural, one {<0># action manuelle</0> requise} many {<1># actions manuelles</1> requises} other {<1># actions manuelles</1> requises}}"
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Review"
@@ -85,7 +85,7 @@ msgstr "Vous avez atteint votre limite de modèles Premium pour la période de 7
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "<0>View your Premium model usage in Analytics</0>."
-msgstr "<0>Voir votre utilisation des modèles Premium dans Analytics</0>."
+msgstr "<0>Voir votre utilisation des modèles Premium dans Statistiques</0>."
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "Context limit reached"
@@ -158,12 +158,12 @@ msgid "Copy to clipboard"
 msgstr "Copier dans le presse-papiers"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
-msgid "{formattedCreditValue} used for this message. View consumption breakdown"
-msgstr "Ce message a consommé {formattedCreditValue}. Voir le détail de la consommation"
+msgid "{creditCount, plural, one {{formattedCredits} credit used for this message. View consumption breakdown} other {{formattedCredits} credits used for this message. View consumption breakdown}}"
+msgstr "{creditCount, plural, one {Ce message a consommé {formattedCredits} crédit. Voir le détail de la consommation} other {Ce message a consommé {formattedCredits} crédits. Voir le détail de la consommation}}"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
-msgid "{formattedCreditValue} used for this message"
-msgstr "Ce message a consommé {formattedCreditValue}"
+msgid "{creditCount, plural, one {{formattedCredits} credit used for this message} other {{formattedCredits} credits used for this message}}"
+msgstr "{creditCount, plural, one {Ce message a consommé {formattedCredits} crédit} other {Ce message a consommé {formattedCredits} crédits}}"
 
 #: front/components/assistant/conversation/AgentMessage.tsx
 msgid "More message actions"
@@ -226,8 +226,8 @@ msgid "Frames"
 msgstr "Frames"
 
 #: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "Updated {updatedDate}"
-msgstr "Mis à jour le {updatedDate}"
+msgid "{updatedDayKind, select, relative {Updated {updatedDay}} lastWeekday {Updated last {updatedDay}} weekday {Updated on {updatedDay}} other {Updated on {updatedDay}}}"
+msgstr "{updatedDayKind, select, relative {Mis à jour {updatedDay}} lastWeekday {Mis à jour {updatedDay} dernier} weekday {Mis à jour {updatedDay}} other {Mis à jour le {updatedDay}}}"
 
 #: front/components/assistant/conversation/CompactionMessage.tsx
 msgid "Context compaction failed"
@@ -424,7 +424,7 @@ msgstr "Nouvelle conversation"
 
 #: front/components/assistant/conversation/ConversationTitle.tsx
 msgid "Branched from “{chipLabel}”"
-msgstr "Branche de « {chipLabel} »"
+msgstr "Branche créée à partir de « {chipLabel} »"
 
 #: front/components/assistant/conversation/ConversationTitle.tsx
 #: front/components/assistant/conversation/CreditCostPopover.tsx
@@ -550,16 +550,16 @@ msgid "The exact charge above is authoritative."
 msgstr "Le montant exact ci-dessus fait foi."
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "{triggeringUserName} stopped this task after it used {formattedCredits}."
-msgstr "{triggeringUserName} a arrêté cette tâche après qu’elle a consommé {formattedCredits}."
+msgid "{creditCount, plural, one {{triggeringUserName} stopped this task after it used {formattedCredits} credit.} other {{triggeringUserName} stopped this task after it used {formattedCredits} credits.}}"
+msgstr "{creditCount, plural, one {{triggeringUserName} a arrêté cette tâche après qu’elle a consommé {formattedCredits} crédit.} other {{triggeringUserName} a arrêté cette tâche après qu’elle a consommé {formattedCredits} crédits.}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "{triggeringUserName} stopped this task because it was using a lot of credits."
 msgstr "{triggeringUserName} a arrêté cette tâche car elle consommait beaucoup de crédits."
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "The user stopped this task after it used {formattedCredits}."
-msgstr "L’utilisateur a arrêté cette tâche après qu’elle a consommé {formattedCredits}."
+msgid "{creditCount, plural, one {The user stopped this task after it used {formattedCredits} credit.} other {The user stopped this task after it used {formattedCredits} credits.}}"
+msgstr "{creditCount, plural, one {L’utilisateur a arrêté cette tâche après qu’elle a consommé {formattedCredits} crédit.} other {L’utilisateur a arrêté cette tâche après qu’elle a consommé {formattedCredits} crédits.}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "The user stopped this task because it was using a lot of credits."
@@ -574,8 +574,8 @@ msgid "Paused to avoid excessive credit use"
 msgstr "Mise en pause pour éviter une consommation excessive de crédits"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
-msgid "This task has used {formattedCredits} so far. Continue running it?"
-msgstr "Cette tâche a consommé {formattedCredits} jusqu’ici. Poursuivre son exécution ?"
+msgid "{creditCount, plural, one {This task has used {formattedCredits} credit so far. Continue running it?} other {This task has used {formattedCredits} credits so far. Continue running it?}}"
+msgstr "{creditCount, plural, one {Cette tâche a consommé {formattedCredits} crédit jusqu’ici. Poursuivre son exécution ?} other {Cette tâche a consommé {formattedCredits} crédits jusqu’ici. Poursuivre son exécution ?}}"
 
 #: front/components/assistant/conversation/CreditSpendCheckpointPausedCard.tsx
 msgid "This task has used a lot of credits. Continue running it?"
@@ -953,11 +953,11 @@ msgstr "Options des conversations"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Show triggered"
-msgstr "Afficher les conversations déclenchées"
+msgstr "Afficher les déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Hide triggered"
-msgstr "Masquer les conversations déclenchées"
+msgstr "Masquer les déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Conversations successfully deleted"
@@ -1017,7 +1017,7 @@ msgstr "À partir de zéro"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "From existing"
-msgstr "À partir de l’existant"
+msgstr "À partir d’une compétence existante"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Create a new conversation"
@@ -1090,7 +1090,7 @@ msgstr "Dites à l’agent ce qu’il doit faire autrement"
 
 #: front/components/assistant/conversation/UserAnswerRequired.tsx
 msgid "Skipping question"
-msgstr "Passage de la question"
+msgstr "Question ignorée"
 
 #: front/components/assistant/conversation/UserAnswerRequired.tsx
 msgid "Submitting answer"

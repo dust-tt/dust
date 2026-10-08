@@ -1,7 +1,6 @@
 import { HOMEPAGE_USE_CASES } from "@app/lib/api/homepage_use_cases/registry";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -32,19 +31,13 @@ const UseCasesResponseSchema = z.object({
 
 async function setupWorkspace({
   role = "user",
-  withFlag = true,
 }: {
   role?: MembershipRoleType;
-  withFlag?: boolean;
 } = {}) {
   const { user, workspace } = await createPrivateApiMockRequest({ role });
   const adminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
   );
-
-  if (withFlag) {
-    await FeatureFlagFactory.basic(adminAuth, "discovery_homepage");
-  }
 
   return { adminAuth, user, workspace };
 }
@@ -78,14 +71,6 @@ describe("GET /api/w/[wId]/assistant/homepage_use_cases", () => {
     );
 
     expect(response.status).toBe(401);
-  });
-
-  it("rejects workspaces without the discovery_homepage flag", async () => {
-    const { workspace } = await setupWorkspace({ withFlag: false });
-
-    const { status } = await getUseCases(workspace.sId);
-
-    expect(status).toBe(403);
   });
 
   it("omits a use case whose tool the workspace does not have", async () => {

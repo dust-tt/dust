@@ -57,17 +57,47 @@ export function normalizeDustMcpServerRedirectUri(uri: string): string {
   return uri.trim();
 }
 
+export type DustMcpServerRedirectUriErrorCode =
+  | "empty_redirect_uri"
+  | "missing_scheme";
+
+export type DustMcpServerAllowedRedirectUrisErrorCode =
+  | DustMcpServerRedirectUriErrorCode
+  | "duplicate_redirect_uri";
+
+export class DustMcpServerRedirectUriError<
+  T extends DustMcpServerAllowedRedirectUrisErrorCode =
+    DustMcpServerAllowedRedirectUrisErrorCode,
+> extends Error {
+  constructor(
+    readonly code: T,
+    message: string
+  ) {
+    super(message);
+    this.name = "DustMcpServerRedirectUriError";
+  }
+}
+
 export function validateDustMcpServerRedirectUri(
   uri: string
-): Result<string, Error> {
+): Result<
+  string,
+  DustMcpServerRedirectUriError<DustMcpServerRedirectUriErrorCode>
+> {
   const normalized = normalizeDustMcpServerRedirectUri(uri);
   if (!normalized) {
-    return new Err(new Error("Redirect URI cannot be empty."));
+    return new Err(
+      new DustMcpServerRedirectUriError(
+        "empty_redirect_uri",
+        "Redirect URI cannot be empty."
+      )
+    );
   }
 
   if (!/^[a-z][a-z0-9+.-]*:\/\/.+/i.test(normalized)) {
     return new Err(
-      new Error(
+      new DustMcpServerRedirectUriError(
+        "missing_scheme",
         "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
       )
     );
@@ -78,7 +108,7 @@ export function validateDustMcpServerRedirectUri(
 
 export function validateDustMcpServerAllowedRedirectUris(
   allowedRedirectUris: string[]
-): Result<string[], Error> {
+): Result<string[], DustMcpServerRedirectUriError> {
   const normalizedUris: string[] = [];
   const seenUris = new Set<string>();
 
@@ -89,7 +119,12 @@ export function validateDustMcpServerAllowedRedirectUris(
     }
 
     if (seenUris.has(validation.value)) {
-      return new Err(new Error(`Duplicate redirect URI: ${validation.value}`));
+      return new Err(
+        new DustMcpServerRedirectUriError(
+          "duplicate_redirect_uri",
+          `Duplicate redirect URI: ${validation.value}`
+        )
+      );
     }
 
     seenUris.add(validation.value);

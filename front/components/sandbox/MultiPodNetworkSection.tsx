@@ -1,7 +1,8 @@
 import { DomainBadge } from "@app/components/sandbox/DomainBadge";
 import { DomainInputForm } from "@app/components/sandbox/DomainInputForm";
 import { podIcon } from "@app/components/sandbox/pod_icon";
-import { compareStrings } from "@app/lib/i18n/format";
+import { getActiveLocale } from "@app/lib/i18n/active_locale";
+import { compareStrings, formatList } from "@app/lib/i18n/format";
 import type { SandboxPodSelection } from "@app/lib/swr/sandbox";
 import {
   useBulkPodEgressPolicies,
@@ -25,7 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
   InfoCircle,
-  Page,
   Spinner,
   Trash01,
   XClose,
@@ -382,8 +382,11 @@ export function MultiPodNetworkSection({
     !isWorkspaceEgressPolicyError;
 
   const removeTargetDomain = removeTarget?.domain;
-  const removeTargetPodNames =
-    removeTarget?.ownedByPods.map((pod) => pod.name).join(", ") ?? "";
+  const removeTargetPodNames = formatList(
+    removeTarget?.ownedByPods.map((pod) => pod.name) ?? [],
+    { type: "conjunction" },
+    getActiveLocale()
+  );
 
   const renderRows = () => {
     if (isPodPoliciesLoading || isWorkspaceEgressPolicyLoading) {
@@ -412,9 +415,9 @@ export function MultiPodNetworkSection({
     }
 
     return (
-      <div className="flex w-full flex-col divide-y divide-separator">
+      <div className="flex w-full flex-col">
         {pendingRequests.map((request) => (
-          <div key={request.key} className="flex items-center gap-3 py-3">
+          <div key={request.key} className="flex items-center gap-3 py-1">
             <DomainBadge domain={request.domain}>
               <Chip size="xs" color="warning" label={t`Pending approval`} />
               {showScopeBadges ? (
@@ -460,7 +463,7 @@ export function MultiPodNetworkSection({
           </div>
         ))}
         {domainRows.map((row) => (
-          <div key={row.domain} className="flex items-center gap-3 py-3">
+          <div key={row.domain} className="flex items-center gap-3 py-1">
             <DomainBadge domain={row.domain}>
               {showScopeBadges && row.inWorkspace ? (
                 <Chip
@@ -482,7 +485,7 @@ export function MultiPodNetworkSection({
             </DomainBadge>
             <Button
               variant="warning"
-              size="mini"
+              size="xs"
               icon={Trash01}
               tooltip={removeDomainTooltip(row)}
               disabled={row.removableScopeCount === 0 || isRequestBusy}
@@ -515,7 +518,8 @@ export function MultiPodNetworkSection({
                 <Trans>
                   {removeTargetDomain} is a Workspace domain, inherited by every
                   Pod and running Computer. Removing it here drops it from the
-                  Workspace and {removeTargetPodNames}. This cannot be undone.
+                  Workspace and from {removeTargetPodNames}. This cannot be
+                  undone.
                 </Trans>
               ) : (
                 <Trans>
@@ -545,11 +549,17 @@ export function MultiPodNetworkSection({
         </DialogContent>
       </Dialog>
 
-      <Page.Vertical align="stretch" gap="lg">
-        <Page.SectionHeader
-          title={t`Allowed domains`}
-          description={t`Domains allowed across the selected scopes. Adding writes to the Workspace when it is selected (inherited by all Pods), otherwise to each selected Pod.`}
-        />
+      <div className="flex flex-col gap-2">
+        <div className="heading-sm text-foreground">
+          <Trans>Allowed domains</Trans>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          <Trans>
+            Domains allowed across the selected scopes. Adding writes to the
+            Workspace when it is selected (inherited by all Pods), otherwise to
+            each selected Pod.
+          </Trans>
+        </div>
         {readsReady ? (
           <DomainInputForm
             isUpdating={isRequestBusy}
@@ -566,7 +576,7 @@ export function MultiPodNetworkSection({
           />
         ) : null}
         {renderRows()}
-      </Page.Vertical>
+      </div>
     </>
   );
 }

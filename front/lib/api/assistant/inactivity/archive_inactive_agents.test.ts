@@ -4,10 +4,12 @@ import type { Authenticator } from "@app/lib/auth";
 import * as scheduleClient from "@app/temporal/triggers/schedule_client";
 import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MentionFactory } from "@app/tests/utils/MentionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -101,6 +103,27 @@ describe("archiveInactiveWorkspaceAgents", () => {
     expect(res.isOk() && res.value.archivedAgentIds).toEqual([]);
     expect(res.isOk() && res.value.skipped).toEqual([
       { agentId: agent.sId, reason: "active_schedule" },
+    ]);
+    expect(await statusOf(authenticator, agent.sId)).toBe("active");
+  });
+
+  it("leaves an agent a pending wake-up will still run", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent = await createUnusedAgent(authenticator, "Waking up");
+    const conversation = await ConversationFactory.create(authenticator, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [LONG_AGO],
+    });
+    await WakeUpFactory.cron(authenticator, conversation, agent);
+
+    const res = await archiveInactiveWorkspaceAgents(authenticator, {
+      thresholdDays: THRESHOLD_DAYS,
+      evaluatedAt: new Date(),
+    });
+
+    expect(res.isOk() && res.value.archivedAgentIds).toEqual([]);
+    expect(res.isOk() && res.value.skipped).toEqual([
+      { agentId: agent.sId, reason: "pending_wake_up" },
     ]);
     expect(await statusOf(authenticator, agent.sId)).toBe("active");
   });

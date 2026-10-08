@@ -9,9 +9,15 @@ const NAME_AUTOCOMPLETE_FIELDS = [
   "name.autocomplete_preserved._2gram",
 ];
 
+// Elasticsearch rejects the `name.keyword` prefix and wildcard clauses below when the input is too
+// long ("input automaton is too large"), from ~330 characters in the worst case. Skill names fit
+// (SKILL_NAME_MAX_LENGTH); agent names may be longer (AGENT_NAME_MAX_LENGTH) but rarely are.
+const MAX_SEARCH_TERM_LENGTH = 256;
+
 /**
  * @cc [owner:tdraier;aubin-tchoi,label:product] indexed-name-matching
- * An empty (or whitespace-only) search term matches every document. Otherwise every
+ * An empty (or whitespace-only) search term matches every document; one longer than
+ * `MAX_SEARCH_TERM_LENGTH` characters matches none. Otherwise every
  * whitespace-separated term MUST match the name autocomplete fields as a `bool_prefix` query,
  * in any order (`sal mar` matches "Marketing Sales"). Terms are analyzed like the name (case-change
  * and punctuation splits), so only a term's last token is prefix-matched (`ReportB` matches
@@ -26,6 +32,9 @@ export function buildNameAutocompleteQuery(
   // Keep the unfiltered listing for empty input.
   if (terms.length === 0) {
     return { match_all: {} };
+  }
+  if (searchTerm.length > MAX_SEARCH_TERM_LENGTH) {
+    return { match_none: {} };
   }
   return {
     bool: {
@@ -62,7 +71,8 @@ export function buildNameAutocompleteQuery(
 
 /**
  * @cc [owner:aubin-tchoi,label:product] name-token-matching
- * Empty or whitespace-only queries MUST match all names. Otherwise every whitespace-separated
+ * Empty or whitespace-only queries MUST match all names; queries longer than
+ * `MAX_SEARCH_TERM_LENGTH` characters MUST match none. Otherwise every whitespace-separated
  * term MUST match an analyzed name token, a literal name substring, a fuzzy name token, or an
  * analyzed description token (`write` MUST match "Typewriter").
  * Names MUST use the existing autocomplete and ICU fields for word and fuzzy matching, and
@@ -80,6 +90,9 @@ export function buildNameSearchQuery(
   // Keep the unfiltered listing for empty input.
   if (terms.length === 0) {
     return { match_all: {} };
+  }
+  if (searchTerm.length > MAX_SEARCH_TERM_LENGTH) {
+    return { match_none: {} };
   }
   return {
     bool: {

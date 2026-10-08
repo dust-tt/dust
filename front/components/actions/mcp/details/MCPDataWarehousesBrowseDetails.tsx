@@ -2,6 +2,7 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isWarehousesBrowseType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getDocumentIcon } from "@app/lib/content_nodes";
+import { getSafeSourceUrl, openSourceUrl } from "@app/lib/utils/source_urls";
 import {
   Citation,
   CitationIcons,
@@ -54,14 +55,13 @@ export function MCPDataWarehousesBrowseDetails({
               const isSchema = node.mimeType.includes("schema");
               const isDatabase = node.mimeType.includes("database");
               const isWarehouse = node.mimeType.includes("warehouse");
+              const sourceUrl = getSafeSourceUrl(node.sourceUrl);
 
               return (
                 <Citation
                   key={index}
                   onClick={
-                    node.sourceUrl
-                      ? () => window.open(node.sourceUrl ?? "", "_blank")
-                      : undefined
+                    sourceUrl ? () => openSourceUrl(sourceUrl) : undefined
                   }
                   tooltip={`${node.lastUpdatedAt ? ` • ${node.lastUpdatedAt}` : ""}`}
                 >

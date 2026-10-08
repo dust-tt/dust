@@ -36,7 +36,6 @@ export type FilterOptionListStatus =
 
 interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
   idPrefix: string;
-  categoryLabel: string;
   options: Option[];
   selectedIds: Set<string>;
   onToggleOption: (option: Option) => void;
@@ -54,7 +53,6 @@ interface FilterOptionCheckboxListProps<Option extends FilterOptionBase> {
  */
 export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   idPrefix,
-  categoryLabel,
   options,
   selectedIds,
   onToggleOption,
@@ -79,7 +77,7 @@ export function FilterOptionCheckboxList<Option extends FilterOptionBase>({
   return (
     <>
       <NavigationListLabel
-        label={t`All ${categoryLabel}`}
+        label={t`All options`}
         className="shrink-0 py-0 px-2 bg-transparent font-medium"
         action={
           <div className="flex items-center gap-2">

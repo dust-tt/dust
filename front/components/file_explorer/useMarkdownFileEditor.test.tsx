@@ -1,16 +1,18 @@
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { writeFileContentByPath } from "@app/lib/swr/files";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
-import type { LightWorkspaceType } from "@app/types/user";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const flags = new Set<string>();
+let collabUrl: string | undefined;
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useFeatureFlags: () => ({
     hasFeature: (flag: string) => flags.has(flag),
   }),
+  useCollabUrl: () => collabUrl,
 }));
 
 vi.mock("@app/hooks/useNotification", () => ({
@@ -22,25 +24,7 @@ vi.mock("@app/lib/swr/files", () => ({
   writeFileContentByPath: vi.fn(),
 }));
 
-let liveSessionUrl: string | null = null;
-
-vi.mock("@app/lib/client/live_session", () => ({
-  getLiveSessionUrl: () => liveSessionUrl,
-}));
-
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "w_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
 const params = {
   category: "markdown" as const,
@@ -65,7 +49,7 @@ const revised = {
 describe("useMarkdownFileEditor", () => {
   beforeEach(() => {
     flags.clear();
-    liveSessionUrl = null;
+    collabUrl = undefined;
     vi.mocked(writeFileContentByPath).mockResolvedValue(new Ok(undefined));
   });
 
@@ -210,18 +194,54 @@ describe("useMarkdownFileEditor", () => {
 
   it("keeps a live editor open when the file is fetched again, even cut", () => {
     flags.add("co_edition");
-    liveSessionUrl = "ws://localhost/collab";
+    collabUrl = "ws://localhost/api/collab";
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
       { initialProps: params }
     );
     const firstKey = result.current.richEditor?.mountKey;
-    expect(result.current.richEditor?.live).toBe(true);
+    expect(result.current.richEditor?.liveUrl).toBe(collabUrl);
 
     rerender(revised);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
 
     rerender({ ...revised, isTruncated: true });
+    expect(result.current.richEditor?.mountKey).toBe(firstKey);
+  });
+
+  it("keeps an open editor local when the collab URL arrives", () => {
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+
+    collabUrl = "ws://localhost/api/collab";
+    rerender(params);
+    expect(result.current.richEditor?.liveUrl).toBeUndefined();
+  });
+
+  it("keeps an open live editor live when the collab URL goes away", () => {
+    flags.add("co_edition");
+    collabUrl = "ws://localhost/api/collab";
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    const firstKey = result.current.richEditor?.mountKey;
+
+    collabUrl = undefined;
+    rerender(revised);
+    expect(result.current.richEditor?.liveUrl).toBe(
+      "ws://localhost/api/collab"
+    );
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
   });
 

@@ -1277,6 +1277,36 @@ describe("softDeleteAgentMessage", () => {
       expect(result.error.type).toBe("message_deletion_not_authorized");
     }
   });
+
+  it("succeeds without a new deletion when the message was already deleted with its user message", async () => {
+    const userMessage = conversation.content
+      .flat()
+      .find((m): m is UserMessageType => isUserMessageType(m));
+    if (!userMessage) {
+      throw new Error("No user message found in conversation");
+    }
+    const userMessageDelete = await softDeleteUserMessageAndReplies(auth, {
+      message: userMessage,
+      conversationResource: await fetchConversationResource(
+        auth,
+        conversation.sId
+      ),
+    });
+    expect(userMessageDelete.isOk()).toBe(true);
+
+    // `agentMessage` is now outdated: the cascade added a deleted version 1 at its rank.
+    const result = await softDeleteAgentMessage(auth, {
+      message: agentMessage,
+      conversation,
+    });
+    expect(result.isOk()).toBe(true);
+
+    const updated = await getConversation(auth, conversation.sId);
+    if (updated.isErr()) {
+      throw new Error("Failed to refetch conversation");
+    }
+    expect(updated.value.content[1].map((m) => m.version)).toEqual([0, 1]);
+  });
 });
 
 describe("deleteOrLeaveConversation", () => {
@@ -1634,6 +1664,31 @@ describe("softDeleteUserMessageAndReplies", () => {
     expect(result.isOk()).toBe(true);
 
     expect(gracefullyStopAgentLoop).not.toHaveBeenCalled();
+  });
+
+  it("returns message_outdated when the user message was edited since", async () => {
+    const userMessages = conversation.content
+      .flat()
+      .filter((m): m is UserMessageType => isUserMessageType(m));
+    const lastUserMessage = userMessages[userMessages.length - 1];
+
+    const editResult = await editUserMessage(auth, {
+      conversationResource,
+      message: lastUserMessage,
+      content: "Edited message",
+      mentions: [],
+      skipToolsValidation: false,
+    });
+    expect(editResult.isOk()).toBe(true);
+
+    const result = await softDeleteUserMessageAndReplies(auth, {
+      message: lastUserMessage,
+      conversationResource,
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.type).toBe("message_outdated");
+    }
   });
 });
 

@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { ChevronDown, ChevronUp } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
@@ -55,13 +56,14 @@ export function TruncatedContent({
   defaultCollapsed = true,
   animated = false,
   animationDurationMs = 200,
-  expandLabel = "Show more",
-  collapseLabel = "Show less",
+  expandLabel,
+  collapseLabel,
   variant = "default",
   footer,
   className,
   buttonClassName,
 }: TruncatedContentProps) {
+  const { t } = useLingui();
   const contentRef = useRef<HTMLDivElement>(null);
   const [exceedsThreshold, setExceedsThreshold] = useState(defaultCollapsed);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
@@ -106,7 +108,11 @@ export function TruncatedContent({
             <Button
               variant={variant === "light" ? "ghost-secondary" : "outline"}
               size="xs"
-              label={isCollapsed ? expandLabel : collapseLabel}
+              label={
+                isCollapsed
+                  ? (expandLabel ?? t`Show more`)
+                  : (collapseLabel ?? t`Show less`)
+              }
               icon={
                 variant === "light"
                   ? undefined

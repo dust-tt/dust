@@ -1,7 +1,7 @@
 import { FrameRenderer } from "@app/components/assistant/conversation/interactive_content/FrameRenderer";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { EditTextFn } from "@app/types/assistant/visualization";
-import type { LightWorkspaceType } from "@app/types/user";
 import {
   cleanup,
   fireEvent,
@@ -163,19 +163,7 @@ vi.mock("@app/lib/swr/useIsMobile", () => ({
   useIsMobile: () => mocks.isMobile,
 }));
 
-const owner: LightWorkspaceType = {
-  id: 1,
-  sId: "workspace_1",
-  name: "Workspace",
-  role: "user",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  regionalModelsOnly: false,
-  sharingPolicy: "workspace_only",
-  locale: "en-US",
-  metronomeCustomerId: null,
-};
+const owner = LightWorkspaceFactory.build({ sId: "workspace_1", role: "user" });
 
 const conversation: ConversationWithoutContentType = {
   id: 1,

@@ -13,6 +13,38 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/lib/client/calendar_date.ts
+msgid "Invalid date"
+msgstr "Invalid date"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday}"
+msgstr "Last {weekday}"
+
+#: front/lib/client/calendar_date.ts
+msgid "{day} at {time}"
+msgstr "{day} at {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "Last {weekday} at {time}"
+msgstr "Last {weekday} at {time}"
+
+#: front/lib/client/calendar_date.ts
+msgid "{weekday} at {time}"
+msgstr "{weekday} at {time}"
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} credit} other {{formattedCredits} credits}}"
+
+#: front/lib/client/credits.ts
+msgid "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+msgstr "{displayedCredits, plural, one {{formattedCredits} credit / message} other {{formattedCredits} credits / message}}"
+
+#: front/lib/client/credits.ts
+msgid "{callCount, plural, one {# use} other {# uses}}"
+msgstr "{callCount, plural, one {# use} other {# uses}}"
+
 #: front/lib/client/greetings.ts
 msgid "What’s next, {name}?"
 msgstr "What’s next, {name}?"
@@ -52,3 +84,44 @@ msgstr "What’s cooking, {name}?"
 #: front/lib/client/greetings.ts
 msgid "Ready when you are, {name}."
 msgstr "Ready when you are, {name}."
+
+#: front/lib/client/model_tier_options.ts
+msgid "Includes {tierNames}"
+msgstr "Includes {tierNames}"
+
+#: front/lib/client/model_tier_options.ts
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from workspace"
+msgstr "Inherited from workspace"
+
+#: front/lib/client/model_tiers.ts
+msgid "Up to {tierName}"
+msgstr "Up to {tierName}"
+
+#: front/lib/client/model_tiers.ts
+msgid "Inherited from groups"
+msgstr "Inherited from groups"
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Lower-cost models for routine tasks."
+msgstr "Lower-cost models for routine tasks."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Balanced models for most tasks."
+msgstr "Balanced models for most tasks."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "More capable models for complex or demanding work."
+msgstr "More capable models for complex or demanding work."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "Frontier models priced far above Premium, for the most demanding work."
+msgstr "Frontier models priced far above Premium, for the most demanding work."
+
+#: front/lib/client/model_tiers_explainer.ts
+msgid "all efforts"
+msgstr "all efforts"
+
+#: front/lib/client/wakeup_schedule.ts
+msgid "at {time}"
+msgstr "at {time}"

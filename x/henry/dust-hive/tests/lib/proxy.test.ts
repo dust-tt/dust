@@ -27,7 +27,7 @@ describe("proxy routing", () => {
     }
   }, 30_000);
 
-  it("answers 503 on /collab when started without a collab port", async () => {
+  it("answers 503 on /api/collab when started without a collab port", async () => {
     const upstream = Bun.serve({
       port: 0,
       hostname: "localhost",
@@ -39,7 +39,7 @@ describe("proxy routing", () => {
       marketing: upstream.port ?? 0,
     });
     try {
-      const collab = await fetch(`http://localhost:${proxy.port}/collab`);
+      const collab = await fetch(`http://localhost:${proxy.port}/api/collab`);
       expect(collab.status).toBe(503);
       const api = await fetch(`http://localhost:${proxy.port}/api/healthz`);
       expect(api.status).toBe(200);
@@ -77,10 +77,12 @@ describe("proxy routing", () => {
       expect(routeFor("/api-test")).toBe("marketing");
     });
 
-    it("routes /collab/* to the collab server", () => {
-      expect(routeFor("/collab")).toBe("collab");
-      expect(routeFor("/collab/")).toBe("collab");
-      expect(routeFor("/collaborate")).toBe("marketing");
+    it("routes /api/collab/* to the collab server, not its neighbours", () => {
+      expect(routeFor("/api/collab")).toBe("collab");
+      expect(routeFor("/api/collab/")).toBe("collab");
+      expect(routeFor("/api/collaborators")).toBe("front-api");
+      expect(routeFor("/api/w/w1/files/collab-tickets")).toBe("front-api");
+      expect(routeFor("/collab")).toBe("marketing");
     });
 
     it("does not match /api/m/* as marketing — only /m/api/* does", () => {

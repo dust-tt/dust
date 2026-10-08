@@ -7,12 +7,26 @@ import type {
 
 export const MAX_FEATURED_USE_CASES = 2;
 
+export type HomepageUseCaseId =
+  | "unanswered-messages"
+  | "unanswered-dms"
+  | "industry-news"
+  | "ai-news"
+  | "dust-news"
+  | "build-agent"
+  | "weekly-priorities"
+  | "workspace-usage"
+  | "create-pod"
+  | "meeting-prep"
+  | "account-research"
+  | "deep-research"
+  | "spreadsheet-analysis"
+  | "write-doc";
+
 export type HomepageUseCaseTier = "featured" | "milestone" | "role" | "general";
 
 export interface HomepageUseCaseType {
-  id: string;
-  label: string;
-  prompt: string;
+  id: HomepageUseCaseId;
   icon: InternalAllowedIconType | CustomResourceIconType;
   skills: SkillReference[];
   tools: ToolReference[];

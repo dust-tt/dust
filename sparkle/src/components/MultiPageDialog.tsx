@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import {
@@ -160,6 +161,7 @@ const MultiPageDialogContent = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const currentPageIndex = pages.findIndex(
       (page) => page.id === currentPageId
     );
@@ -234,7 +236,7 @@ const MultiPageDialogContent = React.forwardRef<
                       onClick={handlePrevious}
                       tooltip={
                         hasPrevious && !isTransitioning
-                          ? "Previous page"
+                          ? t`Previous page`
                           : undefined
                       }
                     />
@@ -246,7 +248,7 @@ const MultiPageDialogContent = React.forwardRef<
                       onClick={handleNext}
                       tooltip={
                         hasNext && !disableNext && !isTransitioning
-                          ? "Next page"
+                          ? t`Next page`
                           : undefined
                       }
                     />

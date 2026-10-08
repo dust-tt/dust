@@ -164,7 +164,7 @@ export function ModelPickerMakersView({
             label={getModelMakerDisplayName(maker.makerId)}
             icon={makerIcon(maker)}
           />
-          <DropdownMenuSubContent className="w-64">
+          <DropdownMenuSubContent className="w-72">
             {renderModelRows(maker)}
           </DropdownMenuSubContent>
         </DropdownMenuSub>

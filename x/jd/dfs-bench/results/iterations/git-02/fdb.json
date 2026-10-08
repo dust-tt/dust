@@ -1,0 +1,317 @@
+{
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "clone": {
+      "target_start_time": 1791319059.757664,
+      "actual_start_time": 1791319059.7578008,
+      "end_time": 1791319443.5947616
+    },
+    "search": {
+      "target_start_time": 1791319891.4706712,
+      "actual_start_time": 1791319891.4708276,
+      "end_time": 1791320027.225208
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "git_mode": "external-gitdir",
+  "scope": "full GitHub clone with native-SSD Git database, FUSE working tree and symlink placeholders",
+  "source_url_requested": "git@github.com:dust-tt/dust",
+  "source_url_used": "https://github.com/dust-tt/dust.git",
+  "transport_reason": "Benchmark hosts have no GitHub SSH identity; public HTTPS reaches the same repository without copying credentials.",
+  "git_version": "git version 2.43.0",
+  "clone_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-02/client/clone-mount-metrics.json"
+  ],
+  "clone_mount_startup_ms": 73.95191600153339,
+  "clone": {
+    "command": [
+      "git",
+      "clone",
+      "--separate-git-dir",
+      "/srv/dfs/git-metadata-git-02",
+      "-c",
+      "core.symlinks=false",
+      "--no-checkout",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 383836.570542,
+    "checkout_command": [
+      "git",
+      "-C",
+      "/srv/dfs/mount/files/dust",
+      "checkout",
+      "--detach",
+      "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5"
+    ],
+    "successful": true
+  },
+  "transfer": {
+    "command": [
+      "git",
+      "clone",
+      "--separate-git-dir",
+      "/srv/dfs/git-metadata-git-02",
+      "-c",
+      "core.symlinks=false",
+      "--no-checkout",
+      "https://github.com/dust-tt/dust.git",
+      "/srv/dfs/mount/files/dust"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 350208.35092
+  },
+  "checkout": {
+    "command": [
+      "git",
+      "-C",
+      "/srv/dfs/mount/files/dust",
+      "checkout",
+      "--detach",
+      "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 33628.172581
+  },
+  "commit": "d12961dd26b05e97c0c6145d2e80ea8a0ce776b5",
+  "durability": {
+    "open_fsync_close_ms": 1087.737326,
+    "files": 15462
+  },
+  "git_status": {
+    "command": [
+      "git",
+      "status",
+      "--porcelain"
+    ],
+    "exit_code": 0,
+    "elapsed_ms": 3170.60117
+  },
+  "clone_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "index_readiness": {
+    "wait_ms": 219.76303099654615,
+    "checkpoint": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 20890,
+      "source_head": 20890
+    }
+  },
+  "search_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/git-02/client/search-mount-metrics.json"
+  ],
+  "search_mount_startup_ms": 970.4347219994816,
+  "search": {
+    "passed": true,
+    "rows": [
+      {
+        "workload": "rg --files",
+        "first_ms": 142.737438,
+        "warm_median_ms": 78.077459,
+        "samples_ms": [
+          142.737438,
+          78.077459,
+          76.90072,
+          78.603408
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 15176,
+          "sha256": "16e8392a0a8c60b2b4b98c693ad530261a3708ee543ac10f49110d07fbb0635e"
+        }
+      },
+      {
+        "workload": "rg absent literal",
+        "first_ms": 7802.176847,
+        "warm_median_ms": 7821.980445,
+        "samples_ms": [
+          7802.176847,
+          7647.380204,
+          7841.632155,
+          7821.980445
+        ],
+        "validated": {
+          "exit_code": 1,
+          "lines": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      {
+        "workload": "rg useEffect",
+        "first_ms": 7678.570748,
+        "warm_median_ms": 7605.657222,
+        "samples_ms": [
+          7678.570748,
+          7605.657222,
+          6702.859694,
+          7651.347845
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 509,
+          "sha256": "b25f9e2ae282c5708ebeae7e5e809233e531182aa6d7a9b0ad416733d4337f75"
+        }
+      },
+      {
+        "workload": "rg repository literal",
+        "first_ms": 6823.582499,
+        "warm_median_ms": 7472.127416,
+        "samples_ms": [
+          6823.582499,
+          7004.837116,
+          7781.69839,
+          7472.127416
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 43,
+          "sha256": "57664a6bb17de6de4e0af41d134d126d22970693dc15463dbbabc4c2176aeaf4"
+        }
+      },
+      {
+        "workload": "rg TSX useEffect",
+        "first_ms": 501.46926,
+        "warm_median_ms": 145.039697,
+        "samples_ms": [
+          501.46926,
+          174.171423,
+          134.781951,
+          145.039697
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 399,
+          "sha256": "b4fab16c45fab220b94fb0b736a8c3ae5062356e85e0cccebf9c5dbf7b13f083"
+        }
+      },
+      {
+        "workload": "rg front subtree",
+        "first_ms": 1065.140731,
+        "warm_median_ms": 262.841437,
+        "samples_ms": [
+          1065.140731,
+          264.215409,
+          262.454857,
+          262.841437
+        ],
+        "validated": {
+          "exit_code": 0,
+          "lines": 348,
+          "sha256": "d7563279f9de24ea8d47c9ce6207d5d617b3a2049d5e4bb0b4d770d748cf173b"
+        }
+      }
+    ]
+  },
+  "indexed_search": {
+    "passed": true,
+    "rows": [
+      {
+        "literal": "useEffect",
+        "expected_hits": 10,
+        "first_ms": 203.767367,
+        "warm_median_ms": 175.78623349999998,
+        "samples_ms": [
+          203.767367,
+          182.702447,
+          176.456413,
+          176.180672,
+          175.391795,
+          169.941099,
+          175.17613,
+          177.650553,
+          173.950829,
+          175.376118,
+          176.964531
+        ]
+      },
+      {
+        "literal": "dust-tt/dust",
+        "expected_hits": 10,
+        "first_ms": 183.876333,
+        "warm_median_ms": 186.48306050000002,
+        "samples_ms": [
+          183.876333,
+          187.274432,
+          182.275979,
+          193.32422,
+          186.573304,
+          181.306069,
+          184.40558,
+          186.618015,
+          181.059367,
+          186.515251,
+          186.45087
+        ]
+      },
+      {
+        "literal": "DFS_ABSENT_40b5c32e5ff649f18005",
+        "expected_hits": 0,
+        "first_ms": 112.868782,
+        "warm_median_ms": 114.907132,
+        "samples_ms": [
+          112.868782,
+          119.36105,
+          117.109601,
+          115.017778,
+          114.673195,
+          114.689504,
+          113.420958,
+          116.663674,
+          117.525476,
+          114.27401,
+          114.796486
+        ]
+      }
+    ]
+  },
+  "checkout_validation": {
+    "regular_files": 15461,
+    "bytes": 316183460,
+    "manifest_sha256": "d6e8ad6787fcdcf98409cdb31f2146902a05a4d5b0863652dec1cdb10cf641e0",
+    "passed": true
+  },
+  "search_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "iteration": "git-02"
+}

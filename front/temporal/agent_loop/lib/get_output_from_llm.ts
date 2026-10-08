@@ -5,6 +5,7 @@ import {
   setPreviousMessageId,
 } from "@app/lib/api/llm/cache_diagnostics";
 import type { LLM } from "@app/lib/api/llm/llm";
+import type { InputTransformation } from "@app/lib/api/llm/types/events";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -81,6 +82,34 @@ class LLMStreamTimeoutError extends Error {
         : `LLM stream timeout after ${Math.round(elapsedMs / 1000)}s waiting for event`
     );
     this.name = "LLMStreamTimeoutError";
+  }
+}
+
+export type InputTransformationsReport = {
+  inputTransformations: InputTransformation[] | undefined;
+  modelId: string;
+  logContext: Record<string, unknown>;
+};
+
+export function reportInputTransformations({
+  inputTransformations,
+  modelId,
+  logContext,
+}: InputTransformationsReport): void {
+  if (!inputTransformations) {
+    return;
+  }
+
+  logger.info(
+    { ...logContext, inputTransformations },
+    "[LLM stream] provider transformed input thinking blocks"
+  );
+  for (const { type, reason } of inputTransformations) {
+    statsDMetrics.increment("llm.input_transformation.count", 1, [
+      `model_id:${modelId}`,
+      `type:${type}`,
+      `reason:${reason}`,
+    ]);
   }
 }
 
@@ -562,10 +591,21 @@ export async function getOutputFromLLMStream(
       }
 
       if (event.type === "interaction_id") {
-        const { modelInteractionId, cacheMissReason } = event.content;
+        const { modelInteractionId, cacheMissReason, inputTransformations } =
+          event.content;
 
         // Store this response id so the next step/turn can compare against it.
         await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
+
+        reportInputTransformations({
+          inputTransformations,
+          modelId: model.modelId,
+          logContext: {
+            ...logContext,
+            agentConfigurationId: agentConfiguration.sId,
+            modelInteractionId,
+          },
+        });
 
         if (cacheMissReason) {
           logger.info(

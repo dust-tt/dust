@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/Users/jd/repos/dust-tt/dust/.hives/poc-dfs/x/jd/dfs-bench/scripts/run.py", line 22, in <module>
+    list(pool.map(start, backends))
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 608, in result_iterator
+    yield fs.pop().result()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 445, in result
+    return self.__get_result()
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/_base.py", line 390, in __get_result
+    raise self._exception
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/concurrent/futures/thread.py", line 52, in run
+    result = self.fn(*self.args, **self.kwargs)
+  File "/Users/jd/repos/dust-tt/dust/.hives/poc-dfs/x/jd/dfs-bench/scripts/run.py", line 18, in start
+    assert p.returncode == 0
+AssertionError

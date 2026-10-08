@@ -2749,6 +2749,29 @@ describe("AgentResource", () => {
       expect(sIds).toContain(favorite.sId);
       expect(sIds).not.toContain(other.sId);
     });
+
+    it("listFavoritesForCurrentUser omits retired and model-only global agents", async () => {
+      const { authenticator } = testContext;
+      const favorites = await Promise.all(
+        [
+          GLOBAL_AGENTS_SID.HELPER,
+          GLOBAL_AGENTS_SID.CLAUDE_3_OPUS,
+          GLOBAL_AGENTS_SID.GPT5,
+        ].map((agentId) => AgentResource.fetchById(authenticator, agentId))
+      );
+      for (const agent of favorites) {
+        assert(agent);
+        expect((await agent.setUserFavorite(authenticator, true)).isOk()).toBe(
+          true
+        );
+      }
+
+      const agentIds = (
+        await AgentResource.listFavoritesForCurrentUser(authenticator)
+      ).map((resource) => resource.sId);
+
+      expect(agentIds).toEqual([GLOBAL_AGENTS_SID.HELPER]);
+    });
   });
 
   describe("pinned versions", () => {

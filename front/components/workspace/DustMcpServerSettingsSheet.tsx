@@ -1,4 +1,7 @@
-import type { DustMcpServerSettings } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
+import type {
+  DustMcpServerAllowedRedirectUrisErrorCode,
+  DustMcpServerSettings,
+} from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import {
   normalizeDustMcpServerRedirectUri,
   validateDustMcpServerRedirectUri,
@@ -20,8 +23,19 @@ import {
   SheetTitle,
   Trash01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useState } from "react";
+
+const REDIRECT_URI_ERROR_MESSAGES: Record<
+  DustMcpServerAllowedRedirectUrisErrorCode,
+  MessageDescriptor
+> = {
+  empty_redirect_uri: msg`Redirect URI cannot be empty.`,
+  missing_scheme: msg`Redirect URI must include a scheme (for example http://, https://, or cursor://).`,
+  duplicate_redirect_uri: msg`This redirect URI is already in the list.`,
+};
 
 interface DustMcpServerSettingsSheetProps {
   isOpen: boolean;
@@ -66,9 +80,9 @@ export function DustMcpServerSettingsSheet({
     draftSettings.allowedRedirectUris.includes(normalizedRedirectUri);
   const redirectUriInputMessage =
     redirectUriValidation?.isErr() === true
-      ? redirectUriValidation.error.message
+      ? t(REDIRECT_URI_ERROR_MESSAGES[redirectUriValidation.error.code])
       : isDuplicateRedirectUri
-        ? t`This redirect URI is already in the list.`
+        ? t(REDIRECT_URI_ERROR_MESSAGES.duplicate_redirect_uri)
         : normalizedRedirectUri
           ? t`Will be saved as ${normalizedRedirectUri}.`
           : t`Use a full redirect URI such as https://example.com/oauth/callback.`;

@@ -1254,28 +1254,52 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     toolStakes: {
       search: "never_ask",
       get_from_url: "never_ask",
-      get_context: "never_ask",
-      get_charts: "never_ask",
-      get_dashboard: "never_ask",
-      get_cohorts: "never_ask",
+      get_amplitude_context: "never_ask",
+      query_amplitude_data: "never_ask",
+      get_amplitude_charts: "never_ask",
+      render_amplitude_chart: "never_ask",
+      get_amp_user_data: "never_ask",
       get_experiments: "never_ask",
-      get_event_properties: "never_ask",
-      get_session_replays: "never_ask",
-      get_users: "never_ask",
-      query_chart: "never_ask",
-      query_charts: "never_ask",
-      query_dataset: "never_ask",
       query_experiment: "never_ask",
-      get_feedback_insights: "never_ask",
-      get_feedback_comments: "never_ask",
-      get_feedback_mentions: "never_ask",
-      get_feedback_sources: "never_ask",
-      save_chart_edits: "low",
-      create_chart: "low",
-      create_dashboard: "low",
-      create_notebook: "low",
+      get_flags: "never_ask",
+      get_deployments: "never_ask",
+      get_amp_taxonomy: "never_ask",
+      get_transformations: "never_ask",
+      get_group_types: "never_ask",
+      get_session_replays: "never_ask",
+      list_session_replays: "never_ask",
+      get_session_replay_events: "never_ask",
+      list_guides_surveys: "never_ask",
+      get_guide_or_survey: "never_ask",
+      query_wave_opportunities: "never_ask",
+      query_wave_product_areas: "never_ask",
+      use_amplitude_ai_feedback: "never_ask",
+      get_agent_results: "never_ask",
+      get_amplitude_agent_analytics_info: "never_ask",
+      get_data_ingestion_sources: "never_ask",
+      get_data_source_details: "never_ask",
+      get_data_warehouse_destinations: "never_ask",
+      get_data_warehouse_jobs: "never_ask",
+      list_tool_categories: "never_ask",
+      get_category_tools: "never_ask",
+      describe_tool: "never_ask",
+      use_amplitude_chart_monitors: "low",
+      use_amp_dashboards: "low",
+      use_amp_notebooks: "low",
+      use_amp_comments: "low",
+      use_amplitude_cohorts: "low",
       create_experiment: "low",
-      create_cohort: "low",
+      update_experiment: "low",
+      create_metric: "low",
+      manage_wave_opportunities: "low",
+      manage_wave_product_areas: "low",
+      manage_wave_verification_artifacts: "low",
+      share_amp_entities: "high",
+      create_flags: "high",
+      update_flag: "high",
+      manage_amp_events: "high",
+      manage_amp_properties: "high",
+      manage_amp_taxonomy: "high",
     },
     toolDisplayLabels: {
       search: {
@@ -1286,93 +1310,189 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         running: "Fetching from Amplitude URL",
         done: "Fetched from Amplitude URL",
       },
-      get_context: {
+      get_amplitude_context: {
         running: "Fetching context from Amplitude",
         done: "Fetched context from Amplitude",
       },
-      get_charts: {
+      query_amplitude_data: {
+        running: "Querying data on Amplitude",
+        done: "Queried data on Amplitude",
+      },
+      get_amplitude_charts: {
         running: "Fetching charts from Amplitude",
         done: "Fetched charts from Amplitude",
       },
-      get_dashboard: {
-        running: "Fetching dashboard from Amplitude",
-        done: "Fetched dashboard from Amplitude",
+      render_amplitude_chart: {
+        running: "Rendering chart from Amplitude",
+        done: "Rendered chart from Amplitude",
       },
-      get_cohorts: {
-        running: "Fetching cohorts from Amplitude",
-        done: "Fetched cohorts from Amplitude",
+      get_amp_user_data: {
+        running: "Fetching user data from Amplitude",
+        done: "Fetched user data from Amplitude",
       },
       get_experiments: {
         running: "Fetching experiments from Amplitude",
         done: "Fetched experiments from Amplitude",
       },
-      get_event_properties: {
-        running: "Fetching event properties from Amplitude",
-        done: "Fetched event properties from Amplitude",
+      query_experiment: {
+        running: "Querying experiment on Amplitude",
+        done: "Queried experiment on Amplitude",
+      },
+      get_flags: {
+        running: "Fetching feature flags from Amplitude",
+        done: "Fetched feature flags from Amplitude",
+      },
+      get_deployments: {
+        running: "Fetching deployments from Amplitude",
+        done: "Fetched deployments from Amplitude",
+      },
+      get_amp_taxonomy: {
+        running: "Fetching taxonomy from Amplitude",
+        done: "Fetched taxonomy from Amplitude",
+      },
+      get_transformations: {
+        running: "Fetching transformations from Amplitude",
+        done: "Fetched transformations from Amplitude",
+      },
+      get_group_types: {
+        running: "Fetching group types from Amplitude",
+        done: "Fetched group types from Amplitude",
       },
       get_session_replays: {
         running: "Fetching session replays from Amplitude",
         done: "Fetched session replays from Amplitude",
       },
-      get_users: {
-        running: "Fetching users from Amplitude",
-        done: "Fetched users from Amplitude",
+      list_session_replays: {
+        running: "Listing session replays on Amplitude",
+        done: "Listed session replays on Amplitude",
       },
-      query_chart: {
-        running: "Querying chart on Amplitude",
-        done: "Queried chart on Amplitude",
+      get_session_replay_events: {
+        running: "Fetching session replay events from Amplitude",
+        done: "Fetched session replay events from Amplitude",
       },
-      query_charts: {
-        running: "Querying charts on Amplitude",
-        done: "Queried charts on Amplitude",
+      list_guides_surveys: {
+        running: "Listing guides and surveys on Amplitude",
+        done: "Listed guides and surveys on Amplitude",
       },
-      query_dataset: {
-        running: "Querying dataset on Amplitude",
-        done: "Queried dataset on Amplitude",
+      get_guide_or_survey: {
+        running: "Fetching guide or survey from Amplitude",
+        done: "Fetched guide or survey from Amplitude",
       },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
+      query_wave_opportunities: {
+        running: "Querying opportunities on Amplitude",
+        done: "Queried opportunities on Amplitude",
       },
-      get_feedback_insights: {
-        running: "Fetching feedback insights from Amplitude",
-        done: "Fetched feedback insights from Amplitude",
+      query_wave_product_areas: {
+        running: "Querying product areas on Amplitude",
+        done: "Queried product areas on Amplitude",
       },
-      get_feedback_comments: {
-        running: "Fetching feedback comments from Amplitude",
-        done: "Fetched feedback comments from Amplitude",
+      use_amplitude_ai_feedback: {
+        running: "Fetching feedback from Amplitude",
+        done: "Fetched feedback from Amplitude",
       },
-      get_feedback_mentions: {
-        running: "Fetching feedback mentions from Amplitude",
-        done: "Fetched feedback mentions from Amplitude",
+      get_agent_results: {
+        running: "Fetching agent results from Amplitude",
+        done: "Fetched agent results from Amplitude",
       },
-      get_feedback_sources: {
-        running: "Fetching feedback sources from Amplitude",
-        done: "Fetched feedback sources from Amplitude",
+      get_amplitude_agent_analytics_info: {
+        running: "Fetching agent analytics from Amplitude",
+        done: "Fetched agent analytics from Amplitude",
       },
-      save_chart_edits: {
-        running: "Saving chart edits on Amplitude",
-        done: "Saved chart edits on Amplitude",
+      get_data_ingestion_sources: {
+        running: "Fetching ingestion sources from Amplitude",
+        done: "Fetched ingestion sources from Amplitude",
       },
-      create_chart: {
-        running: "Creating chart on Amplitude",
-        done: "Created chart on Amplitude",
+      get_data_source_details: {
+        running: "Fetching data source details from Amplitude",
+        done: "Fetched data source details from Amplitude",
       },
-      create_dashboard: {
-        running: "Creating dashboard on Amplitude",
-        done: "Created dashboard on Amplitude",
+      get_data_warehouse_destinations: {
+        running: "Fetching warehouse destinations from Amplitude",
+        done: "Fetched warehouse destinations from Amplitude",
       },
-      create_notebook: {
-        running: "Creating notebook on Amplitude",
-        done: "Created notebook on Amplitude",
+      get_data_warehouse_jobs: {
+        running: "Fetching warehouse jobs from Amplitude",
+        done: "Fetched warehouse jobs from Amplitude",
+      },
+      list_tool_categories: {
+        running: "Listing tool categories on Amplitude",
+        done: "Listed tool categories on Amplitude",
+      },
+      get_category_tools: {
+        running: "Listing category tools on Amplitude",
+        done: "Listed category tools on Amplitude",
+      },
+      describe_tool: {
+        running: "Describing tool on Amplitude",
+        done: "Described tool on Amplitude",
+      },
+      use_amplitude_chart_monitors: {
+        running: "Managing chart monitors on Amplitude",
+        done: "Managed chart monitors on Amplitude",
+      },
+      use_amp_dashboards: {
+        running: "Managing dashboards on Amplitude",
+        done: "Managed dashboards on Amplitude",
+      },
+      use_amp_notebooks: {
+        running: "Managing notebooks on Amplitude",
+        done: "Managed notebooks on Amplitude",
+      },
+      use_amp_comments: {
+        running: "Managing comments on Amplitude",
+        done: "Managed comments on Amplitude",
+      },
+      use_amplitude_cohorts: {
+        running: "Managing cohorts on Amplitude",
+        done: "Managed cohorts on Amplitude",
       },
       create_experiment: {
         running: "Creating experiment on Amplitude",
         done: "Created experiment on Amplitude",
       },
-      create_cohort: {
-        running: "Creating cohort on Amplitude",
-        done: "Created cohort on Amplitude",
+      update_experiment: {
+        running: "Updating experiment on Amplitude",
+        done: "Updated experiment on Amplitude",
+      },
+      create_metric: {
+        running: "Creating metric on Amplitude",
+        done: "Created metric on Amplitude",
+      },
+      manage_wave_opportunities: {
+        running: "Managing opportunities on Amplitude",
+        done: "Managed opportunities on Amplitude",
+      },
+      manage_wave_product_areas: {
+        running: "Managing product areas on Amplitude",
+        done: "Managed product areas on Amplitude",
+      },
+      manage_wave_verification_artifacts: {
+        running: "Managing verification artifacts on Amplitude",
+        done: "Managed verification artifacts on Amplitude",
+      },
+      share_amp_entities: {
+        running: "Updating sharing on Amplitude",
+        done: "Updated sharing on Amplitude",
+      },
+      create_flags: {
+        running: "Creating feature flags on Amplitude",
+        done: "Created feature flags on Amplitude",
+      },
+      update_flag: {
+        running: "Updating feature flag on Amplitude",
+        done: "Updated feature flag on Amplitude",
+      },
+      manage_amp_events: {
+        running: "Managing events on Amplitude",
+        done: "Managed events on Amplitude",
+      },
+      manage_amp_properties: {
+        running: "Managing properties on Amplitude",
+        done: "Managed properties on Amplitude",
+      },
+      manage_amp_taxonomy: {
+        running: "Managing tracking plan on Amplitude",
+        done: "Managed tracking plan on Amplitude",
       },
     },
   },
@@ -1390,28 +1510,52 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     toolStakes: {
       search: "never_ask",
       get_from_url: "never_ask",
-      get_context: "never_ask",
-      get_charts: "never_ask",
-      get_dashboard: "never_ask",
-      get_cohorts: "never_ask",
+      get_amplitude_context: "never_ask",
+      query_amplitude_data: "never_ask",
+      get_amplitude_charts: "never_ask",
+      render_amplitude_chart: "never_ask",
+      get_amp_user_data: "never_ask",
       get_experiments: "never_ask",
-      get_event_properties: "never_ask",
-      get_session_replays: "never_ask",
-      get_users: "never_ask",
-      query_chart: "never_ask",
-      query_charts: "never_ask",
-      query_dataset: "never_ask",
       query_experiment: "never_ask",
-      get_feedback_insights: "never_ask",
-      get_feedback_comments: "never_ask",
-      get_feedback_mentions: "never_ask",
-      get_feedback_sources: "never_ask",
-      save_chart_edits: "low",
-      create_chart: "low",
-      create_dashboard: "low",
-      create_notebook: "low",
+      get_flags: "never_ask",
+      get_deployments: "never_ask",
+      get_amp_taxonomy: "never_ask",
+      get_transformations: "never_ask",
+      get_group_types: "never_ask",
+      get_session_replays: "never_ask",
+      list_session_replays: "never_ask",
+      get_session_replay_events: "never_ask",
+      list_guides_surveys: "never_ask",
+      get_guide_or_survey: "never_ask",
+      query_wave_opportunities: "never_ask",
+      query_wave_product_areas: "never_ask",
+      use_amplitude_ai_feedback: "never_ask",
+      get_agent_results: "never_ask",
+      get_amplitude_agent_analytics_info: "never_ask",
+      get_data_ingestion_sources: "never_ask",
+      get_data_source_details: "never_ask",
+      get_data_warehouse_destinations: "never_ask",
+      get_data_warehouse_jobs: "never_ask",
+      list_tool_categories: "never_ask",
+      get_category_tools: "never_ask",
+      describe_tool: "never_ask",
+      use_amplitude_chart_monitors: "low",
+      use_amp_dashboards: "low",
+      use_amp_notebooks: "low",
+      use_amp_comments: "low",
+      use_amplitude_cohorts: "low",
       create_experiment: "low",
-      create_cohort: "low",
+      update_experiment: "low",
+      create_metric: "low",
+      manage_wave_opportunities: "low",
+      manage_wave_product_areas: "low",
+      manage_wave_verification_artifacts: "low",
+      share_amp_entities: "high",
+      create_flags: "high",
+      update_flag: "high",
+      manage_amp_events: "high",
+      manage_amp_properties: "high",
+      manage_amp_taxonomy: "high",
     },
     toolDisplayLabels: {
       search: {
@@ -1422,93 +1566,189 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         running: "Fetching from Amplitude URL",
         done: "Fetched from Amplitude URL",
       },
-      get_context: {
+      get_amplitude_context: {
         running: "Fetching context from Amplitude",
         done: "Fetched context from Amplitude",
       },
-      get_charts: {
+      query_amplitude_data: {
+        running: "Querying data on Amplitude",
+        done: "Queried data on Amplitude",
+      },
+      get_amplitude_charts: {
         running: "Fetching charts from Amplitude",
         done: "Fetched charts from Amplitude",
       },
-      get_dashboard: {
-        running: "Fetching dashboard from Amplitude",
-        done: "Fetched dashboard from Amplitude",
+      render_amplitude_chart: {
+        running: "Rendering chart from Amplitude",
+        done: "Rendered chart from Amplitude",
       },
-      get_cohorts: {
-        running: "Fetching cohorts from Amplitude",
-        done: "Fetched cohorts from Amplitude",
+      get_amp_user_data: {
+        running: "Fetching user data from Amplitude",
+        done: "Fetched user data from Amplitude",
       },
       get_experiments: {
         running: "Fetching experiments from Amplitude",
         done: "Fetched experiments from Amplitude",
       },
-      get_event_properties: {
-        running: "Fetching event properties from Amplitude",
-        done: "Fetched event properties from Amplitude",
+      query_experiment: {
+        running: "Querying experiment on Amplitude",
+        done: "Queried experiment on Amplitude",
+      },
+      get_flags: {
+        running: "Fetching feature flags from Amplitude",
+        done: "Fetched feature flags from Amplitude",
+      },
+      get_deployments: {
+        running: "Fetching deployments from Amplitude",
+        done: "Fetched deployments from Amplitude",
+      },
+      get_amp_taxonomy: {
+        running: "Fetching taxonomy from Amplitude",
+        done: "Fetched taxonomy from Amplitude",
+      },
+      get_transformations: {
+        running: "Fetching transformations from Amplitude",
+        done: "Fetched transformations from Amplitude",
+      },
+      get_group_types: {
+        running: "Fetching group types from Amplitude",
+        done: "Fetched group types from Amplitude",
       },
       get_session_replays: {
         running: "Fetching session replays from Amplitude",
         done: "Fetched session replays from Amplitude",
       },
-      get_users: {
-        running: "Fetching users from Amplitude",
-        done: "Fetched users from Amplitude",
+      list_session_replays: {
+        running: "Listing session replays on Amplitude",
+        done: "Listed session replays on Amplitude",
       },
-      query_chart: {
-        running: "Querying chart on Amplitude",
-        done: "Queried chart on Amplitude",
+      get_session_replay_events: {
+        running: "Fetching session replay events from Amplitude",
+        done: "Fetched session replay events from Amplitude",
       },
-      query_charts: {
-        running: "Querying charts on Amplitude",
-        done: "Queried charts on Amplitude",
+      list_guides_surveys: {
+        running: "Listing guides and surveys on Amplitude",
+        done: "Listed guides and surveys on Amplitude",
       },
-      query_dataset: {
-        running: "Querying dataset on Amplitude",
-        done: "Queried dataset on Amplitude",
+      get_guide_or_survey: {
+        running: "Fetching guide or survey from Amplitude",
+        done: "Fetched guide or survey from Amplitude",
       },
-      query_experiment: {
-        running: "Querying experiment on Amplitude",
-        done: "Queried experiment on Amplitude",
+      query_wave_opportunities: {
+        running: "Querying opportunities on Amplitude",
+        done: "Queried opportunities on Amplitude",
       },
-      get_feedback_insights: {
-        running: "Fetching feedback insights from Amplitude",
-        done: "Fetched feedback insights from Amplitude",
+      query_wave_product_areas: {
+        running: "Querying product areas on Amplitude",
+        done: "Queried product areas on Amplitude",
       },
-      get_feedback_comments: {
-        running: "Fetching feedback comments from Amplitude",
-        done: "Fetched feedback comments from Amplitude",
+      use_amplitude_ai_feedback: {
+        running: "Fetching feedback from Amplitude",
+        done: "Fetched feedback from Amplitude",
       },
-      get_feedback_mentions: {
-        running: "Fetching feedback mentions from Amplitude",
-        done: "Fetched feedback mentions from Amplitude",
+      get_agent_results: {
+        running: "Fetching agent results from Amplitude",
+        done: "Fetched agent results from Amplitude",
       },
-      get_feedback_sources: {
-        running: "Fetching feedback sources from Amplitude",
-        done: "Fetched feedback sources from Amplitude",
+      get_amplitude_agent_analytics_info: {
+        running: "Fetching agent analytics from Amplitude",
+        done: "Fetched agent analytics from Amplitude",
       },
-      save_chart_edits: {
-        running: "Saving chart edits on Amplitude",
-        done: "Saved chart edits on Amplitude",
+      get_data_ingestion_sources: {
+        running: "Fetching ingestion sources from Amplitude",
+        done: "Fetched ingestion sources from Amplitude",
       },
-      create_chart: {
-        running: "Creating chart on Amplitude",
-        done: "Created chart on Amplitude",
+      get_data_source_details: {
+        running: "Fetching data source details from Amplitude",
+        done: "Fetched data source details from Amplitude",
       },
-      create_dashboard: {
-        running: "Creating dashboard on Amplitude",
-        done: "Created dashboard on Amplitude",
+      get_data_warehouse_destinations: {
+        running: "Fetching warehouse destinations from Amplitude",
+        done: "Fetched warehouse destinations from Amplitude",
       },
-      create_notebook: {
-        running: "Creating notebook on Amplitude",
-        done: "Created notebook on Amplitude",
+      get_data_warehouse_jobs: {
+        running: "Fetching warehouse jobs from Amplitude",
+        done: "Fetched warehouse jobs from Amplitude",
+      },
+      list_tool_categories: {
+        running: "Listing tool categories on Amplitude",
+        done: "Listed tool categories on Amplitude",
+      },
+      get_category_tools: {
+        running: "Listing category tools on Amplitude",
+        done: "Listed category tools on Amplitude",
+      },
+      describe_tool: {
+        running: "Describing tool on Amplitude",
+        done: "Described tool on Amplitude",
+      },
+      use_amplitude_chart_monitors: {
+        running: "Managing chart monitors on Amplitude",
+        done: "Managed chart monitors on Amplitude",
+      },
+      use_amp_dashboards: {
+        running: "Managing dashboards on Amplitude",
+        done: "Managed dashboards on Amplitude",
+      },
+      use_amp_notebooks: {
+        running: "Managing notebooks on Amplitude",
+        done: "Managed notebooks on Amplitude",
+      },
+      use_amp_comments: {
+        running: "Managing comments on Amplitude",
+        done: "Managed comments on Amplitude",
+      },
+      use_amplitude_cohorts: {
+        running: "Managing cohorts on Amplitude",
+        done: "Managed cohorts on Amplitude",
       },
       create_experiment: {
         running: "Creating experiment on Amplitude",
         done: "Created experiment on Amplitude",
       },
-      create_cohort: {
-        running: "Creating cohort on Amplitude",
-        done: "Created cohort on Amplitude",
+      update_experiment: {
+        running: "Updating experiment on Amplitude",
+        done: "Updated experiment on Amplitude",
+      },
+      create_metric: {
+        running: "Creating metric on Amplitude",
+        done: "Created metric on Amplitude",
+      },
+      manage_wave_opportunities: {
+        running: "Managing opportunities on Amplitude",
+        done: "Managed opportunities on Amplitude",
+      },
+      manage_wave_product_areas: {
+        running: "Managing product areas on Amplitude",
+        done: "Managed product areas on Amplitude",
+      },
+      manage_wave_verification_artifacts: {
+        running: "Managing verification artifacts on Amplitude",
+        done: "Managed verification artifacts on Amplitude",
+      },
+      share_amp_entities: {
+        running: "Updating sharing on Amplitude",
+        done: "Updated sharing on Amplitude",
+      },
+      create_flags: {
+        running: "Creating feature flags on Amplitude",
+        done: "Created feature flags on Amplitude",
+      },
+      update_flag: {
+        running: "Updating feature flag on Amplitude",
+        done: "Updated feature flag on Amplitude",
+      },
+      manage_amp_events: {
+        running: "Managing events on Amplitude",
+        done: "Managed events on Amplitude",
+      },
+      manage_amp_properties: {
+        running: "Managing properties on Amplitude",
+        done: "Managed properties on Amplitude",
+      },
+      manage_amp_taxonomy: {
+        running: "Managing tracking plan on Amplitude",
+        done: "Managed tracking plan on Amplitude",
       },
     },
   },
@@ -5830,13 +6070,253 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10049,
+    name: "Airbyte",
+    description:
+      "Airbyte tools to deploy and manage Airbyte Cloud connectors, connections and sync jobs, and to query the data synced through them.",
+    url: "https://mcp.airbyte.com/mcp",
+    icon: "AirbyteLogo",
+    documentationUrl: "https://docs.airbyte.com/platform/airbyte-mcp/install",
+    connectionInstructions:
+      "Airbyte uses OAuth with dynamic client registration. Sign in with your Airbyte Cloud account to connect. Your organization must be enrolled in the Airbyte MCP beta, and an organization admin must enable the context layer for tools that read data through connectors.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      get_default_cloud_context: "never_ask",
+      list_cloud_workspaces: "never_ask",
+      describe_cloud_workspace: "never_ask",
+      list_cloud_organizations: "never_ask",
+      describe_cloud_organization: "never_ask",
+      get_cloud_organization_billing_status: "never_ask",
+      list_cloud_connectors: "never_ask",
+      describe_cloud_connector: "never_ask",
+      check_cloud_connector: "never_ask",
+      list_cloud_connections: "never_ask",
+      describe_cloud_connection: "never_ask",
+      get_connection_artifact: "never_ask",
+      list_cloud_sync_jobs: "never_ask",
+      get_cloud_sync_status: "never_ask",
+      get_cloud_sync_logs: "never_ask",
+      get_cloud_search_status: "never_ask",
+      execute_external_sql_query: "never_ask",
+      execute_external_search_query: "never_ask",
+      list_custom_source_definitions: "never_ask",
+      get_custom_source_definition: "never_ask",
+      get_connector_builder_draft_manifest: "never_ask",
+      list_connectors: "never_ask",
+      get_connector_info: "never_ask",
+      get_connector_version_history: "never_ask",
+      get_api_docs_urls: "never_ask",
+      get_agent_skill_docs: "never_ask",
+      search_airbyte_knowledge_sources: "never_ask",
+      deploy_connector_to_cloud: "high",
+      deploy_noop_destination_to_cloud: "high",
+      create_connection_on_cloud: "high",
+      run_cloud_sync: "high",
+      cancel_cloud_sync: "high",
+      set_default_cloud_workspace: "high",
+      rename_cloud_connector: "high",
+      update_cloud_connector_config: "high",
+      rename_cloud_connection: "high",
+      set_cloud_connection_table_prefix: "high",
+      set_cloud_connection_selected_streams: "high",
+      update_cloud_connection: "high",
+      publish_custom_source_definition: "high",
+      update_custom_source_definition: "high",
+      permanently_delete_custom_source_definition: "high",
+      permanently_delete_cloud_connector: "high",
+      permanently_delete_cloud_connection: "high",
+      execute_external_api_query: "high",
+    },
+    toolDisplayLabels: {
+      get_default_cloud_context: {
+        running: "Getting the default context on Airbyte",
+        done: "Got the default context on Airbyte",
+      },
+      list_cloud_workspaces: {
+        running: "Listing workspaces on Airbyte",
+        done: "Listed workspaces on Airbyte",
+      },
+      describe_cloud_workspace: {
+        running: "Getting workspace details on Airbyte",
+        done: "Got workspace details on Airbyte",
+      },
+      list_cloud_organizations: {
+        running: "Listing organizations on Airbyte",
+        done: "Listed organizations on Airbyte",
+      },
+      describe_cloud_organization: {
+        running: "Getting organization details on Airbyte",
+        done: "Got organization details on Airbyte",
+      },
+      get_cloud_organization_billing_status: {
+        running: "Getting billing status on Airbyte",
+        done: "Got billing status on Airbyte",
+      },
+      list_cloud_connectors: {
+        running: "Listing connectors on Airbyte",
+        done: "Listed connectors on Airbyte",
+      },
+      describe_cloud_connector: {
+        running: "Getting connector details on Airbyte",
+        done: "Got connector details on Airbyte",
+      },
+      check_cloud_connector: {
+        running: "Checking a connector on Airbyte",
+        done: "Checked a connector on Airbyte",
+      },
+      list_cloud_connections: {
+        running: "Listing connections on Airbyte",
+        done: "Listed connections on Airbyte",
+      },
+      describe_cloud_connection: {
+        running: "Getting connection details on Airbyte",
+        done: "Got connection details on Airbyte",
+      },
+      get_connection_artifact: {
+        running: "Getting a connection artifact from Airbyte",
+        done: "Got a connection artifact from Airbyte",
+      },
+      list_cloud_sync_jobs: {
+        running: "Listing sync jobs on Airbyte",
+        done: "Listed sync jobs on Airbyte",
+      },
+      get_cloud_sync_status: {
+        running: "Getting sync status on Airbyte",
+        done: "Got sync status on Airbyte",
+      },
+      get_cloud_sync_logs: {
+        running: "Getting sync logs from Airbyte",
+        done: "Got sync logs from Airbyte",
+      },
+      get_cloud_search_status: {
+        running: "Getting search indexing status on Airbyte",
+        done: "Got search indexing status on Airbyte",
+      },
+      execute_external_sql_query: {
+        running: "Running a SQL query on Airbyte",
+        done: "Ran a SQL query on Airbyte",
+      },
+      execute_external_search_query: {
+        running: "Searching synced data on Airbyte",
+        done: "Searched synced data on Airbyte",
+      },
+      list_custom_source_definitions: {
+        running: "Listing custom sources on Airbyte",
+        done: "Listed custom sources on Airbyte",
+      },
+      get_custom_source_definition: {
+        running: "Getting a custom source on Airbyte",
+        done: "Got a custom source on Airbyte",
+      },
+      get_connector_builder_draft_manifest: {
+        running: "Getting a draft manifest on Airbyte",
+        done: "Got a draft manifest on Airbyte",
+      },
+      list_connectors: {
+        running: "Listing available connectors on Airbyte",
+        done: "Listed available connectors on Airbyte",
+      },
+      get_connector_info: {
+        running: "Getting connector info on Airbyte",
+        done: "Got connector info on Airbyte",
+      },
+      get_connector_version_history: {
+        running: "Getting connector version history on Airbyte",
+        done: "Got connector version history on Airbyte",
+      },
+      get_api_docs_urls: {
+        running: "Getting API docs links on Airbyte",
+        done: "Got API docs links on Airbyte",
+      },
+      get_agent_skill_docs: {
+        running: "Getting skill docs on Airbyte",
+        done: "Got skill docs on Airbyte",
+      },
+      search_airbyte_knowledge_sources: {
+        running: "Searching Airbyte documentation",
+        done: "Searched Airbyte documentation",
+      },
+      deploy_connector_to_cloud: {
+        running: "Deploying a connector on Airbyte",
+        done: "Deployed a connector on Airbyte",
+      },
+      deploy_noop_destination_to_cloud: {
+        running: "Deploying a test destination on Airbyte",
+        done: "Deployed a test destination on Airbyte",
+      },
+      create_connection_on_cloud: {
+        running: "Creating a connection on Airbyte",
+        done: "Created a connection on Airbyte",
+      },
+      run_cloud_sync: {
+        running: "Running a sync on Airbyte",
+        done: "Ran a sync on Airbyte",
+      },
+      cancel_cloud_sync: {
+        running: "Canceling a sync on Airbyte",
+        done: "Canceled a sync on Airbyte",
+      },
+      set_default_cloud_workspace: {
+        running: "Setting the default workspace on Airbyte",
+        done: "Set the default workspace on Airbyte",
+      },
+      rename_cloud_connector: {
+        running: "Renaming a connector on Airbyte",
+        done: "Renamed a connector on Airbyte",
+      },
+      update_cloud_connector_config: {
+        running: "Updating a connector configuration on Airbyte",
+        done: "Updated a connector configuration on Airbyte",
+      },
+      rename_cloud_connection: {
+        running: "Renaming a connection on Airbyte",
+        done: "Renamed a connection on Airbyte",
+      },
+      set_cloud_connection_table_prefix: {
+        running: "Setting a table prefix on Airbyte",
+        done: "Set a table prefix on Airbyte",
+      },
+      set_cloud_connection_selected_streams: {
+        running: "Setting selected streams on Airbyte",
+        done: "Set selected streams on Airbyte",
+      },
+      update_cloud_connection: {
+        running: "Updating a connection on Airbyte",
+        done: "Updated a connection on Airbyte",
+      },
+      publish_custom_source_definition: {
+        running: "Publishing a custom source on Airbyte",
+        done: "Published a custom source on Airbyte",
+      },
+      update_custom_source_definition: {
+        running: "Updating a custom source on Airbyte",
+        done: "Updated a custom source on Airbyte",
+      },
+      permanently_delete_custom_source_definition: {
+        running: "Deleting a custom source on Airbyte",
+        done: "Deleted a custom source on Airbyte",
+      },
+      permanently_delete_cloud_connector: {
+        running: "Deleting a connector on Airbyte",
+        done: "Deleted a connector on Airbyte",
+      },
+      permanently_delete_cloud_connection: {
+        running: "Deleting a connection on Airbyte",
+        done: "Deleted a connection on Airbyte",
+      },
+      execute_external_api_query: {
+        running: "Querying an external API on Airbyte",
+        done: "Queried an external API on Airbyte",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
   url: string | null | undefined
 ): DefaultRemoteMCPServerConfig | null => {
   return (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.url === url) || null
   );
 };
@@ -5844,7 +6324,6 @@ export const getDefaultRemoteMCPServerByURL = (
 export const getDefaultRemoteMCPServerById = (
   id: number
 ): DefaultRemoteMCPServerConfig | null => {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.id === id) || null;
 };
 
@@ -5852,7 +6331,6 @@ export const getDefaultRemoteMCPServerByName = (
   name: string
 ): DefaultRemoteMCPServerConfig | null => {
   return (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     DEFAULT_REMOTE_MCP_SERVERS.find((server) => server.name === name) || null
   );
 };

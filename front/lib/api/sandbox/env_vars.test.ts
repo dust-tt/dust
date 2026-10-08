@@ -169,6 +169,7 @@ describe("normalizeHttpsSecretAllowedDomains", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
+        expect(result.error.code).toBe("https_secret_single_label");
         expect(result.error.message).toContain("at least two DNS labels");
       }
     }

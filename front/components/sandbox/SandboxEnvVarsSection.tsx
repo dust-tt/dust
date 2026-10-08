@@ -1,3 +1,4 @@
+import { getEgressPolicyDomainErrorMessage } from "@app/components/sandbox/egress_policy_domain_error";
 import {
   ENV_VAR_NAME_SUFFIX_REGEX,
   envVarPrefixForKind,
@@ -8,6 +9,7 @@ import {
 } from "@app/lib/api/sandbox/env_vars";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { timeAgoFrom } from "@app/lib/client/relative_time";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   useDeleteSandboxEnvVar,
   usePatchSandboxEnvVar,
@@ -163,7 +165,9 @@ function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
             ctx.addIssue({
               code: "custom",
               path: ["allowedDomainsText"],
-              message: normalizedDomains.error.message,
+              message: t(
+                getEgressPolicyDomainErrorMessage(normalizedDomains.error)
+              ),
             });
           }
           return;
@@ -298,11 +302,14 @@ export function SandboxEnvVarsSection({
     if (errors.value) {
       return { message: errors.value.message ?? "", isError: true };
     }
-    const valueBytes = new TextEncoder().encode(valueValue).length;
-    const maxBytes =
+    const valueBytes = formatNumber(
+      new TextEncoder().encode(valueValue).length
+    );
+    const maxBytes = formatNumber(
       kindValue === "https_secret"
         ? MAX_HTTPS_SECRET_VALUE_BYTES
-        : MAX_VALUE_BYTES;
+        : MAX_VALUE_BYTES
+    );
     return {
       message:
         kindValue === "https_secret"
@@ -330,7 +337,10 @@ export function SandboxEnvVarsSection({
     const normalizedDomains =
       normalizeHttpsSecretAllowedDomains(allowedDomains);
     if (normalizedDomains.isErr()) {
-      return { message: normalizedDomains.error.message, isError: true };
+      return {
+        message: t(getEgressPolicyDomainErrorMessage(normalizedDomains.error)),
+        isError: true,
+      };
     }
 
     return {
@@ -358,7 +368,7 @@ export function SandboxEnvVarsSection({
       : null;
   const domainsDialogMessage =
     domainsDialogNormalized?.isErr() === true
-      ? domainsDialogNormalized.error.message
+      ? t(getEgressPolicyDomainErrorMessage(domainsDialogNormalized.error))
       : domainsDialogSavedDomains !== null
         ? savedAsMessage(domainsDialogSavedDomains)
         : allowedDomainsHelperText;

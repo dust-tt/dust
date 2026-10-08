@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { Input } from "@sparkle/components/Input";
 import { cn } from "@sparkle/lib/utils";
@@ -55,6 +56,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
     },
     ref
   ) => {
+    const { t } = useLingui();
     const inputRef = useRef<HTMLInputElement>(null);
     useImperativeHandle(ref, () => inputRef.current!);
 
@@ -150,7 +152,7 @@ export const InputWithSave = forwardRef<HTMLInputElement, InputWithSaveProps>(
             )}
             {showSaveButton && (
               <Button
-                label="Save"
+                label={t`Save`}
                 variant="highlight"
                 size="xs"
                 isLoading={isSaving}

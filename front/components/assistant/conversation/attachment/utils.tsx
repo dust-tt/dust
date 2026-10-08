@@ -39,7 +39,11 @@ import {
   Table,
   VolumeMax,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import type { ReactNode } from "react";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 export type AttachmentCitationIconSize = "sm" | "md" | "lg";
 
@@ -137,14 +141,16 @@ export const IconForAttachmentCitation = ({
 };
 
 export function contentFragmentToAttachmentCitation(
-  contentFragment: ContentFragmentType
+  contentFragment: ContentFragmentType,
+  t: Translate
 ): FileAttachmentCitation | NodeAttachmentCitation {
   // Handle expired content fragments
   if (contentFragment.expiredReason) {
+    const fragmentTitle = contentFragment.title;
     return {
       type: "file",
       id: contentFragment.sId,
-      title: `${contentFragment.title} (no longer available)`,
+      title: t(msg`${fragmentTitle} (no longer available)`),
       visual: (
         <IconForAttachmentCitation
           contentType={contentFragment.contentType}
@@ -190,7 +196,7 @@ export function contentFragmentToAttachmentCitation(
     // Compute custom title/description for pasted files
     const isPasted = isPastedFile(contentFragment.contentType);
     const title = isPasted
-      ? getDisplayNameFromPastedFileId(contentFragment.title)
+      ? getDisplayNameFromPastedFileId(contentFragment.title, t)
       : contentFragment.title;
     const description = isPasted
       ? getDisplayDateFromPastedFileId(contentFragment.title)

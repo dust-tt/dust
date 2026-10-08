@@ -1,0 +1,34 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/buffered.rs (target/release/deps/buffered-0d6c8a841a4879ca)
+
+running 7 tests
+test acknowledged_directory_overlay_preserves_unseen_changes ... ok
+test buffered_creates_coalesce_and_sync_preserves_all_files ... ok
+test buffered_revocation_is_deferred_and_retained ... ok
+test capacity_flush_keeps_current_file_buffered ... ok
+test file_batch_is_atomic_fenced_and_idempotent ... ok
+test graceful_unmount_drains_unpublished_files ... ok
+test incremental_refresh_handles_more_than_128_changes ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.90s
+
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.24s
+     Running tests/publication.rs (target/release/deps/publication-14b14e460df6b744)
+
+running 13 tests
+test live::buffered_batch_retains_identity_after_lost_reply_and_close ... ok
+test live::buffered_partial_batch_retains_identity_and_unpublished_file ... ok
+test live::live_ambiguous_append_survives_close_without_duplicate_publication ... ok
+test live::live_cached_read_checks_expiry_ranges_and_local_revision ... ok
+test live::live_content_hash_reuse_and_bounded_batches ... ok
+test live::live_default_binary_refreshes_revision_and_preserves_cli_ownership ... ok
+test live::live_delayed_content_does_not_block_metadata_and_revalidates ... ok
+test live::live_directory_reply_expiry_revalidates_unchanged_attributes ... ok
+test live::live_metadata_fences_writes_and_preserves_local_acknowledgements ... ok
+test live::live_readdirplus_populates_bounded_kernel_metadata_and_cached_reads ... ok
+test live::live_receipts_survive_close_and_sync_is_not_repeated ... ok
+test live::live_revision_expiry_detects_same_size_same_mtime_rewrite ... ok
+test live::live_two_mounts_follow_revision_and_preserve_unlinked_identity ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 26.70s
+

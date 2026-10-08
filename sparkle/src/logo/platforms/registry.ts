@@ -2,6 +2,7 @@ import type { ComponentType, SVGProps } from "react";
 
 import AdomikLogo from "./Adomik";
 import Ai21Logo from "./Ai21";
+import AirbyteLogo from "./Airbyte";
 import AirtableLogo from "./Airtable";
 import AmplitudeLogo from "./Amplitude";
 import AnthropicLogo from "./Anthropic";
@@ -129,6 +130,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 export const PLATFORM_LOGOS = {
   AdomikLogo,
   Ai21Logo,
+  AirbyteLogo,
   AirtableLogo,
   AmplitudeLogo,
   AnthropicLogo,

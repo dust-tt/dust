@@ -6,7 +6,8 @@ import { logger } from "./logger";
 import { getEnvFilePath, getLogPath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { isServiceRunning, readFileTail, spawnShellDaemon } from "./process";
-import { ALL_SERVICES, type ServiceName } from "./services";
+import { ALL_SERVICES, COLD_STATE_SERVICES, type ServiceName } from "./services";
+import type { Settings } from "./settings";
 import { buildShell } from "./shell";
 
 // Readiness check types - how to determine if a service is ready
@@ -198,7 +199,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    // The co-edition live session server, reached through the proxy's /collab route. Started on
+    // The co-edition live session server, reached through the proxy's /api/collab route. Started on
     // demand: only co-edition work needs it.
     buildCommand: (env) =>
       `COLLAB_HOSTNAME=localhost COLLAB_PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
@@ -221,17 +222,60 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, viz, storybook, sqlite-worker
-// and collab which start at spawn/manually).
-export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
-  (service) =>
-    service !== "sparkle" &&
-    service !== "sdk" &&
-    service !== "viz" &&
-    service !== "storybook" &&
-    service !== "sqlite-worker" &&
-    service !== "collab"
+// The proxy owns the public port and is how warm detects an already-warm environment.
+export const REQUIRED_WARM_SERVICES: readonly ServiceName[] = ["proxy"];
+
+// Services started by warm unless the user opts out via `dust-hive autostart`.
+export const DEFAULT_WARM_SERVICES: readonly ServiceName[] = [
+  "front-api",
+  "marketing",
+  "core",
+  "oauth",
+  "connectors",
+  "front-workers",
+  "front-spa-poke",
+  "front-spa-app",
+];
+
+const coldStateServices = new Set<ServiceName>(COLD_STATE_SERVICES);
+export const CONFIGURABLE_WARM_SERVICES: readonly ServiceName[] = ALL_SERVICES.filter(
+  (service) => !(coldStateServices.has(service) || REQUIRED_WARM_SERVICES.includes(service))
 );
+
+/**
+ * @cc [owner:tdraier,label:product] warm-services-from-settings
+ * Returns the services `warm` starts, in `ALL_SERVICES` order: every `REQUIRED_WARM_SERVICES`
+ * entry, plus each `CONFIGURABLE_WARM_SERVICES` entry whose `settings.autoStartServices` override
+ * is `true`, or which has no override and is in `DEFAULT_WARM_SERVICES`. Cold services
+ * (sdk, sparkle) are never returned.
+ */
+export function getWarmServices(settings: Settings): ServiceName[] {
+  const overrides = settings.autoStartServices ?? {};
+  return ALL_SERVICES.filter((service) => {
+    if (REQUIRED_WARM_SERVICES.includes(service)) {
+      return true;
+    }
+    if (!CONFIGURABLE_WARM_SERVICES.includes(service)) {
+      return false;
+    }
+    return overrides[service] ?? DEFAULT_WARM_SERVICES.includes(service);
+  });
+}
+
+// Overrides that make `getWarmServices` return exactly `selected` (plus required services), keeping
+// only the services that differ from `DEFAULT_WARM_SERVICES` so future default changes still apply.
+export function buildAutoStartOverrides(
+  selected: readonly ServiceName[]
+): Partial<Record<ServiceName, boolean>> {
+  const overrides: Partial<Record<ServiceName, boolean>> = {};
+  for (const service of CONFIGURABLE_WARM_SERVICES) {
+    const isSelected = selected.includes(service);
+    if (isSelected !== DEFAULT_WARM_SERVICES.includes(service)) {
+      overrides[service] = isSelected;
+    }
+  }
+  return overrides;
+}
 
 // Build the full shell command for a service
 // Note: For Rust services, cargo run is used with a symlinked target directory

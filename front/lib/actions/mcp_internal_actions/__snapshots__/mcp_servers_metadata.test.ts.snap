@@ -447,6 +447,18 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "edit_document": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "read_document": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "reply_to_comment": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
   },
   "exa_people_and_company": {
     "search_companies": {
@@ -1629,6 +1641,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
     "get_subitem_values": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_updates": {
       "freeUsage": false,
       "toolCostCategory": "advanced",
     },
@@ -2883,6 +2899,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "documents": {
     "add_comment": "never_ask",
+    "edit_document": "never_ask",
+    "read_document": "never_ask",
+    "reply_to_comment": "never_ask",
   },
   "exa_people_and_company": {
     "search_companies": "never_ask",
@@ -3216,6 +3235,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_item_details": "never_ask",
     "get_items_by_column_value": "never_ask",
     "get_subitem_values": "never_ask",
+    "get_updates": "never_ask",
     "get_user_details": "never_ask",
     "move_item_to_board": "high",
     "search_items": "never_ask",

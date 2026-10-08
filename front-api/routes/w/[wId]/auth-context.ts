@@ -72,6 +72,7 @@ app.get(
       : false;
 
     const featureFlags = await getFeatureFlags(auth);
+    const collabUrl = config.getCollabPublicUrl();
     const locale = await user.getLocale(workspace.locale);
 
     const workspacePermissions = await auth.getWorkspacePermissions();
@@ -112,6 +113,7 @@ app.get(
       featureFlags,
       ...(isEligibleForTrial !== undefined && { isEligibleForTrial }),
       vizUrl: config.getVizPublicUrl(),
+      ...(collabUrl && { collabUrl }),
       providersHealth: auth.providersHealth(),
       workspacePermissions,
       ...(groupManagement && { groupManagement }),

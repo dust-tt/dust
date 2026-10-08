@@ -395,12 +395,23 @@ export function PodTasksUpdateValidationDetails({
   return (
     <div className="flex flex-col gap-3 pt-2">
       <p className="text-sm text-muted-foreground">
-        <Trans>
-          The agent wants to update{" "}
-          <span className="font-medium text-foreground">{taskCount}</span>{" "}
-          <Plural value={taskCount} one="task" other="tasks" /> in{" "}
-          <span className="font-medium text-foreground">{podName}</span>.
-        </Trans>
+        <Plural
+          value={taskCount}
+          one={
+            <Trans>
+              The agent wants to update{" "}
+              <span className="font-medium text-foreground">#</span> task in{" "}
+              <span className="font-medium text-foreground">{podName}</span>.
+            </Trans>
+          }
+          other={
+            <Trans>
+              The agent wants to update{" "}
+              <span className="font-medium text-foreground">#</span> tasks in{" "}
+              <span className="font-medium text-foreground">{podName}</span>.
+            </Trans>
+          }
+        />
         {doneCount > 0 && (
           <>
             {" "}

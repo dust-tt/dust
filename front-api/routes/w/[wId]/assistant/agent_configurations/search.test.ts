@@ -204,8 +204,36 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     }
   );
 
+  it.each(["all", "favorites_only", "favorites_or_all"] as const)(
+    "passes %s selection and the query through and returns the favorites indicator",
+    async (selectionMode) => {
+      const { workspace } = await setup();
+      searchAgents.mockResolvedValue(
+        new Ok({
+          agents: [],
+          total: 0,
+          hasMore: false,
+          isFavoritesOnly: selectionMode === "favorites_only",
+          facets: {},
+        })
+      );
+      const response = await searchRequest(workspace.sId, {
+        query: "report",
+        selectionMode,
+      });
+      expect(response.status).toBe(200);
+      expect(searchAgents).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ searchTerm: "report", selectionMode })
+      );
+      const body = await response.json();
+      expect(body.isFavoritesOnly).toBe(selectionMode === "favorites_only");
+    }
+  );
+
   it.each([
     { limit: 101 },
+    { selectionMode: "fallback" },
     { offset: -1 },
     { offset: 1.5 },
     { offset: "25" },

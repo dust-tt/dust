@@ -1,0 +1,414 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Distributed DFS Elasticsearch search",
+    "version": "1",
+    "description": "Read-only search on any frontend. Bearer authentication uses current FoundationDB credentials without creating a session. Names and literal substrings are case-sensitive. Match uses Elasticsearch standard analysis with AND; phrase uses native phrase matching and scores. Substring queries scan at most 10100 candidates. Files over 8 MiB and binary files have metadata only. No cursor or ownership is stored in the frontend."
+  },
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "query"
+        ],
+        "properties": {
+          "query": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "all"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "node"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "id"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "exact"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "prefix"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "substring"
+                  },
+                  "value": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "match"
+                  },
+                  "terms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "terms"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "const": "phrase"
+                  },
+                  "terms": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096
+                  }
+                },
+                "required": [
+                  "type",
+                  "terms"
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "k": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "default": 0
+          },
+          "include_text": {
+            "type": "boolean",
+            "default": false
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "file",
+              "directory",
+              null
+            ]
+          }
+        }
+      },
+      "Response": {
+        "type": "object",
+        "required": [
+          "rows",
+          "dfs"
+        ],
+        "properties": {
+          "rows": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "required": [
+                "node_id",
+                "source_version"
+              ],
+              "properties": {
+                "node_id": {
+                  "type": "string"
+                },
+                "source_version": {
+                  "type": "string"
+                },
+                "basename": {
+                  "type": "string"
+                },
+                "kind": {
+                  "enum": [
+                    "file",
+                    "directory"
+                  ]
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "mtime_ms": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "content_status": {
+                  "enum": [
+                    "indexed",
+                    "directory",
+                    "binary",
+                    "too_large"
+                  ]
+                },
+                "_score": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "dfs": {
+            "type": "object",
+            "required": [
+              "engine",
+              "indexed_through",
+              "source_head",
+              "incomplete"
+            ],
+            "properties": {
+              "engine": {
+                "const": "elasticsearch"
+              },
+              "indexed_through": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "source_head": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "incomplete": {
+                "type": "boolean",
+                "description": "True on index lag, rejected stale versions, source/authority changes, or candidate budget exhaustion. No completeness promise for unindexed binary or oversized contents."
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/v1/workspaces/{workspace}/lexical/{table}/query": {
+      "post": {
+        "operationId": "query",
+        "description": "Offset and k count authorized current-version matches. At most 8 concurrent queries per frontend, 30 seconds per query, 16 KiB request and 16 MiB response. Filesystem changes during a query suppress all rows and mark incomplete. Backend errors fail explicitly. Nodes support all/node/exact/prefix/substring; documents support all/node/match/phrase/substring. include_text is only valid for documents.",
+        "parameters": [
+          {
+            "name": "workspace",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "table",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "nodes",
+                "documents"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search results; inspect dfs.incomplete",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid or expired credential",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown workspace or table",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Request too large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Search admission full",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Backend unavailable, timeout, invalid index state, or response size limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lexical/openapi.json": {
+      "get": {
+        "operationId": "schema",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "This OpenAPI document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

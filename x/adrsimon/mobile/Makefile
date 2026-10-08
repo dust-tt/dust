@@ -35,15 +35,19 @@ endif
 DESTINATION := platform=iOS Simulator,name=$(SIMULATOR)
 APP_PATH    := $(BUILD_DIR)/Build/Products/$(CONFIG)-iphonesimulator/Dust.app
 
-# Pretty-print xcodebuild output if xcbeautify is installed (`brew install xcbeautify`).
-XCBEAUTIFY := $(shell command -v xcbeautify 2>/dev/null)
-ifdef XCBEAUTIFY
-  BEAUTIFY := | xcbeautify
+# Quiet by default (warnings and errors only). `make build V=1` shows everything.
+ifeq ($(V),1)
+  QUIET :=
+  XCODEGEN_QUIET :=
+  FILTER :=
 else
-  BEAUTIFY :=
+  QUIET := -quiet
+  XCODEGEN_QUIET := --quiet
+  FILTER := 2>&1 | awk '/^Failed frontend command:/ { skip = 1; next } skip { skip = 0; next } \
+    /^note: / || /^\/\* com\.apple\.actool/ || index($$0, "$(CURDIR)/$(BUILD_DIR)/") == 1 { next } NF'
 endif
 
-XCODEBUILD := set -o pipefail && xcodebuild \
+XCODEBUILD := set -o pipefail && xcodebuild $(QUIET) \
 	-project $(PROJECT) \
 	-scheme $(SCHEME) \
 	-configuration $(CONFIG) \
@@ -66,32 +70,37 @@ help:
 	@echo "  make run:prod"
 	@echo "  make build:release"
 	@echo "  make run SIMULATOR='iPhone 16 Pro'"
+	@echo "  make build V=1          # full xcodebuild output"
 
 ## generate: (re)generate Dust.xcodeproj from project.yml via XcodeGen
 .PHONY: generate
 generate:
-	xcodegen generate
+	@xcodegen generate $(XCODEGEN_QUIET)
 
 ## build: build the app for the simulator (ENV selects the config)
 .PHONY: build
 build: generate
-	$(XCODEBUILD) CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- build $(BEAUTIFY)
+	@echo "🔨 Building $(CONFIG)"
+	@$(XCODEBUILD) CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY=- build $(FILTER)
+	@echo "✅ Built $(CONFIG)"
 
 ## run: build, then boot the simulator, install and launch the app
 .PHONY: run
 run: build
-	@echo "==> Booting $(SIMULATOR)"
+	@echo "📱 Booting $(SIMULATOR)"
 	@xcrun simctl boot "$(SIMULATOR)" 2>/dev/null || true
 	@open -a DeviceHub 2>/dev/null || open -a Simulator
-	@echo "==> Installing $(APP_PATH)"
+	@echo "📲 Installing and launching on $(SIMULATOR)"
 	@xcrun simctl install "$(SIMULATOR)" "$(APP_PATH)"
-	@echo "==> Launching $(BUNDLE_ID) ($(CONFIG))"
-	@xcrun simctl launch "$(SIMULATOR)" $(BUNDLE_ID)
+	@xcrun simctl launch "$(SIMULATOR)" $(BUNDLE_ID) >/dev/null
+	@echo "🚀 Dust ($(CONFIG)) running on $(SIMULATOR)"
 
 ## test: run the test suite on the simulator
 .PHONY: test
 test: generate
-	$(XCODEBUILD) CODE_SIGNING_ALLOWED=NO test $(BEAUTIFY)
+	@echo "🧪 Testing $(CONFIG)"
+	@$(XCODEBUILD) CODE_SIGNING_ALLOWED=NO test $(FILTER)
+	@echo "✅ Tests passed"
 
 ## logs: stream the running app's logs from the simulator
 .PHONY: logs
@@ -132,9 +141,9 @@ clean:
 
 # Convenience aliases per environment: `make build:dev`, `make run:prod`, etc.
 .PHONY: build\:dev build\:prod build\:release run\:dev run\:prod run\:release
-build\:dev:     ; @$(MAKE) build ENV=dev
-build\:prod:    ; @$(MAKE) build ENV=prod
-build\:release: ; @$(MAKE) build ENV=release
-run\:dev:       ; @$(MAKE) run   ENV=dev
-run\:prod:      ; @$(MAKE) run   ENV=prod
-run\:release:   ; @$(MAKE) run   ENV=release
+build\:dev:     ; @$(MAKE) --no-print-directory build ENV=dev
+build\:prod:    ; @$(MAKE) --no-print-directory build ENV=prod
+build\:release: ; @$(MAKE) --no-print-directory build ENV=release
+run\:dev:       ; @$(MAKE) --no-print-directory run   ENV=dev
+run\:prod:      ; @$(MAKE) --no-print-directory run   ENV=prod
+run\:release:   ; @$(MAKE) --no-print-directory run   ENV=release

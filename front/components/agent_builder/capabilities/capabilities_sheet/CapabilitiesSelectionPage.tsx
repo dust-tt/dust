@@ -1,4 +1,3 @@
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
@@ -6,9 +5,8 @@ import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
-import { useSkillWithRelations } from "@app/lib/swr/skill_configurations";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
-import { SearchInput, Spinner } from "@dust-tt/sparkle";
+import { Card, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
 
@@ -35,6 +33,66 @@ interface CapabilitiesSelectionPageProps {
   handleToolInfoClick: (view: MCPServerViewTypeWithLabel) => void;
 }
 
+// Mirrors the section heading rendered above each card grid.
+function CapabilitySectionHeadingLoading() {
+  return (
+    <div aria-hidden="true">
+      <div className="flex h-7 items-center">
+        <LoadingBlock className="h-5 w-16" />
+      </div>
+      <div className="flex h-5 items-center">
+        <LoadingBlock className="h-4 w-3/4" />
+      </div>
+    </div>
+  );
+}
+
+interface CapabilityCardsLoadingProps {
+  count: number;
+  // Height of the cards being loaded, matching SkillCard (h-36) or MCPServerCard (h-30).
+  cardContainerClassName: string;
+}
+
+// Mirrors the ActionCard layout: icon and label row, two description lines and footer link.
+function CapabilityCardsLoading({
+  count,
+  cardContainerClassName,
+}: CapabilityCardsLoadingProps) {
+  return (
+    <div className="grid grid-cols-2 gap-3" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <Card
+          key={`capability-card-loading-${i}`}
+          className="p-3"
+          containerClassName={cardContainerClassName}
+        >
+          <div className="flex h-full w-full flex-col justify-between">
+            <div className="flex flex-col">
+              <div className="mb-2 flex items-center gap-2">
+                <LoadingBlock className="h-7 w-7 shrink-0 rounded-lg" />
+                <LoadingBlock
+                  className={i % 2 === 0 ? "h-4 w-28" : "h-4 w-20"}
+                />
+              </div>
+              <div className="flex h-4 items-center">
+                <LoadingBlock className="h-3 w-full" />
+              </div>
+              <div className="flex h-4 items-center">
+                <LoadingBlock
+                  className={i % 2 === 0 ? "h-3 w-2/3" : "h-3 w-1/2"}
+                />
+              </div>
+            </div>
+            <div className="flex h-4 items-center">
+              <LoadingBlock className="h-3 w-20" />
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export function CapabilitiesSelectionPageContent({
   handleSkillToggle,
   filteredSkills,
@@ -51,19 +109,7 @@ export function CapabilitiesSelectionPageContent({
   onStateChange,
 }: CapabilitiesSelectionPageProps) {
   const { t } = useLingui();
-  const { owner } = useAgentBuilderContext();
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
-
-  const { fetchSkillWithRelations } = useSkillWithRelations(owner, {
-    onSuccess: ({ skill }) => {
-      onStateChange({
-        state: "info",
-        kind: "skill",
-        capability: skill,
-        hasPreviousPage: true,
-      });
-    },
-  });
 
   const sortedMCPServerViews = useMemo(
     () => [
@@ -96,10 +142,15 @@ export function CapabilitiesSelectionPageContent({
 
       {/* Keep the displayed results while the next search is loading. */}
       {isCapabilitiesLoading && !hasAnyResults ? (
-        <div className="flex h-40 items-center justify-center">
-          <Spinner />
-        </div>
-      ) : !hasAnyResults && !(showSkillsSection && skillPagination.hasMore) ? (
+        <>
+          <CapabilitySectionHeadingLoading />
+          <CapabilityCardsLoading
+            count={6}
+            cardContainerClassName={filter === "tools" ? "h-30" : "h-36"}
+          />
+        </>
+      ) : !hasAnyResults &&
+        !(filter === "skills" && skillPagination.hasMore) ? (
         <div className="flex flex-1 items-center justify-center py-12">
           <div className="px-4 text-center">
             <div className="mb-2 text-lg font-medium text-foreground">
@@ -142,7 +193,14 @@ export function CapabilitiesSelectionPageContent({
                     skill={skill}
                     isSelected={selectedSkillIds.has(skill.sId)}
                     onClick={() => handleSkillToggle(skill)}
-                    onMoreInfoClick={() => fetchSkillWithRelations(skill.sId)}
+                    onMoreInfoClick={() =>
+                      onStateChange({
+                        state: "info",
+                        kind: "skill",
+                        skillId: skill.sId,
+                        hasPreviousPage: true,
+                      })
+                    }
                   />
                 ))}
               </div>
@@ -174,7 +232,7 @@ export function CapabilitiesSelectionPageContent({
               </div>
             </>
           )}
-          {showSkillsSection && !(showToolsSection && hasTools) && (
+          {filter === "skills" && (
             // Recheck after every page, even when all its skills are already added.
             <InfiniteScroll
               key={`${resolvedSearchQuery}:${skillPagination.loadedCount}`}
@@ -182,9 +240,10 @@ export function CapabilitiesSelectionPageContent({
               hasMore={skillPagination.hasMore}
               showLoader={isCapabilitiesLoading}
               loader={
-                <div className="flex justify-center py-4">
-                  <Spinner size="sm" />
-                </div>
+                <CapabilityCardsLoading
+                  count={2}
+                  cardContainerClassName="h-36"
+                />
               }
             />
           )}

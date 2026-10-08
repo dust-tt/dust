@@ -46,14 +46,41 @@ import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
 export const INPUT_BAR_DEFAULT_PLACEHOLDER = msg`Get work done`;
+const INPUT_BAR_ROLLING_PLACEHOLDERS = [
+  INPUT_BAR_DEFAULT_PLACEHOLDER,
+  msg`Ask anything`,
+  msg`Start with a question`,
+  msg`Use @ to call an agent or person`,
+  msg`Ask an agent for help`,
+  msg`Use / to call a skill`,
+  msg`Bring the right people in with @`,
+];
+const PLACEHOLDER_ROLL_INTERVAL_MS = 15_000;
+const PLACEHOLDER_EXIT_MS = 150;
+const PLACEHOLDER_ENTER_MS = 250;
+const PLACEHOLDER_EXIT_CLASSES =
+  "[&_.is-editor-empty]:before:animate-out [&_.is-editor-empty]:before:fade-out [&_.is-editor-empty]:before:slide-out-to-top-1 [&_.is-editor-empty]:before:blur-out-[2px] [&_.is-editor-empty]:before:fill-mode-forwards [&_.is-editor-empty]:before:duration-150 [&_.is-editor-empty]:before:ease-out motion-reduce:[&_.is-editor-empty]:before:animate-none".split(
+    " "
+  );
+const PLACEHOLDER_ENTER_CLASSES =
+  "[&_.is-editor-empty]:before:animate-in [&_.is-editor-empty]:before:fade-in [&_.is-editor-empty]:before:slide-in-from-bottom-1 [&_.is-editor-empty]:before:blur-in-[2px] [&_.is-editor-empty]:before:duration-250 [&_.is-editor-empty]:before:ease-out motion-reduce:[&_.is-editor-empty]:before:animate-none".split(
+    " "
+  );
 // Matches the sidebar conversation title TypingAnimation cadence.
 export const TYPING_INTERVAL_MS = 32;
 export const TYPING_MAX_DURATION_MS = 700;
+
+function pickNextRollingPlaceholderIndex(currentIndex: number) {
+  const index = Math.floor(
+    Math.random() * (INPUT_BAR_ROLLING_PLACEHOLDERS.length - 1)
+  );
+  return index >= currentIndex ? index + 1 : index;
+}
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -582,7 +609,12 @@ const useCustomEditor = ({
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   const { t } = useLingui();
-  const defaultPlaceholder = t(INPUT_BAR_DEFAULT_PLACEHOLDER);
+  const [rollingPlaceholderIndex, setRollingPlaceholderIndex] = useState(() =>
+    Math.floor(Math.random() * INPUT_BAR_ROLLING_PLACEHOLDERS.length)
+  );
+  const defaultPlaceholder = t(
+    INPUT_BAR_ROLLING_PLACEHOLDERS[rollingPlaceholderIndex]
+  );
   // Read through a ref so placeholder changes don't rebuild the editor.
   const placeholderRef = useRef(placeholderOverride ?? defaultPlaceholder);
 
@@ -634,8 +666,16 @@ const useCustomEditor = ({
     [conversationId]
   );
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRollingPlaceholderIndex(pickNextRollingPlaceholderIndex);
+    }, PLACEHOLDER_ROLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
   // Apply placeholder changes. With animatePlaceholder, type the new
   // placeholder character by character, like the sidebar conversation titles.
+  // Otherwise, fade the old placeholder out and the new one in.
   // The Placeholder extension only re-reads placeholderRef on a state update,
   // so dispatch an empty transaction for each change. Skipped on mount since
   // the ref starts in sync with the override.
@@ -645,28 +685,48 @@ const useCustomEditor = ({
       return;
     }
 
-    if (!animatePlaceholder) {
-      placeholderRef.current = target;
+    const setPlaceholder = (text: string) => {
+      placeholderRef.current = text;
       editor.view.dispatch(editor.state.tr);
-      return;
+    };
+
+    if (animatePlaceholder) {
+      // Start at one character, like TypingAnimation.
+      let length = 1;
+      setPlaceholder(target.substring(0, length));
+
+      const typingEffect = setInterval(() => {
+        if (editor.isDestroyed || length >= target.length) {
+          clearInterval(typingEffect);
+          return;
+        }
+        length += 1;
+        setPlaceholder(target.substring(0, length));
+      }, TYPING_INTERVAL_MS);
+
+      return () => clearInterval(typingEffect);
     }
 
-    // Start at one character, like TypingAnimation.
-    let length = 1;
-    placeholderRef.current = target.substring(0, length);
-    editor.view.dispatch(editor.state.tr);
+    const { classList } = editor.view.dom;
+    classList.add(...PLACEHOLDER_EXIT_CLASSES);
+    let enterTimeout: ReturnType<typeof setTimeout> | undefined;
+    const exitTimeout = setTimeout(() => {
+      classList.remove(...PLACEHOLDER_EXIT_CLASSES);
+      classList.add(...PLACEHOLDER_ENTER_CLASSES);
+      setPlaceholder(target);
+      enterTimeout = setTimeout(() => {
+        classList.remove(...PLACEHOLDER_ENTER_CLASSES);
+      }, PLACEHOLDER_ENTER_MS);
+    }, PLACEHOLDER_EXIT_MS);
 
-    const typingEffect = setInterval(() => {
-      if (editor.isDestroyed || length >= target.length) {
-        clearInterval(typingEffect);
-        return;
-      }
-      length += 1;
-      placeholderRef.current = target.substring(0, length);
-      editor.view.dispatch(editor.state.tr);
-    }, TYPING_INTERVAL_MS);
-
-    return () => clearInterval(typingEffect);
+    return () => {
+      clearTimeout(exitTimeout);
+      clearTimeout(enterTimeout);
+      classList.remove(
+        ...PLACEHOLDER_EXIT_CLASSES,
+        ...PLACEHOLDER_ENTER_CLASSES
+      );
+    };
   }, [editor, placeholderOverride, animatePlaceholder, defaultPlaceholder]);
 
   const isMobileViewport = useIsMobile();

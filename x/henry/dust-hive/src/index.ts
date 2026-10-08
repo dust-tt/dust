@@ -2,6 +2,7 @@
 
 import { cac } from "cac";
 import { adoptCommand } from "./commands/adopt";
+import { autostartCommand } from "./commands/autostart";
 import { cacheCommand } from "./commands/cache";
 import { cdCommand } from "./commands/cd";
 import { coolCommand } from "./commands/cool";
@@ -339,6 +340,14 @@ cli.command("doctor", "Check prerequisites (non-interactive)").action(async () =
 cli.command("cache", "Show binary cache status").action(async () => {
   await prepareAndRun(cacheCommand());
 });
+
+cli
+  .command("autostart", "Choose which services warm starts automatically")
+  .option("-l, --list", "Print the current autostart configuration")
+  .option("--reset", "Restore the default autostart services")
+  .action(async (options: { list?: boolean; reset?: boolean }) => {
+    await prepareAndRun(autostartCommand(options));
+  });
 
 cli
   .command("refresh [name]", "Restore node_modules links in worktree")

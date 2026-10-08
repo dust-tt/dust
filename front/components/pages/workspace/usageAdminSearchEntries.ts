@@ -68,13 +68,8 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
       [msg`Upgrade request`, msg`allow members request upgrade`],
       [msg`Require a reason for upgrade requests`, msg`justification`],
       [msg`Auto-upgrade seats`, msg`free pro max at limit`],
+      [msg`Credit spend checkpoint`, msg`pause agent message threshold`],
     ],
-    SETTINGS_TAB
-  ),
-  ...adminSearchEntries(
-    PAGE,
-    U.costManagement,
-    [[msg`Credit spend checkpoint`, msg`pause agent message threshold`]],
     SETTINGS_TAB
   ),
   ...adminSearchEntries(

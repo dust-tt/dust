@@ -23,6 +23,7 @@ describe("ports", () => {
       expect(ports.qdrantGrpc).toBe(10334);
       expect(ports.elasticsearch).toBe(10200);
       expect(ports.kibana).toBe(10601);
+      expect(ports.fdb).toBe(10500);
       expect(ports.apacheTika).toBe(10998);
     });
 
@@ -38,6 +39,7 @@ describe("ports", () => {
       expect(ports.oauth).toBe(11006);
       expect(ports.postgres).toBe(11432);
       expect(ports.redis).toBe(11379);
+      expect(ports.fdb).toBe(11500);
     });
 
     it("applies all offsets correctly", () => {
@@ -60,6 +62,7 @@ describe("ports", () => {
       expect(ports.qdrantGrpc).toBe(base + PORT_OFFSETS.qdrantGrpc);
       expect(ports.elasticsearch).toBe(base + PORT_OFFSETS.elasticsearch);
       expect(ports.kibana).toBe(base + PORT_OFFSETS.kibana);
+      expect(ports.fdb).toBe(base + PORT_OFFSETS.fdb);
       expect(ports.apacheTika).toBe(base + PORT_OFFSETS.apacheTika);
     });
   });

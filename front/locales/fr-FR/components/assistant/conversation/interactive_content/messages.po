@@ -19,7 +19,7 @@ msgstr "Export en cours…"
 
 #: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
 msgid "Export"
-msgstr "Export"
+msgstr "Exporter"
 
 #: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
 msgid "Source (.zip)"
@@ -160,7 +160,7 @@ msgstr "Logo du workspace"
 
 #: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
 msgid "Try it yourself"
-msgstr "Essayer vous-même"
+msgstr "Essayez vous-même"
 
 #: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
 msgid "Go to conversation"

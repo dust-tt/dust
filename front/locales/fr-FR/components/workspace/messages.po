@@ -38,8 +38,8 @@ msgid "Between {MIN_INACTIVITY_THRESHOLD_DAYS} and {MAX_INACTIVITY_THRESHOLD_DAY
 msgstr "Entre {MIN_INACTIVITY_THRESHOLD_DAYS} et {MAX_INACTIVITY_THRESHOLD_DAYS}"
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-msgid "Nothing is archived until you have seen the count. Agents with a schedule are excluded."
-msgstr "Rien n’est archivé avant que vous ayez vu le décompte. Les agents planifiés sont exclus."
+msgid "Nothing is archived until you have seen the count. Agents with a schedule or a pending wake-up are excluded."
+msgstr "Rien n’est archivé avant que vous ayez vu le décompte. Les agents planifiés ou avec un réveil en attente sont exclus."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 msgid "{eligibleCount, plural, one {# agent would be archived} other {# agents would be archived}}"
@@ -58,8 +58,8 @@ msgid "No agent has gone unmentioned since {cutoffDate}."
 msgstr "Tous les agents ont été mentionnés depuis le {cutoffDate}."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
-msgid "{activeScheduleCount, plural, one {# agent with a schedule.} other {# agents with a schedule.}} Agents with a schedule are excluded from archival."
-msgstr "{activeScheduleCount, plural, one {# agent planifié.} other {# agents planifiés.}} Les agents planifiés sont exclus de l’archivage."
+msgid "{protectedCount, plural, one {# agent with a schedule or a pending wake-up.} other {# agents with a schedule or a pending wake-up.}} Agents with a schedule or a pending wake-up are excluded from archival."
+msgstr "{protectedCount, plural, one {# agent planifié ou avec un réveil en attente.} other {# agents planifiés ou avec un réveil en attente.}} Les agents planifiés ou avec un réveil en attente sont exclus de l’archivage."
 
 #: front/components/workspace/ArchiveUnusedAgentsModal.tsx
 msgid "Archiving will cancel their pending runs and suspend their editors' access. It can be undone one agent at a time."
@@ -74,8 +74,8 @@ msgstr "L’archivage annulera leurs exécutions en attente et suspendra l’acc
 #: front/components/workspace/ChangeSeatModal.tsx
 #: front/components/workspace/DirectorySync.tsx
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
 #: front/components/workspace/UpgradePlanDialog.tsx
 #: front/components/workspace/UpgradeRequests.tsx
 #: front/components/workspace/WorkspaceAccessPanel.tsx
@@ -244,8 +244,8 @@ msgid "Coupon applied!"
 msgstr "Coupon appliqué !"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "<0>{bonusCreditsFormatted} credits</0> have been added to your pool."
-msgstr "<0>{bonusCreditsFormatted} crédits</0> ont été ajoutés à votre réserve."
+msgid "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has been added to your pool.} other {<1>{bonusCreditsFormatted} credits</1> have been added to your pool.}}"
+msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} crédit</0> a été ajouté à votre réserve.} other {<1>{bonusCreditsFormatted} crédits</1> ont été ajoutés à votre réserve.}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -312,7 +312,7 @@ msgstr "Cela peut prendre quelques secondes."
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Credits purchased successfully!"
-msgstr "Crédits achetés avec succès !"
+msgstr "Crédits achetés !"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
@@ -337,10 +337,6 @@ msgstr "Veuillez contacter le support si le problème persiste."
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount"
 msgstr "Montant"
-
-#: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "{addedCreditsFormatted} credits"
-msgstr "{addedCreditsFormatted} crédits"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
@@ -387,8 +383,8 @@ msgid "Manage invoices"
 msgstr "Gérer les factures"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
-msgid "Add {addedCreditsFormatted} credits"
-msgstr "Ajouter {addedCreditsFormatted} crédits"
+msgid "Add {addedCredits, plural, one {{addedCreditsFormatted} credit} other {{addedCreditsFormatted} credits}}"
+msgstr "Ajouter {addedCredits, plural, one {{addedCreditsFormatted} crédit} other {{addedCreditsFormatted} crédits}}"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/TopUpsHistoryTable.tsx
@@ -678,7 +674,6 @@ msgid "For older credits, <0>contact support</0>."
 msgstr "Pour les crédits plus anciens, <0>contactez le support</0>."
 
 #: front/components/workspace/CreditLimitInput.tsx
-#: front/components/workspace/GroupSpendLimitCell.tsx
 msgid "credits/month"
 msgstr "crédits/mois"
 
@@ -781,10 +776,6 @@ msgid "User provisioning"
 msgstr "Provisionnement des utilisateurs"
 
 #: front/components/workspace/DirectorySync.tsx
-msgid "Setting up"
-msgstr "Configuration en cours"
-
-#: front/components/workspace/DirectorySync.tsx
 msgid "Configuring {connectionType} directory sync"
 msgstr "Configuration de la synchronisation d’annuaire {connectionType}"
 
@@ -820,6 +811,14 @@ msgstr "Groupes du workspace"
 #: front/components/workspace/DirectorySync.tsx
 msgid "No groups found in this workspace."
 msgstr "Aucun groupe trouvé dans ce workspace."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI cannot be empty."
+msgstr "L’URI de redirection ne peut pas être vide."
+
+#: front/components/workspace/DustMcpServerSettingsSheet.tsx
+msgid "Redirect URI must include a scheme (for example http://, https://, or cursor://)."
+msgstr "L’URI de redirection doit inclure un schéma (par exemple http://, https:// ou cursor://)."
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
 msgid "This redirect URI is already in the list."
@@ -878,8 +877,70 @@ msgid "Saving..."
 msgstr "Enregistrement…"
 
 #: front/components/workspace/DustMcpServerSettingsSheet.tsx
+#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Save"
 msgstr "Enregistrer"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgctxt "remove a credit limit, button label"
+msgid "Remove"
+msgstr "Supprimer"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Remove group seat"
+msgstr "Retirer le siège du groupe"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
+msgstr "Les membres de {groupName} perdront leur siège {seatName} à la fin de la période de facturation en cours. Les membres qui obtiennent aussi ce siège (ou un siège supérieur) via un autre groupe le conservent. Cela concerne jusqu’à {memberCount, plural, one {# membre} other {# membres}}."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/MembersUsageTable.tsx
+msgid "Remove seat"
+msgstr "Retirer le siège"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Shared by all members."
+msgstr "Partagé par tous les membres."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "This group has no budget."
+msgstr "Ce groupe n’a pas de budget."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Shared by all members. {usedCredits} credits used so far this cycle."
+msgstr "Partagé par tous les membres. {usedCredits} crédits utilisés jusqu’ici ce cycle."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Group budget"
+msgstr "Budget du groupe"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Grant {reviewSeatName} to {groupName}"
+msgstr "Attribuer {reviewSeatName} à {groupName}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Edit limits for {groupName}"
+msgstr "Modifier les limites de {groupName}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Granted seat"
+msgstr "Siège attribué"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Limit per member"
+msgstr "Limite par membre"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "No limit"
+msgstr "Aucune limite"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Caps what each member can spend."
+msgstr "Plafonne ce que chaque membre peut dépenser."
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
@@ -909,27 +970,6 @@ msgstr "Outils de l’extension de navigateur"
 msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
 msgstr "Indique si l’extension de navigateur Dust peut lister et lire les onglets du navigateur."
 
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Remove group seat"
-msgstr "Retirer le siège du groupe"
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Members of {groupName} will lose their {seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to {memberCount, plural, one {# member} other {# members}}."
-msgstr "Les membres de {groupName} perdront leur siège {seatName} à la fin de la période de facturation en cours. Les membres qui obtiennent aussi ce siège (ou un siège supérieur) via un autre groupe le conservent. Cela concerne jusqu’à {memberCount, plural, one {# membre} other {# membres}}."
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-#: front/components/workspace/MembersUsageTable.tsx
-msgid "Remove seat"
-msgstr "Retirer le siège"
-
-#: front/components/workspace/GroupSeatPickerDropdown.tsx
-msgid "Grant {reviewSeatName} to {groupName}"
-msgstr "Attribuer {reviewSeatName} à {groupName}"
-
-#: front/components/workspace/GroupSpendLimitCell.tsx
-msgid "No limit"
-msgstr "Aucune limite"
-
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Group"
@@ -942,22 +982,6 @@ msgid "Members"
 msgstr "Membres"
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Granted seat"
-msgstr "Siège attribué"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Limit per member"
-msgstr "Limite par membre"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Spend limit"
-msgstr "Limite de dépenses"
-
-#: front/components/workspace/GroupsUsageTable.tsx
-msgid "Shared limit"
-msgstr "Limite partagée"
-
-#: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Models tier"
 msgstr "Niveau de modèles"
@@ -967,8 +991,8 @@ msgid "A group's monthly spend limit applies to each of its members. When a memb
 msgstr "La limite de dépenses mensuelle d’un groupe s’applique à chacun de ses membres. Si un membre appartient à plusieurs groupes, la limite la plus élevée s’applique."
 
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "A shared limit caps what all the group's members spend together."
-msgstr "Une limite partagée plafonne ce que tous les membres du groupe dépensent ensemble."
+msgid "A group budget caps what all the group's members spend together."
+msgstr "Un budget de groupe plafonne ce que tous les membres du groupe dépensent ensemble."
 
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Limit"
@@ -1075,7 +1099,7 @@ msgstr "Revient à {previousLimit} crédits le {resetDate}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member pool credit usage"
-msgstr "Utilisation des crédits de la réserve par le membre"
+msgstr "Consommation de crédits de la réserve par le membre"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "{consumedLabel} of {limitLabel} pool credits used"
@@ -1135,7 +1159,7 @@ msgstr "{overageLabel} crédits au-delà de la limite de dépenses"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member credit usage"
-msgstr "Utilisation des crédits par le membre"
+msgstr "Consommation de crédits par le membre"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "No credits available"
@@ -1183,11 +1207,11 @@ msgstr "Crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Fair-use credits usage"
-msgstr "Utilisation des crédits d’usage raisonnable"
+msgstr "Consommation de crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{usedLabel} of {limitLabel} used"
-msgstr "{usedLabel} utilisés sur {limitLabel}"
+msgid "{limitCreditCount, plural, one {{usedLabel} of {limitLabel} credit used} other {{usedLabel} of {limitLabel} credits used}}"
+msgstr "{limitCreditCount, plural, one {{usedLabel} sur {limitLabel} crédit utilisé} other {{usedLabel} sur {limitLabel} crédits utilisés}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Unblock"
@@ -1247,7 +1271,7 @@ msgstr "Modèle"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Reasoning effort"
-msgstr "Effort de raisonnement"
+msgstr "Niveau d’effort"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "No model in this tier is available in this workspace."
@@ -1259,7 +1283,7 @@ msgstr "Fonctionnement des niveaux de modèles"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Model tiers group models and reasoning efforts by typical usage cost. Higher tiers include more capable, more expensive combinations."
-msgstr "Les niveaux de modèles regroupent les modèles et les efforts de raisonnement selon leur coût d’utilisation habituel. Les niveaux supérieurs incluent des combinaisons plus performantes et plus coûteuses."
+msgstr "Les niveaux de modèles regroupent les modèles et les niveaux d’effort selon leur coût d’utilisation habituel. Les niveaux supérieurs incluent des combinaisons plus performantes et plus coûteuses."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "What each tier includes"
@@ -1267,7 +1291,7 @@ msgstr "Contenu de chaque niveau"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Each tier includes a range of models and reasoning efforts with similar usage costs. Reasoning effort is how much work a model does before it answers: a higher effort can give better results on complex tasks, but usually costs more."
-msgstr "Chaque niveau comprend un ensemble de modèles et d’efforts de raisonnement aux coûts d’utilisation similaires. L’effort de raisonnement correspond au travail qu’un modèle fournit avant de répondre : un effort plus élevé peut donner de meilleurs résultats sur des tâches complexes, mais coûte généralement plus cher."
+msgstr "Chaque niveau comprend un ensemble de modèles et de niveaux d’effort aux coûts d’utilisation similaires. Le niveau d’effort correspond au travail qu’un modèle fournit avant de répondre : un niveau d’effort plus élevé peut donner de meilleurs résultats sur des tâches complexes, mais coûte généralement plus cher."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Why costs differ"
@@ -1275,7 +1299,7 @@ msgstr "Pourquoi les coûts diffèrent"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Usage cost depends on both the model and its reasoning effort. We compare each combination on representative tasks rather than on the model's token price alone. Raising the reasoning effort by one step usually increases the cost by about 30%."
-msgstr "Le coût d’utilisation dépend à la fois du modèle et de son effort de raisonnement. Nous comparons chaque combinaison sur des tâches représentatives plutôt que sur le seul prix des tokens du modèle. Augmenter l’effort de raisonnement d’un cran augmente généralement le coût d’environ 30 %."
+msgstr "Le coût d’utilisation dépend à la fois du modèle et de son niveau d’effort. Nous comparons chaque combinaison sur des tâches représentatives plutôt que sur le seul prix des tokens du modèle. Augmenter le niveau d’effort d’un cran augmente généralement le coût d’environ 30 %."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "How access limits work"
@@ -1291,7 +1315,7 @@ msgstr "Voir le contenu"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Select a tier to see the models and reasoning efforts it includes."
-msgstr "Sélectionnez un niveau pour voir les modèles et les efforts de raisonnement qu’il inclut."
+msgstr "Sélectionnez un niveau pour voir les modèles et les niveaux d’effort qu’il inclut."
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
 msgid "By Agent"
@@ -1510,8 +1534,8 @@ msgid "This will not change your invoice."
 msgstr "Cela ne modifiera pas votre facture."
 
 #: front/components/workspace/SharedUsageLimitCell.tsx
-msgid "Shared limit usage"
-msgstr "Consommation de la limite partagée"
+msgid "Group budget usage"
+msgstr "Utilisation du budget du groupe"
 
 #: front/components/workspace/SharedUsageLimitCell.tsx
 msgid "{usedLabel} of {limitLabel} credits used"
@@ -1563,7 +1587,7 @@ msgstr "Impossible de charger les limites actuelles de ce membre. Actualisez la 
 
 #: front/components/workspace/UpgradeRequests.tsx
 msgid "Deny upgrade request"
-msgstr "Refuser la demande de mise à niveau"
+msgstr "Refuser la demande d’augmentation"
 
 #: front/components/workspace/UpgradeRequests.tsx
 msgid "Deny {requesterName}'s request to increase their spend limit?"
@@ -1592,7 +1616,7 @@ msgstr "Modifier la limite"
 
 #: front/components/workspace/UpgradeRequestsTable.tsx
 msgid "No pending upgrade requests."
-msgstr "Aucune demande de mise à niveau en attente."
+msgstr "Aucune demande d’augmentation en attente."
 
 #: front/components/workspace/UsageMembersSection.tsx
 msgid "All groups"

@@ -16,7 +16,6 @@ export type WorkspaceSegmentationType = "interesting" | null;
 const ROLES = ["admin", "manager", "user", "none"] as const;
 export const ACTIVE_ROLES = ["admin", "manager", "user"] as const;
 export const ASSIGNABLE_ROLES = ["admin", "manager", "user"] as const;
-export const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 export const MANAGER_ROLE_NAME = "manager";
 

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Usage: impls/henry/deploy [run_id]. Deploys the latest build on a run's cluster and provisions one
+# tenant. Re-run after bin/clear. Writes .state/runs/<run_id>/henry/{endpoint,tenant.json}.
+source "$(dirname "$0")/../../bin/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(current_run)}"
+BUILD="$STATE_DIR/impls/henry/latest"
+[[ -f "$BUILD/image" ]] || die "no build; run impls/henry/build"
+IMAGE="$(cat "$BUILD/image")"
+PREFIX="bench-$(date -u +%H%M%S)/"
+OUT="$STATE_DIR/runs/$RUN_ID/henry"
+mkdir -p "$OUT"
+fetch_credentials "$RUN_ID"
+
+# ConfigMaps are namespaced: copy the operator's cluster file next to the servers.
+kubectl -n fdb get configmap fdb-config -o json |
+  jq '{apiVersion, kind, metadata: {name: .metadata.name, namespace: "dfs"}, data}' |
+  kubectl apply -f -
+
+log "deploying $IMAGE (tenant prefix $PREFIX)"
+sed -e "s|__IMAGE__|$IMAGE|" -e "s|__PREFIX__|$PREFIX|" "$BENCH_DIR/impls/henry/k8s/server.yaml" |
+  kubectl apply -f -
+kubectl -n dfs rollout status deploy/dfs-server --timeout=10m
+
+log "waiting for the load balancer"
+ip=""
+for _ in $(seq 60); do
+  ip="$(kubectl -n dfs get svc dfs-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  [[ -n "$ip" ]] && break
+  sleep 5
+done
+[[ -n "$ip" ]] || die "load balancer has no IP"
+echo "$ip:7400" >"$OUT/endpoint"
+
+log "provisioning the tenant"
+(umask 077 && kubectl -n dfs exec deploy/dfs-server -- \
+  /usr/local/bin/dfs-server --prefix "$PREFIX" provision --grant bench:write --token-for bench \
+  >"$OUT/tenant.json")
+jq -e '.tokens.bench' "$OUT/tenant.json" >/dev/null || die "provision returned no token"
+log "henry deployed: endpoint $ip:7400"

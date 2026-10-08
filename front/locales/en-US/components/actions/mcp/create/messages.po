@@ -105,6 +105,10 @@ msgid "Configure {toolName}"
 msgstr "Configure {toolName}"
 
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
+msgid "Configure an MCP server"
+msgstr "Configure an MCP server"
+
+#: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "Tool name"
 msgstr "Tool name"
 

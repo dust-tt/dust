@@ -6,10 +6,8 @@ import {
   hasReachedDailyUsageCap,
   incrementDailyUsageMicroUsd,
 } from "@app/lib/api/programmatic_usage/daily_cap";
-import {
-  hasKeyReachedUsageCap,
-  incrementRedisKeyUsageMicroUsd,
-} from "@app/lib/api/programmatic_usage/key_cap";
+import { hasKeyReachedUsageCap } from "@app/lib/api/programmatic_usage/key_cap";
+import { incrementRedisKeyUsageMicroUsd } from "@app/lib/api/programmatic_usage/key_usage";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { computeRunFingerprint } from "@app/lib/credits/agent_message_billing";

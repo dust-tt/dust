@@ -1,0 +1,9 @@
+{
+  "application_iteration": "buffer-11",
+  "source_fingerprints": "buffer-11-source.json",
+  "source_archive": "buffer-11-source.tar.gz",
+  "binary_fingerprints": "git-01-binaries.json",
+  "runtime_verification": "git-01-runtime.json",
+  "client_harness": "git-01-harness.py",
+  "same_application_binaries": true
+}

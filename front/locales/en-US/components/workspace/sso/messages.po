@@ -64,6 +64,10 @@ msgid "You cannot enable auto-join with the free plan. Upgrade your plan to invi
 msgstr "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members."
 
 #: front/components/workspace/sso/AutoJoinToggle.tsx
+msgid "Joining the workspace"
+msgstr "Joining the workspace"
+
+#: front/components/workspace/sso/AutoJoinToggle.tsx
 msgid "Auto-join Workspace"
 msgstr "Auto-join Workspace"
 

@@ -99,11 +99,11 @@ msgstr "Toutes les conversations de ce Pod."
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Show triggered"
-msgstr "Afficher les conversations déclenchées"
+msgstr "Afficher les déclenchées"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Hide triggered"
-msgstr "Masquer les conversations déclenchées"
+msgstr "Masquer les déclenchées"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Search..."
@@ -160,6 +160,10 @@ msgstr "Quitter le plein écran"
 #: front/components/pod/conversation/PodPinnedBanner.tsx
 msgid "Open in full screen"
 msgstr "Ouvrir en plein écran"
+
+#: front/components/pod/conversation/PodPinnedBanner.tsx
+msgid "Frame"
+msgstr "Frame"
 
 #: front/components/pod/conversation/PodPinnedBanner.tsx
 msgid "Show"

@@ -45,6 +45,7 @@ import type { RedisClientType } from "redis";
 const PAGE_SIZE = 500;
 const UPDATE_PARENTS_BATCH_SIZE = 1_000;
 const UPDATE_PARENTS_CONCURRENCY = 8;
+const UPDATE_PARENTS_PROGRESS_TTL_SECONDS = 60 * 60 * 24; // 1 day
 
 type ParentsUpdate = {
   file: GoogleDriveFilesModel;
@@ -303,7 +304,8 @@ export async function incrementalSync(
               connector,
               localFolder,
               parents,
-              localLogger
+              localLogger,
+              redisCli
             );
             hadRelevantChange = true;
           }
@@ -454,11 +456,17 @@ async function getQuietDriveBaselineAt(
   );
 }
 
+/**
+ * @cc [owner:philipperolet,label:performance;product] resumable-move
+ * When a folder is moved, a descendant's data source parents update MUST be skipped only if a
+ * previous attempt completed it for the same folder and the same new parents chain.
+ */
 async function recurseUpdateParents(
   connector: ConnectorResource,
   file: GoogleDriveFilesModel,
   parentIds: string[],
-  logger: Logger
+  logger: Logger,
+  redisCli: RedisClientType
 ) {
   return tracer.trace(
     "gdrive",
@@ -470,9 +478,20 @@ async function recurseUpdateParents(
       span?.setTag("workspaceId", connector.workspaceId);
       span?.setTag("fileId", file.driveFileId);
 
+      // Records the descendants already updated, so that retries of a move too large for one
+      // activity attempt make progress.
+      const progressKey = await getMoveProgressKey(
+        redisCli,
+        connector.id,
+        file,
+        parentIds
+      );
       let updateBatch: ParentsUpdate[] = [];
       const flushUpdateBatch = async () => {
-        await updateParentsFieldForBatch(connector, updateBatch, logger);
+        await updateParentsFieldForBatch(connector, updateBatch, logger, {
+          redisCli,
+          progressKey,
+        });
         updateBatch = [];
       };
       const enqueueUpdate = async (update: ParentsUpdate) => {
@@ -502,8 +521,33 @@ async function recurseUpdateParents(
         initialFolderUpdate.parentIds,
         logger
       );
+      await redisCli.del(progressKey);
     }
   );
+}
+
+/**
+ * Returns the key of the Redis set of descendants already updated for the move of `folder` to
+ * `parentIds`. Progress recorded for a previous move of the folder to another chain is cleared.
+ */
+async function getMoveProgressKey(
+  redisCli: RedisClientType,
+  connectorId: ModelId,
+  folder: GoogleDriveFilesModel,
+  parentIds: string[]
+) {
+  const progressKey = `google_drive_moved_folder_progress_${connectorId}_${folder.id}`;
+  const chainKey = `${progressKey}_chain`;
+  const chain = parentIds.join("/");
+
+  if ((await redisCli.get(chainKey)) !== chain) {
+    await redisCli.del(progressKey);
+  }
+  await redisCli.set(chainKey, chain, {
+    EX: UPDATE_PARENTS_PROGRESS_TTL_SECONDS,
+  });
+
+  return progressKey;
 }
 
 async function recurseUpdateParentsInner(
@@ -563,12 +607,19 @@ async function recurseUpdateParentsInner(
 async function updateParentsFieldForBatch(
   connector: ConnectorResource,
   updateBatch: ParentsUpdate[],
-  logger: Logger
+  logger: Logger,
+  { redisCli, progressKey }: { redisCli: RedisClientType; progressKey: string }
 ) {
   await concurrentExecutor(
     updateBatch,
     async ({ file, parentIds }) => {
+      const fileId = file.id.toString();
+      if (await redisCli.sIsMember(progressKey, fileId)) {
+        return;
+      }
       await updateParentsField(connector, file, parentIds, logger);
+      await redisCli.sAdd(progressKey, fileId);
+      await redisCli.expire(progressKey, UPDATE_PARENTS_PROGRESS_TTL_SECONDS);
     },
     { concurrency: UPDATE_PARENTS_CONCURRENCY, onBatchComplete: heartbeat }
   );

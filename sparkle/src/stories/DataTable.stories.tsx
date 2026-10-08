@@ -191,7 +191,7 @@ const overviewColumns: ColumnDef<OverviewRow>[] = [
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
-        avatarTooltipLabel={info.row.original.owner}
+        avatarName={info.row.original.owner}
         roundedAvatar
         secondaryLine={`Owned by ${info.row.original.owner}`}
       >
@@ -687,7 +687,7 @@ const columns: ColumnDef<Data>[] = [
     cell: (info) => (
       <DataTable.CellContent
         avatarUrl={info.row.original.avatarUrl}
-        avatarTooltipLabel={info.row.original.avatarTooltipLabel}
+        avatarName={info.row.original.avatarTooltipLabel}
         icon={info.row.original.icon}
         description={info.row.original.description}
         roundedAvatar={info.row.original.roundedAvatar}

@@ -105,6 +105,7 @@ export type UserMessageOrigin =
   | "api"
   | "cli"
   | "cli_programmatic"
+  | "document_comment"
   | "email"
   | "excel"
   | "gsheet"
@@ -772,6 +773,7 @@ export const CONVERSATION_ERROR_TYPES = [
   "user_already_participant",
   "message_not_found",
   "message_deletion_not_authorized",
+  "message_outdated",
   "conversation_context_usage_not_found",
 ] as const;
 

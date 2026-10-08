@@ -12,11 +12,9 @@ import {
 
 // PostHog events for the new-conversation Discover surface. `trackEvent`
 // names them `discover:<object>:<action>`. Views are the denominator: a use
-// case or suggestion with views and no clicks is one we surfaced and nobody
-// took.
+// case with views and no clicks is one we surfaced and nobody took.
 
 const HOMEPAGE_USE_CASE_OBJECT = "homepage_use_case";
-const DISCOVERY_SUGGESTION_OBJECT = "discovery_suggestion";
 const DISCOVER_ITEM_OBJECT = "item";
 const DISCOVER_ITEM_DETAILS_OBJECT = "item_details";
 const SCROLL_PULL_OBJECT = "scroll_pull";
@@ -29,12 +27,6 @@ export type DiscoverItemSource =
 
 interface HomepageUseCaseTracking {
   useCaseId: string;
-}
-
-interface DiscoverySuggestionTracking {
-  section: DiscoverySuggestionSection;
-  itemKind: "agent" | "skill";
-  itemId: string;
 }
 
 /**
@@ -73,45 +65,6 @@ export function trackHomepageUseCaseView({
     object: HOMEPAGE_USE_CASE_OBJECT,
     action: TRACKING_ACTIONS.VIEW,
     extra: { use_case_id: useCaseId },
-  });
-}
-
-/**
- * @cc [owner:frankaloia,label:product] suggestion-click-names-the-surfaced-item
- * A For You or Trending click MUST be tracked with `section`, `item_kind`,
- * and `item_id`, so a click can be joined to the suggestion that was shown.
- */
-export function trackDiscoverySuggestionClick({
-  section,
-  itemKind,
-  itemId,
-}: DiscoverySuggestionTracking): void {
-  trackEvent({
-    area: TRACKING_AREAS.DISCOVER,
-    object: DISCOVERY_SUGGESTION_OBJECT,
-    action: TRACKING_ACTIONS.CLICK,
-    extra: {
-      section,
-      item_kind: itemKind,
-      item_id: itemId,
-    },
-  });
-}
-
-export function trackDiscoverySuggestionView({
-  section,
-  itemKind,
-  itemId,
-}: DiscoverySuggestionTracking): void {
-  trackEvent({
-    area: TRACKING_AREAS.DISCOVER,
-    object: DISCOVERY_SUGGESTION_OBJECT,
-    action: TRACKING_ACTIONS.VIEW,
-    extra: {
-      section,
-      item_kind: itemKind,
-      item_id: itemId,
-    },
   });
 }
 

@@ -203,10 +203,12 @@ msgid "{presetName} connection is required"
 msgstr "{presetName} connection is required"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Enabled"
 msgstr "Enabled"
 
 #: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
 msgid "Disabled"
 msgstr "Disabled"
 
@@ -329,18 +331,6 @@ msgstr "Your changes have been saved."
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Failed to save changes"
 msgstr "Failed to save changes"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "invalid"
-msgstr "invalid"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "{fieldName}: {errorMessage}"
-msgstr "{fieldName}: {errorMessage}"
-
-#: front/components/triggers/WebhookSourceSheet.tsx
-msgid "Invalid: {errorDetails}"
-msgstr "Invalid: {errorDetails}"
 
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Invalid form data"

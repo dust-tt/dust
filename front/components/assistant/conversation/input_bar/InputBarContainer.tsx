@@ -11,7 +11,7 @@ import type { PendingInputText } from "@app/components/assistant/conversation/in
 import { InputBarModelPicker } from "@app/components/assistant/conversation/input_bar/InputBarModelPicker";
 import { InputBarSpacesPicker } from "@app/components/assistant/conversation/input_bar/InputBarSpacesPicker";
 import {
-  getDisplayNameFromPastedFileId,
+  getPastedAttachmentChipTitle,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
@@ -60,7 +60,10 @@ import {
   useConversationContextUsage,
 } from "@app/hooks/conversations";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useSendNotification } from "@app/hooks/useNotification";
+import {
+  useSendApiErrorNotification,
+  useSendNotification,
+} from "@app/hooks/useNotification";
 import { useVoiceLiveTranscriberService } from "@app/hooks/useVoiceLiveTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
@@ -93,7 +96,6 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -157,6 +159,7 @@ function narrowToKnownSlashCommand(
   return null;
 }
 
+const INPUT_BAR_BUTTON_SIZE = "sm";
 const COLLAPSE_TRANSITION = "200ms cubic-bezier(0.34, 1.15, 0.64, 1)";
 const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
@@ -570,6 +573,7 @@ const InputBarContainer = ({
   };
 
   const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
 
   // Context usage provides the model required by the compaction endpoint; both back the /compact
   // slash command. SWR dedupes these with the ContextUsageIndicator calls.
@@ -622,14 +626,13 @@ const InputBarContainer = ({
         // Remove the file from the uploader service
         fileUploaderService.removeFile(fileId);
       } catch (e) {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to inline text`,
-          description: normalizeError(e).message,
+          error: e,
         });
       }
     },
-    [editorRef, fileUploaderService, sendNotification, t]
+    [editorRef, fileUploaderService, sendApiErrorNotification, t]
   );
 
   // Wrap onEnterKeyDown so that a blocked Enter attempt triggers the shake animation.
@@ -841,7 +844,7 @@ const InputBarContainer = ({
         const newCount = pastedCount + 1;
         setPastedCount(newCount);
         filename = getPastedFileName(newCount);
-        const displayName = getDisplayNameFromPastedFileId(filename);
+        const displayName = getPastedAttachmentChipTitle(filename);
 
         inserted = insertPastedAttachmentChip({
           fileId: filename,
@@ -871,10 +874,9 @@ const InputBarContainer = ({
         if (inserted && filename) {
           removePastedAttachmentChip(filename);
         }
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to attach pasted text`,
-          description: normalizeError(e).message,
+          error: e,
         });
       }
     },
@@ -923,14 +925,13 @@ const InputBarContainer = ({
   const handleSelectedSpaceIdsChangeSafely = useCallback(
     (spaceIds: string[]) => {
       void handleSelectedSpaceIdsChange(spaceIds).catch((error) => {
-        sendNotification({
-          type: "error",
+        sendApiErrorNotification({
           title: t`Failed to update Spaces`,
-          description: normalizeError(error).message,
+          error,
         });
       });
     },
-    [handleSelectedSpaceIdsChange, sendNotification, t]
+    [handleSelectedSpaceIdsChange, sendApiErrorNotification, t]
   );
 
   useEffect(() => {
@@ -1037,10 +1038,9 @@ const InputBarContainer = ({
       }
     },
     onError: (error) => {
-      sendNotification({
-        type: "error",
+      sendApiErrorNotification({
         title: t`Failed to transcribe voice`,
-        description: normalizeError(error).message,
+        error,
       });
     },
   });
@@ -1556,10 +1556,6 @@ const InputBarContainer = ({
     editor?.isEditable,
   ]);
 
-  const buttonSize = useMemo(() => {
-    return isMobile ? "sm" : "xs";
-  }, [isMobile]);
-
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
@@ -1688,7 +1684,7 @@ const InputBarContainer = ({
                   elapsedSeconds={activeVoiceService.elapsedSeconds}
                   onRecordStart={activeVoiceService.startRecording}
                   onRecordStop={activeVoiceService.stopRecording}
-                  size="sm"
+                  size={INPUT_BAR_BUTTON_SIZE}
                   compact
                   showStopLabel={false}
                   disabled={disableInput}
@@ -1734,8 +1730,8 @@ const InputBarContainer = ({
               className={classNames(
                 contentEditableClasses,
                 "scrollbar-hide",
-                "overflow-y-auto overscroll-contain",
-                "max-h-[40vh] min-h-11"
+                "overflow-y-auto overscroll-none",
+                "max-h-[40vh] min-h-10"
               )}
             />
           </div>
@@ -1803,7 +1799,7 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      buttonSize={buttonSize}
+                      buttonSize={INPUT_BAR_BUTTON_SIZE}
                       clientType={clientType}
                       conversation={conversation}
                       disableAgentSelector={disableAgentSelector}
@@ -1851,7 +1847,7 @@ const InputBarContainer = ({
                             <Button
                               variant="ghost-secondary"
                               icon={Plus}
-                              size={buttonSize}
+                              size={INPUT_BAR_BUTTON_SIZE}
                               disabled={disableInput}
                             />
                           </DropdownMenuTrigger>
@@ -1930,7 +1926,7 @@ const InputBarContainer = ({
                           owner={owner}
                           isLoading={false}
                           onNodeSelect={handleNodeSelect}
-                          buttonSize={buttonSize}
+                          buttonSize={INPUT_BAR_BUTTON_SIZE}
                           toolFileUpload={{
                             useCaseMetadata: {
                               conversationId: conversation?.sId,
@@ -1964,7 +1960,7 @@ const InputBarContainer = ({
                           agentId={selectedSingleAgent?.id ?? null}
                           lastRequestedModel={lastRequestedModel}
                           owner={owner}
-                          buttonSize={buttonSize}
+                          buttonSize={INPUT_BAR_BUTTON_SIZE}
                           side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
                           selectionRef={modelSelectionRef}
@@ -1973,7 +1969,7 @@ const InputBarContainer = ({
                       )}
                     {conversation && (
                       <ContextUsageIndicator
-                        buttonSize={buttonSize}
+                        buttonSize={INPUT_BAR_BUTTON_SIZE}
                         owner={owner}
                         conversationId={conversation?.sId}
                       />
@@ -1986,7 +1982,7 @@ const InputBarContainer = ({
                       elapsedSeconds={activeVoiceService.elapsedSeconds}
                       onRecordStart={activeVoiceService.startRecording}
                       onRecordStop={activeVoiceService.stopRecording}
-                      size={buttonSize}
+                      size={INPUT_BAR_BUTTON_SIZE}
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
                       buttonProps={{ className: "rounded-full" }}
@@ -2013,7 +2009,7 @@ const InputBarContainer = ({
                           }}
                         >
                           <Button
-                            size={buttonSize}
+                            size={INPUT_BAR_BUTTON_SIZE}
                             aria-label={t`Send message`}
                             isLoading={
                               isSubmitting &&

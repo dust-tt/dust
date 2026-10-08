@@ -38,8 +38,8 @@ msgid "Total credits consumed"
 msgstr "Total des crédits consommés"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
-msgid "{billedCredits, plural, one {credit} other {credits}}"
-msgstr "{billedCredits, plural, one {crédit} other {crédits}}"
+msgid "{displayedBilledCredits, plural, one {<0>{formattedBilledCredits}</0> <1>credit</1>} other {<2>{formattedBilledCredits}</2> <3>credits</3>}}"
+msgstr "{displayedBilledCredits, plural, one {<0>{formattedBilledCredits}</0> <1>crédit</1>} many {<2>{formattedBilledCredits}</2> <3>crédits</3>} other {<2>{formattedBilledCredits}</2> <3>crédits</3>}}"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsageBreakdown.tsx
 msgid "By tools"
@@ -59,7 +59,7 @@ msgstr "Consommation de crédits"
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
 msgid "Credit usage couldn’t be loaded."
-msgstr "Impossible de charger l’utilisation des crédits."
+msgstr "Impossible de charger la consommation de crédits."
 
 #: front/components/assistant/conversation/credits_panel/ConversationCreditUsagePanel.tsx
 msgid "No usage yet"

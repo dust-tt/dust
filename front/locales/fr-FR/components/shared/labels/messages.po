@@ -27,7 +27,7 @@ msgstr "Saisissez une étiquette"
 
 #: front/components/shared/labels/MicrosoftLabelsSelector.tsx
 msgid "Labels could not be retrieved. You must reconnect your Microsoft connection to grant the necessary permissions."
-msgstr "Impossible de récupérer les étiquettes. Vous devez reconnecter votre connexion Microsoft pour accorder les permissions nécessaires."
+msgstr "Impossible de récupérer les étiquettes. Vous devez reconnecter votre connexion Microsoft pour accorder les autorisations nécessaires."
 
 #: front/components/shared/labels/MicrosoftLabelsSelector.tsx
 msgid "No labels found. Configure them in your Microsoft Purview console first."

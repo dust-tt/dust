@@ -1,0 +1,356 @@
+{"waiting": "untar", "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": true, "finished": null}}, "time": 1791304754.19955}
+{"phase": "untar", "start_time": 1791304780.5565069, "states": {"rocks": {"ready": true, "finished": null}, "fdb": {"ready": true, "finished": null}, "tikv": {"ready": true, "finished": null}}}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304768.178464}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304779.712954}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304790.943329}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": null}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304802.253043}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304813.492222}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304824.8048131}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304836.0372422}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304847.676579}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304858.885916}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304870.227395}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304881.426049}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304892.6632488}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304903.971235}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304915.506567}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304926.853239}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304938.0518038}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304949.290081}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304960.598819}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304971.8224661}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304983.480531}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791304994.680217}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305005.912343}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305017.221895}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305028.5703418}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305039.77334}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305051.357287}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305062.6502469}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305073.855107}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305085.086207}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305096.4015648}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305107.638309}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305119.180884}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305130.480187}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305141.69882}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305153.018969}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305164.255852}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305175.575155}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305187.181273}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305198.447467}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305209.650204}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305220.8786838}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305232.199956}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305243.3819678}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": null}, "tikv": {"ready": false, "finished": null}}, "time": 1791305255.071798}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305266.279079}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305277.50652}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305288.833088}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305300.057604}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305311.373943}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305322.910371}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305334.137248}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305345.457887}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305356.7970262}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305368.338381}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305379.968097}
+{"waiting": "finished", "states": {"rocks": {"ready": false, "finished": {"passed": true, "time": 1791304807.9139316}}, "fdb": {"ready": false, "finished": {"passed": true, "time": 1791305256.4873893}}, "tikv": {"ready": false, "finished": null}}, "time": 1791305391.399265}
+rocks {
+  "backend": "rocks",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791304780.5565069,
+      "actual_start_time": 1791304780.5565982,
+      "end_time": 1791304806.968829
+    }
+  },
+  "settings": {
+    "backend": "rocks",
+    "endpoint": "https://10.150.0.3:7443",
+    "search_host": "10.150.0.3",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "untar_mount_startup_ms": 53.054755999255576,
+  "untar": {
+    "extraction_ms": 21648.076954,
+    "open_fsync_close_all_files_ms": 292.428133,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read-admission-check_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/read-admission-check-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "read-admission-check_mount_startup_ms": 92.73366699926555,
+  "read-admission-check_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read_admission_check": {
+    "passed": true,
+    "threads": 32,
+    "outside_timed_extraction": true
+  },
+  "index_after_untar": {
+    "wait_ms": 5.634952000036719,
+    "response": {
+      "engine": "tantivy",
+      "incomplete": false,
+      "indexed_through": {
+        "head": 47544,
+        "incarnation": "7d4ddbab6fd749afa1e563509d29756a",
+        "tenant": "bench"
+      }
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "221986816\n",
+    "memory.peak": "454041600\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 14234133\nuser_usec 8277870\nsystem_usec 5956263\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, durability, hashes, index catch-up",
+  "iteration": "native-03"
+}
+
+fdb {
+  "backend": "fdb",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791304780.5565069,
+      "actual_start_time": 1791304780.5566154,
+      "end_time": 1791305248.493991
+    }
+  },
+  "settings": {
+    "backend": "fdb",
+    "endpoint": "https://10.150.0.17:7443",
+    "search_host": "10.150.0.17",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 74.15297700026713,
+  "untar": {
+    "extraction_ms": 428278.823242,
+    "open_fsync_close_all_files_ms": 348.899268,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read-admission-check_mount_command": [
+    "/srv/dfs/bin/mount-fdb",
+    "--endpoint",
+    "https://10.150.0.17:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/read-admission-check-mount-metrics.json"
+  ],
+  "read-admission-check_mount_startup_ms": 2795.772113999192,
+  "read-admission-check_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read_admission_check": {
+    "passed": true,
+    "threads": 32,
+    "outside_timed_extraction": true
+  },
+  "index_after_untar": {
+    "wait_ms": 63.122278999799164,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 47517,
+      "source_head": 47517
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "221601792\n",
+    "memory.peak": "451710976\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 19720858\nuser_usec 12155021\nsystem_usec 7565836\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, durability, hashes, index catch-up",
+  "iteration": "native-03"
+}
+
+tikv {
+  "backend": "tikv",
+  "passed": true,
+  "phases": {
+    "untar": {
+      "target_start_time": 1791304780.5565069,
+      "actual_start_time": 1791304780.5565984,
+      "end_time": 1791305381.4464197
+    }
+  },
+  "settings": {
+    "backend": "tikv",
+    "endpoint": "https://10.150.0.15:7443",
+    "search_host": "10.150.0.15",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/untar-mount-metrics.json"
+  ],
+  "untar_mount_startup_ms": 74.94330599911336,
+  "untar": {
+    "extraction_ms": 550704.428473,
+    "open_fsync_close_all_files_ms": 360.443934,
+    "file_count_including_manifest": 10001,
+    "all_hashes_verified": true
+  },
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read-admission-check_mount_command": [
+    "/srv/dfs/bin/mount-tikv",
+    "--endpoint",
+    "https://10.150.0.15:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-03/client/read-admission-check-mount-metrics.json"
+  ],
+  "read-admission-check_mount_startup_ms": 7348.39142599958,
+  "read-admission-check_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  },
+  "read_admission_check": {
+    "passed": true,
+    "threads": 32,
+    "outside_timed_extraction": true
+  },
+  "index_after_untar": {
+    "wait_ms": 67.11295600143785,
+    "response": {
+      "engine": "elasticsearch",
+      "incomplete": false,
+      "indexed_through": 47482,
+      "source_head": 47482
+    }
+  },
+  "resources_scope": "all phases",
+  "resources": {
+    "memory.current": "221712384\n",
+    "memory.peak": "451874816\n",
+    "memory.max": "6442450944\n",
+    "memory.swap.max": "0\n",
+    "cpu.stat": "usage_usec 15593335\nuser_usec 9477412\nsystem_usec 6115922\nnice_usec 0\ncore_sched.force_idle_usec 0\nnr_periods 0\nnr_throttled 0\nthrottled_usec 0\nnr_bursts 0\nburst_usec 0\n",
+    "cpuset.cpus.effective": "0-7\n"
+  },
+  "scope": "untar, durability, hashes, index catch-up",
+  "iteration": "native-03"
+}
+

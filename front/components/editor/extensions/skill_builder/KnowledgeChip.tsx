@@ -6,6 +6,7 @@ import {
   isWebsite,
 } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
+import { getSafeSourceUrl } from "@app/lib/utils/source_urls";
 import {
   AlertCircle,
   AttachmentChip,
@@ -55,7 +56,7 @@ export function KnowledgeChip({
       label={title}
       icon={{ visual: icon }}
       target="_blank"
-      href={node.sourceUrl ?? undefined}
+      href={getSafeSourceUrl(node.sourceUrl) ?? undefined}
       color={color}
       onRemove={onRemove}
       size="xs"
@@ -103,12 +104,13 @@ export function InlineKnowledgeChip({
   onRemove,
 }: InlineKnowledgeChipProps) {
   const children = <InlineKnowledgeIcon node={node} />;
+  const sourceUrl = getSafeSourceUrl(node.sourceUrl);
 
-  if (node.sourceUrl) {
+  if (sourceUrl) {
     return (
       <Chip
         label={title}
-        href={node.sourceUrl}
+        href={sourceUrl}
         target="_blank"
         color={color}
         onRemove={onRemove}

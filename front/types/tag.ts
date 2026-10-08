@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TAG_KINDS = ["standard", "protected"] as const;
 
 export type TagKind = (typeof TAG_KINDS)[number];

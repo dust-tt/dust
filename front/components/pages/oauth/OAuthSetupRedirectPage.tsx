@@ -74,12 +74,10 @@ export function OAuthSetupRedirectPage() {
             ? t`Invalid OAuth provider.`
             : !useCase
               ? t`Invalid OAuth use case.`
-              : // Only `mcp_server_connection_not_found` messages are written for end users;
-                // other API errors can carry raw upstream details.
-                isAPIErrorResponse(isOAuthSetupError) &&
+              : isAPIErrorResponse(isOAuthSetupError) &&
                   isOAuthSetupError.error.type ===
                     "mcp_server_connection_not_found"
-                ? isOAuthSetupError.error.message
+                ? t`This tool has no workspace connection. Ask a workspace admin to connect it before setting up your personal connection.`
                 : t`Failed to initialize OAuth connection.`}
         </p>
       </div>

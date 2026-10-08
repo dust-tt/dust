@@ -18,7 +18,6 @@ export function assertNever(x: never): never {
  * (event streams, API responses) where new enum values or event types may be added
  * server-side before the client is updated.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function assertNeverAndIgnore(_x: never): void {
   // Intentionally empty.
 }

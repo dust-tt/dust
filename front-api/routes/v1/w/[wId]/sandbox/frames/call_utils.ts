@@ -45,6 +45,7 @@ function fileSystemErrorStatus(error: DustFileSystemError): 400 | 403 | 500 {
     case "internal":
       return 500;
     case "already_exists":
+    case "frame_manifest_move":
     case "invalid_path":
     case "legacy_path":
     case "not_found":

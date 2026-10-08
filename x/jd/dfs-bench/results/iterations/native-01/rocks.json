@@ -1,0 +1,42 @@
+{
+  "backend": "rocks",
+  "passed": false,
+  "phases": {},
+  "settings": {
+    "backend": "rocks",
+    "endpoint": "https://10.150.0.3:7443",
+    "search_host": "10.150.0.3",
+    "search_port": 7447,
+    "tenant": "bench",
+    "content_cache_bytes": 268435456,
+    "metadata_cache_bytes": 134217728,
+    "warm_runs": 3,
+    "search_repeats": 10
+  },
+  "manifest_sha256": "67fdf87da1a1b94bc1f6482f00b912c1010d512a907846e5747ba9c893d8a3c1",
+  "files": 10000,
+  "document_bytes": 177499149,
+  "untar_mount_command": [
+    "/srv/dfs/bin/mount-rocks",
+    "--endpoint",
+    "https://10.150.0.3:7443",
+    "--token-file",
+    "/srv/dfs/config/admin.token",
+    "--ca",
+    "/srv/dfs/config/ca.crt",
+    "--mountpoint",
+    "/srv/dfs/mount",
+    "--content-cache-bytes",
+    "268435456",
+    "--metrics-file",
+    "/srv/dfs/evidence/iterations/native-01/client/untar-mount-metrics.json",
+    "--read-concurrency",
+    "8"
+  ],
+  "untar_mount_startup_ms": 53.000184000666195,
+  "error": "InterruptedError('benchmark interrupted by signal 15')",
+  "untar_unmount": {
+    "exit_code": 0,
+    "unmounted": true
+  }
+}

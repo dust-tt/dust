@@ -403,29 +403,29 @@ msgid "Unknown model"
 msgstr "Modèle inconnu"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgctxt "reasoning effort"
-msgid "Default"
-msgstr "Par défaut"
+msgctxt "reasoning effort, lowercase"
+msgid "default"
+msgstr "par défaut"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgid "Change model reasoning to: {formattedReasoning}"
-msgstr "Changer le raisonnement du modèle : {formattedReasoning}"
+msgid "Change reasoning effort to: {formattedReasoning}"
+msgstr "Changer le niveau d’effort : {formattedReasoning}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
 msgid "Change model to: {modelName}"
 msgstr "Changer de modèle : {modelName}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgid "Model changed to {modelName} with {formattedReasoning} reasoning"
-msgstr "Modèle remplacé par {modelName} avec le raisonnement {formattedReasoning}"
+msgid "Model changed to {modelName} with reasoning effort: {formattedReasoning}"
+msgstr "Modèle remplacé par {modelName} avec le niveau d’effort : {formattedReasoning}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgid "{modelName} model with {formattedReasoning} reasoning suggestion rejected"
-msgstr "Suggestion du modèle {modelName} avec le raisonnement {formattedReasoning} refusée"
+msgid "Suggestion rejected for model {modelName} with reasoning effort: {formattedReasoning}"
+msgstr "Suggestion refusée pour le modèle {modelName} avec le niveau d’effort : {formattedReasoning}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
-msgid "{titles} (+{rest} more)"
-msgstr "{titles} (+{rest} de plus)"
+msgid "{titles} {rest, plural, one {(+# more)} other {(+# more)}}"
+msgstr "{titles} {rest, plural, one {(+# de plus)} other {(+# de plus)}}"
 
 #: front/components/markdown/suggestion/SidekickSuggestionCard.tsx
 msgid "Selections:"

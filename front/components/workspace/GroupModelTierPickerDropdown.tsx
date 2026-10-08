@@ -9,6 +9,7 @@ import {
 } from "@app/lib/swr/model_tiers";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 
 interface GroupModelTierPickerDropdownProps {
   owner: LightWorkspaceType;
@@ -19,6 +20,7 @@ export function GroupModelTierPickerDropdown({
   owner,
   groupId,
 }: GroupModelTierPickerDropdownProps) {
+  const { t } = useLingui();
   const { groups: groupAllowedModelTiers, isGroupAllowedModelTiersLoading } =
     useGroupAllowedModelTiers({ owner });
   const {
@@ -34,7 +36,7 @@ export function GroupModelTierPickerDropdown({
   return (
     <ModelTierPickerDropdown
       selectedValue={selectedValue}
-      options={getGroupModelTierOptions()}
+      options={getGroupModelTierOptions(t)}
       onSelect={async (value) => {
         if (value === NO_GROUP_MODEL_TIER) {
           await clearGroupAllowedModelTier({ groupId });

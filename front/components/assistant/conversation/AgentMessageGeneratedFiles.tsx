@@ -1,6 +1,9 @@
 import { getCollapseAnimationStyle } from "@app/components/assistant/conversation/actions/inline/utils";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { formatCalendarDate } from "@app/lib/client/calendar_date";
+import {
+  formatCalendarDate,
+  getCalendarDay,
+} from "@app/lib/client/calendar_date";
 import { formatTime } from "@app/lib/i18n/format";
 import type { LightAgentMessageType } from "@app/types/assistant/conversation";
 import {
@@ -17,7 +20,8 @@ import {
   cn,
   Icon,
 } from "@dust-tt/sparkle";
-import { msg } from "@lingui/core/macro";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, select } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
@@ -39,6 +43,26 @@ function getDescriptionForContentType(
   }
 
   return null;
+}
+
+function formatUpdatedLabel(
+  updatedAt: Date | number,
+  t: (descriptor: MessageDescriptor) => string
+): string {
+  const calendarDay = getCalendarDay(updatedAt);
+  if (!calendarDay) {
+    return formatCalendarDate(updatedAt, t);
+  }
+
+  const { kind: updatedDayKind, day: updatedDay } = calendarDay;
+  return t(
+    msg`${select(updatedDayKind, {
+      relative: `Updated ${updatedDay}`,
+      lastWeekday: `Updated last ${updatedDay}`,
+      weekday: `Updated on ${updatedDay}`,
+      other: `Updated on ${updatedDay}`,
+    })}`
+  );
 }
 
 interface AgentMessageInteractiveContentGeneratedFilesProps {
@@ -83,8 +107,8 @@ export function AgentMessageInteractiveContentGeneratedFiles({
         const description = descriptionDescriptor
           ? t(descriptionDescriptor)
           : null;
-        const updatedDate = file.updatedAt
-          ? formatCalendarDate(file.updatedAt)
+        const updatedLabel = file.updatedAt
+          ? formatUpdatedLabel(file.updatedAt, t)
           : null;
 
         return (
@@ -103,9 +127,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                   <div>
                     {file.updatedAt && file.updatedAt !== file.createdAt ? (
                       <>
-                        <span>
-                          <Trans>Updated {updatedDate}</Trans>
-                        </span>
+                        <span>{updatedLabel}</span>
                         <span className="mx-1">{"\u00B7"}</span>
                         <time>
                           {formatTime(file.updatedAt, FILE_TIME_OPTIONS)}
@@ -113,7 +135,7 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                       </>
                     ) : file.createdAt ? (
                       <>
-                        <span>{formatCalendarDate(file.createdAt)}</span>
+                        <span>{formatCalendarDate(file.createdAt, t)}</span>
                         <span className="mx-1">{"\u00B7"}</span>
                         <time>
                           {formatTime(file.createdAt, FILE_TIME_OPTIONS)}

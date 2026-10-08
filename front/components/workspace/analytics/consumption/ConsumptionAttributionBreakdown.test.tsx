@@ -99,7 +99,7 @@ describe("ConsumptionAttributionBreakdown", () => {
     expect(screen.getByText("60%")).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "View all reasoning effort for Claude Sonnet 4.6",
+        name: "View all reasoning efforts for Claude Sonnet 4.6",
       })
     ).toBeInTheDocument();
   });

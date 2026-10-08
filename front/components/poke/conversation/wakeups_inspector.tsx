@@ -1,8 +1,7 @@
+import { describeWakeUpSchedule } from "@app/lib/client/wakeup_schedule";
 import { formatDateTime } from "@app/lib/i18n/format";
-import {
-  describeWakeUpSchedule,
-  getNextWakeUpFireAtFromScheduleConfig,
-} from "@app/lib/utils/wakeup_description";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
+import { getNextWakeUpFireAtFromScheduleConfig } from "@app/lib/utils/wakeup_description";
 import { usePokeConversationWakeUps } from "@app/poke/swr/conversation_wakeups";
 import type { WakeUpStatus, WakeUpType } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -82,7 +81,10 @@ function WakeUpEntry({ wakeUp }: WakeUpEntryProps) {
           size="mini"
         />
       </div>
-      <WakeUpField label="schedule" value={describeWakeUpSchedule(wakeUp)} />
+      <WakeUpField
+        label="schedule"
+        value={describeWakeUpSchedule(wakeUp, defaultLocaleI18n.t)}
+      />
       {wakeUp.scheduleConfig.type === "cron" && (
         <>
           <WakeUpField label="cron" value={wakeUp.scheduleConfig.cron} mono />

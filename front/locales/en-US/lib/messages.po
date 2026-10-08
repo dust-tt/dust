@@ -362,6 +362,14 @@ msgid "The API key doesn't have the required scope."
 msgstr "The API key doesn't have the required scope."
 
 #: front/lib/api_error_messages.ts
+msgid "Admin API keys already read the analytics of every group."
+msgstr "Admin API keys already read the analytics of every group."
+
+#: front/lib/api_error_messages.ts
+msgid "Analytics access can only be granted on manual or provisioned groups."
+msgstr "Analytics access can only be granted on manual or provisioned groups."
+
+#: front/lib/api_error_messages.ts
 msgid "Transcripts configuration not found."
 msgstr "Transcripts configuration not found."
 
@@ -388,6 +396,10 @@ msgstr "This file type isn't supported."
 #: front/lib/api_error_messages.ts
 msgid "The file is empty."
 msgstr "The file is empty."
+
+#: front/lib/api_error_messages.ts
+msgid "You can only read this file."
+msgstr "You can only read this file."
 
 #: front/lib/api_error_messages.ts
 msgid "Run not found."
@@ -506,6 +518,10 @@ msgid "You aren't allowed to delete this message."
 msgstr "You aren't allowed to delete this message."
 
 #: front/lib/api_error_messages.ts
+msgid "This message has changed. Refresh the page and try again."
+msgstr "This message has changed. Refresh the page and try again."
+
+#: front/lib/api_error_messages.ts
 msgid "Conversation context usage not found."
 msgstr "Conversation context usage not found."
 
@@ -564,6 +580,10 @@ msgstr "Sandbox function call not found."
 #: front/lib/api_error_messages.ts
 msgid "The frame runtime is unavailable."
 msgstr "The frame runtime is unavailable."
+
+#: front/lib/api_error_messages.ts
+msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgstr "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
 
 #: front/lib/api_error_messages.ts
 msgid "A fast function can't call tools."

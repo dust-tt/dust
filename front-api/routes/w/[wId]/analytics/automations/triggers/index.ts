@@ -7,7 +7,7 @@ import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumpt
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureCanReadAnalyticsOfAllGroups } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import tId from "./[tId]";
@@ -55,7 +55,7 @@ function toCsvRow(trigger: AutomationTriggerRow) {
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("json", AutomationTriggersBodySchema),
   async (ctx) => {
     const auth = ctx.get("auth");

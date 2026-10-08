@@ -364,10 +364,16 @@ export type SkillFilesSuggestionData = Extract<
   { kind: "files" }
 >;
 
+// A stored skill suggestion: a `SkillSuggestionResource` or its JSON (`SkillSuggestionType`).
+type SkillSuggestionCarrier = {
+  kind: SkillSuggestionKind;
+  suggestion: SkillSuggestionPayload;
+};
+
 // `kind` and `suggestion` are separate columns, so narrowing one without the other would lie about
 // the payload. Applies to anything carrying the pair, the resource included.
 function isSkillSuggestionOfKind<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+  T extends SkillSuggestionCarrier,
   K extends SkillSuggestionKind,
 >(
   carrier: T,
@@ -384,51 +390,51 @@ function isSkillSuggestionOfKind<
   return parsedKind === kind;
 }
 
-export function isEditSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillEditSuggestionData {
+export function isEditSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillEditSuggestionData {
   return isSkillSuggestionOfKind(carrier, "edit");
 }
 
-export function isEditorsSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillEditorsSuggestionData {
+export function isEditorsSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillEditorsSuggestionData {
   return isSkillSuggestionOfKind(carrier, "editors");
 }
 
 export function isUserFacingDescriptionSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
+  T extends SkillSuggestionCarrier,
 >(carrier: T): carrier is T & SkillUserFacingDescriptionSuggestionData {
   return isSkillSuggestionOfKind(carrier, "user_facing_description");
 }
 
-export function isCreateSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillCreateSuggestionData {
+export function isCreateSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillCreateSuggestionData {
   return isSkillSuggestionOfKind(carrier, "create");
 }
 
-export function isNameSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillNameSuggestionData {
+export function isNameSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillNameSuggestionData {
   return isSkillSuggestionOfKind(carrier, "name");
 }
 
-export function isDeleteSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillDeleteSuggestionData {
+export function isDeleteSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillDeleteSuggestionData {
   return isSkillSuggestionOfKind(carrier, "delete");
 }
 
-export function isAvailabilitySkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillAvailabilitySuggestionData {
+export function isAvailabilitySkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillAvailabilitySuggestionData {
   return isSkillSuggestionOfKind(carrier, "availability");
 }
 
-export function isFilesSkillSuggestion<
-  T extends { kind: SkillSuggestionKind; suggestion: unknown },
->(carrier: T): carrier is T & SkillFilesSuggestionData {
+export function isFilesSkillSuggestion<T extends SkillSuggestionCarrier>(
+  carrier: T
+): carrier is T & SkillFilesSuggestionData {
   return isSkillSuggestionOfKind(carrier, "files");
 }
 

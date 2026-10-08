@@ -5,8 +5,7 @@ import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMa
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { formatError } from "@app/lib/api_error_messages";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { getLiveSessionUrl } from "@app/lib/client/live_session";
+import { useCollabUrl, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
@@ -79,6 +78,7 @@ export function useMarkdownFileEditor({
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
   const { hasFeature } = useFeatureFlags();
+  const collabUrl = useCollabUrl();
 
   const editablePath =
     entryPath && owner && parseCanonicalScopedPath(entryPath)
@@ -205,7 +205,7 @@ export function useMarkdownFileEditor({
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
     enabled: hasFeature("co_edition") && canOpenEditor,
-    live: getLiveSessionUrl() !== null,
+    liveUrl: collabUrl,
     entryPath,
     isActive,
     rawContent,

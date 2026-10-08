@@ -44,10 +44,7 @@ import type { SupportedLocale } from "@app/types/locale";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
-import {
-  ANONYMOUS_USER_IMAGE_URL,
-  areConversationExternalNotificationsEnabled,
-} from "@app/types/user";
+import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
@@ -95,6 +92,8 @@ import type React from "react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
 import { z } from "zod";
+
+const ANONYMOUS_USER_IMAGE_URL = "/static/humanavatar/anonymous.png";
 
 type SettingsSection =
   | "personal"
@@ -210,13 +209,12 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   };
 
   const handleSave = async (data: PersonalInfoType) => {
-    await patchUser(
-      data.firstName,
-      data.lastName,
-      true,
-      undefined,
-      data.profilePictureUrl
-    );
+    await patchUser({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      notifySuccess: true,
+      imageUrl: data.profilePictureUrl,
+    });
   };
 
   if (isUserLoading) {
@@ -544,6 +542,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
         <SettingsList.Row
           title={t`Theme`}
           description={t`Choose how Dust looks on this device`}
+          className="max-sm:flex-col max-sm:items-start"
           action={
             <OptionTileGroup
               ariaLabel={t`Theme`}
@@ -561,6 +560,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
           <SettingsList.Row
             title={t`Conversation font`}
             description={t`Font used for agent answers in conversations`}
+            className="max-sm:flex-col max-sm:items-start"
             action={
               <OptionTileGroup
                 ariaLabel={t`Conversation font`}
@@ -834,8 +834,8 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               className="rounded-2xl p-4"
             >
               <Trans>
-                The content of your saved memory may appear in responses sent to
-                Slack and other external integrations.
+                Agents use your memory when answering, so their responses,
+                including in Slack, can reflect what it contains.
               </Trans>
             </ContentMessageInline>
           )}
@@ -961,7 +961,7 @@ export function UserSettingsPopover({
           </div>
 
           {/* Desktop: vertical sidebar */}
-          <div className="hidden w-64 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
+          <div className="hidden w-72 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
                 <Button variant="ghost" size="mini" icon={XClose} />

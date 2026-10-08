@@ -1,0 +1,41 @@
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.20s
+     Running tests/codec.rs (target/release/deps/codec-882c4ec2bd97047f)
+
+running 2 tests
+test byte_encoding_preserves_existing_wire_and_storage_records ... ok
+test oversized_declared_byte_length_respects_decode_limit ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.17s
+     Running tests/buffered.rs (target/release/deps/buffered-7395df63315a5ff3)
+
+running 10 tests
+test acknowledged_directory_overlay_preserves_unseen_changes ... ok
+test buffered_creates_coalesce_and_sync_preserves_all_files ... ok
+test buffered_directories_and_children_publish_atomically ... ok
+test buffered_directory_attributes_keep_original_fence ... FAILED
+test buffered_directory_collision_leaves_no_descendants ... ok
+test buffered_revocation_is_deferred_and_retained ... ok
+test capacity_flush_keeps_current_file_buffered ... ok
+test file_batch_is_atomic_fenced_and_idempotent ... ok
+test graceful_unmount_drains_unpublished_files ... ok
+test incremental_refresh_handles_more_than_128_changes ... ok
+
+failures:
+
+---- buffered_directory_attributes_keep_original_fence stdout ----
+
+thread 'buffered_directory_attributes_keep_original_fence' (78911) panicked at tests/buffered.rs:644:5:
+assertion `left == right` failed
+  left: 22
+ right: 116
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    buffered_directory_attributes_keep_original_fence
+
+test result: FAILED. 9 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 6.95s
+
+error: test failed, to rerun pass `--test buffered`

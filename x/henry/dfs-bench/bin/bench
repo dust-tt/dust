@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Usage: bin/bench <impl> [run_id]. Runs one benchmark round (see orchestrator/bench.ts) against an
+# implementation deployed with impls/<impl>/deploy, then uploads the results to GCS.
+# Env: BENCH_FILES (default 10000), BENCH_FRESH_COUNT (default 50).
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+IMPL="${1:?impl required, e.g. henry}"
+RUN_ID="${2:-$(current_run)}"
+fetch_credentials "$RUN_ID"
+load_e2b_env
+
+[[ -d "$BENCH_DIR/orchestrator/node_modules" ]] || npm --prefix "$BENCH_DIR/orchestrator" install --silent
+export DFS_BENCH_STATE="$STATE_DIR" RUN_ID IMPL
+result="$(node "$BENCH_DIR/orchestrator/bench.ts")"
+gcloud storage cp -q "$result" "gs://$BUCKET/runs/$RUN_ID/results/" >/dev/null
+log "uploaded to gs://$BUCKET/runs/$RUN_ID/results/$(basename "$result")"

@@ -10,7 +10,6 @@ import {
 } from "@app/components/agent_builder/sidekick/SidekickHighlightContext";
 import { getSuggestionPosition } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { stripHtmlAttributes } from "@app/components/editor/input_bar/cleanupPastedHTML";
-import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -18,6 +17,7 @@ import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
+import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/agent_suggestion";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type {
@@ -124,7 +124,6 @@ function SidekickSuggestionsProviderContent({
   disabled = false,
 }: SidekickSuggestionsProviderProps) {
   const { owner } = useAgentBuilderContext();
-  const { skills } = useSkillsContext();
   const { mcpServerViews, mcpServerViewsWithKnowledge } =
     useMCPServerViewsContext();
   const { supportedDataSourceViews: dataSourceViews } =
@@ -138,18 +137,13 @@ function SidekickSuggestionsProviderContent({
 
   // We need to keep track of the suggestions that have been processed locally (accepted/rejected/outdated),
   // and put in ref to prevent re-render cascades.
-  const processedSuggestionsRef = useRef<Map<string, AgentSuggestionType>>(
-    new Map()
-  );
+  const processedSuggestionsRef = useRef<
+    Map<string, GetSuggestionsResponseBody["suggestions"][number]>
+  >(new Map());
 
   const hasAttemptedRefetch = useCallback(
     (sId: string) => refetchAttemptedRef.current.has(sId),
     []
-  );
-
-  const skillsMap = useMemo(
-    () => new Map(skills.map((s) => [s.sId, s])),
-    [skills]
   );
 
   const mcpServerViewsMap = useMemo(
@@ -266,7 +260,7 @@ function SidekickSuggestionsProviderContent({
         }
 
         case "skills": {
-          const skill = skillsMap.get(suggestion.suggestion.skillId);
+          const { skill } = suggestion;
           if (!skill) {
             return null;
           }
@@ -291,7 +285,6 @@ function SidekickSuggestionsProviderContent({
     },
     [
       suggestions,
-      skillsMap,
       mcpServerViewsMap,
       dataSourceViewsMap,
       knowledgeServerViewByMethod,

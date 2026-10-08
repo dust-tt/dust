@@ -18,6 +18,7 @@ vi.mock("@app/lib/api/elasticsearch", async (importOriginal) => {
 
 import { GLOBAL_AGENTS_WORKSPACE_ID } from "@app/lib/agent_search/constants";
 import {
+  buildAgentSearchQuery,
   MAX_AGENT_SEARCH_RESULTS,
   MAX_AGENT_SEARCH_WINDOW,
 } from "@app/lib/agent_search/query";
@@ -405,31 +406,163 @@ describe("searchAgents", () => {
     ).toEqual([GLOBAL_AGENTS_SID.HELPER]);
   });
 
-  it("ranks the user's favorites first only with favoritesFirst", async () => {
+  it.each([
+    { selectionMode: "all", searchTerm: "", hasFavorites: true },
+    { selectionMode: "favorites_only", searchTerm: "", hasFavorites: true },
+    { selectionMode: "favorites_only", searchTerm: "dust", hasFavorites: true },
+    { selectionMode: "favorites_only", searchTerm: "", hasFavorites: false },
+    { selectionMode: "favorites_or_all", searchTerm: "", hasFavorites: true },
+    { selectionMode: "favorites_or_all", searchTerm: "  ", hasFavorites: true },
+    {
+      selectionMode: "favorites_or_all",
+      searchTerm: "dust",
+      hasFavorites: true,
+    },
+    { selectionMode: "favorites_or_all", searchTerm: "", hasFavorites: false },
+  ] as const)(
+    "applies favorite selection without replacing the query: %j",
+    async ({ selectionMode, searchTerm, hasFavorites }) => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
+      assert(dust);
+      if (hasFavorites) {
+        const favoriteResult = await dust.setUserFavorite(auth, true);
+        expect(favoriteResult.isOk()).toBe(true);
+      }
+      mockHits([
+        makeDocument({ workspace_id: workspace.sId, agent_id: "custom" }),
+        makeDocument({
+          workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+          agent_id: dust.sId,
+          scope: "global",
+        }),
+      ]);
+      const result = await searchAgents(auth, { searchTerm, selectionMode });
+      assert(result.isOk());
+      const restrictToFavorites =
+        selectionMode === "favorites_only" ||
+        (selectionMode === "favorites_or_all" &&
+          !searchTerm.trim() &&
+          hasFavorites);
+      expect(result.value.agents.map((agent) => agent.sId)).toEqual(
+        restrictToFavorites
+          ? hasFavorites
+            ? [dust.sId]
+            : []
+          : ["custom", dust.sId]
+      );
+      expect(result.value.isFavoritesOnly).toBe(restrictToFavorites);
+      expect(result.value.total).toBe(
+        restrictToFavorites ? (hasFavorites ? 1 : 0) : 2
+      );
+      const globalAgents = await AgentResource.listGlobalAgents(auth);
+      const query = buildAgentSearchQuery(auth, {
+        searchTerm,
+        globalAgentIds: globalAgents
+          .filter(
+            (agent) => agent.status === "active" && auth.can("read", agent)
+          )
+          .map((agent) => agent.sId),
+      });
+      expect(mockSearch.mock.lastCall?.[0].query).toEqual(
+        restrictToFavorites
+          ? {
+              bool: {
+                must: [query],
+                filter: [
+                  { terms: { agent_id: hasFavorites ? [dust.sId] : [] } },
+                ],
+              },
+            }
+          : query
+      );
+      expect(mockSearch.mock.lastCall?.[0].sort).toEqual(
+        buildAgentDefaultSort({
+          sortBy:
+            selectionMode === "favorites_or_all" && restrictToFavorites
+              ? "name"
+              : "relevance",
+        })
+      );
+      expect(mockSearch).toHaveBeenCalledOnce();
+    }
+  );
+
+  it.each(["favorites_only", "favorites_or_all"] as const)(
+    "applies permissions and filters before deciding whether to fall back in %s",
+    async (selectionMode) => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
+      assert(dust);
+      const favoriteResult = await dust.setUserFavorite(auth, true);
+      expect(favoriteResult.isOk()).toBe(true);
+      mockHits([
+        makeDocument({ workspace_id: "another-workspace", agent_id: dust.sId }),
+        makeDocument({ workspace_id: workspace.sId, agent_id: "custom" }),
+        makeDocument({
+          workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+          agent_id: dust.sId,
+          scope: "global",
+        }),
+      ]);
+      const result = await searchAgents(auth, {
+        searchTerm: "",
+        selectionMode,
+        filters: { scope: ["visible"] },
+        facets: ["tags"],
+      });
+      assert(result.isOk());
+      expect(result.value.agents.map((agent) => agent.sId)).toEqual(
+        selectionMode === "favorites_only" ? [] : ["custom"]
+      );
+      expect(result.value.isFavoritesOnly).toBe(
+        selectionMode === "favorites_only"
+      );
+      expect(mockSearch).toHaveBeenCalledTimes(
+        selectionMode === "favorites_only" ? 1 : 2
+      );
+      expect(mockSearch.mock.lastCall?.[0].aggs).toHaveProperty("tags");
+    }
+  );
+
+  it("does not fall back on an exhausted favorites page and honors explicit sorting", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "user" });
     const dust = await AgentResource.fetchById(auth, GLOBAL_AGENTS_SID.DUST);
     assert(dust);
-    expect((await dust.setUserFavorite(auth, true)).isOk()).toBe(true);
-    mockHits([]);
-
-    await searchAgents(auth, { searchTerm: "", sortBy: "name" });
-    expect(mockSearch.mock.lastCall?.[0].sort).toEqual(
-      buildAgentDefaultSort({ sortBy: "name" })
-    );
-
-    await searchAgents(auth, {
+    const favoriteResult = await dust.setUserFavorite(auth, true);
+    expect(favoriteResult.isOk()).toBe(true);
+    mockHits([
+      makeDocument({
+        workspace_id: GLOBAL_AGENTS_WORKSPACE_ID,
+        agent_id: dust.sId,
+        scope: "global",
+      }),
+    ]);
+    const result = await searchAgents(auth, {
       searchTerm: "",
-      sortBy: "name",
-      favoritesFirst: true,
+      selectionMode: "favorites_or_all",
+      offset: 1,
+      limit: 1,
+      sortBy: "usage",
+      sortOrder: "asc",
     });
-    const [favoritesSort, ...sort] = mockSearch.mock.lastCall?.[0].sort;
-    expect(favoritesSort).toMatchObject({
-      _script: {
-        order: "asc",
-        script: { params: { favoriteAgentIds: [GLOBAL_AGENTS_SID.DUST] } },
-      },
+    assert(result.isOk());
+    expect(result.value).toMatchObject({
+      agents: [],
+      total: 1,
+      hasMore: false,
+      isFavoritesOnly: true,
     });
-    expect(sort).toEqual(buildAgentDefaultSort({ sortBy: "name" }));
+    expect(mockSearch).toHaveBeenCalledOnce();
+    expect(mockSearch.mock.lastCall?.[0]).toMatchObject({
+      from: 1,
+      size: 1,
+      sort: buildAgentDefaultSort({ sortBy: "usage", sortOrder: "asc" }),
+    });
   });
 
   it("rejects offsets past the result window without querying", async () => {

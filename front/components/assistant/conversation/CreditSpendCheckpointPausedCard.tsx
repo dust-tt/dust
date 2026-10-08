@@ -2,7 +2,7 @@ import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMes
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { formatCreditValue } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import { useResolveCreditSpendCheckpoint } from "@app/lib/swr/tool_actions";
 import type { CreditSpendCheckpointStatus } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -14,6 +14,7 @@ import {
   PieChart01,
   XClose,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
@@ -54,7 +55,9 @@ export function CreditSpendCheckpointPausedCard({
   });
   const displayedCredits = consumption?.totalBilledCredits ?? creditsUsed;
   const formattedCredits =
-    displayedCredits !== null ? formatCreditValue(displayedCredits) : null;
+    displayedCredits !== null ? formatCredits(displayedCredits) : null;
+  const creditCount =
+    displayedCredits !== null ? roundCredits(displayedCredits) : 0;
   const triggeringUserName = triggeringUser?.fullName;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
@@ -82,12 +85,18 @@ export function CreditSpendCheckpointPausedCard({
     if (triggeringUserName) {
       stoppedMessage =
         formattedCredits !== null
-          ? t`${triggeringUserName} stopped this task after it used ${formattedCredits}.`
+          ? t`${plural(creditCount, {
+              one: `${triggeringUserName} stopped this task after it used ${formattedCredits} credit.`,
+              other: `${triggeringUserName} stopped this task after it used ${formattedCredits} credits.`,
+            })}`
           : t`${triggeringUserName} stopped this task because it was using a lot of credits.`;
     } else {
       stoppedMessage =
         formattedCredits !== null
-          ? t`The user stopped this task after it used ${formattedCredits}.`
+          ? t`${plural(creditCount, {
+              one: `The user stopped this task after it used ${formattedCredits} credit.`,
+              other: `The user stopped this task after it used ${formattedCredits} credits.`,
+            })}`
           : t`The user stopped this task because it was using a lot of credits.`;
     }
 
@@ -123,7 +132,10 @@ export function CreditSpendCheckpointPausedCard({
 
       <div className="text-base text-muted-foreground">
         {formattedCredits !== null
-          ? t`This task has used ${formattedCredits} so far. Continue running it?`
+          ? t`${plural(creditCount, {
+              one: `This task has used ${formattedCredits} credit so far. Continue running it?`,
+              other: `This task has used ${formattedCredits} credits so far. Continue running it?`,
+            })}`
           : t`This task has used a lot of credits. Continue running it?`}
       </div>
 

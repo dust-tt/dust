@@ -3,6 +3,10 @@ import { resolveAllowedModelTiers } from "@app/lib/model_tiers/resolve_allowed";
 import { expandTiersUpTo } from "@app/lib/model_tiers/tier_order";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { getModelsTierDisplayName } from "@app/types/assistant/models/model_tiers";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+
+type Translate = (descriptor: MessageDescriptor) => string;
 
 type ResolvedModelTiersForUser = ReturnType<typeof resolveAllowedModelTiers>;
 
@@ -45,13 +49,15 @@ export function expandMaxTierName(
 }
 
 export function formatModelTiersSummary(
-  maxTierName: ModelsTierName | null | undefined
+  maxTierName: ModelsTierName | null | undefined,
+  t: Translate
 ): string {
   if (!maxTierName) {
     return "--";
   }
 
-  return `Up to ${getModelsTierDisplayName(maxTierName)}`;
+  const tierName = getModelsTierDisplayName(maxTierName);
+  return t(msg`Up to ${tierName}`);
 }
 
 export function formatUserModelTierInheritLabel({
@@ -59,11 +65,13 @@ export function formatUserModelTierInheritLabel({
   groupNameToId,
   groupTierNamesByGroupId,
   workspaceAllowedTierNames,
+  t,
 }: {
   groupNames: string[];
   groupNameToId: Map<string, string>;
   groupTierNamesByGroupId: Record<string, ModelsTierName[]>;
   workspaceAllowedTierNames: ModelsTierName[];
+  t: Translate;
 }): string {
   const resolved = resolveModelTiersForUser({
     userId: "",
@@ -75,8 +83,8 @@ export function formatUserModelTierInheritLabel({
   });
 
   return resolved.source === "groups"
-    ? "Inherited from groups"
-    : "Inherited from workspace";
+    ? t(msg`Inherited from groups`)
+    : t(msg`Inherited from workspace`);
 }
 
 export function buildModelTierDefinitionByName(

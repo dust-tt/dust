@@ -139,6 +139,10 @@ msgid "Data source"
 msgstr "Data source"
 
 #: front/components/app/blocks/DataSource.tsx
+msgid "Top K"
+msgstr "Top K"
+
+#: front/components/app/blocks/DataSource.tsx
 msgid "Full text"
 msgstr "Full text"
 
@@ -192,6 +196,10 @@ msgstr "max tokens:"
 msgctxt "stop sequence, input placeholder"
 msgid "add"
 msgstr "add"
+
+#: front/components/app/blocks/LLM.tsx
+msgid "few-shot"
+msgstr "few-shot"
 
 #: front/components/app/blocks/LLM.tsx
 msgid "introduction:"

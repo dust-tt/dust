@@ -129,6 +129,38 @@ services:
       timeout: 10s
       retries: 20
 
+  fdb:
+    image: foundationdb/foundationdb:7.3.69
+    environment:
+      # Host mode: the cluster file advertises 127.0.0.1:4500, reachable through the published port.
+      FDB_NETWORKING_MODE: host
+      FDB_PORT: "4500"
+    ports:
+      - 127.0.0.1:4500:4500
+    volumes:
+      # The image declares /var/fdb/data as a VOLUME: mount it explicitly or data is lost on recreate.
+      - dev-fdb:/var/fdb/data
+    healthcheck:
+      test: ["CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'"]
+      interval: 5s
+      timeout: 6s
+      retries: 20
+
+  fdb_init:
+    depends_on:
+      - fdb
+    image: foundationdb/foundationdb:7.3.69
+    network_mode: service:fdb
+    restart: "no"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        echo "docker:docker@127.0.0.1:4500" > /tmp/fdb.cluster
+        until fdbcli -C /tmp/fdb.cluster --timeout 5 --exec "status minimal" | grep -q "The database is available"; do
+          fdbcli -C /tmp/fdb.cluster --timeout 5 --exec "configure new single ssd"
+          sleep 2
+        done
+
   gotenberg:
     image: gotenberg/gotenberg:8
     profiles:
@@ -147,3 +179,4 @@ volumes:
   qdrant_secondary:
   dev-elasticsearch:
   dev-kibana:
+  dev-fdb:

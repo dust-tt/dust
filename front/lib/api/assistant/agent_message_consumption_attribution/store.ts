@@ -1,5 +1,4 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
@@ -587,9 +586,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
       internalMCPServerName: actionResource.metadata.internalMCPServerName,
       mcpServerId: actionResource.metadata.mcpServerId ?? null,
       status: actionResource.status,
-      toolName: getToolNameFromFunctionCallName(
-        actionResource.functionCallName
-      ),
+      toolName: actionResource.toolName,
     })),
     contextOrigin: triggeringUserMessageOrigin,
     runUsages: [],

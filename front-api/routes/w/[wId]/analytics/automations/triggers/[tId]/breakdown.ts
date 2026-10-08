@@ -5,7 +5,7 @@ import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/per
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureCanReadAnalyticsOfAllGroups } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -20,7 +20,7 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
+  ensureCanReadAnalyticsOfAllGroups(),
   validate("param", ParamsSchema),
   validate("json", AutomationTriggerBreakdownBodySchema),
   async (ctx): HandlerResult<GetAutomationTriggerBreakdownResponse> => {

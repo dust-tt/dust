@@ -16,8 +16,8 @@ const STATUS_CHIP_COLORS: Record<TriggerStatus, ChipColor> = {
 };
 
 export const TRIGGER_STATUS_LABELS: Record<TriggerStatus, MessageDescriptor> = {
-  enabled: msg`Enabled`,
-  disabled: msg`Disabled`,
+  enabled: msg({ message: "Enabled", context: "trigger status" }),
+  disabled: msg({ message: "Disabled", context: "trigger status" }),
   disabled_by_manager: msg`Disabled by manager`,
   relocating: msg`Relocating`,
   downgraded: msg`Downgraded`,

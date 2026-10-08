@@ -7,7 +7,7 @@ import {
 import { parseCalendarDate, timezoneSchema } from "@app/lib/api/timezone";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
+import { ensureCanReadAnalyticsOfAllGroups } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -57,53 +57,58 @@ const QuerySchema = z
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
-  const auth = ctx.get("auth");
+app.get(
+  "/",
+  ensureCanReadAnalyticsOfAllGroups(),
+  validate("query", QuerySchema),
+  async (ctx) => {
+    const auth = ctx.get("auth");
 
-  const { table, startDate, endDate, timezone, format } =
-    ctx.req.valid("query");
+    const { table, startDate, endDate, timezone, format } =
+      ctx.req.valid("query");
 
-  const owner = auth.getNonNullableWorkspace();
-  const result = await exportTable({
-    auth,
-    table,
-    startDate,
-    endDate,
-    timezone,
-    owner,
-    includeHiddenAgents: false,
-  });
-
-  if (result.isErr()) {
-    return apiError(ctx, {
-      status_code: 500,
-      api_error: {
-        type: "internal_server_error",
-        message: result.error.message,
-      },
-    });
-  }
-
-  logger.info(
-    {
-      workspaceId: owner.sId,
+    const owner = auth.getNonNullableWorkspace();
+    const result = await exportTable({
+      auth,
       table,
-      period: `${startDate}:${endDate}`,
-      format: format ?? "csv",
-    },
-    "Analytics export downloaded"
-  );
+      startDate,
+      endDate,
+      timezone,
+      owner,
+      includeHiddenAgents: false,
+    });
 
-  if (format === "json") {
-    return ctx.json(result.value.rows);
+    if (result.isErr()) {
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: result.error.message,
+        },
+      });
+    }
+
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        table,
+        period: `${startDate}:${endDate}`,
+        format: format ?? "csv",
+      },
+      "Analytics export downloaded"
+    );
+
+    if (format === "json") {
+      return ctx.json(result.value.rows);
+    }
+
+    ctx.header("Content-Type", "text/csv");
+    ctx.header(
+      "Content-Disposition",
+      `attachment; filename="dust_${table}_${startDate}_${endDate}.csv"`
+    );
+    return ctx.body(stringifyExportTableAsCsv(result.value));
   }
-
-  ctx.header("Content-Type", "text/csv");
-  ctx.header(
-    "Content-Disposition",
-    `attachment; filename="dust_${table}_${startDate}_${endDate}.csv"`
-  );
-  return ctx.body(stringifyExportTableAsCsv(result.value));
-});
+);
 
 export default app;

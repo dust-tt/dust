@@ -120,7 +120,6 @@ export class DocumentRenderer {
     }
 
     try {
-      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(
         `${this.serviceUrl}/forms/chromium/convert/url`,
         {
@@ -171,7 +170,6 @@ export class DocumentRenderer {
     formData.append("files", new Blob([new Uint8Array(fileBuffer)]), fileName);
 
     try {
-      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(
         `${this.serviceUrl}/forms/libreoffice/convert`,
         {
@@ -243,7 +241,6 @@ export class DocumentRenderer {
     }
 
     try {
-      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(
         `${this.serviceUrl}/forms/chromium/screenshot/html`,
         {
@@ -307,7 +304,6 @@ export class DocumentRenderer {
     }
 
     try {
-      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(
         `${this.serviceUrl}/forms/chromium/screenshot/url`,
         {

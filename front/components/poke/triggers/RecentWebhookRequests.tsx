@@ -1,5 +1,6 @@
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
 import { formatCalendarDateTime } from "@app/lib/client/calendar_date";
+import { defaultLocaleI18n } from "@app/lib/i18n/i18n";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
@@ -160,7 +161,10 @@ function PokeRecentWebhookRequestsContent({
                 <Collapsible defaultOpen={false}>
                   <CollapsibleTrigger>
                     <div className="my-2 flex w-full items-center justify-between gap-4">
-                      {formatCalendarDateTime(new Date(request.timestamp))}
+                      {formatCalendarDateTime(
+                        new Date(request.timestamp),
+                        defaultLocaleI18n.t
+                      )}
                       <WebhookRequestStatusBadge status={request.status} />
                     </div>
                   </CollapsibleTrigger>

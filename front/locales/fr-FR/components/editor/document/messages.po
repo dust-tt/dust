@@ -344,10 +344,6 @@ msgid "This suggestion can't replace the commented text. Another comment may cov
 msgstr "Cette suggestion ne peut pas remplacer le texte commenté. Un autre commentaire en couvre peut-être une partie."
 
 #: front/components/editor/document/useDocumentComments.ts
-msgid "This text is too long or complex to suggest a change to."
-msgstr "Ce texte est trop long ou trop complexe pour y suggérer une modification."
-
-#: front/components/editor/document/useDocumentComments.ts
 msgid "This comment was deleted."
 msgstr "Ce commentaire a été supprimé."
 
@@ -356,8 +352,16 @@ msgid "This thread changed while sending. Send again."
 msgstr "Cette discussion a changé pendant l’envoi. Renvoyez votre message."
 
 #: front/components/editor/document/useDocumentComments.ts
+msgid "This text is too long or complex to suggest a change to."
+msgstr "Ce texte est trop long ou trop complexe pour y suggérer une modification."
+
+#: front/components/editor/document/useDocumentComments.ts
 msgid "This suggestion can't be saved in this document."
 msgstr "Cette suggestion ne peut pas être enregistrée dans ce document."
+
+#: front/components/editor/document/useDocumentComments.ts
+msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
+msgstr "La suggestion a été appliquée, mais le commentaire n’a pas pu être résolu. {reason}"
 
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Could not save. Your changes are still here. Try again."

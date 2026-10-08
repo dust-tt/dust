@@ -19,7 +19,10 @@ import {
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { PlanMessageHandler } from "@connectors/connectors/slack/chat/plan_message_handler";
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
-import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
+import {
+  isSlackUnknownUserGroupError,
+  isSlackWebAPIPlatformError,
+} from "@connectors/connectors/slack/lib/errors";
 import { formatAgentMarkdownForSlack } from "@connectors/connectors/slack/lib/format_agent_markdown_for_slack";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
@@ -1111,6 +1114,15 @@ async function deleteAndRepostMessageWithFiles({
   return true;
 }
 
+// Slack user group mention: `<!subteam^S123>` or `<!subteam^S123|@group>`.
+const USER_GROUP_MENTION_REGEX = /<!subteam\^([A-Z0-9]+)(?:\|([^>]+))?>/g;
+
+/**
+ * @cc [owner:philipperolet,label:product;error-handling] unknown-user-group-fallback
+ * When Slack rejects the update because a user group mention points to a group Slack cannot find,
+ * the update MUST be retried once with every user group mention in the text replaced by plain text
+ * (the mention label, or `@<group id>` when there is no label), rather than failing the answer.
+ */
 async function postSlackMessageUpdate({
   messageUpdate,
   slack,
@@ -1145,22 +1157,25 @@ async function postSlackMessageUpdate({
     conversation.sId
   );
 
+  const updateMessage = (update: SlackMessageUpdate) =>
+    slackClient.chat.update({
+      ...makeMessageUpdateBlocksAndText(
+        conversationUrl,
+        connector.workspaceId,
+        update
+      ),
+      channel: slackChannelId,
+      ts: targetTs,
+      // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
+    });
+
   const response = await throttleWithRedis(
     RATE_LIMITS["chat.update"],
     `${connector.id}-chat-update`,
     { canBeIgnored },
     async () => {
       try {
-        return await slackClient.chat.update({
-          ...makeMessageUpdateBlocksAndText(
-            conversationUrl,
-            connector.workspaceId,
-            messageUpdate
-          ),
-          channel: slackChannelId,
-          ts: targetTs,
-          // Note: file_ids is not supported by chat.update API, so we need to delete and repost the message
-        });
+        return await updateMessage(messageUpdate);
       } catch (error) {
         if (
           isSlackWebAPIPlatformError(error) &&
@@ -1168,7 +1183,27 @@ async function postSlackMessageUpdate({
         ) {
           return undefined;
         }
-        throw error;
+        if (!isSlackUnknownUserGroupError(error) || !messageUpdate.text) {
+          throw error;
+        }
+        logger.warn(
+          {
+            provider: "slack",
+            connectorId: connector.id,
+            conversationId: conversation.sId,
+            err: error,
+          },
+          "Slack rejected a user group mention, retrying with group mentions as plain text."
+        );
+        const textWithPlainGroupMentions = messageUpdate.text.replace(
+          USER_GROUP_MENTION_REGEX,
+          (_mention: string, groupId: string, label?: string) =>
+            label ?? `@${groupId}`
+        );
+        return await updateMessage({
+          ...messageUpdate,
+          text: textWithPlainGroupMentions,
+        });
       }
     },
     extraLogs

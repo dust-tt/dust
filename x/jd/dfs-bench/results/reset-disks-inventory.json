@@ -1,0 +1,92 @@
+[
+  {
+    "name": "dfs-blocks-ssd-jd-20261006-01",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-ssd",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-live-build-jd-20261006"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-live-build-jd-20261006",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-standard",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-live-build-jd-20261006"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-search-jd-20261002-data",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-ssd",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-showdown-jd-20261003-lance",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-ssd",
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-v2-spolu-fdb-a",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-v2-spolu-fdb-a"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-v2-spolu-tx-a",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-v2-spolu-tx-a"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-v2-spolu-workload",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/diskTypes/pd-ssd",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/dfs-v2-spolu-workload"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+  },
+  {
+    "name": "dfs-v2-spolu-fdb-b",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/diskTypes/pd-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b/instances/dfs-v2-spolu-fdb-b"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-b"
+  },
+  {
+    "name": "dfs-v2-spolu-fdb-f",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/diskTypes/pd-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f/instances/dfs-v2-spolu-fdb-f"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-f"
+  },
+  {
+    "name": "dfs-clean-jd-20261006-rocks",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/diskTypes/hyperdisk-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a/instances/dfs-clean-jd-20261006-rocks"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-a"
+  },
+  {
+    "name": "dfs-clean-jd-20261006-fdb-b",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/diskTypes/hyperdisk-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b/instances/dfs-clean-jd-20261006-fdb-b"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-b"
+  },
+  {
+    "name": "dfs-clean-jd-20261006-tikv-c",
+    "type": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/diskTypes/hyperdisk-balanced",
+    "users": [
+      "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c/instances/dfs-clean-jd-20261006-tikv-c"
+    ],
+    "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-east4-c"
+  }
+]

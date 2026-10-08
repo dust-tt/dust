@@ -327,6 +327,21 @@ function registeredDestinationError(): DustFileSystemError {
   );
 }
 
+/**
+ * @cc [owner:davidebbo,label:product;backend] frame-manifest-never-moves-alone
+ * A move or rename whose source is the manifest of a registered Frames v2 package MUST be refused
+ * with this error before any bytes move. The manifest is the Frame's `FileResource`: relocating it
+ * alone splits it from its package and repoints the Frame through the generic file path, which
+ * drops the publication its share link serves. The Frame moves only with its folder.
+ */
+function frameManifestMoveError(scopedPath: string): DustFileSystemError {
+  return new DustFileSystemError(
+    "frame_manifest_move",
+    `\`${scopedPath}\` is the manifest of a Frame and cannot be moved or renamed on its own. ` +
+      "Move or rename the Frame's folder instead."
+  );
+}
+
 function toDustFileSystemError(
   error: MoveFrameV2SourceError
 ): DustFileSystemError {
@@ -498,6 +513,9 @@ export async function renameCanonicalFile(
     dustFs,
     scopedPath
   );
+  if (linkedFileResource?.isFrameV2) {
+    return new Err(frameManifestMoveError(scopedPath));
+  }
 
   const renameResult = await dustFs.rename(scopedPath, newFileName);
   if (renameResult.isErr()) {
@@ -572,6 +590,9 @@ export async function moveCanonicalFile(
 
   // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+  if (linkedFileResource?.isFrameV2) {
+    return new Err(frameManifestMoveError(src));
+  }
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
@@ -677,10 +698,13 @@ function resolvePathWriteContentType(
   return contentTypeFromFileName(fileName) ?? "text/plain";
 }
 
+export const isPathWritableContentType = (contentType: string) =>
+  contentType.startsWith("text/") || contentType === "application/json";
+
 function validatePathWritableContentType(
   contentType: string
 ): Result<void, WriteCanonicalFileContentError> {
-  if (!contentType.startsWith("text/") && contentType !== "application/json") {
+  if (!isPathWritableContentType(contentType)) {
     return new Err(
       new WriteCanonicalFileContentError(
         "unsupported_content_type",

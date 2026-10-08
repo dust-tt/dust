@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
+  SettingsList,
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -171,100 +172,106 @@ export function AutoJoinToggle({
         title={t`Free plan`}
         description={t`You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.`}
       />
-      <Page.Vertical>
-        <div className="flex w-full flex-row items-center gap-2">
-          <div className="flex-1">
-            <div className="flex flex-row items-center gap-2">
-              <Page.H variant="h5">
-                <Trans>Auto-join Workspace</Trans>
-              </Page.H>
-            </div>
-            <Page.P variant="secondary">
-              {domainCount > 0
+      <Page.Vertical gap="sm" align="stretch">
+        <span className="heading-base text-foreground">
+          <Trans>Joining the workspace</Trans>
+        </span>
+        <SettingsList>
+          <SettingsList.Row
+            title={t`Auto-join Workspace`}
+            description={
+              domainCount > 0
                 ? t`${plural(domainCount, {
                     one: `Allow your team members to access your Dust workspace when they authenticate with ${domainList} account.`,
                     other: `Allow your team members to access your Dust workspace when they authenticate with ${domainList} accounts.`,
                   })}`
-                : t`Allow your team members to access your Dust workspace when they authenticate with verified accounts.`}
-            </Page.P>
-          </div>
-          <div className="flex justify-end">
-            {isMultiDomain ? (
-              <Button
-                label={
-                  isAnyDomainAutoJoinEnabled
-                    ? t`Configure`
-                    : t`Enable Auto-join`
-                }
-                size="sm"
-                variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
-                tooltip={
-                  owner.ssoEnforced
-                    ? t`Auto-join is not available when SSO is enforced`
-                    : domains.length === 0
-                      ? t`Add a domain to enable Auto-join`
-                      : !hasVerifiedDomains
-                        ? t`Verify a domain to enable Auto-join`
+                : t`Allow your team members to access your Dust workspace when they authenticate with verified accounts.`
+            }
+            className="max-sm:flex-col max-sm:items-start"
+            action={
+              <div className="flex justify-end">
+                {isMultiDomain ? (
+                  <Button
+                    label={
+                      isAnyDomainAutoJoinEnabled
+                        ? t`Configure`
+                        : t`Enable Auto-join`
+                    }
+                    size="sm"
+                    variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
+                    tooltip={
+                      owner.ssoEnforced
+                        ? t`Auto-join is not available when SSO is enforced`
+                        : domains.length === 0
+                          ? t`Add a domain to enable Auto-join`
+                          : !hasVerifiedDomains
+                            ? t`Verify a domain to enable Auto-join`
+                            : undefined
+                    }
+                    disabled={
+                      !domains.length ||
+                      !!owner.ssoEnforced ||
+                      !hasVerifiedDomains
+                    }
+                    onClick={() => {
+                      if (isUpgraded(plan)) {
+                        setIsActivateAutoJoinOpened(true);
+                      } else {
+                        setShowUpgradePlanDialog(true);
+                      }
+                    }}
+                  />
+                ) : domainAutoJoinEnabled ? (
+                  <Button
+                    label={t`De-activate Auto-join`}
+                    size="sm"
+                    variant="outline"
+                    disabled={owner.ssoEnforced}
+                    tooltip={
+                      owner.ssoEnforced
+                        ? t`Auto-join is not available when SSO is enforced`
                         : undefined
-                }
-                disabled={
-                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
-                }
-                onClick={() => {
-                  if (isUpgraded(plan)) {
-                    setIsActivateAutoJoinOpened(true);
-                  } else {
-                    setShowUpgradePlanDialog(true);
-                  }
-                }}
-              />
-            ) : domainAutoJoinEnabled ? (
-              <Button
-                label={t`De-activate Auto-join`}
-                size="sm"
-                variant="outline"
-                disabled={owner.ssoEnforced}
-                tooltip={
-                  owner.ssoEnforced
-                    ? t`Auto-join is not available when SSO is enforced`
-                    : undefined
-                }
-                onClick={() => {
-                  if (isUpgraded(plan)) {
-                    setIsActivateAutoJoinOpened(true);
-                  } else {
-                    setShowUpgradePlanDialog(true);
-                  }
-                }}
-              />
-            ) : (
-              <Button
-                label={t`Activate Auto-join`}
-                size="sm"
-                variant="primary"
-                tooltip={
-                  owner.ssoEnforced
-                    ? t`Auto-join is not available when SSO is enforced`
-                    : domains.length === 0
-                      ? t`Add a domain to enable Auto-join`
-                      : !hasVerifiedDomains
-                        ? t`Verify a domain to enable Auto-join`
-                        : undefined
-                }
-                disabled={
-                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
-                }
-                onClick={() => {
-                  if (isUpgraded(plan)) {
-                    setIsActivateAutoJoinOpened(true);
-                  } else {
-                    setShowUpgradePlanDialog(true);
-                  }
-                }}
-              />
-            )}
-          </div>
-        </div>
+                    }
+                    onClick={() => {
+                      if (isUpgraded(plan)) {
+                        setIsActivateAutoJoinOpened(true);
+                      } else {
+                        setShowUpgradePlanDialog(true);
+                      }
+                    }}
+                  />
+                ) : (
+                  <Button
+                    label={t`Activate Auto-join`}
+                    size="sm"
+                    variant="primary"
+                    tooltip={
+                      owner.ssoEnforced
+                        ? t`Auto-join is not available when SSO is enforced`
+                        : domains.length === 0
+                          ? t`Add a domain to enable Auto-join`
+                          : !hasVerifiedDomains
+                            ? t`Verify a domain to enable Auto-join`
+                            : undefined
+                    }
+                    disabled={
+                      !domains.length ||
+                      !!owner.ssoEnforced ||
+                      !hasVerifiedDomains
+                    }
+                    onClick={() => {
+                      if (isUpgraded(plan)) {
+                        setIsActivateAutoJoinOpened(true);
+                      } else {
+                        setShowUpgradePlanDialog(true);
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            }
+          />
+        </SettingsList>
       </Page.Vertical>
     </>
   );

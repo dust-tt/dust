@@ -3,6 +3,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { CellInfo } from "@app/types/cell";
+import type { APIError } from "@app/types/error";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
@@ -51,7 +52,9 @@ export async function submitConnectMCPServerDialogForm({
   updateServerView,
   onBeforeAssociateConnection,
   cellInfo,
-}: SubmitConnectMCPServerDialogFormParams): Promise<Result<null, Error>> {
+}: SubmitConnectMCPServerDialogFormParams): Promise<
+  Result<null, APIError | Error>
+> {
   if (!values.useCase) {
     return new Err(new Error("Use case is null while trying to connect"));
   }

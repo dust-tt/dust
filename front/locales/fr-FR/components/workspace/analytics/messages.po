@@ -31,7 +31,7 @@ msgstr "Réessayer"
 
 #: front/components/workspace/analytics/AnalyticsConversationPanel.tsx
 msgid "Starting Analyst session..."
-msgstr "Démarrage de la session Analyst..."
+msgstr "Démarrage de la session Analyst…"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Usage metrics"
@@ -209,12 +209,12 @@ msgid "API key"
 msgstr "Clé API"
 
 #: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
-msgid "{period} {period, plural, one {day} other {days}}"
-msgstr "{period} {period, plural, one {jour} other {jours}}"
+msgid "{period, plural, one {# day} other {# days}}"
+msgstr "{period, plural, one {# jour} many {# jours} other {# jours}}"
 
 #: front/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector.tsx
-msgid "{days} {days, plural, one {day} other {days}}"
-msgstr "{days} {days, plural, one {jour} other {jours}}"
+msgid "{days, plural, one {# day} other {# days}}"
+msgstr "{days, plural, one {# jour} many {# jours} other {# jours}}"
 
 #: front/components/workspace/analytics/automationsFilter.ts
 msgid "Type"
@@ -222,15 +222,7 @@ msgstr "Type"
 
 #: front/components/workspace/analytics/automationsFilter.ts
 msgid "Pool"
-msgstr "Réserve"
-
-#: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{formattedCredits} credits"
-msgstr "{formattedCredits} crédits"
-
-#: front/components/workspace/analytics/creditsTableCells.tsx
-msgid "{averageCredits} credits / message"
-msgstr "{averageCredits} crédits / message"
+msgstr "Réserve de crédits"
 
 #: front/components/workspace/analytics/sourceOriginLabels.ts
 msgid "Conversation"

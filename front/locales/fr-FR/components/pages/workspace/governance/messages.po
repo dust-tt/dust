@@ -35,12 +35,20 @@ msgid "Groups assigned here are managed in <0>Members → Groups</0>"
 msgstr "Les groupes attribués ici se gèrent dans <0>Membres → Groupes</0>"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
-msgid "Pods"
-msgstr "Pods"
+msgid "Agents & Skills"
+msgstr "Agents & Compétences"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods & Frames"
+msgstr "Pods & Frames"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Features"
 msgstr "Fonctionnalités"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods"
+msgstr "Pods"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Frames"
@@ -116,11 +124,11 @@ msgstr "Créer des agents"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "Who can create agents in the Agent Builder"
-msgstr "Qui peut créer des agents dans l’Agent Builder"
+msgstr "Qui peut créer des agents dans l’éditeur d’agent"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "who can create agents agent builder permission"
-msgstr "qui peut créer des agents agent builder autorisation"
+msgstr "qui peut créer des agents éditeur d’agent autorisation"
 
 #: front/components/pages/workspace/governance/capabilityMetadata.ts
 msgid "Publish agents"
@@ -324,7 +332,7 @@ msgstr "conversation confidentialité participants"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "Workspace Analyst"
-msgstr "Analyst du workspace"
+msgstr "Agent Analyst du workspace"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "analyst agent analytics tools admins"
@@ -343,5 +351,5 @@ msgid "Inactivity threshold"
 msgstr "Seuil d’inactivité"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "days unmentioned archived schedule excluded"
-msgstr "jours non mentionnés archivés planification exclus"
+msgid "days unmentioned archived schedule wake-up excluded"
+msgstr "jours non mentionnés archivés planification réveil exclus"

@@ -46,6 +46,7 @@ export interface AgentInactivitySnapshot {
   status: AgentConfigurationStatus;
   // Every trigger the agent has; `doesTriggerPreventArchival` picks out the ones that protect it.
   triggers: AgentTriggerSnapshot[];
+  hasPendingWakeUp: boolean;
 }
 
 /** The rules read only a trigger's kind and status, so they take this rather than a `TriggerResource`. */
@@ -57,6 +58,7 @@ export interface AgentTriggerSnapshot {
 export type AgentArchivalExclusionReason =
   | "agent_not_active"
   | "active_schedule"
+  | "pending_wake_up"
   | "recent_creation"
   | "recent_mention";
 
@@ -121,7 +123,7 @@ function isArchivableStatus(status: AgentConfigurationStatus): boolean {
 }
 
 /**
- * Only schedules protect an agent: they drive it on their own, so one nobody mentions can still run
+ * Among triggers, only schedules protect an agent: they drive it on their own, so one nobody mentions can still run
  * every night. `relocating` and `downgraded` are set in bulk by Dust on triggers meant to be enabled
  * again, so reading them as "no schedule" would archive every scheduled agent mid-relocation.
  */
@@ -165,6 +167,13 @@ export function evaluateAgentArchivalEligibility({
     return {
       eligible: false,
       reason: "active_schedule",
+    };
+  }
+
+  if (agent.hasPendingWakeUp) {
+    return {
+      eligible: false,
+      reason: "pending_wake_up",
     };
   }
 

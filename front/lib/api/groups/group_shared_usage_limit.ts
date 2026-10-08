@@ -21,6 +21,7 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { contractHasPersonalCreditSeats } from "@app/lib/metronome/seats";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { listGroupsWithVerb } from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
@@ -37,15 +38,16 @@ import type {
   SharedUsageLimit,
   SetSharedUsageLimitResponse,
 } from "@app/types/api/groups/shared_usage_limit";
+import {
+  MAX_SHARED_USAGE_LIMIT_AWU_CREDITS,
+  MIN_SHARED_USAGE_LIMIT_AWU_CREDITS,
+} from "@app/types/api/groups/shared_usage_limit";
 import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-
-export const MIN_SHARED_USAGE_LIMIT_AWU_CREDITS = 0;
-export const MAX_SHARED_USAGE_LIMIT_AWU_CREDITS = 100_000_000;
 
 type SharedUsageLimitErrorType =
   | "shared_usage_limits_not_enabled"
@@ -93,27 +95,19 @@ export async function areGroupSharedUsageLimitsEnabled(
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-admin-only-edit
- * Only workspace admins MAY set or remove a shared usage limit. Group managers' `set_usage_limits`
- * MUST NOT grant it (it only covers the per-member limit).
+ * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-edit-rights
+ * Only workspace admins and workspace managers MAY set or remove a shared usage limit, or read how
+ * groups with one overlap. Group managers' `set_usage_limits` MUST NOT grant it (it only covers the
+ * per-member limit).
  */
-export async function setGroupSharedUsageLimit(
-  auth: Authenticator,
-  {
-    groupId,
-    limit,
-    auditContext,
-  }: {
-    groupId: string;
-    limit: SharedUsageLimit;
-    auditContext: AuditLogContext;
-  }
-): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
-  if (!auth.isAdmin()) {
+async function ensureCanManageSharedUsageLimits(
+  auth: Authenticator
+): Promise<Result<void, SharedUsageLimitError>> {
+  if (!auth.isManager()) {
     return new Err(
       new SharedUsageLimitError(
         "unauthorized",
-        "Only workspace admins can change shared usage limits."
+        "Only workspace admins and managers can manage shared usage limits."
       )
     );
   }
@@ -127,20 +121,13 @@ export async function setGroupSharedUsageLimit(
     );
   }
 
-  if (
-    limit.kind === "limited" &&
-    (!Number.isInteger(limit.awuCredits) ||
-      limit.awuCredits < MIN_SHARED_USAGE_LIMIT_AWU_CREDITS ||
-      limit.awuCredits > MAX_SHARED_USAGE_LIMIT_AWU_CREDITS)
-  ) {
-    return new Err(
-      new SharedUsageLimitError(
-        "invalid_threshold",
-        `awuCredits must be an integer between ${MIN_SHARED_USAGE_LIMIT_AWU_CREDITS} and ${MAX_SHARED_USAGE_LIMIT_AWU_CREDITS}`
-      )
-    );
-  }
+  return new Ok(undefined);
+}
 
+async function fetchCapEligibleGroup(
+  auth: Authenticator,
+  groupId: string
+): Promise<Result<GroupResource, SharedUsageLimitError>> {
   const groupRes = await GroupResource.fetchById(auth, groupId);
   if (groupRes.isErr()) {
     return new Err(
@@ -160,6 +147,46 @@ export async function setGroupSharedUsageLimit(
       )
     );
   }
+
+  return new Ok(group);
+}
+
+export async function setGroupSharedUsageLimit(
+  auth: Authenticator,
+  {
+    groupId,
+    limit,
+    auditContext,
+  }: {
+    groupId: string;
+    limit: SharedUsageLimit;
+    auditContext: AuditLogContext;
+  }
+): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
+  const canManage = await ensureCanManageSharedUsageLimits(auth);
+  if (canManage.isErr()) {
+    return canManage;
+  }
+
+  if (
+    limit.kind === "limited" &&
+    (!Number.isInteger(limit.awuCredits) ||
+      limit.awuCredits < MIN_SHARED_USAGE_LIMIT_AWU_CREDITS ||
+      limit.awuCredits > MAX_SHARED_USAGE_LIMIT_AWU_CREDITS)
+  ) {
+    return new Err(
+      new SharedUsageLimitError(
+        "invalid_threshold",
+        `awuCredits must be an integer between ${MIN_SHARED_USAGE_LIMIT_AWU_CREDITS} and ${MAX_SHARED_USAGE_LIMIT_AWU_CREDITS}`
+      )
+    );
+  }
+
+  const groupRes = await fetchCapEligibleGroup(auth, groupId);
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
 
   const previousAwuCredits = group.sharedUsageLimitAwuCredits;
 
@@ -186,6 +213,55 @@ export async function setGroupSharedUsageLimit(
   });
 
   return new Ok({ limit });
+}
+
+export type SharedUsageLimitOverlapWithGroup = {
+  group: GroupResource;
+  position: number;
+  sharedMemberCount: number | null;
+};
+
+/**
+ * Every group with a shared usage limit, in priority order (position 1 applies first), with the
+ * number of members it shares with the given group (`null` for the given group itself). The given
+ * group does not need a shared usage limit.
+ */
+export async function getSharedUsageLimitOverlaps(
+  auth: Authenticator,
+  { groupId }: { groupId: string }
+): Promise<Result<SharedUsageLimitOverlapWithGroup[], SharedUsageLimitError>> {
+  const canManage = await ensureCanManageSharedUsageLimits(auth);
+  if (canManage.isErr()) {
+    return canManage;
+  }
+
+  const groupRes = await fetchCapEligibleGroup(auth, groupId);
+  if (groupRes.isErr()) {
+    return groupRes;
+  }
+  const group = groupRes.value;
+
+  const limitedGroups =
+    await GroupResource.listGroupsWithSharedUsageLimit(auth);
+  const memberIdsByGroupModelId =
+    await GroupResource.getActiveMembershipsForGroups(auth, [
+      group,
+      ...limitedGroups.filter((limitedGroup) => limitedGroup.id !== group.id),
+    ]);
+  const groupMemberIds = new Set(memberIdsByGroupModelId[group.id] ?? []);
+
+  return new Ok(
+    limitedGroups.map((limitedGroup, index) => ({
+      group: limitedGroup,
+      position: index + 1,
+      sharedMemberCount:
+        limitedGroup.id === group.id
+          ? null
+          : (memberIdsByGroupModelId[limitedGroup.id] ?? []).filter((userId) =>
+              groupMemberIds.has(userId)
+            ).length,
+    }))
+  );
 }
 
 /**
@@ -457,6 +533,10 @@ export async function readGroupSharedUsageCount(
 }
 
 /**
+ * @cc [owner:rfrenoy,label:security;product] group-shared-usage-read-scope
+ * Workspace admins and workspace managers MAY read the shared usage of every limited group; anyone
+ * else MUST only get the limited groups on which they hold `read_usage` (group managers).
+ *
  * Each limited group with its usage this cycle, or null when shared usage limits are not enabled. Reads
  * the counters without seeding them; groups whose counter reads 0 are filled from a single
  * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
@@ -468,10 +548,17 @@ export async function getGroupSharedUsageLimits(
     return null;
   }
 
-  const [groups, bounds] = await Promise.all([
+  const [limitedGroups, readableGroups, bounds] = await Promise.all([
     GroupResource.listGroupsWithSharedUsageLimit(auth),
+    auth.isManager() ? null : listGroupsWithVerb(auth, "read_usage"),
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
   ]);
+  const readableGroupModelIds = readableGroups
+    ? new Set(readableGroups.map((group) => group.id))
+    : null;
+  const groups = readableGroupModelIds
+    ? limitedGroups.filter((group) => readableGroupModelIds.has(group.id))
+    : limitedGroups;
 
   const workspace = auth.getNonNullableWorkspace();
   const countByGroupId = new Map<string, number>();

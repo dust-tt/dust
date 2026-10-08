@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Usage: bin/clear [run_id]. Resets a run to an empty state without re-creating the cluster:
+# kills the run's sandboxes, wipes the dfs and bench namespaces, and re-creates FDB empty on fresh
+# disks (clearing keys instead would leave Redwood reclaiming space during the next benchmark).
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(current_run)}"
+fetch_credentials "$RUN_ID"
+
+load_e2b_env
+while read -r id _; do
+  [[ -n "$id" ]] && e2b_kill "$id"
+done <<<"$(e2b_list_bench_sandboxes "$RUN_ID")"
+
+log "wiping dfs and bench namespaces"
+kubectl delete namespace dfs bench --ignore-not-found --timeout=10m
+kubectl apply -f "$BENCH_DIR/k8s/namespaces.yaml"
+
+log "re-creating FDB"
+delete_fdb
+create_fdb
+"$BENCH_DIR/bin/status" "$RUN_ID"
+log "clear: run $RUN_ID is empty and ready"

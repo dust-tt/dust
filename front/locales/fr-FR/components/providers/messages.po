@@ -79,7 +79,7 @@ msgstr "Erreur inconnue"
 
 #: front/components/providers/ProviderSetup.tsx
 msgid "Updating..."
-msgstr "Mise à jour..."
+msgstr "Mise à jour…"
 
 #: front/components/providers/ProviderSetup.tsx
 msgid "Update"
@@ -87,7 +87,7 @@ msgstr "Mettre à jour"
 
 #: front/components/providers/ProviderSetup.tsx
 msgid "Enabling..."
-msgstr "Activation..."
+msgstr "Activation…"
 
 #: front/components/providers/ProviderSetup.tsx
 msgid "Enable"
@@ -95,7 +95,7 @@ msgstr "Activer"
 
 #: front/components/providers/ProviderSetup.tsx
 msgid "Testing..."
-msgstr "Test en cours..."
+msgstr "Test en cours…"
 
 #: front/components/providers/ProviderSetup.tsx
 msgctxt "verb, button label"

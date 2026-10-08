@@ -14,8 +14,8 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
-msgid "{contextUsagePercentage}% of context used. <0>Learn more</0>"
-msgstr "{contextUsagePercentage} % du contexte utilisé. <0>En savoir plus</0>"
+msgid "{contextUsagePercent} of context used. <0>Learn more</0>"
+msgstr "{contextUsagePercent} du contexte utilisé. <0>En savoir plus</0>"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
 msgid "Compacting"
@@ -153,7 +153,7 @@ msgstr "Rechercher des modèles"
 
 #: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
 msgid "Search commands, skills, or tools"
-msgstr "Rechercher des commandes, compétences ou outils"
+msgstr "Commandes, compétences ou outils"
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
 msgid "Spaces"
@@ -202,3 +202,11 @@ msgstr "Vous avez utilisé 80 % de votre limite d’utilisation. Vous passerez 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "You've used 80% of your usage limit"
 msgstr "Vous avez utilisé 80 % de votre limite d’utilisation"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted ({count})"
+msgstr "Texte collé ({count})"
+
+#: front/components/assistant/conversation/input_bar/pasted_utils.ts
+msgid "Pasted"
+msgstr "Texte collé"

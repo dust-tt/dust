@@ -3,8 +3,7 @@ import { formatDate } from "@app/lib/i18n/format";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
 import { CREDIT_TYPE_SORT_ORDER } from "@app/types/credits";
 import type { EditedByUser } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
+import { Avatar, Chip, DataTable, LoadingBlock, Page } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -166,9 +165,15 @@ export function getCreditColumns(t: Translate): ColumnDef<RowData, string>[] {
         return (
           <DataTable.CellContent
             className={info.row.original.isExpired ? "opacity-40" : ""}
-            avatarUrl={boughtByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL}
-            avatarTooltipLabel={boughtByUser?.fullName ?? t(msg`System`)}
-            roundedAvatar
+            icon={() => (
+              <Avatar
+                name={boughtByUser?.fullName ?? t(msg`System`)}
+                visual={boughtByUser?.imageUrl ?? undefined}
+                className="mr-2"
+                size="xs"
+                isRounded
+              />
+            )}
           />
         );
       },

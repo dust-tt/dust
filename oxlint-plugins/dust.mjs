@@ -363,13 +363,29 @@ const noStringConcatInJsx = {
 };
 
 // See [ui-errors-through-format-error] in front/CONTRACTS. `<...State>.error.message` is a
-// react-hook-form field error, built on the client, so it is not flagged.
+// react-hook-form field error, built on the client, so it is not flagged. Neither are arguments of
+// logger calls (`logger.error(...)`, `datadogLogger.warn(...)`), which are not shown to users.
 const noRawErrorMessageInUi = {
   create(context) {
+    const isLoggerCall = (node) =>
+      node.callee.type === "MemberExpression" &&
+      /logger$/i.test(context.sourceCode.getText(node.callee.object));
+    let loggerCallDepth = 0;
     return {
+      CallExpression(node) {
+        if (isLoggerCall(node)) {
+          loggerCallDepth++;
+        }
+      },
+      "CallExpression:exit"(node) {
+        if (isLoggerCall(node)) {
+          loggerCallDepth--;
+        }
+      },
       MemberExpression(node) {
         const errorAccess = node.object;
         if (
+          loggerCallDepth > 0 ||
           memberName(node) !== "message" ||
           memberName(errorAccess) !== "error" ||
           /State$/.test(context.sourceCode.getText(errorAccess.object))

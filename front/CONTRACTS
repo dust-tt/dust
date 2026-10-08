@@ -527,6 +527,15 @@ setup and assertions.
 When existing Resource APIs cannot express a required fixture or assertion, direct model access
 is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
+@cc [owner:avervaet,label:testing] shared-test-fixtures
+When a shared factory cannot express a fixture, tests MUST extend that factory or add a new one
+under `tests/utils/` rather than define a local setup helper. Plain typed objects that do not touch
+the database MUST be built with an in-memory factory, not a hand-written or partial literal.
+
+@cc [owner:avervaet,label:testing] no-duplicate-global-mocks
+Modules already mocked by the global test setup MUST NOT be mocked again in an individual test
+file.
+
 @cc [owner:sfriquet,label:testing;react] tests-render-with-i18n
 `vite.i18nSetup.ts` MUST make `render` and `renderHook` from `@testing-library/react` wrap the tree in
 an `I18nProvider` with the `i18n` instance from `lib/i18n/i18n.ts`, outside any `wrapper` the test
@@ -789,8 +798,10 @@ other user-visible text. Error toasts MUST be sent with `useSendApiErrorNotifica
 "Details"); other displays MUST use the `description` of `formatError` from
 `lib/api_error_messages.ts`.
 
-Exceptions: Poke (`components/poke/**`, not translated) and client-side validation messages
-(react-hook-form `fieldState.error.message`).
+Exceptions: Poke (`components/poke/**` and `hooks/usePoke*.ts`, not translated), client-side
+validation messages (react-hook-form `fieldState.error.message`, or a line-level
+`oxlint-disable-next-line` with a reason for messages built by our own validators), and values that
+are not shown to users (logger arguments, RPC payloads sent to a Frame).
 
 The `dust/noRawErrorMessageInUi` oxlint rule enforces the `<x>.error.message` shape. The files that
 turn it off in `.oxlintrc.json` are a migration baseline: remove a file from the list once it is

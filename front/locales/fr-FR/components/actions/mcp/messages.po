@@ -164,7 +164,7 @@ msgstr "L’enregistrement retirera l’outil des agents suivants :"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Open {agentName} in Agent Builder"
-msgstr "Ouvrir {agentName} dans l’Agent Builder"
+msgstr "Ouvrir {agentName} dans l’éditeur d’agent"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Skills using this tool will not be affected."
@@ -177,6 +177,11 @@ msgstr "Continuer"
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Failed to save changes"
 msgstr "Impossible d’enregistrer les modifications"
+
+#: front/components/actions/mcp/MCPServerDetails.tsx
+#: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Header values are hidden once saved: re-enter every header value to update headers."
+msgstr "Les valeurs des en-têtes sont masquées une fois enregistrées : saisissez à nouveau chaque valeur pour mettre à jour les en-têtes."
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "This action will delete the tool's existing copies"
@@ -205,10 +210,6 @@ msgstr "Vos modifications ont été enregistrées."
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Validation error"
 msgstr "Erreur de validation"
-
-#: front/components/actions/mcp/MCPServerDetails.tsx
-msgid "Invalid: {errorDetails}"
-msgstr "Invalide : {errorDetails}"
 
 #: front/components/actions/mcp/MCPServerDetails.tsx
 msgid "Please fix the highlighted fields and try again."
@@ -355,7 +356,7 @@ msgstr "Sélectionner {toolDisplayName}"
 
 #: front/components/actions/mcp/MCPServerDetailsTools.tsx
 msgid "Stake"
-msgstr "Niveau de risque"
+msgstr "Risque"
 
 #: front/components/actions/mcp/MCPServerDetailsTools.tsx
 msgid "Show less"
@@ -455,7 +456,7 @@ msgstr "Activer"
 
 #: front/components/actions/mcp/MCPServerSettings.tsx
 msgid "Permissions"
-msgstr "Permissions"
+msgstr "Autorisations"
 
 #: front/components/actions/mcp/RemoteMCPForm.tsx
 msgid "Synchronization warning"

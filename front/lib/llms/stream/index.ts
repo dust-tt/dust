@@ -2,6 +2,8 @@ import { createCustomStreamEndpoint } from "@app/lib/llms/stream/custom_endpoint
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_dot_one_global_anthropic";
 import { DustAnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
+import { DustAnthropicClaudeHaikuFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_five_dot_five_eu_agent_platform";
+import { DustAnthropicClaudeHaikuFiveDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_five_dot_five_global_anthropic";
 import { DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
 import { DustAnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_dot_five_eu_agent_platform";
@@ -99,6 +101,8 @@ import type { StreamEndpointId } from "@app/lib/model_constructors/stream";
 import { CUSTOM_MODELS } from "@app/types/assistant/models/custom_models.generated";
 
 export const DUST_STREAM_ENDPOINTS = {
+  [DustAnthropicClaudeHaikuFiveDotFiveEuropeAgentPlatformStream.id]:
+    DustAnthropicClaudeHaikuFiveDotFiveEuropeAgentPlatformStream,
   [DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream.id]:
     DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
   [DustAnthropicClaudeOpusFiveEuropeAgentPlatformStream.id]:
@@ -141,6 +145,8 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeFableFiveGlobalAnthropicStream,
   [DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream.id]:
     DustAnthropicClaudeFableFiveDotOneGlobalAnthropicStream,
+  [DustAnthropicClaudeHaikuFiveDotFiveGlobalAnthropicStream.id]:
+    DustAnthropicClaudeHaikuFiveDotFiveGlobalAnthropicStream,
   [DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFiveGlobalAnthropicStream.id]:

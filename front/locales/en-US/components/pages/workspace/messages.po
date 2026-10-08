@@ -32,6 +32,11 @@ msgid "Slack workflows"
 msgstr "Slack workflows"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
+msgid "Analytics"
+msgstr "Analytics"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"
 msgstr "Consumption"
 
@@ -44,15 +49,11 @@ msgid "Ask @analyst"
 msgstr "Ask @analyst"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-#: front/components/pages/workspace/analyticsAdminSearchEntries.ts
-msgid "Analytics"
-msgstr "Analytics"
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Explore"
 msgstr "Explore"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Credits"
 msgstr "Credits"
@@ -63,6 +64,7 @@ msgstr "Manage credit limits for members and groups in your scope."
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Members"
@@ -70,6 +72,7 @@ msgstr "Members"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Groups"
@@ -133,6 +136,31 @@ msgstr "Access tiers"
 msgid "App Credentials"
 msgstr "App Credentials"
 
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Breakdown in analytics"
+msgstr "Breakdown in analytics"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Add credits"
+msgstr "Add credits"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Control credit consumption across your workspace."
+msgstr "Control credit consumption across your workspace."
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+msgid "Programmatic usage"
+msgstr "Programmatic usage"
+
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Settings"
+msgstr "Settings"
+
 #: front/components/pages/workspace/SecurityPage.tsx
 msgid "Security"
 msgstr "Security"
@@ -174,25 +202,12 @@ msgid "Cancel"
 msgstr "Cancel"
 
 #: front/components/pages/workspace/UsagePage.tsx
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "Add credits"
-msgstr "Add credits"
-
-#: front/components/pages/workspace/UsagePage.tsx
 msgid "No seat"
 msgstr "No seat"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "All seats"
 msgstr "All seats"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Breakdown in analytics"
-msgstr "Breakdown in analytics"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Control credit consumption across your workspace."
-msgstr "Control credit consumption across your workspace."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Change my seat"
@@ -227,8 +242,8 @@ msgid "Off target"
 msgstr "Off target"
 
 #: front/components/pages/workspace/UsagePage.tsx
-msgid "{usedPercentage}% used"
-msgstr "{usedPercentage}% used"
+msgid "{usedPercent} used"
+msgstr "{usedPercent} used"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Resets {resetAtFormatted}"
@@ -250,10 +265,6 @@ msgstr "{overageCredits, plural, one {{overageCreditsFormatted} overage credit} 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Top-ups history"
 msgstr "Top-ups history"
-
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Settings"
-msgstr "Settings"
 
 #: front/components/pages/workspace/WorkspaceBrandingPage.tsx
 msgid "Branding"

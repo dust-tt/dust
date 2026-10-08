@@ -71,7 +71,7 @@ import { OpenUserAnalyticsEvent } from "@app/lib/analytics/events";
 import { CONTEXT_WINDOW_DOC_URL } from "@app/lib/api/assistant/errors";
 import config from "@app/lib/api/config";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import { eventSourceManager } from "@app/lib/client/event_source_manager";
 import { clientFetch } from "@app/lib/egress/client";
 import type { DustError } from "@app/lib/error";
@@ -152,6 +152,7 @@ import {
   TruncatedContent,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
@@ -1019,7 +1020,7 @@ export function AgentMessage({
 
     if (agentMessage.costCredits !== null && agentMessage.costCredits > 0) {
       const formattedCredits = formatCredits(agentMessage.costCredits);
-      const formattedCreditValue = formatCreditValue(agentMessage.costCredits);
+      const creditCount = roundCredits(agentMessage.costCredits);
       const creditCostTrigger = (
         <Button
           variant="ghost-secondary"
@@ -1027,7 +1028,10 @@ export function AgentMessage({
           label={formattedCredits}
           iconRight={CoinsStacked01}
           className="gap-1 px-1 tracking-normal"
-          aria-label={t`${formattedCreditValue} used for this message. View consumption breakdown`}
+          aria-label={t`${plural(creditCount, {
+            one: `${formattedCredits} credit used for this message. View consumption breakdown`,
+            other: `${formattedCredits} credits used for this message. View consumption breakdown`,
+          })}`}
         />
       );
 
@@ -1046,7 +1050,10 @@ export function AgentMessage({
           <span
             key="message-credit-cost"
             role="status"
-            aria-label={t`${formattedCreditValue} used for this message`}
+            aria-label={t`${plural(creditCount, {
+              one: `${formattedCredits} credit used for this message`,
+              other: `${formattedCredits} credits used for this message`,
+            })}`}
             className="inline-flex h-6 items-center gap-1 rounded-lg px-1 text-sm font-medium leading-5 text-muted-foreground"
           >
             {formattedCredits}

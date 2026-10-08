@@ -40,17 +40,19 @@ interface SuggestionTargetSectionProps {
   visual: ReactElement;
   onOpen: () => void;
   isDeletion?: boolean;
+  defaultOpen: boolean;
   children: ReactNode;
 }
 
-// One collapsible block per agent or skill, open by default. A deleted target has no detail to
-// show: a chip flags it instead.
+// One collapsible block per agent or skill. A deleted target has no detail to show: a chip flags
+// it instead.
 function SuggestionTargetSection({
   targetLabel,
   name,
   visual,
   onOpen,
   isDeletion = false,
+  defaultOpen,
   children,
 }: SuggestionTargetSectionProps) {
   const { t } = useLingui();
@@ -80,7 +82,10 @@ function SuggestionTargetSection({
   }
 
   return (
-    <Collapsible defaultOpen className="rounded-xl bg-background p-3">
+    <Collapsible
+      defaultOpen={defaultOpen}
+      className="rounded-xl bg-background p-3"
+    >
       <div className="flex h-6 items-center justify-between gap-2">
         {header}
         <CollapsibleTrigger
@@ -161,6 +166,7 @@ interface AgentSuggestionsDiffProps {
   agentId: string;
   suggestions: AgentSuggestionType[];
   pendingSkillNameById: Map<string, string>;
+  defaultOpen: boolean;
 }
 
 export function AgentSuggestionsDiff({
@@ -169,6 +175,7 @@ export function AgentSuggestionsDiff({
   agentId,
   suggestions,
   pendingSkillNameById,
+  defaultOpen,
 }: AgentSuggestionsDiffProps) {
   const { t } = useLingui();
   const displayable = sortAgentSuggestionsByBuilderOrder(
@@ -189,7 +196,11 @@ export function AgentSuggestionsDiff({
   }
 
   return (
-    <SuggestionTargetSection targetLabel={t`Agent`} {...target}>
+    <SuggestionTargetSection
+      targetLabel={t`Agent`}
+      {...target}
+      defaultOpen={defaultOpen}
+    >
       {Object.entries(suggestionsByKind).map(([kind, kindSuggestions]) => {
         const groupLabel = GROUPED_AGENT_SUGGESTION_LABELS[kind];
         return groupLabel ? (
@@ -222,6 +233,7 @@ interface SkillSuggestionsDiffProps {
   batchId: string;
   skillId: string;
   suggestions: SkillSuggestionType[];
+  defaultOpen: boolean;
 }
 
 export function SkillSuggestionsDiff({
@@ -229,6 +241,7 @@ export function SkillSuggestionsDiff({
   batchId,
   skillId,
   suggestions,
+  defaultOpen,
 }: SkillSuggestionsDiffProps) {
   const { t } = useLingui();
   const { skill, isLoading, target } = useSkillSuggestionTarget({
@@ -252,7 +265,11 @@ export function SkillSuggestionsDiff({
   }
 
   return (
-    <SuggestionTargetSection targetLabel={t`Skill`} {...target}>
+    <SuggestionTargetSection
+      targetLabel={t`Skill`}
+      {...target}
+      defaultOpen={defaultOpen}
+    >
       {sortSkillSuggestionsByBuilderOrder(suggestions).map((suggestion) => (
         <PendingSkillSuggestionDetails
           key={suggestion.sId}
