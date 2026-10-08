@@ -1,7 +1,7 @@
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { i18n, loadCatalog } from "@app/lib/i18n/i18n";
-import type { WorkspaceType } from "@app/types/user";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,20 +19,7 @@ vi.mock(import("@app/lib/swr/bigquery"), () => ({
   }),
 }));
 
-const owner = {
-  id: 0,
-  sId: "wId",
-  name: "Workspace",
-  role: "admin",
-  segmentation: null,
-  whiteListedProviders: null,
-  defaultEmbeddingProvider: null,
-  metadata: null,
-  metronomeCustomerId: null,
-  sharingPolicy: "all_scopes",
-  locale: "en-US",
-  regionalModelsOnly: false,
-} satisfies WorkspaceType;
+const owner = LightWorkspaceFactory.build();
 
 const incompleteCredentials = JSON.stringify({
   type: "service_account",
