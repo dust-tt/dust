@@ -179,7 +179,7 @@ describe("dispatchLiveCommentMentions", () => {
   const MENTION = ":mention[dust]{sId=dust}";
   const SOURCE = serializeDfm({
     frontMatter: null,
-    body: "Ship it :comment-start{id=c1}on Friday:comment-end{id=c1}.",
+    body: "Ship it :comment-start{id=c1}on **Friday**:comment-end{id=c1}.",
     comments: [
       {
         id: "c1",
@@ -235,13 +235,13 @@ describe("dispatchLiveCommentMentions", () => {
     };
   });
 
-  it("dispatches a reply's message with the text its thread's anchors cover", async () => {
+  it("dispatches a reply's message with the text its thread's anchors cover, as the editor shows it", async () => {
     const live = loadLive();
     const message = live.comments[0].messages[1];
 
     await dispatchLiveCommentMentions(
       file,
-      live,
+      live.doc,
       { type: "reply", commentId: "c1", position: 1, body: message.body },
       message
     );
@@ -258,7 +258,7 @@ describe("dispatchLiveCommentMentions", () => {
 
     await dispatchLiveCommentMentions(
       file,
-      live,
+      live.doc,
       { type: "add", commentId: "c2", body: message.body, quote: "Ship it" },
       message
     );
@@ -274,7 +274,7 @@ describe("dispatchLiveCommentMentions", () => {
 
     await dispatchLiveCommentMentions(
       file,
-      live,
+      live.doc,
       { type: "reply", commentId: "c1", position: 1, body: message.body },
       message
     );

@@ -1,14 +1,9 @@
 import type { LiveFile } from "@app/lib/api/collab/live_file";
-import type { LiveDocument } from "@app/lib/api/collab/ydoc";
-import { yDocToDfm } from "@app/lib/api/collab/ydoc";
+import { yDocCommentedTexts } from "@app/lib/api/collab/ydoc";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
-import {
-  commentQuotes,
-  signDfmCommentMessage,
-} from "@app/lib/api/files/dfm_comment_signatures";
+import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
-import { parseDfm } from "@app/lib/markdown/dfm";
 import { extractFromString } from "@app/lib/mentions/format";
 import type {
   LiveCommentCommand,
@@ -17,6 +12,7 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type * as Y from "yjs";
 
 const signatureRefusal = ({
   code,
@@ -135,29 +131,18 @@ export async function applyLiveCommentCommand(
   }
 }
 
-/** The text the thread's anchors cover in the live document, if it is anchored. */
-function liveQuote(live: LiveDocument, commentId: string): string | null {
-  const source = yDocToDfm(live);
-  if (source.isErr()) {
-    return null;
-  }
-  const document = parseDfm(source.value);
-  return document.isOk()
-    ? (commentQuotes(document.value.body).get(commentId) ?? null)
-    : null;
-}
-
 /**
  * @cc [owner:tdraier,label:product] live-comment-mentions
  * `message`, the one `applyLiveCommentCommand` stored for an accepted `command`, MUST be handed
- * to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would, with as
- * quote the one an `add` carries, as the browser anchors its thread only once it is accepted, or
- * for a `reply` the text its thread's anchors cover in `live`. A message without mentions MUST
- * NOT read `live`, as that serializes the whole document.
+ * to `dispatchCommentMentions` for `file`'s user and path, as a save of the file would. Its quote
+ * MUST be the one an `add` carries, as the browser anchors its thread only once it is accepted,
+ * and for a `reply` the text its thread's anchors cover in `doc` as `yDocCommentedTexts` gives
+ * it, so agents get the editor's text either way, and none only when the body cannot be read. A
+ * message without mentions MUST NOT read `doc`, as that converts the whole document.
  */
 export async function dispatchLiveCommentMentions(
   file: LiveFile,
-  live: LiveDocument,
+  doc: Y.Doc,
   command: LiveCommentCommand,
   message: DfmMessage
 ): Promise<void> {
@@ -167,7 +152,7 @@ export async function dispatchLiveCommentMentions(
   const quote =
     command.type === "add"
       ? (command.quote ?? null)
-      : liveQuote(live, command.commentId);
+      : (yDocCommentedTexts(doc).get(command.commentId) ?? null);
   await dispatchCommentMentions(file.auth, {
     scopedPath: file.canonicalPath,
     newMessages: [{ commentId: command.commentId, quote, message }],

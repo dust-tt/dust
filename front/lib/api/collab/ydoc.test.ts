@@ -7,8 +7,10 @@ import {
   dfmToYDoc,
   ENVELOPE_MAP_NAME,
   replaceYDocContent,
+  yDocCommentedTexts,
   yDocToDfm,
 } from "@app/lib/api/collab/ydoc";
+import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { LocalTransactionOrigin } from "@hocuspocus/server";
@@ -250,5 +252,46 @@ describe("replaceYDocContent", () => {
       expect(replaced.error).toBe(editor.error);
     }
     expect(yDocToDfm({ doc, comments })).toEqual(savedByEditor(BEFORE));
+  });
+});
+
+describe("yDocCommentedTexts", () => {
+  it("give the text a comment covers as the editor shows it, across blocks", () => {
+    const source = serializeDfm({
+      frontMatter: null,
+      body: "Ship :comment-start{id=c1}on **Friday**.\n\nThen tell:comment-end{id=c1} the team.",
+      comments: [
+        {
+          id: "c1",
+          status: "open",
+          messages: [
+            {
+              author: { kind: "user", id: "usr_tom", name: "Tom" },
+              createdAt: "2026-10-05T12:00:00.000Z",
+              body: "Why?",
+            },
+          ],
+        },
+      ],
+    });
+    if (source.isErr()) {
+      throw source.error;
+    }
+    const live = dfmToYDoc(source.value);
+    if (live.isErr()) {
+      throw new Error(live.error);
+    }
+
+    expect(yDocCommentedTexts(live.value.doc)).toEqual(
+      new Map([["c1", "on Friday. Then tell"]])
+    );
+  });
+
+  it("give nothing for a body the binding cannot read", () => {
+    const doc = new Y.Doc();
+    // The typings forbid this shape, but a client can send it.
+    doc.getXmlFragment(BODY_FRAGMENT_NAME).insert(0, [new Y.Map()] as never);
+
+    expect(yDocCommentedTexts(doc)).toEqual(new Map());
   });
 });

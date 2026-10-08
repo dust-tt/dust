@@ -5,6 +5,7 @@ import {
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
+  getCommentedTexts,
   getDocumentJSONComments,
   withDocumentJSONComments,
   withoutDocumentJSONComments,
@@ -141,4 +142,22 @@ export function yDocToDfm({
       comments
     )
   );
+}
+
+/**
+ * @cc [owner:tdraier,label:product] co-edition-commented-texts
+ * `yDocCommentedTexts` MUST return, for each comment marked in `doc`, the text `getCommentedTexts`
+ * gives the editor for it, and nothing when the body cannot be read.
+ */
+export function yDocCommentedTexts(doc: Y.Doc): Map<string, string> {
+  // A client can send structures the binding or the schema cannot read back.
+  try {
+    return getCommentedTexts(
+      documentSchema.nodeFromJSON(
+        yXmlFragmentToProsemirrorJSON(doc.getXmlFragment(BODY_FRAGMENT_NAME))
+      )
+    );
+  } catch {
+    return new Map();
+  }
 }

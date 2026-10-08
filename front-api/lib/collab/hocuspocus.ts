@@ -392,7 +392,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           // Not awaited, as a save of the file does not wait for its mentions to be posted.
           void dispatchLiveCommentMentions(
             file,
-            { doc: document, comments: session.comments },
+            document,
             command,
             result.value.added
           ).catch((err) =>

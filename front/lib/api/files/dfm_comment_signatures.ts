@@ -307,7 +307,7 @@ export interface NewCommentMessage {
 }
 
 /** The anchor-free text each comment's anchors cover in `body`. */
-export function commentQuotes(body: string): Map<string, string> {
+function commentQuotes(body: string): Map<string, string> {
   const anchors = extractAnchors(body);
   return anchors.isOk()
     ? new Map(
