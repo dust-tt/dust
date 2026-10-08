@@ -157,6 +157,14 @@ authorization state.
 
 ## Authorization and common limits
 
+Every RPC request and response is limited to 4 MiB (4,194,304 bytes) of uncompressed protobuf
+payload, including encoding overhead. Response budgets include all results, attributes, metadata,
+errors, and cursors. gRPC framing and transport headers are excluded. Servers reject oversized
+requests before executing them; tighter per-message and field limits also apply.
+
+These budgets bound RPC work alongside FDB's separate affected-data transaction limit. Fitting the
+protobuf budget does not guarantee that an operation fits the store's transaction budget.
+
 Filesystem and search calls derive the tenant and subject set exclusively from the active session.
 The tenant key holder asserts the session's subjects, such as `u:spolu@dust.tt` and `g:engineering`.
 Subjects are opaque, case-sensitive strings matched exactly; the server does not resolve group
@@ -245,9 +253,9 @@ Keys are opaque 64-character bearer strings. A tenant key authorizes administrat
 filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes. Subject strings contain
 1–1,024 UTF-8 bytes.
 
-Basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types must be
-valid and at most 255 bytes. Xattr names contain 1–255 bytes without NUL; combined xattr key/value
-bytes are limited to 32 KiB.
+Stored basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types
+must be valid and at most 255 bytes. Xattr names contain 1–255 bytes without NUL; combined xattr
+key/value bytes are limited to 32 KiB.
 
 ## Tenants and sessions
 
@@ -686,7 +694,9 @@ Mutation {
 Operations run in order within one FDB transaction, including operations on different objects.
 Later operations see earlier successful changes, so a request may create a directory, create a file
 within it, and write that file. Transaction write budgets may reject the request with `CAPACITY`
-even when its input fits.
+even when its input fits. All required results and final attributes must fit within the 4 MiB
+encoded response budget. If the transaction or response budget cannot be met, `Apply` fails with
+`CAPACITY` before committing any changes.
 
 Each operation must finish filesystem validation before staging any writes. A validation failure
 records that operation's error without changing state; later operations continue. All successful
