@@ -135,6 +135,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     resolvedProviderId: string | null;
     resolvedReasoningEffort: string | null;
     runIds: string[] | null;
+    attemptedRunIds: string[] | null;
     status: AgentMessageStatus;
     updatedAt: Date;
     version: number;
@@ -782,6 +783,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     agentMessageModelId: ModelId;
     status: AgentMessageStatus;
     runIds: string[] | null;
+    attemptedRunIds: string[] | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
     triggeringUserId: string | null;
     triggeringUserMessageAuthMethod: string | null;
@@ -830,6 +832,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       agentMessageModelId: agentMessage.id,
       status: agentMessage.status,
       runIds: agentMessage.runIds,
+      attemptedRunIds: agentMessage.attemptedRunIds,
       triggeringUserMessageOrigin,
       triggeringUserId,
       triggeringUserMessageAuthMethod,
@@ -980,6 +983,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         resolvedProviderId: agentMessage.resolvedProviderId,
         resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
         runIds: agentMessage.runIds,
+        attemptedRunIds: agentMessage.attemptedRunIds,
         status: agentMessage.status,
         updatedAt: agentMessage.updatedAt,
         version: messageRow.version,

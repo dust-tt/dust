@@ -68,6 +68,7 @@ export type ConsumptionAnalyticsMessageMetadata = {
 export type AgentMessageConsumptionAnalyticsInput =
   ConsumptionAnalyticsMessageMetadata & {
     actions: AgentMCPActionResource[];
+    attemptedRunIds: string[] | null;
     billedCredits: number;
     dustRunIds: string[];
     enabledSkillIdsByActionId: ReadonlyMap<string, string[]>;
@@ -345,6 +346,7 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
     },
     agentMessageId,
     apiKeyName,
+    attemptedRunIds: agentMessage.attemptedRunIds,
     billedCredits: agentMessage.costCredits,
     completedAt,
     contextOrigin: triggeringUserMessage.origin,

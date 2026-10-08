@@ -25,6 +25,7 @@ export type ConversationConsumptionMessageFacts = {
   parentAgentConfigurationId: string | null;
   billedCredits: number | null;
   dustRunIds: string[];
+  attemptedRunIds: string[] | null;
   status: AgentMessageStatus;
   items: AgentMessageConsumptionItemResource[];
   actions: AgentMCPActionResource[];
@@ -738,6 +739,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         "conversationId",
         "costCredits",
         "runIds",
+        "attemptedRunIds",
         "status",
       ],
       where: {
@@ -763,6 +765,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           ) ?? null,
         billedCredits: agentMessage.costCredits,
         dustRunIds: agentMessage.runIds ?? [],
+        attemptedRunIds: agentMessage.attemptedRunIds,
         status: agentMessage.status,
       };
     });
@@ -838,6 +841,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   ): Promise<{
     billedCredits: number | null;
     dustRunIds: string[];
+    attemptedRunIds: string[] | null;
     items: AgentMessageConsumptionItemResource[];
     actions: AgentMCPActionResource[];
   } | null> {
@@ -858,6 +862,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     return {
       billedCredits: agentMessage.costCredits,
       dustRunIds: [...new Set(agentMessage.runIds ?? [])],
+      attemptedRunIds: agentMessage.attemptedRunIds,
       items,
       actions,
     };

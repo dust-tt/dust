@@ -400,6 +400,7 @@ async function persistMessageConsumptionAttribution(
   {
     actions,
     agentMessageModelId,
+    attemptedRunIds,
     billedCredits,
     conversation,
     dustRunIds,
@@ -410,6 +411,7 @@ async function persistMessageConsumptionAttribution(
   }: {
     actions: AgentMCPActionResource[];
     agentMessageModelId: ModelId;
+    attemptedRunIds: string[] | null;
     billedCredits: number | null;
     conversation: ConversationResource;
     dustRunIds: string[];
@@ -444,6 +446,7 @@ async function persistMessageConsumptionAttribution(
       );
     const allocationResult = buildLatestMessageConsumptionAllocation({
       actions,
+      attemptedRunIds,
       billedCredits,
       dustRunIds,
       hasUnbilledExecution: false,
@@ -520,6 +523,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
 
   const {
     agentMessageModelId,
+    attemptedRunIds,
     previousCostCredits: billedCredits,
     status,
     runIds,
@@ -692,6 +696,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     {
       actions,
       agentMessageModelId,
+      attemptedRunIds,
       billedCredits,
       conversation,
       dustRunIds,

@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { buildToolResultInputCreditAmountMicro } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -35,39 +36,248 @@ export type AllocationSkipReason = {
   context: Record<string, number | boolean>;
 };
 
+const MIN_WARMED_TOOL_RESULT_SHARE = 0.5;
+
+type RetriedCall = {
+  dustRunId: string;
+  previousKeptDustRunId: string | null;
+};
+
+/**
+ * @cc [owner:sfriquet,label:product;backend] retried-call-detection
+ * A kept LLM call (in `dustRunIds`) is a retry when `attemptedRunIds` lists at least one attempt
+ * that is not in `dustRunIds` before it and after the previous kept call, or after the start of
+ * `attemptedRunIds` when it is the first kept call. Every retry MUST be returned with its previous
+ * kept call, `null` for the first kept call. Without `attemptedRunIds`, no call is a retry.
+ */
+function listRetriedCalls({
+  attemptedRunIds,
+  dustRunIds,
+}: {
+  attemptedRunIds: string[] | null;
+  dustRunIds: ReadonlySet<string>;
+}): RetriedCall[] {
+  const retriedCalls: RetriedCall[] = [];
+  let previousKeptDustRunId: string | null = null;
+  let hasLostAttemptSincePreviousKept = false;
+
+  for (const dustRunId of attemptedRunIds ?? []) {
+    if (!dustRunIds.has(dustRunId)) {
+      hasLostAttemptSincePreviousKept = true;
+      continue;
+    }
+    if (hasLostAttemptSincePreviousKept) {
+      retriedCalls.push({ dustRunId, previousKeptDustRunId });
+    }
+    previousKeptDustRunId = dustRunId;
+    hasLostAttemptSincePreviousKept = false;
+  }
+
+  return retriedCalls;
+}
+
+/**
+ * @cc [owner:sfriquet,label:product;backend] cache-warmed-by-unbilled-attempt
+ * A retried call's cache counts as warmed by an unbilled attempt only when its `cachedTokens`
+ * exceed the most its previous kept call could have cached (`promptTokens + completionTokens`) by
+ * at least half of `toolResultTokensCount`, the tool result tokens produced by the previous kept
+ * call. Usages of one run are summed. With no tool result tokens, the cache never counts as warmed.
+ */
+function isCacheWarmedByUnbilledAttempt({
+  previousUsages,
+  retriedUsages,
+  toolResultTokensCount,
+}: {
+  previousUsages: RunUsageWithRunKeyType[];
+  retriedUsages: RunUsageWithRunKeyType[];
+  toolResultTokensCount: number;
+}): boolean {
+  if (toolResultTokensCount === 0) {
+    return false;
+  }
+
+  const previouslyCacheableTokensCount = previousUsages.reduce(
+    (total, usage) => total + usage.promptTokens + usage.completionTokens,
+    0
+  );
+  const retriedCachedTokensCount = retriedUsages.reduce(
+    (total, usage) => total + (usage.cachedTokens ?? 0),
+    0
+  );
+
+  return (
+    retriedCachedTokensCount - previouslyCacheableTokensCount >=
+    toolResultTokensCount * MIN_WARMED_TOOL_RESULT_SHARE
+  );
+}
+
+/**
+ * @cc [owner:sfriquet,label:product;backend] relax-tool-input-after-retry
+ * A tool row MUST NOT protect its result input credits when its result was consumed by a retried
+ * call whose cache was warmed by an unbilled attempt: that attempt paid the input first, and the
+ * billed retry read it from the provider cache. A call consumes the results of the tools emitted by
+ * its previous kept call, so a retry without a previous kept call consumes none. That input portion
+ * MUST be reconciled with the `input` rows, and the row MUST keep its direct and tool-call output
+ * credits. Every other tool row MUST keep its gross credits.
+ */
+function buildRelaxedToolInputCreditAmountByItem({
+  attemptedRunIds,
+  dustRunIds,
+  items,
+  runs,
+  usages,
+}: {
+  attemptedRunIds: string[] | null;
+  dustRunIds: ReadonlySet<string>;
+  items: AgentMessageConsumptionItemResource[];
+  runs: RunResource[];
+  usages: RunUsageWithRunKeyType[];
+}): Map<AgentMessageConsumptionItemResource, number> {
+  const retriedCalls = listRetriedCalls({ attemptedRunIds, dustRunIds });
+  if (retriedCalls.length === 0) {
+    return new Map();
+  }
+
+  const dustRunIdByRunModelId = new Map(
+    runs.map((run) => [run.id, run.dustRunId])
+  );
+  const usagesByDustRunId = new Map<string, RunUsageWithRunKeyType[]>();
+  for (const usage of usages) {
+    const dustRunId = dustRunIdByRunModelId.get(usage.runModelId);
+    if (dustRunId !== undefined) {
+      usagesByDustRunId.set(dustRunId, [
+        ...(usagesByDustRunId.get(dustRunId) ?? []),
+        usage,
+      ]);
+    }
+  }
+  const usageByRunUsageModelId = new Map(
+    usages.map((usage) => [usage.runUsageModelId, usage])
+  );
+  const toolItemsByDustRunId = new Map<
+    string,
+    {
+      item: AgentMessageConsumptionItemResource;
+      inputTokensCount: number;
+      usage: RunUsageWithRunKeyType;
+    }[]
+  >();
+  for (const item of items) {
+    const usage = usageByRunUsageModelId.get(item.runUsageId);
+    const dustRunId = usage
+      ? dustRunIdByRunModelId.get(usage.runModelId)
+      : undefined;
+    if (
+      item.itemType === "tool" &&
+      item.inputTokensCount !== null &&
+      usage &&
+      dustRunId !== undefined
+    ) {
+      toolItemsByDustRunId.set(dustRunId, [
+        ...(toolItemsByDustRunId.get(dustRunId) ?? []),
+        { item, inputTokensCount: item.inputTokensCount, usage },
+      ]);
+    }
+  }
+
+  return new Map(
+    retriedCalls.flatMap(({ dustRunId, previousKeptDustRunId }) => {
+      if (previousKeptDustRunId === null) {
+        return [];
+      }
+
+      const toolItems = toolItemsByDustRunId.get(previousKeptDustRunId) ?? [];
+      const isWarmed = isCacheWarmedByUnbilledAttempt({
+        previousUsages: usagesByDustRunId.get(previousKeptDustRunId) ?? [],
+        retriedUsages: usagesByDustRunId.get(dustRunId) ?? [],
+        toolResultTokensCount: toolItems.reduce(
+          (total, { inputTokensCount }) => total + inputTokensCount,
+          0
+        ),
+      });
+      if (!isWarmed) {
+        return [];
+      }
+
+      return toolItems.flatMap(({ item, inputTokensCount, usage }) => {
+        const inputCreditAmountMicro = Math.min(
+          buildToolResultInputCreditAmountMicro({ usage, inputTokensCount }),
+          item.grossAttributedCreditAmountMicro -
+            (item.directCreditAmountMicro ?? 0)
+        );
+        return inputCreditAmountMicro > 0
+          ? [[item, inputCreditAmountMicro] as const]
+          : [];
+      });
+    })
+  );
+}
+
 /**
  * Makes the attribution additive with the authoritative bill without changing stored evidence.
  *
- * Tool rows already represent the causal first-use cost of emitting a tool call and carrying its
- * new result into the next model input. We keep every non-input attribution unchanged. The model's
- * ordinary `input` bucket contains reused conversation context, so it is the single explicit
- * reconciliation seam. Input rows share the reconciled remainder in proportion to their gross
- * cost, using deterministic integer microcredit rounding.
+ * Tool rows represent the causal first-use cost of emitting a tool call and carrying its new
+ * result into the next model input, so non-input attribution is kept unchanged, except for the
+ * result input of tool rows consumed by a retried call whose cache an unbilled attempt warmed
+ * (see `relax-tool-input-after-retry`). The model's ordinary `input` bucket contains reused
+ * conversation context, so it is the reconciliation seam. Input rows and relaxed tool inputs share
+ * the reconciled remainder in proportion to their gross cost, using deterministic integer
+ * microcredit rounding.
  */
 function reconcileInputCredits({
   items,
   billedCredits,
+  relaxedToolInputCreditAmountByItem,
 }: {
   items: AgentMessageConsumptionItemResource[];
   billedCredits: number;
+  relaxedToolInputCreditAmountByItem: ReadonlyMap<
+    AgentMessageConsumptionItemResource,
+    number
+  >;
 }): ReconciledCreditAmounts | null {
   const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
-  const inputItems = items.filter((item) => item.itemType === "input");
-  const nonInputCreditAmountMicro = items.reduce(
+  const reconciledShares = items.flatMap((item) => {
+    if (item.itemType === "input") {
+      return [
+        {
+          item,
+          baseMicro: 0,
+          grossShareMicro: item.grossAttributedCreditAmountMicro,
+        },
+      ];
+    }
+    const relaxedInputCreditAmountMicro =
+      relaxedToolInputCreditAmountByItem.get(item);
+    return relaxedInputCreditAmountMicro === undefined
+      ? []
+      : [
+          {
+            item,
+            baseMicro:
+              item.grossAttributedCreditAmountMicro -
+              relaxedInputCreditAmountMicro,
+            grossShareMicro: relaxedInputCreditAmountMicro,
+          },
+        ];
+  });
+  const protectedCreditAmountMicro = items.reduce(
     (total, item) =>
       item.itemType === "input"
         ? total
-        : total + item.grossAttributedCreditAmountMicro,
+        : total +
+          item.grossAttributedCreditAmountMicro -
+          (relaxedToolInputCreditAmountByItem.get(item) ?? 0),
     0
   );
   const reconciledInputCreditAmountMicro =
-    billedCreditAmountMicro - nonInputCreditAmountMicro;
+    billedCreditAmountMicro - protectedCreditAmountMicro;
   if (reconciledInputCreditAmountMicro < 0) {
     return null;
   }
 
-  const grossInputCreditAmountMicro = inputItems.reduce(
-    (total, item) => total + item.grossAttributedCreditAmountMicro,
+  const grossInputCreditAmountMicro = reconciledShares.reduce(
+    (total, share) => total + share.grossShareMicro,
     0
   );
   if (grossInputCreditAmountMicro === 0) {
@@ -80,14 +290,13 @@ function reconcileInputCredits({
       : null;
   }
 
-  const inputAllocations = inputItems.map((item, index) => {
-    const inputShare =
-      item.grossAttributedCreditAmountMicro / grossInputCreditAmountMicro;
+  const inputAllocations = reconciledShares.map((share, index) => {
+    const inputShare = share.grossShareMicro / grossInputCreditAmountMicro;
     const exactMicro = inputShare * reconciledInputCreditAmountMicro;
     const floorMicro = Math.floor(exactMicro);
 
     return {
-      item,
+      ...share,
       index,
       floorMicro,
       fractionalMicro: exactMicro - floorMicro,
@@ -110,9 +319,11 @@ function reconcileInputCredits({
       .map(({ item }) => item)
   );
   const reconciledInputCreditAmountByItem = new Map(
-    inputAllocations.map(({ item, floorMicro }) => [
+    inputAllocations.map(({ item, baseMicro, floorMicro }) => [
       item,
-      floorMicro + (allocationsReceivingRemainder.has(item) ? 1 : 0),
+      baseMicro +
+        floorMicro +
+        (allocationsReceivingRemainder.has(item) ? 1 : 0),
     ])
   );
 
@@ -120,9 +331,10 @@ function reconcileInputCredits({
     byItem: new Map(
       items.map((item) => [
         item,
-        item.itemType === "input"
-          ? (reconciledInputCreditAmountByItem.get(item) ?? 0)
-          : item.grossAttributedCreditAmountMicro,
+        reconciledInputCreditAmountByItem.get(item) ??
+          (item.itemType === "input"
+            ? 0
+            : item.grossAttributedCreditAmountMicro),
       ])
     ),
   };
@@ -209,6 +421,7 @@ function buildMessageConsumptionAllocationForVersion<
   TUsage extends RunUsageWithRunKeyType,
 >({
   actions,
+  attemptedRunIds,
   attributionVersion,
   billedCredits,
   dustRunIds,
@@ -218,6 +431,7 @@ function buildMessageConsumptionAllocationForVersion<
   usages,
 }: {
   actions: AgentMCPActionResource[];
+  attemptedRunIds: string[] | null;
   attributionVersion: number;
   billedCredits: number;
   dustRunIds: string[];
@@ -291,9 +505,18 @@ function buildMessageConsumptionAllocationForVersion<
     });
   }
 
+  const relaxedToolInputCreditAmountByItem =
+    buildRelaxedToolInputCreditAmountByItem({
+      attemptedRunIds,
+      dustRunIds: dustRunIdSet,
+      items,
+      runs,
+      usages: messageUsages,
+    });
   const reconciledCreditAmounts = reconcileInputCredits({
     items,
     billedCredits,
+    relaxedToolInputCreditAmountByItem,
   });
   if (!reconciledCreditAmounts) {
     const billedCreditAmountMicro = roundCreditsToMicroCredits(billedCredits);
@@ -310,6 +533,7 @@ function buildMessageConsumptionAllocationForVersion<
         attributionVersion,
         billedCreditAmountMicro,
         nonInputCreditAmountMicro,
+        relaxedToolItemCount: relaxedToolInputCreditAmountByItem.size,
         inputItemCount: items.filter((item) => item.itemType === "input")
           .length,
       },
@@ -335,6 +559,7 @@ export function buildLatestMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
   actions,
+  attemptedRunIds,
   billedCredits,
   dustRunIds,
   hasUnbilledExecution,
@@ -343,6 +568,7 @@ export function buildLatestMessageConsumptionAllocation<
   usages,
 }: {
   actions: AgentMCPActionResource[];
+  attemptedRunIds: string[] | null;
   billedCredits: number | null;
   dustRunIds: string[];
   hasUnbilledExecution: boolean;
@@ -372,6 +598,7 @@ export function buildLatestMessageConsumptionAllocation<
   for (const attributionVersion of attributionVersions) {
     const result = buildMessageConsumptionAllocationForVersion({
       actions,
+      attemptedRunIds,
       attributionVersion,
       billedCredits,
       dustRunIds,

@@ -18,6 +18,7 @@ export class RunFactory {
       inputTokens = 100,
       outputTokens = 20,
       reasoningTokens,
+      cachedTokens,
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
       usageType = USAGE_TYPE_USER,
       serviceTier,
@@ -26,6 +27,7 @@ export class RunFactory {
       inputTokens?: number;
       outputTokens?: number;
       reasoningTokens?: number;
+      cachedTokens?: number;
       modelId?: ModelIdType;
       usageType?: UsageType | null;
       serviceTier?: ServiceTier;
@@ -46,6 +48,7 @@ export class RunFactory {
         inputTokens,
         totalOutputTokens: outputTokens,
         reasoningTokens,
+        cachedTokens,
         totalTokens: inputTokens + outputTokens,
         serviceTier,
       },

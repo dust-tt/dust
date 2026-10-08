@@ -182,6 +182,7 @@ export async function getAgentMessageConsumptionWithModels(
 
   const details = buildLatestAvailableMessageConsumptionDetails({
     actions: facts.actions,
+    attemptedRunIds: facts.attemptedRunIds,
     billedCredits: facts.billedCredits,
     dustRunIds: facts.dustRunIds,
     items: facts.items,
