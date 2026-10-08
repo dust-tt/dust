@@ -4,7 +4,6 @@ syntax = "proto2";
 
 package dfs.v1;
 
-// Additional behavioral requirements and validation limits are specified in ../CONTRACTS.
 // All calls are unary and authenticate with authorization: Bearer <key> metadata.
 // Session-key calls derive their tenant and subjects exclusively from the authenticated session.
 
