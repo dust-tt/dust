@@ -1685,3 +1685,40 @@ describe("fetchByStepContents", () => {
     expect(actions.map((a) => a.id)).toEqual([parentAction.id]);
   });
 });
+
+describe("toolName", () => {
+  it("returns a sandbox child's own tool name, not its parent's", async () => {
+    const setup = await createResourceTest({});
+    const auth = setup.authenticator;
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace: setup.workspace, conversation }
+    );
+    const { action: parentAction } = await AgentMCPActionFactory.create(auth, {
+      workspace: setup.workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "running",
+      functionCallName: "sandbox__bash",
+      toolName: "bash",
+    });
+
+    const { action: childAction } = await AgentMCPActionFactory.create(auth, {
+      workspace: setup.workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "succeeded",
+      toolName: "publish_interactive_content_file",
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+      parentAction,
+    });
+
+    expect(childAction.functionCallName).toBe("sandbox__bash");
+    expect(childAction.toolName).toBe("publish_interactive_content_file");
+  });
+});

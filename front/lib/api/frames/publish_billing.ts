@@ -96,7 +96,7 @@ export async function recordFramePublishAction(
       frameId: publication.frameId,
       sourcePath: publication.sourcePath,
     },
-    conversation: conversation.toJSON(),
+    conversation,
     status: "succeeded",
     stepContent: parentAction.stepContent,
     stepContext: {

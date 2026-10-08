@@ -47,8 +47,9 @@ app.route("/share", share);
 /**
  * @cc [owner:davidebbo,label:product] publish-records-billing-action
  * Every successful publish MUST call `recordFramePublishAction` with the exec token's `actionId`
- * before responding, so the agent message is charged for it. A recording failure MUST be logged and
- * MUST NOT change the publish response.
+ * before responding, so the agent message is charged for it. A recording failure returned as an
+ * `Err` MUST be logged and MUST NOT change the publish response. Thrown errors propagate, per
+ * `no-catching-own-errors`.
  */
 app.post(
   "/publish",
