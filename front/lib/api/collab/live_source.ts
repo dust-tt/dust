@@ -8,8 +8,9 @@ import type {
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
-  INTERNAL_LIVE_SOURCE_READ_PATH,
-  INTERNAL_LIVE_SOURCE_WRITE_PATH,
+  COLLAB_INTERNAL_ROUTES_PREFIX,
+  LIVE_SOURCE_READ_PATH,
+  LIVE_SOURCE_WRITE_PATH,
   LIVE_SOURCE_WRITE_WAIT_MS,
   liveSourceReadResponseSchema,
   liveSourceWriteResponseSchema,
@@ -44,6 +45,10 @@ function isConnectionRefused(err: unknown): boolean {
   return "code" in err.cause && err.cause.code === "ECONNREFUSED";
 }
 
+// A 401 only answers a wrong secret: a misconfiguration, not a refusal of this request.
+const isRefusal = (status: number) =>
+  status >= 400 && status < 500 && status !== 401;
+
 /** The collab server's answer, or `null` when nothing listens: no session can then be open. */
 async function postToCollabServer<S extends z.ZodTypeAny>(
   path: string,
@@ -58,7 +63,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
 
   let response: Response;
   try {
-    response = await fetch(`${url}${path}`, {
+    response = await fetch(`${url}${COLLAB_INTERNAL_ROUTES_PREFIX}${path}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${secret}`,
@@ -78,7 +83,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
   if (!response.ok) {
     const failure = apiErrorSchema.safeParse(json);
     return new Err({
-      code: response.status === 403 ? "refused" : "unavailable",
+      code: isRefusal(response.status) ? "refused" : "unavailable",
       message: failure.success
         ? failure.data.error.message
         : `Collab server error (${response.status}).`,
@@ -108,7 +113,7 @@ export async function fetchLiveSource(
     return new Ok({ open: false });
   }
   const answer = await postToCollabServer(
-    INTERNAL_LIVE_SOURCE_READ_PATH,
+    LIVE_SOURCE_READ_PATH,
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       userId: auth.user()?.sId,
@@ -127,7 +132,8 @@ export async function fetchLiveSource(
  * The write MUST be sent as `auth`'s user, conditional on `base`, and MUST be refused without
  * asking the collab server when `auth` has no user. Nothing listening at the collab server's
  * address MUST count as `closed`. A refusal of the access or of the source MUST be `refused`, any
- * other failure `unavailable`.
+ * other failure `unavailable`: the collab server refuses an access with a 4xx other than 401,
+ * which only answers a wrong secret.
  */
 export async function pushLiveSource(
   auth: Authenticator,
@@ -146,7 +152,7 @@ export async function pushLiveSource(
     });
   }
   const answer = await postToCollabServer(
-    INTERNAL_LIVE_SOURCE_WRITE_PATH,
+    LIVE_SOURCE_WRITE_PATH,
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
       userId: user.sId,
