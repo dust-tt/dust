@@ -3,6 +3,7 @@ import {
   trackHomepageUseCaseDismiss,
   trackHomepageUseCaseView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
+import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { TYPING_MAX_DURATION_MS } from "@app/components/editor/input_bar/useCustomEditor";
 import {
   getIcon,
@@ -296,7 +297,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
           >
             <ResourceAvatar icon={getIcon(useCase.icon)} size="xs" />
             <span className="copy-sm truncate text-foreground">
-              {useCase.label}
+              {t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].label)}
             </span>
           </button>
           {useCase.isDismissible && (

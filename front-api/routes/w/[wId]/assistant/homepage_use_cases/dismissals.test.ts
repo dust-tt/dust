@@ -1,29 +1,24 @@
-import type { HomepageUseCaseDefinition } from "@app/lib/api/homepage_use_cases/registry";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 const DISMISSIBLE_USE_CASE_ID = "weekly-priorities";
-const FEATURED_USE_CASE_ID = "featured-release";
+const FEATURED_USE_CASE_ID = "dust-news";
 
 // vi.mock is hoisted above the constants, so the id is repeated inline.
 vi.mock(
   import("@app/lib/api/homepage_use_cases/registry"),
   async (importOriginal) => {
     const mod = await importOriginal();
-    const featured: HomepageUseCaseDefinition = {
-      id: "featured-release",
-      label: "Try the new release",
-      prompt: "Show me the new release.",
-      icon: "ActionRocketIcon",
-      audience: { type: "featured" },
-      requires: [],
-    };
 
     return {
       ...mod,
-      HOMEPAGE_USE_CASES: [...mod.HOMEPAGE_USE_CASES, featured],
+      HOMEPAGE_USE_CASES: mod.HOMEPAGE_USE_CASES.map((useCase) =>
+        useCase.id === "dust-news"
+          ? { ...useCase, audience: { type: "featured" }, requires: [] }
+          : useCase
+      ),
     };
   }
 );
