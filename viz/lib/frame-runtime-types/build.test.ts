@@ -10,7 +10,7 @@ import { buildFrameRuntimeTypes } from "./build";
 
 const vizRoot = path.resolve(__dirname, "../..");
 const root = fs.mkdtempSync(
-  path.join(os.tmpdir(), "frame-runtime-types-test-")
+  path.join(os.tmpdir(), "frame-runtime-types-test-"),
 );
 const outDir = path.join(root, "public");
 const artifactRoot = path.join(root, "extracted");
@@ -41,20 +41,20 @@ function check(source: Record<string, string>) {
     JSON.stringify({
       extends: "../extracted/tsconfig.json",
       files: ["index.tsx"],
-    })
+    }),
   );
   const config = ts.readConfigFile(configPath, ts.sys.readFile);
   expect(config.error).toBeUndefined();
   const parsed = ts.parseJsonConfigFileContent(
     config.config,
     ts.sys,
-    projectRoot
+    projectRoot,
   );
   expect(parsed.errors).toEqual([]);
   const program = ts.createProgram(parsed.fileNames, parsed.options);
   return ts.getPreEmitDiagnostics(program).map((diagnostic) => {
     const position = diagnostic.file?.getLineAndCharacterOfPosition(
-      diagnostic.start ?? 0
+      diagnostic.start ?? 0,
     );
     return {
       code: diagnostic.code,
@@ -90,7 +90,7 @@ export default function Frame() {
   </FrameRoot>;
 }
 `,
-      })
+      }),
     ).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ export default function App() {
   return <Slideshow theme={theme}><Slide>Quarterly report</Slide></Slideshow>;
 }
 `,
-      })
+      }),
     ).toEqual([]);
   });
 
@@ -125,6 +125,7 @@ import { motion } from "motion/react";
 import { cn } from "utils";
 import { cn as currentCn } from "@viz/lib/utils";
 import { Document, type DocumentProps } from "@dust/document/v1";
+import { Mermaid, type MermaidProps } from "@dust/mermaid";
 import * as slideshowV1 from "@dust/slideshow/v1";
 import * as slideshowV2 from "@dust/slideshow/v2";
 import { captureScreenshot, triggerUserFileDownload, useFrameFunction, usePodFunction, SandboxFunctionCallError, useFile, readFile, writeFile } from "@dust/react-hooks";
@@ -149,16 +150,21 @@ let error: SandboxFunctionCallError | undefined;
 export default function App() {
   const [label] = useState("Hello");
   const document: DocumentProps = { path: "./content.json", className: "rounded-xl", readOnly: false, autosaveDebounceMs: 5000, visuals: { revenue: <div>Chart</div> } };
-  return <><Button variant="outline">{label}</Button><Document {...document} /></>;
+  const diagram: MermaidProps = { chart: "flowchart LR\\n  A --> B", className: "w-full" };
+  return <><Button variant="outline">{label}</Button><Document {...document} /><Mermaid {...diagram} /></>;
 }
 `,
-      })
+      }),
     ).toEqual([]);
   });
 
   it.each([
     [
       'import { Document } from "@dust/document/v1"; export default () => <Document />',
+      2741,
+    ],
+    [
+      'import { Mermaid } from "@dust/mermaid"; export default () => <Mermaid />',
       2741,
     ],
     [
@@ -213,7 +219,7 @@ export default function App() {
           code: diagnosticCode,
           line: 1,
         }),
-      ])
+      ]),
     );
   });
 
@@ -223,7 +229,7 @@ export default function App() {
         "index.tsx":
           'import { value } from "./value.ts"; export default () => <div>{value}</div>',
         "value.ts": '// Original source\nexport const value: number = "wrong"',
-      })
+      }),
     ).toEqual([
       expect.objectContaining({
         file: "value.ts",
@@ -237,7 +243,7 @@ export default function App() {
         "index.tsx":
           'import { value } from "./value.js"; export default () => <div>{value}</div>',
         "value.js": "export const value: number = 1",
-      })
+      }),
     ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -246,7 +252,7 @@ export default function App() {
           line: 1,
           column: 21,
         }),
-      ])
+      ]),
     );
   });
 
@@ -259,10 +265,10 @@ import child from "fil_0123456789ab";
 import legacy from "project/data.json";
 export default () => <div>{data[0]}{legacy.title}{child?.name}</div>
 `,
-      })
+      }),
     ).toEqual([]);
     expect(
-      check({ "index.tsx": "export default () => <div>{process.pid}</div>" })
+      check({ "index.tsx": "export default () => <div>{process.pid}</div>" }),
     ).toEqual([
       expect.objectContaining({
         file: "index.tsx",
@@ -274,7 +280,7 @@ export default () => <div>{data[0]}{legacy.title}{child?.name}</div>
   it("publishes a stable tree identity and a checksum for the actual archive", async () => {
     const previous = fs.readFileSync(
       path.join(outDir, "manifest.json"),
-      "utf8"
+      "utf8",
     );
     const manifest = await buildFrameRuntimeTypes({ vizRoot, outDir });
     expect(fs.existsSync(path.join(artifactRoot, "index.d.ts"))).toBe(true);
@@ -285,7 +291,7 @@ export default () => <div>{data[0]}{legacy.title}{child?.name}</div>
     const archivePath = path.join(outDir, path.basename(manifest.path));
     const archive = fs.readFileSync(archivePath);
     expect(manifest.tarballSha256).toBe(
-      createHash("sha256").update(archive).digest("hex")
+      createHash("sha256").update(archive).digest("hex"),
     );
     expect(manifest.sizeBytes).toBe(archive.length);
     const entries = execFileSync("tar", ["-tzf", archivePath], {
@@ -295,14 +301,14 @@ export default () => <div>{data[0]}{legacy.title}{child?.name}</div>
       .split("\n");
     expect(
       entries.every(
-        (file) => file.endsWith("/") || /(?:\.d\.[cm]?ts|\.json)$/.test(file)
-      )
+        (file) => file.endsWith("/") || /(?:\.d\.[cm]?ts|\.json)$/.test(file),
+      ),
     ).toBe(true);
   }, 30_000);
 
   it("fails when runtime declarations cannot be generated", async () => {
     await expect(
-      buildFrameRuntimeTypes({ vizRoot: path.join(root, "missing"), outDir })
+      buildFrameRuntimeTypes({ vizRoot: path.join(root, "missing"), outDir }),
     ).rejects.toThrow();
   });
 });
