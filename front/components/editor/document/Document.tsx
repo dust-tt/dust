@@ -262,6 +262,8 @@ export const DocumentView = ({
         ref={contentRef}
         className={cn(
           "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+          // The comment bubbles sit in the right gutter, so narrow documents widen it for them.
+          comments.unresolved.length > 0 && "pr-12",
           editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
         )}
       >

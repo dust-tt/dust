@@ -556,6 +556,28 @@ describe("Document comments", () => {
     );
   });
 
+  it("shows a bubble with its message count beside each open comment", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace(
+        "Note.\n",
+        `Note.\n\n::message{author=user:usr_tom name="Tom" at=${AT}}\n\nAgreed.\n`
+      )
+    );
+
+    const bubble = screen.getByRole("button", {
+      name: "Show comment by Daph, 2 messages",
+    });
+    expect(bubble.textContent).toBe("2");
+
+    fireEvent.click(bubble);
+
+    expect(highlight(dom, "c1")).toBeDefined();
+    expect(
+      within(floatingCard()!).getByRole("article", { name: "Comment by Daph" })
+    ).toBeDefined();
+    expect(bubble.getAttribute("aria-current")).toBe("true");
+  });
+
   it.each([
     [false, 1],
     [true, 0],
