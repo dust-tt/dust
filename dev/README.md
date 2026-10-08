@@ -40,7 +40,7 @@ bash dev/scripts/docker-run.sh --build --reset-volumes
 
 ## Persistent data
 
-Postgres, Redis, Elasticsearch, Temporal and Qdrant all keep their state under
+Postgres, Redis, Elasticsearch, Temporal, Qdrant and FoundationDB all keep their state under
 `DUST_DATA_ROOT` (`/var/lib/dust-dev`), backed by the single `dust-dev-data`
 volume. `init-data-dirs.sh` creates the per-service subdirectories and, on an
 empty volume, `initdb`s a fresh Postgres cluster. `infra.sh` then recreates
@@ -67,10 +67,11 @@ documents.
 | Script | Role |
 |--------|------|
 | `install.sh` | `npm install` + lefthook |
-| `infra.sh` | Postgres/Redis/Qdrant/ES/Temporal + Chrome managed policies + materialize 1Password + migrations |
+| `infra.sh` | Postgres/Redis/Qdrant/FoundationDB/ES/Temporal + Chrome managed policies + materialize 1Password + migrations |
 | `sweep-cargo-target.sh` | Prune stale `core/target` artifacts on the Cargo volume (14d / 12GiB cap) |
 | `init-data-dirs.sh` | Create `DUST_DATA_ROOT` dirs; `initdb` a fresh Postgres cluster if empty |
 | `init-qdrant-collections.sh` | Create the Qdrant embedding collection (idempotent) |
+| `ensure-fdb.sh` | Start the local FoundationDB server, create the database on a fresh volume (`single`, `ssd`), wait until available. Cluster file: `$FDB_CLUSTER_FILE`; listens on `127.0.0.1:4500` inside the container only |
 | `apps.sh` | Wait for infra, optional WorkOS seed, ngrok front tunnel, mprocs |
 | `ensure-ngrok.sh` | Start ngrok → `:3000` + `:3007` and persist `SBX_DEV_FRONT_URL` / viz URL for sandboxes |
 | `up.sh` | `install?` → `infra` → `apps` (serial entry for laptop / non-Cursor agents) |

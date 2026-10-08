@@ -113,6 +113,14 @@ bash "${SCRIPT_DIR}/ensure-temporal.sh" \
   exit 1
 }
 
+# --- FoundationDB (start + create the database on a fresh volume; single call) ---
+bash "${SCRIPT_DIR}/ensure-fdb.sh" \
+  >"${DUST_INFRA_LOG_DIR}/ensure-fdb.log" 2>&1 || {
+  log "FoundationDB setup failed; see ${DUST_INFRA_LOG_DIR}/ensure-fdb.log"
+  tail -30 "${DUST_INFRA_LOG_DIR}/ensure-fdb.log"
+  exit 1
+}
+
 log "Initializing databases..."
 bash "${SCRIPT_DIR}/init-databases.sh" || exit 1
 

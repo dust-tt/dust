@@ -83,6 +83,7 @@ export REDIS_CACHE_URI=redis://localhost:${ports.redis}
 export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
+export FDB_PORT=${ports.fdb}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 
 # === Viz service ===

@@ -76,6 +76,13 @@ ensure_qdrant() {
   mkdir -p "$QDRANT__STORAGE__STORAGE_PATH" "$QDRANT__STORAGE__SNAPSHOTS_PATH"
 }
 
+ensure_fdb() {
+  mkdir -p "$DUST_FDB_DATA_DIR" "$(dirname "$FDB_CLUSTER_FILE")" /etc/foundationdb
+  echo "dust:dust@127.0.0.1:${FDB_PORT}" >"$FDB_CLUSTER_FILE"
+  # FDB's default lookup path: clients work without FDB_CLUSTER_FILE (e.g. `docker exec`).
+  ln -sf "$FDB_CLUSTER_FILE" /etc/foundationdb/fdb.cluster
+}
+
 mkdir -p "$DUST_DATA_ROOT"
 
 ensure_postgres
@@ -83,5 +90,6 @@ ensure_redis
 ensure_elasticsearch
 ensure_temporal
 ensure_qdrant
+ensure_fdb
 
 log "Data directories ready under ${DUST_DATA_ROOT}"

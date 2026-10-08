@@ -20,6 +20,22 @@ describe("docker", () => {
       expect(override.services["apache-tika"].ports).toEqual(["10998:9998"]);
     });
 
+    it("publishes fdb on the same port number it listens on", () => {
+      const override = generateDockerComposeOverride("test-env", calculatePorts(10000));
+
+      expect(override.services.fdb.ports).toEqual(["10500:10500"]);
+      expect(override.services.fdb.environment.FDB_PORT).toBe("10500");
+      expect(override.services.fdb_init.environment.FDB_PORT).toBe("10500");
+    });
+
+    it("gives each environment its own fdb port", () => {
+      const envA = generateDockerComposeOverride("env-a", calculatePorts(10000));
+      const envB = generateDockerComposeOverride("env-b", calculatePorts(11000));
+
+      expect(envA.services.fdb.ports).toEqual(["10500:10500"]);
+      expect(envB.services.fdb.ports).toEqual(["11500:11500"]);
+    });
+
     it("generates correct volume names", () => {
       const ports = calculatePorts(10000);
       const override = generateDockerComposeOverride("my-feature", ports);
@@ -33,6 +49,7 @@ describe("docker", () => {
       expect(override.services.elasticsearch.volumes).toContain(
         "dust-hive-my-feature-elasticsearch:/usr/share/elasticsearch/data"
       );
+      expect(override.services.fdb.volumes).toEqual(["dust-hive-my-feature-fdb:/var/fdb/data"]);
     });
 
     it("declares all volumes at top level", () => {
@@ -42,6 +59,7 @@ describe("docker", () => {
       expect(override.volumes).toHaveProperty("dust-hive-env-a-pgsql");
       expect(override.volumes).toHaveProperty("dust-hive-env-a-qdrant");
       expect(override.volumes).toHaveProperty("dust-hive-env-a-elasticsearch");
+      expect(override.volumes).toHaveProperty("dust-hive-env-a-fdb");
     });
   });
 
@@ -56,10 +74,11 @@ describe("docker", () => {
     it("returns all volume names", () => {
       const volumes = getVolumeNames("test");
 
-      expect(volumes).toHaveLength(3);
+      expect(volumes).toHaveLength(4);
       expect(volumes).toContain("dust-hive-test-pgsql");
       expect(volumes).toContain("dust-hive-test-qdrant");
       expect(volumes).toContain("dust-hive-test-elasticsearch");
+      expect(volumes).toContain("dust-hive-test-fdb");
     });
   });
 });

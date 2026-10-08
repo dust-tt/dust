@@ -58,6 +58,37 @@ services:
       timeout: 10s
       retries: 10
 
+  fdb:
+    image: foundationdb/foundationdb:7.3.69
+    environment:
+      # Host mode: the cluster file advertises 127.0.0.1:$FDB_PORT. The per-env override sets
+      # FDB_PORT and publishes the same port number on the host.
+      FDB_NETWORKING_MODE: host
+      FDB_PORT: "4500"
+    healthcheck:
+      test: [ "CMD-SHELL", "fdbcli --exec 'status minimal' --timeout 5 | grep -q 'The database is available'" ]
+      interval: 5s
+      timeout: 6s
+      retries: 20
+
+  # One-shot: creates the database on a fresh volume, then exits.
+  fdb_init:
+    depends_on:
+      - fdb
+    image: foundationdb/foundationdb:7.3.69
+    network_mode: service:fdb
+    restart: "no"
+    environment:
+      FDB_PORT: "4500"
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        echo "docker:docker@127.0.0.1:$$FDB_PORT" > /tmp/fdb.cluster
+        until fdbcli -C /tmp/fdb.cluster --timeout 5 --exec "status minimal" | grep -q "The database is available"; do
+          fdbcli -C /tmp/fdb.cluster --timeout 5 --exec "configure new single ssd"
+          sleep 2
+        done
+
   kibana:
     profiles: ["kibana"]
     depends_on:
