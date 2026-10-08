@@ -736,9 +736,12 @@ export function emailAssistantMatcher({
 }
 
 export async function splitThreadContent(content: string) {
+  // Each separator starts at a line break, followed by optional blanks on that same line.
+  // [^\S\n] means "any whitespace except a line break"
   const separators = [
-    /\n\s*On\s+[A-Za-z]{3},\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+[AP]M/,
-    /\n\s*[-]+\s*Forwarded message\s*[-]+/,
+    // Matches "\n  On Mon, Oct 6, 2026 at 3:12 PM".
+    /\n[^\S\n]*On\s+[A-Za-z]{3},\s+[A-Za-z]{3}\s+\d{1,2},\s+\d{4}\s+at\s+\d{1,2}:\d{2}\s+[AP]M/,
+    /\n[^\S\n]*[-]+\s*Forwarded message\s*[-]+/,
   ];
 
   let firstSeparatorIndex = -1;
