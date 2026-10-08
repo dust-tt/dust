@@ -640,6 +640,7 @@ export async function recheckAllConnections(
     [...groups.values()],
     async (connections) => {
       const { auth, workspaceId, canonicalPath } = connections[0].context;
+      const userId = auth.getNonNullableUser().sId;
       const close = () => {
         for (const connection of connections) {
           connection.close(FORBIDDEN);
@@ -648,15 +649,12 @@ export async function recheckAllConnections(
       };
       let access: Result<void, LiveAccessError>;
       try {
-        const fresh = await authenticatorFor(
-          auth.getNonNullableUser().sId,
-          workspaceId
-        );
+        const fresh = await authenticatorFor(userId, workspaceId);
         access = await recheckLiveAccess(fresh, canonicalPath);
       } catch (err) {
         failed++;
         logger.error(
-          { err: normalizeError(err), workspaceId },
+          { err: normalizeError(err), workspaceId, userId },
           "Collab access re-check failed, closing its connections"
         );
         // Access is unknown: closed, as when it is lost. The browser reconnects with a new ticket.
@@ -667,7 +665,7 @@ export async function recheckAllConnections(
         return;
       }
       logger.info(
-        { workspaceId, reason: access.error.message },
+        { workspaceId, userId, reason: access.error.message },
         "Collab connection closed: access lost"
       );
       close();
