@@ -1,3 +1,4 @@
+import { hasOpenDocumentLayer } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
@@ -128,7 +129,17 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
+      <DialogContent
+        size="2xl"
+        height="2xl"
+        className="gap-4 px-4"
+        // The open document closes its comment list, card or menu first.
+        onEscapeKeyDown={(event) => {
+          if (hasOpenDocumentLayer(document)) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader hideButton className="flex gap-4">
           <div className="flex items-center gap-2">
             <DialogTitle className="min-w-0 flex-1">

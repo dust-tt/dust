@@ -51,6 +51,18 @@ const hasContent = (editor: Editor | null) => {
   return found;
 };
 
+/** Whether a suggestion list opened from the field, such as mentions, is showing. */
+const hasOpenSuggestionList = (editor: Editor | null) =>
+  !!editor?.state.plugins.some((plugin) => {
+    const state: unknown = plugin.getState(editor.state);
+    return (
+      typeof state === "object" &&
+      state !== null &&
+      "active" in state &&
+      state.active === true
+    );
+  });
+
 /** Selects the text of the last suggestion block, so typing replaces it; false without one. */
 const selectLastSuggestion = (editor: Editor): boolean => {
   let range: { from: number; to: number } | null = null;
@@ -119,6 +131,7 @@ export const DocumentCommentInput = ({
   const refocusRef = useRef(false);
   const submitRef = useRef<() => void>(() => undefined);
   const onFilledChangeRef = useRef(onFilledChange);
+  const escapeClosesListRef = useRef(false);
 
   // Captured at mount: a changed extension list or props object would reconfigure the editor.
   const [options] = useState(() => ({
@@ -238,12 +251,18 @@ export const DocumentCommentInput = ({
       role="group"
       className={className}
       onClick={(event) => event.stopPropagation()}
+      // Read before the field handles the key: a host dialog prevents every Escape's default, so
+      // `defaultPrevented` cannot tell whether the field closed its list.
+      onKeyDownCapture={(event) => {
+        escapeClosesListRef.current =
+          event.key === "Escape" && hasOpenSuggestionList(editor);
+      }}
       onKeyDown={(event) => {
         if (event.key !== "Escape") {
           return;
         }
         // The field already used it, such as to close the mention list or end a composition.
-        if (event.defaultPrevented || event.nativeEvent.isComposing) {
+        if (escapeClosesListRef.current || event.nativeEvent.isComposing) {
           event.stopPropagation();
           return;
         }

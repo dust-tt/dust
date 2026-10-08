@@ -1,4 +1,7 @@
-import { Document } from "@app/components/editor/document/Document";
+import {
+  Document,
+  hasOpenDocumentLayer,
+} from "@app/components/editor/document/Document";
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
@@ -15,7 +18,9 @@ import {
   within,
 } from "@testing-library/react";
 import type { Editor } from "@tiptap/core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Extension } from "@tiptap/core";
+import { Plugin } from "@tiptap/pm/state";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const AUTHOR: DfmAuthor = { kind: "user", id: "usr_tom", name: "Tom" };
 const AT = "2026-09-25T14:16:32.380Z";
@@ -910,5 +915,124 @@ describe("Document images", () => {
     expect(
       within(dom).getByRole("img", { name: "Chart" }).getAttribute("src")
     ).toBe("https://new.test/pod-abc/chart.png");
+  });
+});
+
+describe("Document Escape inside a host dialog", () => {
+  // Radix dialogs prevent the default of every Escape before the document sees it.
+  const preventEscape = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+    }
+  };
+
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value: () => [],
+    });
+    Object.defineProperty(Range.prototype, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+      }),
+    });
+    document.addEventListener("keydown", preventEscape, { capture: true });
+  });
+
+  afterEach(() => {
+    document.removeEventListener("keydown", preventEscape, { capture: true });
+  });
+
+  it("closes the card and reports no open layer once closed", async () => {
+    const { dom, editor } = await renderDocument(SOURCE);
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = await screen.findByRole("article", {
+      name: "Comment by Daph",
+    });
+    expect(hasOpenDocumentLayer(document)).toBe(true);
+
+    fireEvent.keyDown(thread, { key: "Escape" });
+
+    expect(floatingCard()).toBeNull();
+    expect(documentCommentsPluginKey.getState(editor.state)?.activeId).toBe(
+      null
+    );
+    expect(hasOpenDocumentLayer(document)).toBe(false);
+  });
+
+  it("clears a reply field on Escape and keeps its card", async () => {
+    const { dom } = await renderDocument(SOURCE);
+
+    fireEvent.click(highlight(dom, "c1"));
+    const field = await findCommentField("Reply");
+    typeComment(field, "Sure.");
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(field.editor.getText()).toBe("");
+    expect(floatingCard()).not.toBeNull();
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("article", { name: "Comment by Daph" })
+      )
+    );
+  });
+
+  it("closes the comments list on Escape from its button", async () => {
+    await renderDocument(SOURCE);
+    const toggle = screen.getByRole("button", { name: /^Comments/ });
+    fireEvent.click(toggle);
+    expect(hasOpenDocumentLayer(document)).toBe(true);
+
+    fireEvent.keyDown(toggle, { key: "Escape" });
+
+    expect(
+      screen.queryByRole("complementary", { name: "Comments" })
+    ).toBeNull();
+    expect(hasOpenDocumentLayer(document)).toBe(false);
+  });
+
+  it("keeps the draft when Escape closes the field's suggestion list", async () => {
+    const OpenSuggestionList = Extension.create({
+      name: "openSuggestionList",
+      addProseMirrorPlugins: () => [
+        new Plugin({
+          state: { init: () => ({ active: true }), apply: (_, value) => value },
+        }),
+      ],
+    });
+    const { container } = render(
+      <Document
+        initialContent={"Hello brave world.\n"}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        commentAuthor={AUTHOR}
+        commentInputExtensions={[OpenSuggestionList]}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+      />
+    );
+    const dom = await waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+
+    startComment(dom, dom.editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Too bold?");
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+    expect(field.editor.getText()).toBe("Too bold?");
   });
 });

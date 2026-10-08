@@ -119,6 +119,7 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
     >
       <div
         hidden={!menu.show}
+        data-document-layer={menu.show ? "" : undefined}
         className={cn(
           "w-74 max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-overlay-background p-1.5",
           "animate-in fade-in-0 slide-in-from-top-1 duration-150 motion-reduce:animate-none"

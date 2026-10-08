@@ -1,4 +1,7 @@
-export { Document } from "@app/components/editor/document/Document";
+export {
+  Document,
+  hasOpenDocumentLayer,
+} from "@app/components/editor/document/Document";
 export type {
   DocumentCommentAvatarSize,
   DocumentDraftState,
