@@ -84,3 +84,7 @@ msgstr "Failed to archive plan"
 #: front/hooks/conversations/usePostOnboardingFollowUp.ts
 msgid "Failed to send follow-up message"
 msgstr "Failed to send follow-up message"
+
+#: front/hooks/conversations/useVisualizationRevert.ts
+msgid "Please revert the previous change in {fileId}"
+msgstr "Please revert the previous change in {fileId}"

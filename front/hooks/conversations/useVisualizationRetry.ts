@@ -2,6 +2,7 @@ import { getVisualizationRetryMessage } from "@app/lib/client/visualization";
 import { clientFetch } from "@app/lib/egress/client";
 import { getLocalTimeZone } from "@app/lib/i18n/format";
 import logger from "@app/logger/logger";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useVisualizationRetry({
@@ -15,6 +16,7 @@ export function useVisualizationRetry({
   agentConfigurationId: string | null;
   isPublic: boolean;
 }) {
+  const { t } = useLingui();
   const canRetry = !isPublic && agentConfigurationId && conversationId;
 
   const handleVisualizationRetry = useCallback(
@@ -32,7 +34,7 @@ export function useVisualizationRetry({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              content: getVisualizationRetryMessage(errorMessage),
+              content: getVisualizationRetryMessage(t, errorMessage),
               mentions: [
                 {
                   configurationId: agentConfigurationId,
@@ -56,7 +58,7 @@ export function useVisualizationRetry({
         return false;
       }
     },
-    [workspaceId, conversationId, agentConfigurationId, canRetry]
+    [workspaceId, conversationId, agentConfigurationId, canRetry, t]
   );
 
   return {

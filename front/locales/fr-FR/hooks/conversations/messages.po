@@ -84,3 +84,7 @@ msgstr "Impossible d’archiver le plan"
 #: front/hooks/conversations/usePostOnboardingFollowUp.ts
 msgid "Failed to send follow-up message"
 msgstr "Impossible d’envoyer le message de suivi"
+
+#: front/hooks/conversations/useVisualizationRevert.ts
+msgid "Please revert the previous change in {fileId}"
+msgstr "Veuillez annuler la modification précédente dans {fileId}"
