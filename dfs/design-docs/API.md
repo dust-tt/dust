@@ -3,7 +3,7 @@
 This document proposes the dfs:// server API as a gRPC service named `Dfs`. All calls are unary.
 Requests authenticate through gRPC metadata: `authorization: Bearer <key>`.
 
-The schemas below describe the API's logical types, rather than literal protobuf or JSON syntax.
+The schemas below describe the API's logical types, rather than literal protobuf syntax.
 `field?: T` means the field may be omitted; `T[]` means a list; `map<K, V>` means a map. Lists and maps
 may be empty unless a minimum is specified. Numeric sizes and offsets are in bytes.
 
@@ -59,7 +59,8 @@ For real objects, `Attr.mode` is the current session's effective grant permissio
 six bits: read (`0o400`), write (`0o200`), and execute/traverse (`0o100`). It is computed from the
 authorization state used for the response and is not an independently stored permission mask.
 Group, other, special, and file-type bits are always zero. For example, effective `rw-` is `0o600`
-and effective `rwx` is `0o700`. Virtual `root` and `shared` report read/traverse access (`0o500`).
+and effective `rwx` is `0o700`. Virtual `shared` reports read/traverse access (`0o500`). Virtual
+`root` reports `0o700` when the session has `wx` on the stored tenant root, and `0o500` otherwise.
 Create and update operations do not accept a mode; new objects inherit permissions from grants.
 
 All timestamps, including session expiration and search time bounds, use this millisecond format.
@@ -187,7 +188,6 @@ select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0
 and `-w-=0o2`. Zero is valid and leaves permission bits unchanged; bits outside `0o7` are invalid.
 `Attr.mode` encodes the session's resulting effective grant permissions in the POSIX owner bits by
 shifting this triplet left by six bits.
-JSON DENY payloads containing a subject are rejected rather than silently applied to everyone.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
 At each object, remove inherited permissions covered by any DENY grants attached there, then add
@@ -235,7 +235,9 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 
 Namespace permissions are checked on each participating object using its effective mode. `x`
 controls directory traversal; this API has no file-execution RPC. Virtual root/shared support
-namespace reads as read-only projections, with permissions checked separately on real entries.
+namespace reads, with permissions checked separately on real entries. Virtual shared remains
+read-only. Namespace mutations at virtual root use the session's real `root_id` and its effective
+grant permissions.
 Tenant administration uses its tenant key and is not restricted by object grants.
 
 Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
@@ -528,7 +530,6 @@ ReadRequest {
   object_id: ObjectId
   offset: uint64                 // Zero-based byte offset.
   length: uint32                 // Maximum bytes to return, at most 1 MiB.
-  content_version?: uint64       // Omit for no precondition; otherwise a positive value must match.
 }
 ```
 
@@ -542,9 +543,7 @@ ReadData {
 ```
 
 Reads stop at EOF and may return fewer bytes than requested. An offset at or beyond EOF returns
-empty data. A supplied content version must be positive; zero fails with `INVALID_INPUT`. A
-mismatched content version fails with `STALE_VIEW`; a directory fails with `IS_DIRECTORY`.
-Metadata-only changes do not fail the content precondition; returned attributes reflect the read's
+empty data; a directory fails with `IS_DIRECTORY`. Returned bytes and attributes reflect the read's
 current snapshot, identified by `object.view`.
 
 ### ReadFiles
@@ -563,8 +562,7 @@ ReadFilesRequest {
 
 ```text
 FilesBatch {
-  results: FileResult[]          // Returned results preserve relative input order.
-  omitted_ids: ObjectId[]        // Files excluded because they would exceed the reply budget.
+  results: FileResult[]          // Exactly one result per input, in input order.
 }
 
 FileResult {
@@ -575,10 +573,10 @@ FileResult {
 }
 ```
 
-Each input has either a result or an omitted ID. Files larger than 1 MiB receive an individual
-`CAPACITY` error. Otherwise, files that cannot fit in the 4 MiB reply budget are omitted without
-being downloaded. Attributes and contents share one FDB snapshot. All returned attributes carry
-the same `object.view`; the batch has no separate view.
+Each input has exactly one result, in input order. Files larger than 1 MiB or that cannot fit in
+the 4 MiB encoded reply budget receive individual `CAPACITY` errors without being downloaded. The
+reply budget accounts for every result, including errors. Attributes and contents share one FDB
+snapshot. All returned attributes carry the same `object.view`; the batch has no separate view.
 
 ### Validate
 
@@ -895,16 +893,9 @@ Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and a 
 `partial` indicates bounded evaluation, not whether indexing is current. Backend failures are errors,
 not successful empty results.
 
-## Errors and client access
+## Errors
 
 RPC failures carry a gRPC status with protobuf `ErrorDetails { code }` in its details. Batch calls
 also use `ErrorDetails` for individual failures. Stable codes are `INTERNAL`, `INVALID_INPUT`,
 `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`, `IS_DIRECTORY`,
-`NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, `NAME_TOO_LONG`, and `STALE_VIEW`.
-
-The Rust client exposes async and blocking methods. `dfs-client` accepts a kebab-case method name,
-`--endpoint`, `--key-file`, and JSON on stdin or via `--input`. Tenant/session creation also requires
-`--output` to save returned credentials to a new private file. CLI JSON uses string object IDs
-(32 lowercase hex digits, `dfs://` references, `root`, or `shared`), numeric enum values, attribute and
-content versions, and byte arrays for `bytes`; it is the Rust serde representation, not protobuf JSON
-mapping.
+`NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.

@@ -7,6 +7,15 @@ package dfs.v1;
 // Additional behavioral requirements and validation limits are specified in ../CONTRACTS.
 // All calls are unary and authenticate with authorization: Bearer <key> metadata.
 // Session-key calls derive their tenant and subjects exclusively from the authenticated session.
+
+// @cc [owner:spolu,label:api;concurrency;error-handling] dfs-rpc-results
+// Non-batch RPCs MUST return their declared payload on success, or Empty when no data is returned.
+// Failures MUST use gRPC status with ErrorDetails. Atomic mutations MUST complete before returning
+// success and MUST NOT commit partial changes on failure.
+// RPCs that process multiple inputs with independent outcomes MUST return an XXXBatch message.
+// Batch responses MUST contain exactly one result per input, in input order. Each result MUST
+// report either success or an ErrorDetails failure. An element's failure MUST NOT suppress other
+// results. Request-wide failures MUST use gRPC status with ErrorDetails.
 service Dfs {
   // Requires the server key; tenant_id names the tenant to create.
   rpc CreateTenant(CreateTenantRequest) returns (Tenant);
@@ -24,9 +33,6 @@ service Dfs {
   rpc ListGrants(ListGrantsRequest) returns (GrantPage);
 
   // Requires a tenant key; the authenticated key determines the tenant.
-  // @cc [owner:spolu,label:api;concurrency;error-handling] dfs-update-grants-result
-  // Success MUST return Empty after the atomic grant update completes. Failures MUST use gRPC
-  // status with ErrorDetails and MUST NOT commit partial grant changes.
   rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
 
   // Requires an active session key.
@@ -80,7 +86,9 @@ message Attr {
   // For real objects, mode MUST equal the current session's effective grant permissions shifted
   // left by six bits: r=0o400, w=0o200, x=0o100. It MUST be derived from the authorization state
   // used for the response, not stored as independent permissions. Group, other, special, and
-  // file-type bits MUST be zero. Virtual root/shared MUST report read/traverse access (0o500).
+  // file-type bits MUST be zero. Virtual shared MUST report read/traverse access (0o500).
+  // Virtual root MUST report 0o700 when the session has wx on the stored tenant root, and 0o500
+  // otherwise. Namespace mutations at virtual root MUST use the session's real root_id and grants.
   required uint32 mode = 5;
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
@@ -187,12 +195,6 @@ message StatRequest {
   optional bool include_metadata = 2 [default = false];
 }
 
-// @cc [owner:spolu,label:api] dfs-attr-batch-results
-// Successful Stat and Lookup calls MUST return one result per input in input order. Each result
-// MUST contain exactly one of object or error. Missing or inaccessible objects MUST NOT prevent
-// other results. Successful results MUST carry their read view in object.view; the batch MUST NOT
-// contain a separate view. Encoded batches MUST fit 4 MiB; exceeding the budget MUST fail the RPC
-// with CAPACITY. Requested metadata MUST NOT be silently omitted from successful results.
 message AttrBatch {
   repeated AttrResult results = 1;
 }
@@ -232,7 +234,6 @@ message ReadRequest {
   required ObjectId object_id = 1;
   required uint64 offset = 2;
   required uint32 length = 3;
-  optional uint64 content_version = 4;
 }
 
 message ReadData {
@@ -246,7 +247,6 @@ message ReadFilesRequest {
 
 message FilesBatch {
   repeated FileResult results = 1;
-  repeated ObjectId omitted_ids = 2;
 }
 
 message FileResult {
@@ -423,7 +423,6 @@ enum ErrorCode {
   UNAVAILABLE = 10;
   UNSUPPORTED = 11;
   NAME_TOO_LONG = 12;
-  STALE_VIEW = 13;
 }
 
 message ErrorDetails {

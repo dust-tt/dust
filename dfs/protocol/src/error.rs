@@ -21,7 +21,6 @@ pub fn status(error: ErrorCode) -> Status {
         ErrorCode::Unavailable => (Code::Unavailable, "Unavailable."),
         ErrorCode::Unsupported => (Code::Unimplemented, "Unsupported."),
         ErrorCode::NameTooLong => (Code::InvalidArgument, "Name too long."),
-        ErrorCode::StaleView => (Code::Aborted, "Content version changed."),
     };
     Status::with_details(
         code,

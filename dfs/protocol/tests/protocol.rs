@@ -1,7 +1,6 @@
 use anyhow::{Context, Result};
 use dfs_protocol::{ObjectId, ObjectRef, error, rpc};
 use prost::Message;
-use serde_json::json;
 
 const ID: &str = "017f22e279b07cc398c4dc0c0c07398f";
 
@@ -27,12 +26,9 @@ fn identities_round_trip_with_distinct_real_and_virtual_wire_types() -> Result<(
             ObjectRef::decode(reference.encode_to_vec().as_slice())?,
             reference
         );
-        assert_eq!(
-            serde_json::from_value::<ObjectRef>(serde_json::to_value(reference)?)?,
-            reference
-        );
+        assert_eq!(reference.to_string().parse::<ObjectRef>()?, reference);
     }
-    assert_eq!(serde_json::to_value(id)?, json!(ID));
+    assert_eq!(id.to_string(), ID);
     assert_eq!(format!("dfs://{ID}").parse::<ObjectId>()?, id);
     assert_eq!(format!("dfs://old%20name--{ID}").parse::<ObjectId>()?, id);
     Ok(())
@@ -48,7 +44,6 @@ fn invalid_identities_cannot_become_real_objects_or_virtual_projections() -> Res
         "550e8400e29b41d4a716446655440000",
     ] {
         assert!(text.parse::<ObjectId>().is_err());
-        assert!(serde_json::from_value::<ObjectId>(json!(text)).is_err());
     }
     assert!(ID.to_uppercase().parse::<ObjectId>().is_err());
     assert!(format!("dfs://bad%zz--{ID}").parse::<ObjectId>().is_err());
@@ -72,54 +67,50 @@ fn invalid_identities_cannot_become_real_objects_or_virtual_projections() -> Res
     assert!(ObjectId::decode(&[][..])?.validate().is_err());
     assert!(ObjectRef::decode(&[][..])?.validate().is_err());
     assert!(ObjectRef::Root.real().is_err());
-    assert!(serde_json::to_value(ObjectId::default()).is_err());
-    assert!(serde_json::to_value(ObjectRef::Invalid).is_err());
+    assert!(ObjectRef::Invalid.validate().is_err());
     Ok(())
 }
 
 #[test]
 fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
-    let patch: rpc::UpdateOperation = serde_json::from_value(json!({
-        "object_id": ID,
-        "atime": 0,
-        "size": 0,
-        "xattrs": [
-            {"name": "user.removed"},
-            {"name": "user.empty", "value": []}
-        ]
-    }))?;
-    assert_eq!(patch.atime, Some(0));
-    assert_eq!(patch.mtime, None);
-    assert_eq!(patch.size, Some(0));
-    assert_eq!(patch.xattrs[0].value, None);
-    assert_eq!(patch.xattrs[1].value, Some(vec![]));
-    assert_eq!(
-        rpc::UpdateOperation::decode(patch.encode_to_vec().as_slice())?,
-        patch
-    );
-    assert_eq!(
-        serde_json::from_value::<rpc::UpdateOperation>(serde_json::to_value(&patch)?)?,
-        patch
-    );
+    let patch = rpc::UpdateOperation {
+        object_id: ID.parse()?,
+        atime: Some(0),
+        size: Some(0),
+        xattrs: vec![
+            rpc::XattrChange {
+                name: "user.removed".into(),
+                value: None,
+            },
+            rpc::XattrChange {
+                name: "user.empty".into(),
+                value: Some(vec![]),
+            },
+        ],
+        ..Default::default()
+    };
+    let decoded = rpc::UpdateOperation::decode(patch.encode_to_vec().as_slice())?;
+    assert_eq!(decoded.atime, Some(0));
+    assert_eq!(decoded.mtime, None);
+    assert_eq!(decoded.size, Some(0));
+    assert_eq!(decoded.xattrs[0].value, None);
+    assert_eq!(decoded.xattrs[1].value, Some(vec![]));
+    assert_eq!(decoded, patch);
     Ok(())
 }
 
 #[test]
-fn versions_remain_numeric_and_optional_preconditions_preserve_presence() -> Result<()> {
+fn version_checks_preserve_presence_and_full_u64_range() -> Result<()> {
     for version in [None, Some(0), Some(1), Some(u64::MAX)] {
-        let request = rpc::ReadRequest {
-            object_id: ID.parse()?,
-            offset: 0,
-            length: 1,
+        let check = rpc::VersionCheck {
+            object_id: ObjectRef::Object(ID.parse()?),
+            attr_version: Some(42),
             content_version: version,
         };
         assert_eq!(
-            rpc::ReadRequest::decode(request.encode_to_vec().as_slice())?,
-            request
+            rpc::VersionCheck::decode(check.encode_to_vec().as_slice())?,
+            check
         );
-        let json = serde_json::to_value(&request)?;
-        assert_eq!(json["content_version"].as_u64(), version);
-        assert_eq!(serde_json::from_value::<rpc::ReadRequest>(json)?, request);
     }
     let check = rpc::VersionCheck {
         object_id: ObjectRef::Root,
@@ -166,10 +157,6 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
         rpc::Attr::decode(object.encode_to_vec().as_slice())?,
         object
     );
-    assert_eq!(
-        serde_json::from_value::<rpc::Attr>(serde_json::to_value(&object)?)?,
-        object
-    );
     Ok(())
 }
 
@@ -192,27 +179,34 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
         rpc::LookupRequest::decode(request.encode_to_vec().as_slice())?,
         request
     );
-    let response: rpc::AttrBatch = serde_json::from_value(json!({
-        "results": [
-            {"object": {
-                "id": ObjectRef::Shared,
-                "parent": ObjectRef::Root,
-                "directory": true,
-                "size": 0,
-                "mode": 0o500,
-                "attr_version": 1,
-                "content_version": 1,
-                "view": {"store_version": 123, "auth_version": 120}
-            }},
-            {"error": {"code": rpc::ErrorCode::NotFound as i32}}
-        ]
-    }))?;
+    let response = rpc::AttrBatch {
+        results: vec![
+            rpc::AttrResult {
+                object: Some(rpc::Attr {
+                    id: ObjectRef::Shared,
+                    parent: ObjectRef::Root,
+                    directory: true,
+                    mode: 0o500,
+                    attr_version: 1,
+                    content_version: 1,
+                    view: rpc::ReadView {
+                        store_version: 123,
+                        auth_version: 120,
+                    },
+                    ..Default::default()
+                }),
+                error: None,
+            },
+            rpc::AttrResult {
+                object: None,
+                error: Some(rpc::ErrorDetails {
+                    code: rpc::ErrorCode::NotFound as i32,
+                }),
+            },
+        ],
+    };
     assert_eq!(
         rpc::AttrBatch::decode(response.encode_to_vec().as_slice())?,
-        response
-    );
-    assert_eq!(
-        serde_json::from_value::<rpc::AttrBatch>(serde_json::to_value(&response)?)?,
         response
     );
     Ok(())
@@ -221,36 +215,71 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
 #[test]
 fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
     let parent_id = ObjectId::new_v7();
-    let request: rpc::ApplyRequest = serde_json::from_value(json!({
-        "operations": [
-            {"operation": {"Create": {
-                "parent_id": parent_id, "object_id": ID, "name": "file"
-            }}},
-            {"operation": {"Write": {"object_id": ID, "data": [0, 255]}}},
-            {"operation": {"Remove": {"object_id": ID, "directory": false}}}
-        ]
-    }))?;
+    let object_id = ID.parse()?;
+    let request = rpc::ApplyRequest {
+        operations: vec![
+            rpc::Operation {
+                operation: Some(rpc::operation::Operation::Create(rpc::CreateOperation {
+                    parent_id,
+                    object_id,
+                    name: "file".into(),
+                    ..Default::default()
+                })),
+            },
+            rpc::Operation {
+                operation: Some(rpc::operation::Operation::Write(rpc::WriteOperation {
+                    object_id,
+                    data: vec![0, 255],
+                    offset: 0,
+                    append: false,
+                })),
+            },
+            rpc::Operation {
+                operation: Some(rpc::operation::Operation::Remove(rpc::RemoveOperation {
+                    object_id,
+                    directory: false,
+                })),
+            },
+        ],
+    };
     assert_eq!(request.operations.len(), 3);
     assert_eq!(
         rpc::ApplyRequest::decode(request.encode_to_vec().as_slice())?,
         request
     );
-    let response: rpc::OperationBatch = serde_json::from_value(json!({
-        "results": [
-            {"error": {"code": rpc::ErrorCode::AlreadyExists as i32}},
-            {"mutation": {}},
-            {"mutation": {"related": [{
-                "id": parent_id,
-                "parent": ObjectRef::Root,
-                "directory": true,
-                "size": 0,
-                "mode": 0o700,
-                "attr_version": 2,
-                "content_version": 2,
-                "view": {"store_version": 123, "auth_version": 120}
-            }]}}
-        ]
-    }))?;
+    let response = rpc::OperationBatch {
+        results: vec![
+            rpc::OperationResult {
+                mutation: None,
+                error: Some(rpc::ErrorDetails {
+                    code: rpc::ErrorCode::AlreadyExists as i32,
+                }),
+            },
+            rpc::OperationResult {
+                mutation: Some(rpc::Mutation::default()),
+                error: None,
+            },
+            rpc::OperationResult {
+                mutation: Some(rpc::Mutation {
+                    object: None,
+                    related: vec![rpc::Attr {
+                        id: ObjectRef::Object(parent_id),
+                        parent: ObjectRef::Root,
+                        directory: true,
+                        mode: 0o700,
+                        attr_version: 2,
+                        content_version: 2,
+                        view: rpc::ReadView {
+                            store_version: 123,
+                            auth_version: 120,
+                        },
+                        ..Default::default()
+                    }],
+                }),
+                error: None,
+            },
+        ],
+    };
     assert_eq!(response.results.len(), 3);
     let removal = response.results[2]
         .mutation
@@ -265,33 +294,39 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
         rpc::OperationBatch::decode(response.encode_to_vec().as_slice())?,
         response
     );
-    assert_eq!(
-        serde_json::from_value::<rpc::OperationBatch>(serde_json::to_value(&response)?)?,
-        response
-    );
     Ok(())
 }
 
 #[test]
-fn search_defaults_and_numeric_enums_match_the_api() -> Result<()> {
-    let request: rpc::SearchRequest = serde_json::from_value(json!({
-        "query": "",
-        "fields": [0, 1],
-        "scope": {"directory_id": ID},
-        "filter": {"modified_after": 0, "xattrs": [{"name": "user.tag", "value": []}]}
-    }))?;
-    assert_eq!(request.limit(), 20);
-    let scope = request.scope.as_ref().context("missing scope")?;
+fn search_preserves_defaults_filters_and_enum_values() -> Result<()> {
+    let request = rpc::SearchRequest {
+        fields: vec![
+            rpc::SearchField::Name as i32,
+            rpc::SearchField::Content as i32,
+        ],
+        scope: Some(rpc::SearchScope {
+            directory_id: ID.parse()?,
+            recursive: None,
+        }),
+        filter: Some(rpc::SearchFilter {
+            modified_after: Some(0),
+            xattrs: vec![rpc::SearchXattr {
+                name: "user.tag".into(),
+                value: Some(vec![]),
+            }],
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let decoded = rpc::SearchRequest::decode(request.encode_to_vec().as_slice())?;
+    assert_eq!(decoded.limit(), 20);
+    let scope = decoded.scope.as_ref().context("missing scope")?;
     assert!(scope.recursive());
-    assert_eq!(request.fields, vec![0, 1]);
-    assert_eq!(
-        rpc::SearchRequest::decode(request.encode_to_vec().as_slice())?,
-        request
-    );
-    let json = serde_json::to_value(&request)?;
-    assert_eq!(json["fields"], json!([0, 1]));
-    assert_eq!(json["filter"]["modified_after"], json!(0));
-    assert_eq!(serde_json::from_value::<rpc::SearchRequest>(json)?, request);
+    assert_eq!(decoded.fields, vec![0, 1]);
+    let filter = decoded.filter.as_ref().context("missing filter")?;
+    assert_eq!(filter.modified_after, Some(0));
+    assert_eq!(filter.xattrs[0].value, Some(vec![]));
+    assert_eq!(decoded, request);
     Ok(())
 }
 
@@ -306,27 +341,9 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
     let deny = rpc::Grant {
         kind: Some(rpc::grant::Kind::Deny(rpc::DenyGrant { mode: 0o2 })),
     };
-    assert_eq!(
-        serde_json::to_value(&allow)?,
-        json!({"kind": {"Allow": {"subject": "g:engineering", "mode": 7}}})
-    );
-    assert_eq!(
-        serde_json::to_value(&deny)?,
-        json!({"kind": {"Deny": {"mode": 2}}})
-    );
-    assert!(
-        serde_json::from_value::<rpc::Grant>(json!({
-            "kind": {"Deny": {"subject": "u:spolu@dust.tt", "mode": 2}}
-        }))
-        .is_err()
-    );
     for grant in [&allow, &deny] {
         assert_eq!(
             rpc::Grant::decode(grant.encode_to_vec().as_slice())?,
-            *grant
-        );
-        assert_eq!(
-            serde_json::from_value::<rpc::Grant>(serde_json::to_value(grant)?)?,
             *grant
         );
     }
@@ -363,27 +380,14 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
         rpc::UpdateGrantsRequest::decode(update.encode_to_vec().as_slice())?,
         update
     );
-    let json = serde_json::to_value(&update)?;
-    assert_eq!(json["changes"][0]["remove"], json!(false));
-    assert_eq!(json["changes"][1]["remove"], json!(true));
-    assert!(json["changes"][0].get("attached").is_none());
-    assert!(json["changes"][1].get("attached").is_none());
-    assert_eq!(
-        serde_json::from_value::<rpc::UpdateGrantsRequest>(json)?,
-        update
-    );
     Ok(())
 }
 
 #[test]
 fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
-    let request: rpc::CreateSessionRequest = serde_json::from_value(json!({
-        "subjects": ["u:spolu@dust.tt", "g:engineering"]
-    }))?;
-    assert_eq!(
-        serde_json::to_value(&request)?,
-        json!({"subjects": ["u:spolu@dust.tt", "g:engineering"]})
-    );
+    let request = rpc::CreateSessionRequest {
+        subjects: vec!["u:spolu@dust.tt".into(), "g:engineering".into()],
+    };
     assert_eq!(
         rpc::CreateSessionRequest::decode(request.encode_to_vec().as_slice())?,
         request
@@ -400,31 +404,22 @@ fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
         rpc::Session::decode(session.encode_to_vec().as_slice())?,
         session
     );
-    let json = serde_json::to_value(&session)?;
-    assert_eq!(json["tenant_id"], json!("tenant"));
-    assert_eq!(
-        json["subjects"],
-        json!(["u:spolu@dust.tt", "g:engineering"])
-    );
-    assert!(json.get("grants").is_none());
-    assert_eq!(serde_json::from_value::<rpc::Session>(json)?, session);
     Ok(())
 }
 
 #[test]
 fn grpc_status_details_preserve_protocol_errors() -> Result<()> {
-    for code in [
-        rpc::ErrorCode::InvalidInput,
-        rpc::ErrorCode::Unauthenticated,
-        rpc::ErrorCode::Capacity,
-        rpc::ErrorCode::StaleView,
+    for (code, grpc_code) in [
+        (rpc::ErrorCode::InvalidInput, tonic::Code::InvalidArgument),
+        (
+            rpc::ErrorCode::Unauthenticated,
+            tonic::Code::Unauthenticated,
+        ),
+        (rpc::ErrorCode::Capacity, tonic::Code::ResourceExhausted),
     ] {
         let status = error::status(code);
         assert_eq!(rpc::ErrorDetails::decode(status.details())?.code(), code);
+        assert_eq!(status.code(), grpc_code);
     }
-    assert_eq!(
-        error::status(rpc::ErrorCode::StaleView).code(),
-        tonic::Code::Aborted
-    );
     Ok(())
 }

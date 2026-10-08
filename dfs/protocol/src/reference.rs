@@ -4,13 +4,12 @@ use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser};
 use std::{fmt, str::FromStr};
 
 /// @cc [owner:spolu,label:api;security] dfs-object-reference
-/// References MUST distinguish real IDs, virtual root, and virtual shared in protobuf and serde.
+/// References MUST distinguish real IDs, virtual root, and virtual shared in protobuf.
 /// Missing references MUST remain invalid until populated; request consumers MUST call `validate`.
-/// Human-readable serde MUST use ID strings, `root`, or `shared`, never protobuf JSON objects.
+/// Text parsing and display MUST use ID strings, `root`, or `shared` for valid references.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectRef {
     #[default]
@@ -116,40 +115,5 @@ impl Message for ObjectRef {
 
     fn clear(&mut self) {
         *self = Self::Invalid;
-    }
-}
-
-impl Serialize for ObjectRef {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.validate().map_err(ser::Error::custom)?;
-        if serializer.is_human_readable() {
-            return serializer.collect_str(self);
-        }
-        let (tag, bytes) = match self {
-            Self::Invalid => return Err(ser::Error::custom(InvalidId)),
-            Self::Object(id) => (1u8, *id.as_bytes()),
-            Self::Root => (2, [0; 16]),
-            Self::Shared => (3, [0; 16]),
-        };
-        (tag, bytes).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for ObjectRef {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        if deserializer.is_human_readable() {
-            return String::deserialize(deserializer)?
-                .parse()
-                .map_err(de::Error::custom);
-        }
-        let (tag, bytes) = <(u8, [u8; 16])>::deserialize(deserializer)?;
-        match tag {
-            1 => ObjectId::from_bytes(bytes)
-                .map(Self::Object)
-                .map_err(de::Error::custom),
-            2 if bytes == [0; 16] => Ok(Self::Root),
-            3 if bytes == [0; 16] => Ok(Self::Shared),
-            _ => Err(de::Error::custom(InvalidId)),
-        }
     }
 }

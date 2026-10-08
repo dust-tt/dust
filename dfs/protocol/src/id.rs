@@ -3,14 +3,13 @@ use prost::{
     bytes::{Buf, BufMut},
     encoding::{self, DecodeContext, WireType},
 };
-use serde::{Deserialize, Deserializer, Serialize, Serializer, de, ser};
 use std::{fmt, str::FromStr};
 
 /// @cc [owner:spolu,label:api] dfs-real-object-id
 /// Populated object IDs MUST contain exactly 16 UUIDv7 bytes. The protobuf default MUST remain an
 /// invalid unset value, never a generated identity; request consumers MUST reject it with
-/// `validate`. Human-readable serde MUST accept lowercase 32-digit hex and dfs:// references, emit
-/// lowercase 32-digit hex, and reject virtual references. Binary serde MUST preserve the 16 bytes.
+/// `validate`. Text parsing MUST accept lowercase 32-digit hex and dfs:// references and reject
+/// virtual references. Display MUST emit lowercase 32-digit hex.
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectId([u8; 16]);
 
@@ -150,29 +149,6 @@ impl Message for ObjectId {
 
     fn clear(&mut self) {
         *self = Self::default();
-    }
-}
-
-impl Serialize for ObjectId {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        self.validate().map_err(ser::Error::custom)?;
-        if serializer.is_human_readable() {
-            serializer.collect_str(self)
-        } else {
-            self.0.serialize(serializer)
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for ObjectId {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        if deserializer.is_human_readable() {
-            String::deserialize(deserializer)?
-                .parse()
-                .map_err(de::Error::custom)
-        } else {
-            Self::from_bytes(<[u8; 16]>::deserialize(deserializer)?).map_err(de::Error::custom)
-        }
     }
 }
 

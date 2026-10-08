@@ -19,8 +19,7 @@ Tenant-key administration MUST NOT be restricted by object grants.
 
 @cc [owner:spolu,label:api;security] dfs-grant-shape
 Each `Grant` MUST select exactly one ALLOW or DENY variant. ALLOW MUST contain a nonempty subject
-and a mode; DENY MUST contain only a mode and apply to every session. JSON DENY payloads MUST reject
-a subject rather than silently interpret the rule as applying to everyone. Subjects MUST be matched
+and a mode; DENY MUST contain only a mode and apply to every session. Subjects MUST be matched
 exactly and case-sensitively against the tenant-key holder's asserted session subjects. The server
 MUST NOT resolve group membership or infer additional subjects from strings such as
 `u:spolu@dust.tt` or `g:engineering`.
@@ -39,8 +38,8 @@ aliases MUST use the same full ancestor chain, including hidden ancestors.
 real parent and r on its returned child. `List` MUST require rx on a real directory and return only
 children with r. `Search` MUST require r on each hit and rx on a supplied scope directory.
 `Validate` MUST require r on each real target and additionally x for a directory content-version
-check. Virtual root/shared MUST support namespace reads as read-only projections, checking real
-entries separately. The x bit MUST control directory traversal; the API MUST NOT expose a
+check. Virtual root/shared MUST support namespace reads, checking real entries separately. Virtual
+shared MUST remain read-only. The x bit MUST control directory traversal; the API MUST NOT expose a
 file-execution RPC.
 
 @cc [owner:spolu,label:security;api] dfs-mutation-permissions
@@ -49,6 +48,8 @@ require w on the source and any replacement and wx on affected parents. Remove M
 target and wx on its parent. Each participating object's mode MUST be evaluated independently
 against its real ancestor chain. Read validation MUST NOT authorize cached mutations; every mutation
 MUST independently check its required permissions.
+Namespace mutations at virtual root MUST use the session's real tenant root ID and its effective
+grant permissions.
 
 @cc [owner:spolu,label:api] dfs-grant-identity
 Grant identity MUST include the variant, subject for ALLOW, and mode. Identical values MUST
@@ -206,6 +207,9 @@ immediate revocation.
 @cc [owner:spolu,label:api] dfs-stat-results
 `Stat` MUST accept 1–256 references and return an `AttrBatch`. Results MUST correspond to inputs by
 position, including repeated references; successful results MUST identify the object in `Attr.id`.
+Successful results MUST carry their read view in `object.view`; the batch MUST NOT contain a separate
+view. Encoded batches MUST fit 4 MiB; exceeding the budget MUST fail the RPC with `CAPACITY`.
+Requested metadata MUST NOT be silently omitted from successful results.
 
 @cc [owner:spolu,label:api;backend] dfs-stat-metadata
 `Stat` and `Lookup` with `include_metadata=true` MUST populate each successful object's extended
@@ -249,19 +253,14 @@ Reads MUST stop at EOF and return empty bytes at or beyond EOF. Directories MUST
 `IS_DIRECTORY`. Returned bytes and attributes MUST share the same snapshot, identified by
 `ReadData.object.view`.
 
-@cc [owner:spolu,label:api] dfs-read-precondition
-An omitted `ReadRequest.content_version` MUST impose no precondition. A supplied zero MUST fail with
-`INVALID_INPUT`, and a mismatched positive version MUST fail with `STALE_VIEW`. Metadata-only
-changes MUST NOT fail this precondition; returned attributes MUST reflect the current read snapshot.
-
 @cc [owner:spolu,label:api;backend] dfs-read-files
-`ReadFiles` MUST accept 1–256 real IDs and account for each input with either a result or an omitted
-ID. Results MUST preserve relative input order. Success MUST include attributes and whole-file data,
-including present empty bytes for an empty file, with no error; failure MUST contain an error
-instead of attributes/data. Attributes and contents MUST share one FDB snapshot. All returned
-attributes MUST carry the same `Attr.view`; the batch MUST NOT contain a separate view. Files over
-1 MiB MUST receive individual `CAPACITY` errors; other files that cannot fit the 4 MiB reply MUST be
-omitted without being downloaded.
+`ReadFiles` MUST accept 1–256 real IDs and return exactly one result per input in input order.
+Success MUST include attributes and whole-file data, including present empty bytes for an empty
+file, with no error; failure MUST contain an error instead of attributes/data. Attributes and
+contents MUST share one FDB snapshot. All returned attributes MUST carry the same `Attr.view`; the
+batch MUST NOT contain a separate view. Files over 1 MiB or that cannot fit the 4 MiB encoded reply
+budget MUST receive individual `CAPACITY` errors without being downloaded. The reply budget MUST
+account for every result, including errors.
 
 @cc [owner:spolu,label:api] dfs-validate-input
 `Validate` MUST accept 1–256 checks. Each `VersionCheck` MUST supply at least one positive attribute
@@ -389,4 +388,4 @@ evaluation, not indexing freshness. Backend failures MUST be errors, not success
 RPC failures MUST carry a gRPC status with protobuf `ErrorDetails { code }` in its details. Batch
 calls MUST use the same details for individual failures. Error codes MUST remain stable: INTERNAL,
 INVALID_INPUT, NOT_FOUND, FORBIDDEN, UNAUTHENTICATED, ALREADY_EXISTS, NOT_DIRECTORY, IS_DIRECTORY,
-NOT_EMPTY, CAPACITY, UNAVAILABLE, UNSUPPORTED, NAME_TOO_LONG, and STALE_VIEW.
+NOT_EMPTY, CAPACITY, UNAVAILABLE, UNSUPPORTED, and NAME_TOO_LONG.
