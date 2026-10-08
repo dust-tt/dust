@@ -1,3 +1,4 @@
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -149,6 +150,7 @@ export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
     },
     ref
   ) => {
+    const formatLocale = useFormatLocale();
     return (
       <div
         ref={ref}
@@ -158,7 +160,7 @@ export const Counter = React.forwardRef<HTMLDivElement, CounterProps>(
         )}
         {...props}
       >
-        {value}
+        {formatNumber(value, undefined, formatLocale)}
       </div>
     );
   }

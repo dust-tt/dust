@@ -51,29 +51,29 @@ msgid "Get work done"
 msgstr "Que souhaitez-vous accomplir ?"
 
 #: src/components/ConversationListItem.tsx
-msgid "{mentionCount, plural, one {# Mention} other {# Mentions}}"
-msgstr "{mentionCount, plural, one {# mention} other {# mentions}}"
+msgid "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
+msgstr "{mentionCount, plural, one {{mentions} mention} other {{mentions} mentions}}"
 
 #: src/components/ConversationListItem.tsx
 msgctxt "follows the mention count, e.g. 2 Mentions in 5 unreads"
-msgid "{unreadCount, plural, one {in # unread} other {in # unreads}}"
-msgstr "{unreadCount, plural, one {sur # non lu} other {sur # non lus}}"
+msgid "{unreadCount, plural, one {in {unreads} unread} other {in {unreads} unreads}}"
+msgstr "{unreadCount, plural, one {sur {unreads} non lu} other {sur {unreads} non lus}}"
 
 #: src/components/ConversationListItem.tsx
-msgid "({replyCount, plural, one {# reply} other {# replies}})"
-msgstr "({replyCount, plural, one {# réponse} other {# réponses}})"
+msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})"
+msgstr "({replyCount, plural, one {{replies} réponse} other {{replies} réponses}})"
 
 #: src/components/ConversationListItem.tsx
-msgid "{replyCount, plural, one {# Reply} other {# Replies}}"
-msgstr "{replyCount, plural, one {# réponse} other {# réponses}}"
+msgid "{replyCount, plural, one {{replies} Reply} other {{replies} Replies}}"
+msgstr "{replyCount, plural, one {{replies} réponse} other {{replies} réponses}}"
 
 #: src/components/ConversationListItem.tsx
-msgid "{unreadCount, plural, one {# Unread} other {# Unread}}"
-msgstr "{unreadCount, plural, one {# non lu} other {# non lus}}"
+msgid "{unreadCount, plural, one {{unreads} Unread} other {{unreads} Unread}}"
+msgstr "{unreadCount, plural, one {{unreads} non lu} other {{unreads} non lus}}"
 
 #: src/components/ConversationListItem.tsx
-msgid "({replyCount, plural, one {# reply} other {# replies}})."
-msgstr "({replyCount, plural, one {# réponse} other {# réponses}})."
+msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})."
+msgstr "({replyCount, plural, one {{replies} réponse} other {{replies} réponses}})."
 
 #: src/components/ConversationListItem.tsx
 msgid "Last by <0>{lastMessageBy}</0>."
@@ -149,16 +149,16 @@ msgstr "Charger plus"
 
 #: src/components/LoadMore.tsx
 #: src/components/Pagination.tsx
-msgid "{rowCount, plural, one {# item} other {# items}}"
-msgstr "{rowCount, plural, one {# élément} other {# éléments}}"
+msgid "{rowCount, plural, one {{formattedRowCount} item} other {{formattedRowCount} items}}"
+msgstr "{rowCount, plural, one {{formattedRowCount} élément} other {{formattedRowCount} éléments}}"
 
 #: src/components/LoadMore.tsx
-msgid "Showing {rowCount} of {totalRowCount, plural, one {#+ item} other {#+ items}}"
-msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {#+ élément} other {#+ éléments}}"
+msgid "Showing {formattedRowCount} of {totalRowCount, plural, one {{formattedTotalRowCount}+ item} other {{formattedTotalRowCount}+ items}}"
+msgstr "Affichage de {formattedRowCount} sur {totalRowCount, plural, one {{formattedTotalRowCount}+ élément} other {{formattedTotalRowCount}+ éléments}}"
 
 #: src/components/LoadMore.tsx
-msgid "Showing {rowCount} of {totalRowCount, plural, one {# item} other {# items}}"
-msgstr "Affichage de {rowCount} sur {totalRowCount, plural, one {# élément} other {# éléments}}"
+msgid "Showing {formattedRowCount} of {totalRowCount, plural, one {{formattedTotalRowCount} item} other {{formattedTotalRowCount} items}}"
+msgstr "Affichage de {formattedRowCount} sur {totalRowCount, plural, one {{formattedTotalRowCount} élément} other {{formattedTotalRowCount} éléments}}"
 
 #: src/components/MessageCard.tsx
 msgid "New on Dust"
@@ -200,12 +200,12 @@ msgid "Details"
 msgstr "Détails"
 
 #: src/components/Pagination.tsx
-msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {#+ item} other {#+ items}}"
-msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {#+ élément} other {#+ éléments}}"
+msgid "Showing {firstItem}-{lastItem} of {rowCount, plural, one {{formattedRowCount}+ item} other {{formattedRowCount}+ items}}"
+msgstr "Affichage de {firstItem}-{lastItem} sur {rowCount, plural, one {{formattedRowCount}+ élément} other {{formattedRowCount}+ éléments}}"
 
 #: src/components/Pagination.tsx
-msgid "Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of {rowCount, plural, one {# item} other {# items}}"
-msgstr "Affichage de {firstItemOnPageIndex}-{lastItemOnPageIndex} sur {rowCount, plural, one {# élément} other {# éléments}}"
+msgid "Showing {firstItem}-{lastItem} of {rowCount, plural, one {{formattedRowCount} item} other {{formattedRowCount} items}}"
+msgstr "Affichage de {firstItem}-{lastItem} sur {rowCount, plural, one {{formattedRowCount} élément} other {{formattedRowCount} éléments}}"
 
 #: src/components/ProgressBar.tsx
 msgid "Progress"
@@ -217,12 +217,12 @@ msgid "Search"
 msgstr "Rechercher"
 
 #: src/components/SearchInput.tsx
-msgid "{itemCount, plural, one {# search result} other {# search results}} (out of {totalItems})."
-msgstr "{itemCount, plural, one {# résultat} other {# résultats}} (sur {totalItems})."
+msgid "{itemCount, plural, one {{formattedItemCount} search result} other {{formattedItemCount} search results}} (out of {formattedTotalItems})."
+msgstr "{itemCount, plural, one {{formattedItemCount} résultat} other {{formattedItemCount} résultats}} (sur {formattedTotalItems})."
 
 #: src/components/SearchInput.tsx
-msgid "{itemCount, plural, one {# search result.} other {# search results.}}"
-msgstr "{itemCount, plural, one {# résultat.} other {# résultats.}}"
+msgid "{itemCount, plural, one {{formattedItemCount} search result.} other {{formattedItemCount} search results.}}"
+msgstr "{itemCount, plural, one {{formattedItemCount} résultat.} other {{formattedItemCount} résultats.}}"
 
 #: src/components/SearchInput.tsx
 msgid "Select all"
@@ -247,10 +247,6 @@ msgstr "Lien"
 #: src/components/Toolbar.tsx
 msgid "Cancel"
 msgstr "Annuler"
-
-#: src/components/VoicePicker.tsx
-msgid "{progress}%"
-msgstr "{progress} %"
 
 #: src/components/VoicePicker.tsx
 msgctxt "verb, stop recording"
@@ -333,8 +329,8 @@ msgid "Done"
 msgstr "Terminé"
 
 #: src/components/markdown/List.tsx
-msgid "Step {number}"
-msgstr "Étape {number}"
+msgid "Step {formattedNumber}"
+msgstr "Étape {formattedNumber}"
 
 #: src/components/markdown/List.tsx
 msgid "To do"
@@ -372,8 +368,8 @@ msgid "collapse"
 msgstr "réduire"
 
 #: src/components/markdown/PrettyJsonViewer.tsx
-msgid "expand ({hiddenCharCount, plural, one {# more character} other {# more characters}})"
-msgstr "développer ({hiddenCharCount, plural, one {# caractère de plus} other {# caractères de plus}})"
+msgid "expand ({hiddenCharCount, plural, one {{hiddenChars} more character} other {{hiddenChars} more characters}})"
+msgstr "développer ({hiddenCharCount, plural, one {{hiddenChars} caractère de plus} other {{hiddenChars} caractères de plus}})"
 
 #: src/components/markdown/PrettyJsonViewer.tsx
 msgid "empty list"
@@ -384,8 +380,8 @@ msgid "Item {itemNumber}"
 msgstr "Élément {itemNumber}"
 
 #: src/components/markdown/PrettyJsonViewer.tsx
-msgid "{hiddenItemCount, plural, one {# more item} other {# more items}}"
-msgstr "{hiddenItemCount, plural, one {# élément de plus} other {# éléments de plus}}"
+msgid "{hiddenItemCount, plural, one {{hiddenItems} more item} other {{hiddenItems} more items}}"
+msgstr "{hiddenItemCount, plural, one {{hiddenItems} élément de plus} other {{hiddenItems} éléments de plus}}"
 
 #: src/components/markdown/PrettyJsonViewer.tsx
 msgctxt "an empty JSON object"
@@ -393,8 +389,8 @@ msgid "empty"
 msgstr "vide"
 
 #: src/components/markdown/PrettyJsonViewer.tsx
-msgid "{hiddenPropertyCount, plural, one {# more property} other {# more properties}}"
-msgstr "{hiddenPropertyCount, plural, one {# propriété de plus} other {# propriétés de plus}}"
+msgid "{hiddenPropertyCount, plural, one {{hiddenProperties} more property} other {{hiddenProperties} more properties}}"
+msgstr "{hiddenPropertyCount, plural, one {{hiddenProperties} propriété de plus} other {{hiddenProperties} propriétés de plus}}"
 
 #: src/lib/SafeSuspense.tsx
 msgid "Failed to load. Please reload the page."

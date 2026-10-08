@@ -7,6 +7,8 @@ import type {
 import { Button } from "@sparkle/components/Button";
 import { useTranscribingProgress } from "@sparkle/hooks/useTranscribingProgress";
 import { Microphone01, Square } from "@sparkle/icons/v2-stroke";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
+import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { cn } from "@sparkle/lib/utils";
 import * as React from "react";
 
@@ -74,6 +76,7 @@ export function VoicePicker({
   buttonProps,
 }: VoicePickerProps): React.ReactElement {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
   const [interactionMode, setInteractionMode] =
     React.useState<VoicePickerInteractionMode>("hold");
   const interactionModeRef = React.useRef<VoicePickerInteractionMode>("hold");
@@ -289,7 +292,7 @@ export function VoicePicker({
   const variant = shouldShowStop || isLoading ? "highlight" : "ghost-secondary";
   const progress = transcribingProgress ?? 0;
   const label = isTranscribing
-    ? t`${progress}%`
+    ? formatNumber(progress / 100, { style: "percent" }, formatLocale)
     : shouldShowStop && showStopLabel
       ? t({ message: "Stop", context: "verb, stop recording" })
       : undefined;
@@ -306,7 +309,9 @@ export function VoicePicker({
           isRecording ? "opacity-100" : "hidden"
         )}
       >
-        <div className="heading-xs font-mono">{formatTime(elapsedSeconds)}</div>
+        <div className="heading-xs font-mono">
+          {formatTime(elapsedSeconds, formatLocale)}
+        </div>
         <VoiceLevelDisplay level={level} />
       </div>
       <Button
@@ -384,8 +389,15 @@ function computeTooltip(
   return msg`Click, or press and hold to record`;
 }
 
-function formatTime(seconds: number): string {
+function formatTime(
+  seconds: number,
+  locale: SparkleFormatLocale | undefined
+): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  return `${formatNumber(minutes, undefined, locale)}:${formatNumber(
+    remainingSeconds,
+    { minimumIntegerDigits: 2 },
+    locale
+  )}`;
 }

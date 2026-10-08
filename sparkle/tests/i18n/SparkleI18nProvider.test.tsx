@@ -82,4 +82,20 @@ describe("SparkleI18nProvider", () => {
 
     expect(html).toContain("0 items");
   });
+
+  it("formats plural counts and page numbers in the format locale", () => {
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        <Pagination
+          rowCount={12340}
+          pagination={{ pageIndex: 0, pageSize: 10 }}
+          setPagination={() => undefined}
+        />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("Showing 1-10 of 12 340 items");
+    // The last page button.
+    expect(html).toContain("1 234<");
+  });
 });

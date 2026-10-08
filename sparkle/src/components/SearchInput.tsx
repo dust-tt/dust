@@ -13,6 +13,7 @@ import {
 import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
 import { Spinner } from "@sparkle/components/Spinner";
 import { CheckDone01, SearchMd, XClose } from "@sparkle/icons/v2-stroke";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import React, {
   forwardRef,
@@ -192,7 +193,14 @@ function BaseSearchInputWithPopover<T>(
   ref: Ref<HTMLInputElement>
 ) {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
   const itemCount = items.length;
+  // Plural forms are picked with `itemCount`, but `#` would format it in the catalog's locale.
+  const formattedItemCount = formatNumber(itemCount, undefined, formatLocale);
+  const formattedTotalItems =
+    totalItems === undefined
+      ? undefined
+      : formatNumber(totalItems, undefined, formatLocale);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
   const showHeader =
@@ -295,8 +303,8 @@ function BaseSearchInputWithPopover<T>(
                 {displayItemCount && items.length > 0 && (
                   <span className="text-sm text-muted-foreground">
                     {totalItems
-                      ? t`${plural(itemCount, { one: "# search result", other: "# search results" })} (out of ${totalItems}).`
-                      : t`${plural(itemCount, { one: "# search result.", other: "# search results." })}`}
+                      ? t`${plural(itemCount, { one: `${formattedItemCount} search result`, other: `${formattedItemCount} search results` })} (out of ${formattedTotalItems}).`
+                      : t`${plural(itemCount, { one: `${formattedItemCount} search result.`, other: `${formattedItemCount} search results.` })}`}
                   </span>
                 )}
               </div>

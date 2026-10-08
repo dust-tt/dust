@@ -2,6 +2,7 @@ import { ImageWrapper } from "@sparkle/components/ImageWrapper";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { User01 } from "@sparkle/icons/v2-stroke";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { useState } from "react";
@@ -331,6 +332,7 @@ Avatar.Stack = function ({
   onTop = "last",
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const formatLocale = useFormatLocale();
 
   // Get visible avatars and calculate remaining count
   const shouldShowAll = avatars.length <= (maxVisibleAvatars ?? nbVisibleItems);
@@ -349,6 +351,11 @@ Avatar.Stack = function ({
     shouldShowAll || (isFirstOnTop && maxVisibleAvatars === undefined)
       ? 0
       : avatars.length - maxVisible;
+  // Avatar renders a name containing "+" as is (instead of its initial).
+  const remainingCountLabel =
+    remainingCount < 10
+      ? formatNumber(remainingCount, { signDisplay: "always" }, formatLocale)
+      : `${formatNumber(9, undefined, formatLocale)}+`;
 
   // The counter matches the shape of the avatars it stands for.
   const isCounterRounded = visibleAvatars.every((avatar) => avatar.isRounded);
@@ -490,20 +497,14 @@ Avatar.Stack = function ({
                     <Avatar
                       size={size}
                       isRounded={isCounterRounded}
-                      name={
-                        Number(remainingCount) < 10
-                          ? `+${remainingCount}`
-                          : "9+"
-                      }
+                      name={remainingCountLabel}
                     />
                   </div>
                 ) : (
                   <Avatar
                     size={size}
                     isRounded={isCounterRounded}
-                    name={
-                      Number(remainingCount) < 10 ? `+${remainingCount}` : "9+"
-                    }
+                    name={remainingCountLabel}
                   />
                 )}
               </div>
