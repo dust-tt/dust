@@ -2,13 +2,23 @@ import { ConfirmContext } from "@app/components/Confirm";
 import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
+import {
+  applyBudgetOrderMoves,
+  getBaseBudgetOrder,
+  isSameBudgetOrder,
+  moveGroupPastVisibleNeighbor,
+} from "@app/components/workspace/group_budget_order";
+import type { GroupBudgetOrderRow } from "@app/components/workspace/GroupBudgetOrderTab";
+import { GroupBudgetOrderTab } from "@app/components/workspace/GroupBudgetOrderTab";
 import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
 import {
   parseCreditsInput,
   parseSharedUsageLimitInput,
   toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
+import { useSharedUsageLimitOverlaps } from "@app/hooks/useSharedUsageLimitOverlaps";
 import { useUpdateGroupSharedUsageLimit } from "@app/hooks/useUpdateGroupSharedUsageLimit";
+import { useUpdateSharedUsageLimitPriorities } from "@app/hooks/useUpdateSharedUsageLimitPriorities";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import {
@@ -27,6 +37,10 @@ import {
   DialogHeader,
   DialogTitle,
   Page,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -75,7 +89,10 @@ export function EditGroupUsageDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent size="md" className="font-sans">
+      <DialogContent
+        size={sharedUsageLimitAccess === "editable" ? "xl" : "md"}
+        className="font-sans"
+      >
         {displayedGroup && (
           <EditGroupUsageForm
             key={`${displayedGroup.groupId}:${isOpen}`}
@@ -152,12 +169,80 @@ function useGroupUsageDraft(
 
 type GroupUsageDraft = ReturnType<typeof useGroupUsageDraft>;
 
+function useGroupBudgetOrderDraft(
+  owner: LightWorkspaceType,
+  group: EditGroupUsageGroup,
+  draft: GroupUsageDraft,
+  isEnabled: boolean
+) {
+  const { overlaps, isOverlapsLoading, isOverlapsError } =
+    useSharedUsageLimitOverlaps({
+      owner,
+      groupId: group.groupId,
+      disabled: !isEnabled,
+    });
+  const [movedOrder, setMovedOrder] = useState<string[] | null>(null);
+
+  const budgetAwuCredits = draft.sharedLimitResult.ok
+    ? draft.sharedLimitResult.awuCredits
+    : (group.sharedUsageLimitUsage?.limitAwuCredits ?? null);
+  const poolCapAwuCredits = draft.memberLimitResult.ok
+    ? draft.memberLimitResult.awuCredits
+    : group.poolCapAwuCredits;
+  const baseOrder = getBaseBudgetOrder(
+    (overlaps ?? []).map((overlap) => overlap.groupId),
+    group.groupId,
+    budgetAwuCredits !== null
+  );
+  const order = applyBudgetOrderMoves(movedOrder, baseOrder);
+  const overlapByGroupId = new Map(
+    (overlaps ?? []).map((overlap) => [overlap.groupId, overlap])
+  );
+
+  const rows: GroupBudgetOrderRow[] = order.map((groupId, index) => {
+    const overlap = overlapByGroupId.get(groupId);
+    return groupId === group.groupId || !overlap
+      ? {
+          groupId,
+          name: group.name,
+          position: index + 1,
+          limitAwuCredits: budgetAwuCredits,
+          poolCapAwuCredits,
+          sharedMemberCount: null,
+          isCurrentGroup: true,
+        }
+      : { ...overlap, position: index + 1, isCurrentGroup: false };
+  });
+
+  return {
+    rows,
+    order,
+    baseOrder,
+    isOrderChanged: overlaps !== null && !isSameBudgetOrder(order, baseOrder),
+    isOverlapsLoading,
+    isOverlapsError,
+    moveGroup: (
+      groupId: string,
+      direction: "up" | "down",
+      visibleGroupIds: string[]
+    ) =>
+      setMovedOrder(
+        moveGroupPastVisibleNeighbor(order, visibleGroupIds, groupId, direction)
+      ),
+  };
+}
+
+type GroupBudgetOrderDraft = ReturnType<typeof useGroupBudgetOrderDraft>;
+
 function useSaveGroupUsage(
   owner: LightWorkspaceType,
   group: EditGroupUsageGroup,
   draft: GroupUsageDraft,
+  orderDraft: GroupBudgetOrderDraft,
   onClose: () => void
 ) {
+  const { doUpdateSharedUsageLimitPriorities } =
+    useUpdateSharedUsageLimitPriorities({ owner });
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,
   });
@@ -196,7 +281,13 @@ function useSaveGroupUsage(
             }).then((body) => body !== null)
           : true,
       ]);
-      const saved = results.every(Boolean);
+      const saved =
+        results.every(Boolean) &&
+        (!orderDraft.isOrderChanged ||
+          (await doUpdateSharedUsageLimitPriorities({
+            orderedGroupIds: orderDraft.order,
+            expectedOrderedGroupIds: orderDraft.baseOrder,
+          })));
       if (saved) {
         onClose();
       }
@@ -314,6 +405,63 @@ function GroupSeatReviewModal({
   );
 }
 
+interface GroupLimitsFieldsProps {
+  group: EditGroupUsageGroup;
+  draft: GroupUsageDraft;
+  seatOptions?: EditGroupUsageSeatOptions;
+  sharedUsageLimitAccess: SharedUsageLimitAccess;
+  isSaving: boolean;
+}
+
+function GroupLimitsFields({
+  group,
+  draft,
+  seatOptions,
+  sharedUsageLimitAccess,
+  isSaving,
+}: GroupLimitsFieldsProps) {
+  const { t } = useLingui();
+  const removeAction = useRemoveAction();
+
+  return (
+    <div className="flex flex-col gap-6">
+      {seatOptions && (
+        <Page.Vertical gap="xs" align="stretch">
+          <span className="text-sm font-medium text-foreground">
+            {t`Granted seat`}
+          </span>
+          <GroupSeatPickerDropdown
+            value={draft.seat}
+            grantableSeatTypes={seatOptions.grantableSeatTypes}
+            disabled={isSaving}
+            onChange={draft.setSeat}
+          />
+        </Page.Vertical>
+      )}
+      {sharedUsageLimitAccess !== "hidden" && (
+        <GroupBudgetField
+          group={group}
+          draft={draft}
+          isEditable={sharedUsageLimitAccess === "editable"}
+          isSaving={isSaving}
+        />
+      )}
+      <CreditLimitInput
+        label={t`Limit per member`}
+        value={draft.memberLimitInput}
+        readOnly={isSaving}
+        validationMessage={
+          draft.memberLimitResult.ok ? null : t(draft.memberLimitResult.message)
+        }
+        onChange={draft.setMemberLimitInput}
+        placeholder={t`No limit`}
+        description={t`Caps what each member can spend.`}
+        action={removeAction(draft.memberLimitInput, draft.setMemberLimitInput)}
+      />
+    </div>
+  );
+}
+
 interface EditGroupUsageFormProps {
   owner: LightWorkspaceType;
   group: EditGroupUsageGroup;
@@ -332,19 +480,26 @@ function EditGroupUsageForm({
   const { t } = useLingui();
   const isSharedLimitEditable = sharedUsageLimitAccess === "editable";
   const draft = useGroupUsageDraft(group, seatOptions, isSharedLimitEditable);
+  const orderDraft = useGroupBudgetOrderDraft(
+    owner,
+    group,
+    draft,
+    isSharedLimitEditable
+  );
   const { isSaving, saveChanges } = useSaveGroupUsage(
     owner,
     group,
     draft,
+    orderDraft,
     onClose
   );
   const confirmSeatRemoval = useConfirmSeatRemoval(group);
-  const removeAction = useRemoveAction();
   const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);
   const groupName = group.name;
+  const isChanged = draft.isChanged || orderDraft.isOrderChanged;
 
   const handleSave = async () => {
-    if (!draft.isChanged) {
+    if (!isChanged) {
       onClose();
       return;
     }
@@ -362,53 +517,48 @@ function EditGroupUsageForm({
     await saveChanges();
   };
 
+  const limitsFields = (
+    <GroupLimitsFields
+      group={group}
+      draft={draft}
+      seatOptions={seatOptions}
+      sharedUsageLimitAccess={sharedUsageLimitAccess}
+      isSaving={isSaving}
+    />
+  );
+
   return (
     <>
       <DialogHeader>
         <DialogTitle>{t`Edit limits for ${groupName}`}</DialogTitle>
       </DialogHeader>
-      <DialogContainer>
-        <div className="flex flex-col gap-6">
-          {seatOptions && (
-            <Page.Vertical gap="xs" align="stretch">
-              <span className="text-sm font-medium text-foreground">
-                {t`Granted seat`}
-              </span>
-              <GroupSeatPickerDropdown
-                value={draft.seat}
-                grantableSeatTypes={seatOptions.grantableSeatTypes}
+      {isSharedLimitEditable ? (
+        <Tabs defaultValue="limits">
+          <div className="px-5 pt-3">
+            <TabsList>
+              <TabsTrigger value="limits" label={t`Limits`} />
+              <TabsTrigger value="order" label={t`Order`} />
+            </TabsList>
+          </div>
+          <TabsContent value="limits">
+            <DialogContainer>{limitsFields}</DialogContainer>
+          </TabsContent>
+          <TabsContent value="order">
+            <DialogContainer>
+              <GroupBudgetOrderTab
+                groupName={groupName}
+                rows={orderDraft.rows}
+                isLoading={orderDraft.isOverlapsLoading}
+                isError={orderDraft.isOverlapsError}
                 disabled={isSaving}
-                onChange={draft.setSeat}
+                onMove={orderDraft.moveGroup}
               />
-            </Page.Vertical>
-          )}
-          {sharedUsageLimitAccess !== "hidden" && (
-            <GroupBudgetField
-              group={group}
-              draft={draft}
-              isEditable={isSharedLimitEditable}
-              isSaving={isSaving}
-            />
-          )}
-          <CreditLimitInput
-            label={t`Limit per member`}
-            value={draft.memberLimitInput}
-            readOnly={isSaving}
-            validationMessage={
-              draft.memberLimitResult.ok
-                ? null
-                : t(draft.memberLimitResult.message)
-            }
-            onChange={draft.setMemberLimitInput}
-            placeholder={t`No limit`}
-            description={t`Caps what each member can spend.`}
-            action={removeAction(
-              draft.memberLimitInput,
-              draft.setMemberLimitInput
-            )}
-          />
-        </div>
-      </DialogContainer>
+            </DialogContainer>
+          </TabsContent>
+        </Tabs>
+      ) : (
+        <DialogContainer>{limitsFields}</DialogContainer>
+      )}
       <DialogFooter
         leftButtonProps={{
           label: t`Cancel`,
@@ -419,7 +569,7 @@ function EditGroupUsageForm({
         rightButtonProps={{
           label: t`Save`,
           variant: "highlight",
-          disabled: isSaving || !draft.isValid || !draft.isChanged,
+          disabled: isSaving || !draft.isValid || !isChanged,
           isLoading: isSaving,
           onClick: handleSave,
         }}
