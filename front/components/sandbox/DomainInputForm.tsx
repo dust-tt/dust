@@ -1,3 +1,4 @@
+import { getEgressPolicyDomainErrorMessage } from "@app/components/sandbox/egress_policy_domain_error";
 import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
 import { Button, Input, Plus } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -38,8 +39,7 @@ export function DomainInputForm({
     normalizedDomain !== null ? duplicateMessage(normalizedDomain) : null;
   const message =
     domainInputResult?.isErr() === true
-      ? // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
-        domainInputResult.error.message
+      ? t(getEgressPolicyDomainErrorMessage(domainInputResult.error))
       : duplicate !== null
         ? duplicate
         : normalizedDomain !== null
