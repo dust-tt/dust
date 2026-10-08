@@ -38,7 +38,8 @@ export function DomainInputForm({
     normalizedDomain !== null ? duplicateMessage(normalizedDomain) : null;
   const message =
     domainInputResult?.isErr() === true
-      ? domainInputResult.error.message
+      ? // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
+        domainInputResult.error.message
       : duplicate !== null
         ? duplicate
         : normalizedDomain !== null

@@ -38,16 +38,22 @@ describe("OAuthSetupRedirectPage error display", () => {
   });
 
   it("displays the actionable message for mcp_server_connection_not_found", () => {
-    const message =
-      "This tool's workspace connection no longer exists. Ask a workspace admin to " +
-      "reconnect the tool before setting up your personal connection.";
     mockSetupError({
-      error: { type: "mcp_server_connection_not_found", message },
+      error: {
+        type: "mcp_server_connection_not_found",
+        message: "This tool's workspace connection no longer exists.",
+      },
     });
 
     render(<OAuthSetupRedirectPage />);
 
-    expect(screen.getByText(message)).toBeTruthy();
+    expect(
+      screen.getByText(
+        "This tool has no workspace connection. Ask a workspace admin to connect it " +
+          "before setting up your personal connection."
+      )
+    ).toBeTruthy();
+    expect(screen.queryByText(/no longer exists/)).toBeNull();
   });
 
   it("displays the generic message for internal_server_error", () => {

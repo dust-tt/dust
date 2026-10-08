@@ -117,6 +117,7 @@ export const getCapabilityFormSchema = (
           return ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["configuration.jsonSchema"],
+            // oxlint-disable-next-line dust/noRawErrorMessageInUi -- client-side validation message, not an API error.
             message: parsedSchema.error.message,
           });
         }

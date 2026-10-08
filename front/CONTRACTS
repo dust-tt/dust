@@ -789,8 +789,10 @@ other user-visible text. Error toasts MUST be sent with `useSendApiErrorNotifica
 "Details"); other displays MUST use the `description` of `formatError` from
 `lib/api_error_messages.ts`.
 
-Exceptions: Poke (`components/poke/**`, not translated) and client-side validation messages
-(react-hook-form `fieldState.error.message`).
+Exceptions: Poke (`components/poke/**` and `hooks/usePoke*.ts`, not translated), client-side
+validation messages (react-hook-form `fieldState.error.message`, or a line-level
+`oxlint-disable-next-line` with a reason for messages built by our own validators), and values that
+are not shown to users (logger arguments, RPC payloads sent to a Frame).
 
 The `dust/noRawErrorMessageInUi` oxlint rule enforces the `<x>.error.message` shape. The files that
 turn it off in `.oxlintrc.json` are a migration baseline: remove a file from the list once it is

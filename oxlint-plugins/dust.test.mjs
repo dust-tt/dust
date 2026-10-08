@@ -192,6 +192,19 @@ const CASES = [
   ["noRawErrorMessageInUi", "c.ts", "f(fieldState.error.message);", 0],
   ["noRawErrorMessageInUi", "d.ts", "f(err.message);", 0],
   [
+    "noRawErrorMessageInUi",
+    "e.ts",
+    "datadogLogger.error({ error: res.error.message }, 'Failed');",
+    0,
+  ],
+  ["noRawErrorMessageInUi", "f.ts", "logger.warn(res.error.message);", 0],
+  [
+    "noRawErrorMessageInUi",
+    "g.ts",
+    "logger.warn('Failed'); toast(res.error.message);",
+    1,
+  ],
+  [
     "tooLongIndexName",
     "a.ts",
     `X.init({}, { modelName: "${"a".repeat(45)}" });`,
