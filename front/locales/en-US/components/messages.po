@@ -533,8 +533,8 @@ msgid "Dust builds a personal memory from your conversations and uses it to tail
 msgstr "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Agents may use your memory when answering, so their responses, including in Slack, can reflect some of what it contains."
-msgstr "Agents may use your memory when answering, so their responses, including in Slack, can reflect some of what it contains."
+msgid "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
+msgstr "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"
