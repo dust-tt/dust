@@ -64,7 +64,10 @@ function fakeCommentChannel() {
       return () => listeners.delete(listener);
     },
     send: async () => new Err("unavailable"),
-    close: () => listeners.clear(),
+    close: () => {
+      threads = null;
+      listeners.clear();
+    },
   };
   const push = (comments: DfmComment[]) => {
     threads = comments;
@@ -193,6 +196,31 @@ describe("useDocumentEditor in a live session", () => {
 
     expect(getDocumentComments(editor.state.doc)).toEqual(SESSION_THREADS);
     expect(Y.encodeStateVector(document)).toEqual(before);
+  });
+
+  it("shows the session's last threads in an editor mounted once the channel has closed", () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const { channel, push } = fakeCommentChannel();
+    const extensions = buildLiveDocumentExtensions({
+      t: (descriptor) => descriptor.id ?? "",
+      document,
+      awareness: null,
+      user: { name: "Daph", color: "#0ea5e9" },
+      comments: channel,
+    });
+    const lost = new Editor({ extensions });
+    push(SESSION_THREADS);
+    channel.close();
+    lost.destroy();
+
+    const remounted = new Editor({ extensions });
+
+    try {
+      expect(channel.getThreads()).toBeNull();
+      expect(getDocumentComments(remounted.state.doc)).toEqual(SESSION_THREADS);
+    } finally {
+      remounted.destroy();
+    }
   });
 
   it("leaves the document untouched when the session sends the threads it shows", async () => {

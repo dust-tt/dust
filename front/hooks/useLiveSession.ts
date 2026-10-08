@@ -31,7 +31,7 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
  * another copy of the document by then, and merging the old one into it would duplicate the
  * content. A fresh document and connection MUST take over, and the old document stays on
  * screen, read-only, until the new one has synced. The fresh connection's comments MUST start
- * from the threads the old one last received.
+ * from the threads last received by an earlier connection to the same document and user, if any.
  * Joining another document, or as another user, MUST close the current connection at once.
  */
 export function useLiveSession(live: DocumentLiveSession | undefined): {
