@@ -26,10 +26,6 @@ msgid "Failed to update Gong configuration"
 msgstr "Failed to update Gong configuration"
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
-msgid "An unknown error occurred"
-msgstr "An unknown error occurred"
-
-#: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Participant filter"
 msgstr "Participant filter"
 

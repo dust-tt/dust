@@ -363,6 +363,14 @@ msgid "All fields must have a value"
 msgstr "All fields must have a value"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "Missing or invalid fields: {fields}."
+msgstr "Missing or invalid fields: {fields}."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
+msgid "The service account JSON must be an object."
+msgstr "The service account JSON must be an object."
+
+#: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Invalid JSON"
 msgstr "Invalid JSON"
 
@@ -955,10 +963,6 @@ msgid "Failed to fetch webhook configuration"
 msgstr "Failed to fetch webhook configuration"
 
 #: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
-msgid "An error occurred"
-msgstr "An error occurred"
-
-#: front/components/data_source/SetupNotionPrivateIntegrationModal.tsx
 msgid "Private integration setup successfully"
 msgstr "Private integration setup successfully"
 
@@ -1134,11 +1138,6 @@ msgstr "{retentionDays, plural, one {The retention period has been updated to # 
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 msgid "Failed to edit Zendesk configuration"
 msgstr "Failed to edit Zendesk configuration"
-
-#: front/components/data_source/ZendeskConfigView.tsx
-#: front/components/data_source/ZendeskRateLimitConfig.tsx
-msgid "An unknown error occurred"
-msgstr "An unknown error occurred"
 
 #: front/components/data_source/ZendeskConfigView.tsx
 msgid "Invalid retention period"
