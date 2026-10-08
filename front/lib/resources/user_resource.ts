@@ -761,7 +761,7 @@ export class UserResource extends BaseResource<UserModel> {
   // that have no value.
   async getMetadataValues(
     keys: string[],
-    workspaceModelId?: number | null
+    workspaceModelId?: ModelId | null
   ): Promise<Map<string, string>> {
     const rows = await UserMetadataModel.findAll({
       attributes: ["key", "value"],
