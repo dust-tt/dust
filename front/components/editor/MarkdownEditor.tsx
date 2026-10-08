@@ -1,16 +1,20 @@
-import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
+import {
+  DocumentBlockMenu,
+  useDocumentBlockMenu,
+} from "@app/components/editor/document/DocumentBlockMenu";
+import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import { EditorContent } from "@app/components/editor/EditorContent";
-import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { cn, Toolbar } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import { Trans } from "@lingui/react/macro";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import type { Editor, EditorOptions } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
+import type React from "react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -270,7 +274,10 @@ export function MarkdownEditor({
     debounceMs,
   });
 
-  const shouldShowFormattingMenu = showFormattingMenu ?? !readOnly;
+  const blockMenu = useDocumentBlockMenu(editor, !readOnly);
+
+  const shouldShowFormattingMenu =
+    (showFormattingMenu ?? !readOnly) && !isMobile;
   const currentCharacterCount =
     editor?.storage.characterCount?.characters?.() ?? 0;
   const displayError =
@@ -301,17 +308,27 @@ export function MarkdownEditor({
     });
   }, [editor, displayError, editorClassName]);
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    // Only keys typed in the editor drive the block menu, not those typed in the link dialog.
+    if (
+      event.target instanceof Node &&
+      editor?.view.dom.contains(event.target)
+    ) {
+      blockMenu.onKeyDown(event);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-1", className)}>
-      <div className="relative">
+      <div className="relative" onKeyDownCapture={handleKeyDown}>
         <EditorContent editor={editor} />
         {shouldShowFormattingMenu && editor ? (
-          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
-            <Toolbar className="inline-flex">
-              <ToolBarContent editor={editor} />
-              {toolbarExtra}
-            </Toolbar>
-          </EditorSelectionToolbar>
+          <DocumentSelectionToolbar editor={editor}>
+            {toolbarExtra}
+          </DocumentSelectionToolbar>
+        ) : null}
+        {!readOnly && editor ? (
+          <DocumentBlockMenu editor={editor} menu={blockMenu} />
         ) : null}
       </div>
       {shouldShowCharacterCount && editor ? (

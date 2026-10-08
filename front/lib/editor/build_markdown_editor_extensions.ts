@@ -68,7 +68,6 @@ export function buildMarkdownEditorExtensions({
           class: "my-4 border-0 border-t border-border",
         },
       },
-      strike: false,
       undoRedo: {
         depth: 100,
       },

@@ -24,12 +24,15 @@ import { isTextSelection } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
+import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 
 interface DocumentSelectionToolbarProps {
   editor: Editor;
   /** Shows the Comment action before the formatting controls. */
   onComment?: () => void;
+  /** Extra controls shown after the formatting controls. */
+  children?: ReactNode;
 }
 
 const TEXT_STYLES = BLOCKS.filter(
@@ -148,6 +151,7 @@ const LinkField = ({
 export const DocumentSelectionToolbar = ({
   editor,
   onComment,
+  children,
 }: DocumentSelectionToolbarProps) => {
   const { t } = useLingui();
   const [editingLink, setEditingLink] = useState(false);
@@ -161,7 +165,8 @@ export const DocumentSelectionToolbar = ({
       code: editor.isActive("code"),
       link: editor.isActive("link"),
       href: linkHref(editor),
-      canComment: editor.can().startCommentDraft(),
+      // The comment command only exists in editors that load the comments extension.
+      canComment: !!onComment && editor.can().startCommentDraft(),
     }),
   });
   const isApple =
@@ -346,6 +351,7 @@ export const DocumentSelectionToolbar = ({
                 onMouseDown={keepSelection}
                 onClick={() => setEditingLink(true)}
               />
+              {children}
             </>
           )}
         </HoveringBar>
