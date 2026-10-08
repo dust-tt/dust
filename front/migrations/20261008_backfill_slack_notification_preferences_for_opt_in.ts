@@ -1,3 +1,4 @@
+/*
 import { getNovuClient } from "@app/lib/notifications";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -190,3 +191,4 @@ makeScript(
     );
   }
 );
+*/

@@ -1,6 +1,5 @@
 import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useConversationNotificationPreferences } from "@app/lib/swr/notifications";
 import { useSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
@@ -83,16 +82,11 @@ export function useNotificationPreferencesForm({
 }) {
   const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const { hasFeature } = useFeatureFlags();
-
-  const hasSlackNotificationsFeature = hasFeature(
-    "conversations_slack_notifications"
-  );
   const { canConfigureSlack, isSlackSetupLoading } = useSlackNotifications(
     owner.sId,
-    { disabled: disabled || !hasSlackNotificationsFeature }
+    { disabled }
   );
-  const displaySlackOption = hasSlackNotificationsFeature && canConfigureSlack;
+  const displaySlackOption = canConfigureSlack;
 
   const { conversationPreferences, status, saveConversationPreferences } =
     useConversationNotificationPreferences({ owner, disabled });

@@ -1,4 +1,3 @@
-import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { GetSlackNotificationResponseBody } from "@app/types/api/me/slack_notifications";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -10,15 +9,6 @@ const app = workspaceApp();
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetSlackNotificationResponseBody> => {
   const auth = ctx.get("auth");
-
-  const featureFlags = await getFeatureFlags(auth);
-  const isFeatureEnabled = featureFlags.includes(
-    "conversations_slack_notifications"
-  );
-
-  if (!isFeatureEnabled) {
-    return ctx.json({ canConfigure: false });
-  }
 
   const slackBotConnections = await DataSourceResource.listByConnectorProvider(
     auth,
