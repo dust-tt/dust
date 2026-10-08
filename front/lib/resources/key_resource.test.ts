@@ -95,7 +95,6 @@ vi.mock("@app/lib/utils/cache", () => ({
     ),
 }));
 
-import { getKeyUsageRedisKey } from "@app/lib/api/programmatic_usage/key_usage";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -108,6 +107,7 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { redisMock } from "@app/tests/utils/mocks/redis";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -326,7 +326,7 @@ describe("KeyResource", () => {
       const key = await KeyFactory.regular(globalGroup);
       await key.updateMonthlyCap({ monthlyCapMicroUsd: capMicroUsd });
       await runOnRedis({ origin: "key_usage_tracking" }, (client) =>
-        client.set(getKeyUsageRedisKey(key.id), usageMicroUsd.toString())
+        client.set(`key-usage:${key.id}`, usageMicroUsd.toString())
       );
       return key;
     }
@@ -379,7 +379,9 @@ describe("KeyResource", () => {
     it("leaves usage unknown when the usage tally can't be read", async () => {
       const key = await KeyFactory.regular(globalGroup);
       await key.updateMonthlyCap({ monthlyCapMicroUsd: 10_000_000 });
-      vi.mocked(runOnRedis).mockRejectedValueOnce(new Error("redis down"));
+      vi.mocked(
+        redisMock.streamClient.get as (key: string) => Promise<string | null>
+      ).mockRejectedValueOnce(new Error("redis down"));
 
       const [json] = await KeyResource.toJSONWithSpaces(
         authenticator,

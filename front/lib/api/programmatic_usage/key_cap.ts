@@ -75,11 +75,7 @@ export async function hasKeyReachedUsageCap(
     return false;
   }
 
-  const usageResult = await getKeyUsageMicroUsd({
-    workspace,
-    keyId: keyAuth.id,
-    keyName: keyAuth.name,
-  });
+  const usageResult = await getKeyUsageMicroUsd({ workspace, key: keyAuth });
 
   if (usageResult.isErr()) {
     logger.error(
@@ -132,11 +128,7 @@ export async function getRemainingKeyCapMicroUsd(
     return null;
   }
 
-  const usageResult = await getKeyUsageMicroUsd({
-    workspace,
-    keyId: keyAuth.id,
-    keyName: keyAuth.name,
-  });
+  const usageResult = await getKeyUsageMicroUsd({ workspace, key: keyAuth });
 
   if (usageResult.isErr()) {
     logger.error(

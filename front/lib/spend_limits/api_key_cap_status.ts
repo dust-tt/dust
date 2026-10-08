@@ -52,20 +52,16 @@ async function getLegacyApiKeysSpendCapStatuses(
   return concurrentExecutor(
     keys,
     async (key): Promise<ApiKeySpendCapStatus> => {
-      const cap = key.monthlyCapMicroUsd;
-      if (cap === null) {
+      const capMicroUsd = key.monthlyCapMicroUsd;
+      if (capMicroUsd === null) {
         return { isSpendCapped: false, monthlyUsageMicroUsd: null };
       }
-      const usageResult = await getKeyUsageMicroUsd({
-        workspace,
-        keyId: key.id,
-        keyName: key.name,
-      });
+      const usageResult = await getKeyUsageMicroUsd({ workspace, key });
       if (usageResult.isErr()) {
         return { isSpendCapped: false, monthlyUsageMicroUsd: null };
       }
       return {
-        isSpendCapped: usageResult.value >= cap,
+        isSpendCapped: usageResult.value >= capMicroUsd,
         monthlyUsageMicroUsd: usageResult.value,
       };
     },
