@@ -39,16 +39,19 @@ Before writing any helper, look in `front/tests/utils/` for one that already exi
 | A plain object for a component or pure-logic test | `LightWorkspaceFactory.build()`, `LightUserFactory.build()`, `LightPlanFactory`, `LightSubscriptionFactory` |
 | A mocked service (Redis, file storage, WorkOS...) | `front/tests/utils/mocks/`. Redis, cache, file storage and Temporal are already mocked globally in `front/vite.setup.ts`; do not mock them again |
 
-Rules:
+Rules (backed by the `testing` contracts in `front/CONTRACTS` and `no-unsafe-type-assertions` in the
+root `CONTRACTS`):
 
-- Do not call `SomeModel.create(...)` or `SomeResource.makeNew(...)` directly in a test to set up data. Use
-  the factory.
-- Do not build partial objects and cast them (`{ sId: "w_1" } as LightWorkspaceType`). Use the matching
-  `Light*Factory.build({ ...overrides })`.
+- Set up data through factories, not `SomeResource.makeNew(...)` or `SomeModel.create(...)` in the test
+  (`test-setup-through-factories`, `tests-use-resources`). Direct model access is allowed only when no
+  Resource API can express the fixture.
 - If a factory exists but does not support what you need (a status, a date, a relation), add an option to
-  the factory instead of working around it in the test.
-- If no factory exists for a record the test needs, add a new `<Name>Factory.ts` in `front/tests/utils/`
-  rather than a local helper in the test file.
+  the factory instead of working around it in the test. If no factory exists, add a new
+  `<Name>Factory.ts` in `front/tests/utils/` rather than a local helper in the test file
+  (`shared-test-fixtures`).
+- Do not hand-write typed objects or cast partial ones (`{ sId: "w_1" } as LightWorkspaceType`). Use the
+  matching `Light*Factory.build({ ...overrides })` (`shared-test-fixtures`, `no-unsafe-type-assertions`).
+- Do not `vi.mock` a module that `front/vite.setup.ts` already mocks (`no-duplicate-global-mocks`).
 
 ### Structure
 
