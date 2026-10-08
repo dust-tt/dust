@@ -93,8 +93,10 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
  * @cc [owner:tdraier,label:product;concurrency] live-source-read
  * A document MUST be reported closed without asking the collab server when the workspace lacks
  * `co_edition` or no collab server is configured, and when nothing listens at its address: no
- * session can be open then. Any other failure MUST be an error, never reported closed, since the
- * caller would write the file under an open session.
+ * session can be open then. It MUST be asked as `auth`'s user when it has one, since an open
+ * document's source is only served to a user who can open it live; a refusal MUST be `refused`.
+ * Any other failure MUST be an error, never reported closed, since the caller would write the file
+ * under an open session.
  */
 export async function fetchLiveSource(
   auth: Authenticator,
@@ -105,7 +107,11 @@ export async function fetchLiveSource(
   }
   const answer = await postToCollabServer(
     INTERNAL_LIVE_SOURCE_READ_PATH,
-    { workspaceId: auth.getNonNullableWorkspace().sId, canonicalPath },
+    {
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      userId: auth.user()?.sId,
+      canonicalPath,
+    },
     liveSourceReadResponseSchema
   );
   if (answer.isErr()) {
