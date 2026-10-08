@@ -360,19 +360,19 @@ The tenant is derived exclusively from the authenticated key; the request does n
 ```text
 UpdateGrantsRequest {
   object_id: ObjectId
-  changes: GrantChange[]         // At most 512 changes, with unique grant values.
+  changes: GrantUpdate[]         // At most 512 changes, with unique grant values.
 }
 
-GrantChange {
+GrantUpdate {
   grant: Grant
-  attached: bool                 // True attaches the grant; false detaches it.
+  remove: bool                   // True detaches the grant; false attaches it.
 }
 ```
 
 **Returns:** the object's updated `Attr`.
 
 A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
-repeat the same grant value, even with different `attached` flags. Multiple ALLOW modes for the same
+repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
 subject, or multiple DENY modes, are combined as described above. To change a mode, detach the old
 grant and attach the new one in the same request. Attaching an existing value or detaching an absent
 value is a no-op.

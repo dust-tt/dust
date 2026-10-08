@@ -197,11 +197,10 @@ pass `next_after` unchanged as `after`; its absence MUST indicate completion.
 
 @cc [owner:spolu,label:api;concurrency] dfs-update-grants
 `UpdateGrants` MUST atomically apply at most 512 changes with unique grant values and return updated
-attributes. Repeating a value with different attachment flags MUST be invalid. `attached=true` MUST
-attach, and false MUST detach. Attachments not included in changes MUST remain unchanged; detaching
-an ancestor grant MUST NOT remove independent descendant attachments. Permission changes, including
-DENY, MUST remain subject to the authorization freshness bound and MUST NOT promise immediate
-revocation.
+attributes. Repeating a value with different removal flags MUST be invalid. Attachments not included
+in changes MUST remain unchanged; detaching an ancestor grant MUST NOT remove independent descendant
+attachments. Permission changes, including DENY, MUST remain subject to the authorization freshness
+bound and MUST NOT promise immediate revocation.
 
 @cc [owner:spolu,label:api] dfs-stat-results
 `Stat` MUST accept 1–256 references and return exactly one `StatResult` per input in input order.

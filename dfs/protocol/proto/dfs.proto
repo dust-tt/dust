@@ -164,12 +164,14 @@ message GrantPage {
 // The tenant is derived exclusively from the authenticated tenant key.
 message UpdateGrantsRequest {
   required ObjectId object_id = 1;
-  repeated GrantChange changes = 2;
+  repeated GrantUpdate changes = 2;
 }
 
-message GrantChange {
+message GrantUpdate {
   required Grant grant = 1;
-  required bool attached = 2;
+  // @cc [owner:spolu,label:api] dfs-grant-update-remove
+  // True MUST detach the grant; false MUST attach it.
+  required bool remove = 2;
 }
 
 message StatRequest {

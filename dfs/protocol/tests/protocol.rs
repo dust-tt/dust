@@ -281,13 +281,13 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
     let update = rpc::UpdateGrantsRequest {
         object_id: ID.parse()?,
         changes: vec![
-            rpc::GrantChange {
+            rpc::GrantUpdate {
                 grant: allow,
-                attached: true,
+                remove: false,
             },
-            rpc::GrantChange {
+            rpc::GrantUpdate {
                 grant: deny,
-                attached: false,
+                remove: true,
             },
         ],
     };
@@ -295,8 +295,13 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
         rpc::UpdateGrantsRequest::decode(update.encode_to_vec().as_slice())?,
         update
     );
+    let json = serde_json::to_value(&update)?;
+    assert_eq!(json["changes"][0]["remove"], json!(false));
+    assert_eq!(json["changes"][1]["remove"], json!(true));
+    assert!(json["changes"][0].get("attached").is_none());
+    assert!(json["changes"][1].get("attached").is_none());
     assert_eq!(
-        serde_json::from_value::<rpc::UpdateGrantsRequest>(serde_json::to_value(&update)?)?,
+        serde_json::from_value::<rpc::UpdateGrantsRequest>(json)?,
         update
     );
     Ok(())
