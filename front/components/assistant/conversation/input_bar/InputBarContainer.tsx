@@ -1555,10 +1555,6 @@ const InputBarContainer = ({
     editor?.isEditable,
   ]);
 
-  const buttonSize = useMemo(() => {
-    return isMobile ? "sm" : "xs";
-  }, [isMobile]);
-
   const isSubmitDisabled =
     (isEmpty && !canSubmitEmpty) ||
     isSubmitting ||
@@ -1802,7 +1798,7 @@ const InputBarContainer = ({
                     <InputBarButtons
                       actions={actions}
                       allAgents={allAgents}
-                      buttonSize={buttonSize}
+                      buttonSize="sm"
                       clientType={clientType}
                       conversation={conversation}
                       disableAgentSelector={disableAgentSelector}
@@ -1850,7 +1846,7 @@ const InputBarContainer = ({
                             <Button
                               variant="ghost-secondary"
                               icon={Plus}
-                              size={buttonSize}
+                              size="sm"
                               disabled={disableInput}
                             />
                           </DropdownMenuTrigger>
@@ -1929,7 +1925,7 @@ const InputBarContainer = ({
                           owner={owner}
                           isLoading={false}
                           onNodeSelect={handleNodeSelect}
-                          buttonSize={buttonSize}
+                          buttonSize="sm"
                           toolFileUpload={{
                             useCaseMetadata: {
                               conversationId: conversation?.sId,
@@ -1963,7 +1959,7 @@ const InputBarContainer = ({
                           agentId={selectedSingleAgent?.id ?? null}
                           lastRequestedModel={lastRequestedModel}
                           owner={owner}
-                          buttonSize={buttonSize}
+                          buttonSize="sm"
                           side={conversation ? "top" : "bottom"}
                           disabled={disableInput}
                           selectionRef={modelSelectionRef}
@@ -1972,7 +1968,7 @@ const InputBarContainer = ({
                       )}
                     {conversation && (
                       <ContextUsageIndicator
-                        buttonSize={buttonSize}
+                        buttonSize="sm"
                         owner={owner}
                         conversationId={conversation?.sId}
                       />
@@ -1985,7 +1981,7 @@ const InputBarContainer = ({
                       elapsedSeconds={activeVoiceService.elapsedSeconds}
                       onRecordStart={activeVoiceService.startRecording}
                       onRecordStop={activeVoiceService.stopRecording}
-                      size={buttonSize}
+                      size="sm"
                       showStopLabel={!isWidthConstrained}
                       disabled={disableInput}
                       buttonProps={{ className: "rounded-full" }}
@@ -2012,7 +2008,7 @@ const InputBarContainer = ({
                           }}
                         >
                           <Button
-                            size={buttonSize}
+                            size="sm"
                             aria-label={t`Send message`}
                             isLoading={
                               isSubmitting &&
