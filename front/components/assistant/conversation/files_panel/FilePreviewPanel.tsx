@@ -4,6 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -172,7 +173,10 @@ export function FilePreviewPanel({
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
-          <span className="line-clamp-1 text-sm font-medium">{fileName}</span>
+          <span className="min-w-16 truncate text-sm font-medium">
+            {fileName}
+          </span>
+          {markdown.richEditor && <CoEditionBadge />}
         </div>
         <div className="ml-2 flex items-center gap-1">
           {markdown.canEdit && !markdown.richEditor && (

@@ -16,16 +16,13 @@ interface DocumentSaveStatusProps {
 type SaveState = "error" | "saving" | "pending" | "saved";
 
 interface StatusRowProps {
-  /** Rendered at the left of the row, the controls staying at the right. */
-  badge?: ReactNode;
   /** The row's controls, side by side: the save status, the comments toggle. */
   children?: ReactNode;
 }
 
-/** The row above the document: the host's badge at the left, the controls at the right. */
-export const StatusRow = ({ badge, children }: StatusRowProps) => (
+/** The row above the document, its controls at the right. */
+const StatusRow = ({ children }: StatusRowProps) => (
   <div className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs print:hidden">
-    {badge && <span className="mr-auto">{badge}</span>}
     {children}
   </div>
 );
@@ -167,7 +164,6 @@ interface DocumentStatusProps {
   error: string | null;
   autosaveDebounceMs: number;
   onRetry: () => Promise<void>;
-  badge?: ReactNode;
   children?: ReactNode;
 }
 
@@ -179,7 +175,6 @@ export const DocumentStatus = ({
   error,
   autosaveDebounceMs,
   onRetry,
-  badge,
   children,
 }: DocumentStatusProps) => {
   const { t } = useLingui();
@@ -189,12 +184,12 @@ export const DocumentStatus = ({
       ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
       : error;
 
-  if (!showSaveStatus && !badge && !children) {
+  if (!showSaveStatus && !children) {
     return null;
   }
   return (
     <>
-      <StatusRow badge={badge}>
+      <StatusRow>
         {showSaveStatus && (
           <DocumentSaveStatus
             dirty={dirty}

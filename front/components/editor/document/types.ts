@@ -29,8 +29,6 @@ export interface DocumentProps {
   live?: DocumentLiveSession;
   /** Reports the draft state, so the host can hold navigation while edits are unsaved. */
   onStateChange?: (state: DocumentDraftState) => void;
-  /** Shown at the left of the status row, the save status at its right: a marker from the host. */
-  badge?: ReactNode;
   /**
    * Signs new comments and replies. Commenting requires an editable document and an author;
    * existing comments stay readable without one.

@@ -1,3 +1,4 @@
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -134,9 +135,10 @@ export function FilePreviewDialog({
                   className="shrink-0 text-foreground"
                 />
               )}
-              <span className={cn("line-clamp-1 leading-5", "text-foreground")}>
+              <span className="min-w-16 truncate leading-5 text-foreground">
                 {entry?.fileName ?? t`Preview data`}
               </span>
+              {markdown.richEditor && <CoEditionBadge />}
             </div>
           </DialogTitle>
           <div className="flex items-center justify-between">

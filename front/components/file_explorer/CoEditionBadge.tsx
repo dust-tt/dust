@@ -1,19 +1,20 @@
 import { Chip, Tooltip } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
-/** Marks the rich Markdown editor as the Co-edition work in progress, enabled on Dust only. */
+/** Marks the rich Markdown editor as the Co-edition unstable alpha, enabled on Dust only. */
 export function CoEditionBadge() {
   const { t } = useLingui();
   return (
     <Tooltip
       tooltipTriggerAsChild
-      label={t`This editor for Markdown files is work in progress from the Co-edition initiative. It is only enabled on the Dust workspace while we build it.`}
+      label={t`This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it.`}
       trigger={
-        <span>
+        <span className="flex min-w-0">
           <Chip
             size="mini"
+            className="min-w-0"
             color="info"
-            label={t`Co-edition · WIP · Dust only`}
+            label={t`Co-edition · Unstable alpha · Dust only`}
           />
         </span>
       }
