@@ -2100,6 +2100,11 @@ export async function postNewContentFragment(
  * messages would be rendered for the model with no preceding user turn, producing a trailing
  * assistant turn that providers like Anthropic reject (400 invalid_request_error).
  */
+/**
+ * @cc [owner:philipperolet,label:product;backend] outdated-version-delete
+ * When `message` has a newer version at its rank, the function MUST NOT add a version: it MUST
+ * return success if the latest version is deleted, and a `message_outdated` error otherwise.
+ */
 export async function softDeleteUserMessageAndReplies(
   auth: Authenticator,
   {
@@ -2123,6 +2128,20 @@ export async function softDeleteUserMessageAndReplies(
   // Only admins or the user who sent the message can delete it.
   if (!auth.isAdmin() && message.user?.id !== user.id) {
     return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  // The client may still show an outdated version of the message, e.g. one already deleted or
+  // since edited.
+  const newerVersion = await ConversationResource.fetchNewerMessageVersion(
+    auth,
+    conversation,
+    message
+  );
+  if (newerVersion?.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+  if (newerVersion) {
+    return new Err(new ConversationError("message_outdated"));
   }
 
   // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
@@ -2250,6 +2269,11 @@ export async function softDeleteUserMessageAndReplies(
  * See {@link softDeleteUserMessageAndReplies} for the rationale of the v+1 placeholder pattern
  * (realtime sync + immutable history).
  */
+/**
+ * @cc [owner:philipperolet,label:product;backend] outdated-version-delete
+ * When `message` has a newer version at its rank, the function MUST NOT add a version: it MUST
+ * return success if the latest version is deleted, and a `message_outdated` error otherwise.
+ */
 export async function softDeleteAgentMessage(
   auth: Authenticator,
   {
@@ -2288,6 +2312,20 @@ export async function softDeleteAgentMessage(
 
   if (parentMessage.userMessage.userId !== user.id) {
     return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  // The client may still show an outdated version of the message, e.g. one already deleted along
+  // with its user message, or since retried.
+  const newerVersion = await ConversationResource.fetchNewerMessageVersion(
+    auth,
+    conversation,
+    message
+  );
+  if (newerVersion?.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+  if (newerVersion) {
+    return new Err(new ConversationError("message_outdated"));
   }
 
   const { agentMessages } = await withTransaction(async (t) => {
