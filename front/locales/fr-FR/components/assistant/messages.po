@@ -119,12 +119,8 @@ msgstr "Voulez-vous vraiment continuer ?"
 
 #: front/components/assistant/DeleteAgentDialog.tsx
 #: front/components/assistant/DeleteAssistantsDialog.tsx
-#: front/components/assistant/DeleteTagDialog.tsx
 #: front/components/assistant/RestoreAgentDialog.tsx
 #: front/components/assistant/SetModelAssistantsDialog.tsx
-#: front/components/assistant/TagCreationDialog.tsx
-#: front/components/assistant/TagUpdateDialog.tsx
-#: front/components/assistant/TagsSuggestDialog.tsx
 #: front/components/assistant/UnpublishAssistantsDialog.tsx
 msgid "Cancel"
 msgstr "Annuler"
@@ -154,23 +150,6 @@ msgstr "Les agents seront archivés pour tout le monde."
 #: front/components/assistant/DeleteAssistantsDialog.tsx
 msgid "Archive the agents"
 msgstr "Archiver les agents"
-
-#: front/components/assistant/DeleteTagDialog.tsx
-msgid "Are you absolutely sure?"
-msgstr "En êtes-vous vraiment sûr ?"
-
-#: front/components/assistant/DeleteTagDialog.tsx
-msgid "This action cannot be undone."
-msgstr "Cette action est irréversible."
-
-#: front/components/assistant/DeleteTagDialog.tsx
-msgid "This will delete the tag \"{tagName}\" permanently."
-msgstr "Le tag « {tagName} » sera définitivement supprimé."
-
-#: front/components/assistant/DeleteTagDialog.tsx
-#: front/components/assistant/TagsManager.tsx
-msgid "Delete tag"
-msgstr "Supprimer le tag"
 
 #: front/components/assistant/ManageDropdownMenu.tsx
 msgid "Manage agents"
@@ -220,98 +199,6 @@ msgstr "Le modèle et l’effort de raisonnement actuels seront remplacés pour 
 #: front/components/assistant/SetModelAssistantsDialog.tsx
 msgid "All other settings will remain unchanged."
 msgstr "Tous les autres paramètres resteront inchangés."
-
-#: front/components/assistant/TagCreationDialog.tsx
-msgid "Add tag"
-msgstr "Ajouter un tag"
-
-#: front/components/assistant/TagCreationDialog.tsx
-msgid "Create a new tag for your assistant"
-msgstr "Créer un nouveau tag pour votre agent"
-
-#: front/components/assistant/TagCreationDialog.tsx
-#: front/components/assistant/TagUpdateDialog.tsx
-msgid "Name"
-msgstr "Nom"
-
-#: front/components/assistant/TagCreationDialog.tsx
-#: front/components/assistant/TagUpdateDialog.tsx
-msgid "Tag name"
-msgstr "Nom du tag"
-
-#: front/components/assistant/TagCreationDialog.tsx
-#: front/components/assistant/TagUpdateDialog.tsx
-msgid "Save"
-msgstr "Enregistrer"
-
-#: front/components/assistant/TagUpdateDialog.tsx
-#: front/components/assistant/TagsManager.tsx
-msgid "Edit tag"
-msgstr "Modifier le tag"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Suggest tags"
-msgstr "Suggérer des tags"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Add tag manually"
-msgstr "Ajouter un tag manuellement"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "New tag"
-msgstr "Nouveau tag"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Tag created"
-msgstr "Tag créé"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Tag label"
-msgstr "Libellé du tag"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Tag usage"
-msgstr "Utilisation du tag"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "Managing tags"
-msgstr "Gestion des tags"
-
-#: front/components/assistant/TagsManager.tsx
-msgid "No tags have been created yet. Let AI suggest tags for your agents, or add manually."
-msgstr "Aucun tag n’a encore été créé. Laissez l’IA suggérer des tags pour vos agents, ou ajoutez-en manuellement."
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Tag suggestions applied"
-msgstr "Suggestions de tags appliquées"
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "All tags have been successfully created for your agents."
-msgstr "Tous les tags ont bien été créés pour vos agents."
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Error getting suggestions"
-msgstr "Erreur lors de la récupération des suggestions"
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Please try again. If the problem persists, please contact support."
-msgstr "Veuillez réessayer. Si le problème persiste, contactez le support."
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Agent tag suggestions"
-msgstr "Suggestions de tags pour les agents"
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Analyzing your agents to create tags..."
-msgstr "Analyse de vos agents pour créer des tags…"
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Tag suggestions from your workspace agents:"
-msgstr "Suggestions de tags à partir des agents de votre workspace :"
-
-#: front/components/assistant/TagsSuggestDialog.tsx
-msgid "Apply tag suggestions"
-msgstr "Appliquer les suggestions de tags"
 
 #: front/components/assistant/UnpublishAssistantsDialog.tsx
 msgid "Unpublish"
