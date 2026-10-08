@@ -23,6 +23,7 @@ import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive
 import { editAgentDocument } from "@app/lib/api/files/dfm_agent_documents";
 import { getFilePreviewDirectiveInstruction } from "@app/lib/markdown/file_preview";
 import {
+  contentTypeFromFileName,
   isAllSupportedFileContentType,
   isInteractiveContentType,
   isMarkdownContentType,
@@ -35,7 +36,8 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
  * @cc [owner:PopDaph,label:product;concurrency] files-create-live-markdown
  * An existing Markdown file a live session holds MUST NOT be overwritten: an empty body MUST be
  * filled through `editAgentDocument`, any other call MUST be refused, pointing to the files edit
- * tool, and a collab server failure MUST refuse it too.
+ * tool, and a collab server failure MUST refuse it too. A session opening between the check and
+ * the write is not covered until the new file system marks open files in their metadata.
  */
 export async function createHandler(
   {
@@ -78,12 +80,15 @@ export async function createHandler(
   }
 
   // Overwriting a Markdown document open in a live session would skip the people editing it, and
-  // the session's next checkpoint would conflict with the file.
-  if (
-    statResult.isOk() &&
-    statResult.value !== null &&
-    isMarkdownContentType(stripMimeParameters(statResult.value.contentType))
-  ) {
+  // the session's next checkpoint would conflict with the file. A failed lookup goes by the name.
+  const mayBeOpenMarkdown = statResult.isOk()
+    ? statResult.value !== null &&
+      isMarkdownContentType(stripMimeParameters(statResult.value.contentType))
+    : contentTypeFromFileName(path) === "text/markdown";
+  if (mayBeOpenMarkdown) {
+    // TODO(co-edition): a session opening between this check and the write below loads the file
+    // before the write, and its checkpoints then conflict with it. Fixed once the new file system
+    // marks open files in their metadata.
     const live = await getLiveSessionPath(auth, path);
     if (live.isErr()) {
       return live;
