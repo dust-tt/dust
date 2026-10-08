@@ -2277,6 +2277,46 @@ describe("searchProjectsByNamePaginated", () => {
     expect(result.spaces.some((s) => s.id === permittedSpace2.id)).toBe(true);
     expect(result.spaces.some((s) => s.id === unpermittedSpace.id)).toBe(false);
   });
+
+  it("fills the page with readable Pods when unreadable ones sort first", async () => {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    // Names force unreadable Pods ahead of the readable ones alphabetically.
+    const unpermittedA = await SpaceFactory.project(workspace, undefined, {
+      name: "AAA Unreadable",
+    });
+    const unpermittedB = await SpaceFactory.project(workspace, undefined, {
+      name: "AAB Unreadable",
+    });
+    const unpermittedC = await SpaceFactory.project(workspace, undefined, {
+      name: "AAC Unreadable",
+    });
+    const permitted = await SpaceFactory.project(workspace, undefined, {
+      name: "ZZZ Readable",
+    });
+    await permitted.addMembers(internalAdminAuth, { userIds: [user.sId] });
+
+    const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const result = await SpaceResource.searchProjectsByNamePaginated(userAuth, {
+      pagination: { limit: 3, orderDirection: "asc" },
+    });
+
+    expect(result.spaces).toHaveLength(1);
+    expect(result.spaces[0].id).toBe(permitted.id);
+    expect(result.spaces.some((s) => s.id === unpermittedA.id)).toBe(false);
+    expect(result.spaces.some((s) => s.id === unpermittedB.id)).toBe(false);
+    expect(result.spaces.some((s) => s.id === unpermittedC.id)).toBe(false);
+    expect(result.hasMore).toBe(false);
+  });
 });
 
 // List of all known models that have a foreign key relationship to Space (via vaultId or spaceId)
