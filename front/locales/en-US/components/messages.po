@@ -533,8 +533,8 @@ msgid "Dust builds a personal memory from your conversations and uses it to tail
 msgstr "Dust builds a personal memory from your conversations and uses it to tailor future responses."
 
 #: front/components/UserSettingsPopover.tsx
-msgid "The content of your saved memory may appear in responses sent to Slack and other external integrations."
-msgstr "The content of your saved memory may appear in responses sent to Slack and other external integrations."
+msgid "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
+msgstr "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"
