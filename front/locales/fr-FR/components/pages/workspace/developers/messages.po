@@ -89,98 +89,6 @@ msgstr "Créez et gérez des clés pour accéder à l’API Dust, suivez leur ut
 msgid "Total consumed"
 msgstr "Total consommé"
 
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "/ {totalFormatted} cap"
-msgstr "/ {totalFormatted} de plafond"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Expires {date}"
-msgstr "Expire le {date}"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Renews {date}"
-msgstr "Renouvellement le {date}"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Available credits"
-msgstr "Crédits disponibles"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Free credits"
-msgstr "Crédits gratuits"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Purchased credits"
-msgstr "Crédits achetés"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Buy credits"
-msgstr "Acheter des crédits"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Pay-as-you-go"
-msgstr "Paiement à l’usage"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Programmatic Usage"
-msgstr "Utilisation via l’API"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.). Learn more in the <0>usage documentation</0>."
-msgstr "Suivez l’utilisation via l’API et les crédits associés (clés API, workflows automatisés, etc.). En savoir plus dans la <0>documentation sur l’utilisation</0>."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "You're almost out of credits."
-msgstr "Vous n’avez presque plus de crédits."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "You're out of credits."
-msgstr "Vous n’avez plus de crédits."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Add credits to ensure uninterrupted usage."
-msgstr "Ajoutez des crédits pour garantir une utilisation sans interruption."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Available after trial"
-msgstr "Disponible après l’essai"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Credit purchases are available once you upgrade to a paid plan. If you would like to purchase credits before upgrading, please contact support."
-msgstr "L’achat de crédits est disponible après le passage à un forfait payant. Si vous souhaitez acheter des crédits avant, veuillez contacter le support."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Subscription issue"
-msgstr "Problème d’abonnement"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Credit purchases require an active subscription. Please ensure your payment method is up to date."
-msgstr "L’achat de crédits nécessite un abonnement actif. Vérifiez que votre moyen de paiement est à jour."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totaling {totalPending} awaiting payment.}}"
-msgstr "{pendingCount, plural, one {Vous avez un achat de crédits de {totalPending} en attente de paiement.} other {Vous avez # achats de crédits d’un total de {totalPending} en attente de paiement.}}"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Complete your payment to activate your credits."
-msgstr "Finalisez votre paiement pour activer vos crédits."
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Complete payment"
-msgstr "Finaliser le paiement"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Manage invoices"
-msgstr "Gérer les factures"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Current credits"
-msgstr "Crédits actuels"
-
-#: front/components/pages/workspace/developers/CreditsUsagePage.tsx
-msgid "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
-msgstr "Crédits actifs pour l’utilisation via l’API. Les factures de crédits sont envoyées par e-mail au moment de l’achat."
-
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
 msgid "Developers"
 msgstr "Développeurs"
@@ -196,6 +104,98 @@ msgstr "Secrets"
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
 msgid "Computer environment"
 msgstr "Environnement Computer"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "/ {totalFormatted} cap"
+msgstr "/ {totalFormatted} de plafond"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Expires {date}"
+msgstr "Expire le {date}"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Renews {date}"
+msgstr "Renouvellement le {date}"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Available credits"
+msgstr "Crédits disponibles"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Free credits"
+msgstr "Crédits gratuits"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Purchased credits"
+msgstr "Crédits achetés"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Buy credits"
+msgstr "Acheter des crédits"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Pay-as-you-go"
+msgstr "Paiement à l’usage"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Programmatic Usage"
+msgstr "Utilisation via l’API"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.). Learn more in the <0>usage documentation</0>."
+msgstr "Suivez l’utilisation via l’API et les crédits associés (clés API, workflows automatisés, etc.). En savoir plus dans la <0>documentation sur l’utilisation</0>."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "You're almost out of credits."
+msgstr "Vous n’avez presque plus de crédits."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "You're out of credits."
+msgstr "Vous n’avez plus de crédits."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Add credits to ensure uninterrupted usage."
+msgstr "Ajoutez des crédits pour garantir une utilisation sans interruption."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Available after trial"
+msgstr "Disponible après l’essai"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Credit purchases are available once you upgrade to a paid plan. If you would like to purchase credits before upgrading, please contact support."
+msgstr "L’achat de crédits est disponible après le passage à un forfait payant. Si vous souhaitez acheter des crédits avant, veuillez contacter le support."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Subscription issue"
+msgstr "Problème d’abonnement"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Credit purchases require an active subscription. Please ensure your payment method is up to date."
+msgstr "L’achat de crédits nécessite un abonnement actif. Vérifiez que votre moyen de paiement est à jour."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totaling {totalPending} awaiting payment.}}"
+msgstr "{pendingCount, plural, one {Vous avez un achat de crédits de {totalPending} en attente de paiement.} other {Vous avez # achats de crédits d’un total de {totalPending} en attente de paiement.}}"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Complete your payment to activate your credits."
+msgstr "Finalisez votre paiement pour activer vos crédits."
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Complete payment"
+msgstr "Finaliser le paiement"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Manage invoices"
+msgstr "Gérer les factures"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Current credits"
+msgstr "Crédits actuels"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
+msgstr "Crédits actifs pour l’utilisation via l’API. Les factures de crédits sont envoyées par e-mail au moment de l’achat."
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
 msgid "Model Providers"

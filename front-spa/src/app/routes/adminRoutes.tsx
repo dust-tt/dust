@@ -2,6 +2,7 @@ import { AdminLayout } from "@dust-tt/front/components/layouts/AdminLayout";
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { useAuth } from "@dust-tt/front/lib/auth/AuthContext";
 import { hasGroupManagementScope } from "@dust-tt/front/types/api/auth_context";
+import { isCreditPricedPlan } from "@dust-tt/front/types/plan";
 import { isManager } from "@dust-tt/front/types/user";
 import { RequirePermissionLayout } from "@spa/app/layouts/RequirePermissionLayout";
 import { RequireRoleLayout } from "@spa/app/layouts/RequireRoleLayout";
@@ -23,11 +24,6 @@ const DevelopersPage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/developers/DevelopersPage"),
   "DevelopersPage"
-);
-const CreditsUsagePage = withSuspense(
-  () =>
-    import("@dust-tt/front/components/pages/workspace/developers/CreditsUsagePage"),
-  "CreditsUsagePage"
 );
 const MembersPage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/MembersPage"),
@@ -64,6 +60,11 @@ const UsagePage = withSuspense(
   () => import("@dust-tt/front/components/pages/workspace/UsagePage"),
   "UsagePage"
 );
+const NonCreditPricedUsagePage = withSuspense(
+  () =>
+    import("@dust-tt/front/components/pages/workspace/NonCreditPricedUsagePage"),
+  "NonCreditPricedUsagePage"
+);
 const GroupManagerUsagePage = withSuspense(
   () =>
     import("@dust-tt/front/components/pages/workspace/GroupManagerUsagePage"),
@@ -96,11 +97,15 @@ function PeopleRoute() {
 }
 
 function CreditsRoute() {
-  const { workspace, featureFlags, groupManagement } = useAuth();
+  const { workspace, subscription, featureFlags, groupManagement } = useAuth();
   if (isManager(workspace)) {
     return (
       <AdminLayout>
-        <UsagePage />
+        {isCreditPricedPlan(subscription.plan) ? (
+          <UsagePage />
+        ) : (
+          <NonCreditPricedUsagePage />
+        )}
       </AdminLayout>
     );
   }
@@ -185,10 +190,11 @@ export const adminRoutes: RouteObject[] = [
         element: <WorkspaceRedirect to="governance" search="?tab=agents" />,
       },
       {
-        // Legacy non–credit-priced programmatic usage page. Kept until those
-        // workspaces are fully migrated onto Credits.
+        // Legacy non–credit-priced programmatic usage page → Credits tab.
         path: "developers/credits-usage",
-        element: <CreditsUsagePage />,
+        element: (
+          <WorkspaceRedirect to="credits" search="?tab=programmatic-usage" />
+        ),
       },
     ],
   },

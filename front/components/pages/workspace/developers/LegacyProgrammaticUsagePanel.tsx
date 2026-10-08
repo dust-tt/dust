@@ -1,4 +1,3 @@
-import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import {
   ConsumptionProgressBar,
   ConsumptionProgressBarWithNumbers,
@@ -26,7 +25,7 @@ import {
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 // A credit is active if it has started and has not expired.
 // This need to be consistent with logic in CreditResource.listActive().
@@ -97,7 +96,7 @@ interface UsageSectionProps {
   totalCredits: number;
   freeCreditRenewalDateMs: number | null;
   isLoading: boolean;
-  setShowBuyCreditDialog: (show: boolean) => void;
+  onOpenBuyCreditDialog: () => void;
 }
 
 function formatDateShort(date: Date): string {
@@ -116,7 +115,7 @@ function UsageSection({
   totalCredits,
   freeCreditRenewalDateMs,
   isLoading,
-  setShowBuyCreditDialog,
+  onOpenBuyCreditDialog,
 }: UsageSectionProps) {
   const { t } = useLingui();
   const billingCycle = useMemo(() => {
@@ -163,7 +162,6 @@ function UsageSection({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Usage Header */}
       <div className="flex items-center justify-between">
         <Page.H variant="h5">
           <Trans>Available credits</Trans>
@@ -178,7 +176,6 @@ function UsageSection({
         )}
       </div>
 
-      {/* Total Consumed */}
       <ConsumptionProgressBarWithNumbers
         consumed={totalConsumed}
         total={totalCredits}
@@ -186,7 +183,6 @@ function UsageSection({
         totalFormatted={totalCreditsFormatted}
       />
 
-      {/* Credit Categories */}
       <div className="grid grid-cols-3 gap-8 border-t border-border pt-6">
         <CreditCategoryBar
           title={t`Free credits`}
@@ -208,7 +204,7 @@ function UsageSection({
               label={t`Buy credits`}
               variant="outline"
               size="xs"
-              onClick={() => setShowBuyCreditDialog(true)}
+              onClick={onOpenBuyCreditDialog}
             />
           }
         />
@@ -226,13 +222,37 @@ function UsageSection({
   );
 }
 
-export function CreditsUsagePage() {
+interface LegacyProgrammaticUsagePanelProps {
+  isBuyCreditDialogOpen: boolean;
+  onBuyCreditDialogOpenChange: (open: boolean) => void;
+  /**
+   * Skip credit fetches while the hosting tab is inactive.
+   */
+  disabled?: boolean;
+  /**
+   * When false, omit the standalone page header (used when embedded as a tab).
+   */
+  showHeader?: boolean;
+}
+
+/**
+ * Legacy (non–credit-priced) programmatic usage UI: available credits,
+ * purchase dialog, credit list, and cost chart.
+ */
+export function LegacyProgrammaticUsagePanel({
+  isBuyCreditDialogOpen,
+  onBuyCreditDialogOpenChange,
+  disabled = false,
+  showHeader = true,
+}: LegacyProgrammaticUsagePanelProps) {
   const { t } = useLingui();
   const owner = useWorkspace();
   const { subscription } = useAuth();
-  const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
+  // Keep fetches alive while the buy dialog is open so the header CTA can
+  // open it from another tab without empty purchase info.
+  const fetchDisabled = disabled && !isBuyCreditDialogOpen;
   const { credits, pendingCredits, freeCreditRenewalDateMs, isCreditsLoading } =
-    useCredits({ workspaceId: owner.sId });
+    useCredits({ workspaceId: owner.sId, disabled: fetchDisabled });
   const {
     isEnterprise,
     currency,
@@ -243,7 +263,10 @@ export function CreditsUsagePage() {
     isCreditPurchaseInfoLoading,
   } = useCreditPurchaseInfo({
     workspaceId: owner.sId,
+    disabled: fetchDisabled,
   });
+
+  const openBuyCreditDialog = () => onBuyCreditDialogOpenChange(true);
 
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => isActive(c));
@@ -314,28 +337,28 @@ export function CreditsUsagePage() {
   }, [credits]);
 
   return (
-    <AdminPageContainer>
-      <>
-        <BuyCreditDialog
-          isOpen={showBuyCreditDialog}
-          onClose={() => setShowBuyCreditDialog(false)}
-          workspaceId={owner.sId}
-          isEnterprise={isEnterprise}
-          currency={currency}
-          discountPercent={discountPercent}
-          creditPricing={creditPricing}
-          creditPurchaseLimits={creditPurchaseLimits}
-          paygUsage={
-            isEnterprise
-              ? {
-                  consumed: creditsByType.payg.consumed,
-                  total: creditsByType.payg.total,
-                }
-              : null
-          }
-        />
+    <>
+      <BuyCreditDialog
+        isOpen={isBuyCreditDialogOpen}
+        onClose={() => onBuyCreditDialogOpenChange(false)}
+        workspaceId={owner.sId}
+        isEnterprise={isEnterprise}
+        currency={currency}
+        discountPercent={discountPercent}
+        creditPricing={creditPricing}
+        creditPurchaseLimits={creditPurchaseLimits}
+        paygUsage={
+          isEnterprise
+            ? {
+                consumed: creditsByType.payg.consumed,
+                total: creditsByType.payg.total,
+              }
+            : null
+        }
+      />
 
-        <Page.Vertical gap="xl" align="stretch">
+      <Page.Vertical gap="xl" align="stretch">
+        {showHeader && (
           <Page.Header
             title={t`Programmatic Usage`}
             description={
@@ -357,150 +380,161 @@ export function CreditsUsagePage() {
               </div>
             }
           />
+        )}
 
-          {shouldShowLowCreditsWarning && (
-            <ContentMessage
-              title={
-                totalConsumed < totalCredits
-                  ? t`You're almost out of credits.`
-                  : t`You're out of credits.`
-              }
-              variant="warning"
-              size="lg"
-              icon={AlertCircle}
-            >
-              <div className="flex items-end justify-between">
-                <p>
-                  <Trans>Add credits to ensure uninterrupted usage.</Trans>
-                </p>
-                <Button
-                  label={t`Buy credits`}
-                  variant="primary"
-                  onClick={() => setShowBuyCreditDialog(true)}
-                />
-              </div>
+        {!showHeader && (
+          <Page.P variant="secondary">
+            <Trans>
+              Monitor usage and credits for programmatic usage (API keys,
+              automated workflows, etc.). Learn more in the{" "}
+              <Hoverable
+                href="https://docs.dust.tt/docs/programmatic-usage"
+                target="_blank"
+                variant="primary"
+              >
+                usage documentation
+              </Hoverable>
+              .
+            </Trans>
+          </Page.P>
+        )}
+
+        {shouldShowLowCreditsWarning && (
+          <ContentMessage
+            title={
+              totalConsumed < totalCredits
+                ? t`You're almost out of credits.`
+                : t`You're out of credits.`
+            }
+            variant="warning"
+            size="lg"
+            icon={AlertCircle}
+          >
+            <div className="flex items-end justify-between">
+              <p>
+                <Trans>Add credits to ensure uninterrupted usage.</Trans>
+              </p>
+              <Button
+                label={t`Buy credits`}
+                variant="primary"
+                onClick={openBuyCreditDialog}
+              />
+            </div>
+          </ContentMessage>
+        )}
+
+        {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "trialing" && (
+            <ContentMessage title={t`Available after trial`} variant="info">
+              <Trans>
+                Credit purchases are available once you upgrade to a paid plan.
+                If you would like to purchase credits before upgrading, please
+                contact support.
+              </Trans>
             </ContentMessage>
           )}
 
-          {/* Purposefully not giving email since we want to test determination here and limit support requests, it's a very edgy case and most likely fraudulent. */}
-          {creditPurchaseLimits &&
-            !creditPurchaseLimits.canPurchase &&
-            creditPurchaseLimits.reason === "trialing" && (
-              <ContentMessage title={t`Available after trial`} variant="info">
-                <Trans>
-                  Credit purchases are available once you upgrade to a paid
-                  plan. If you would like to purchase credits before upgrading,
-                  please contact support.
-                </Trans>
-              </ContentMessage>
-            )}
+        {creditPurchaseLimits &&
+          !creditPurchaseLimits.canPurchase &&
+          creditPurchaseLimits.reason === "payment_issue" && (
+            <ContentMessage title={t`Subscription issue`} variant="warning">
+              <Trans>
+                Credit purchases require an active subscription. Please ensure
+                your payment method is up to date.
+              </Trans>
+            </ContentMessage>
+          )}
 
-          {creditPurchaseLimits &&
-            !creditPurchaseLimits.canPurchase &&
-            creditPurchaseLimits.reason === "payment_issue" && (
-              <ContentMessage title={t`Subscription issue`} variant="warning">
-                <Trans>
-                  Credit purchases require an active subscription. Please ensure
-                  your payment method is up to date.
-                </Trans>
-              </ContentMessage>
-            )}
+        {pendingCredits.length > 0 &&
+          (() => {
+            const totalPendingMicroUsd = pendingCredits.reduce(
+              (sum, c) => sum + c.initialAmountMicroUsd,
+              0
+            );
+            const isSingle = pendingCredits.length === 1;
+            const pendingCount = pendingCredits.length;
+            const totalPending = getPriceAsString({
+              currency: "usd",
+              priceInMicroUsd: totalPendingMicroUsd,
+            });
+            const title = t`${plural(pendingCount, {
+              one: `You have a pending ${totalPending} credit purchase awaiting payment.`,
+              other: `You have # pending credit purchases totaling ${totalPending} awaiting payment.`,
+            })}`;
 
-          {pendingCredits.length > 0 &&
-            (() => {
-              const totalPendingMicroUsd = pendingCredits.reduce(
-                (sum, c) => sum + c.initialAmountMicroUsd,
-                0
-              );
-              const isSingle = pendingCredits.length === 1;
-              const pendingCount = pendingCredits.length;
-              const totalPending = getPriceAsString({
-                currency: "usd",
-                priceInMicroUsd: totalPendingMicroUsd,
-              });
-              const title = t`${plural(pendingCount, {
-                one: `You have a pending ${totalPending} credit purchase awaiting payment.`,
-                other: `You have # pending credit purchases totaling ${totalPending} awaiting payment.`,
-              })}`;
-
-              return (
-                <ContentMessage
-                  title={title}
-                  variant="info"
-                  size="lg"
-                  icon={AlertCircle}
-                >
-                  <div className="flex items-end justify-between">
-                    <p>
-                      <Trans>
-                        Complete your payment to activate your credits.
-                      </Trans>
-                    </p>
-                    <Button
-                      label={
-                        isSingle ? t`Complete payment` : t`Manage invoices`
-                      }
-                      variant="primary"
-                      onClick={() => {
-                        window.open(
-                          `/w/${owner.sId}/subscription/manage`,
-                          "_blank"
-                        );
-                      }}
-                    />
-                  </div>
-                </ContentMessage>
-              );
-            })()}
-
-          {/* Usage Section */}
-          <UsageSection
-            subscription={subscription}
-            isEnterprise={isEnterprise}
-            creditsByType={creditsByType}
-            totalConsumed={totalConsumed}
-            totalCredits={totalCredits}
-            freeCreditRenewalDateMs={freeCreditRenewalDateMs}
-            isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
-            setShowBuyCreditDialog={setShowBuyCreditDialog}
-          />
-
-          {/* Current Credits Section */}
-          <Page.Vertical sizing="grow">
-            <div className="flex w-full items-start justify-between">
-              <Page.Vertical gap="sm" sizing="grow">
-                <div className="flex w-full items-center justify-between">
-                  <Page.H variant="h5">
-                    <Trans>Current credits</Trans>
-                  </Page.H>
-                  <CreditHistorySheet
-                    credits={expiredCredits}
-                    isLoading={isCreditsLoading}
+            return (
+              <ContentMessage
+                title={title}
+                variant="info"
+                size="lg"
+                icon={AlertCircle}
+              >
+                <div className="flex items-end justify-between">
+                  <p>
+                    <Trans>
+                      Complete your payment to activate your credits.
+                    </Trans>
+                  </p>
+                  <Button
+                    label={isSingle ? t`Complete payment` : t`Manage invoices`}
+                    variant="primary"
+                    onClick={() => {
+                      window.open(
+                        `/w/${owner.sId}/subscription/manage`,
+                        "_blank"
+                      );
+                    }}
                   />
                 </div>
-                <Page.P variant="secondary">
-                  <Trans>
-                    Active credits for programmatic usage. Credits invoices are
-                    sent by email at time of purchase.
-                  </Trans>
-                </Page.P>
-              </Page.Vertical>
-            </div>
-            <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
-          </Page.Vertical>
+              </ContentMessage>
+            );
+          })()}
 
-          {/* Usage Graph */}
-          {isCreditPurchaseInfoLoading ? (
-            <LoadingBlock className="h-64" />
-          ) : (
-            <ProgrammaticCostChart
-              workspaceId={owner.sId}
-              billingCycleStartDay={billingCycleStartDay ?? 1}
-            />
-          )}
+        <UsageSection
+          subscription={subscription}
+          isEnterprise={isEnterprise}
+          creditsByType={creditsByType}
+          totalConsumed={totalConsumed}
+          totalCredits={totalCredits}
+          freeCreditRenewalDateMs={freeCreditRenewalDateMs}
+          isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
+          onOpenBuyCreditDialog={openBuyCreditDialog}
+        />
+
+        <Page.Vertical sizing="grow">
+          <div className="flex w-full items-start justify-between">
+            <Page.Vertical gap="sm" sizing="grow">
+              <div className="flex w-full items-center justify-between">
+                <Page.H variant="h5">
+                  <Trans>Current credits</Trans>
+                </Page.H>
+                <CreditHistorySheet
+                  credits={expiredCredits}
+                  isLoading={isCreditsLoading}
+                />
+              </div>
+              <Page.P variant="secondary">
+                <Trans>
+                  Active credits for programmatic usage. Credits invoices are
+                  sent by email at time of purchase.
+                </Trans>
+              </Page.P>
+            </Page.Vertical>
+          </div>
+          <CreditsList credits={activeCredits} isLoading={isCreditsLoading} />
         </Page.Vertical>
-        <div className="h-12" />
-      </>
-    </AdminPageContainer>
+
+        {isCreditPurchaseInfoLoading ? (
+          <LoadingBlock className="h-64" />
+        ) : (
+          <ProgrammaticCostChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        )}
+      </Page.Vertical>
+    </>
   );
 }
