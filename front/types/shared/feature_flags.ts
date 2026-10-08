@@ -485,12 +485,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "PopDaph",
   },
-  unified_search: {
-    description:
-      "Enable unified search with sidebar button triggering the command palette",
-    stage: "self_serve",
-    owner: "fraggle",
-  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

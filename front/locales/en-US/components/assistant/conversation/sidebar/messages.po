@@ -30,11 +30,10 @@ msgstr "Search Pods..."
 msgid "No Pods found"
 msgstr "No Pods found"
 
-#: front/components/assistant/conversation/sidebar/SidebarSearch.tsx
-#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
-msgid "Search"
-msgstr "Search"
-
 #: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
 msgid "New conversation"
 msgstr "New conversation"
+
+#: front/components/assistant/conversation/sidebar/UnifiedSearchNav.tsx
+msgid "Search"
+msgstr "Search"

@@ -5,7 +5,6 @@ import { usePodConversations } from "@app/hooks/conversations/usePodConversation
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
-import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { getPodRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/types/api/assistant/conversation/spaces";
@@ -186,12 +185,10 @@ const PodListItem = memo(
 export function renderPodsList({
   owner,
   summary,
-  titleFilter,
   moveConversationToPod: moveConversationToPod,
 }: {
   owner: WorkspaceType;
   summary: GetBySpacesSummaryResponseBody["summary"];
-  titleFilter: string;
   moveConversationToPod: (
     conversation: ConversationWithoutContentType,
     pod: PodType
@@ -201,19 +198,7 @@ export function renderPodsList({
     return null;
   }
 
-  const filteredSummary = titleFilter
-    ? summary.filter(({ space }) =>
-        subFilter(
-          removeDiacritics(titleFilter).toLowerCase(),
-          removeDiacritics(space.name).toLowerCase()
-        )
-      )
-    : summary;
-  if (filteredSummary.length === 0) {
-    return null;
-  }
-
-  return filteredSummary.map(
+  return summary.map(
     ({ space, unreadConversations, nonParticipantUnreadConversationIds }) => (
       <PodListItem
         key={space.sId}

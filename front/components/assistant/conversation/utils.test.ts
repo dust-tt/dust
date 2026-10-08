@@ -35,7 +35,6 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
           makeConversation({ sId: "unread", unread: true }),
           makeConversation({ sId: "read" }),
         ],
-        "",
         null
       );
 
@@ -50,7 +49,6 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
           makeConversation({ sId: "active", unread: true }),
           makeConversation({ sId: "other", unread: true }),
         ],
-        "",
         "active"
       );
 
@@ -62,7 +60,6 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
     const { inboxConversations } =
       getGroupConversationsByUnreadAndActionRequired(
         [makeConversation({ sId: "active", actionRequired: true })],
-        "",
         "active"
       );
 
@@ -73,7 +70,6 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
     const { triggeredConversations, inboxConversations } =
       getGroupConversationsByUnreadAndActionRequired(
         [makeConversation({ sId: "active", unread: true, triggerId: "trig" })],
-        "",
         "active"
       );
 
@@ -111,7 +107,6 @@ describe("getGroupConversationsByDate", () => {
         makeConversation({ sId: "lastYear", updated: lastYearMs }),
         makeConversation({ sId: "older", updated: olderMs }),
       ],
-      titleFilter: "",
     });
 
     expect(groups["Today"].map((c) => c.sId)).toEqual(["today"]);
@@ -120,20 +115,5 @@ describe("getGroupConversationsByDate", () => {
     expect(groups["Last Month"].map((c) => c.sId)).toEqual(["lastMonth"]);
     expect(groups["Last 12 Months"].map((c) => c.sId)).toEqual(["lastYear"]);
     expect(groups["Older"].map((c) => c.sId)).toEqual(["older"]);
-  });
-
-  it("filters out conversations not matching the title filter", () => {
-    const groups = getGroupConversationsByDate({
-      conversations: [
-        makeConversation({ sId: "match", title: "Foo" }),
-        makeConversation({ sId: "no-match", title: "Bar" }),
-      ],
-      titleFilter: "foo",
-    });
-
-    const allIds = Object.values(groups)
-      .flat()
-      .map((c) => c.sId);
-    expect(allIds).toEqual(["match"]);
   });
 });

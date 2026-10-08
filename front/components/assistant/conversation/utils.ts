@@ -1,5 +1,4 @@
 import { compareStrings } from "@app/lib/i18n/format";
-import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
 import { makeRelativeDateBucketer } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
@@ -10,7 +9,6 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import {
-  getConversationDisplayTitle,
   isPodConversation,
   isReinforcedSkillNotificationMetadata,
 } from "@app/types/assistant/conversation";
@@ -41,7 +39,6 @@ function isReinforcedSkillConversation(
 // read they fall back into the date-grouped Conversations list like any other read conversation.
 export function getGroupConversationsByUnreadAndActionRequired(
   conversations: ConversationListItemType[],
-  titleFilter: string,
   activeConversationId: string | null
 ) {
   return (
@@ -50,18 +47,6 @@ export function getGroupConversationsByUnreadAndActionRequired(
       .toSorted((a, b) => b.updated - a.updated)
       .reduce(
         (acc, conversation) => {
-          if (
-            titleFilter &&
-            !subFilter(
-              removeDiacritics(titleFilter).toLowerCase(),
-              removeDiacritics(
-                getConversationDisplayTitle(conversation)
-              ).toLowerCase()
-            )
-          ) {
-            return acc;
-          }
-
           if (conversation.unread || conversation.actionRequired) {
             if (isReinforcedSkillConversation(conversation)) {
               acc.skillSuggestionConversations.push(conversation);
@@ -104,7 +89,7 @@ export function getGroupConversationsByUnreadAndActionRequired(
 
 export function getGroupConversationsByDate<
   T extends ConversationListItemType | PodConversationListItemType,
->({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
+>({ conversations }: { conversations: T[] }) {
   const groups: Record<RelativeDateBucket, T[]> = {
     Today: [],
     Yesterday: [],
@@ -117,18 +102,6 @@ export function getGroupConversationsByDate<
   const bucketFor = makeRelativeDateBucketer();
 
   conversations.forEach((conversation: T) => {
-    if (
-      titleFilter &&
-      !subFilter(
-        removeDiacritics(titleFilter).toLowerCase(),
-        removeDiacritics(
-          getConversationDisplayTitle(conversation)
-        ).toLowerCase()
-      )
-    ) {
-      return;
-    }
-
     const bucket = bucketFor(conversation.updated ?? conversation.created);
     groups[bucket].push(conversation);
   });
