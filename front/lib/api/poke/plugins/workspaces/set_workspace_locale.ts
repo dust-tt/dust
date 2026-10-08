@@ -14,6 +14,8 @@ export const setWorkspaceLocalePlugin = createPlugin({
     name: "Set Workspace Locale",
     description:
       "Change the default locale of the workspace. Members who did not pick a locale use it.",
+    warning:
+      "Localization is not released yet. Only change the locale of internal or test workspaces.",
     resourceTypes: ["workspaces"],
     args: {
       locale: {
