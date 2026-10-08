@@ -882,6 +882,11 @@ msgid "Save"
 msgstr "Save"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
+msgctxt "remove a credit limit, button label"
+msgid "Remove"
+msgstr "Remove"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Remove group seat"
 msgstr "Remove group seat"
 
@@ -895,21 +900,25 @@ msgid "Remove seat"
 msgstr "Remove seat"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-msgctxt "remove a credit limit, button label"
-msgid "Remove"
-msgstr "Remove"
+msgid "Shared by all members."
+msgstr "Shared by all members."
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "This group has no budget."
 msgstr "This group has no budget."
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "Shared by all members."
-msgstr "Shared by all members."
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Shared by all members. {usedCredits} credits used so far this cycle."
 msgstr "Shared by all members. {usedCredits} credits used so far this cycle."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupsUsageTable.tsx
+msgid "Group budget"
+msgstr "Group budget"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Grant {reviewSeatName} to {groupName}"
+msgstr "Grant {reviewSeatName} to {groupName}"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Edit limits for {groupName}"
@@ -921,21 +930,12 @@ msgstr "Granted seat"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
-msgid "Group budget"
-msgstr "Group budget"
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
-#: front/components/workspace/GroupsUsageTable.tsx
 msgid "Limit per member"
 msgstr "Limit per member"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Caps what each member can spend."
 msgstr "Caps what each member can spend."
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "Grant {reviewSeatName} to {groupName}"
-msgstr "Grant {reviewSeatName} to {groupName}"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"

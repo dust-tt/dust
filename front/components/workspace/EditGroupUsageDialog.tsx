@@ -95,51 +95,33 @@ function toInputValue(awuCredits: number | null) {
   return awuCredits === null ? "" : String(awuCredits);
 }
 
-function EditGroupUsageForm({
-  owner,
-  group,
-  seatOptions,
-  sharedUsageLimitAccess,
-  onClose,
-}: {
-  owner: LightWorkspaceType;
-  group: EditGroupUsageGroup;
-  seatOptions?: EditGroupUsageSeatOptions;
-  sharedUsageLimitAccess: SharedUsageLimitAccess;
-  onClose: () => void;
-}) {
+function useRemoveAction() {
   const { t } = useLingui();
-  const confirm = useContext(ConfirmContext);
-  const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
-    workspaceId: owner.sId,
+  const label = t({
+    message: "Remove",
+    context: "remove a credit limit, button label",
   });
-  const { doUpdateGroupSharedUsageLimit } = useUpdateGroupSharedUsageLimit({
-    owner,
-  });
-  const { doUpdateGroupGrantedSeatType } = useUpdateGroupGrantedSeatType({
-    owner,
-  });
-  const { doFetchGroupSeatMappingPreview } = useGroupSeatMappingPreview({
-    owner,
-  });
+  return (value: string, setValue: (value: string) => void) =>
+    value !== "" ? { label, onClick: () => setValue("") } : undefined;
+}
 
+function useGroupUsageDraft(
+  group: EditGroupUsageGroup,
+  seatOptions: EditGroupUsageSeatOptions | undefined,
+  isSharedLimitEditable: boolean
+) {
   const initialSharedLimitAwuCredits =
     group.sharedUsageLimitUsage?.limitAwuCredits ?? null;
-  const [memberLimitInput, setMemberLimitInput] = useState(
+  const [memberLimitInput, setMemberLimitInput] = useState(() =>
     toInputValue(group.poolCapAwuCredits)
   );
-  const [sharedLimitInput, setSharedLimitInput] = useState(
+  const [sharedLimitInput, setSharedLimitInput] = useState(() =>
     toInputValue(initialSharedLimitAwuCredits)
   );
   const [seat, setSeat] = useState(group.grantedSeatType);
-  const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
 
-  const { groupId, name: groupName, memberCount } = group;
-  const isSharedLimitEditable = sharedUsageLimitAccess === "editable";
   const memberLimitResult = parseCreditsInput(memberLimitInput);
   const sharedLimitResult = parseSharedUsageLimitInput(sharedLimitInput);
-
   const memberLimitChanged =
     memberLimitResult.ok &&
     memberLimitResult.awuCredits !== group.poolCapAwuCredits;
@@ -149,33 +131,68 @@ function EditGroupUsageForm({
     sharedLimitResult.awuCredits !== initialSharedLimitAwuCredits;
   const seatChanged =
     seatOptions !== undefined && seat !== group.grantedSeatType;
-  const isValid =
-    memberLimitResult.ok && (!isSharedLimitEditable || sharedLimitResult.ok);
-  const isChanged = memberLimitChanged || sharedLimitChanged || seatChanged;
+
+  return {
+    memberLimitInput,
+    setMemberLimitInput,
+    memberLimitResult,
+    memberLimitChanged,
+    sharedLimitInput,
+    setSharedLimitInput,
+    sharedLimitResult,
+    sharedLimitChanged,
+    seat,
+    setSeat,
+    seatChanged,
+    isValid:
+      memberLimitResult.ok && (!isSharedLimitEditable || sharedLimitResult.ok),
+    isChanged: memberLimitChanged || sharedLimitChanged || seatChanged,
+  };
+}
+
+type GroupUsageDraft = ReturnType<typeof useGroupUsageDraft>;
+
+function useSaveGroupUsage(
+  owner: LightWorkspaceType,
+  group: EditGroupUsageGroup,
+  draft: GroupUsageDraft,
+  onClose: () => void
+) {
+  const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
+    workspaceId: owner.sId,
+  });
+  const { doUpdateGroupSharedUsageLimit } = useUpdateGroupSharedUsageLimit({
+    owner,
+  });
+  const { doUpdateGroupGrantedSeatType } = useUpdateGroupGrantedSeatType({
+    owner,
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const { groupId, name: groupName } = group;
 
   const saveChanges = async (): Promise<boolean> => {
     setIsSaving(true);
     try {
       const results = await Promise.all([
-        memberLimitChanged
+        draft.memberLimitChanged && draft.memberLimitResult.ok
           ? doUpdateGroupSpendLimit({
               groupId,
               groupName,
-              limit: toSpendLimit(memberLimitResult.awuCredits),
+              limit: toSpendLimit(draft.memberLimitResult.awuCredits),
             }).then((body) => body !== null)
           : true,
-        sharedLimitChanged
+        draft.sharedLimitChanged && draft.sharedLimitResult.ok
           ? doUpdateGroupSharedUsageLimit({
               groupId,
               groupName,
-              limit: toSpendLimit(sharedLimitResult.awuCredits),
+              limit: toSpendLimit(draft.sharedLimitResult.awuCredits),
             })
           : true,
-        seatChanged
+        draft.seatChanged
           ? doUpdateGroupGrantedSeatType({
               groupId,
               groupName,
-              grantedSeatType: seat,
+              grantedSeatType: draft.seat,
             }).then((body) => body !== null)
           : true,
       ]);
@@ -189,55 +206,158 @@ function EditGroupUsageForm({
     }
   };
 
+  return { isSaving, saveChanges };
+}
+
+function useConfirmSeatRemoval(group: EditGroupUsageGroup) {
+  const { t } = useLingui();
+  const confirm = useContext(ConfirmContext);
+  const { name: groupName, memberCount } = group;
+
+  return (removedSeat: GroupGrantableSeatType) => {
+    const seatName = seatTypeDisplayName(removedSeat, t);
+    return confirm({
+      title: t`Remove group seat`,
+      message: t`Members of ${groupName} will lose their ${seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${plural(
+        memberCount,
+        { one: "# member", other: "# members" }
+      )}.`,
+      validateLabel: t`Remove seat`,
+      validateVariant: "warning",
+      cancelLabel: t`Cancel`,
+    });
+  };
+}
+
+interface GroupBudgetFieldProps {
+  group: EditGroupUsageGroup;
+  draft: GroupUsageDraft;
+  isEditable: boolean;
+  isSaving: boolean;
+}
+
+function GroupBudgetField({
+  group,
+  draft,
+  isEditable,
+  isSaving,
+}: GroupBudgetFieldProps) {
+  const { t } = useLingui();
+  const removeAction = useRemoveAction();
+  const usage = group.sharedUsageLimitUsage;
+  const usedCredits = usage ? formatCredits(usage.usedAwuCredits) : null;
+
+  let description = t`Shared by all members.`;
+  if (!isEditable && !usage) {
+    description = t`This group has no budget.`;
+  } else if (usedCredits !== null) {
+    description = t`Shared by all members. ${usedCredits} credits used so far this cycle.`;
+  }
+
+  return (
+    <CreditLimitInput
+      label={t`Group budget`}
+      value={draft.sharedLimitInput}
+      readOnly={!isEditable || isSaving}
+      validationMessage={
+        draft.sharedLimitResult.ok ? null : t(draft.sharedLimitResult.message)
+      }
+      onChange={draft.setSharedLimitInput}
+      description={description}
+      descriptionStatus="info"
+      action={removeAction(draft.sharedLimitInput, draft.setSharedLimitInput)}
+    />
+  );
+}
+
+interface GroupSeatReviewModalProps {
+  owner: LightWorkspaceType;
+  group: EditGroupUsageGroup;
+  seat: GroupGrantableSeatType;
+  seatPlans: SeatPlanResponseBody;
+  onClose: () => void;
+  onValidate: () => Promise<boolean>;
+}
+
+function GroupSeatReviewModal({
+  owner,
+  group,
+  seat,
+  seatPlans,
+  onClose,
+  onValidate,
+}: GroupSeatReviewModalProps) {
+  const { t } = useLingui();
+  const { doFetchGroupSeatMappingPreview } = useGroupSeatMappingPreview({
+    owner,
+  });
+  const reviewSeatName = seatTypeDisplayName(seat, t);
+  const { groupId, name: groupName } = group;
+
+  return (
+    <BulkChangeSeatModal
+      isOpen
+      onClose={onClose}
+      title={t`Grant ${reviewSeatName} to ${groupName}`}
+      memberCount={group.memberCount}
+      selectedMembers={[]}
+      seatPlans={seatPlans}
+      presetSeatType={seat}
+      onFetchPreview={() =>
+        doFetchGroupSeatMappingPreview({ groupId, seatType: seat })
+      }
+      onValidate={onValidate}
+    />
+  );
+}
+
+interface EditGroupUsageFormProps {
+  owner: LightWorkspaceType;
+  group: EditGroupUsageGroup;
+  seatOptions?: EditGroupUsageSeatOptions;
+  sharedUsageLimitAccess: SharedUsageLimitAccess;
+  onClose: () => void;
+}
+
+function EditGroupUsageForm({
+  owner,
+  group,
+  seatOptions,
+  sharedUsageLimitAccess,
+  onClose,
+}: EditGroupUsageFormProps) {
+  const { t } = useLingui();
+  const isSharedLimitEditable = sharedUsageLimitAccess === "editable";
+  const draft = useGroupUsageDraft(group, seatOptions, isSharedLimitEditable);
+  const { isSaving, saveChanges } = useSaveGroupUsage(
+    owner,
+    group,
+    draft,
+    onClose
+  );
+  const confirmSeatRemoval = useConfirmSeatRemoval(group);
+  const removeAction = useRemoveAction();
+  const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);
+  const groupName = group.name;
+
   const handleSave = async () => {
-    if (!isValid) {
-      return;
-    }
-    if (!isChanged) {
+    if (!draft.isChanged) {
       onClose();
       return;
     }
-    if (seatChanged && seat !== null) {
+    if (draft.seatChanged && draft.seat !== null) {
       setIsSeatReviewOpen(true);
       return;
     }
-    if (seatChanged && group.grantedSeatType !== null) {
-      const seatName = seatTypeDisplayName(group.grantedSeatType, t);
-      const confirmed = await confirm({
-        title: t`Remove group seat`,
-        message: t`Members of ${groupName} will lose their ${seatName} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${plural(
-          memberCount,
-          { one: "# member", other: "# members" }
-        )}.`,
-        validateLabel: t`Remove seat`,
-        validateVariant: "warning",
-        cancelLabel: t`Cancel`,
-      });
-      if (!confirmed) {
-        return;
-      }
+    if (
+      draft.seatChanged &&
+      group.grantedSeatType !== null &&
+      !(await confirmSeatRemoval(group.grantedSeatType))
+    ) {
+      return;
     }
     await saveChanges();
   };
-
-  const reviewSeatName = seat ? seatTypeDisplayName(seat, t) : null;
-  const removeLabel = t({
-    message: "Remove",
-    context: "remove a credit limit, button label",
-  });
-  const removeAction = (value: string, setValue: (value: string) => void) =>
-    value !== ""
-      ? { label: removeLabel, onClick: () => setValue("") }
-      : undefined;
-  const usedCredits = group.sharedUsageLimitUsage
-    ? formatCredits(group.sharedUsageLimitUsage.usedAwuCredits)
-    : null;
-  const groupBudgetDescription =
-    !isSharedLimitEditable && initialSharedLimitAwuCredits === null
-      ? t`This group has no budget.`
-      : usedCredits === null
-        ? t`Shared by all members.`
-        : t`Shared by all members. ${usedCredits} credits used so far this cycle.`;
 
   return (
     <>
@@ -252,37 +372,36 @@ function EditGroupUsageForm({
                 {t`Granted seat`}
               </span>
               <GroupSeatPickerDropdown
-                value={seat}
+                value={draft.seat}
                 grantableSeatTypes={seatOptions.grantableSeatTypes}
                 disabled={isSaving}
-                onChange={setSeat}
+                onChange={draft.setSeat}
               />
             </Page.Vertical>
           )}
           {sharedUsageLimitAccess !== "hidden" && (
-            <CreditLimitInput
-              label={t`Group budget`}
-              value={sharedLimitInput}
-              readOnly={!isSharedLimitEditable || isSaving}
-              validationMessage={
-                sharedLimitResult.ok ? null : t(sharedLimitResult.message)
-              }
-              onChange={setSharedLimitInput}
-              description={groupBudgetDescription}
-              descriptionStatus="info"
-              action={removeAction(sharedLimitInput, setSharedLimitInput)}
+            <GroupBudgetField
+              group={group}
+              draft={draft}
+              isEditable={isSharedLimitEditable}
+              isSaving={isSaving}
             />
           )}
           <CreditLimitInput
             label={t`Limit per member`}
-            value={memberLimitInput}
+            value={draft.memberLimitInput}
             readOnly={isSaving}
             validationMessage={
-              memberLimitResult.ok ? null : t(memberLimitResult.message)
+              draft.memberLimitResult.ok
+                ? null
+                : t(draft.memberLimitResult.message)
             }
-            onChange={setMemberLimitInput}
+            onChange={draft.setMemberLimitInput}
             description={t`Caps what each member can spend.`}
-            action={removeAction(memberLimitInput, setMemberLimitInput)}
+            action={removeAction(
+              draft.memberLimitInput,
+              draft.setMemberLimitInput
+            )}
           />
         </div>
       </DialogContainer>
@@ -296,23 +415,18 @@ function EditGroupUsageForm({
         rightButtonProps={{
           label: t`Save`,
           variant: "highlight",
-          disabled: isSaving || !isValid || !isChanged,
+          disabled: isSaving || !draft.isValid || !draft.isChanged,
           isLoading: isSaving,
           onClick: handleSave,
         }}
       />
-      {isSeatReviewOpen && seat && seatOptions && (
-        <BulkChangeSeatModal
-          isOpen
-          onClose={() => setIsSeatReviewOpen(false)}
-          title={t`Grant ${reviewSeatName} to ${groupName}`}
-          memberCount={memberCount}
-          selectedMembers={[]}
+      {isSeatReviewOpen && draft.seat && seatOptions && (
+        <GroupSeatReviewModal
+          owner={owner}
+          group={group}
+          seat={draft.seat}
           seatPlans={seatOptions.seatPlans}
-          presetSeatType={seat}
-          onFetchPreview={() =>
-            doFetchGroupSeatMappingPreview({ groupId, seatType: seat })
-          }
+          onClose={() => setIsSeatReviewOpen(false)}
           onValidate={saveChanges}
         />
       )}
