@@ -22,38 +22,34 @@ export type ApiKeySpendCapStatus = {
   monthlyUsageMicroUsd: number | null;
 };
 
-export async function getApiKeysSpendCapStatusByModelId(
+// One status per key, in the order of `keys`.
+export async function getApiKeysSpendCapStatuses(
   auth: Authenticator,
   keys: ApiKeySpendCapStatusInput[]
-): Promise<Map<ModelId, ApiKeySpendCapStatus>> {
+): Promise<ApiKeySpendCapStatus[]> {
   const plan = auth.subscription()?.plan;
   if (plan && isCreditPricedPlan(plan)) {
     const spendCappedByModelId = await getApiKeysSpendCappedByModelId(
       auth,
       keys
     );
-    return new Map(
-      keys.map((key) => [
-        key.id,
-        {
-          isSpendCapped: spendCappedByModelId.get(key.id) ?? false,
-          monthlyUsageMicroUsd: null,
-        },
-      ])
-    );
+    return keys.map((key) => ({
+      isSpendCapped: spendCappedByModelId.get(key.id) ?? false,
+      monthlyUsageMicroUsd: null,
+    }));
   }
 
-  return getLegacyApiKeysSpendCapStatusByModelId(auth, keys);
+  return getLegacyApiKeysSpendCapStatuses(auth, keys);
 }
 
 // Same tally `hasKeyReachedUsageCap` enforces against, but fails open: it only drives display.
-async function getLegacyApiKeysSpendCapStatusByModelId(
+async function getLegacyApiKeysSpendCapStatuses(
   auth: Authenticator,
   keys: ApiKeySpendCapStatusInput[]
-): Promise<Map<ModelId, ApiKeySpendCapStatus>> {
+): Promise<ApiKeySpendCapStatus[]> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const statuses = await concurrentExecutor(
+  return concurrentExecutor(
     keys,
     async (key): Promise<ApiKeySpendCapStatus> => {
       const cap = key.monthlyCapMicroUsd;
@@ -75,7 +71,6 @@ async function getLegacyApiKeysSpendCapStatusByModelId(
     },
     { concurrency: 8 }
   );
-  return new Map(keys.map((key, i) => [key.id, statuses[i]]));
 }
 
 /**

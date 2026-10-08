@@ -9,7 +9,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { ApiKeySpendCapStatus } from "@app/lib/spend_limits/api_key_cap_status";
-import { getApiKeysSpendCapStatusByModelId } from "@app/lib/spend_limits/api_key_cap_status";
+import { getApiKeysSpendCapStatuses } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -559,25 +559,19 @@ export class KeyResource extends BaseResource<KeyModel> {
     keys: KeyResource[],
     requestingUserModelId: ModelId
   ): Promise<KeyType[]> {
-    const [
-      spacesByKeyModelId,
-      analyticsGroupsByKeyModelId,
-      spendCapStatusByModelId,
-    ] = await Promise.all([
-      this.listSpacesByKeyModelId(auth, keys),
-      this.listAnalyticsGroupsByKeyModelId(auth, keys),
-      getApiKeysSpendCapStatusByModelId(auth, keys),
-    ]);
+    const [spacesByKeyModelId, analyticsGroupsByKeyModelId, spendCapStatuses] =
+      await Promise.all([
+        this.listSpacesByKeyModelId(auth, keys),
+        this.listAnalyticsGroupsByKeyModelId(auth, keys),
+        getApiKeysSpendCapStatuses(auth, keys),
+      ]);
 
-    return keys.map((key) =>
+    return keys.map((key, i) =>
       key.toJSON(
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
         analyticsGroupsByKeyModelId.get(key.id) ?? [],
-        spendCapStatusByModelId.get(key.id) ?? {
-          isSpendCapped: false,
-          monthlyUsageMicroUsd: null,
-        }
+        spendCapStatuses[i]
       )
     );
   }

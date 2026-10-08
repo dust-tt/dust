@@ -140,6 +140,16 @@ function formatMicroUsd(microUsd: number): string {
   return formatCurrency(microUsd / 1_000_000, "USD");
 }
 
+function formatLegacyUsage(key: KeyType): { used: string; cap: string } | null {
+  if (key.monthlyCapMicroUsd === null || key.monthlyUsageMicroUsd === null) {
+    return null;
+  }
+  return {
+    used: formatMicroUsd(key.monthlyUsageMicroUsd),
+    cap: formatMicroUsd(key.monthlyCapMicroUsd),
+  };
+}
+
 function formatMonthlyCap({
   key,
   showLegacyUsdMonthlyCap,
@@ -155,13 +165,9 @@ function formatMonthlyCap({
       : formatCredits(key.monthlyCapAwuCredits);
   }
   if (showLegacyUsdMonthlyCap) {
-    if (key.monthlyCapMicroUsd === null) {
-      return null;
-    }
-    const cap = formatMicroUsd(key.monthlyCapMicroUsd);
-    return key.monthlyUsageMicroUsd === null
-      ? cap
-      : `${formatMicroUsd(key.monthlyUsageMicroUsd)} / ${cap}`;
+    return key.monthlyCapMicroUsd === null
+      ? null
+      : formatMicroUsd(key.monthlyCapMicroUsd);
   }
   return "—";
 }
@@ -639,14 +645,18 @@ export function APIKeysTable({
           (consumption !== undefined ||
             (!hasMoreConsumptionRows && !consumptionError));
         const credits = consumption?.credits ?? (isConsumptionKnown ? 0 : null);
+        let monthlyCap = formatMonthlyCap({
+          key,
+          showLegacyUsdMonthlyCap,
+          showCreditMonthlyCap,
+        });
         let monthlyCapTooltip: string | null = null;
-        if (
-          showLegacyUsdMonthlyCap &&
-          key.monthlyCapMicroUsd !== null &&
-          key.monthlyUsageMicroUsd !== null
-        ) {
-          const used = formatMicroUsd(key.monthlyUsageMicroUsd);
-          const cap = formatMicroUsd(key.monthlyCapMicroUsd);
+        const legacyUsage = showLegacyUsdMonthlyCap
+          ? formatLegacyUsage(key)
+          : null;
+        if (legacyUsage) {
+          const { used, cap } = legacyUsage;
+          monthlyCap = `${used} / ${cap}`;
           monthlyCapTooltip = t`${used} used of ${cap} over the last 30 days`;
         }
         const menuItems: MenuItem[] =
@@ -673,11 +683,7 @@ export function APIKeysTable({
           secret: key.secret,
           status,
           credits,
-          monthlyCap: formatMonthlyCap({
-            key,
-            showLegacyUsdMonthlyCap,
-            showCreditMonthlyCap,
-          }),
+          monthlyCap,
           monthlyCapTooltip,
           lastUsedAt: key.lastUsedAt,
           menuItems,

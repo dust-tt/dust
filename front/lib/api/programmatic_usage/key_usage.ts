@@ -10,6 +10,7 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -67,7 +68,7 @@ async function getLast29DaysKeyUsageMicroUsd({
 // - ES is queried only once per day (at cache miss) for the previous 29 days
 // - Redis keys expire at midnight UTC, triggering a fresh ES sync daily
 const KEY_USAGE_REDIS_ORIGIN = "key_usage_tracking";
-const getKeyUsageRedisKey = (keyId: ModelId) => `key-usage:${keyId}`;
+export const getKeyUsageRedisKey = (keyId: ModelId) => `key-usage:${keyId}`;
 
 /**
  * Get usage from Redis cache, initializing from ES if missing.
@@ -84,28 +85,34 @@ export async function getKeyUsageMicroUsd({
 }): Promise<Result<number, Error>> {
   const redisKey = getKeyUsageRedisKey(keyId);
 
-  const redis = await runOnRedis(
-    { origin: KEY_USAGE_REDIS_ORIGIN },
-    async (client) => client
-  );
+  try {
+    const redis = await runOnRedis(
+      { origin: KEY_USAGE_REDIS_ORIGIN },
+      async (client) => client
+    );
 
-  const cached = await redis.get(redisKey);
-  if (cached !== null) {
-    return new Ok(parseInt(cached, 10));
+    const cached = await redis.get(redisKey);
+    if (cached !== null) {
+      return new Ok(parseInt(cached, 10));
+    }
+
+    const usageResult = await getLast29DaysKeyUsageMicroUsd({
+      workspace,
+      keyName,
+    });
+    if (usageResult.isErr()) {
+      return usageResult;
+    }
+
+    const ttlSeconds = getSecondsUntilMidnightUTC();
+    await redis.set(redisKey, usageResult.value.toString(), {
+      EX: ttlSeconds,
+    });
+
+    return new Ok(usageResult.value);
+  } catch (err) {
+    return new Err(normalizeError(err));
   }
-
-  const usageResult = await getLast29DaysKeyUsageMicroUsd({
-    workspace,
-    keyName,
-  });
-  if (usageResult.isErr()) {
-    return usageResult;
-  }
-
-  const ttlSeconds = getSecondsUntilMidnightUTC();
-  await redis.set(redisKey, usageResult.value.toString(), { EX: ttlSeconds });
-
-  return new Ok(usageResult.value);
 }
 
 /**
