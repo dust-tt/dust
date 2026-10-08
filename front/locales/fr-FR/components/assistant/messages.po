@@ -215,7 +215,7 @@ msgstr "{agentCount, plural, one {Passer # agent sur {modelLabel} ?} other {Pa
 
 #: front/components/assistant/SetModelAssistantsDialog.tsx
 msgid "This will replace the current model and reasoning effort for every selected agent."
-msgstr "Le modèle et l’effort de raisonnement actuels seront remplacés pour chaque agent sélectionné."
+msgstr "Le modèle et le niveau d’effort actuels seront remplacés pour chaque agent sélectionné."
 
 #: front/components/assistant/SetModelAssistantsDialog.tsx
 msgid "All other settings will remain unchanged."

@@ -43,7 +43,7 @@ msgstr "Rétablir la valeur par défaut"
 
 #: front/components/model_picker/ReasoningEffortSlider.tsx
 msgid "Reasoning effort"
-msgstr "Effort de raisonnement"
+msgstr "Niveau d’effort"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgid "This option isn't available on your workspace's current plan. Contact your administrator to upgrade."

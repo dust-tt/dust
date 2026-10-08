@@ -1271,7 +1271,7 @@ msgstr "Modèle"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Reasoning effort"
-msgstr "Effort de raisonnement"
+msgstr "Niveau d’effort"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "No model in this tier is available in this workspace."
@@ -1283,7 +1283,7 @@ msgstr "Fonctionnement des niveaux de modèles"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Model tiers group models and reasoning efforts by typical usage cost. Higher tiers include more capable, more expensive combinations."
-msgstr "Les niveaux de modèles regroupent les modèles et les efforts de raisonnement selon leur coût d’utilisation habituel. Les niveaux supérieurs incluent des combinaisons plus performantes et plus coûteuses."
+msgstr "Les niveaux de modèles regroupent les modèles et les niveaux d’effort selon leur coût d’utilisation habituel. Les niveaux supérieurs incluent des combinaisons plus performantes et plus coûteuses."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "What each tier includes"
@@ -1291,7 +1291,7 @@ msgstr "Contenu de chaque niveau"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Each tier includes a range of models and reasoning efforts with similar usage costs. Reasoning effort is how much work a model does before it answers: a higher effort can give better results on complex tasks, but usually costs more."
-msgstr "Chaque niveau comprend un ensemble de modèles et d’efforts de raisonnement aux coûts d’utilisation similaires. L’effort de raisonnement correspond au travail qu’un modèle fournit avant de répondre : un effort plus élevé peut donner de meilleurs résultats sur des tâches complexes, mais coûte généralement plus cher."
+msgstr "Chaque niveau comprend un ensemble de modèles et de niveaux d’effort aux coûts d’utilisation similaires. Le niveau d’effort correspond au travail qu’un modèle fournit avant de répondre : un niveau d’effort plus élevé peut donner de meilleurs résultats sur des tâches complexes, mais coûte généralement plus cher."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Why costs differ"
@@ -1299,7 +1299,7 @@ msgstr "Pourquoi les coûts diffèrent"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Usage cost depends on both the model and its reasoning effort. We compare each combination on representative tasks rather than on the model's token price alone. Raising the reasoning effort by one step usually increases the cost by about 30%."
-msgstr "Le coût d’utilisation dépend à la fois du modèle et de son effort de raisonnement. Nous comparons chaque combinaison sur des tâches représentatives plutôt que sur le seul prix des tokens du modèle. Augmenter l’effort de raisonnement d’un cran augmente généralement le coût d’environ 30 %."
+msgstr "Le coût d’utilisation dépend à la fois du modèle et de son niveau d’effort. Nous comparons chaque combinaison sur des tâches représentatives plutôt que sur le seul prix des tokens du modèle. Augmenter le niveau d’effort d’un cran augmente généralement le coût d’environ 30 %."
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "How access limits work"
@@ -1315,7 +1315,7 @@ msgstr "Voir le contenu"
 
 #: front/components/workspace/ModelTiersInfoModal.tsx
 msgid "Select a tier to see the models and reasoning efforts it includes."
-msgstr "Sélectionnez un niveau pour voir les modèles et les efforts de raisonnement qu’il inclut."
+msgstr "Sélectionnez un niveau pour voir les modèles et les niveaux d’effort qu’il inclut."
 
 #: front/components/workspace/ProgrammaticCostChart.tsx
 msgid "By Agent"

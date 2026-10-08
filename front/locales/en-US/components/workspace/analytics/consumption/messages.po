@@ -34,8 +34,8 @@ msgid "View all models for {selectedRowName}"
 msgstr "View all models for {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
-msgid "View all reasoning effort for {selectedRowName}"
-msgstr "View all reasoning effort for {selectedRowName}"
+msgid "View all reasoning efforts for {selectedRowName}"
+msgstr "View all reasoning efforts for {selectedRowName}"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "View all tools for {selectedRowName}"
