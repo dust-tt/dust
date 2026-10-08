@@ -209,13 +209,12 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   };
 
   const handleSave = async (data: PersonalInfoType) => {
-    await patchUser(
-      data.firstName,
-      data.lastName,
-      true,
-      undefined,
-      data.profilePictureUrl
-    );
+    await patchUser({
+      firstName: data.firstName,
+      lastName: data.lastName,
+      notifySuccess: true,
+      imageUrl: data.profilePictureUrl,
+    });
   };
 
   if (isUserLoading) {

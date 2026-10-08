@@ -65,16 +65,17 @@ export function useProfileOnboardingForm({
   }, [formData, showErrors]);
 
   const { submit, isSubmitting } = useSubmitFunction(async () => {
-    await patchUser(
-      formData.firstName.trim(),
-      formData.lastName.trim(),
-      false,
-      formData.jobType ?? undefined,
-      undefined,
-      showFavoritePlatformsStep ? Array.from(selectedPlatforms) : undefined,
+    await patchUser({
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      notifySuccess: false,
+      jobType: formData.jobType ?? undefined,
+      favoritePlatforms: showFavoritePlatformsStep
+        ? Array.from(selectedPlatforms)
+        : undefined,
       emailProvider,
-      workspace.sId
-    );
+      workspaceId: workspace.sId,
+    });
 
     // Clear the pending profile onboarding marker from the user metadata
     // (set at the user's first login).
