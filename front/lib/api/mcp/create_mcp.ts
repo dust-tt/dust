@@ -29,7 +29,7 @@ export async function createMCPAction(
     stepContext,
   }: {
     actionConfiguration: MCPToolConfigurationType;
-    agentMessage: AgentMessageType;
+    agentMessage: Pick<AgentMessageType, "agentMessageId">;
     augmentedInputs: Record<string, unknown>;
     conversation: ConversationWithoutContentType;
     status: ToolExecutionStatus;
