@@ -1,7 +1,13 @@
 import { describe, expect, it } from "bun:test";
 import { calculatePorts } from "../../src/lib/ports";
-import { getHealthChecks, SERVICE_REGISTRY, WARM_SERVICES } from "../../src/lib/registry";
-import { ALL_SERVICES } from "../../src/lib/services";
+import {
+  buildAutoStartOverrides,
+  DEFAULT_WARM_SERVICES,
+  getHealthChecks,
+  getWarmServices,
+  SERVICE_REGISTRY,
+} from "../../src/lib/registry";
+import { ALL_SERVICES, type ServiceName } from "../../src/lib/services";
 
 describe("registry", () => {
   describe("SERVICE_REGISTRY", () => {
@@ -86,30 +92,62 @@ describe("registry", () => {
     });
   });
 
-  describe("WARM_SERVICES", () => {
-    it("excludes sparkle, sdk, viz, storybook, sqlite-worker and collab from warm services", () => {
-      expect(WARM_SERVICES).not.toContain("sparkle");
-      expect(WARM_SERVICES).not.toContain("sdk");
-      expect(WARM_SERVICES).not.toContain("viz");
-      expect(WARM_SERVICES).not.toContain("storybook");
-      expect(WARM_SERVICES).not.toContain("sqlite-worker");
-      expect(WARM_SERVICES).not.toContain("collab");
+  describe("getWarmServices", () => {
+    it("defaults to the proxy plus the default warm services", () => {
+      expect(getWarmServices({})).toEqual([
+        "front-api",
+        "marketing",
+        "proxy",
+        "core",
+        "oauth",
+        "connectors",
+        "front-workers",
+        "front-spa-poke",
+        "front-spa-app",
+      ]);
     });
 
-    it("includes all other services", () => {
-      expect(WARM_SERVICES).toContain("front-api");
-      expect(WARM_SERVICES).toContain("marketing");
-      expect(WARM_SERVICES).toContain("proxy");
-      expect(WARM_SERVICES).toContain("core");
-      expect(WARM_SERVICES).toContain("oauth");
-      expect(WARM_SERVICES).toContain("connectors");
-      expect(WARM_SERVICES).toContain("front-workers");
-      expect(WARM_SERVICES).toContain("front-spa-poke");
-      expect(WARM_SERVICES).toContain("front-spa-app");
+    it("never includes cold state services", () => {
+      const warm = getWarmServices({ autoStartServices: { sdk: true, sparkle: true } });
+      expect(warm).not.toContain("sdk");
+      expect(warm).not.toContain("sparkle");
     });
 
-    it("has 9 services (all except sparkle, sdk, viz, storybook, sqlite-worker, collab)", () => {
-      expect(WARM_SERVICES).toHaveLength(9);
+    it("applies overrides on top of the defaults", () => {
+      const warm = getWarmServices({ autoStartServices: { viz: true, marketing: false } });
+      expect(warm).toContain("viz");
+      expect(warm).not.toContain("marketing");
+      expect(warm).toContain("core");
+    });
+
+    it("always includes the proxy", () => {
+      expect(getWarmServices({ autoStartServices: { proxy: false } })).toContain("proxy");
+    });
+
+    it("returns services in ALL_SERVICES order", () => {
+      const warm = getWarmServices({ autoStartServices: { collab: true, viz: true } });
+      const order = warm.map((service) => ALL_SERVICES.indexOf(service));
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+    });
+  });
+
+  describe("buildAutoStartOverrides", () => {
+    it("returns no overrides when the selection matches the defaults", () => {
+      expect(buildAutoStartOverrides(DEFAULT_WARM_SERVICES)).toEqual({});
+    });
+
+    it("only records services that differ from the defaults", () => {
+      const selected: ServiceName[] = [
+        ...DEFAULT_WARM_SERVICES.filter((s) => s !== "marketing"),
+        "storybook",
+      ];
+      expect(buildAutoStartOverrides(selected)).toEqual({ marketing: false, storybook: true });
+    });
+
+    it("round-trips through getWarmServices", () => {
+      const selected: ServiceName[] = ["core", "oauth", "viz"];
+      const warm = getWarmServices({ autoStartServices: buildAutoStartOverrides(selected) });
+      expect(warm).toEqual(["proxy", "core", "oauth", "viz"]);
     });
   });
 

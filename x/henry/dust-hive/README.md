@@ -173,7 +173,7 @@ external workspace is archived.
 |---------|-------------|
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `adopt NAME --path PATH` | Register an existing Git worktree as an environment |
-| `warm [NAME...] [--no-forward] [--force-ports]` | Start docker + all services |
+| `warm [NAME...] [--no-forward] [--force-ports]` | Start docker + autostart services (see `autostart`) |
 | `cool [NAME...]` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME...]` | Resume stopped environments |
 | `stop [NAME] [SERVICE]` | Full stop + remove docker containers, or stop one service |
@@ -193,6 +193,7 @@ external workspace is archived.
 | Command | Description |
 |---------|-------------|
 | `setup [-y]` | Check prerequisites and guide initial setup (run this first!) |
+| `autostart [-l] [--reset]` | Choose which services `warm` starts automatically |
 | `doctor` | Check prerequisites (non-interactive) |
 | `cache` | Show binary cache status |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
@@ -316,6 +317,7 @@ You can customize the behavior of `dust-hive` by editing `~/.dust-hive/settings.
 * **multiplexer**: Terminal multiplexer to use (`"zellij"` or `"tmux"`, default: `"zellij"`)
 * **branchPrefix**: Prefix to add to branch names (e.g., `"tom-"` creates branches like `"tom-myenv"`)
 * **useGitSpice**: Use git-spice to manage stacks (requires git-spice installed and configured)
+* **autoStartServices**: Per-service overrides of the services `warm` starts (e.g. `{"viz": true, "marketing": false}`). Manage it with `dust-hive autostart` (interactive), `dust-hive autostart --list` or `dust-hive autostart --reset`. `sdk`, `sparkle` and `proxy` always start.
 
 ## Terminal Sessions (zellij/tmux)
 
