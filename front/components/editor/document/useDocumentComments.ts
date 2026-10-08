@@ -183,28 +183,31 @@ export interface PanelFocusRequest {
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-suggestion
- * Applying a suggestion MUST require canWrite and an open thread, MUST replace the commented
- * text with the suggestion's content, and only once that text change is in the document MUST it
- * resolve the thread outside text undo history. It MUST be refused with a reason, leaving the
- * document unchanged, when the text change is refused or filtered out, when the
- * suggestion is not one paragraph of inline Markdown, the commented text spans more than one
- * textblock, or the document would no longer save. A suggestion template MUST hold the current
- * commented text as Markdown, so applying it unchanged leaves the text as it is.
+ * Applying a suggestion MUST require canWrite and an open thread, MUST replace the commented text
+ * with the suggestion's content, and only once that text change is in the document MUST it resolve
+ * the thread outside text undo history; when that resolution is refused, the text change MUST stay
+ * and the refusal MUST be returned with its reason. It MUST be refused with a reason, leaving the
+ * document unchanged, when the text change is refused or filtered out, when the suggestion is not
+ * one paragraph of inline Markdown, the commented text spans more than one textblock, or the
+ * document would no longer save. A suggestion template MUST hold the current commented text as
+ * Markdown, so applying it unchanged leaves the text as it is.
  */
 /**
  * @cc [owner:tdraier,label:product] document-live-comment-commands
  * With `live`, posting, replying to, resolving and deleting comments MUST go through the session
  * and MUST NOT change the threads in the document, which only the session sends, with two
- * exceptions: a new thread MUST be anchored to the draft once the session created it, or deleted
- * from the session when it can no longer be anchored or the session accepted it without
- * returning it, and deleting MUST remove the comment's marks once the session deleted the thread
- * or answered that it has none, never before. A new comment or reply the codec could not write,
- * or the document would no longer save with, MUST be refused before the session sees it, checked
- * with the current author and a full-length signature, and without the comment marks that have no
- * thread, which the session drops when it writes the file. Every refusal from the session, and a
- * command that could not be sent, MUST be returned with a reason, never thrown; applying a
- * suggestion whose resolution the session refuses MUST keep the text change and return that
- * reason.
+ * exceptions: a new thread MUST be anchored to the draft once the session created it, and deleting
+ * MUST remove the comment's marks once the session deleted the thread or answered that it has none,
+ * never before. A new thread MUST be deleted from the session instead when it can no longer be
+ * anchored, when the session accepted it without returning it or returned a thread the codec cannot
+ * write, or when the answer to its `add` was lost and the session's threads then show it; such a
+ * delete the session could not receive MUST be sent again once its threads show the thread again. A
+ * new comment or reply the codec could not write, or the document would no longer save with, MUST
+ * be refused before the session sees it, checked with the current author and a full-length
+ * signature, and without the comment marks that have no thread, which the session drops when it
+ * writes the file. Every refusal from the session, and a command that could not be sent, MUST be
+ * returned with a reason, never thrown; applying a suggestion whose resolution the session refuses
+ * MUST keep the text change and return that reason.
  */
 export const useDocumentComments = ({
   editor,
@@ -497,15 +500,30 @@ export const useDocumentComments = ({
         ? new Ok(undefined)
         : new Err(liveErrorMessage(sent.error));
     };
-    // TODO(co-edition): a delete sent once the channel has closed never reaches the session, so
-    // a thread created just before a disconnect stays there without an anchor.
+    // A lost connection can drop the answer, not the command: the session's threads, sent again
+    // on reconnect, tell whether it still holds the thread.
+    const discardOnceSeen = (id: string) => {
+      const unsubscribe = channel.onThreads((threads) => {
+        unsubscribe();
+        if (threads.some((thread) => thread.id === id)) {
+          discard(id);
+        }
+      });
+    };
     const discard = (id: string) => {
-      void send({ type: "delete", commentId: id });
+      void send({ type: "delete", commentId: id }).then((deleted) => {
+        if (deleted.isErr() && deleted.error === "unavailable") {
+          discardOnceSeen(id);
+        }
+      });
     };
     return {
       add: async (id, body) => {
         const created = await send({ type: "add", commentId: id, body });
         if (created.isErr()) {
+          if (created.error === "unavailable") {
+            discardOnceSeen(id);
+          }
           return new Err(liveErrorMessage(created.error));
         }
         if (!created.value) {
@@ -667,7 +685,12 @@ export const useDocumentComments = ({
       if (!canWrite || !editor || !author || !state.draft) {
         return new Err(t(UNAVAILABLE_MESSAGE));
       }
-      const id = crypto.randomUUID();
+      let id: string;
+      try {
+        id = crypto.randomUUID();
+      } catch {
+        return new Err(t(UNAVAILABLE_MESSAGE));
+      }
       const checked = checkNewMessage(editor, author, id, undefined, body);
       if (checked.isErr()) {
         return checked;
