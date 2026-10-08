@@ -391,7 +391,7 @@ interface NumericCellContentProps extends React.HTMLAttributes<HTMLDivElement> {
 
 function formatNumericValue(
   value: number,
-  locale: string,
+  locale: string | undefined,
   precision: number | undefined
 ) {
   return formatNumber(
@@ -421,7 +421,7 @@ function formatNumericCellValue({
   placeholder,
 }: {
   value: number | null | undefined;
-  locale: string;
+  locale: string | undefined;
   precision: number | undefined;
   unit: string | undefined;
   unitPosition: "prefix" | "suffix";

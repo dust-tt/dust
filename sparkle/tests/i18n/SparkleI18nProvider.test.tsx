@@ -2,10 +2,8 @@ import { setupI18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
 import { NumericCellContent } from "@sparkle/components/DataTable/cells";
 import { Pagination } from "@sparkle/components/Pagination";
-import {
-  loadSparkleI18n,
-  preloadSparkleLocale,
-} from "@sparkle/lib/i18n/catalogs";
+import { preloadSparkleLocale } from "@sparkle/lib/i18n/catalogs";
+import { formatDate, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -63,15 +61,36 @@ describe("SparkleI18nProvider", () => {
     expect(html).toContain("1\u202f234,5");
   });
 
+  it("picks plural forms with the catalog's language, not the format locale's", () => {
+    // `fr-FR` treats 0 as singular, English as plural.
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        <Pagination
+          rowCount={0}
+          pagination={{ pageIndex: 0, pageSize: 10 }}
+          setPagination={() => undefined}
+        />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("0 items");
+  });
+
   it("formats dates in the format locale", () => {
     const date = new Date(Date.UTC(2026, 0, 31, 12));
-    const formatDate = (formatLocale: string) =>
-      loadSparkleI18n("en-US", formatLocale).then((i18n) =>
-        i18n.date(date, { timeZone: "UTC" })
+    function FormattedDate() {
+      return <>{formatDate(date, { timeZone: "UTC" }, useFormatLocale())}</>;
+    }
+    const render = (formatLocale: string) =>
+      renderToStaticMarkup(
+        <SparkleI18nProvider locale="en-US" formatLocale={formatLocale}>
+          <FormattedDate />
+        </SparkleI18nProvider>
       );
 
-    return expect(
-      Promise.all([formatDate("en-US"), formatDate("en-GB")])
-    ).resolves.toEqual(["1/31/2026", "31/01/2026"]);
+    expect([render("en-US"), render("en-GB")]).toEqual([
+      "1/31/2026",
+      "31/01/2026",
+    ]);
   });
 });

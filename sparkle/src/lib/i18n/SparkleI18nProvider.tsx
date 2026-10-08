@@ -24,16 +24,16 @@ interface SparkleI18nProviderProps {
  */
 /**
  * @cc [owner:ykmsd,label:product] sparkle-i18n-provider-follows-format-locale
- * Sparkle components below a `SparkleI18nProvider` MUST format numbers and dates in `formatLocale`
- * (see `sparkle-i18n-formats-in-format-locale`) as soon as they render the catalog of `locale`,
- * and in the same render as a `formatLocale` change when that catalog was already loaded.
+ * `useFormatLocale` below a `SparkleI18nProvider` MUST return its `formatLocale` from the render
+ * where it changes, independently of the catalog of `locale` (which may still be loading). The
+ * format locale MUST NOT affect the messages, so that plural forms follow the catalog's language.
  */
 export function SparkleI18nProvider({
   locale,
   formatLocale,
   children,
 }: SparkleI18nProviderProps) {
-  const loadedI18n = getLoadedSparkleI18n(locale, formatLocale);
+  const loadedI18n = getLoadedSparkleI18n(locale);
   const [renderedI18n, setRenderedI18n] = useState(
     () => loadedI18n ?? sourceLocaleI18n
   );
@@ -48,7 +48,7 @@ export function SparkleI18nProvider({
       return;
     }
     let isCurrent = true;
-    loadSparkleI18n(locale, formatLocale)
+    loadSparkleI18n(locale)
       .then((i18n) => {
         if (isCurrent) {
           setRenderedI18n(i18n);
@@ -64,11 +64,11 @@ export function SparkleI18nProvider({
     return () => {
       isCurrent = false;
     };
-  }, [locale, formatLocale, loadedI18n]);
+  }, [locale, loadedI18n]);
 
   const context = useMemo(
-    () => ({ i18n: renderedI18n, _: renderedI18n.t }),
-    [renderedI18n]
+    () => ({ i18n: renderedI18n, _: renderedI18n.t, formatLocale }),
+    [renderedI18n, formatLocale]
   );
 
   return (

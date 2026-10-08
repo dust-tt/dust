@@ -43,13 +43,9 @@ export function formatRelativeTime(
 
 /**
  * @cc [owner:ykmsd,label:product;react] use-format-locale-follows-provider
- * `useFormatLocale` MUST return the `formatLocale` of the closest `SparkleI18nProvider` once its
- * catalog renders, and the runtime's default locale when that `formatLocale` is `undefined` or
- * there is no provider (see `sparkle-i18n-formats-in-format-locale`).
+ * `useFormatLocale` MUST return the `formatLocale` of the closest `SparkleI18nProvider`, and
+ * `undefined` (formatting in the runtime's default locale) when it has none or there is no provider.
  */
-export function useFormatLocale(): string {
-  const { i18n } = useLingui();
-  // Sparkle's `I18n` instances are always created with exactly one format locale.
-  const locales = i18n.locales ?? i18n.locale;
-  return Array.isArray(locales) ? locales[0] : locales;
+export function useFormatLocale(): string | undefined {
+  return useLingui().formatLocale;
 }
