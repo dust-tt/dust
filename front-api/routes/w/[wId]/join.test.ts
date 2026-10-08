@@ -84,8 +84,12 @@ describe("GET /api/w/:wId/join", () => {
     const response = await joinRequest(otherWorkspace.sId, { t: token });
 
     expect(response.status).toBe(404);
-    const data = (await response.json()) as Record<string, unknown>;
+    const data = (await response.json()) as {
+      workspace?: unknown;
+      error: { type: string };
+    };
     expect(data.workspace).toBeUndefined();
+    expect(data.error.type).toBe("invitation_workspace_mismatch");
   });
 
   it("returns 400 with redirectUrl for an invalid (mangled) token", async () => {
@@ -136,10 +140,7 @@ describe("GET /api/w/:wId/join", () => {
     const response = await joinRequest(workspace.sId);
 
     expect(response.status).toBe(404);
-    const data = (await response.json()) as {
-      error: { type: string; message: string };
-    };
-    expect(data.error.type).toBe("workspace_not_found");
-    expect(data.error.message).toContain("auto-join");
+    const data = (await response.json()) as { error: { type: string } };
+    expect(data.error.type).toBe("workspace_auto_join_disabled");
   });
 });

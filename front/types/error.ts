@@ -100,6 +100,8 @@ const API_ERROR_TYPES = [
   "template_not_found",
   // Invitations:
   "invitation_already_sent_recently",
+  "invitation_workspace_mismatch",
+  "workspace_auto_join_disabled",
   // DustAppSecrets:
   "dust_app_secret_not_found",
   // Key:

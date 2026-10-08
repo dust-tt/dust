@@ -98,6 +98,8 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   invalid_pagination_parameters: msg`The pagination parameters are invalid.`,
   table_not_found: msg`Table not found.`,
   invitation_already_sent_recently: msg`An invitation was already sent recently.`,
+  invitation_workspace_mismatch: msg`This invitation is for a different workspace.`,
+  workspace_auto_join_disabled: msg`This workspace doesn't allow joining with your company email. Ask an admin to invite you.`,
   dust_app_secret_not_found: msg`Secret not found.`,
   key_not_found: msg`API key not found.`,
   insufficient_key_scope: msg`The API key doesn't have the required scope.`,

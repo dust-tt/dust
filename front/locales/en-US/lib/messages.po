@@ -350,6 +350,14 @@ msgid "An invitation was already sent recently."
 msgstr "An invitation was already sent recently."
 
 #: front/lib/api_error_messages.ts
+msgid "This invitation is for a different workspace."
+msgstr "This invitation is for a different workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace doesn't allow joining with your company email. Ask an admin to invite you."
+msgstr "This workspace doesn't allow joining with your company email. Ask an admin to invite you."
+
+#: front/lib/api_error_messages.ts
 msgid "Secret not found."
 msgstr "Secret not found."
 

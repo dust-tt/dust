@@ -84,7 +84,7 @@ app.get(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "workspace_not_found",
+          type: "workspace_auto_join_disabled",
           message:
             "The workspace does not have a verified domain with auto-join enabled.",
         },
@@ -116,8 +116,8 @@ app.get(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "workspace_not_found",
-              message: "The workspace was not found.",
+              type: "invitation_workspace_mismatch",
+              message: "The invitation does not belong to this workspace.",
             },
           });
         }

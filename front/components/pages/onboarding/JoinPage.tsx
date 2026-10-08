@@ -1,8 +1,8 @@
 import Custom404 from "@app/components/pages/Custom404";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
+import { formatError } from "@app/lib/api_error_messages";
 import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
-import { useJoinData } from "@app/lib/swr/workspaces";
+import { useJoinData, useNoWorkspaceUserLocale } from "@app/lib/swr/workspaces";
 import {
   AlertCircle,
   Button,
@@ -16,11 +16,17 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 
+/**
+ * @cc [owner:sfriquet,label:error-handling;product] join-error-from-code
+ * A join data error MUST be shown as the `description` and `details` of
+ * `formatError(error, { hasLocalisation })`, with the `hasLocalisation` of
+ * `useNoWorkspaceUserLocale`, the hook that resolves the locale this page renders in.
+ */
 export function JoinPage() {
   const wId = useRequiredPathParam("wId");
   const token = useSearchParam("t");
   const conversationId = useSearchParam("cId");
-  const formatErrorDescription = useFormatErrorDescription();
+  const { hasLocalisation } = useNoWorkspaceUserLocale();
   const { t } = useLingui();
 
   const {
@@ -45,7 +51,9 @@ export function JoinPage() {
   // Show 404 for unknown workspaces or missing auto-join domains.
   if (!isJoinDataLoading && !joinData) {
     if (joinDataError) {
-      const errorMessage = formatErrorDescription(joinDataError);
+      const { description, details } = formatError(joinDataError, {
+        hasLocalisation,
+      });
 
       return (
         <div className="flex h-dvh items-center justify-center">
@@ -64,9 +72,14 @@ export function JoinPage() {
                   We couldn't load the invitation. Please try again.
                 </Trans>
               </p>
-              <p className="copy-xs font-mono text-muted-foreground">
-                {errorMessage}
+              <p className="copy-sm leading-tight text-muted-foreground">
+                {description}
               </p>
+              {details && (
+                <p className="copy-xs whitespace-pre-line font-mono text-muted-foreground">
+                  {details}
+                </p>
+              )}
             </div>
             <Button
               variant="outline"
