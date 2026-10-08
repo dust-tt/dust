@@ -38,7 +38,6 @@ export const ADMIN_SECTION_IDS = {
     // Header CTA / credit pool purchase surface (always mounted on Credits).
     addCredits: "usage-add-credits",
     spendingPolicies: "usage-spending-policies",
-    costManagement: "usage-cost-management",
     programmatic: "usage-programmatic",
     notifications: "usage-notifications",
   },

@@ -12,7 +12,7 @@ import { OpenPodPolicy } from "@app/components/workspace/settings/OpenPodsPolicy
 import { PodKnowledgePolicy } from "@app/components/workspace/settings/PodKnowledgePolicy";
 import { PrivateConversationUrlsToggle } from "@app/components/workspace/settings/PrivateConversationUrlsToggle";
 import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
-import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
+import { SelfImprovingSkillsTogglesSection } from "@app/components/workspace/settings/SelfImprovingSkillsTogglesSection";
 import { VoiceTranscriptionToggle } from "@app/components/workspace/settings/VoiceTranscriptionToggle";
 import { WorkspaceAnalyticsToggle } from "@app/components/workspace/settings/WorkspaceAnalyticsToggle";
 import { WorkspaceDefaultAgentPicker } from "@app/components/workspace/settings/WorkspaceDefaultAgentPicker";
@@ -58,7 +58,6 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import { useState } from "react";
 
 const GOVERNANCE_TABS = ["agents", "pods", "features"] as const;
 type GovernanceTab = (typeof GOVERNANCE_TABS)[number];
@@ -128,11 +127,11 @@ export const GovernancePage = () => {
 
   const hasSelfImprovement = useIsSelfImprovementAvailable();
   const reinforcementUnit = useReinforcementBillingUnit({ owner });
-  const [defaultCapPerSkill, setDefaultCapPerSkill] = useState(() =>
+  const defaultCapPerSkill =
     reinforcementUnit === "awu_credits"
       ? getWorkspaceDefaultSelfImprovementCapPerSkillAwuCredits(owner)
-      : getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) / 1_000_000
-  );
+      : getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd(owner) /
+        1_000_000;
 
   const { tab, setTab } = useAdminPageTab<GovernanceTab>(
     GOVERNANCE_TABS,
@@ -251,11 +250,7 @@ export const GovernancePage = () => {
               <AdminSectionAnchor
                 sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.settings}
               >
-                <SelfImprovingSkillsSettingsSection
-                  owner={owner}
-                  showCaps={false}
-                  onDefaultCapPerSkillSaved={setDefaultCapPerSkill}
-                />
+                <SelfImprovingSkillsTogglesSection owner={owner} />
               </AdminSectionAnchor>
               <AdminSectionAnchor
                 sectionId={ADMIN_SECTION_IDS.selfImprovingSkills.skills}
