@@ -106,7 +106,6 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
       }
 
       const written = await writeLiveSource(hocuspocus, {
-        documentName: toLiveDocumentName(workspaceId, canonicalPath),
         file: file.value,
         base,
         source,
