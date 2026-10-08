@@ -2,7 +2,6 @@ import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdo
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import type { AgentSearchSelectionMode } from "@app/types/agent_search/agent_search";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -41,16 +40,17 @@ interface AgentPickerProps {
   onOpenChange?: (open: boolean) => void;
   selectedAgentId?: string | null;
   onDeselect?: () => void;
-  selectionMode?: AgentSearchSelectionMode;
+  showFavoritesFirst?: boolean;
 }
 
 /**
  * @cc [owner:aubin-tchoi,label:react;product] agent-picker-search-rollout
- * The open, enabled picker MUST search agents in alphabetical order in "all" mode.
+ * The open, enabled picker MUST search agents in alphabetical order by default.
  * A selected match MUST stay first, including a supplied selection beyond the
  * first search page when the query is blank.
- * Favorite selection modes MUST use the search API's default ordering: "favorites_or_all"
- * selects favorites alphabetically for empty queries and otherwise searches by relevance.
+ * With showFavoritesFirst, an empty query MUST show favorites before other agents,
+ * preserving each query's alphabetical order without duplicates. Typed queries MUST
+ * search all agents by relevance without promoting favorites.
  */
 export function AgentPicker({
   owner,
@@ -67,32 +67,54 @@ export function AgentPicker({
   onOpenChange,
   selectedAgentId,
   onDeselect,
-  selectionMode = "all",
+  showFavoritesFirst = false,
 }: AgentPickerProps) {
   const { t } = useLingui();
   const clientType = useClientType();
   const isMobile = useIsMobile();
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const hasQuery = searchText.trim().length > 0;
+  const shouldFetchFavorites = showFavoritesFirst && !hasQuery;
 
   const {
-    agents: searchResults,
-    isAgentsLoading,
-    isAgentsError,
+    agents: allAgents,
+    isAgentsLoading: isSearchLoading,
+    isAgentsError: isSearchError,
   } = useSearchAgents({
     owner,
     searchTerm: searchText,
-    sortBy: selectionMode === "all" ? "name" : undefined,
+    sortBy: showFavoritesFirst && hasQuery ? "relevance" : "name",
     permissionFiltering: "strict",
-    selectionMode,
+    selectionMode: "all",
     disabled: !isOpen || disabled,
   });
+  const {
+    agents: favoriteAgents,
+    isAgentsLoading: isFavoritesLoading,
+    isAgentsError: isFavoritesError,
+  } = useSearchAgents({
+    owner,
+    searchTerm: "",
+    sortBy: "name",
+    permissionFiltering: "strict",
+    selectionMode: "favorites_only",
+    disabled: !isOpen || disabled || !shouldFetchFavorites,
+  });
+
+  // Wait for both lists so favorites do not jump above already displayed results.
+  const isAgentsLoading = isSearchLoading || isFavoritesLoading;
+  const isAgentsError =
+    isSearchError || (shouldFetchFavorites && isFavoritesError);
+  const favoriteIds = new Set(favoriteAgents.map((agent) => agent.sId));
+  const searchResults = [
+    ...favoriteAgents,
+    ...allAgents.filter((agent) => !favoriteIds.has(agent.sId)),
+  ];
   const selected =
     searchResults.find((a) => a.sId === selectedAgentId) ??
     // Keep the current selection visible even if it is beyond the first search page.
-    (!searchText.trim()
-      ? agents.find((a) => a.sId === selectedAgentId)
-      : undefined);
+    (!hasQuery ? agents.find((a) => a.sId === selectedAgentId) : undefined);
   const searchedAgents = selected
     ? [selected, ...searchResults.filter((a) => a.sId !== selectedAgentId)]
     : searchResults;

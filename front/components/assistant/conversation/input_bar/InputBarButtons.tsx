@@ -197,7 +197,7 @@ function InputBarAgentButton({
       agents={allAgents}
       selectedAgentId={selectedAgent?.id}
       onDeselect={onAgentRemove}
-      selectionMode="favorites_or_all"
+      showFavoritesFirst
       showDropdownArrow={false}
       side={conversation ? "top" : "bottom"}
       showFooterButtons={showFooterButtons}

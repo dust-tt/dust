@@ -151,7 +151,7 @@ describe("AgentPicker", () => {
     const user = userEvent.setup();
     renderPicker({
       selectedAgentId: legacyAgent.sId,
-      selectionMode: "favorites_or_all",
+      showFavoritesFirst: true,
     });
     await user.click(screen.getByRole("button", { name: "Pick an agent" }));
     await screen.findByRole("menuitem", { name: "Zulu" });
@@ -166,26 +166,31 @@ describe("AgentPicker", () => {
     ).toBeInTheDocument();
   });
 
-  it("prefers favorites without overriding the API's query-dependent sorting", async () => {
+  it("shows favorites before other agents without duplicates, then searches all by relevance", async () => {
     const { fetcherWithBody, renderPicker } = await setup();
-    fetcherWithBody.mockResolvedValue({
-      ...searchResponse,
-      agents: [remoteAgents[1], remoteAgents[0]],
-    });
+    fetcherWithBody.mockImplementation(async ([, body]) =>
+      "selectionMode" in body && body.selectionMode === "favorites_only"
+        ? { ...searchResponse, agents: [remoteAgents[1]], total: 1 }
+        : searchResponse
+    );
     const user = userEvent.setup();
-    renderPicker({ selectionMode: "favorites_or_all", agents: [] });
+    renderPicker({ showFavoritesFirst: true, agents: [] });
+    expect(fetcherWithBody).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Pick an agent" }));
     await screen.findByRole("menuitem", { name: "Beta" });
-    expect(fetcherWithBody).toHaveBeenCalledWith([
-      expect.any(String),
-      expect.objectContaining({
-        query: "",
-        selectionMode: "favorites_or_all",
-        sortBy: undefined,
-        sortOrder: undefined,
-      }),
-      "POST",
-    ]);
+    expect(fetcherWithBody).toHaveBeenCalledTimes(2);
+    for (const selectionMode of ["favorites_only", "all"]) {
+      expect(fetcherWithBody).toHaveBeenCalledWith([
+        expect.any(String),
+        expect.objectContaining({
+          query: "",
+          selectionMode,
+          sortBy: "name",
+          permissionFiltering: "strict",
+        }),
+        "POST",
+      ]);
+    }
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent)
     ).toEqual(["Beta", "Alpha"]);
@@ -193,20 +198,67 @@ describe("AgentPicker", () => {
     fireEvent.change(screen.getByPlaceholderText("Search for agents"), {
       target: { value: "beta" },
     });
-    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(3));
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       expect.any(String),
       expect.objectContaining({
         query: "beta",
-        selectionMode: "favorites_or_all",
-        sortBy: undefined,
-        sortOrder: undefined,
+        selectionMode: "all",
+        sortBy: "relevance",
       }),
       "POST",
     ]);
     for (const [[, body]] of fetcherWithBody.mock.calls) {
       expect(body).not.toHaveProperty("favoritesFirst");
     }
+    await screen.findByRole("menuitem", { name: "Alpha" });
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent)
+    ).toEqual(["Alpha", "Beta"]);
+
+    fireEvent.change(screen.getByPlaceholderText("Search for agents"), {
+      target: { value: "" },
+    });
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole("menuitem").map((item) => item.textContent)
+      ).toEqual(["Beta", "Alpha"]);
+    });
+  });
+
+  it("waits for favorites before showing all agents when there are no favorites", async () => {
+    const { fetcherWithBody, onItemClick, renderPicker } = await setup();
+    let resolveFavorites: (response: typeof searchResponse) => void = () => {};
+    fetcherWithBody.mockImplementation(async ([, body]) => {
+      if ("selectionMode" in body && body.selectionMode === "favorites_only") {
+        return new Promise((resolve) => {
+          resolveFavorites = resolve;
+        });
+      }
+      return searchResponse;
+    });
+    const user = userEvent.setup();
+    renderPicker({ showFavoritesFirst: true });
+    await user.click(screen.getByRole("button", { name: "Pick an agent" }));
+    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(2));
+    expect(
+      screen.getByRole("status", { name: "Loading agents" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Alpha" })
+    ).not.toBeInTheDocument();
+    fireEvent.keyDown(screen.getByPlaceholderText("Search for agents"), {
+      key: "Enter",
+    });
+    expect(onItemClick).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveFavorites({ ...searchResponse, agents: [], total: 0 });
+    });
+    await screen.findByRole("menuitem", { name: "Alpha" });
+    expect(
+      screen.getAllByRole("menuitem").map((item) => item.textContent)
+    ).toEqual(["Alpha", "Beta"]);
   });
 
   it("does not select stale results while a typed query is loading", async () => {
