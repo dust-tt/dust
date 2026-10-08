@@ -8,7 +8,8 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
+import type { ApiKeySpendCapStatus } from "@app/lib/spend_limits/api_key_cap_status";
+import { getApiKeysSpendCapStatusByModelId } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -374,7 +375,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     requestingUserModelId: ModelId,
     spaces: SpaceType[],
     analyticsGroups: LightGroupType[],
-    isSpendCapped: boolean
+    { isSpendCapped, monthlyUsageMicroUsd }: ApiKeySpendCapStatus
   ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
@@ -404,6 +405,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
+      monthlyUsageMicroUsd,
       isSpendCapped,
     };
   }
@@ -560,11 +562,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     const [
       spacesByKeyModelId,
       analyticsGroupsByKeyModelId,
-      spendCappedByModelId,
+      spendCapStatusByModelId,
     ] = await Promise.all([
       this.listSpacesByKeyModelId(auth, keys),
       this.listAnalyticsGroupsByKeyModelId(auth, keys),
-      getApiKeysSpendCappedByModelId(auth, keys),
+      getApiKeysSpendCapStatusByModelId(auth, keys),
     ]);
 
     return keys.map((key) =>
@@ -572,7 +574,10 @@ export class KeyResource extends BaseResource<KeyModel> {
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
         analyticsGroupsByKeyModelId.get(key.id) ?? [],
-        spendCappedByModelId.get(key.id) ?? false
+        spendCapStatusByModelId.get(key.id) ?? {
+          isSpendCapped: false,
+          monthlyUsageMicroUsd: null,
+        }
       )
     );
   }
