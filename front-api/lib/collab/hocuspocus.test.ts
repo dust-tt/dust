@@ -1,5 +1,8 @@
 import { createServer } from "node:http";
-import { applyLiveCommentCommand } from "@app/lib/api/collab/live_comments";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@app/lib/api/collab/live_comments";
 import type { LiveFile } from "@app/lib/api/collab/live_file";
 import {
   checkLiveAccess,
@@ -57,6 +60,7 @@ vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
 
 vi.mock("@app/lib/api/collab/live_comments", () => ({
   applyLiveCommentCommand: vi.fn(),
+  dispatchLiveCommentMentions: vi.fn(async () => undefined),
 }));
 
 const DOCUMENT_NAME = "w1:user-u1/notes.md";
@@ -715,6 +719,7 @@ describe("comment threads in a live session", () => {
 
   beforeEach(() => {
     checkpointNextRevision();
+    vi.mocked(dispatchLiveCommentMentions).mockClear();
   });
 
   afterEach(() => {
@@ -747,7 +752,11 @@ describe("comment threads in a live session", () => {
     vi.mocked(applyLiveCommentCommand).mockImplementation(
       async (_file, comments, command) =>
         command.type === "add"
-          ? new Ok({ comments: [...comments, CREATED], created: CREATED })
+          ? new Ok({
+              comments: [...comments, CREATED],
+              created: CREATED,
+              added: CREATED.messages[0],
+            })
           : new Err("thread_changed")
     );
     const hocuspocus = createCollabHocuspocus();
@@ -811,6 +820,13 @@ describe("comment threads in a live session", () => {
     });
     expect(refused.isErr() && refused.error).toBe("thread_changed");
     expect(theirs.getThreads()).toEqual([THREAD, CREATED]);
+    expect(dispatchLiveCommentMentions).toHaveBeenCalledOnce();
+    expect(vi.mocked(dispatchLiveCommentMentions).mock.calls[0]).toEqual([
+      file,
+      expect.anything(),
+      expect.objectContaining({ type: "add", commentId: "c2" }),
+      CREATED.messages[0],
+    ]);
 
     const invalid = await mine.send({
       type: "add",
@@ -912,6 +928,7 @@ describe("comment threads in a live session", () => {
                   ? new Ok({
                       comments: [...comments, CREATED],
                       created: CREATED,
+                      added: CREATED.messages[0],
                     })
                   : new Err("thread_changed")
               );
