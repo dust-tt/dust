@@ -1,8 +1,5 @@
 import type { KeyObject } from "node:crypto";
 import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
-import { documentSchema } from "@app/components/editor/document/content";
-import { loadDfm } from "@app/components/editor/document/dfm_persistence";
-import { getCommentedTexts } from "@app/components/editor/document/DocumentComments";
 import config from "@app/lib/api/config";
 import {
   DustFileSystem,
@@ -18,6 +15,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
 import {
+  extractAnchors,
   messageSignaturePayload,
   parseDfm,
   serializeDfm,
@@ -28,6 +26,8 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { contentTypeFromFileName, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { Nodes } from "mdast";
+import { fromMarkdown } from "mdast-util-from-markdown";
 
 /**
  * Server-side authorship for DFM comments. The server writes and signs each message a user
@@ -308,15 +308,90 @@ export interface NewCommentMessage {
   message: DfmMessage;
 }
 
+const QUOTED_BLOCK_TYPES = new Set(["paragraph", "heading", "code"]);
+
+interface TextRun {
+  start: number;
+  end: number;
+  value: string;
+  block: number;
+}
+
+/** The text of `text`'s Markdown in document order, walked with an explicit stack. */
+function textRuns(text: string): TextRun[] {
+  const runs: TextRun[] = [];
+  let blocks = 0;
+  const stack: { node: Nodes; block: number }[] = [
+    { node: fromMarkdown(text), block: -1 },
+  ];
+  let visit = stack.pop();
+  while (visit !== undefined) {
+    const { node } = visit;
+    const block = QUOTED_BLOCK_TYPES.has(node.type) ? blocks++ : visit.block;
+    if (
+      (node.type === "text" ||
+        node.type === "inlineCode" ||
+        node.type === "code") &&
+      node.position?.start.offset !== undefined &&
+      node.position.end.offset !== undefined
+    ) {
+      runs.push({
+        start: node.position.start.offset,
+        end: node.position.end.offset,
+        value: node.value,
+        block,
+      });
+    }
+    if ("children" in node) {
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({ node: node.children[i], block });
+      }
+    }
+    visit = stack.pop();
+  }
+  return runs;
+}
+
+function quoteBetween(runs: TextRun[], start: number, end: number): string {
+  let quote = "";
+  let lastBlock: number | null = null;
+  for (const run of runs) {
+    if (run.end <= start || run.start >= end) {
+      continue;
+    }
+    // A run whose source and text differ (escapes, code fences) is taken whole.
+    const value =
+      run.end - run.start === run.value.length
+        ? run.value.slice(
+            Math.max(start, run.start) - run.start,
+            Math.min(end, run.end) - run.start
+          )
+        : run.value;
+    if (lastBlock !== null && run.block !== lastBlock) {
+      quote += " ";
+    }
+    quote += value;
+    lastBlock = run.block;
+  }
+  return quote;
+}
+
 /**
- * The text each comment's anchors cover in `source` as the editor shows it, the form live comments
- * are quoted in, or none when the editor cannot load the file.
+ * The plain text each comment's anchors cover in `body`, without its Markdown syntax and with
+ * its blocks separated by a space, the form the editor quotes live comments in.
  */
-function commentQuotes(source: string): Map<string, string> {
-  const loaded = loadDfm(source);
-  return loaded.isOk()
-    ? getCommentedTexts(documentSchema.nodeFromJSON(loaded.value.content))
-    : new Map();
+function commentQuotes(body: string): Map<string, string> {
+  const anchors = extractAnchors(body);
+  if (anchors.isErr()) {
+    return new Map();
+  }
+  const runs = textRuns(anchors.value.text);
+  return new Map(
+    anchors.value.anchors.map(({ id, start, end }) => [
+      id,
+      quoteBetween(runs, start, end),
+    ])
+  );
 }
 
 interface ValidationContext {
@@ -362,8 +437,8 @@ const verifiesInPlace = (
  * signing key, verify at its place for this file. Deleting threads or the last messages of a
  * thread, changing statuses and anchors, and a source the codec cannot read MUST be accepted.
  * Validation MUST NOT change the content, and MUST return the accepted new messages, with their
- * comment and the text it covers as the editor shows it, none when the editor cannot load the
- * file.
+ * comment and the plain text it covers, its blocks separated by a space, as the editor quotes
+ * live comments.
  */
 export function validateCommentSignatures(
   { previous, next }: { previous: string | null; next: string },
@@ -446,7 +521,7 @@ export function validateCommentSignatures(
           )
         );
       }
-      quotes ??= commentQuotes(next);
+      quotes ??= commentQuotes(parsed.value.body);
       newMessages.push({
         commentId: comment.id,
         quote: quotes.get(comment.id) ?? null,

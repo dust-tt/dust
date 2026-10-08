@@ -1,6 +1,9 @@
 // @vitest-environment node: signs with node:crypto and checks with WebCrypto, as browsers do.
 
 import { generateKeyPairSync, sign, verify } from "node:crypto";
+import { documentSchema } from "@app/components/editor/document/content";
+import { loadDfm } from "@app/components/editor/document/dfm_persistence";
+import { getCommentedTexts } from "@app/components/editor/document/DocumentComments";
 import { validateCommentSignatures } from "@app/lib/api/files/dfm_comment_signatures";
 import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
@@ -290,28 +293,33 @@ describe("validateCommentSignatures", () => {
         body
       );
 
-    it("quote the text as the editor shows it, across blocks", () => {
-      const result = validate(
-        file(TOM),
-        withBody(
-          "Hi :comment-start{id=c1}**there**.\n\nAnd here:comment-end{id=c1} too."
-        )
+    it("quote the plain text, its blocks separated by a space, as the editor does", () => {
+      const source = withBody(
+        "Hi :comment-start{id=c1}**there**.\n\nAnd here:comment-end{id=c1} too."
       );
+      const result = validate(file(TOM), source);
+      const loaded = loadDfm(source);
+      if (loaded.isErr()) {
+        throw new Error(loaded.error);
+      }
 
       expect(result.isOk() && result.value[0].quote).toBe("there. And here");
+      expect(
+        getCommentedTexts(
+          documentSchema.nodeFromJSON(loaded.value.content)
+        ).get("c1")
+      ).toBe("there. And here");
     });
 
-    it("return the message without a quote when the editor cannot load the file", () => {
+    it("quote code by its text", () => {
       const result = validate(
         file(TOM),
         withBody(
-          "| a | b |\n|---|---|\n| :comment-start{id=c1}1:comment-end{id=c1} | 2 |"
+          "Hi :comment-start{id=c1}run `npm test`:comment-end{id=c1} now."
         )
       );
 
-      expect(result.isOk() && result.value).toEqual([
-        { commentId: "c1", quote: null, message: reply },
-      ]);
+      expect(result.isOk() && result.value[0].quote).toBe("run npm test");
     });
   });
 });
