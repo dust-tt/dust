@@ -1,5 +1,7 @@
 import config from "@app/lib/api/config";
 import type { CellInfo } from "@app/types/cell";
+import type { APIError } from "@app/types/error";
+import { isAPIError } from "@app/types/error";
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -12,6 +14,12 @@ import type { Result } from "../../shared/result";
 import { Err, Ok } from "../../shared/result";
 import type { LightWorkspaceType } from "../../user";
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:error-handling] finalize-api-error
+ * When the OAuth finalize call fails, the result MUST be an `Err` holding the `APIError` returned by
+ * the server (posted by `OAuthFinalizePage` as `apiError`), so callers can show it through
+ * `formatError`. Other failures (invalid payload from the auth window) are an `Err` with an `Error`.
+ */
 export async function setupOAuthConnection({
   owner,
   provider,
@@ -24,7 +32,7 @@ export async function setupOAuthConnection({
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
   cellInfo: CellInfo | null;
-}): Promise<Result<OAuthConnectionType, Error>> {
+}): Promise<Result<OAuthConnectionType, APIError | Error>> {
   return new Promise((resolve) => {
     const oauthBaseUrl = config.getAppUrl();
     // Pass opener origin through OAuth flow so finalize page can postMessage back
@@ -47,12 +55,15 @@ export async function setupOAuthConnection({
 
       if (data.type === "connection_finalized" && data.provider === provider) {
         authComplete = true;
-        const { error, connection } = data;
+        const { apiError, error, connection } = data;
 
         cleanup();
         oauthPopup?.close();
 
-        if (error) {
+        if (isAPIError(apiError)) {
+          resolve(new Err(apiError));
+        } else if (typeof error === "string") {
+          // Auth windows deployed before `apiError` only post the message.
           resolve(new Err(new Error(error)));
         } else if (
           connection &&

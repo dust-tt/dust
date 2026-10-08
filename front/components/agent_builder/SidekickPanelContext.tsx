@@ -1,9 +1,6 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
-import {
-  useSendApiErrorNotification,
-  useSendNotification,
-} from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useSidekickFirstMessage } from "@app/hooks/useSidekickFirstMessage";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -71,7 +68,6 @@ export const SidekickPanelProvider = ({
   const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const { user } = useAuth();
-  const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const [conversation, setConversation] = useState<ConversationType | null>(
@@ -112,10 +108,9 @@ export const SidekickPanelProvider = ({
     if (firstMessageResult.isErr()) {
       setCreationFailed(true);
       setIsCreatingConversation(false);
-      sendNotification({
+      sendApiErrorNotification({
         title: t`Sidekick error`,
-        description: firstMessageResult.error.message,
-        type: "error",
+        error: firstMessageResult.error,
       });
       return;
     }
@@ -158,7 +153,6 @@ export const SidekickPanelProvider = ({
     createConversationWithMessage,
     getFirstMessage,
     useCase,
-    sendNotification,
     sendApiErrorNotification,
     suppressAutoStart,
     targetAgentConfigurationId,

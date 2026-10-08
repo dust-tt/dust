@@ -188,7 +188,7 @@ export async function submitCreateMCPServerDialogForm({
         return new Err(
           new CreateMCPServerDialogSubmitError({
             kind: "discover_oauth_metadata",
-            message: discoverOAuthMetadataRes.error.message,
+            message: "Failed to discover OAuth metadata.",
             cause: discoverOAuthMetadataRes.error,
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
@@ -269,7 +269,8 @@ export async function submitCreateMCPServerDialogForm({
         return new Err(
           new CreateMCPServerDialogSubmitError({
             kind: "oauth_connection",
-            message: cRes.error.message,
+            message: "Failed to set up the OAuth connection.",
+            cause: cRes.error,
             remoteMCPServerOAuthDiscoveryDone:
               nextRemoteMCPServerOAuthDiscoveryDone,
           })
@@ -338,7 +339,7 @@ export async function submitCreateMCPServerDialogForm({
       return new Err(
         new CreateMCPServerDialogSubmitError({
           kind: "create_server",
-          message: createRes.error.message,
+          message: "Failed to create the MCP server.",
           cause: createRes.error,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,
