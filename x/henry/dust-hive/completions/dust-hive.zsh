@@ -366,6 +366,7 @@ _dust-hive() {
         'setup:Check prerequisites and guide initial setup'
         'doctor:Check prerequisites (non-interactive)'
         'cache:Show binary cache status'
+        'autostart:Choose which services warm starts automatically'
         'refresh:Restore node_modules links in worktree'
         'forward:Manage OAuth port forwarding'
         'sync:Pull latest main, rebuild binaries, refresh deps'
@@ -509,6 +510,12 @@ _dust-hive() {
             '--non-interactive[Run without prompts]'
           ;;
         doctor|cache)
+          ;;
+        autostart)
+          _arguments \
+            '-l[Print the current autostart configuration]' \
+            '--list[Print the current autostart configuration]' \
+            '--reset[Restore the default autostart services]'
           ;;
         refresh)
           _arguments '1::name:_dust_hive_envs'

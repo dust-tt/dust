@@ -8,9 +8,15 @@ import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/i
 import { logger } from "../lib/logger";
 import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
-import { startService, waitForServiceReady } from "../lib/registry";
+import {
+  getWarmServices,
+  SERVICE_REGISTRY,
+  startService,
+  waitForServiceReady,
+} from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
 import type { ServiceName } from "../lib/services";
+import { loadSettings } from "../lib/settings";
 import { isDockerRunning } from "../lib/state";
 
 interface WarmOptions {
@@ -29,6 +35,14 @@ const CRITICAL_ROUTES = [
 
 // Marketing routes to pre-compile.
 const MARKETING_ROUTES = ["/", "/home"];
+
+// Started before Docker so Next.js compiles pages while containers boot.
+const EARLY_SERVICES: readonly ServiceName[] = ["front-api", "marketing"];
+
+// Rust services compile while the first-warm init runs.
+const RUST_SERVICES: readonly ServiceName[] = ["core", "oauth"];
+
+const HEALTH_WAITED_SERVICES: readonly ServiceName[] = ["front-api", "marketing", "core", "oauth"];
 
 // Spawn a detached curl that retries until the server accepts the connection,
 // then triggers route compilation. Output is discarded; failures are silent.
@@ -143,6 +157,15 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
 
+  const warmServices = getWarmServices(await loadSettings());
+  const enabled = (services: readonly ServiceName[]) =>
+    services.filter((service) => warmServices.includes(service));
+  const startServices = (services: readonly ServiceName[]) =>
+    Promise.all(services.map((service) => startService(env, service)));
+  const remainingServices = warmServices.filter(
+    (service) => service !== "proxy" && !EARLY_SERVICES.includes(service)
+  );
+
   // Start Docker + front-api + marketing + proxy + pre-warming all in parallel
   // Next.js can compile pages while Docker starts and init runs
   // This maximizes parallelism - by the time init is done, pages are compiled
@@ -154,13 +177,17 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
 
   // Start front-api and marketing immediately to begin page compilation
   // They will retry connections to DB/Redis until they're ready
-  await Promise.all([startService(env, "front-api"), startService(env, "marketing")]);
+  await startServices(enabled(EARLY_SERVICES));
 
   // Start pre-warming immediately - curls will retry until Next.js is ready
   // Pages compile while Docker containers start and init runs
   logger.step("Pre-compiling critical pages (parallel with health check)...");
-  preWarmRoutes(env.ports.frontApi, CRITICAL_ROUTES);
-  preWarmRoutes(env.ports.marketing, MARKETING_ROUTES);
+  if (warmServices.includes("front-api")) {
+    preWarmRoutes(env.ports.frontApi, CRITICAL_ROUTES);
+  }
+  if (warmServices.includes("marketing")) {
+    preWarmRoutes(env.ports.marketing, MARKETING_ROUTES);
+  }
 
   // Start the proxy. It listens on ports.front and routes /api/* to front-api,
   // /m/api/* and /* to marketing. It does not need its upstreams healthy to
@@ -177,10 +204,9 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
     // Run all init tasks in parallel with Rust service compilation
     const dbInitPromise = runAllDbInits(env);
     const temporalRunningPromise = isTemporalRunning();
-    const [, , temporalRunning] = await Promise.all([
+    const [, temporalRunning] = await Promise.all([
       // Start Rust services - they'll compile while init runs
-      startService(env, "core"),
-      startService(env, "oauth"),
+      startServices(enabled(RUST_SERVICES)),
       temporalRunningPromise,
     ]);
 
@@ -211,23 +237,11 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
 
     // Start remaining services
     logger.info("Starting remaining services...");
-    await Promise.all([
-      startService(env, "connectors"),
-      startService(env, "front-workers"),
-      startService(env, "front-spa-poke"),
-      startService(env, "front-spa-app"),
-    ]);
+    await startServices(remainingServices.filter((service) => !RUST_SERVICES.includes(service)));
   } else {
     // Not first warm - start remaining services in parallel
     const [, temporalRunning] = await Promise.all([
-      Promise.all([
-        startService(env, "core"),
-        startService(env, "oauth"),
-        startService(env, "connectors"),
-        startService(env, "front-workers"),
-        startService(env, "front-spa-poke"),
-        startService(env, "front-spa-app"),
-      ]),
+      startServices(remainingServices),
       isTemporalRunning(),
     ]);
 
@@ -247,10 +261,7 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
         await startForwarder(env.ports.base, env.name);
       }
     }),
-    waitForServiceReady(env, "front-api"),
-    waitForServiceReady(env, "marketing"),
-    waitForServiceReady(env, "core"),
-    waitForServiceReady(env, "oauth"),
+    ...enabled(HEALTH_WAITED_SERVICES).map((service) => waitForServiceReady(env, service)),
   ]);
   logger.success("All services healthy");
 
@@ -258,13 +269,13 @@ export const warmCommand = withEnvironments("warm", async (env, options: WarmOpt
   console.log();
   logger.success(`Environment '${env.name}' is now warm! (${elapsed}s)`);
   console.log();
-  console.log(`  Proxy:       http://localhost:${env.ports.front}    (public entry)`);
-  console.log(`  Marketing:   http://localhost:${env.ports.marketing}`);
-  console.log(`  front-api:   http://localhost:${env.ports.frontApi}`);
-  console.log(`  Core:        http://localhost:${env.ports.core}`);
-  console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
-  console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);
-  console.log(`  Front poke:  http://localhost:${env.ports.frontSpaPoke}`);
+  for (const service of warmServices) {
+    const { portKey } = SERVICE_REGISTRY[service];
+    if (portKey) {
+      const note = service === "proxy" ? "    (public entry)" : "";
+      console.log(`  ${`${service}:`.padEnd(16)}http://localhost:${env.ports[portKey]}${note}`);
+    }
+  }
   if (!noForward) {
     console.log();
     console.log(`  Forwarded:   ports ${FORWARDER_PORTS.join(", ")} → env (for OAuth)`);
