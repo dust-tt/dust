@@ -23,7 +23,6 @@ import type { SearchType } from "@app/types/api/search";
 import { MIN_NAME_SEARCH_QUERY_LENGTH } from "@app/types/api/search";
 import type {
   GetSkillResponseBody,
-  GetSkillsResponseBody,
   GetSkillWithRelationsResponseBody,
   SearchSkillsResponseBody,
   SkillSearchFacet,
@@ -39,7 +38,6 @@ import type {
   SkillAvailability,
   SkillListItemType,
   SkillReinforcementMode,
-  SkillStatus,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithRelationsType,
@@ -50,7 +48,7 @@ import { isString } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useState } from "react";
-import type { Fetcher, SWRConfiguration } from "swr";
+import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
@@ -134,68 +132,6 @@ export function useSkill({
       isAPIErrorResponse(error) && error.error.type === "skill_not_found",
     mutateSkill: mutate,
     mutateSkillRegardlessOfQueryParams: mutateRegardlessOfQueryParams,
-  };
-}
-
-export function useSkills({
-  owner,
-  disabled,
-  status,
-  globalSpaceOnly,
-  availability,
-  bypassEditorVisibility,
-  swrOptions,
-}: {
-  owner: LightWorkspaceType;
-  disabled?: boolean;
-  status?: SkillStatus;
-  globalSpaceOnly?: boolean;
-  availability?: SkillAvailability | SkillAvailability[];
-  // Admin-only: bypass the editor-visibility rule and also list unpublished
-  // (editors-only) skills the caller does not edit.
-  bypassEditorVisibility?: boolean;
-  swrOptions?: SWRConfiguration;
-}): {
-  skills: GetSkillsResponseBody["skills"];
-  isSkillsError: boolean;
-  isSkillsLoading: boolean;
-  mutateSkills: () => void;
-} {
-  const { fetcher } = useFetcher();
-
-  const queryParams = new URLSearchParams();
-  if (status) {
-    queryParams.set("status", status);
-  }
-  if (globalSpaceOnly) {
-    queryParams.set("globalSpaceOnly", "true");
-  }
-  if (availability) {
-    const availabilities = Array.isArray(availability)
-      ? availability
-      : [availability];
-    for (const value of availabilities) {
-      queryParams.append("availability", value);
-    }
-  }
-  if (bypassEditorVisibility) {
-    queryParams.set("bypassEditorVisibility", "true");
-  }
-  const queryString = queryParams.toString();
-
-  const skillsFetcher: Fetcher<GetSkillsResponseBody> = fetcher;
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/skills${queryString ? `?${queryString}` : ""}`,
-    skillsFetcher,
-    { ...swrOptions, disabled }
-  );
-
-  return {
-    skills:
-      data?.skills ?? emptyArray<GetSkillsResponseBody["skills"][number]>(),
-    isSkillsError: !!error,
-    isSkillsLoading: isLoading,
-    mutateSkills: mutate,
   };
 }
 
