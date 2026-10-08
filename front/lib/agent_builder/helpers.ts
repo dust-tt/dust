@@ -4,17 +4,12 @@ import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creati
 
 // Agent rules shared by the agent builder and conversational building.
 
-export type AgentNameFormatError = "empty" | "too_long" | "contains_spaces";
+export type AgentNameFormatErrorCode = "empty" | "too_long" | "contains_spaces";
 
 // The format rules every agent name follows. Uniqueness is checked separately, server-side.
-/**
- * @cc [owner:sfriquet,label:coding;product] agent-name-format-error-code
- * Returns the code of the first format rule `name` breaks, or `null`, never a message: the agent
- * builder translates the code for the user, server callers turn it into English for models.
- */
-export function getAgentNameFormatError(
+export function getAgentNameFormatErrorCode(
   name: string
-): AgentNameFormatError | null {
+): AgentNameFormatErrorCode | null {
   if (!name) {
     return "empty";
   }

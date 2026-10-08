@@ -1,8 +1,8 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import type { AgentNameFormatError } from "@app/lib/agent_builder/helpers";
-import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
+import type { AgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
+import { getAgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import { validateInstructionEditTargets } from "@app/lib/api/actions/servers/building_agents_and_skills/instruction_edits";
 import {
   LIST_MODELS_TOOL_NAME,
@@ -112,7 +112,10 @@ export async function validateAgentNameChange(
   return validateAgentName(auth, { name });
 }
 
-const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<AgentNameFormatError, string> = {
+const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<
+  AgentNameFormatErrorCode,
+  string
+> = {
   empty: "Agent name cannot be empty.",
   too_long: `Agent name must be at most ${AGENT_NAME_MAX_LENGTH} characters.`,
   contains_spaces: "Agent name cannot contain spaces.",
@@ -132,12 +135,12 @@ async function validateAgentName(
   >
 > {
   const trimmedName = name.trim();
-  const formatError = getAgentNameFormatError(trimmedName);
-  if (formatError) {
+  const formatErrorCode = getAgentNameFormatErrorCode(trimmedName);
+  if (formatErrorCode) {
     return new Err(
       new DustError(
         "invalid_request_error",
-        AGENT_NAME_FORMAT_ERROR_MESSAGES[formatError]
+        AGENT_NAME_FORMAT_ERROR_MESSAGES[formatErrorCode]
       )
     );
   }

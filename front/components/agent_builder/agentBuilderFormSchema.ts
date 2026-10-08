@@ -3,8 +3,8 @@ import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
-import type { AgentNameFormatError } from "@app/lib/agent_builder/helpers";
-import { getAgentNameFormatError } from "@app/lib/agent_builder/helpers";
+import type { AgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
+import { getAgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
 import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
@@ -27,7 +27,7 @@ const tagSchema = z.object({
 });
 
 const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<
-  AgentNameFormatError,
+  AgentNameFormatErrorCode,
   MessageDescriptor
 > = {
   empty: msg`Agent name cannot be empty.`,
@@ -38,11 +38,11 @@ const AGENT_NAME_FORMAT_ERROR_MESSAGES: Record<
 const getAgentSettingsSchema = (t: (descriptor: MessageDescriptor) => string) =>
   z.object({
     name: z.string().superRefine((value, ctx) => {
-      const error = getAgentNameFormatError(value);
-      if (error) {
+      const errorCode = getAgentNameFormatErrorCode(value);
+      if (errorCode) {
         ctx.addIssue({
           code: "custom",
-          message: t(AGENT_NAME_FORMAT_ERROR_MESSAGES[error]),
+          message: t(AGENT_NAME_FORMAT_ERROR_MESSAGES[errorCode]),
         });
       }
     }),
