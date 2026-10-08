@@ -78,14 +78,13 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const [{ pronouns, jobType }, groupNamesByUserId] = await Promise.all([
-    user.getProfile(),
-    GroupResource.listGroupNamesByUserModelIdInWorkspace({
+  const { pronouns, jobType } = await user.getProfile();
+  const groupNamesByUserId =
+    await GroupResource.listGroupNamesByUserModelIdInWorkspace({
       auth,
       userModelIds: [user.id],
       groupKinds: [...MANAGEABLE_GROUP_KINDS],
-    }),
-  ]);
+    });
 
   const response: GetMemberResponseBody = {
     member: {
