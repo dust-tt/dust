@@ -25,10 +25,17 @@ import type {
   ResponseIdEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import type { CacheMissReason } from "@app/lib/model_constructors/utils/cache_miss_reason";
+import type { InputTransformation } from "@app/lib/model_constructors/utils/input_transformation";
 
 // Opts into prompt-cache diagnostics (Claude API only, not Vertex/agent).
 // https://platform.claude.com/docs/en/build-with-claude/cache-diagnostics
 const CACHE_DIAGNOSTICS_BETA_HEADER = "cache-diagnosis-2026-04-07";
+
+// Reports, in `input_transformations`, the thinking blocks the preserved-thinking
+// checks dropped or flagged.
+// https://platform.claude.com/docs/en/build-with-claude/preserved-thinking
+export const THINKING_BINDING_CONTROLS_BETA_HEADER =
+  "thinking-binding-controls-2026-08-01";
 
 // The request we build for the stream: the base non-beta params plus the beta
 // Messages API extras we attach (cache-diagnostics beta header + `diagnostics`
@@ -55,6 +62,13 @@ function toCacheMissReason(message: BetaMessage): CacheMissReason | undefined {
   };
 }
 
+function toInputTransformations(
+  message: BetaMessage
+): InputTransformation[] | undefined {
+  const transformations = message.input_transformations;
+  return transformations?.length ? transformations : undefined;
+}
+
 export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
@@ -69,6 +83,11 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
 
   static readonly configSchema = anthropicConfigSchema;
 
+  // Betas sent on every request. Endpoints override this to opt out of, or add to, the defaults.
+  protected readonly betas: readonly string[] = [
+    THINKING_BINDING_CONTROLS_BETA_HEADER,
+  ];
+
   private readonly client: AnthropicClient;
 
   // Cache-diagnostics state, threaded across a stream: recorded in
@@ -76,6 +95,7 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
   // to the `response_id` event. Reset at the start of each stream.
   private previousMessageId: string | null | undefined;
   private lastCacheMissReason: CacheMissReason | undefined;
+  private lastInputTransformations: InputTransformation[] | undefined;
 
   constructor({ ANTHROPIC_API_KEY }: Credentials) {
     super();
@@ -88,24 +108,32 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     });
   }
 
+  /**
+   * @cc [owner:pmilliotte,label:product] thinking-binding-observe-only
+   * The request MUST NOT set `thinking.block_binding`. Without it, accounts created before
+   * 2026-08-31 only report prefix-check failures in `input_transformations`; setting it turns
+   * every failure into a 400 or a dropped thinking block.
+   */
   async buildRequestPayload(
     payload: Payload,
     config: AnthropicInputConfig
   ): Promise<AnthropicStreamRequest> {
     this.previousMessageId = config.previousMessageId;
+    const betas = [
+      ...(this.cacheDiagnosticsEnabled ? [CACHE_DIAGNOSTICS_BETA_HEADER] : []),
+      ...this.betas,
+    ];
     return {
       ...(await super.buildRequestPayload(payload, config)),
       // Top-level automatic caching: auto-places the last cache breakpoint at
       // the tail of the request so the growing conversation prefix is reused.
       cache_control: { type: "ephemeral" },
-      // Cache-diagnostics opt-in (Claude API only): the beta header and its
-      // `diagnostics` body are attached here, not in `streamRaw`, so the built
-      // payload reflects exactly what we send.
+      // Beta headers and the cache-diagnostics `diagnostics` body are attached
+      // here, not in `streamRaw`, so the built payload reflects exactly what we
+      // send.
+      ...(betas.length > 0 ? { betas } : {}),
       ...(this.cacheDiagnosticsEnabled
-        ? {
-            betas: [CACHE_DIAGNOSTICS_BETA_HEADER],
-            diagnostics: { previous_message_id: this.previousMessageId },
-          }
+        ? { diagnostics: { previous_message_id: this.previousMessageId } }
         : {}),
     };
   }
@@ -120,26 +148,29 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     input: AnthropicStreamRequest
   ): AsyncGenerator<BetaRawMessageStreamEvent> {
     this.lastCacheMissReason = undefined;
+    this.lastInputTransformations = undefined;
 
     const stream = this.client.beta.messages.stream(input);
 
     for await (const event of stream) {
       if (event.type === "message_start") {
         this.lastCacheMissReason = toCacheMissReason(event.message);
+        this.lastInputTransformations = toInputTransformations(event.message);
       }
       // The SDK reuses and mutates event objects, so deep-copy each one.
       yield structuredClone(event);
     }
   }
 
-  // Attach the captured cache-miss reason (if any) to the response id event's
-  // metadata bag, alongside other provider-specific event metadata.
+  // Attach the captured cache-miss reason and input transformations (if any)
+  // to the response id event's metadata bag, alongside other provider-specific
+  // event metadata.
   messageStartToResponseIdEvent = (
     metadata: EndpointMetadata,
     event: BetaRawMessageStartEvent
   ): ResponseIdEvent => {
     const base = baseMessageStartToResponseIdEvent(metadata, event);
-    if (!this.lastCacheMissReason) {
+    if (!this.lastCacheMissReason && !this.lastInputTransformations) {
       return base;
     }
     return {
@@ -148,7 +179,12 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
         ...base.metadata,
         content: {
           ...base.metadata.content,
-          cacheMissReason: this.lastCacheMissReason,
+          ...(this.lastCacheMissReason && {
+            cacheMissReason: this.lastCacheMissReason,
+          }),
+          ...(this.lastInputTransformations && {
+            inputTransformations: this.lastInputTransformations,
+          }),
         },
       },
     };

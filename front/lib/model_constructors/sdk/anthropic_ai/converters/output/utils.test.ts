@@ -407,6 +407,7 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
     const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: 10,
       cache_read_input_tokens: 20,
+      fallback_credit: null,
       input_tokens: 100,
       iterations: null,
       output_tokens: 50,
@@ -438,6 +439,7 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
     const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: 10,
       cache_read_input_tokens: 20,
+      fallback_credit: null,
       input_tokens: 100,
       iterations: null,
       output_tokens: 50,
@@ -463,6 +465,7 @@ describe("messageDeltaUsageToTokenUsageEvent", () => {
     const usage: BetaMessageDeltaUsage = {
       cache_creation_input_tokens: null,
       cache_read_input_tokens: null,
+      fallback_credit: null,
       input_tokens: null,
       iterations: null,
       output_tokens: 40,
@@ -1133,6 +1136,7 @@ describe("messageDeltaToEvents", () => {
   const usage: BetaMessageDeltaUsage = {
     cache_creation_input_tokens: null,
     cache_read_input_tokens: null,
+    fallback_credit: null,
     input_tokens: null,
     iterations: null,
     output_tokens: 5,
@@ -1187,6 +1191,7 @@ describe("rawOutputToEvents", () => {
   const tokenUsage: BetaMessageDeltaUsage = {
     cache_creation_input_tokens: 0,
     cache_read_input_tokens: 0,
+    fallback_credit: null,
     input_tokens: 3,
     iterations: null,
     output_tokens: 2,
@@ -1640,6 +1645,7 @@ describe("batchResultToEvents", () => {
         cache_creation: null,
         cache_creation_input_tokens: 0,
         cache_read_input_tokens: 0,
+        fallback_credit: null,
         inference_geo: null,
         input_tokens: 1,
         iterations: null,

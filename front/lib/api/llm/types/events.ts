@@ -22,10 +22,24 @@ export interface CacheMissReason {
   cacheMissedInputTokens?: number;
 }
 
+// Preserved-thinking diagnostics: an edit the provider applied to our input
+// before the model read it (e.g. a thinking block dropped or flagged because the
+// content before it changed). `path` points into the request, e.g.
+// `messages.1.content.0`.
+export interface InputTransformation {
+  type: string;
+  path: string;
+  reason: string;
+}
+
 // Provider response identification event
 export interface ResponseIdEvent {
   type: "interaction_id";
-  content: { modelInteractionId: string; cacheMissReason?: CacheMissReason };
+  content: {
+    modelInteractionId: string;
+    cacheMissReason?: CacheMissReason;
+    inputTransformations?: InputTransformation[];
+  };
   metadata: LLMClientMetadata;
 }
 

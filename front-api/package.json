@@ -27,7 +27,7 @@
     "check:bundled-deps": "tsx scripts/check-bundled-deps.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.110.0",
+    "@anthropic-ai/sdk": "^0.131.0",
     "@date-fns/tz": "^1.5.0",
     "@hocuspocus/server": "^4.7.0",
     "@hono/mcp": "^0.3.0",

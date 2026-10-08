@@ -598,6 +598,7 @@ export function contentBlockStartToEvents(
     case "advisor_tool_result":
     case "mcp_tool_use":
     case "mcp_tool_result":
+    case "mcp_tool_listing":
     case "compaction":
     case "fallback":
       return [[], state];
@@ -1051,6 +1052,7 @@ export function messageToEvents(
       case "advisor_tool_result":
       case "mcp_tool_use":
       case "mcp_tool_result":
+      case "mcp_tool_listing":
       case "compaction":
       case "fallback":
         break;
