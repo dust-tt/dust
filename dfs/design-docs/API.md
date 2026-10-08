@@ -26,19 +26,18 @@ Attr {
   parent: ObjectRef              // Visible parent; root is its own parent.
   directory: bool
   size: uint64                   // Logical file size; zero for directories.
-  mode: uint32                   // Session's effective permissions in POSIX owner rwx bits.
+  mode: uint32                   // Owner r/w bits, plus derived directory x.
   atime?: Timestamp
   mtime?: Timestamp
   ctime?: Timestamp
-  attr_version: uint64           // Monotonically increasing version of attributes and metadata.
-  content_version: uint64        // Monotonic version of file bytes or directory entries.
+  attr_version: uint64           // Version of attributes and metadata; excludes grant changes.
+  content_version: uint64        // Version of bytes or directory entries; excludes grant changes.
   view: ReadView                 // Store and authorization versions for these attributes.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
 
 ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
-  full_path: string              // Absolute path in the caller's visible namespace.
   mime_type: string
   xattrs: map<string, bytes>
 }
@@ -55,45 +54,47 @@ ErrorDetails {
 Empty {}
 ```
 
-For real objects, `Attr.mode` is the current session's effective grant permissions shifted left by
-six bits: read (`0o400`), write (`0o200`), and execute/traverse (`0o100`). It is computed from the
+For real objects, `Attr.mode` encodes the current session's effective read/write grant permissions
+in the POSIX owner bits by shifting them left by six: read (`0o400`) and write (`0o200`). Directories
+automatically add owner execute/traverse (`0o100`) if and only if read is allowed. Write alone does
+not add execute/traverse. Regular files report no execute bits. Mode is computed from the
 authorization state used for the response and is not an independently stored permission mask.
-Group, other, special, and file-type bits are always zero. For example, effective `rw-` is `0o600`
-and effective `rwx` is `0o700`. Virtual `shared` reports read/traverse access (`0o500`). Virtual
-`root` reports `0o700` when the session has `wx` on the stored tenant root, and `0o500` otherwise.
+Group, other, special, and file-type bits are always zero.
+
+| Effective grants | Directory mode | Regular file mode |
+| --- | --- | --- |
+| None | `0o000` | `0o000` |
+| `r` | `0o500` | `0o400` |
+| `w` | `0o200` | `0o200` |
+| `rw` | `0o700` | `0o600` |
+
+Virtual `shared` reports read/traverse access (`0o500`). Virtual `root` reports `0o700` when the
+session has `w` on the stored tenant root, and `0o500` otherwise.
 Create and update operations do not accept a mode; new objects inherit permissions from grants.
+
+Executable-file handling is explicitly deferred to future work, likely client heuristics based on
+MIME types and/or xattrs. Whether a file is executable must be independent of the session and its
+grants.
 
 All timestamps, including session expiration and search time bounds, use this millisecond format.
 Precision is one millisecond, and dates before the Unix epoch are not representable. Zero denotes
 the epoch; an omitted optional timestamp is distinct from zero.
 
 `Attr.parent` identifies the parent in the caller's visible namespace. Virtual `root` is its own
-parent; virtual `shared` and visible top-level objects have `parent: root`. An object whose selected
-path is an entry directly under `/shared` has `parent: shared`. Other objects use their visible
+parent; virtual `shared` and visible top-level objects have `parent: root`. An object selected as an
+entry point directly under `/shared` has `parent: shared`. Other objects use their visible
 parent's real ID. The stored tenant root, when accessible, also has `parent: root`.
 
-Optional `metadata` contains creation time, full path, MIME type, and xattrs; absence means metadata
-was not fetched, while a present metadata object with an empty xattr map means it was fetched and no
-xattrs exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. Other responses
-omit it unless explicitly specified.
+An object can have multiple visible aliases. Parent selection prefers the ordinary root namespace;
+otherwise it uses the nearest readable ancestor with a matching explicit ALLOW, including the object
+itself, as the entry point under `/shared`. A DENY does not create an entry point. Parent selection
+uses the same store snapshot and session subjects as the attributes, regardless of the alias used
+by `Lookup` or `List`. Hidden ancestor IDs are never exposed through `parent`.
 
-`full_path` is required whenever extended metadata is returned. It starts with `/`, uses `/` between
-basenames, and has no trailing slash except for `/` itself. It is relative to the session's virtual
-root, not the server's storage layout or the client's mountpoint. Virtual `root` and the accessible
-stored tenant root use `/`; virtual `shared` uses `/shared`. Shared entry points use their returned
-`basename--<object-id>` names, followed by ordinary descendant names. Hidden ancestor names and IDs
-are never exposed through `full_path` or `parent`.
-
-An object can have multiple visible aliases. The server selects one canonical visible path per
-session: prefer a visible path through the ordinary root; otherwise use the nearest readable object
-with a matching explicit ALLOW on its ancestor chain, including the object itself, as the entry point
-under `/shared`. A DENY does not create an entry point. `parent` follows that selected path, even when
-a `Lookup` or `List` reached the object through another alias.
-Parent/path selection uses the same store snapshot and session subjects as the attributes.
-
-Full paths are computed on demand. An ancestor rename/move or a grant change can change a user's
-path without changing the object's identity or file contents. Paths are not stored on every
-descendant, and changing an ancestor does not require rewriting descendant paths.
+Optional `metadata` contains creation time, MIME type, and xattrs; absence means metadata was not
+fetched, while a present metadata object with an empty xattr map means it was fetched and no xattrs
+exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. Other responses omit it
+unless explicitly specified.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
@@ -106,13 +107,13 @@ only with the same field for the same tenant and object. Attribute versions and 
 all directories, including virtual projections, are additionally scoped to the session's visible
 namespace; they are not comparable across different sessions.
 
-`attr_version` advances when attributes or extended metadata change, including size, effective mode,
-timestamps, MIME type, xattrs, the object's own name, and its parent. Grant changes that alter the
-session's effective mode therefore advance its attribute version. Renames and moves also
-advance it even when file contents are unchanged. It also reflects changes to the caller-visible
-parent or full path caused by ancestor or authorization changes. These projected changes are
-resolved on read rather than requiring a stored version update on every descendant. Comparing
-`attr_version` requires a fresh authorization check; matching versions alone never grant access.
+`attr_version` advances when stored attributes or extended metadata change, including size,
+timestamps, MIME type, xattrs, the object's own name, and its parent. Renames and moves advance it
+even when file contents are unchanged. It also reflects caller-visible parent changes caused by
+topology, resolved on read rather than requiring a stored version update on every descendant. Grant
+changes never advance `attr_version`, even when grants on the object or its ancestors change the
+reported mode or visible parent. Comparing `attr_version` requires a fresh authorization check;
+matching versions alone never grant access or confirm that grant-dependent attributes are unchanged.
 Fetching optional metadata or returning a newer `ReadView` does not itself change `attr_version`.
 The version fields themselves are excluded from attribute-change detection, avoiding recursive
 version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
@@ -122,20 +123,20 @@ changes to file size, including truncation and extension. A nonempty write advan
 supplied bytes equal the existing bytes. Mode, timestamps, MIME type, xattrs, grants, renames, and
 moves do not advance it.
 
-For a real directory, `content_version` starts at 1 and advances atomically whenever its immediate
-session-visible listing changes: a child is created, removed, renamed, moved in or out, replaced by
-another object under the same name, or becomes visible/invisible because of grant changes. Listing
-content means the mapping of visible entry names to object IDs, not the child attributes included in
-`List` responses. Projected visibility changes are resolved on read without rewriting every affected
-directory. Editing a child's contents or attributes alone does not advance its parent's
-`content_version`. Renaming or moving the directory itself advances its
+For a real directory, `content_version` starts at 1 and advances atomically whenever its stored
+immediate entries change: a child is created, removed, renamed, moved in or out, or replaced by
+another object under the same name. It covers the mapping of stored entry names to object IDs, not
+the child attributes included in `List` responses. Grant changes never advance it, even when they
+change which entries are visible to the session. Editing a child's contents or attributes alone does
+not advance its parent's `content_version`. Renaming or moving the directory itself advances its
 `attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
 unchanged when its entries are unchanged.
 
-Virtual `root` and `shared` also return positive content versions that advance when their
-session-visible entry mappings change, including changes caused by grant attachments or topology.
+Virtual `root` and `shared` also return positive content versions that advance when topology changes
+their entry mappings. Grant changes never advance them, even when they change visible membership.
 These versions must preserve their ordering across servers and restarts for the same session view.
-No version comparison replaces authorization or establishes a snapshot across listing pages.
+No version comparison replaces authorization, validates cached visibility, or establishes a snapshot
+across listing pages.
 
 **Both `ReadView.store_version` and `ReadView.auth_version` are monotonically increasing within a
 tenant.** Each is a nonnegative `int64`: as its respective state advances, its version increases
@@ -175,19 +176,19 @@ Grant = allow(AllowGrant) | deny(DenyGrant)
 
 AllowGrant {
   subject: string                // Exact subject to match against the session's subjects.
-  mode: uint32                   // Permissions to add: r=4, w=2, x=1; restricted to 0o7.
+  mode: uint32                   // Permissions to add: r=4, w=2; restricted to 0o6.
 }
 
 DenyGrant {
-  mode: uint32                   // Inherited permissions to remove for everyone; restricted to 0o7.
+  mode: uint32                   // Inherited permissions to remove for everyone; restricted to 0o6.
 }
 ```
 
 ALLOW requires a nonempty subject. DENY has no subject and applies to every session. A grant must
-select exactly one variant. Modes use one POSIX `rwx` triplet: `rwx=0o7`, `r-x=0o5`, `r--=0o4`,
-and `-w-=0o2`. Zero is valid and leaves permission bits unchanged; bits outside `0o7` are invalid.
-`Attr.mode` encodes the session's resulting effective grant permissions in the POSIX owner bits by
-shifting this triplet left by six bits.
+select exactly one variant. Modes use only the POSIX read/write bits: `r=0o4`, `w=0o2`, and
+`rw=0o6`. Zero is valid and leaves permission bits unchanged; bits outside `0o6`, including the
+execute bit (`0o1`), are invalid. `Attr.mode` reports the resulting read/write permissions in the
+POSIX owner bits and adds execute/traverse only for readable directories, as described above.
 
 Grants inherit from the stored tenant root down to the target object. Start with no permissions.
 At each object, remove inherited permissions covered by any DENY grants attached there, then add
@@ -198,7 +199,7 @@ effective_mode = 0
 For each object from the tenant root through the target:
   allow_mode = bitwise OR of matching ALLOW modes attached to this object
   deny_mode = bitwise OR of all DENY modes attached to this object
-  effective_mode = (effective_mode & (~deny_mode & 0o7)) | allow_mode
+  effective_mode = (effective_mode & (~deny_mode & 0o6)) | allow_mode
 ```
 
 DENY removes only inherited permissions. A matching ALLOW at the same object wins over DENY,
@@ -207,14 +208,14 @@ permissions; evaluation must continue even when the inherited mode is zero. An A
 subject has no effect. Direct object IDs and `/shared` use the same evaluation against the real
 ancestor chain, including grants above the visible entry point.
 
-For example, ALLOW `u:y r-x` on `/parent` lets Y read and traverse that directory. Attach both DENY
-`rwx` and ALLOW `u:x r-x` to `/parent/child`: the DENY clears inherited access, then the ALLOW grants
+For example, ALLOW `u:y r` on `/parent` lets Y read and traverse that directory. Attach both DENY
+`rw` and ALLOW `u:x r` to `/parent/child`: the DENY clears inherited access, then the ALLOW grants
 X read/traverse access. With these grants, only sessions matching X can read the child; Y retains
 access to the parent. Descendants inherit the child's resulting permissions.
 
-For example, after ALLOW `g:engineering rwx` on `/project`, DENY `-w-` on `/project/archive` leaves
-matching sessions with `r-x`: the subtree can be read and traversed but not modified. DENY `rwx` on
-`/project/private` removes all access. ALLOW `u:spolu@dust.tt r-x` on `/project/private/reports` restores
+For example, after ALLOW `g:engineering rw` on `/project`, DENY `w` on `/project/archive` leaves
+matching sessions with `r`: the subtree can be read and traversed but not modified. DENY `rw` on
+`/project/private` removes all access. ALLOW `u:spolu@dust.tt r` on `/project/private/reports` restores
 read/traverse access there for that subject, with inheritance to its descendants. The inaccessible
 parent stays hidden; the reopened entry point can be discovered through `/shared`.
 
@@ -224,21 +225,21 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 | Operation | Required effective permissions |
 | --- | --- |
 | `Stat`, `Read`, `ReadFiles` | `r` on each target. |
-| `Lookup` | `x` on the parent and `r` on the returned child. |
-| `List` | `rx` on the directory; only children with `r` are returned. |
-| `Search` | `r` on each hit; `rx` on a supplied scope directory. |
-| `Validate` | `r` on each target; also `x` for a directory content-version check. |
-| create | `wx` on the parent. |
+| `Lookup` | `r` on the parent and returned child. |
+| `List` | `r` on the directory; only children with `r` are returned. |
+| `Search` | `r` on each hit and supplied scope directory. |
+| `Validate` | `r` on each target. |
+| create | `w` on the parent. |
 | update, write | `w` on the target. |
-| rename | `w` on the source and any replacement; `wx` on affected parents. |
-| remove | `w` on the target and `wx` on its parent. |
+| rename | `w` on the source, any replacement, and affected parents. |
+| remove | `w` on the target and its parent. |
 
-Namespace permissions are checked on each participating object using its effective mode. `x`
-controls directory traversal; this API has no file-execution RPC. Virtual root/shared support
-namespace reads, with permissions checked separately on real entries. Virtual shared remains
-read-only. Namespace mutations at virtual root use the session's real `root_id` and its effective
-grant permissions.
-Tenant administration uses its tenant key and is not restricted by object grants.
+Namespace permissions are checked on each participating object using its effective read/write
+permissions. Directory traversal follows read access; there is no separate execution permission or
+file-execution RPC. Virtual root/shared support namespace reads, with permissions checked separately
+on real entries. Virtual shared remains read-only. Namespace mutations at virtual root use the
+session's real `root_id` and its effective grant permissions. Tenant administration uses its tenant
+key and is not restricted by object grants.
 
 Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
 explicitly. Mutation permission failures use `FORBIDDEN`.
@@ -429,10 +430,9 @@ Results correspond to inputs by position, including repeated inputs. Each succes
 identifies the object in `object.id` and carries its read view in `object.view`; the batch has no
 separate view.
 An individual missing or inaccessible object does not prevent results for the other IDs. With
-`include_metadata=true`, each successful result populates `object.metadata`, including its
-session-specific full path, from the same FDB snapshot as its attributes. Virtual projections return
-synthetic metadata with MIME type `inode/directory`, an empty xattr map, `created: 0`, and `full_path`
-set to `/` or `/shared`. With the flag omitted or false, extended metadata is not returned;
+`include_metadata=true`, each successful result populates `object.metadata` from the same FDB snapshot
+as its attributes. Virtual projections return synthetic metadata with MIME type `inode/directory`,
+an empty xattr map, and `created: 0`. With the flag omitted or false, extended metadata is not returned;
 `attr_version` still covers it.
 
 The encoded response is limited to 4 MiB. If requested metadata would exceed that budget, the RPC
@@ -503,14 +503,16 @@ next request. Ordinary directories are ordered by basename; `shared` uses object
 Continue until `next_after` is absent, even after an empty page.
 
 Clients refresh cached pages through `List`. A directory's `Attr.content_version`, obtained through
-`Stat`, identifies changes to its entry names and object IDs; `Validate` can check that version and
-renew access to bindings cached at that version. An unchanged directory version does not validate
-the child attributes embedded in an old page; those require separate checks or a refetch. Each
-fetched page includes current child attributes sharing the same `Attr.view` for that request; the
-page has no separate view. Pages are independently refreshed; traversal across pages does not promise
-a single snapshot, and validation does not retroactively make independently fetched pages coherent.
-The same refresh behavior applies to real directories and virtual projections. There is no separate
-listing token or version precondition on `List`.
+`Stat`, identifies topology changes to its entry names and object IDs. `Validate` can check those
+bindings, but an unchanged version does not confirm cached entry visibility: grants can change
+visibility without changing the version. Refresh through `List` to obtain current visibility. An
+unchanged directory version also does not validate child attributes embedded in an old page; those
+require separate checks or a refetch. Each fetched page includes current child attributes sharing
+the same `Attr.view` for that request; the page has no separate view. Pages are independently
+refreshed; traversal across pages does not promise a single snapshot, and validation does not
+retroactively make independently fetched pages coherent. The same refresh behavior applies to real
+directories and virtual projections. There is no separate listing token or version precondition on
+`List`.
 
 Virtual `root` exposes visible top-level entries plus `shared`. Virtual `shared` exposes readable
 entry points with a matching explicit ALLOW using names suffixed with `--<object-id>`, allowing
@@ -521,7 +523,7 @@ operations.
 
 ### Read
 
-Reads a byte range from a file, optionally requiring a particular content version.
+Reads a byte range from a file.
 
 **Arguments**
 
@@ -616,7 +618,14 @@ ValidationResult {
 ```
 
 Authorization is checked before comparing versions. Both versions, when supplied, are compared
-against the same current object view. For an existing, authorized object:
+against the same current object view.
+
+Valid checks on virtual `shared` always return `CHANGED`, even when the supplied versions match.
+This applies to attribute-only checks, content-only checks, and checks of both versions. Grants can
+change shared membership without advancing its `content_version`; clients must refresh its listing
+through `List`. Returning `CHANGED` does not require a version bump.
+
+For other existing, authorized objects:
 
 | Supplied versions | `UNCHANGED` when | `CHANGED` when |
 | --- | --- | --- |
@@ -624,13 +633,16 @@ against the same current object view. For an existing, authorized object:
 | `content_version` only | The content version matches. | The content version differs. |
 | Both | Both versions match. | Either or both versions differ. |
 
-`UNCHANGED` renews read access and validates only the supplied versions; it does not authorize writes.
-Every mutation must independently check its required grant permissions. An attribute check covers the
-object's attributes and extended metadata, including its visible parent and full path. A content
-check covers file bytes or a directory's entry-name/object-ID bindings. An attribute-only check does
-not validate content or a cached `content_version`; a content-only check does not validate attributes
-or extended metadata. Even when both versions of a directory match, the attributes and contents of
-its children require their own checks. Session-scoped versions must come from the same session view.
+`UNCHANGED` renews read access and validates only the supplied versions; it does not authorize
+writes. Every mutation must independently check its required grant permissions. An attribute check
+covers the object's stored attributes and extended metadata, excluding mode and visible-parent
+changes caused by grants. A content check covers file bytes or a directory's entry-name/object-ID
+bindings, excluding visibility changes caused by grants. Refresh through `Stat` or `Lookup` for
+current grant-dependent attributes and through `List` for current entry visibility; `UNCHANGED` does
+not validate either from cached versions. An attribute-only check does not validate content or a
+cached `content_version`; a content-only check does not validate attributes or extended metadata.
+Even when both versions of a directory match, the attributes and contents of its children require
+their own checks. Session-scoped versions must come from the same session view.
 
 `CHANGED` does not identify which supplied version differed. Refresh the relevant state through
 `Stat`, `Read`/`ReadFiles`, or `List`; checking both versions does not necessarily require downloading
@@ -790,8 +802,7 @@ RenameOperation {
 The source object and affected parents must be accessible. Replacement requires the same kind;
 a destination directory must be empty. Moving a directory into itself or a descendant is rejected.
 The object's `attr_version` advances on a rename or parent change; the affected parents' listing
-content versions advance as well. Extended metadata fetched later reflects the caller's new full
-path, including for descendants of a moved directory.
+content versions advance as well.
 
 ### remove operation
 
@@ -864,7 +875,7 @@ SearchResults {
 
 SearchHit {
   object: Attr
-  name: string                  // Basename, not a canonical path.
+  name: string                  // Basename.
   excerpt?: string              // File excerpt, at most 512 characters; absent for directories.
 }
 ```
@@ -885,9 +896,7 @@ asynchronous; deleted objects and stale indexed content or metadata are suppress
 are returned, and every hit is permission-checked. A matching `content_version` establishes only
 content freshness; indexed names and metadata must be checked separately. Unsupported content
 formats remain searchable by name/metadata. Results have no public cursor, score, or total-hit count.
-Returned parents and attribute versions use the caller's namespace. Session-specific full paths are
-resolved by `Stat(include_metadata=true)` from the authoritative namespace, not stored in the shared
-search index.
+Returned parents and attribute versions use the caller's namespace.
 
 Evaluation is bounded to 4,096 candidates, a ten-second retrieval budget, and a 1 MiB response.
 `partial` indicates bounded evaluation, not whether indexing is current. Backend failures are errors,

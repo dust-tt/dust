@@ -51,6 +51,7 @@ service Dfs {
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
   // Requires an active session key.
+  // Valid checks on virtual shared always return CHANGED, even when supplied versions match.
   rpc Validate(ValidateRequest) returns (ValidationBatch);
 
   // Requires an active session key.
@@ -83,18 +84,22 @@ message Attr {
   required bool directory = 3;
   required uint64 size = 4;
   // @cc [owner:spolu,label:api;security] dfs-attribute-mode
-  // For real objects, mode MUST equal the current session's effective grant permissions shifted
-  // left by six bits: r=0o400, w=0o200, x=0o100. It MUST be derived from the authorization state
-  // used for the response, not stored as independent permissions. Group, other, special, and
-  // file-type bits MUST be zero. Virtual shared MUST report read/traverse access (0o500).
-  // Virtual root MUST report 0o700 when the session has wx on the stored tenant root, and 0o500
-  // otherwise. Namespace mutations at virtual root MUST use the session's real root_id and grants.
+  // For real objects, owner r/w bits MUST equal the session's effective grant permissions shifted
+  // left by six bits: r=0o400, w=0o200. Directories MUST add owner x (0o100) if and only if owner r
+  // is set; w alone MUST NOT imply x. Regular files MUST report no execute bits. Mode MUST use the
+  // response's authorization state, not independent stored permissions. Group, other, special, and
+  // file-type bits MUST be zero. Virtual shared MUST report 0o500. Virtual root MUST report 0o700
+  // when the session has w on the stored tenant root, and 0o500 otherwise. Namespace mutations at
+  // virtual root MUST use the session's real root_id and grants. Executable-file handling is future
+  // work, likely client heuristics based on MIME types and/or xattrs; any future executable-file
+  // classification MUST be independent of the session and its grants.
   required uint32 mode = 5;
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
   optional uint64 ctime = 8;
+  // Grant changes do not advance this version, including changes to visible mode or parent.
   required uint64 attr_version = 9;
-  // Directory entry versions include session-visible membership changes caused by grants.
+  // Directory entry versions track topology changes; grant changes do not advance them.
   required uint64 content_version = 10;
   required ReadView view = 11;
   optional ExtendedMetadata metadata = 12;
@@ -102,7 +107,6 @@ message Attr {
 
 message ExtendedMetadata {
   required uint64 created = 1;
-  required string full_path = 2;
   required string mime_type = 3;
   map<string, bytes> xattrs = 4;
 }
@@ -125,18 +129,18 @@ message AllowGrant {
   // An exact session subject, such as u:spolu@dust.tt or g:engineering.
   required string subject = 1;
   // @cc [owner:spolu,label:api] dfs-allow-mode
-  // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. Matching ALLOW modes MUST add
+  // Mode MUST use only r=4 and w=2, with no bits outside 0o6. Matching ALLOW modes MUST add
   // these permissions after local DENY modes remove inherited permissions. Zero MUST leave
-  // permission bits unchanged. Other bits MUST fail with INVALID_INPUT.
+  // permission bits unchanged. Other bits, including x=1, MUST fail with INVALID_INPUT.
   required uint32 mode = 2;
 }
 
 message DenyGrant {
   // @cc [owner:spolu,label:api] dfs-deny-mode
-  // Mode MUST use r=4, w=2, x=1 and contain only bits in 0o7. DENY modes MUST remove these
+  // Mode MUST use only r=4 and w=2, with no bits outside 0o6. DENY modes MUST remove these
   // inherited permissions for every subject before matching local ALLOW modes are added. They
   // MUST NOT remove permissions granted by an ALLOW at the same object. Zero MUST leave
-  // permission bits unchanged. Other bits MUST fail with INVALID_INPUT.
+  // permission bits unchanged. Other bits, including x=1, MUST fail with INVALID_INPUT.
   required uint32 mode = 1;
 }
 

@@ -28,28 +28,26 @@ MUST NOT resolve group membership or infer additional subjects from strings such
 Effective permissions MUST start at zero and be evaluated along the real ancestor chain from tenant
 root through the target. At each object, all local DENY modes MUST first remove inherited
 permissions, then matching local ALLOW modes MUST be ORed in:
-`(inherited & (~denies & 0o7)) | allows`. Matching ALLOW MUST win over DENY at the same object
+`(inherited & (~denies & 0o6)) | allows`. Matching ALLOW MUST win over DENY at the same object
 regardless of attachment order. An ALLOW at the same object or deeper MUST be able to restore denied
 permissions; evaluation MUST continue through zero inherited permissions. Direct IDs and `/shared`
 aliases MUST use the same full ancestor chain, including hidden ancestors.
 
 @cc [owner:spolu,label:security;api] dfs-read-permissions
-`Stat`, `Read`, and `ReadFiles` MUST require r on each real target. `Lookup` MUST require x on a
-real parent and r on its returned child. `List` MUST require rx on a real directory and return only
-children with r. `Search` MUST require r on each hit and rx on a supplied scope directory.
-`Validate` MUST require r on each real target and additionally x for a directory content-version
-check. Virtual root/shared MUST support namespace reads, checking real entries separately. Virtual
-shared MUST remain read-only. The x bit MUST control directory traversal; the API MUST NOT expose a
-file-execution RPC.
+`Stat`, `Read`, and `ReadFiles` MUST require r on each real target. `Lookup` MUST require r on a
+real parent and r on its returned child. `List` MUST require r on a real directory and return only
+children with r. `Search` MUST require r on each hit and r on a supplied scope directory.
+`Validate` MUST require r on each real target. Virtual root/shared MUST support namespace reads,
+checking real entries separately. Virtual shared MUST remain read-only. Directory traversal MUST
+follow read access; the API MUST NOT expose a separate execution permission or file-execution RPC.
 
 @cc [owner:spolu,label:security;api] dfs-mutation-permissions
-Create MUST require wx on its parent. Update and write MUST require w on their target. Rename MUST
-require w on the source and any replacement and wx on affected parents. Remove MUST require w on its
-target and wx on its parent. Each participating object's mode MUST be evaluated independently
-against its real ancestor chain. Read validation MUST NOT authorize cached mutations; every mutation
-MUST independently check its required permissions.
-Namespace mutations at virtual root MUST use the session's real tenant root ID and its effective
-grant permissions.
+Create MUST require w on its parent. Update and write MUST require w on their target. Rename MUST
+require w on the source, any replacement, and affected parents. Remove MUST require w on its target
+and parent. Each participating object's mode MUST be evaluated independently against its real
+ancestor chain. Read validation MUST NOT authorize cached mutations; every mutation MUST
+independently check its required permissions. Namespace mutations at virtual root MUST use the
+session's real tenant root ID and its effective grant permissions.
 
 @cc [owner:spolu,label:api] dfs-grant-identity
 Grant identity MUST include the variant, subject for ALLOW, and mode. Identical values MUST
@@ -88,26 +86,14 @@ otherwise. Present metadata with an empty xattr map MUST mean metadata was fetch
 exist; absence MUST mean metadata was not fetched.
 
 @cc [owner:spolu,label:security;api] dfs-visible-parents
-`Attr.parent` MUST identify the parent on the caller's canonical visible path. Virtual root MUST be
-its own parent; virtual shared, visible top-level objects, and the accessible stored tenant root
-MUST have virtual root as parent. Direct entry points under `/shared` MUST have virtual shared as
-parent; other objects MUST use their visible parent's real ID. Hidden ancestor names and IDs MUST
-NOT be exposed through `parent` or `ExtendedMetadata.full_path`.
-
-@cc [owner:spolu,label:api] dfs-canonical-paths
-Returned extended metadata MUST include `full_path`, an absolute path in the caller's namespace with
-`/` separators and no trailing slash except for `/` itself. Virtual root and the accessible stored
-tenant root MUST use `/`; virtual shared MUST use `/shared`. The canonical path MUST prefer the
-ordinary root, otherwise enter `/shared` through the nearest readable ancestor with a matching
-explicit ALLOW, including the object itself, using its returned `basename--<object-id>` entry name.
-DENY MUST NOT create entry points. Descendants MUST use ordinary basenames. `parent` MUST follow
-that path even when lookup/listing used another alias. Path selection MUST use the attributes' store
-snapshot and session subjects.
-
-@cc [owner:spolu,label:backend;performance] dfs-on-demand-paths
-Full paths MUST be computed on demand, not stored on every descendant. Ancestor renames, moves, and
-grant changes MUST be able to change visible paths without changing object identity or file bytes
-and without requiring descendant path rewrites.
+`Attr.parent` MUST identify the parent in the caller's visible namespace. Virtual root MUST be its
+own parent; virtual shared, visible top-level objects, and the accessible stored tenant root MUST
+have virtual root as parent. Direct entry points under `/shared` MUST have virtual shared as parent;
+other objects MUST use their visible parent's real ID. Hidden ancestor IDs MUST NOT be exposed
+through `parent`. When multiple aliases exist, parent selection MUST prefer the ordinary root
+namespace; otherwise it MUST use the nearest readable ancestor with a matching explicit ALLOW,
+including the object itself, as the entry point under `/shared`. Parent selection MUST use the
+attributes' store snapshot and session subjects, regardless of the alias used by lookup/listing.
 
 @cc [owner:spolu,label:api] dfs-creation-time
 Returned extended metadata MUST include `created`. Every real object, including the tenant root,
@@ -121,14 +107,15 @@ each field only against that field for the same tenant and object. Attribute ver
 versions of all directories MUST additionally be scoped to the same session's visible namespace.
 
 @cc [owner:spolu,label:api;security] dfs-attribute-version
-`attr_version` MUST advance when attributes or extended metadata change, including size, mode,
-timestamps, MIME type, xattrs, own name, and parent. It MUST reflect effective mode and caller-visible
-parent/path changes from ancestors or authorization, resolved on read without requiring stored
-descendant version updates. Comparisons MUST require fresh authorization; equal versions MUST NOT
-grant access.
-Fetching optional metadata or returning a newer `ReadView` MUST NOT itself advance the version.
-Version fields MUST be excluded from attribute-change detection. Content mutations MUST advance the
-attribute version when they change size or timestamps.
+`attr_version` MUST advance when stored attributes or extended metadata change, including size,
+timestamps, MIME type, xattrs, own name, and parent. It MUST reflect caller-visible parent changes
+caused by topology, resolved on read without requiring stored descendant version updates. Grant
+changes MUST NOT advance it, including changes to effective mode or visible parent caused by grants
+on the object or its ancestors. Comparisons MUST require fresh authorization; equal versions MUST
+NOT grant access or establish unchanged grant-dependent attributes. Fetching optional metadata or
+returning a newer `ReadView` MUST NOT itself advance the version. Version fields MUST be excluded
+from attribute-change detection. Content mutations MUST advance the attribute version when they
+change size or timestamps.
 
 @cc [owner:spolu,label:api;concurrency] dfs-file-content-version
 A regular file's `content_version` MUST start at 1 and advance atomically with every nonempty write
@@ -138,18 +125,17 @@ NOT advance it.
 
 @cc [owner:spolu,label:api;concurrency] dfs-directory-content-version
 A real directory's `content_version` MUST start at 1 and advance atomically with changes to its
-immediate session-visible entry-name/object-ID mapping, including creation, removal, rename, moves,
-replacement, and visibility changes caused by grants. Projected visibility changes MUST be resolved
-on read without requiring stored version updates on every affected directory. Changes only to a
-child's attributes or contents MUST NOT advance it. Moving or renaming the directory itself MUST
-advance its attribute version and affected parents' content versions, but MUST leave its own content
-version unchanged when its entries are unchanged.
+stored immediate entry-name/object-ID mapping, including creation, removal, rename, moves, and
+replacement. Grant changes MUST NOT advance it, even when they change session-visible membership.
+Changes only to a child's attributes or contents MUST NOT advance it. Moving or renaming the
+directory itself MUST advance its attribute version and affected parents' content versions, but MUST
+leave its own content version unchanged when its entries are unchanged.
 
 @cc [owner:spolu,label:api;security] dfs-projection-content-version
-Virtual root/shared content versions MUST be positive and advance when their session-visible entry
-mappings change, including changes from grants or topology. Ordering MUST survive servers and
-restarts for the same session view. Version comparisons MUST NOT replace authorization or establish
-a snapshot across listing pages.
+Virtual root/shared content versions MUST be positive and advance when topology changes their entry
+mappings. Grant changes MUST NOT advance them, even when they change session-visible membership.
+Ordering MUST survive servers and restarts for the same session view. Version comparisons MUST NOT
+replace authorization, validate cached visibility, or establish a snapshot across listing pages.
 
 @cc [owner:spolu,label:api;backend] dfs-read-view-ordering
 `ReadView.store_version` and `ReadView.auth_version` MUST each be nonnegative, tenant-wide monotonic
@@ -213,9 +199,9 @@ Requested metadata MUST NOT be silently omitted from successful results.
 
 @cc [owner:spolu,label:api;backend] dfs-stat-metadata
 `Stat` and `Lookup` with `include_metadata=true` MUST populate each successful object's extended
-metadata, including full path, from the same FDB snapshot as its attributes. False or omitted MUST
-omit metadata while leaving it covered by `attr_version`. Virtual metadata MUST use
-`inode/directory`, an empty xattr map, `created=0`, and `/` or `/shared` as appropriate.
+metadata from the same FDB snapshot as its attributes. False or omitted MUST omit metadata while
+leaving it covered by `attr_version`. Virtual metadata MUST use `inode/directory`, an empty xattr
+map, and `created=0`.
 
 @cc [owner:spolu,label:api;security] dfs-lookup
 `Lookup` MUST accept 1–256 parent/name pairs and return an `AttrBatch` with exactly one result per
@@ -232,12 +218,13 @@ page. Ordinary directories MUST be ordered by basename; shared MUST use object-I
 
 @cc [owner:spolu,label:api;security] dfs-list-refresh
 Clients MUST refresh pages through `List`, without a separate listing token or version precondition.
-A directory content version obtained through `Stat` and checked through `Validate` MAY renew access
-to bindings cached at that version, but MUST NOT validate cached child attributes or contents. Those
-MUST be checked separately or refetched. All attributes returned in an `EntryPage` MUST carry the
-same `Attr.view` for that request; the page MUST NOT contain a separate view. Independent pages MUST
-NOT promise one snapshot, even after validation. These rules MUST apply to real and virtual
-directories alike.
+An `UNCHANGED` result from `Validate` for a directory content version MAY validate cached
+entry-name/object-ID bindings against topology changes, but MUST NOT validate cached entry
+visibility, child attributes, or contents. Clients MUST refresh through `List` to obtain current
+entry visibility; child attributes and contents MUST be checked separately or refetched. All
+attributes returned in an `EntryPage` MUST carry the same `Attr.view` for that request; the page
+MUST NOT contain a separate view. Independent pages MUST NOT promise one snapshot, even after
+validation. These rules MUST apply to real and virtual directories alike.
 
 @cc [owner:spolu,label:api;security] dfs-virtual-listings
 Virtual root MUST expose visible top-level entries plus shared. Virtual shared MUST expose readable
@@ -269,20 +256,25 @@ request with `INVALID_INPUT`. Omitted versions MUST NOT be compared.
 
 @cc [owner:spolu,label:api;security] dfs-validate-outcomes
 `Validate` MUST return one result per check in input order and check authorization before comparing
-versions against the same current object view. For an existing authorized object, all supplied
-versions matching MUST yield `UNCHANGED`; any difference MUST yield `CHANGED`. Denied access,
-absence, and other check failures MUST take precedence and yield `DENIED`, `MISSING`, or `ERROR`,
-with error details. Backend failure MAY fail the entire RPC rather than establish partial freshness.
+versions against the same current object view. Valid checks targeting virtual shared MUST always
+yield `CHANGED`, whether they supply an attribute version, a content version, or both, even when
+those versions match. Grant changes MUST NOT advance shared's content version to produce this
+outcome. For other existing authorized objects, all supplied versions matching MUST yield
+`UNCHANGED`; any difference MUST yield `CHANGED`. Denied access, absence, and other check failures
+MUST take precedence and yield `DENIED`, `MISSING`, or `ERROR`, with error details. Backend failure
+MAY fail the entire RPC rather than establish partial freshness.
 
 @cc [owner:spolu,label:api;security] dfs-validation-coverage
 `UNCHANGED` MUST renew read access, not write access, and validate only supplied versions from the
-same session view where session-scoped. Attribute checks MUST cover attributes and extended
-metadata, including visible parent/path; content checks MUST cover file bytes or directory
-entry-name/object-ID bindings. A check of one version MUST NOT validate the other. Even both
-matching directory versions MUST NOT validate children's attributes or contents. `CHANGED` MUST NOT
-identify which version differed. Clients MUST refresh relevant state through `Stat`,
-`Read`/`ReadFiles`, or `List`; fresh attributes MAY establish that bytes still match without
-redownloading them.
+same session view where session-scoped. Attribute checks MUST cover stored attributes and extended
+metadata, excluding mode and visible-parent changes caused by grants. Content checks MUST cover file
+bytes or directory entry-name/object-ID bindings, excluding visibility changes caused by grants.
+Clients MUST refresh through `Stat` or `Lookup` for current grant-dependent attributes and through
+`List` for current entry visibility; `UNCHANGED` MUST NOT validate either from cached versions. A
+check of one version MUST NOT validate the other. Even both matching directory versions MUST NOT
+validate children's attributes or contents. `CHANGED` MUST NOT identify which version differed.
+Clients MUST refresh relevant state through `Stat`, `Read`/`ReadFiles`, or `List`; fresh attributes
+MAY establish that bytes still match without redownloading them.
 
 @cc [owner:spolu,label:api] dfs-apply-budget
 `Apply.operations` MUST be nonempty, each `Operation` MUST select exactly one variant, and the
@@ -341,8 +333,7 @@ overall `Apply` budget. Success MUST return final attributes if the file survive
 parents. Replacement MUST require `replace=true`, the same kind, and an empty destination directory
 when replacing a directory. Moving a directory into itself or a descendant MUST be rejected.
 Renames/parent changes MUST advance the object's attribute version and affected parents' listing
-content versions; later metadata MUST reflect new full paths, including moved descendants. Success
-MUST return final attributes if the object survives.
+content versions. Success MUST return final attributes if the object survives.
 
 @cc [owner:spolu,label:api;security] dfs-remove-operation
 `RemoveOperation` MUST require access to the object and parent, and `directory` MUST match the
@@ -372,17 +363,15 @@ Search MUST use Elasticsearch and fail with `UNAVAILABLE` if it is disabled or u
 hit MUST be permission-checked, and deleted objects and stale indexed content/metadata MUST be
 suppressed. Matching content versions MUST establish only content freshness; indexed names and
 metadata MUST be checked separately. Unsupported content formats MUST remain searchable by
-name/metadata. Returned parents and attribute versions MUST use the caller's namespace. Shared
-indexes MUST NOT store session-specific paths; those MUST be resolved authoritatively through
-`Stat(include_metadata=true)`.
+name/metadata. Returned parents and attribute versions MUST use the caller's namespace.
 
 @cc [owner:spolu,label:api;performance] dfs-search-results
 Search MUST return at most limit hits and expose no public cursor, score, or total-hit count. Hit
-names MUST be basenames, not canonical paths. All returned hit attributes MUST carry the same
-`Attr.view` for the request; `SearchResults` MUST NOT contain a separate view. File excerpts MUST be
-at most 512 characters and MUST be absent for directories. Evaluation MUST be bounded to 4,096
-candidates, ten seconds of retrieval, and a 1 MiB response. `partial` MUST indicate bounded
-evaluation, not indexing freshness. Backend failures MUST be errors, not successful empty results.
+names MUST be basenames. All returned hit attributes MUST carry the same `Attr.view` for the
+request; `SearchResults` MUST NOT contain a separate view. File excerpts MUST be at most 512
+characters and MUST be absent for directories. Evaluation MUST be bounded to 4,096 candidates, ten
+seconds of retrieval, and a 1 MiB response. `partial` MUST indicate bounded evaluation, not indexing
+freshness. Backend failures MUST be errors, not successful empty results.
 
 @cc [owner:spolu,label:api;error-handling] dfs-error-details
 RPC failures MUST carry a gRPC status with protobuf `ErrorDetails { code }` in its details. Batch

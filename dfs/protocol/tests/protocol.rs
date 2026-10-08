@@ -149,7 +149,6 @@ fn attributes_carry_visible_parents_views_and_optional_metadata() -> Result<()> 
     );
     object.metadata = Some(rpc::ExtendedMetadata {
         created: 0,
-        full_path: "/".into(),
         mime_type: "inode/directory".into(),
         xattrs: Default::default(),
     });
@@ -335,7 +334,7 @@ fn allow_and_subjectless_deny_grants_round_trip_through_grant_operations() -> Re
     let allow = rpc::Grant {
         kind: Some(rpc::grant::Kind::Allow(rpc::AllowGrant {
             subject: "g:engineering".into(),
-            mode: 0o7,
+            mode: 0o6,
         })),
     };
     let deny = rpc::Grant {
