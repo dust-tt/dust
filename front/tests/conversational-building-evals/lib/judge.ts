@@ -54,6 +54,10 @@ User message:
 
 {{WORKSPACE_AGENTS}}
 
+## Members of the workspace (as the agent could list them with list_workspace_members)
+
+{{WORKSPACE_MEMBERS}}
+
 {{SUGGESTION_TOOL_CALLS}}
 
 ## Tools Called (in order; calls of the same round were issued in parallel)
@@ -97,12 +101,14 @@ User message:
    Did it avoid redundant calls?
 4. **Response Quality**: Is the closing message short and clear? Does it tell the user a
    suggestion was recorded for editors to review rather than pretending the change is live?
-5. **Entity Mention**: Does the message carrying the suggestion directives also name the entity
-   it acted on, as \`:build_skill[Skill Name]{sId=<skillId>}\` or
-   \`:build_agent[Agent Name]{sId=<agentId>}\`, with the same id the suggestion targets, so the
-   user can click it open? An entity named in plain text, or with an invented id, does not render
-   as a clickable chip. Exception: an agent or skill the suggestion creates has no id yet, so it
-   is named in plain text; a mention directive for it can only carry an invented id.
+5. **Entity Mention**: When the message names an existing agent or skill, does it use its mention
+   directive, \`:build_skill[Skill Name]{sId=<skillId>}\` or
+   \`:build_agent[Agent Name]{sId=<agentId>}\`, with the entity's real id, so the user can click it
+   open? An entity named in plain text, or with an invented id, does not render as a clickable
+   chip. The message names only the entities a sentence needs: the suggestion cards already list
+   every edited entity, so listing all of them is a flaw. Exception: an agent or skill the
+   suggestion creates has no id yet, so it is named in plain text; a mention directive for it can
+   only carry an invented id.
 
 Provide your evaluation using the REASONING: and SCORE: format described above.`;
 
@@ -129,6 +135,17 @@ function renderWorkspaceReferences(scenario: SeededScenario): string {
       `- knowledge "${key}": <knowledge id="${node.nodeId}" title="${node.title}" space="${node.spaceId}" dsv="${node.dataSourceViewId}" hasChildren="false"/>`
     );
   }
+  return lines.length > 0 ? lines.join("\n") : "(none)";
+}
+
+function renderWorkspaceMembers(
+  testCase: TestCase,
+  scenario: SeededScenario
+): string {
+  const lines = (testCase.workspaceSeed.members ?? []).map(
+    ({ key, firstName, lastName }) =>
+      `- ${firstName} ${lastName}: user id ${scenario.memberIdsByKey.get(key)}`
+  );
   return lines.length > 0 ? lines.join("\n") : "(none)";
 }
 
@@ -200,6 +217,10 @@ export async function evaluateWithJudge(
     .replace("{{WORKSPACE_SKILLS}}", await renderWorkspaceSkills(scenario))
     .replace("{{WORKSPACE_REFERENCES}}", renderWorkspaceReferences(scenario))
     .replace("{{WORKSPACE_AGENTS}}", await renderWorkspaceAgents(scenario))
+    .replace(
+      "{{WORKSPACE_MEMBERS}}",
+      renderWorkspaceMembers(testCase, scenario)
+    )
     .replace(
       "{{SUGGESTION_TOOL_CALLS}}",
       renderSuggestionToolCalls(testCase, execution)
