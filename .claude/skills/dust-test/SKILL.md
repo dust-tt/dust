@@ -17,38 +17,64 @@ When writing tests for a file:
     - DO NOT mock the database
     - Only mock external services (APIs, third-party services)
     - Prefer real implementations when possible
-4. **Use factories**: Leverage test factories to set up data efficiently
+4. **Use shared factories**: Set up data with the existing factories, never by hand (see below)
 5. **Focus on behavior**: Test what the code does, not how it does it
 
 ## For Front and Front-api (TypeScript)
 
+Front-api tests import the same helpers from `@app/tests/utils/...`.
+
 ### Setup
 
-- Import factories from `front/tests/utils/factories`
-- Import utilities from `front/tests/utils/utils`
-- Use the test database (no mocking)
+Every test runs inside a database transaction that is rolled back afterwards, so tests can create
+real records freely without cleanup.
+
+Before writing any helper, look in `front/tests/utils/` for one that already exists:
+
+| Need                                              | Use                                                                                                 |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Workspace + user + membership + `Authenticator`   | `createResourceTest({ role })` from `generic_resource_tests`                                        |
+| Request/response for an API route handler         | `createPrivateApiMockRequest`, `createPublicApiMockRequest`, `createPokeApiMockRequest`             |
+| A single database record                          | The matching `<Name>Factory` (e.g. `WorkspaceFactory.basic()`, `UserFactory.basic()`, `SpaceFactory.regular(...)`, `AgentConfigurationFactory.createTestAgent(...)`, `ConversationFactory.create(...)`) |
+| A plain object for a component or pure-logic test | `LightWorkspaceFactory.build()`, `LightUserFactory.build()`, `LightPlanFactory`, `LightSubscriptionFactory` |
+| A mocked service (Redis, file storage, WorkOS...) | `front/tests/utils/mocks/`. Redis, cache, file storage and Temporal are already mocked globally in `front/vite.setup.ts`; do not mock them again |
+
+Rules:
+
+- Do not call `SomeModel.create(...)` or `SomeResource.makeNew(...)` directly in a test to set up data. Use
+  the factory.
+- Do not build partial objects and cast them (`{ sId: "w_1" } as LightWorkspaceType`). Use the matching
+  `Light*Factory.build({ ...overrides })`.
+- If a factory exists but does not support what you need (a status, a date, a relation), add an option to
+  the factory instead of working around it in the test.
+- If no factory exists for a record the test needs, add a new `<Name>Factory.ts` in `front/tests/utils/`
+  rather than a local helper in the test file.
 
 ### Structure
 
 ```typescript
-import {describe, it, expect} from "vitest";
-import {makeTestWorkspace, makeTestUser} from "tests/utils/factories";
+import { describe, expect, it } from "vitest";
 
-describe ("ComponentName or FunctionName", () => {
-    it ("should handle the main happy path", async () => {
-        // Arrange: Set up using factories
-        const {workspace} = createResourceTest ()
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 
-        // Act: Execute the code
-        const result = await functionUnderTest (workspace);
+describe("functionUnderTest", () => {
+  it("handles the main happy path", async () => {
+    // Arrange: set up with shared helpers and factories.
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const agent = await AgentConfigurationFactory.createTestAgent(authenticator);
 
-        // Assert: Verify behavior
-        expect (result).toBeDefined ();
-    });
+    // Act.
+    const result = await functionUnderTest(authenticator, agent.sId);
 
-    it ("should handle the most common edge case", async () => {
-        // Test the second most important scenario
-    });
+    // Assert.
+    expect(result.isOk()).toBe(true);
+  });
+
+  it("rejects callers without permission", async () => {
+    const { authenticator } = await createResourceTest({ role: "user" });
+    // ...
+  });
 });
 ```
 
@@ -75,38 +101,12 @@ Follow similar principles:
 - Mock external APIs only (Slack, Notion, GitHub, etc.)
 - Test the database interactions directly
 
-## Example Pattern
-
-```typescript
-describe ("createConversation", () => {
-    it ("creates conversation with valid params", async () => {
-        const {workspace, user} = createResourceTest ()
-   
-        const conversation = await createConversation ({
-            workspace,
-            userId: user.id,
-            title: "Test"
-        });
-   
-        expect (conversation.sId).toBeDefined ();
-        expect (conversation.title).toBe ("Test");
-    });
-   
-    it ("fails without required permissions", async () => {
-        const {workspace, user} = createResourceTest ()
-   
-        await expect (
-            createConversation ({workspace, userId: user.id})
-        ).rejects.toThrow ("Permission denied");
-    });
-});
-```
-
 ## Execution Steps
 
 1. Read the file to understand its purpose and main exports
 2. Check if a test file already exists (e.g., `file.test.ts`)
 3. Identify the 2-4 most important functions/behaviors to test
-4. Find or create appropriate factories for test data
+4. Check `front/tests/utils/` for the factories and helpers you need; extend or add a factory there if one
+   is missing
 5. Write concise, focused tests
-6. Run tests with `npm test -- filetotest` to verify they pass
+6. Run tests from `front/` with `npm run test -- path/to/file.test.ts` to verify they pass
