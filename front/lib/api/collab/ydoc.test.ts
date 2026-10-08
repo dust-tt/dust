@@ -11,6 +11,7 @@ import {
 } from "@app/lib/api/collab/ydoc";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import type { LocalTransactionOrigin } from "@hocuspocus/server";
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
@@ -173,6 +174,7 @@ describe("dfmToYDoc and yDocToDfm", () => {
 });
 
 describe("replaceYDocContent", () => {
+  const ORIGIN: LocalTransactionOrigin = { source: "local", context: "agent" };
   const BEFORE =
     "---\ntitle: x\n---\n\n# Title\n\nFirst paragraph.\n\nSecond paragraph.\n";
 
@@ -189,7 +191,7 @@ describe("replaceYDocContent", () => {
     ({ source }) => {
       const { doc } = loadLive(BEFORE);
 
-      const comments = replaceYDocContent(doc, source, "agent");
+      const comments = replaceYDocContent(doc, source, ORIGIN);
 
       expect(comments.isOk()).toBe(true);
       if (comments.isOk()) {
@@ -214,11 +216,11 @@ describe("replaceYDocContent", () => {
     const replaced = replaceYDocContent(
       doc,
       BEFORE.replace("Second paragraph.", "Second paragraph, edited."),
-      "agent"
+      ORIGIN
     );
 
     expect(replaced.isOk()).toBe(true);
-    expect(origins).toEqual(["agent"]);
+    expect(origins).toEqual([ORIGIN]);
     expect(remote.getXmlFragment(BODY_FRAGMENT_NAME).get(1)).toBe(untouched);
     expect(yDocToDfm({ doc: remote, comments })).toEqual(
       savedByEditor(
@@ -232,7 +234,7 @@ describe("replaceYDocContent", () => {
     const updates: Uint8Array[] = [];
     doc.on("update", (update: Uint8Array) => updates.push(update));
 
-    expect(replaceYDocContent(doc, BEFORE, "agent").isOk()).toBe(true);
+    expect(replaceYDocContent(doc, BEFORE, ORIGIN).isOk()).toBe(true);
     expect(updates).toEqual([]);
   });
 
@@ -241,7 +243,7 @@ describe("replaceYDocContent", () => {
     const editor = loadDfm(table);
     const { doc, comments } = loadLive(BEFORE);
 
-    const replaced = replaceYDocContent(doc, table, "agent");
+    const replaced = replaceYDocContent(doc, table, ORIGIN);
 
     expect(editor.isErr() && replaced.isErr()).toBe(true);
     if (editor.isErr() && replaced.isErr()) {

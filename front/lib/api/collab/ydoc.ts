@@ -14,6 +14,7 @@ import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LocalTransactionOrigin } from "@hocuspocus/server";
 import type { JSONContent } from "@tiptap/core";
 import {
   prosemirrorJSONToYXmlFragment,
@@ -76,7 +77,7 @@ export function dfmToYDoc(source: string): Result<LiveDocument, string> {
 export function replaceYDocContent(
   doc: Y.Doc,
   source: string,
-  origin: unknown
+  origin: LocalTransactionOrigin
 ): Result<DfmComment[], string> {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
