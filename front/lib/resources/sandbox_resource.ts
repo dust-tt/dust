@@ -101,6 +101,19 @@ export type SandboxPreSleepCheck = (
   sandbox: SandboxResource
 ) => Promise<Result<void, Error>>;
 
+// The in-sandbox runtime setup (mounts, egress forwarder, trust bundle, durable state) that must
+// follow a create or wake and be repeated periodically. `ensureActive` runs it under the lifecycle
+// lock so that two callers can never set up the same sandbox at once.
+export type SandboxRuntimeRefresh<TScope> = {
+  // Whether the sandbox, absent a create or wake by this call, needs a refresh.
+  isDue: (sandbox: SandboxResource) => boolean;
+  // Runs while the lifecycle lock is held: it must not call back into any lifecycle operation on
+  // the same owner.
+  run: (
+    activation: EnsureSandboxResult<TScope>
+  ) => Promise<Result<void, Error>>;
+};
+
 type SandboxCreateOwner<TScope> = SandboxLifecycleOwner & {
   createSandbox: (blob: SandboxCreateBlob) => Promise<SandboxResource>;
   // Resolves the owner's authorization scope (e.g. a conversation's current
@@ -137,11 +150,12 @@ export type SandboxDeleteOwner = SandboxLifecycleOwner & {
 // thresholds are minutes-scale, so a lastActivityAt up to 30s stale is
 // indistinguishable to it.
 // How long an acquired lifecycle lock stays valid. Must comfortably exceed
-// the slowest operation performed under it (provider create/wake and, for
-// scope transitions, provider destroy + the database move) — if the lease
-// expires mid-operation, a concurrent ensure or move can acquire the lock
-// and the scope-serialization guarantee is gone. The cost of a generous TTL
-// is that a crashed holder strands the lock for up to this long; waiters
+// the slowest operation performed under it (provider create/wake followed by
+// the runtime refresh and, for scope transitions, provider destroy + the
+// database move) — if the lease expires mid-operation, a concurrent ensure
+// or move can acquire the lock and the scope-serialization guarantee is
+// gone. The cost of a generous TTL is that a crashed holder strands the lock
+// for up to this long; waiters
 // give up at executeWithLock's 30s acquisition timeout well before that,
 // and the kill-requested recovery self-heals once the lease expires. That
 // trade is deliberate: a heartbeat-renewed lease would shrink the stranding
@@ -727,6 +741,32 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     );
   }
 
+  // Activation and the runtime refresh it makes due share one lock hold: releasing the lock in
+  // between would let a concurrent caller see the sandbox as running and refresh it at the same
+  // time, two setups racing on the same in-sandbox files.
+  private static async withActivationLock<TScope>(
+    { lockKey }: { lockKey: string },
+    { runtimeRefresh }: { runtimeRefresh?: SandboxRuntimeRefresh<TScope> },
+    activate: (
+      provider: SandboxProvider
+    ) => Promise<Result<EnsureSandboxResult<TScope>, Error>>
+  ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
+    return this.withLifecycleLock(lockKey, async (provider) => {
+      const activationResult = await activate(provider);
+      if (activationResult.isErr() || !runtimeRefresh) {
+        return activationResult;
+      }
+      const { sandbox, freshlyCreated, wokeFromSleep } = activationResult.value;
+      if (freshlyCreated || wokeFromSleep || runtimeRefresh.isDue(sandbox)) {
+        const refreshResult = await runtimeRefresh.run(activationResult.value);
+        if (refreshResult.isErr()) {
+          return refreshResult;
+        }
+      }
+      return activationResult;
+    });
+  }
+
   private static async withLifecycleLockWithOptionalProvider<T>(
     lockKey: string,
     fn: (provider: SandboxProvider | null) => Promise<Result<T, Error>>
@@ -829,6 +869,14 @@ export class SandboxResource extends BaseResource<SandboxModel> {
    * `wakeOnly`, since it is never recreated either way.
    */
   /**
+   * @cc [owner:davidebbo,label:concurrency] runtime-refresh-under-lock
+   * With `opts.runtimeRefresh`, when this call creates or wakes the sandbox, or `isDue` holds for
+   * it, `run` MUST complete while the owner's lifecycle lock is still held, and the call MUST fail
+   * with `run`'s error if it fails. The lock-free path MUST NOT return a sandbox for which `isDue`
+   * holds: such a call takes the lifecycle lock instead, and `requireRunning` then still MUST NOT
+   * create, wake, or recreate a sandbox.
+   */
+  /**
    * Ensure a running sandbox exists for the given owner.
    *
    * The provider is resolved internally — callers never touch it.
@@ -840,7 +888,10 @@ export class SandboxResource extends BaseResource<SandboxModel> {
   static async ensureActive<TScope = undefined>(
     auth: Authenticator,
     owner: SandboxCreateOwner<TScope>,
-    opts: { beforeSleep?: SandboxPreSleepCheck } & SandboxActivationMode = {}
+    opts: {
+      beforeSleep?: SandboxPreSleepCheck;
+      runtimeRefresh?: SandboxRuntimeRefresh<TScope>;
+    } & SandboxActivationMode = {}
   ): Promise<Result<EnsureSandboxResult<TScope>, Error>> {
     assert(
       auth.getNonNullableWorkspace().id !== undefined,
@@ -871,12 +922,21 @@ export class SandboxResource extends BaseResource<SandboxModel> {
     //
     // Only these two modes read the sandbox before the lock: the locked path must re-read it under
     // the lock anyway, so reading it here for a full ensure would only add a query.
+    //
+    // A running sandbox whose runtime refresh is due is not served off the snapshot either: the
+    // refresh must run under the lock. This covers a sandbox another caller just created or woke
+    // and is still setting up under the lock, which a lock-free caller would otherwise set up a
+    // second time concurrently. Both modes therefore wait out an in-flight setup, bounded by the
+    // lock's acquisition timeout.
     const unlockedSnapshot =
       opts.requireRunning || opts.wakeOnly ? await owner.fetchSandbox() : null;
-    const isUsableWithoutLock =
+    const isRunningSnapshot =
       unlockedSnapshot !== null &&
       unlockedSnapshot.killRequestedAt === null &&
       unlockedSnapshot.status === "running";
+    const isUsableWithoutLock =
+      isRunningSnapshot &&
+      !(opts.runtimeRefresh?.isDue(unlockedSnapshot) ?? false);
 
     if (isUsableWithoutLock) {
       // Same touch the locked path performs, so the reaper's inactivity clock keeps running for
@@ -897,11 +957,11 @@ export class SandboxResource extends BaseResource<SandboxModel> {
       });
     }
 
-    if (opts.requireRunning) {
+    if (opts.requireRunning && !isRunningSnapshot) {
       return new Err(new SandboxNotRunningError());
     }
 
-    return this.withLifecycleLock(owner.lockKey, async (provider) => {
+    return this.withActivationLock(owner, opts, async (provider) => {
       const tracingOpts = { workspaceId: auth.getNonNullableWorkspace().sId };
       // First thing under the lock: a scope transition holds this same lock,
       // so everything derived from here cannot be invalidated by a
@@ -921,6 +981,17 @@ export class SandboxResource extends BaseResource<SandboxModel> {
         (!existing ||
           existing.killRequestedAt !== null ||
           isSleepingOnOutdatedImage(auth, existing))
+      ) {
+        return new Err(new SandboxNotRunningError());
+      }
+
+      // Reached only to run a due runtime refresh: the sandbox may have stopped running since the
+      // lock-free snapshot, and requireRunning never brings one back.
+      if (
+        opts.requireRunning &&
+        (!existing ||
+          existing.killRequestedAt !== null ||
+          existing.status !== "running")
       ) {
         return new Err(new SandboxNotRunningError());
       }

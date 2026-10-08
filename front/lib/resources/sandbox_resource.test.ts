@@ -55,7 +55,12 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
+import type {
+  EnsureSandboxResult,
+  SandboxRuntimeRefresh,
+} from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import {
   SandboxModel,
@@ -1416,9 +1421,10 @@ describe("SandboxResource.ensureActive", () => {
   }
 
   // requireRunning is what lets a caller running inside a request use a sandbox without ever
-  // waiting on one being made ready. It runs entirely off a lock-free read: it performs no
-  // lifecycle transition, and queueing concurrent invocations of a busy owner behind the
-  // lifecycle lock was measured as their dominant latency under load. A kill-requested sandbox
+  // waiting on one being created or woken. It runs off a lock-free read unless a runtime refresh
+  // is due (see "with a runtime refresh"): it performs no lifecycle transition, and queueing
+  // concurrent invocations of a busy owner behind the lifecycle lock was measured as their
+  // dominant latency under load. A kill-requested sandbox
   // reports itself as running right up until it is destroyed and recreated, so the kill marker
   // is part of the check.
   describe("with requireRunning", () => {
@@ -1521,6 +1527,182 @@ describe("SandboxResource.ensureActive", () => {
 
       expect(result.isErr()).toBe(true);
       expect(mockExecuteWithLock).not.toHaveBeenCalled();
+    });
+  });
+
+  // The runtime refresh (mounts, egress forwarder, trust bundle) is not safe to run twice at once
+  // on one sandbox: two concurrent trust bundle installs corrupt the Java keystore they both
+  // rewrite. Every refresh therefore runs under the lifecycle lock.
+  describe("with a runtime refresh", () => {
+    function refreshWhenNeverRefreshed(
+      run: SandboxRuntimeRefresh<FrameSandboxScope>["run"]
+    ): SandboxRuntimeRefresh<FrameSandboxScope> {
+      return {
+        isDue: (sandbox) => sandbox.lastRuntimeRefreshAt === null,
+        run,
+      };
+    }
+
+    function serializeLifecycleLocks() {
+      const tails = new Map<string, Promise<void>>();
+      mockExecuteWithLock.mockImplementation(
+        async (key: string, fn: () => Promise<unknown>) => {
+          const previous = tails.get(key) ?? Promise.resolve();
+          let release: () => void = () => {};
+          tails.set(
+            key,
+            previous.then(
+              () =>
+                new Promise<void>((resolve) => {
+                  release = resolve;
+                })
+            )
+          );
+          await previous;
+          try {
+            return await fn();
+          } finally {
+            release();
+          }
+        }
+      );
+    }
+
+    it("refreshes a sandbox it creates before a concurrent caller can use it", async () => {
+      const frame = await createFrameInPod();
+      serializeLifecycleLocks();
+      let refreshStarted: () => void = () => {};
+      const started = new Promise<void>((resolve) => {
+        refreshStarted = resolve;
+      });
+      let releaseRefresh: () => void = () => {};
+      const gate = new Promise<void>((resolve) => {
+        releaseRefresh = resolve;
+      });
+      const run = vi.fn(
+        async ({ sandbox }: EnsureSandboxResult<FrameSandboxScope>) => {
+          refreshStarted();
+          await gate;
+          await sandbox.updateLastRuntimeRefreshAt(new Date());
+          return new Ok(undefined);
+        }
+      );
+      const runtimeRefresh = refreshWhenNeverRefreshed(run);
+
+      const first = FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { runtimeRefresh }
+      );
+      await started;
+      let secondSettled = false;
+      const second = FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { runtimeRefresh }
+      ).then((result) => {
+        secondSettled = true;
+        return result;
+      });
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(secondSettled).toBe(false);
+
+      releaseRefresh();
+      const [firstResult, secondResult] = await Promise.all([first, second]);
+
+      expect(firstResult.isOk() && secondResult.isOk()).toBe(true);
+      if (firstResult.isErr() || secondResult.isErr()) {
+        return;
+      }
+      expect(secondResult.value.sandbox.sId).toBe(
+        firstResult.value.sandbox.sId
+      );
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(run.mock.calls[0][0].freshlyCreated).toBe(true);
+    });
+
+    it("fails with the refresh error", async () => {
+      const frame = await createFrameInPod();
+      const refreshError = new Error("egress setup failed");
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        {
+          runtimeRefresh: refreshWhenNeverRefreshed(
+            async () => new Err(refreshError)
+          ),
+        }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        return;
+      }
+      expect(result.error).toBe(refreshError);
+    });
+
+    it("serves a running sandbox without the lock when no refresh is due", async () => {
+      const frame = await createFrameInPod();
+      const running = await SandboxFactory.createForFrame(authenticator, frame);
+      await running.updateLastRuntimeRefreshAt(new Date());
+      const run = vi.fn();
+
+      mockExecuteWithLock.mockClear();
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { requireRunning: true, runtimeRefresh: refreshWhenNeverRefreshed(run) }
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(mockExecuteWithLock).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
+    });
+
+    it("takes the lock to refresh a running sandbox with requireRunning", async () => {
+      const frame = await createFrameInPod();
+      await SandboxFactory.createForFrame(authenticator, frame);
+      const run = vi.fn(async () => new Ok(undefined));
+
+      mockExecuteWithLock.mockClear();
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { requireRunning: true, runtimeRefresh: refreshWhenNeverRefreshed(run) }
+      );
+
+      expect(result.isOk()).toBe(true);
+      expect(mockExecuteWithLock).toHaveBeenCalledTimes(1);
+      expect(run).toHaveBeenCalledTimes(1);
+      expect(mockProviderCreate).not.toHaveBeenCalled();
+      expect(mockProviderWake).not.toHaveBeenCalled();
+    });
+
+    it("refuses with requireRunning when the sandbox stopped before the lock", async () => {
+      const frame = await createFrameInPod();
+      const running = await SandboxFactory.createForFrame(authenticator, frame);
+      mockExecuteWithLock.mockImplementationOnce(
+        async (_key: string, fn: () => Promise<unknown>) => {
+          await running.updateStatus("sleeping");
+          return fn();
+        }
+      );
+      const run = vi.fn();
+
+      const result = await FrameSandboxAdapter.ensureSandboxActive(
+        authenticator,
+        frame,
+        { requireRunning: true, runtimeRefresh: refreshWhenNeverRefreshed(run) }
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        return;
+      }
+      expect(isSandboxNotRunningError(result.error)).toBe(true);
+      expect(mockProviderWake).not.toHaveBeenCalled();
+      expect(run).not.toHaveBeenCalled();
     });
   });
 

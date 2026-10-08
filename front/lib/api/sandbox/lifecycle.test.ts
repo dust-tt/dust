@@ -113,7 +113,11 @@ vi.mock("@app/logger/logger", () => {
 });
 
 import type { Authenticator } from "@app/lib/auth";
-import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
+import type {
+  EnsureSandboxResult,
+  SandboxResource,
+  SandboxRuntimeRefresh,
+} from "@app/lib/resources/sandbox_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -125,6 +129,31 @@ import {
   ensureConversationSandboxReady,
   ensureFrameSandboxReady,
 } from "./lifecycle";
+
+// Stands in for SandboxResource.ensureActive: resolves `result` and runs the runtime refresh the
+// readiness helper passed, under the same condition ensureActive applies under its lock.
+function simulateEnsureActive<TScope>(
+  result: Result<EnsureSandboxResult<TScope>, Error>
+) {
+  return async (
+    ...args: unknown[]
+  ): Promise<Result<EnsureSandboxResult<TScope>, Error>> => {
+    const { runtimeRefresh } = args[args.length - 1] as {
+      runtimeRefresh: SandboxRuntimeRefresh<TScope>;
+    };
+    if (result.isErr()) {
+      return result;
+    }
+    const { sandbox, freshlyCreated, wokeFromSleep } = result.value;
+    if (freshlyCreated || wokeFromSleep || runtimeRefresh.isDue(sandbox)) {
+      const refreshResult = await runtimeRefresh.run(result.value);
+      if (refreshResult.isErr()) {
+        return refreshResult;
+      }
+    }
+    return result;
+  };
+}
 
 function createDeferred<T>() {
   let resolvePromise: ((value: T | PromiseLike<T>) => void) | undefined;
@@ -172,21 +201,25 @@ describe("ensureConversationSandboxReady", () => {
     };
     sandbox = await SandboxFactory.create(auth, conversation);
 
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: false,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
-    mockEnsureFrameSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureFrameSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: false,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Ok(undefined));
     mockEnsureSandboxEgressOnExec.mockResolvedValue(new Ok(undefined));
@@ -200,13 +233,15 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("preps egress, mounts files, and ensures egress on exec for freshly-created sandboxes", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
 
     const result = await ensureConversationSandboxReady(
@@ -244,18 +279,19 @@ describe("ensureConversationSandboxReady", () => {
   it("shares one in-flight readiness run between concurrent callers", async () => {
     let releaseEnsureActive: () => void = () => {};
     mockEnsureSandboxActive.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          releaseEnsureActive = () =>
-            resolve(
-              new Ok({
-                freshlyCreated: true,
-                sandbox,
-                wokeFromSleep: false,
-                scope: { spaceId: null },
-              })
-            );
-        })
+      async (...args: unknown[]) => {
+        await new Promise<void>((resolve) => {
+          releaseEnsureActive = resolve;
+        });
+        return simulateEnsureActive(
+          new Ok({
+            freshlyCreated: true,
+            sandbox,
+            wokeFromSleep: false,
+            scope: { spaceId: null },
+          })
+        )(...args);
+      }
     );
 
     const first = ensureConversationSandboxReady(
@@ -284,13 +320,15 @@ describe("ensureConversationSandboxReady", () => {
     // The adapter resolves the pod association under the lifecycle lock and
     // returns it as the scope; the ready path derives everything from it.
     // (That resolution is itself pinned in sandbox_resource.test.ts.)
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: "pod-space-id" },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: "pod-space-id" },
+        })
+      )
     );
 
     const result = await ensureConversationSandboxReady(
@@ -328,14 +366,16 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("derives scope from the lock-resolved value, never the caller's snapshot", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        // The lock-resolved scope says standalone…
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          // The lock-resolved scope says standalone…
+          scope: { spaceId: null },
+        })
+      )
     );
     // …while the caller's stale snapshot still carries a pod.
     const staleSnapshot = { ...conversation, spaceId: "stale-pod-space-id" };
@@ -363,13 +403,15 @@ describe("ensureConversationSandboxReady", () => {
   it("starts GCS mount before initial egress prep resolves", async () => {
     const prepStarted = createDeferred<void>();
     const prepResult = createDeferred<Result<void, Error>>();
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockPrepareSandboxEgressBeforeMount.mockImplementation(() => {
       prepStarted.resolve(undefined);
@@ -398,13 +440,15 @@ describe("ensureConversationSandboxReady", () => {
 
   it("only refreshes the token (no remount) when the sandbox woke from sleep", async () => {
     await sandbox.updateLastRuntimeRefreshAt(new Date());
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: true,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: false,
+          sandbox,
+          wokeFromSleep: true,
+          scope: { spaceId: null },
+        })
+      )
     );
 
     const result = await ensureConversationSandboxReady(
@@ -470,19 +514,23 @@ describe("ensureConversationSandboxReady", () => {
       useCase: "conversation",
       useCaseMetadata: { conversationId: conversation.sId },
     });
-    mockEnsureFrameSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: pod.sId },
-      })
+    mockEnsureFrameSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: pod.sId },
+        })
+      )
     );
 
     const result = await ensureFrameSandboxReady(auth, frame);
 
     expect(result.isOk()).toBe(true);
-    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {});
+    expect(mockEnsureFrameSandboxActive).toHaveBeenCalledWith(auth, frame, {
+      runtimeRefresh: expect.any(Object),
+    });
     expect(mockForFrameSandboxProvisioning).toHaveBeenCalledWith(auth, frame, {
       sandboxOnlyMounts: [
         {
@@ -532,13 +580,15 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("does not run sandbox state bring-up for conversation sandboxes", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
 
     const result = await ensureConversationSandboxReady(
@@ -559,13 +609,15 @@ describe("ensureConversationSandboxReady", () => {
       useCase: "conversation",
       useCaseMetadata: { conversationId: conversation.sId },
     });
-    mockEnsureFrameSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: pod.sId },
-      })
+    mockEnsureFrameSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: pod.sId },
+        })
+      )
     );
     const stateError = new Error("restore failed");
     mockSetupSandboxStateOnColdStart.mockResolvedValue(new Err(stateError));
@@ -601,8 +653,8 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("short-circuits when ensureActive fails", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Err(new Error("ensure failed"))
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(new Err(new Error("ensure failed")))
     );
 
     const result = await ensureConversationSandboxReady(
@@ -617,13 +669,15 @@ describe("ensureConversationSandboxReady", () => {
 
   it("returns the initial egress prep error after also running the GCS mount", async () => {
     const setupError = new Error("setup failed");
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
 
@@ -642,13 +696,15 @@ describe("ensureConversationSandboxReady", () => {
 
   it("returns the initial egress prep error when both initial phases fail", async () => {
     const setupError = new Error("setup failed");
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockPrepareSandboxEgressBeforeMount.mockResolvedValue(new Err(setupError));
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
@@ -667,13 +723,15 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("short-circuits when mounting conversation files fails", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockSetupSandboxMount.mockResolvedValue(new Err(new Error("mount failed")));
 
@@ -687,13 +745,15 @@ describe("ensureConversationSandboxReady", () => {
   });
 
   it("short-circuits when DustFileSystem.forConversation fails", async () => {
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: true,
-        sandbox,
-        wokeFromSleep: false,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: true,
+          sandbox,
+          wokeFromSleep: false,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockForConversation.mockResolvedValue(
       new Err(new Error("space not found"))
@@ -743,13 +803,15 @@ describe("ensureConversationSandboxReady", () => {
   it("starts the egress check before the GCS token refresh resolves on wake", async () => {
     const refreshStarted = createDeferred<void>();
     const refreshResult = createDeferred<Result<void, Error>>();
-    mockEnsureSandboxActive.mockResolvedValue(
-      new Ok({
-        freshlyCreated: false,
-        sandbox,
-        wokeFromSleep: true,
-        scope: { spaceId: null },
-      })
+    mockEnsureSandboxActive.mockImplementation(
+      simulateEnsureActive(
+        new Ok({
+          freshlyCreated: false,
+          sandbox,
+          wokeFromSleep: true,
+          scope: { spaceId: null },
+        })
+      )
     );
     mockRefreshSandboxMount.mockImplementation(() => {
       refreshStarted.resolve(undefined);

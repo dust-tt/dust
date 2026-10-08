@@ -7,6 +7,7 @@ import type {
   SandboxCreateBlob,
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
+  SandboxRuntimeRefresh,
   ScopeTransitionDestroyError,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -154,36 +155,43 @@ export class ConversationSandboxAdapter {
 
   static async ensureSandboxActive(
     auth: Authenticator,
-    conversation: ConversationSandboxOwner
+    conversation: ConversationSandboxOwner,
+    opts: {
+      runtimeRefresh?: SandboxRuntimeRefresh<ConversationSandboxScope>;
+    } = {}
   ): Promise<Result<EnsureSandboxResult<ConversationSandboxScope>, Error>> {
-    return SandboxResource.ensureActive(auth, {
-      lockKey: conversation.sId,
-      sandboxType: "conversation",
-      // Runs under the lifecycle lock: the conversation's pod association is
-      // an authorization input (egress claims, pod env vars, pod mounts) and
-      // a move — which holds the same lock — can change it at any time
-      // before the lock is acquired. Only the conversation's identity is
-      // trusted from the caller.
-      resolveScope: async () => {
-        const fresh = await ConversationResource.fetchById(
-          auth,
-          conversation.sId
-        );
-        if (!fresh) {
-          return new Err(
-            new Error(`Conversation ${conversation.sId} not found.`)
+    return SandboxResource.ensureActive(
+      auth,
+      {
+        lockKey: conversation.sId,
+        sandboxType: "conversation",
+        // Runs under the lifecycle lock: the conversation's pod association is
+        // an authorization input (egress claims, pod env vars, pod mounts) and
+        // a move — which holds the same lock — can change it at any time
+        // before the lock is acquired. Only the conversation's identity is
+        // trusted from the caller.
+        resolveScope: async () => {
+          const fresh = await ConversationResource.fetchById(
+            auth,
+            conversation.sId
           );
-        }
-        return new Ok({ spaceId: fresh.spaceSId });
+          if (!fresh) {
+            return new Err(
+              new Error(`Conversation ${conversation.sId} not found.`)
+            );
+          }
+          return new Ok({ spaceId: fresh.spaceSId });
+        },
+        // Factory form: the pod-scope loads only run when a sandbox is
+        // actually created.
+        envVars: (scope) =>
+          this.buildConversationEnvVars(auth, conversation, scope),
+        fetchSandbox: () => this.fetchSandbox(auth, conversation),
+        createSandbox: (blob) =>
+          this.createSandboxRecordForConversation(auth, conversation, blob),
       },
-      // Factory form: the pod-scope loads only run when a sandbox is
-      // actually created.
-      envVars: (scope) =>
-        this.buildConversationEnvVars(auth, conversation, scope),
-      fetchSandbox: () => this.fetchSandbox(auth, conversation),
-      createSandbox: (blob) =>
-        this.createSandboxRecordForConversation(auth, conversation, blob),
-    });
+      opts
+    );
   }
 
   // Pod-level sandbox config applies to every Computer running in the Pod:

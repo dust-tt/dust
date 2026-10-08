@@ -22,6 +22,7 @@ import type {
   EnsureSandboxResult,
   SandboxActivationMode,
   SandboxResource,
+  SandboxRuntimeRefresh,
 } from "@app/lib/resources/sandbox_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -40,21 +41,25 @@ export type EnsureSandboxReadyWithScopeResult<TScope> =
   EnsureSandboxReadyResult & { scope: TScope };
 
 type SandboxReadyConfig<TScope> = {
-  ensureActive: () => Promise<Result<EnsureSandboxResult<TScope>, Error>>;
+  ensureActive: (
+    runtimeRefresh: SandboxRuntimeRefresh<TScope>
+  ) => Promise<Result<EnsureSandboxResult<TScope>, Error>>;
   // Everything scope-dependent is derived from the scope ensureActive
   // resolved INSIDE the lifecycle lock — never from state the caller read
   // before it. A scope transition (conversation move) holds the same lock,
   // so this config cannot be built from a pod association that a concurrent
   // move already changed.
-  deriveConfig: (scope: TScope) => {
-    getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
-    runtimeOwner: SandboxRuntimeOwner;
-    // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
-    // sandbox's egress is scoped to — the owner's own sId.
-    egressPolicyOwnerId: string;
-    // Inherited pod policy layer for a sandbox running inside a pod.
-    egressPolicyPodId?: string;
-  };
+  deriveConfig: (scope: TScope) => SandboxRuntimeConfig;
+};
+
+type SandboxRuntimeConfig = {
+  getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
+  runtimeOwner: SandboxRuntimeOwner;
+  // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
+  // sandbox's egress is scoped to — the owner's own sId.
+  egressPolicyOwnerId: string;
+  // Inherited pod policy layer for a sandbox running inside a pod.
+  egressPolicyPodId?: string;
 };
 
 function sandboxOwnerHasPersistentState(owner: SandboxRuntimeOwner): boolean {
@@ -68,6 +73,144 @@ function sandboxOwnerHasPersistentState(owner: SandboxRuntimeOwner): boolean {
   }
 }
 
+function isSandboxRuntimeRefreshDue(sandbox: SandboxResource): boolean {
+  return (
+    !sandbox.lastRuntimeRefreshAt ||
+    Date.now() - sandbox.lastRuntimeRefreshAt.getTime() >=
+      SANDBOX_RUNTIME_REFRESH_INTERVAL_MS
+  );
+}
+
+// Runs under the sandbox's lifecycle lock (see `runtime-refresh-under-lock` on
+// SandboxResource.ensureActive): the mount, egress forwarder and trust bundle setup below are not
+// safe to run twice concurrently on the same sandbox.
+async function refreshSandboxRuntime<TScope>(
+  auth: Authenticator,
+  { sandbox, freshlyCreated, wokeFromSleep }: EnsureSandboxResult<TScope>,
+  {
+    getFileSystem,
+    runtimeOwner,
+    egressPolicyOwnerId,
+    egressPolicyPodId,
+  }: SandboxRuntimeConfig
+): Promise<Result<void, Error>> {
+  if (freshlyCreated || wokeFromSleep) {
+    void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
+      logger.error({ err }, "Telemetry start failed (fire-and-forget)")
+    );
+  }
+
+  // Synchronous and cheap: not worth a span (it would always read ~0ms).
+  const imageResult = getSandboxImage(auth);
+  if (imageResult.isErr()) {
+    logger.error(
+      { err: imageResult.error },
+      "Failed to get sandbox image for GCS mount"
+    );
+    return imageResult;
+  }
+  const image = imageResult.value;
+
+  const ensureEgressOnExec = () =>
+    traceSandboxStartupPhase("egress_on_exec", () =>
+      ensureSandboxEgressOnExec(auth, sandbox, {
+        runtimeOwner,
+        egressPolicyOwnerId,
+        egressPolicyPodId,
+        wokeFromSleep,
+      })
+    );
+
+  // Only mount on first creation. e2b preserves the FUSE mount and the
+  // root-owned token server across betaPause + connect (verified empirically),
+  // so on wake we just need fresh per-mount credentials in /run/dust-gcs.
+  if (freshlyCreated) {
+    // The image seeds /etc/dust/ca-bundle.pem with system roots, and
+    // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
+    // nftables ruleset never touches: every rule is scoped to the
+    // non-root Front exec UIDs (1002 and 1003) and the chains default to
+    // accept, so root egress is never dropped, even mid-setup. The
+    // dev-unrestricted branch tears down the general table but recreates
+    // the dedicated GCS broker drops, so it's safe to overlap too.
+    // Egress prep can therefore run alongside the GCS mount, with egress
+    // errors still taking precedence.
+    const [prepResult, mountResult] = await Promise.all([
+      traceSandboxStartupPhase("egress_prep", () =>
+        prepareSandboxEgressBeforeMount(auth, sandbox, {
+          runtimeOwner,
+          egressPolicyOwnerId,
+          egressPolicyPodId,
+        })
+      ),
+      traceSandboxStartupPhase("gcs_mount", async () => {
+        const fsResult = await getFileSystem();
+        if (fsResult.isErr()) {
+          return fsResult;
+        }
+        return fsResult.value.setupSandboxMount(sandbox, image);
+      }),
+    ]);
+    if (prepResult.isErr()) {
+      return prepResult;
+    }
+    if (mountResult.isErr()) {
+      return mountResult;
+    }
+
+    // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
+    // through the replica mount) and is awaited: `invoke` awaits
+    // the owner-specific ready helper, which guarantees no function runs
+    // before restore and daemon startup complete. Conversation sandboxes do not own state.
+    if (sandboxOwnerHasPersistentState(runtimeOwner)) {
+      const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
+      if (stateResult.isErr()) {
+        // status=running was already committed by ensureActive, and this
+        // block only runs when freshlyCreated — a plain Err would make the
+        // NEXT call take the warm path and happily serve a half-initialized
+        // sandbox (unrestored databases, no litestream daemon). Request a
+        // kill instead: ensureActive's kill-requested branch destroys and
+        // recreates on the next access, re-running this setup from scratch.
+        logger.error(
+          { err: stateResult.error, sandboxId: sandbox.sId },
+          "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
+        );
+        await sandbox.requestKill();
+        return stateResult;
+      }
+    }
+
+    const ensureEgressResult = await ensureEgressOnExec();
+    if (ensureEgressResult.isErr()) {
+      return ensureEgressResult;
+    }
+  } else {
+    // The egress check (a full forwarder restart after a wake) is the same setup the creation
+    // branch above already overlaps with the GCS mount, for the same reasons: it never
+    // touches the GCS broker's firewall, which the refresh re-applies before writing tokens.
+    // So it runs alongside the credential refresh, with egress errors still taking precedence.
+    const [refreshResult, ensureEgressResult] = await Promise.all([
+      traceSandboxStartupPhase("gcs_refresh", async () => {
+        const fsResult = await getFileSystem();
+        if (fsResult.isErr()) {
+          return fsResult;
+        }
+        return fsResult.value.refreshSandboxMount(sandbox, image);
+      }),
+      ensureEgressOnExec(),
+    ]);
+    if (ensureEgressResult.isErr()) {
+      return ensureEgressResult;
+    }
+    if (refreshResult.isErr()) {
+      return refreshResult;
+    }
+  }
+
+  await sandbox.updateLastRuntimeRefreshAt(new Date());
+
+  return new Ok(undefined);
+}
+
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
 // the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
 // skipped.
@@ -76,164 +219,37 @@ async function ensureOwnerSandboxReady<TScope>(
   { ensureActive, deriveConfig }: SandboxReadyConfig<TScope>
 ): Promise<Result<EnsureSandboxReadyWithScopeResult<TScope>, Error>> {
   const startMs = performance.now();
-  // cold is unknown until ensureActive returns; if it errors first (rare) we
-  // record the failure as a warm attempt.
+  // cold is unknown until ensureActive creates or wakes the sandbox; if it
+  // errors first (rare) we record the failure as a warm attempt.
   let cold = false;
   let status: "success" | "error" = "success";
 
   try {
     return await traceSandboxStartupPhase("total", async () => {
+      // The runtime refresh runs inside ensureActive, under the lifecycle
+      // lock, so this span covers it too.
       const ensureResult = await traceSandboxStartupPhase(
         "provider_ensure",
-        ensureActive
+        () =>
+          ensureActive({
+            isDue: isSandboxRuntimeRefreshDue,
+            run: (activation) => {
+              cold = activation.freshlyCreated;
+              return refreshSandboxRuntime(
+                auth,
+                activation,
+                deriveConfig(activation.scope)
+              );
+            },
+          })
       );
       if (ensureResult.isErr()) {
         status = "error";
         return ensureResult;
       }
 
-      const { sandbox, freshlyCreated, wokeFromSleep, scope } =
-        ensureResult.value;
+      const { sandbox, freshlyCreated, scope } = ensureResult.value;
       cold = freshlyCreated;
-      const {
-        getFileSystem,
-        runtimeOwner,
-        egressPolicyOwnerId,
-        egressPolicyPodId,
-      } = deriveConfig(scope);
-
-      const shouldRefreshRuntime =
-        freshlyCreated ||
-        wokeFromSleep ||
-        !sandbox.lastRuntimeRefreshAt ||
-        Date.now() - sandbox.lastRuntimeRefreshAt.getTime() >=
-          SANDBOX_RUNTIME_REFRESH_INTERVAL_MS;
-
-      if (freshlyCreated || wokeFromSleep) {
-        void startTelemetry(auth, sandbox, runtimeOwner).catch((err) =>
-          logger.error({ err }, "Telemetry start failed (fire-and-forget)")
-        );
-      }
-
-      if (!shouldRefreshRuntime) {
-        return new Ok({ sandbox, freshlyCreated, scope });
-      }
-
-      // Synchronous and cheap: not worth a span (it would always read ~0ms).
-      const imageResult = getSandboxImage(auth);
-      if (imageResult.isErr()) {
-        logger.error(
-          { err: imageResult.error },
-          "Failed to get sandbox image for GCS mount"
-        );
-        status = "error";
-        return imageResult;
-      }
-      const image = imageResult.value;
-
-      const ensureEgressOnExec = () =>
-        traceSandboxStartupPhase("egress_on_exec", () =>
-          ensureSandboxEgressOnExec(auth, sandbox, {
-            runtimeOwner,
-            egressPolicyOwnerId,
-            egressPolicyPodId,
-            wokeFromSleep,
-          })
-        );
-
-      // Only mount on first creation. e2b preserves the FUSE mount and the
-      // root-owned token server across betaPause + connect (verified empirically),
-      // so on wake we just need fresh per-mount credentials in /run/dust-gcs.
-      if (freshlyCreated) {
-        // The image seeds /etc/dust/ca-bundle.pem with system roots, and
-        // gcsfuse runs as root to storage.googleapis.com, which the in-sandbox
-        // nftables ruleset never touches: every rule is scoped to the
-        // non-root Front exec UIDs (1002 and 1003) and the chains default to
-        // accept, so root egress is never dropped, even mid-setup. The
-        // dev-unrestricted branch tears down the general table but recreates
-        // the dedicated GCS broker drops, so it's safe to overlap too.
-        // Egress prep can therefore run alongside the GCS mount, with egress
-        // errors still taking precedence.
-        const [prepResult, mountResult] = await Promise.all([
-          traceSandboxStartupPhase("egress_prep", () =>
-            prepareSandboxEgressBeforeMount(auth, sandbox, {
-              runtimeOwner,
-              egressPolicyOwnerId,
-              egressPolicyPodId,
-            })
-          ),
-          traceSandboxStartupPhase("gcs_mount", async () => {
-            const fsResult = await getFileSystem();
-            if (fsResult.isErr()) {
-              return fsResult;
-            }
-            return fsResult.value.setupSandboxMount(sandbox, image);
-          }),
-        ]);
-        if (prepResult.isErr()) {
-          status = "error";
-          return prepResult;
-        }
-        if (mountResult.isErr()) {
-          status = "error";
-          return mountResult;
-        }
-
-        // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
-        // through the replica mount) and is awaited: `invoke` awaits
-        // the owner-specific ready helper, which guarantees no function runs
-        // before restore and daemon startup complete. Conversation sandboxes do not own state.
-        if (sandboxOwnerHasPersistentState(runtimeOwner)) {
-          const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
-          if (stateResult.isErr()) {
-            // status=running was already committed by ensureActive, and this
-            // block only runs when freshlyCreated — a plain Err would make the
-            // NEXT call take the warm path and happily serve a half-initialized
-            // sandbox (unrestored databases, no litestream daemon). Request a
-            // kill instead: ensureActive's kill-requested branch destroys and
-            // recreates on the next access, re-running this setup from scratch.
-            logger.error(
-              { err: stateResult.error, sandboxId: sandbox.sId },
-              "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
-            );
-            await sandbox.requestKill();
-            status = "error";
-            return stateResult;
-          }
-        }
-
-        const ensureEgressResult = await ensureEgressOnExec();
-        if (ensureEgressResult.isErr()) {
-          status = "error";
-          return ensureEgressResult;
-        }
-      } else {
-        // The egress check (a full forwarder restart after a wake) is the same setup the creation
-        // branch above already overlaps with the GCS mount, for the same reasons: it never
-        // touches the GCS broker's firewall, which the refresh re-applies before writing tokens.
-        // So it runs alongside the credential refresh, with egress errors still taking precedence.
-        const [refreshResult, ensureEgressResult] = await Promise.all([
-          traceSandboxStartupPhase("gcs_refresh", async () => {
-            const fsResult = await getFileSystem();
-            if (fsResult.isErr()) {
-              return fsResult;
-            }
-            return fsResult.value.refreshSandboxMount(sandbox, image);
-          }),
-          ensureEgressOnExec(),
-        ]);
-        if (ensureEgressResult.isErr()) {
-          status = "error";
-          return ensureEgressResult;
-        }
-        if (refreshResult.isErr()) {
-          status = "error";
-          return refreshResult;
-        }
-      }
-
-      await sandbox.updateLastRuntimeRefreshAt(new Date());
-
       return new Ok({ sandbox, freshlyCreated, scope });
     });
   } finally {
@@ -289,9 +305,7 @@ const inFlightConversationReady = new Map<
 /**
  * @cc [owner:davidebbo,label:concurrency] single-in-flight-ready-per-conversation
  * Within one process, concurrent calls for the same workspace and conversation MUST share one
- * in-flight readiness run and receive its result. The mount and egress phases run outside the
- * lifecycle lock, so a second run started while a first creation is still setting the sandbox up
- * would refresh a mount that does not exist yet.
+ * in-flight readiness run and receive its result.
  */
 export async function ensureConversationSandboxReadyWithScope(
   auth: Authenticator,
@@ -324,8 +338,10 @@ async function ensureConversationSandboxReadyRun(
   // re-resolves spaceId from the database INSIDE the lifecycle lock, and
   // everything scope-dependent below derives from that resolved value.
   return ensureOwnerSandboxReady(auth, {
-    ensureActive: () =>
-      ConversationSandboxAdapter.ensureSandboxActive(auth, conversation),
+    ensureActive: (runtimeRefresh) =>
+      ConversationSandboxAdapter.ensureSandboxActive(auth, conversation, {
+        runtimeRefresh,
+      }),
     // Pod-level sandbox config applies to everything running in the Pod: a
     // conversation inside a Pod receives the Pod's env vars and HTTPS
     // secrets at creation, and inherits the Pod's egress policy as a
@@ -357,8 +373,11 @@ export async function ensureFrameSandboxReady(
   Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
 > {
   return ensureOwnerSandboxReady(auth, {
-    ensureActive: () =>
-      FrameSandboxAdapter.ensureSandboxActive(auth, frame, mode),
+    ensureActive: (runtimeRefresh) =>
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, {
+        ...mode,
+        runtimeRefresh,
+      }),
     deriveConfig: (scope) => ({
       getFileSystem: () =>
         DustFileSystem.forFrameSandboxProvisioning(auth, frame, {

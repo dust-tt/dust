@@ -14,6 +14,7 @@ import type {
   SandboxDeleteOwner,
   SandboxLifecycleOwner,
   SandboxPreSleepCheck,
+  SandboxRuntimeRefresh,
 } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
@@ -268,7 +269,9 @@ export class FrameSandboxAdapter {
   static async ensureSandboxActive(
     auth: Authenticator,
     frame: FrameSandboxScopeOwner,
-    mode: SandboxActivationMode = {}
+    opts: SandboxActivationMode & {
+      runtimeRefresh?: SandboxRuntimeRefresh<FrameSandboxScope>;
+    } = {}
   ): Promise<Result<EnsureSandboxResult<FrameSandboxScope>, Error>> {
     return SandboxResource.ensureActive(
       auth,
@@ -283,7 +286,7 @@ export class FrameSandboxAdapter {
       },
       {
         beforeSleep: this.sqliteStatePreSleepCheck(auth, frame),
-        ...mode,
+        ...opts,
       }
     );
   }
