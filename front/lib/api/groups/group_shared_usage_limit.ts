@@ -21,6 +21,7 @@ import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { contractHasPersonalCreditSeats } from "@app/lib/metronome/seats";
 import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { listGroupsWithVerb } from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
@@ -93,9 +94,9 @@ export async function areGroupSharedUsageLimitsEnabled(
 }
 
 /**
- * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-admin-only-edit
- * Only workspace admins MAY set or remove a shared usage limit. Group managers' `set_usage_limits`
- * MUST NOT grant it (it only covers the per-member limit).
+ * @cc [owner:rfrenoy,label:product;security] group-shared-usage-limit-edit-rights
+ * Only workspace admins and workspace managers MAY set or remove a shared usage limit. Group
+ * managers' `set_usage_limits` MUST NOT grant it (it only covers the per-member limit).
  */
 export async function setGroupSharedUsageLimit(
   auth: Authenticator,
@@ -109,11 +110,11 @@ export async function setGroupSharedUsageLimit(
     auditContext: AuditLogContext;
   }
 ): Promise<Result<SetSharedUsageLimitResponse, SharedUsageLimitError>> {
-  if (!auth.isAdmin()) {
+  if (!auth.isManager()) {
     return new Err(
       new SharedUsageLimitError(
         "unauthorized",
-        "Only workspace admins can change shared usage limits."
+        "Only workspace admins and managers can change shared usage limits."
       )
     );
   }
@@ -457,6 +458,10 @@ export async function readGroupSharedUsageCount(
 }
 
 /**
+ * @cc [owner:rfrenoy,label:security;product] group-shared-usage-read-scope
+ * Workspace admins and workspace managers MAY read the shared usage of every limited group; anyone
+ * else MUST only get the limited groups on which they hold `read_usage` (group managers).
+ *
  * Each limited group with its usage this cycle, or null when shared usage limits are not enabled. Reads
  * the counters without seeding them; groups whose counter reads 0 are filled from a single
  * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
@@ -468,10 +473,17 @@ export async function getGroupSharedUsageLimits(
     return null;
   }
 
-  const [groups, bounds] = await Promise.all([
+  const [limitedGroups, readableGroups, bounds] = await Promise.all([
     GroupResource.listGroupsWithSharedUsageLimit(auth),
+    auth.isManager() ? null : listGroupsWithVerb(auth, "read_usage"),
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
   ]);
+  const readableGroupIds = readableGroups
+    ? new Set(readableGroups.map((group) => group.id))
+    : null;
+  const groups = readableGroupIds
+    ? limitedGroups.filter((group) => readableGroupIds.has(group.id))
+    : limitedGroups;
 
   const workspace = auth.getNonNullableWorkspace();
   const countByGroupId = new Map<string, number>();

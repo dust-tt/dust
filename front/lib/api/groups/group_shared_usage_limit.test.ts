@@ -490,7 +490,7 @@ describe("setGroupSharedUsageLimit", () => {
       expect(result.isErr() && result.error.type).toBe("invalid_group_kind");
     });
 
-    it("refuses non-admins, including members with usage-limit rights", async () => {
+    it("refuses regular members", async () => {
       const { workspace, auth } = await setup();
       const engineering = await GroupFactory.regularManual(
         workspace,

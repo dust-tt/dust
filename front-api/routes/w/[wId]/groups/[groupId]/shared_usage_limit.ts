@@ -9,7 +9,7 @@ import type { PutSharedUsageLimitResponseBody } from "@app/types/api/groups/shar
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -68,7 +68,7 @@ app.put(
   "/",
   validate("param", ParamsSchema),
   validate("json", UpdateSharedUsageLimitBodySchema),
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<PutSharedUsageLimitResponseBody> => {
     const auth = ctx.get("auth");
     const { groupId } = ctx.req.valid("param");

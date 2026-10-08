@@ -86,12 +86,34 @@ describe("PUT /api/w/[wId]/groups/[groupId]/shared_usage_limit", () => {
     expect(reloaded.value.sharedUsageLimitPriority).toBe(1);
   });
 
-  it("refuses a workspace manager", async () => {
+  it("lets a workspace manager set a shared usage limit", async () => {
+    const workspace = await sharedUsageLimitsWorkspace();
+    const group = await GroupFactory.regularManual(workspace, "Engineering");
+    const { auth } = await createPrivateApiMockRequest({
+      method: "PUT",
+      role: "manager",
+      workspace,
+    });
+
+    const response = await putSharedUsageLimit(workspace.sId, group.sId, {
+      kind: "limited",
+      awuCredits: 10_000,
+    });
+
+    expect(response.status).toBe(200);
+    const reloaded = await GroupResource.fetchById(auth, group.sId);
+    if (reloaded.isErr()) {
+      throw reloaded.error;
+    }
+    expect(reloaded.value.sharedUsageLimitAwuCredits).toBe(10_000);
+  });
+
+  it("refuses a regular member", async () => {
     const workspace = await sharedUsageLimitsWorkspace();
     const group = await GroupFactory.regularManual(workspace, "Engineering");
     await createPrivateApiMockRequest({
       method: "PUT",
-      role: "manager",
+      role: "user",
       workspace,
     });
 
