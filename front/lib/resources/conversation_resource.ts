@@ -48,6 +48,7 @@ import type {
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
+  MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types/assistant/conversation";
@@ -4510,9 +4511,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     auth: Authenticator,
     conversation: ConversationWithoutContentType,
     { rank, version }: { rank: number; version: number }
-  ): Promise<MessageModel | null> {
+  ): Promise<{ visibility: MessageVisibility } | null> {
     // Served by the unique index on (workspaceId, conversationId, rank, version).
-    return MessageModel.findOne({
+    const newerVersion = await MessageModel.findOne({
+      attributes: ["visibility"],
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: conversation.id,
@@ -4521,6 +4523,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
       order: [["version", "DESC"]],
     });
+
+    return newerVersion && { visibility: newerVersion.visibility };
   }
 
   /**

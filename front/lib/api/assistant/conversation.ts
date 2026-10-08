@@ -2122,6 +2122,14 @@ export async function softDeleteUserMessageAndReplies(
   const conversation: ConversationWithoutContentType =
     conversationResource.toJSON();
 
+  const user = auth.getNonNullableUser();
+  const owner = auth.getNonNullableWorkspace();
+
+  // Only admins or the user who sent the message can delete it.
+  if (!auth.isAdmin() && message.user?.id !== user.id) {
+    return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
   // The client may still show an outdated version of the message, e.g. one already deleted or
   // since edited.
   const newerVersion = await ConversationResource.fetchNewerMessageVersion(
@@ -2134,14 +2142,6 @@ export async function softDeleteUserMessageAndReplies(
   }
   if (newerVersion) {
     return new Err(new ConversationError("message_outdated"));
-  }
-
-  const user = auth.getNonNullableUser();
-  const owner = auth.getNonNullableWorkspace();
-
-  // Only admins or the user who sent the message can delete it.
-  if (!auth.isAdmin() && message.user?.id !== user.id) {
-    return new Err(new ConversationError("message_deletion_not_authorized"));
   }
 
   // Known small race: this snapshot is taken before the rank lock below. A concurrent retry/edit
@@ -2288,20 +2288,6 @@ export async function softDeleteAgentMessage(
     return new Ok({ success: true });
   }
 
-  // The client may still show an outdated version of the message, e.g. one already deleted along
-  // with its user message, or since retried.
-  const newerVersion = await ConversationResource.fetchNewerMessageVersion(
-    auth,
-    conversation,
-    message
-  );
-  if (newerVersion?.visibility === "deleted") {
-    return new Ok({ success: true });
-  }
-  if (newerVersion) {
-    return new Err(new ConversationError("message_outdated"));
-  }
-
   const user = auth.getNonNullableUser();
   const owner = auth.getNonNullableWorkspace();
 
@@ -2326,6 +2312,20 @@ export async function softDeleteAgentMessage(
 
   if (parentMessage.userMessage.userId !== user.id) {
     return new Err(new ConversationError("message_deletion_not_authorized"));
+  }
+
+  // The client may still show an outdated version of the message, e.g. one already deleted along
+  // with its user message, or since retried.
+  const newerVersion = await ConversationResource.fetchNewerMessageVersion(
+    auth,
+    conversation,
+    message
+  );
+  if (newerVersion?.visibility === "deleted") {
+    return new Ok({ success: true });
+  }
+  if (newerVersion) {
+    return new Err(new ConversationError("message_outdated"));
   }
 
   const { agentMessages } = await withTransaction(async (t) => {
