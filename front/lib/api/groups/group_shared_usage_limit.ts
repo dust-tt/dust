@@ -478,11 +478,11 @@ export async function getGroupSharedUsageLimits(
     auth.isManager() ? null : listGroupsWithVerb(auth, "read_usage"),
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
   ]);
-  const readableGroupIds = readableGroups
+  const readableGroupModelIds = readableGroups
     ? new Set(readableGroups.map((group) => group.id))
     : null;
-  const groups = readableGroupIds
-    ? limitedGroups.filter((group) => readableGroupIds.has(group.id))
+  const groups = readableGroupModelIds
+    ? limitedGroups.filter((group) => readableGroupModelIds.has(group.id))
     : limitedGroups;
 
   const workspace = auth.getNonNullableWorkspace();
