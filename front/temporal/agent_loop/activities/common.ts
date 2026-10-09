@@ -568,7 +568,7 @@ async function stopWithoutAgentConfiguration(
   }
   logger.info(
     { conversationId, agentMessageId, messageStatus: status },
-    "Agent configuration unavailable, agent message stopped without it"
+    "Agent configuration or model unavailable, agent message stopped without them"
   );
 }
 

@@ -60,9 +60,11 @@ const AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES = [
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
+type AgentLoopConfigNotFoundErrorType =
+  (typeof AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES)[number];
 type AgentLoopDataErrorType =
   | (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number]
-  | (typeof AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES)[number];
+  | AgentLoopConfigNotFoundErrorType;
 
 class AgentLoopDataError extends Error {
   readonly type: AgentLoopDataErrorType;
@@ -87,7 +89,7 @@ export function isAgentLoopDataSoftDeleteError(
 
 export function isAgentLoopConfigNotFoundError(
   error: Error
-): error is AgentLoopDataError {
+): error is AgentLoopDataError & { type: AgentLoopConfigNotFoundErrorType } {
   return (
     error instanceof AgentLoopDataError &&
     AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES.some((type) => type === error.type)
