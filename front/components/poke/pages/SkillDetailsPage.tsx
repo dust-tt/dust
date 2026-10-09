@@ -66,7 +66,7 @@ export function SkillDetailsPage() {
     );
   }
 
-  const { skill, editedByUser, spaces, agentsUsage, usedBySkills } =
+  const { skill, kind, editedByUser, spaces, agentsUsage, usedBySkills } =
     skillDetails;
 
   return (
@@ -92,11 +92,15 @@ export function SkillDetailsPage() {
               workspace: owner,
             }}
           />
-          <GroupPermissionsDataTable
-            owner={owner}
-            resourceType="skill"
-            resourceId={skill.id}
-          />
+          {/* Code-defined skills only carry type-wide grants, and their sIds do not encode a
+              resource id the group permissions endpoint can decode. */}
+          {kind === "custom" && (
+            <GroupPermissionsDataTable
+              owner={owner}
+              resourceType="skill"
+              resourceId={skill.sId}
+            />
+          )}
         </div>
       </div>
 

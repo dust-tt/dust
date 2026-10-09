@@ -85,7 +85,7 @@ export function SpacePage() {
           <GroupPermissionsDataTable
             owner={owner}
             resourceType="space"
-            resourceId={space.id}
+            resourceId={space.sId}
           />
         </div>
       </div>

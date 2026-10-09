@@ -11,7 +11,7 @@ interface GroupPermissionsDataTableProps {
   // resourceId (grants that apply to that resource instance).
   groupId?: string;
   resourceType?: GroupPermissionResourceType;
-  resourceId?: number;
+  resourceId?: string;
 }
 
 export function GroupPermissionsDataTable({

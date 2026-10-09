@@ -4,6 +4,7 @@ import {
   getPokeGroupPermissionsForResource,
 } from "@app/lib/api/poke/group_permissions";
 import { fetchPokeGroupById } from "@app/lib/api/poke/groups";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { GROUP_PERMISSION_RESOURCE_TYPES } from "@app/types/group_permissions";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -17,7 +18,7 @@ const QuerySchema = z.union([
   }),
   z.object({
     resourceType: z.enum([...GROUP_PERMISSION_RESOURCE_TYPES]),
-    resourceId: z.coerce.number().int(),
+    resourceId: z.string(),
   }),
 ]);
 
@@ -49,10 +50,21 @@ app.get(
       });
     }
 
+    const resourceModelId = getResourceIdFromSId(query.resourceId);
+    if (resourceModelId === null) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Invalid resource sId.",
+        },
+      });
+    }
+
     return ctx.json({
       groupPermissions: await getPokeGroupPermissionsForResource(auth, {
         resourceType: query.resourceType,
-        resourceId: query.resourceId,
+        resourceId: resourceModelId,
       }),
     });
   }

@@ -11,7 +11,7 @@ interface UsePokeGroupPermissionsProps {
   // resourceId (grants that apply to that resource instance).
   groupId?: string;
   resourceType?: GroupPermissionResourceType;
-  resourceId?: number;
+  resourceId?: string;
 }
 
 export function usePokeGroupPermissions({
@@ -32,7 +32,7 @@ export function usePokeGroupPermissions({
     params.set("resourceType", resourceType);
   }
   if (resourceId !== undefined) {
-    params.set("resourceId", String(resourceId));
+    params.set("resourceId", resourceId);
   }
 
   const { data, error, mutate } = useSWRWithDefaults(

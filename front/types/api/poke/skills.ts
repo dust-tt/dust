@@ -26,6 +26,7 @@ export type PostSkillSuggestionBodyType = {
 
 export type PokeGetSkillDetails = {
   skill: SkillType;
+  kind: "custom" | "global" | "system";
   editedByUser: UserType | null;
   spaces: EnrichedSpaceType[];
   // Agents that use this skill.
