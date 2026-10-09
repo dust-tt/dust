@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
+use dfs_protocol::{error::status, rpc::ErrorCode};
 use foundationdb::{
-    Database,
+    Database, FdbBindingError,
     options::{DatabaseOption, TransactionOption},
 };
+use tonic::Status;
 
 /// dust-hive envs export their own cluster file through `env.sh`.
 const CLUSTER_FILE_ENV: &str = "FDB_CLUSTER_FILE";
@@ -20,6 +22,12 @@ pub fn open() -> Result<Database> {
         .with_context(|| format!("opening cluster file {cluster_file}"))?;
     database.set_option(DatabaseOption::TransactionTimeout(TRANSACTION_TIMEOUT_MS))?;
     Ok(database)
+}
+
+/// Logs a failed transaction and answers INTERNAL, so FDB details never reach the client.
+pub fn internal_status(error: FdbBindingError) -> Status {
+    tracing::error!(%error, "fdb transaction failed");
+    status(ErrorCode::Internal)
 }
 
 /// FDB clients retry forever by default; give up instead so an unreachable cluster is reported.
