@@ -12,6 +12,7 @@ import type {
   SkillListItemType,
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
+import { StarFilled } from "@dust-tt/sparkle";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -248,6 +249,7 @@ export function getSkillSlashCommandItem(
       skill,
     },
     description: skill.userFacingDescription,
+    endIcon: skill.isFavorite ? StarFilled : undefined,
     hasDetails: true,
     icon: () => React.createElement(getSkillAvatarIcon(skill)),
     id: skill.sId,

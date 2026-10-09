@@ -142,7 +142,7 @@ describe("AgentPicker", () => {
     expect(
       screen.queryByPlaceholderText("Search for agents")
     ).not.toBeInTheDocument();
-    expect(fetcherWithBody).toHaveBeenCalledTimes(1);
+    expect(fetcherWithBody).toHaveBeenCalledTimes(2);
   });
 
   it("keeps the selected agent first beyond the search page and supports deselection", async () => {
@@ -213,8 +213,13 @@ describe("AgentPicker", () => {
     }
     await screen.findByRole("menuitem", { name: "Alpha" });
     expect(
-      screen.getAllByRole("menuitem").map((item) => item.textContent)
-    ).toEqual(["Alpha", "Beta"]);
+      screen
+        .getAllByRole("menuitem")
+        .map((item) => [item.textContent, !!item.querySelector("svg")])
+    ).toEqual([
+      ["Alpha", false],
+      ["Beta", true],
+    ]);
 
     fireEvent.change(screen.getByPlaceholderText("Search for agents"), {
       target: { value: "" },
@@ -281,7 +286,7 @@ describe("AgentPicker", () => {
     ).toBeInTheDocument();
     fireEvent.keyDown(input, { key: "Enter" });
     expect(onItemClick).not.toHaveBeenCalled();
-    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(fetcherWithBody).toHaveBeenCalledTimes(3));
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
       expect.any(String),
       expect.objectContaining({ query: "beta" }),

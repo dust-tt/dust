@@ -24,6 +24,7 @@ import {
   Icon,
   LoadingBlock,
   Robot,
+  StarFilled,
   XClose,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -72,6 +73,7 @@ interface AgentPickerProps {
  * With showFavoritesFirst, an empty query MUST show favorites before other agents,
  * preserving each query's alphabetical order without duplicates. Typed queries MUST
  * search all agents by relevance without promoting favorites.
+ * Every listed favorite agent MUST show a favorite star, whatever the query.
  */
 export function AgentPicker({
   owner,
@@ -97,7 +99,7 @@ export function AgentPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null);
   const hasQuery = searchText.trim().length > 0;
-  const shouldFetchFavorites = showFavoritesFirst && !hasQuery;
+  const shouldPromoteFavorites = showFavoritesFirst && !hasQuery;
 
   const {
     agents: allAgents,
@@ -125,18 +127,21 @@ export function AgentPicker({
     sortBy: "name",
     permissionFiltering: "strict",
     selectionMode: "favorites_only",
-    disabled: !isOpen || disabled || !shouldFetchFavorites,
+    disabled: !isOpen || disabled,
   });
 
   // Wait for both lists so favorites do not jump above already displayed results.
-  const isAgentsLoading = isSearchLoading || isFavoritesLoading;
+  const isAgentsLoading =
+    isSearchLoading || (shouldPromoteFavorites && isFavoritesLoading);
   const isAgentsError =
-    isSearchError || (shouldFetchFavorites && isFavoritesError);
+    isSearchError || (shouldPromoteFavorites && isFavoritesError);
   const favoriteIds = new Set(favoriteAgents.map((agent) => agent.sId));
-  const searchResults = [
-    ...favoriteAgents,
-    ...allAgents.filter((agent) => !favoriteIds.has(agent.sId)),
-  ];
+  const searchResults = shouldPromoteFavorites
+    ? [
+        ...favoriteAgents,
+        ...allAgents.filter((agent) => !favoriteIds.has(agent.sId)),
+      ]
+    : allAgents;
   const selected =
     searchResults.find((a) => a.sId === selectedAgentId) ??
     // Keep the current selection visible even if it is beyond the first search page.
@@ -240,6 +245,13 @@ export function AgentPicker({
                   }`}
                   endComponent={
                     <div className="z-10 flex items-center gap-1">
+                      {favoriteIds.has(agent.sId) && (
+                        <Icon
+                          visual={StarFilled}
+                          size="xs"
+                          className="text-muted-foreground"
+                        />
+                      )}
                       {isSelected && (
                         // Show a tick by default; on hover swap it for an X to
                         // signal that clicking will deselect the agent.
