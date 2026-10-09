@@ -708,7 +708,7 @@ export function CommentsList({
   );
 }
 
-/** The button above the document that opens the list, with the open count. */
+/** The top bar button that opens the list, with the open count. */
 export function CommentsToggle({
   comments,
   isOpen,
@@ -721,11 +721,12 @@ export function CommentsToggle({
   const count = comments.filter((c) => !c.resolved).length;
   return (
     <Button
-      size="xs"
+      size="sm"
       variant={isOpen ? "primary" : "ghost"}
       icon={MessageCircle01}
       label={count > 0 ? String(count) : undefined}
       tooltip="All comments"
+      aria-label="All comments"
       aria-expanded={isOpen}
       onClick={onToggle}
     />

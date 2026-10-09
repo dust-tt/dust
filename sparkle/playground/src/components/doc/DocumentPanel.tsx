@@ -1079,6 +1079,14 @@ export function DocumentPanel({
           {toolbarSlot &&
             createPortal(
               <>
+                <CommentsToggle
+                  comments={session.comments}
+                  isOpen={isCommentsListOpen}
+                  onToggle={() => {
+                    setIsCommentsListOpen((v) => !v);
+                    setActiveCommentId(null);
+                  }}
+                />
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1184,7 +1192,7 @@ export function DocumentPanel({
             )}
             <div
               ref={scrollAreaRef}
-              className="@container min-h-0 flex-1 overflow-y-auto bg-background"
+              className="@container min-h-0 flex-1 overflow-y-auto bg-muted-background"
             >
               <div
                 ref={pageRef}
@@ -1206,17 +1214,10 @@ export function DocumentPanel({
                   editorRef.current?.focusEnd();
                 }}
               >
-                {/* The status row above the document, as in production. */}
+                {/* The status row above the document, as in production; the
+                comments button is in the top bar, next to download. */}
                 <div className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-xs text-muted-foreground">
                   <LiveStatusChip status={liveStatus} />
-                  <CommentsToggle
-                    comments={session.comments}
-                    isOpen={isCommentsListOpen}
-                    onToggle={() => {
-                      setIsCommentsListOpen((v) => !v);
-                      setActiveCommentId(null);
-                    }}
-                  />
                 </div>
                 <DocEditor
                   ref={editorRef}
