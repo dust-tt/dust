@@ -18,7 +18,11 @@ const EDITING_SHOWN_MS = 4_000;
 export function useLiveAgentActivity(
   provider: HocuspocusProvider | null
 ): LiveAgentEvent | null {
-  const [shown, setShown] = useState<LiveAgentEvent | null>(null);
+  // Kept with its provider: until the effect's cleanup runs, a new provider would see the old one's.
+  const [shown, setShown] = useState<{
+    provider: HocuspocusProvider;
+    event: LiveAgentEvent;
+  } | null>(null);
 
   useEffect(() => {
     if (!provider) {
@@ -27,7 +31,7 @@ export function useLiveAgentActivity(
     let timer: ReturnType<typeof setTimeout> | undefined;
     const unsubscribe = onLiveAgentActivity(provider, (event) => {
       clearTimeout(timer);
-      setShown(event);
+      setShown({ provider, event });
       timer = setTimeout(
         () => setShown(null),
         event.activity === "editing" ? EDITING_SHOWN_MS : READING_SHOWN_MS
@@ -40,5 +44,5 @@ export function useLiveAgentActivity(
     };
   }, [provider]);
 
-  return shown;
+  return shown?.provider === provider ? shown.event : null;
 }

@@ -517,7 +517,7 @@ export async function readLiveSource(
  * @cc [owner:PopDaph,label:product] collab-agent-activity
  * Every connection of a document Hocuspocus holds MUST be told what `agent` is doing in it, and
  * nothing MUST be sent for a document it does not hold. Callers MUST only report an agent whose
- * user may open the document live.
+ * user may read the document live (`checkLiveReadAccess`).
  */
 export function showLiveAgentActivity(
   hocuspocus: Hocuspocus<LiveFile>,

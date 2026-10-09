@@ -5,6 +5,7 @@ import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import {
   COLLAB_INTERNAL_ROUTES_PREFIX,
@@ -172,7 +173,7 @@ describe("createInternalDocumentsApp", () => {
       throw new Error("The document is not open.");
     }
     const broadcast = vi.spyOn(document, "broadcastStateless");
-    const agent = { agentId: "agt_1", name: "Writer" };
+    const agent = LiveAgentFactory.build();
     const readAs = (userId: string) =>
       post(
         LIVE_SOURCE_READ_PATH,

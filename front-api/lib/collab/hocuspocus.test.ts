@@ -23,6 +23,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import {
   BODY_FRAGMENT_NAME,
@@ -1052,7 +1053,7 @@ describe("comment threads in a live session", () => {
   });
 
   describe("an agent's activity", () => {
-    const AGENT = { agentId: "agt_1", name: "Writer" };
+    const AGENT = LiveAgentFactory.build();
 
     /** What reaches a browser, in order: agent messages and document updates. */
     async function watch() {
