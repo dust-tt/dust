@@ -787,7 +787,7 @@ function buildSharedUsageLimitGroupColumn(
       } = info.row.original;
       const name = (
         <span className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground dark:text-muted-foreground-night">
-          <span className="truncate">{sharedUsageLimitGroupName ?? "-"}</span>
+          <span className="truncate">{sharedUsageLimitGroupName ?? "--"}</span>
           {isSharedUsageLimitGroupUsageLoading ? (
             <LoadingBlock className="h-4 w-4 shrink-0 rounded" />
           ) : (
