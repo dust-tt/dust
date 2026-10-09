@@ -165,36 +165,32 @@ msgid "Edited"
 msgstr "Modifié"
 
 #: front/components/assistant/details/MemberDetails.tsx
-msgid "This user is not available."
-msgstr "Cet utilisateur n’est pas disponible."
-
-#: front/components/assistant/details/MemberDetails.tsx
 msgid "User avatar"
 msgstr "Avatar de l’utilisateur"
 
 #: front/components/assistant/details/MemberDetails.tsx
-msgid "Former member"
-msgstr "Ancien membre"
-
-#: front/components/assistant/details/MemberDetails.tsx
-msgid "Left the workspace: {leftDate}"
-msgstr "A quitté le workspace : {leftDate}"
-
-#: front/components/assistant/details/MemberDetails.tsx
-msgid "Joined the workspace: {joinedDate}"
-msgstr "A rejoint le workspace : {joinedDate}"
-
-#: front/components/assistant/details/MemberDetails.tsx
-msgid "Username"
-msgstr "Nom d’utilisateur"
-
-#: front/components/assistant/details/MemberDetails.tsx
-msgid "Full name"
-msgstr "Nom complet"
+msgid "This user is not available."
+msgstr "Cet utilisateur n’est pas disponible."
 
 #: front/components/assistant/details/MemberDetails.tsx
 msgid "Email"
 msgstr "E-mail"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Groups"
+msgstr "Groupes"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "No groups"
+msgstr "Aucun groupe"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Dust role"
+msgstr "Rôle Dust"
+
+#: front/components/assistant/details/MemberDetails.tsx
+msgid "Former member"
+msgstr "Ancien membre"
 
 #: front/components/assistant/details/MemberDetails.tsx
 msgid "Close"

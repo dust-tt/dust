@@ -1,21 +1,26 @@
-import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
-import { formatDate } from "@app/lib/i18n/format";
+import { ROLE_LABELS } from "@app/components/members/Roles";
+import { JOB_TYPE_LABELS } from "@app/components/onboarding/ProfileOnboardingSteps";
 import { useMemberDetails } from "@app/lib/swr/assistants";
-import type { RoleType, WorkspaceType } from "@app/types/user";
+import type { WorkspaceType } from "@app/types/user";
 import {
   Avatar,
-  Chip,
   ContentMessage,
+  Icon,
   Lock01,
-  Separator,
+  MagicWand02,
+  Mail01,
   Sheet,
+  SheetContainer,
   SheetContent,
   SheetFooter,
+  SheetHeader,
   SheetTitle,
   Spinner,
+  Users01,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
+import type { ComponentType } from "react";
 
 type MemberDetailsProps = {
   owner: WorkspaceType;
@@ -23,26 +28,25 @@ type MemberDetailsProps = {
   userId: string | null;
 };
 
-const formatMembershipDate = (dateString: string | null) => {
-  if (!dateString) {
-    return null;
-  }
-  const date = new Date(dateString);
-  return formatDate(date, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-};
-
-const getRoleBadgeColor = (
-  role: RoleType
-): "info" | "warning" | "success" | "primary" | "highlight" => {
-  if (role === "none") {
-    return "primary";
-  }
-  return ROLES_DATA[role].color;
-};
+function MemberDetailsRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <Icon visual={icon} size="md" className="text-muted-foreground" />
+      <div className="flex min-w-0 flex-col">
+        <span className="copy-sm text-muted-foreground">{label}</span>
+        <span className="copy-sm break-words text-foreground">{value}</span>
+      </div>
+    </div>
+  );
+}
 
 export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
   const { t } = useLingui();
@@ -50,100 +54,82 @@ export function MemberDetails({ userId, onClose, owner }: MemberDetailsProps) {
     workspaceId: owner.sId,
     userIds: userId ? [userId] : [],
   });
-  const leftDate = formatMembershipDate(userDetails?.endAt ?? null);
-  const joinedDate = formatMembershipDate(userDetails?.startAt ?? null);
 
   return (
     <Sheet open={!!userId} onOpenChange={onClose}>
       <SheetContent>
-        <VisuallyHidden>
-          <SheetTitle />
-        </VisuallyHidden>
-        {isMembersLoading ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <Spinner size="lg" />
-          </div>
-        ) : isMembersError ? (
-          <ContentMessage title={t`Not available`} icon={Lock01} size="md">
-            <Trans>This user is not available.</Trans>
-          </ContentMessage>
-        ) : (
-          userDetails && (
-            <div className="flex h-full w-full flex-col items-center pt-8">
-              <div className="flex w-full max-w-sm flex-col items-center gap-6">
-                {/* Avatar with role badge */}
-
-                <div className="relative flex flex-col items-center gap-3">
-                  <Avatar
-                    name={userDetails.fullName ?? t`User avatar`}
-                    visual={userDetails.image ?? undefined}
-                    size="xl"
-                    isRounded
-                    className={
-                      userDetails.revoked ? "opacity-50 grayscale" : undefined
-                    }
-                  />
-                  <Chip
-                    size="xs"
-                    color={
-                      userDetails.revoked
-                        ? "primary"
-                        : getRoleBadgeColor(userDetails.role)
-                    }
-                    label={
-                      userDetails.revoked
-                        ? t`Former member`
-                        : t(ROLE_LABELS[userDetails.role])
-                    }
-                    className="absolute -bottom-3 shadow-sm"
-                  />
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <h2 className="text-xl font-semibold text-foreground">
-                    {userDetails.fullName}
-                  </h2>
-                  {(userDetails.startAt ?? userDetails.endAt) && (
-                    <p className="text-sm text-muted-foreground">
-                      {userDetails.revoked && leftDate
-                        ? t`Left the workspace: ${leftDate}`
-                        : joinedDate
-                          ? t`Joined the workspace: ${joinedDate}`
-                          : null}
-                    </p>
-                  )}
-                </div>
-
-                <Separator />
-                <div className="grid w-full grid-cols-2 gap-4">
-                  <div className="col-span-1">
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                      <Trans>Username</Trans>
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      {userDetails.username}
-                    </div>
-                  </div>
-                  <div className="col-span-1">
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                      <Trans>Full name</Trans>
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      {userDetails.fullName}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <div className="text-xs font-semibold tracking-wide text-muted-foreground">
-                      <Trans>Email</Trans>
-                    </div>
-                    <div className="mt-1 text-sm text-foreground">
-                      {userDetails.email}
-                    </div>
-                  </div>
-                </div>
+        <SheetHeader>
+          <VisuallyHidden>
+            <SheetTitle />
+          </VisuallyHidden>
+          {userDetails && (
+            <div className="flex flex-col items-center gap-4">
+              <Avatar
+                name={userDetails.fullName ?? t`User avatar`}
+                visual={userDetails.image ?? undefined}
+                size="xl"
+                isRounded
+                className={
+                  userDetails.revoked ? "opacity-50 grayscale" : undefined
+                }
+              />
+              <div className="flex flex-col items-center gap-1">
+                <h2 className="text-xl font-semibold text-foreground">
+                  {userDetails.fullName}
+                </h2>
+                {userDetails.pronouns && (
+                  <p className="copy-xs text-muted-foreground">
+                    {userDetails.pronouns}
+                  </p>
+                )}
+                {userDetails.jobType && (
+                  <p className="copy-sm text-muted-foreground">
+                    {t(JOB_TYPE_LABELS[userDetails.jobType])}
+                  </p>
+                )}
               </div>
             </div>
-          )
-        )}
+          )}
+        </SheetHeader>
+        <SheetContainer className="gap-6">
+          {isMembersLoading ? (
+            <div className="flex flex-1 items-center justify-center">
+              <Spinner size="lg" />
+            </div>
+          ) : isMembersError ? (
+            <ContentMessage title={t`Not available`} icon={Lock01} size="md">
+              <Trans>This user is not available.</Trans>
+            </ContentMessage>
+          ) : (
+            userDetails && (
+              <>
+                <MemberDetailsRow
+                  icon={Mail01}
+                  label={t`Email`}
+                  value={userDetails.email}
+                />
+                <MemberDetailsRow
+                  icon={Users01}
+                  label={t`Groups`}
+                  value={
+                    userDetails.groups.length > 0
+                      ? userDetails.groups.join(", ")
+                      : t`No groups`
+                  }
+                />
+                <MemberDetailsRow
+                  icon={MagicWand02}
+                  label={t`Dust role`}
+                  value={
+                    userDetails.revoked
+                      ? t`Former member`
+                      : t(ROLE_LABELS[userDetails.role])
+                  }
+                />
+              </>
+            )
+          )}
+        </SheetContainer>
         <SheetFooter
           leftButtonProps={{
             label: t`Close`,
