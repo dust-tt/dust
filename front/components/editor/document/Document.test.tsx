@@ -1,12 +1,19 @@
 import {
   Document,
+  DocumentView,
   hasOpenDocumentLayer,
 } from "@app/components/editor/document/Document";
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
-import type { DocumentProps } from "@app/components/editor/document/types";
+import type {
+  DocumentLiveParticipant,
+  DocumentProps,
+  LiveStatus,
+} from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
+import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -92,6 +99,21 @@ function startComment(dom: HTMLElement, editor: Editor, text: string) {
 const floatingCard = () =>
   document.querySelector<HTMLElement>(
     '[data-document-comment-card][data-state="open"]'
+  );
+
+/** The editor's content element under `root`. */
+const editorOf = (root: HTMLElement) => {
+  const element = root.querySelector<HTMLElement>(".tiptap");
+  if (!element) {
+    throw new Error("No editor content.");
+  }
+  return element;
+};
+
+/** Whether `element` comes before the document's content, as the page lays them out. */
+const isAbove = (element: Element, content: Element) =>
+  !!(
+    element.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING
   );
 
 /** The comment field's own editor, once it has mounted. */
@@ -525,13 +547,38 @@ describe("Document comments", () => {
       />
     );
 
-    expect(
-      (await within(documentRoot).findByRole("status")).textContent
-    ).toContain("Saved");
+    const status = await within(documentRoot).findByRole("status");
+    expect(status.textContent).toContain("Saved");
+    expect(isAbove(status, editorOf(documentRoot))).toBe(true);
     expect(within(container).queryByRole("status")).toBeNull();
     expect(
       within(documentRoot).queryByRole("button", { name: /^Comments/ })
     ).toBeNull();
+    container.remove();
+  });
+
+  it("shows the host's badge above the document, before the save status", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <Document
+        initialContent={SOURCE}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        headerControlsContainer={container}
+        badge={<span data-testid="badge" />}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    const status = await within(documentRoot).findByRole("status");
+    const badge = within(documentRoot).getByTestId("badge");
+    expect(
+      badge.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(isAbove(badge, editorOf(documentRoot))).toBe(true);
+    expect(within(container).queryByTestId("badge")).toBeNull();
     container.remove();
   });
 
@@ -718,6 +765,116 @@ describe("Document comments", () => {
     );
     const { from, to } = field.editor.state.selection;
     expect(field.editor.state.doc.textBetween(from, to)).toBe("gentle");
+  });
+});
+
+describe("Document live participants", () => {
+  const PARTICIPANTS: DocumentLiveParticipant[] = [
+    LiveParticipantFactory.build({ id: "usr_bob", name: "Bob" }),
+    LiveParticipantFactory.build({ id: "usr_ada", name: "Ada" }),
+  ];
+
+  const renderLiveView = (
+    status: LiveStatus,
+    participants: DocumentLiveParticipant[],
+    headerControlsContainer?: HTMLElement
+  ) =>
+    render(
+      <DocumentView
+        initialContent={SOURCE}
+        headerControlsContainer={headerControlsContainer}
+        liveView={{ status, participants, binding: null }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+        renderLiveParticipants={(shown) => (
+          <span data-testid="participants">
+            {shown.map(({ name }) => name).join(", ")}
+          </span>
+        )}
+      />
+    );
+
+  it("shows the participants right before the comments button in the host's container", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    renderLiveView("live", PARTICIPANTS, container);
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    const participants = within(container).getByTestId("participants");
+    expect(participants.textContent).toBe("Bob, Ada");
+    expect(participants.nextElementSibling).toBe(toggle);
+    container.remove();
+  });
+
+  it("shows the participants with the comments button above the document without a container", async () => {
+    const { container } = renderLiveView("live", PARTICIPANTS);
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    const participants = within(container).getByTestId("participants");
+    expect(participants.nextElementSibling).toBe(toggle);
+    expect(isAbove(participants, editorOf(container))).toBe(true);
+  });
+
+  it("shows the agent at work with its avatar before the participants in the host's container", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <DocumentView
+        initialContent={SOURCE}
+        headerControlsContainer={container}
+        liveView={{
+          status: "live",
+          participants: PARTICIPANTS,
+          agent: {
+            agent: LiveAgentFactory.build({ agentId: "dust", name: "Dust" }),
+            activity: "editing",
+          },
+          binding: null,
+        }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={(author, size) => (
+          <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
+        )}
+        renderLiveParticipants={() => <span data-testid="participants" />}
+      />
+    );
+
+    const agent = await within(container).findByRole("status", {
+      name: "Dust is writing",
+    });
+    expect(agent.textContent).toBe("writing…");
+    expect(within(agent).getByTestId("avatar:agent:dust:xs")).toBeDefined();
+    expect(agent.nextElementSibling).toBe(
+      within(container).getByTestId("participants")
+    );
+    expect(
+      within(documentRoot).queryByRole("status", { name: "Dust is writing" })
+    ).toBeNull();
+    container.remove();
+  });
+
+  it("shows no participants while the session is not live, or has no one else", async () => {
+    const { container, rerender } = renderLiveView("offline", PARTICIPANTS);
+    await within(container).findByRole("button", { name: /^Comments/ });
+    expect(within(container).queryByTestId("participants")).toBeNull();
+
+    rerender(
+      <DocumentView
+        initialContent={SOURCE}
+        liveView={{ status: "live", participants: [], binding: null }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+        renderLiveParticipants={() => <span data-testid="participants" />}
+      />
+    );
+    expect(within(container).queryByTestId("participants")).toBeNull();
   });
 });
 

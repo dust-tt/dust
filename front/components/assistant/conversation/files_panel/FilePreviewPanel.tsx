@@ -6,7 +6,6 @@ import {
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -254,7 +253,6 @@ export function FilePreviewPanel({
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
-          {markdown.richEditor && <CoEditionBadge />}
         </div>
       </ConversationSidePanelHeader>
       <div

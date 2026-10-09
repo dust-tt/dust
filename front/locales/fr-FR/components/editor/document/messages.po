@@ -228,12 +228,20 @@ msgid "Live editing unavailable"
 msgstr "Édition en direct indisponible"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "{name} is editing"
-msgstr "{name} modifie le document"
+msgid "reading…"
+msgstr "lit…"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "{name} is working"
-msgstr "{name} travaille"
+msgid "{name} is reading"
+msgstr "{name} lit le document"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "writing…"
+msgstr "écrit…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "{name} is writing"
+msgstr "{name} écrit dans le document"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."

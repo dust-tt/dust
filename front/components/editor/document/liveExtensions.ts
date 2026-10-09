@@ -17,6 +17,7 @@ import type * as Y from "yjs";
 
 /** Who a live editor's caret belongs to, as other editors draw it. */
 export interface DocumentLiveUser {
+  id: string;
   name: string;
   color: string;
 }

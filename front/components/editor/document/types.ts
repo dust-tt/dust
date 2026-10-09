@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 /** Ok once the content is stored, Err with a message the editor shows next to Retry. */
 export type DocumentSaveResult = Result<void, string>;
 
-export type DocumentCommentAvatarSize = "xxs" | "3xs";
+export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
 export interface DocumentProps {
   /** The DFM source of the file. Remount with a new key to open another document. */
@@ -39,7 +39,7 @@ export interface DocumentProps {
    * existing comments stay readable without one.
    */
   commentAuthor?: DfmAuthor;
-  /** Renders a comment author's avatar. */
+  /** Renders a comment author's avatar, or the agent at work in a live document's. */
   renderCommentAuthorAvatar: (
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
@@ -64,6 +64,12 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
+  /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
+  badge?: ReactNode;
+  /** Renders the users in the live session, the current one first, such as an avatar stack. */
+  renderLiveParticipants?: (
+    participants: DocumentLiveParticipant[]
+  ) => ReactNode;
 }
 
 /** Where and as whom a Document joins its live session. */
@@ -73,6 +79,12 @@ export interface DocumentLiveSession {
   /** Fetches a one-time ticket for each connection; throws when access is refused. */
   getTicket: () => Promise<string>;
   user: { id: string; name: string; color: string };
+}
+
+/** A user with the live document open. */
+export interface DocumentLiveParticipant {
+  id: string;
+  name: string;
 }
 
 /** Where a live document's connection stands, shown in place of the save status. */

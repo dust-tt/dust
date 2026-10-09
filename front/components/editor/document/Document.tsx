@@ -12,10 +12,12 @@ import { DocumentMarkdownPreview } from "@app/components/editor/document/Documen
 import {
   DocumentLiveAgent,
   DocumentLiveStatus,
+  DocumentSaveError,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import type {
+  DocumentLiveParticipant,
   DocumentProps,
   LiveStatus,
 } from "@app/components/editor/document/types";
@@ -70,6 +72,24 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * the save and live statuses MUST stay above the document. Without one, the comments button MUST
  * show with them.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-chrome-spans-article
+ * The status row, the comments list and the comment markers MUST span the whole article, not the
+ * document's max-width column, so that in a wide host they sit at its edges; the save error MUST
+ * stay in the column, under the status row.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-live-participants
+ * While the live session is live and has participants, `renderLiveParticipants` MUST show them
+ * right before the comments button, wherever that button shows; otherwise nothing MUST render
+ * for them.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-live-agent-placement
+ * While the session announces an agent at work, its avatar, from `renderCommentAuthorAvatar`, and
+ * its activity MUST show before the participants, wherever the comments button shows, and not
+ * with the save and live statuses.
+ */
 export const Document = (props: DocumentProps) =>
   props.live ? (
     <Suspense
@@ -91,6 +111,7 @@ interface DocumentViewProps extends DocumentProps {
     status: LiveStatus;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: LiveAgentEvent | null;
+    participants?: DocumentLiveParticipant[];
     /** Bound to the shared document once synced; until then the file shows read-only. */
     binding: {
       extensions: AnyExtension[];
@@ -230,6 +251,8 @@ export const DocumentView = ({
   renderCommentBody,
   commentInputExtensions,
   resolveImageSource,
+  renderLiveParticipants,
+  badge,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
   const {
@@ -262,6 +285,7 @@ export const DocumentView = ({
     verify: verifyCommentMessage,
     live: live.binding?.comments,
   });
+  const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
@@ -283,56 +307,92 @@ export const DocumentView = ({
     );
   }
 
-  const commentsToggle = (
-    <DocumentCommentsToggle
-      listId={listId}
-      comments={comments}
-      size={headerControlsContainer ? "sm" : "xs"}
-    />
+  const participants =
+    liveView?.status === "live" ? (liveView.participants ?? []) : [];
+  const showParticipants =
+    renderLiveParticipants !== undefined && participants.length > 0;
+  const agent = liveView?.agent ?? null;
+  const showControls = showCommentsToggle || showParticipants || agent !== null;
+  // One element, so the participants keep their place before the button in a shared container.
+  const controls = (
+    <div className="flex items-center gap-2">
+      {agent && (
+        <DocumentLiveAgent
+          activity={agent}
+          avatar={renderCommentAuthorAvatar(
+            { kind: "agent", id: agent.agent.agentId, name: agent.agent.name },
+            "xs"
+          )}
+        />
+      )}
+      {showParticipants && renderLiveParticipants(participants)}
+      {showCommentsToggle && (
+        <DocumentCommentsToggle
+          listId={listId}
+          comments={comments}
+          size={headerControlsContainer ? "sm" : "xs"}
+        />
+      )}
+    </div>
   );
 
   return (
     <article
-      className={cn("@container relative", className)}
+      ref={articleRef}
+      className={cn(
+        "@container relative px-2 font-sans text-foreground antialiased print:p-0",
+        className
+      )}
       onKeyDownCapture={handleKeyDown}
       onKeyDown={(event) => handleDocumentEscape(event, comments)}
     >
-      {showCommentsToggle &&
+      {showControls &&
         headerControlsContainer &&
-        createPortal(commentsToggle, headerControlsContainer)}
+        createPortal(controls, headerControlsContainer)}
+      <DocumentStatus
+        editable={canEditFile}
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        autosaveDebounceMs={autosaveDebounceMs}
+        onRetry={save}
+        controls={showControls && !headerControlsContainer && controls}
+        badge={badge}
+      >
+        {liveView && <DocumentLiveStatus status={liveView.status} />}
+      </DocumentStatus>
+      {editor && showCommentsToggle && (
+        <DocumentCommentsList
+          id={listId}
+          comments={comments}
+          renderCommentBody={renderCommentBody}
+          commentInputExtensions={commentInputExtensions}
+          mountPortalContainer={mountPortalContainer}
+          renderAuthorAvatar={renderCommentAuthorAvatar}
+        />
+      )}
+      {editor && comments.unresolved.length > 0 && (
+        <DocumentCommentMarkers
+          editor={editor}
+          comments={comments}
+          containerRef={articleRef}
+          mountPortalContainer={mountPortalContainer}
+        />
+      )}
       <div
         ref={contentRef}
         className={cn(
-          "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+          "relative mx-auto max-w-[50rem] px-5 @sm:px-12 print:max-w-none print:p-0",
           // The comment bubbles sit in the right gutter, so narrow documents widen it for them.
-          comments.unresolved.length > 0 && "pr-12",
-          editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+          comments.unresolved.length > 0 && "pr-10"
         )}
       >
-        <DocumentStatus
+        <DocumentSaveError
           editable={canEditFile}
           dirty={dirty}
           saving={saving}
           error={error}
-          autosaveDebounceMs={autosaveDebounceMs}
-          onRetry={save}
-          controls={
-            showCommentsToggle && !headerControlsContainer && commentsToggle
-          }
-        >
-          {liveView?.agent && <DocumentLiveAgent activity={liveView.agent} />}
-          {liveView && <DocumentLiveStatus status={liveView.status} />}
-        </DocumentStatus>
-        {editor && showCommentsToggle && (
-          <DocumentCommentsList
-            id={listId}
-            comments={comments}
-            renderCommentBody={renderCommentBody}
-            commentInputExtensions={commentInputExtensions}
-            mountPortalContainer={mountPortalContainer}
-            renderAuthorAvatar={renderCommentAuthorAvatar}
-          />
-        )}
+        />
         {editable && (
           <DocumentEditingControls
             editor={editor}
@@ -348,14 +408,6 @@ export const DocumentView = ({
         >
           <EditorContent editor={editor} />
         </div>
-        {editor && comments.unresolved.length > 0 && (
-          <DocumentCommentMarkers
-            editor={editor}
-            comments={comments}
-            containerRef={contentRef}
-            mountPortalContainer={mountPortalContainer}
-          />
-        )}
         {editor && (
           <DocumentCommentCard
             editor={editor}
