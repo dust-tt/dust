@@ -556,29 +556,24 @@ describe("Document comments", () => {
     );
   });
 
-  it("shows a bubble with its message count beside each open comment", async () => {
-    const { dom } = await renderDocument(
-      SOURCE.replace(
-        "Note.\n",
-        `Note.\n\n::message{author=user:usr_tom name="Tom" at=${AT}}\n\nAgreed.\n`
-      )
-    );
+  it("shows a marker without a count beside a single comment", async () => {
+    const { dom } = await renderDocument(SOURCE);
 
-    const bubble = screen.getByRole("button", {
-      name: "Show comment by Daph, 2 messages",
+    const marker = screen.getByRole("button", {
+      name: "Show comment by Daph",
     });
-    expect(bubble.textContent).toBe("2");
+    expect(marker.textContent).toBe("");
 
-    fireEvent.click(bubble);
+    fireEvent.click(marker);
 
     expect(highlight(dom, "c1")).toBeDefined();
     expect(
       within(floatingCard()!).getByRole("article", { name: "Comment by Daph" })
     ).toBeDefined();
-    expect(bubble.getAttribute("aria-current")).toBe("true");
+    expect(marker.getAttribute("aria-current")).toBe("true");
   });
 
-  it("shares one bubble between the comments of a line and cycles through them", async () => {
+  it("merges the markers of a line and cycles through their comments", async () => {
     const thread = (id: string, name: string) =>
       `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n`;
     const { editor } = await renderDocument(
@@ -587,16 +582,14 @@ describe("Document comments", () => {
     const activeId = () =>
       documentCommentsPluginKey.getState(editor.state)?.activeId;
 
-    const bubble = screen.getByRole("button", {
-      name: "Show 2 comments with 2 messages",
-    });
-    expect(bubble.textContent).toBe("2");
+    const marker = screen.getByRole("button", { name: "Show 2 comments" });
+    expect(marker.textContent).toBe("2");
 
-    fireEvent.click(bubble);
+    fireEvent.click(marker);
     expect(activeId()).toBe("a");
-    fireEvent.click(bubble);
+    fireEvent.click(marker);
     expect(activeId()).toBe("b");
-    fireEvent.click(bubble);
+    fireEvent.click(marker);
     expect(activeId()).toBe("a");
   });
 

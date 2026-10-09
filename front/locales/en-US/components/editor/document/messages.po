@@ -52,8 +52,12 @@ msgid "Send"
 msgstr "Send"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "{threadCount, plural, one {# comment} other {# comments}}"
-msgstr "{threadCount, plural, one {# comment} other {# comments}}"
+msgid "{count, plural, one {# comment} other {# comments}}"
+msgstr "{count, plural, one {# comment} other {# comments}}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show {count, plural, one {# comment} other {# comments}}"
+msgstr "Show {count, plural, one {# comment} other {# comments}}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
 #: front/components/editor/document/DocumentCommentThread.tsx
@@ -61,12 +65,16 @@ msgid "Comment by {authorName}"
 msgstr "Comment by {authorName}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Show {threadCount, plural, one {# comment} other {# comments}} with {messageCount, plural, one {# message} other {# messages}}"
-msgstr "Show {threadCount, plural, one {# comment} other {# comments}} with {messageCount, plural, one {# message} other {# messages}}"
+msgid "Show comment by {authorName}"
+msgstr "Show comment by {authorName}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Show comment by {authorName}, {messageCount, plural, one {# message} other {# messages}}"
-msgstr "Show comment by {authorName}, {messageCount, plural, one {# message} other {# messages}}"
+msgid "Comment by unknown"
+msgstr "Comment by unknown"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by unknown"
+msgstr "Show comment by unknown"
 
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
