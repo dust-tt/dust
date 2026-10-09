@@ -174,6 +174,7 @@ const RECORDED_COST_ROUNDING_MICRO_USD = 0.5;
 export function splitRecordedUsageCost(
   usage: RunUsageForAttribution & Pick<RunUsageWithRunKeyType, "costMicroUsd">
 ): {
+  cacheWriteTokenWeight: number;
   cachedTokenWeight: number;
   inputCostMicroUsd: number;
   outputCostMicroUsd: number;
@@ -190,24 +191,43 @@ export function splitRecordedUsageCost(
   const inferenceRegion = usage.region
     ? inferenceRegionForEndpointRegion(usage.region)
     : "global";
-  const pricePromptTokens = (cachedTokens: number | null) =>
+  const pricePromptTokens = ({
+    cachedTokens,
+    cacheCreationTokens,
+  }: {
+    cachedTokens: number | null;
+    cacheCreationTokens: number | null;
+  }) =>
     computeTokensCostForUsageInMicroUsd({
       modelId: usage.modelId,
       promptTokens: pricedPromptTokens,
       completionTokens: 0,
       cachedTokens,
-      cacheCreationTokens: null,
+      cacheCreationTokens,
       isBatch: usage.isBatch,
       serviceTier: usage.serviceTier,
       inferenceRegion,
     });
-  const fullInputCostMicroUsd = pricePromptTokens(null);
+  const fullInputCostMicroUsd = pricePromptTokens({
+    cachedTokens: null,
+    cacheCreationTokens: null,
+  });
+  const tokenWeight = (promptCostMicroUsd: number) =>
+    fullInputCostMicroUsd > 0 ? promptCostMicroUsd / fullInputCostMicroUsd : 1;
 
   return {
-    cachedTokenWeight:
-      fullInputCostMicroUsd > 0
-        ? pricePromptTokens(pricedPromptTokens) / fullInputCostMicroUsd
-        : 1,
+    cacheWriteTokenWeight: tokenWeight(
+      pricePromptTokens({
+        cachedTokens: null,
+        cacheCreationTokens: pricedPromptTokens,
+      })
+    ),
+    cachedTokenWeight: tokenWeight(
+      pricePromptTokens({
+        cachedTokens: pricedPromptTokens,
+        cacheCreationTokens: null,
+      })
+    ),
     inputCostMicroUsd: Math.max(usage.costMicroUsd - outputCostMicroUsd, 0),
     outputCostMicroUsd,
   };

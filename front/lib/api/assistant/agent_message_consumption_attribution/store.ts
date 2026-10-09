@@ -1,6 +1,9 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
-import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
+import {
+  buildLatestMessageConsumptionAllocation,
+  compareRunsChronologically,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   buildRunUsageAttribution,
@@ -166,12 +169,7 @@ function runUsageModelIdsWithUnconsumedToolResults({
     if (!runModelIdsWithReportedUsage.has(run.id)) {
       continue;
     }
-    if (
-      lastRun === null ||
-      run.createdAt.getTime() > lastRun.createdAt.getTime() ||
-      (run.createdAt.getTime() === lastRun.createdAt.getTime() &&
-        run.id > lastRun.id)
-    ) {
+    if (lastRun === null || compareRunsChronologically(run, lastRun) > 0) {
       lastRun = run;
     }
   }

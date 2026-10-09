@@ -13,9 +13,11 @@ import type {
   RunResource,
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
+import type { AgentMessageConsumptionItemType } from "@app/types/assistant/agent_message_consumption";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const FIRST_ATTRIBUTION_VERSION_WITH_TOOL_ROWS = 2;
 
@@ -66,31 +68,45 @@ type WeightedItem = {
   weight: number;
 };
 
-function addWeightedShares({
-  amountCreditMicro,
-  creditMicroByItem,
-  entries,
-}: {
-  amountCreditMicro: number;
-  creditMicroByItem: Map<AgentMessageConsumptionItemResource, number>;
-  entries: WeightedItem[];
-}): boolean {
+type ItemCreditShare = {
+  item: AgentMessageConsumptionItemResource;
+  creditMicro: number;
+};
+
+function splitByWeight(
+  amountCreditMicro: number,
+  entries: WeightedItem[]
+): ItemCreditShare[] | null {
   if (amountCreditMicro === 0) {
-    return true;
+    return [];
   }
   const totalWeight = entries.reduce((total, { weight }) => total + weight, 0);
   if (totalWeight <= 0) {
-    return false;
+    return null;
   }
 
-  for (const { item, weight } of entries) {
-    creditMicroByItem.set(
-      item,
-      (creditMicroByItem.get(item) ?? 0) +
-        (amountCreditMicro * weight) / totalWeight
-    );
+  return entries.map(({ item, weight }) => ({
+    item,
+    creditMicro: (amountCreditMicro * weight) / totalWeight,
+  }));
+}
+
+function ownCallCostPart(
+  itemType: AgentMessageConsumptionItemType
+): "output" | "input" | null {
+  switch (itemType) {
+    case "output":
+    case "reasoning":
+    case "tool":
+      return "output";
+    case "system":
+    case "input":
+      return "input";
+    case "rounding":
+      return null;
+    default:
+      return assertNever(itemType);
   }
-  return true;
 }
 
 function groupByRunUsage(
@@ -109,6 +125,20 @@ function groupByRunUsage(
 }
 
 /**
+ * @cc [owner:sfriquet,label:product;backend] one-run-order
+ * Deciding which LLM call read a tool result, and which tool results no call read, MUST order the
+ * message's runs with this comparator.
+ */
+export function compareRunsChronologically(
+  left: Pick<RunResource, "createdAt" | "id">,
+  right: Pick<RunResource, "createdAt" | "id">
+): number {
+  return (
+    left.createdAt.getTime() - right.createdAt.getTime() || left.id - right.id
+  );
+}
+
+/**
  * @cc [owner:sfriquet,label:product;backend] tool-result-paid-by-next-call
  * A tool result MUST only be charged when a later LLM call of the message read it, and only from
  * that call's input cost.
@@ -120,11 +150,15 @@ function mapUsageToNextCall<TUsage extends RunUsageWithRunKeyType>({
   runs: RunResource[];
   usages: TUsage[];
 }): Map<ModelId, TUsage> {
-  const runByModelId = new Map(runs.map((run) => [run.id, run]));
+  const runIndexByModelId = new Map(
+    [...runs]
+      .sort(compareRunsChronologically)
+      .map((run, index) => [run.id, index])
+  );
   const orderedUsages = [...usages].sort(
     (left, right) =>
-      (runByModelId.get(left.runModelId)?.createdAt.getTime() ?? 0) -
-        (runByModelId.get(right.runModelId)?.createdAt.getTime() ?? 0) ||
+      (runIndexByModelId.get(left.runModelId) ?? -1) -
+        (runIndexByModelId.get(right.runModelId) ?? -1) ||
       left.runModelId - right.runModelId ||
       left.runUsageModelId - right.runUsageModelId
   );
@@ -155,8 +189,9 @@ function mapUsageToNextCall<TUsage extends RunUsageWithRunKeyType>({
  */
 /**
  * @cc [owner:sfriquet,label:product;backend] tool-result-at-paid-price
- * A tool result MUST be charged at the price its reading call paid for its tokens: the cached price
- * when the call read them from the provider's cache.
+ * A tool result MUST be charged at the price its reading call paid for its tokens: the cache read
+ * price for tokens read from the provider's cache, and the cache write price for tokens written to
+ * it.
  */
 function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   billedCreditMicroByRunUsageModelId,
@@ -189,18 +224,19 @@ function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
     }
   }
 
-  const creditMicroByItem = new Map<
-    AgentMessageConsumptionItemResource,
-    number
-  >();
+  const shares: ItemCreditShare[] = [];
   for (const usage of usages) {
     const usageItems = itemsByRunUsageModelId.get(usage.runUsageModelId) ?? [];
     const recordedCostSplit = splitRecordedUsageCost(usage);
     if (!recordedCostSplit) {
       return new Err("output_exceeds_recorded_cost");
     }
-    const { cachedTokenWeight, inputCostMicroUsd, outputCostMicroUsd } =
-      recordedCostSplit;
+    const {
+      cacheWriteTokenWeight,
+      cachedTokenWeight,
+      inputCostMicroUsd,
+      outputCostMicroUsd,
+    } = recordedCostSplit;
     const billedCreditMicro =
       billedCreditMicroByRunUsageModelId.get(usage.runUsageModelId) ?? 0;
     const splitCostMicroUsd = outputCostMicroUsd + inputCostMicroUsd;
@@ -219,63 +255,77 @@ function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
       usage.cachedTokens ?? 0,
       usage.promptTokens
     );
-    const uncachedTokensCount = usage.promptTokens - cachedTokensCount;
-    const toolResultTokensCount = Math.min(
+    const cacheWriteTokensCount = Math.min(
+      usage.cacheCreationTokens ?? 0,
+      usage.promptTokens - cachedTokensCount
+    );
+    const promptSegmentsFromEnd = [
+      {
+        tokensCount:
+          usage.promptTokens - cachedTokensCount - cacheWriteTokensCount,
+        weight: 1,
+      },
+      { tokensCount: cacheWriteTokensCount, weight: cacheWriteTokenWeight },
+      { tokensCount: cachedTokensCount, weight: cachedTokenWeight },
+    ];
+    let toolResultTokensLeft = Math.min(
       (toolResults ?? []).reduce((total, { weight }) => total + weight, 0),
       usage.promptTokens
     );
-    const uncachedToolResultTokensCount = Math.min(
-      toolResultTokensCount,
-      uncachedTokensCount
-    );
-    const toolResultWeight =
-      uncachedToolResultTokensCount +
-      (toolResultTokensCount - uncachedToolResultTokensCount) *
-        cachedTokenWeight;
-    const promptWeight =
-      uncachedTokensCount -
-      uncachedToolResultTokensCount +
-      (cachedTokensCount -
-        (toolResultTokensCount - uncachedToolResultTokensCount)) *
-        cachedTokenWeight;
+    let toolResultWeight = 0;
+    let promptWeight = 0;
+    for (const { tokensCount, weight } of promptSegmentsFromEnd) {
+      const toolResultTokensCount = Math.min(toolResultTokensLeft, tokensCount);
+      toolResultWeight += toolResultTokensCount * weight;
+      promptWeight += (tokensCount - toolResultTokensCount) * weight;
+      toolResultTokensLeft -= toolResultTokensCount;
+    }
     const toolResultCostMicroUsd =
       toolResultWeight + promptWeight > 0
         ? (inputCostMicroUsd * toolResultWeight) /
           (toolResultWeight + promptWeight)
         : 0;
 
-    const isFullySplit =
-      addWeightedShares({
-        amountCreditMicro: outputCostMicroUsd * creditMicroPerMicroUsd,
-        creditMicroByItem,
-        entries: usageItems.flatMap((item) =>
-          item.itemType === "output" ||
-          item.itemType === "reasoning" ||
-          item.itemType === "tool"
+    const usageShares = [
+      splitByWeight(
+        outputCostMicroUsd * creditMicroPerMicroUsd,
+        usageItems.flatMap((item) =>
+          ownCallCostPart(item.itemType) === "output"
             ? [{ item, weight: item.outputTokensCount ?? 0 }]
             : []
-        ),
-      }) &&
-      addWeightedShares({
-        amountCreditMicro: toolResultCostMicroUsd * creditMicroPerMicroUsd,
-        creditMicroByItem,
-        entries: toolResults ?? [],
-      }) &&
-      addWeightedShares({
-        amountCreditMicro:
-          (inputCostMicroUsd - toolResultCostMicroUsd) * creditMicroPerMicroUsd,
-        creditMicroByItem,
-        entries: usageItems.flatMap((item) =>
-          item.itemType === "system" || item.itemType === "input"
+        )
+      ),
+      splitByWeight(
+        toolResultCostMicroUsd * creditMicroPerMicroUsd,
+        toolResults ?? []
+      ),
+      splitByWeight(
+        (inputCostMicroUsd - toolResultCostMicroUsd) * creditMicroPerMicroUsd,
+        usageItems.flatMap((item) =>
+          ownCallCostPart(item.itemType) === "input"
             ? [{ item, weight: Math.max(item.inputTokensCount ?? 0, 1) }]
             : []
-        ),
-      });
-    if (!isFullySplit) {
-      return new Err("cost_without_item");
+        )
+      ),
+    ];
+    for (const usageShare of usageShares) {
+      if (!usageShare) {
+        return new Err("cost_without_item");
+      }
+      shares.push(...usageShare);
     }
   }
 
+  const creditMicroByItem = new Map<
+    AgentMessageConsumptionItemResource,
+    number
+  >();
+  for (const { item, creditMicro } of shares) {
+    creditMicroByItem.set(
+      item,
+      (creditMicroByItem.get(item) ?? 0) + creditMicro
+    );
+  }
   return new Ok(creditMicroByItem);
 }
 

@@ -13,12 +13,14 @@ import {
   GPT_5_MINI_TOKENS_PER_CREDIT,
   RunFactory,
 } from "@app/tests/utils/RunFactory";
+import { CLAUDE_4_5_HAIKU_20251001_MODEL_ID } from "@app/types/assistant/models/anthropic";
 import type { ModelIdType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
 type CallSpec = {
   promptTokens: number;
   cachedTokens?: number;
+  cacheCreationTokens?: number;
   completionTokens: number;
   reasoningTokens?: number;
   recordedCostMicroUsd?: number;
@@ -64,6 +66,7 @@ async function allocateMessage({
     const createdRun = await RunFactory.createWithUsage(auth, {
       inputTokens: call.promptTokens,
       cachedTokens: call.cachedTokens ?? 0,
+      cacheCreationTokens: call.cacheCreationTokens,
       outputTokens: call.completionTokens,
       reasoningTokens: call.reasoningTokens ?? 0,
       modelId,
@@ -372,6 +375,35 @@ describe("buildLatestMessageConsumptionAllocation", () => {
 
     expect(allocation.toolCredits(0)).toBeCloseTo(3 + 0.5 + 1 + 0.9, 5);
     expect(allocation.callItemCredits(1, "input")).toBeCloseTo(1, 5);
+  });
+
+  it("prices a tool result written to the cache at the cache write rate", async () => {
+    // claude-haiku-4-5 per token: 1 µUSD input, 0.1 cached, 1.25 cache write, 5 output.
+    const allocation = await allocateMessage({
+      billedCredits: 7,
+      calls: [
+        { promptTokens: 8_500, completionTokens: 1_700 },
+        {
+          promptTokens: 15_300,
+          cachedTokens: 8_500,
+          cacheCreationTokens: 6_800,
+          completionTokens: 1_530,
+        },
+      ],
+      modelId: CLAUDE_4_5_HAIKU_20251001_MODEL_ID,
+      tools: [
+        {
+          emittedByCall: 0,
+          resultTokens: 6_800,
+          callOutputTokens: 850,
+          directCreditAmountMicro: TOOL_DIRECT_CREDIT_AMOUNT_MICRO,
+        },
+      ],
+    });
+
+    expect(allocation.toolCredits(0)).toBeCloseTo(3 + 0.5 + 1, 5);
+    expect(allocation.callItemCredits(1, "input")).toBeCloseTo(0.1, 5);
+    expect(allocation.callItemCredits(1, "output")).toBeCloseTo(0.9, 5);
   });
 
   it.each([
