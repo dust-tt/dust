@@ -81,12 +81,13 @@ app.get(
       willAutoUpgrade,
       requireReason,
     } = await getUpgradeRequestAvailabilityForUser(auth, {
-      // A seat upgrade does not raise a group's limit, so a group block alone
-      // does not make the member eligible for an upgrade request.
+      // Eligible when near/at a personal limit, or blocked for a cause this
+      // request flow can address (personal cap, group shared limit, no seat).
+      // Workspace pool exhaustion is not requestable here.
       isNearOrAtLimit:
         userNearCreditLimit ||
         (userBlockedReason !== null &&
-          userBlockedReason !== "group_shared_usage_limit_reached"),
+          userBlockedReason !== "credits_exhausted"),
     });
 
     return ctx.json({

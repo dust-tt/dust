@@ -91,7 +91,7 @@ describe("/api/w/[wId]/usage-status", () => {
     expect(body.hasPendingUpgradeRequest).toBe(false);
   });
 
-  it("reports a shared usage limit block without offering a seat upgrade", async () => {
+  it("reports a shared usage limit block and offers an upgrade request", async () => {
     const workspace = await creditPricedWorkspace();
     await createPrivateApiMockRequest({
       method: "GET",
@@ -105,7 +105,7 @@ describe("/api/w/[wId]/usage-status", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.userBlockedReason).toBe("group_shared_usage_limit_reached");
-    expect(body.canRequestUpgrade).toBe(false);
+    expect(body.canRequestUpgrade).toBe(true);
   });
 
   it("flips hasPendingUpgradeRequest once a request exists", async () => {

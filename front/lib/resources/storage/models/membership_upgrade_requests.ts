@@ -2,19 +2,24 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import type {
+  MembershipUpgradeRequestCause,
+  MembershipUpgradeRequestStatus,
+} from "@app/types/memberships";
 import {
   MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS,
+  MEMBERSHIP_UPGRADE_REQUEST_DEFAULT_CAUSE,
   MEMBERSHIP_UPGRADE_REQUEST_PENDING_STATUS,
 } from "@app/types/memberships";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
-// A member-initiated request to have their per-user spend limit raised by a
-// workspace admin. A member can have at most one `pending` request at a time
-// (enforced by a partial unique index); requesting again while one is pending
-// is a no-op. Once an admin resolves it (approved/denied) the row is retained
-// for history — the actual limit change is performed by the existing
-// spend-limit / seat-type flows, this row only records the request outcome.
+// A member-initiated request for an admin/manager to raise their access —
+// personal spend limit, group shared limit, or seat assignment. A member can
+// have at most one `pending` request at a time (enforced by a partial unique
+// index); requesting again while one is pending is a no-op. Once an admin
+// resolves it (approved/denied) the row is retained for history — the actual
+// limit / seat change is performed by the existing flows, this row only
+// records the request outcome.
 export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<MembershipUpgradeRequestModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -22,8 +27,13 @@ export class MembershipUpgradeRequestModel extends WorkspaceAwareModel<Membershi
   declare status: CreationOptional<MembershipUpgradeRequestStatus>;
   declare resolvedAt: Date | null;
 
-  // Why the member needs the raised limit - Optional
+  // Free-text explanation from the member — optional unless the workspace
+  // requires one.
   declare reason: string | null;
+
+  // Snapshot of why the member requested (see MembershipUpgradeRequestCause).
+  // Always set by the create path; the DB default is only a backfill/safety net.
+  declare cause: MembershipUpgradeRequestCause;
 
   // The member who requested the upgrade.
   declare userId: ForeignKey<UserModel["id"]>;
@@ -60,6 +70,11 @@ MembershipUpgradeRequestModel.init(
       type: DataTypes.STRING(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
       allowNull: true,
       defaultValue: null,
+    },
+    cause: {
+      type: DataTypes.STRING(32),
+      allowNull: false,
+      defaultValue: MEMBERSHIP_UPGRADE_REQUEST_DEFAULT_CAUSE,
     },
   },
   {

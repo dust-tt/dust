@@ -69,6 +69,7 @@ async function createManagedRequests() {
         user,
         reason: "Need more credits",
         reasonRequired: false,
+        cause: "personal_limit",
       }
     );
     expect(result.isOk()).toBe(true);
@@ -202,6 +203,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
           user: member,
           reason: null,
           reasonRequired: false,
+          cause: "personal_limit",
         }
       );
       expect(foreign.isOk()).toBe(true);
@@ -506,6 +508,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       expect(response.status).toBe(200);
       const { request } = await response.json();
       expect(request.reason).toBe("Need more credits for a demo.");
+      expect(request.cause).toBe("personal_limit");
     });
 
     it("is idempotent — a second request reuses the pending one", async () => {
