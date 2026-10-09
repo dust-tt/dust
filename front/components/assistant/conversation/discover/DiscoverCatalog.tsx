@@ -281,14 +281,19 @@ function CatalogLayout({
 }: CatalogLayoutProps) {
   const { t } = useLingui();
   return (
-    <div className="flex flex-col gap-8">
-      <SearchInput
-        name="discover-search"
-        placeholder={t`Search for agents or skills`}
-        value={search}
-        onChange={onSearchChange}
-      />
-      <div className="grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
+    <div className="flex flex-col">
+      {/* The search sticks below the Discover header. The negative margin stretches its
+          background over the gap above it so scrolled results never show through. */}
+      <div className="sticky top-(--discover-header-height) z-20 -mt-8 bg-(--color-panel-background) pb-8 pt-8">
+        <SearchInput
+          name="discover-search"
+          placeholder={t`Search for agents or skills`}
+          value={search}
+          onChange={onSearchChange}
+        />
+      </div>
+      {/* Isolated so z-indexed descendants (Sparkle scroll areas) stay below the sticky search. */}
+      <div className="isolate grid grid-cols-1 gap-10 md:grid-cols-[12rem_1fr]">
         <CatalogFiltersNav
           filters={filters}
           tags={tags}

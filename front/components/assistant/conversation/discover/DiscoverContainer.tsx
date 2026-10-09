@@ -5,6 +5,7 @@ import { DiscoverPinDialog } from "@app/components/assistant/conversation/discov
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
+import { useElementHeight } from "@app/hooks/useElementHeight";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -12,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { CSSProperties } from "react";
 import { forwardRef, useState } from "react";
 
 const DISCOVER_TABS = ["Featured", "Catalog"] as const;
@@ -21,6 +23,11 @@ const DISCOVER_TAB_LABELS: Record<DiscoverTab, MessageDescriptor> = {
   Featured: msg({ message: "Featured", context: "discover tab" }),
   Catalog: msg({ message: "Catalog", context: "discover tab" }),
 };
+
+// Lets the Catalog stack its sticky search below the sticky header.
+interface DiscoverContainerStyle extends CSSProperties {
+  "--discover-header-height": string;
+}
 
 interface DiscoverContainerProps {
   onAgentConfigurationClick: (agent: RichAgentMentionCandidate) => void;
@@ -39,6 +46,10 @@ export const DiscoverContainer = forwardRef<
 ) {
   const { t } = useLingui();
   const [tab, setTab] = useState<DiscoverTab>("Featured");
+  const { height: headerHeight, ref: headerRef } = useElementHeight();
+  const style: DiscoverContainerStyle = {
+    "--discover-header-height": `${headerHeight}px`,
+  };
   const [pinTarget, setPinTarget] = useState<CatalogItem | null>(null);
   const onPin = isAdmin(owner) ? setPinTarget : undefined;
   const [detailsTarget, setDetailsTarget] = useState<{
@@ -58,9 +69,13 @@ export const DiscoverContainer = forwardRef<
     <div
       ref={ref}
       className="flex min-h-panel w-full shrink-0 flex-col items-center pb-16"
+      style={style}
     >
       <Tabs value={tab} className="flex w-full max-w-4xl flex-col gap-8">
-        <div className="sticky top-0 z-30 flex flex-col gap-6 bg-(--color-panel-background) pt-10">
+        <div
+          ref={headerRef}
+          className="sticky top-0 z-30 flex flex-col gap-6 bg-(--color-panel-background) pt-10"
+        >
           <h1 className="heading-2xl text-foreground">
             <Trans context="page title">Discover</Trans>
           </h1>
