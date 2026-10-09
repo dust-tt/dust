@@ -2,6 +2,7 @@ import {
   AlertCircle,
   Button,
   Check,
+  Chip,
   cn,
   ContentMessage,
   DotsHorizontal,
@@ -1073,27 +1074,12 @@ export function DocumentPanel({
         onReject={(id) => decideSuggestion(id, "rejected")}
       >
         <div className="flex h-full min-h-0 flex-col">
-          {/* Lives in the panel's top bar, next to expand and close (the page
-          passes the slot), as production's Download. Prototype-only controls
-          sit behind "…". */}
+          {/* The panel's top bar, as production's file preview header
+          (dust#34675): comments, download, then the panel's full screen and
+          close. Prototype-only controls sit behind "…", first. */}
           {toolbarSlot &&
             createPortal(
               <>
-                <CommentsToggle
-                  comments={session.comments}
-                  isOpen={isCommentsListOpen}
-                  onToggle={() => {
-                    setIsCommentsListOpen((v) => !v);
-                    setActiveCommentId(null);
-                  }}
-                />
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  icon={Download01}
-                  tooltip="Download"
-                  onClick={() => downloadMarkdown(title, session.markdown)}
-                />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -1143,6 +1129,21 @@ export function DocumentPanel({
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
+                <CommentsToggle
+                  comments={session.comments}
+                  isOpen={isCommentsListOpen}
+                  onToggle={() => {
+                    setIsCommentsListOpen((v) => !v);
+                    setActiveCommentId(null);
+                  }}
+                />
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={Download01}
+                  tooltip="Download"
+                  onClick={() => downloadMarkdown(title, session.markdown)}
+                />
               </>,
               toolbarSlot
             )}
@@ -1214,10 +1215,13 @@ export function DocumentPanel({
                   editorRef.current?.focusEnd();
                 }}
               >
-                {/* The status row above the document, as in production; the
-                comments button is in the top bar, next to download. */}
-                <div className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-xs text-muted-foreground">
-                  <LiveStatusChip status={liveStatus} />
+                {/* Above the document, as in production: the live status in a
+                badge that stays in view while the document scrolls. Only the
+                badge takes clicks, so the text under the row stays clickable. */}
+                <div className="pointer-events-none sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end text-xs text-muted-foreground [&>*]:pointer-events-auto">
+                  <Chip size="xs" className="gap-2.5 border border-border bg-background">
+                    <LiveStatusChip status={liveStatus} />
+                  </Chip>
                 </div>
                 <DocEditor
                   ref={editorRef}
