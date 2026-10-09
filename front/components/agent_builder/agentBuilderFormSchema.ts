@@ -7,6 +7,10 @@ import type { AgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import { getAgentNameFormatErrorCode } from "@app/lib/agent_builder/helpers";
 import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { WEBHOOK_PROVIDERS } from "@app/lib/triggers/webhooks";
+import {
+  MAX_AGENT_SUGGESTED_PROMPT_LENGTH,
+  MAX_AGENT_SUGGESTED_PROMPTS,
+} from "@app/types/api/assistant/configuration/suggested_prompts";
 import { AGENT_NAME_MAX_LENGTH } from "@app/types/assistant/agent";
 import { SKILL_AVAILABILITIES } from "@app/types/assistant/skill_configuration";
 import {
@@ -163,6 +167,11 @@ export const getAgentBuilderFormSchema = (
     triggersToCreate: z.array(triggerSchema),
     triggersToUpdate: z.array(triggerSchema),
     triggersToDelete: z.array(z.string()),
+    suggestedPrompts: z
+      .array(
+        z.object({ prompt: z.string().max(MAX_AGENT_SUGGESTED_PROMPT_LENGTH) })
+      )
+      .max(MAX_AGENT_SUGGESTED_PROMPTS),
     maxStepsPerRun: z
       .number()
       .min(1, t(msg`Max steps per run must be at least 1`))

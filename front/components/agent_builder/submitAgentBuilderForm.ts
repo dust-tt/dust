@@ -15,6 +15,7 @@ import type {
 } from "@app/lib/api/data_source_view";
 import { clientFetch } from "@app/lib/egress/client";
 import type { FetcherWithBodyFn } from "@app/lib/swr/fetcher";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import {
   TRACKING_ACTIONS,
   TRACKING_AREAS,
@@ -359,6 +360,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
+  areSuggestedPromptsChanged,
   fetcherWithBody,
 }: {
   user: UserType;
@@ -367,6 +369,7 @@ export async function submitAgentBuilderForm({
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
+  areSuggestedPromptsChanged?: boolean;
   fetcherWithBody: FetcherWithBodyFn;
 }): Promise<Result<SubmittedAgentConfiguration, Error | APIError>> {
   const pictureUrlToUse =
@@ -627,6 +630,29 @@ export async function submitAgentBuilderForm({
         );
         return new Err(
           new Error("An error occurred while linking Slack channels.")
+        );
+      }
+    }
+
+    if (areSuggestedPromptsChanged) {
+      const suggestedPromptsRes = await clientFetch(
+        `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/suggested_prompts`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            suggestedPrompts: formData.suggestedPrompts
+              .map(({ prompt }) => prompt.trim())
+              .filter((prompt) => prompt.length > 0),
+          }),
+        }
+      );
+      if (!suggestedPromptsRes.ok) {
+        const { message } = await getErrorFromResponse(suggestedPromptsRes);
+        return new Err(
+          new Error(`Failed to save the suggested prompts: ${message}`)
         );
       }
     }

@@ -4,6 +4,7 @@ import {
   trackHomepageUseCaseView,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
+import { HoverScrollText } from "@app/components/assistant/conversation/discover/HoverScrollText";
 import { TYPING_MAX_DURATION_MS } from "@app/components/editor/input_bar/useCustomEditor";
 import {
   getIcon,
@@ -40,9 +41,9 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 const VISIBLE_COUNT = 4;
 
 const ROW_OFFSET_PX = 12;
-const ROW_STAGGER_SECONDS = 0.05;
+export const HOMEPAGE_ROW_STAGGER_SECONDS = 0.05;
 
-const rowVariants: Variants = {
+export const HOMEPAGE_ROW_VARIANTS: Variants = {
   hidden: { opacity: 0, x: -ROW_OFFSET_PX, filter: "blur(2px)" },
   visible: {
     opacity: 1,
@@ -228,7 +229,7 @@ export function HomepageUseCases({
             visible: {
               transition: {
                 delayChildren: rowsDelaySeconds,
-                staggerChildren: ROW_STAGGER_SECONDS,
+                staggerChildren: HOMEPAGE_ROW_STAGGER_SECONDS,
               },
             },
           }}
@@ -278,7 +279,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
       <m.li
         ref={ref}
         layout={!isMotionReduced}
-        variants={isMotionReduced ? undefined : rowVariants}
+        variants={isMotionReduced ? undefined : HOMEPAGE_ROW_VARIANTS}
         exit={isMotionReduced ? undefined : ROW_EXIT}
         transition={{ layout: ROW_LAYOUT_TRANSITION }}
       >
@@ -296,9 +297,10 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
             className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left"
           >
             <ResourceAvatar icon={getIcon(useCase.icon)} size="xs" />
-            <span className="copy-sm truncate text-foreground">
-              {t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].label)}
-            </span>
+            <HoverScrollText
+              className="copy-sm text-foreground"
+              text={t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].label)}
+            />
           </button>
           {useCase.isDismissible && (
             <Button

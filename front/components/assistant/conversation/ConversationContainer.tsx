@@ -5,6 +5,7 @@ import {
 } from "@app/components/app/ReachedLimitPopup";
 import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { AgentSuggestedPrompts } from "@app/components/assistant/conversation/discover/AgentSuggestedPrompts";
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
@@ -18,6 +19,7 @@ import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
+import { useAgentSuggestedPrompts } from "@app/hooks/useAgentSuggestedPrompts";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -35,7 +37,10 @@ import type {
   ConversationListItemType,
   SubmitMessageError,
 } from "@app/types/assistant/conversation";
-import type { RichMention } from "@app/types/assistant/mentions";
+import type {
+  RichAgentMention,
+  RichMention,
+} from "@app/types/assistant/mentions";
 import {
   toMentionType,
   toRichAgentMentionType,
@@ -52,6 +57,7 @@ import {
   Button,
   Card,
   Lightbulb04,
+  MOTION_DURATIONS,
   MOTION_EASINGS,
   Page,
   ScrollArea,
@@ -59,7 +65,14 @@ import {
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { useLingui } from "@lingui/react/macro";
-import { useReducedMotion } from "framer-motion";
+import type { TargetAndTransition } from "framer-motion";
+import {
+  AnimatePresence,
+  domMax,
+  LazyMotion,
+  m,
+  useReducedMotion,
+} from "framer-motion";
 import type { CSSProperties } from "react";
 import { useCallback, useContext, useEffect, useState } from "react";
 
@@ -128,6 +141,12 @@ const chatWithEntranceStyle = heroEntranceStyle({
 
 const USE_CASES_ENTER_DELAY_SECONDS = 0.22;
 
+const PICKER_EXIT: TargetAndTransition = {
+  opacity: 0,
+  filter: "blur(2px)",
+  transition: { duration: MOTION_DURATIONS.exit, ease: MOTION_EASINGS.enter },
+};
+
 const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
 const discoverButtonEntranceStyle = heroEntranceStyle({
   yPx: 8,
@@ -168,8 +187,12 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setPendingInputText, setSelectedSingleAgent, setPendingSkill } =
-    useContext(InputBarContext);
+  const {
+    selectedSingleAgent,
+    setPendingInputText,
+    setSelectedSingleAgent,
+    setPendingSkill,
+  } = useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -182,6 +205,37 @@ export function ConversationContainerVirtuoso({
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
   const isDiscoveryHomepage = hasFeature("discovery_homepage");
+
+  const { suggestedPrompts, isSuggestedPromptsLoading } =
+    useAgentSuggestedPrompts({
+      workspaceId: owner.sId,
+      agentId: selectedSingleAgent?.id ?? null,
+      disabled: !isDiscoveryHomepage,
+    });
+  const [shownAgentPrompts, setShownAgentPrompts] = useState<{
+    agent: RichAgentMention;
+    prompts: string[];
+  } | null>(null);
+  const [hasSwitchedPicker, setHasSwitchedPicker] = useState(false);
+  if (!isSuggestedPromptsLoading) {
+    const resolvedAgent =
+      selectedSingleAgent && suggestedPrompts.length > 0
+        ? selectedSingleAgent
+        : null;
+    if (
+      resolvedAgent?.id !== shownAgentPrompts?.agent.id ||
+      (resolvedAgent && suggestedPrompts !== shownAgentPrompts?.prompts)
+    ) {
+      setShownAgentPrompts(
+        resolvedAgent
+          ? { agent: resolvedAgent, prompts: suggestedPrompts }
+          : null
+      );
+      if (resolvedAgent) {
+        setHasSwitchedPicker(true);
+      }
+    }
+  }
 
   const handleUseCasePick = (useCase: HomepageUseCaseType) => {
     const references = [
@@ -430,11 +484,40 @@ export function ConversationContainerVirtuoso({
       </div>
 
       {isDiscoveryHomepage && (
-        <HomepageUseCases
-          enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
-          onPick={handleUseCasePick}
-          workspaceId={owner.sId}
-        />
+        <LazyMotion features={domMax}>
+          <AnimatePresence mode="wait" initial={false}>
+            <m.div
+              key={
+                shownAgentPrompts
+                  ? `agent-prompts-${shownAgentPrompts.agent.id}`
+                  : "use-cases"
+              }
+              className="w-full max-w-conversation"
+              exit={shouldReduceMotion ? undefined : PICKER_EXIT}
+            >
+              {shownAgentPrompts ? (
+                <AgentSuggestedPrompts
+                  agent={shownAgentPrompts.agent}
+                  onPick={(prompt) =>
+                    setPendingInputText("", {
+                      replace: true,
+                      typedSuffix: prompt,
+                    })
+                  }
+                  prompts={shownAgentPrompts.prompts}
+                />
+              ) : (
+                <HomepageUseCases
+                  enterDelaySeconds={
+                    hasSwitchedPicker ? 0 : USE_CASES_ENTER_DELAY_SECONDS
+                  }
+                  onPick={handleUseCasePick}
+                  workspaceId={owner.sId}
+                />
+              )}
+            </m.div>
+          </AnimatePresence>
+        </LazyMotion>
       )}
 
       {suggestion && (
