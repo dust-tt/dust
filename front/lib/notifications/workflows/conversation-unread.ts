@@ -562,5 +562,12 @@ export const conversationUnreadWorkflow = workflow(
   {
     payloadSchema: ConversationDetailsPayloadSchema,
     tags: ["conversations"] as NotificationAllowedTags,
+    preferences: {
+      channels: {
+        chat: {
+          enabled: false,
+        },
+      },
+    },
   }
 );
