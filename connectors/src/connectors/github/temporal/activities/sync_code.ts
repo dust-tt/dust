@@ -230,10 +230,16 @@ export async function githubExtractToGcsActivity({
       {
         repoId,
         connectorId,
+        activityContext: Context.current(),
       },
       logger
     );
   } catch (error) {
+    // A cancelled attempt (timed out, or workflow stopped) is not a sync failure.
+    if (Context.current().cancellationSignal.aborted) {
+      throw error;
+    }
+
     const isPersistentFailure =
       activityAttempt >= ATTEMPTS_BEFORE_REPORTING_SYNC_FAILURE;
 
