@@ -7,6 +7,8 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  Composer,
+  ComposerInput,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -30,7 +32,7 @@ import {
 
 import { YOU } from "./docSeeds";
 import type { DocAuthor, DocComment, DocDraft, DocReply } from "./docTypes";
-import { useMentions } from "./MentionMenu";
+import { useMentionItems } from "./MentionMenu";
 import { SuggestionBlock, SuggestionComposer } from "./Suggestions";
 
 // Comments on the document, as designed in Figma (Co-edition, "Comments"):
@@ -215,8 +217,9 @@ function ReplyBody({ reply }: { reply: DocReply }) {
 // ── The input ────────────────────────────────────────────────────────────────
 
 /**
- * The composer-style field under a thread: "@" picks someone or an agent,
- * the pencil suggests an edit of the commented text, Enter sends.
+ * The field under a thread: Sparkle's Composer, `comment` variant. "@" picks
+ * someone or an agent, the pencil suggests an edit of the commented text,
+ * Enter sends.
  */
 export function ThreadInput({
   placeholder = "Type or @...",
@@ -224,18 +227,17 @@ export function ThreadInput({
   autoFocus = false,
   onSubmit,
   onSuggest,
-  onCancel,
 }: {
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
   onSubmit: (body: string) => void;
   onSuggest?: () => void;
-  onCancel?: () => void;
 }) {
   const [value, setValue] = useState("");
+  const [isFocused, setIsFocused] = useState(autoFocus);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const mentions = useMentions({ value, setValue, inputRef });
+  const mentionItems = useMentionItems();
   const submit = () => {
     const text = value.trim();
     if (text) {
@@ -244,64 +246,56 @@ export function ThreadInput({
     }
   };
   return (
-    <div>
-      {mentions.menu}
-      <div
-        className={cn(
-          "flex items-end gap-1.5 rounded-xl border border-border-dark/60 bg-muted-background/40 py-2 pl-3 pr-2 transition-colors",
-          // Focused: the composer's focused variant.
-          "focus-within:border-highlight-300 focus-within:bg-background focus-within:ring-2 focus-within:ring-highlight-300/40",
-          disabled && "opacity-60"
-        )}
+    <Composer
+        variant="comment"
+        isFocused={isFocused}
+        onContentClick={() => inputRef.current?.focus()}
+        rightActions={
+          <>
+            {onSuggest && (
+              <Button
+                variant="outline"
+                size="xs"
+                icon={Edit04}
+                tooltip="Suggest an edit"
+                className="rounded-full"
+                disabled={disabled}
+                onClick={onSuggest}
+              />
+            )}
+            <Button
+              variant="highlight"
+              size="xs"
+              icon={ArrowUp}
+              aria-label="Send comment"
+              className="rounded-full"
+              disabled={disabled || !value.trim()}
+              onClick={submit}
+            />
+          </>
+        }
       >
-        <textarea
+        <ComposerInput
           ref={inputRef}
-          rows={1}
           value={value}
+          onChange={setValue}
+          onSubmit={submit}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder={placeholder}
           disabled={disabled}
           autoFocus={autoFocus}
-          placeholder={placeholder}
-          aria-label="Comment"
-          className="field-sizing-content max-h-40 min-h-6 flex-1 resize-none border-0 bg-transparent p-0 py-0.5 text-sm leading-5 text-foreground outline-none placeholder:text-muted-foreground/70 focus:ring-0"
-          onChange={(e) => {
-            setValue(e.target.value);
-            mentions.onChange(e.target.value, e.target.selectionStart);
-          }}
-          onKeyDown={(e) => {
-            if (e.nativeEvent.isComposing || mentions.onKeyDown(e)) {
-              return;
-            }
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              submit();
-            }
-            if (e.key === "Escape") {
-              onCancel?.();
-            }
-          }}
+          className="min-h-5 text-sm"
+          suggestions={[
+            {
+              trigger: "@",
+              items: mentionItems,
+              // The trigger text is already removed: put the mention back.
+              onSelect: (item) => setValue((prev) => `${prev}@${item.label} `),
+            },
+          ]}
         />
-        {onSuggest && (
-          <Button
-            size="xs"
-            variant="outline"
-            isRounded
-            icon={Edit04}
-            tooltip="Suggest an edit"
-            disabled={disabled}
-            onClick={onSuggest}
-          />
-        )}
-        <Button
-          size="xs"
-          variant="highlight"
-          isRounded
-          icon={ArrowUp}
-          tooltip="Send"
-          disabled={disabled || !value.trim()}
-          onClick={submit}
-        />
-      </div>
-    </div>
+    </Composer>
   );
 }
 
@@ -539,7 +533,8 @@ export function ThreadCard({
       role="dialog"
       aria-label={draft ? "New comment" : "Comment thread"}
       onKeyDown={(e) => {
-        if (e.key === "Escape") {
+        // Not when Escape only closed the "@" menu.
+        if (e.key === "Escape" && !e.defaultPrevented) {
           (draft ? onCancelDraft : onClose)();
         }
       }}
@@ -555,7 +550,6 @@ export function ThreadCard({
           autoFocus
           onSubmit={onSaveDraft}
           onSuggest={onSuggestDraft}
-          onCancel={onCancelDraft}
         />
       ) : (
         comment && (
