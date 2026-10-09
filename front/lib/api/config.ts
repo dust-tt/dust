@@ -350,6 +350,14 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
+  // `DFS_API_URL` is the dfs gRPC server URL (`http://host:port`, or `https://` for TLS).
+  getDfsAPIConfig: (): { url: string } => {
+    return { url: EnvironmentConfig.getEnvVariable("DFS_API_URL") };
+  },
+  // Only needed to create tenants.
+  getDfsServerKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DFS_API_SERVER_KEY");
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
