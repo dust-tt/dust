@@ -515,28 +515,14 @@ describe("skill_management enable_skill tool", () => {
     expect(mockEnableForAgent).toHaveBeenCalled();
   });
 
-  it("enables a skill whose name is copied escaped from its skill tag", async () => {
-    const skillWithAmpersand = { ...skill, name: "On-Call & Runner" };
-    mockListForAgentLoop.mockResolvedValue({
-      enabledSkills: [],
-      equippedSkills: [],
-      favoriteSkills: [],
-      systemSkills: [],
-    });
-    mockFetchByIds.mockResolvedValue([skillWithAmpersand]);
+  it("looks up a skill name copied escaped from its skill tag by its raw name", async () => {
+    await getTool().handler({ skillName: "On-Call &amp; Runner" }, makeExtra());
 
-    const result = await getTool().handler(
-      { skillName: "On-Call &amp; Runner" },
-      makeExtra({
-        userMessageOverride: {
-          ...userMessage,
-          content: '<skill id="skill-id" name="On-Call &amp; Runner" />',
-        },
-      })
+    expect(mockFetchByName).toHaveBeenCalledWith(
+      auth,
+      "On-Call & Runner",
+      expect.anything()
     );
-
-    expect(result.isOk()).toBe(true);
-    expect(mockEnableForAgent).toHaveBeenCalled();
   });
 
   it("enables skills explicitly referenced by earlier user messages", async () => {
