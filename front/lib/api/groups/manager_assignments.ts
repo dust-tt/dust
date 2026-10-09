@@ -60,13 +60,16 @@ export async function getGroupManagersForGroups(
 
 /**
  * @cc [owner:philipperolet,label:security;backend] group-manager-assignment
- * Only a workspace admin or manager may replace group managers. Every requested manager MUST be
+ * Only a workspace admin or manager may update group managers. Every added manager MUST be
  * an active member of the same workspace. Validation MUST finish before any grant is changed.
+ * Unmentioned active workspace managers MUST be preserved and removal
+ * MUST take precedence if a manager appears in both lists.
  */
-export async function replaceGroupManagers(
+export async function updateGroupManagers(
   auth: Authenticator,
   group: GroupResource,
-  managerIds: string[]
+  userIdsToAdd: string[],
+  userIdsToRemove: string[]
 ): Promise<
   | { kind: "unauthorized" | "invalid_managers" }
   | {
@@ -86,7 +89,7 @@ export async function replaceGroupManagers(
     return { kind: "unauthorized" };
   }
 
-  const uniqueIds = [...new Set(managerIds)];
+  const uniqueIds = [...new Set(userIdsToAdd)];
   const users = await UserResource.fetchByIds(uniqueIds);
   if (users.length !== uniqueIds.length) {
     return { kind: "invalid_managers" };
@@ -99,15 +102,14 @@ export async function replaceGroupManagers(
     return { kind: "invalid_managers" };
   }
 
-  const { addedUsers, removedUsers } =
-    await GroupPermissionResource.replaceUsersForGrant(auth, {
-      users: users.map((user) => user.toJSON()),
-      ...managerGrant(group),
-    });
+  const changes = await GroupPermissionResource.updateUsersForGrant(auth, {
+    usersToAdd: users.map((user) => user.toJSON()),
+    ...managerGrant(group),
+    userIdsToRemove,
+  });
   return {
     kind: "ok",
-    managers: users.map((user) => user.toJSON()),
-    addedUsers,
-    removedUsers,
+    managers: await getGroupManagers(auth, group),
+    ...changes,
   };
 }

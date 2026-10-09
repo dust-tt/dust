@@ -8,7 +8,7 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import assert from "assert";
 import { expect, it } from "vitest";
 
-it("replaces the users holding a group-manager grant and removes an empty grant", async () => {
+it("updates the users holding a group-manager grant and removes an empty grant", async () => {
   const workspace = await WorkspaceFactory.basic();
   await GroupFactory.defaults(workspace);
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -23,16 +23,18 @@ it("replaces the users holding a group-manager grant and removes an empty grant"
     resourceId: group.id,
   };
 
-  await GroupPermissionResource.replaceUsersForGrant(auth, {
+  await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [alice.toJSON()],
+    usersToAdd: [alice.toJSON()],
+    userIdsToRemove: [],
   });
-  const replacement = await GroupPermissionResource.replaceUsersForGrant(auth, {
+  const changes = await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [bob.toJSON()],
+    usersToAdd: [bob.toJSON()],
+    userIdsToRemove: [alice.sId],
   });
-  expect(replacement.addedUsers.map((user) => user.sId)).toEqual([bob.sId]);
-  expect(replacement.removedUsers.map((user) => user.sId)).toEqual([alice.sId]);
+  expect(changes.addedUsers.map((user) => user.sId)).toEqual([bob.sId]);
+  expect(changes.removedUsers.map((user) => user.sId)).toEqual([alice.sId]);
 
   const holder = await GroupPermissionResource.findRegularAutoGroupForGrant(
     auth,
@@ -43,7 +45,7 @@ it("replaces the users holding a group-manager grant and removes an empty grant"
     [bob.sId]
   );
 
-  // A stale suspended row for Bob must not cause replacement to end his active row.
+  // A stale suspended row for Bob must not cause the update to end his active row.
   await GroupMembershipModel.create({
     workspaceId: workspace.id,
     groupId: holder.id,
@@ -52,17 +54,19 @@ it("replaces the users holding a group-manager grant and removes an empty grant"
     endAt: null,
     status: "suspended",
   });
-  await GroupPermissionResource.replaceUsersForGrant(auth, {
+  await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [bob.toJSON()],
+    usersToAdd: [bob.toJSON()],
+    userIdsToRemove: [],
   });
   expect((await holder.getActiveMembers(auth)).map((user) => user.sId)).toEqual(
     [bob.sId]
   );
 
-  await GroupPermissionResource.replaceUsersForGrant(auth, {
+  await GroupPermissionResource.updateUsersForGrant(auth, {
     ...grant,
-    users: [],
+    usersToAdd: [],
+    userIdsToRemove: [bob.sId],
   });
   expect(
     await GroupPermissionResource.findRegularAutoGroupForGrant(auth, grant)

@@ -107,14 +107,21 @@ function GroupForm({
   owner,
   groupId,
   group,
-  initialName,
-  initialMembers,
-  initialManagers,
+  initialName: loadedName,
+  initialMembers: loadedMembers,
+  initialManagers: loadedManagers,
   readOnly = false,
   onCreated,
   onClose,
 }: GroupFormProps) {
   const { t } = useLingui();
+  // Only this form's successful saves advance the baseline; SWR refreshes must not.
+  const [initialName, setInitialName] = useState(loadedName);
+  const [initialMembers] = useState(loadedMembers);
+  const [initialManagers] = useState(loadedManagers);
+  const [initialMemberIds, setInitialMemberIds] = useState(
+    () => new Set(initialMembers.map((member) => member.sId))
+  );
   const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
@@ -144,48 +151,66 @@ function GroupForm({
     initialMembers,
     selectedMemberIds,
   });
-  const initialMemberIds = new Set(initialMembers.map((member) => member.sId));
-  const hasGroupChanges =
-    name.trim() !== initialName ||
-    selectedMemberIds.size !== initialMemberIds.size ||
-    [...selectedMemberIds].some((id) => !initialMemberIds.has(id));
+  const hasNameChanges = name.trim() !== initialName;
+  const memberDiff = {
+    add: [...selectedMemberIds].filter((id) => !initialMemberIds.has(id)),
+    remove: [...initialMemberIds].filter((id) => !selectedMemberIds.has(id)),
+  };
+  const hasMemberChanges =
+    memberDiff.add.length > 0 || memberDiff.remove.length > 0;
   const initialManagerIds = new Set(
     initialManagers.map((manager) => manager.sId)
   );
+  const selectedManagerIds = new Set(
+    selectedManagers.map((manager) => manager.sId)
+  );
+  const managerDiff = {
+    add: [...selectedManagerIds].filter((id) => !initialManagerIds.has(id)),
+    remove: [...initialManagerIds].filter((id) => !selectedManagerIds.has(id)),
+  };
   const hasManagerChanges =
     canAssignManagers &&
-    (selectedManagers.length !== initialManagerIds.size ||
-      selectedManagers.some((manager) => !initialManagerIds.has(manager.sId)));
+    (managerDiff.add.length > 0 || managerDiff.remove.length > 0);
   const selectedMemberCount = selectedMemberIds.size;
   const shouldDisableButton =
     (readOnly && !canAssignManagers) ||
     isSubmitting ||
     name.trim().length === 0 ||
     (!groupId && selectedMemberIds.size === 0) ||
-    (hasGroupChanges && selectedMemberIds.size === 0);
+    ((hasNameChanges || hasMemberChanges) && selectedMemberIds.size === 0);
 
   /**
    * @cc [owner:philipperolet,label:product;security] manager-save-order
    * Manager assignments MUST only be updated after appointment review succeeds and any
    * group details update succeeds. A failed step MUST stop later updates.
    */
+  /**
+   * @cc [owner:philipperolet,label:concurrency;react] group-save-baseline
+   * Diffs MUST use this form's baseline, not refreshed server lists. Successful name or member
+   * saves MUST advance only their submitted baseline so a later failure can be retried.
+   */
   async function saveExistingGroup(): Promise<boolean> {
     if (!(await confirmAppointment())) {
       return false;
     }
-    if (hasGroupChanges) {
+    if (hasNameChanges) {
       const result = await doUpdateGroup({
-        name: name.trim() !== initialName ? name.trim() : undefined,
-        memberIds: Array.from(selectedMemberIds),
+        name: name.trim(),
       });
       if (!result) {
         return false;
       }
+      setInitialName(name.trim());
+    }
+    if (hasMemberChanges) {
+      const result = await doUpdateGroup({ memberDiff });
+      if (!result) {
+        return false;
+      }
+      setInitialMemberIds(new Set(selectedMemberIds));
     }
     if (hasManagerChanges) {
-      const result = await doUpdateGroup({
-        managerIds: selectedManagers.map((manager) => manager.sId),
-      });
+      const result = await doUpdateGroup({ managerDiff });
       if (!result) {
         return false;
       }

@@ -103,7 +103,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     expect((await response.json()).error.type).toBe("group_not_found");
   });
 
-  it("replaces managers without changing a provisioned group's members", async () => {
+  it("updates managers without changing a provisioned group's members", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "manager",
@@ -116,7 +116,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     const group = await GroupFactory.provisioned(workspace, "Engineering");
 
     const first = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId],
+      managerDiff: { add: [alice.sId], remove: [] },
     });
     expect(first.status).toBe(200);
     expect(
@@ -124,15 +124,17 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     ).toEqual([alice.sId]);
 
     const second = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [bob.sId],
+      managerDiff: { add: [bob.sId], remove: [] },
     });
     expect(second.status).toBe(200);
     const body = await (await getGroupRequest(workspace.sId, group.sId)).json();
-    expect(body.managers.map((u: { sId: string }) => u.sId)).toEqual([bob.sId]);
+    expect(new Set(body.managers.map((u: { sId: string }) => u.sId))).toEqual(
+      new Set([alice.sId, bob.sId])
+    );
     expect(body.members).toEqual([]);
 
     const cleared = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [],
+      managerDiff: { add: [], remove: [alice.sId, bob.sId] },
     });
     expect(cleared.status).toBe(200);
     expect((await cleared.json()).managers).toEqual([]);
@@ -151,12 +153,12 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     await GroupFactory.withMembers(auth, group, [alice]);
 
     const invalid = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId, outsider.sId],
+      managerDiff: { add: [alice.sId, outsider.sId], remove: [] },
     });
     expect(invalid.status).toBe(400);
 
     const mixed = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId],
+      managerDiff: { add: [alice.sId], remove: [] },
       name: "New Sales",
     });
     expect(mixed.status).toBe(400);
@@ -175,7 +177,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     await MembershipFactory.associate(workspace, alice, { role: "user" });
 
     const disabled = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId],
+      managerDiff: { add: [alice.sId], remove: [] },
     });
     expect(disabled.status).toBe(403);
 
@@ -186,7 +188,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       workspace,
     });
     const user = await patchGroupRequest(workspace.sId, group.sId, {
-      managerIds: [alice.sId],
+      managerDiff: { add: [alice.sId], remove: [] },
     });
     expect(user.status).toBe(403);
   });

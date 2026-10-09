@@ -1,4 +1,4 @@
-import { replaceGroupManagers } from "@app/lib/api/groups/manager_assignments";
+import { updateGroupManagers } from "@app/lib/api/groups/manager_assignments";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -316,7 +316,7 @@ describe("delegated membership writes", () => {
     });
     await GroupFactory.withMembers(adminAuth, manual, [member]);
     for (const group of [manual, provisioned, admins]) {
-      await replaceGroupManagers(adminAuth, group, [user.sId]);
+      await updateGroupManagers(adminAuth, group, [user.sId], []);
     }
     const addSelf = (groupId: string) =>
       postMemberGroup(workspace, user.sId, { groupId });
@@ -331,24 +331,26 @@ describe("delegated membership writes", () => {
     expect((await addSelf(other.sId)).status).toBe(403);
     expect((await addSelf(provisioned.sId)).status).toBe(404);
     expect((await addSelf(admins.sId)).status).toBe(403);
-    expect((await patch(admins.sId, { memberIds: [user.sId] })).status).toBe(
-      403
-    );
-    expect(await admins.getActiveMembers(adminAuth)).toHaveLength(0);
     expect(
-      (await patch(manual.sId, { name: "Renamed", memberIds: [user.sId] }))
+      (await patch(admins.sId, { memberDiff: { add: [user.sId], remove: [] } }))
         .status
     ).toBe(403);
+    expect(await admins.getActiveMembers(adminAuth)).toHaveLength(0);
+    expect((await patch(manual.sId, { name: "Renamed" })).status).toBe(403);
     expect(
       (await manual.getActiveMembers(adminAuth)).map((m) => m.sId)
     ).toEqual([member.sId]);
-    expect((await patch(manual.sId, { managerIds: [member.sId] })).status).toBe(
-      403
-    );
+    expect(
+      (
+        await patch(manual.sId, {
+          managerDiff: { add: [member.sId], remove: [] },
+        })
+      ).status
+    ).toBe(403);
 
     expect((await addSelf(manual.sId)).status).toBe(200);
     const saved = await patch(manual.sId, {
-      memberIds: [user.sId, member.sId],
+      memberDiff: { add: [], remove: [] },
     });
     expect(saved.status).toBe(200);
     const detail = await saved.json();
@@ -363,10 +365,14 @@ describe("delegated membership writes", () => {
     expect(
       (await deleteMemberGroup(workspace, user.sId, manual.sId)).status
     ).toBe(400);
-    await replaceGroupManagers(adminAuth, manual, []);
-    expect((await patch(manual.sId, { memberIds: [member.sId] })).status).toBe(
-      403
-    );
+    await updateGroupManagers(adminAuth, manual, [], [user.sId]);
+    expect(
+      (
+        await patch(manual.sId, {
+          memberDiff: { add: [member.sId], remove: [] },
+        })
+      ).status
+    ).toBe(403);
   });
 
   it("preserves role synchronization when a delegate adds themselves", async () => {
@@ -382,7 +388,7 @@ describe("delegated membership writes", () => {
       workspaceId: workspace.id,
       grantedRole: "manager",
     });
-    await replaceGroupManagers(adminAuth, group, [user.sId]);
+    await updateGroupManagers(adminAuth, group, [user.sId], []);
     await FeatureFlagFactory.basic(adminAuth, "group_management");
     expect(
       (await postMemberGroup(workspace, user.sId, { groupId: group.sId }))

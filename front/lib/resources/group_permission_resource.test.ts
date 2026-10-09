@@ -1109,7 +1109,7 @@ describe("GroupPermissionResource", () => {
       expect(await findGrantGroup()).not.toBeNull();
     });
 
-    it("replaceUsersForGrant with no users keeps a group held by a key", async () => {
+    it("updateUsersForGrant removing all users keeps a group held by a key", async () => {
       const key = await KeyFactory.regular(globalGroup);
       const user = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user, { role: "user" });
@@ -1122,8 +1122,9 @@ describe("GroupPermissionResource", () => {
         ...grant,
       });
 
-      await GroupPermissionResource.replaceUsersForGrant(auth, {
-        users: [],
+      await GroupPermissionResource.updateUsersForGrant(auth, {
+        usersToAdd: [],
+        userIdsToRemove: [user.sId],
         ...grant,
       });
 

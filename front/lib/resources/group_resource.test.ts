@@ -681,11 +681,12 @@ describe("GroupResource", () => {
       ).toEqual([other.sId]);
     });
 
-    it("refuses an empty memberIds list", async () => {
+    it("refuses to remove all members", async () => {
       const group = await makeManualGroup([user]);
 
-      const res = await group.updateRegularManualGroup(authenticator, {
-        memberIds: [],
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [],
+        removeUserIds: [user.sId],
       });
 
       expect(res.isErr()).toBe(true);

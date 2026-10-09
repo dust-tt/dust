@@ -16,6 +16,7 @@ import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
   GetGroupResponseBody,
   GetMemberGroupsResponseBody,
+  PatchGroupBody,
   PatchGroupResponseBody,
   PostGroupResponseBody,
   PostMemberGroupResponseBody,
@@ -479,15 +480,7 @@ export function useUpdateGroup({
   });
 
   const doUpdateGroup = useCallback(
-    async ({
-      name,
-      memberIds,
-      managerIds,
-    }: {
-      name?: string;
-      memberIds?: string[];
-      managerIds?: string[];
-    }): Promise<PatchGroupResponseBody | null> => {
+    async (update: PatchGroupBody): Promise<PatchGroupResponseBody | null> => {
       if (!groupId) {
         return null;
       }
@@ -496,7 +489,7 @@ export function useUpdateGroup({
         const res = await clientFetch(`/api/w/${owner.sId}/groups/${groupId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, memberIds, managerIds }),
+          body: JSON.stringify(update),
         });
 
         if (!res.ok) {
@@ -531,7 +524,7 @@ export function useUpdateGroup({
         );
 
         await invalidateWorkspaceGroups(owner.sId);
-        if (memberIds !== undefined || managerIds !== undefined) {
+        if ("memberDiff" in update || "managerDiff" in update) {
           await invalidatePeople(owner.sId);
         }
 
