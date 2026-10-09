@@ -855,6 +855,9 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async updatePronouns(pronouns: string | null): Promise<void> {
+    // Written to both the `users.pronouns` column and the legacy metadata while the column is
+    // backfilled; reads still use the metadata.
+    await this.update({ pronouns });
     if (pronouns === null) {
       await this.deleteMetadata({
         key: USER_PRONOUNS_METADATA_KEY,
