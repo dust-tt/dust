@@ -258,7 +258,7 @@ describe("buildEditorExtensions", () => {
   });
 });
 
-describe("useCustomEditor placeholder override", () => {
+describe("useCustomEditor placeholder", () => {
   beforeAll(() => {
     // jsdom does not implement matchMedia (used by useIsMobile).
     vi.stubGlobal(
@@ -285,21 +285,21 @@ describe("useCustomEditor placeholder override", () => {
   });
 
   interface EditorHookProps {
-    placeholderOverride: string | null;
+    placeholder: string | null;
   }
 
   function renderEditorHook() {
     const initialProps: EditorHookProps = {
-      placeholderOverride: null,
+      placeholder: "Get work done",
     };
     const { result, rerender } = renderHook(
-      ({ placeholderOverride }: EditorHookProps) =>
+      ({ placeholder }: EditorHookProps) =>
         useCustomEditor({
           onEnterKeyDown: vi.fn(),
           disableAutoFocus: true,
           owner,
           conversationId: "cId",
-          placeholderOverride,
+          placeholder,
         }),
       { initialProps }
     );
@@ -323,7 +323,7 @@ describe("useCustomEditor placeholder override", () => {
 
     expect(getPlaceholderText(editor)).toBe("Get work done");
 
-    rerender({ placeholderOverride: "Add a follow-up..." });
+    rerender({ placeholder: "Add a follow-up..." });
 
     // Typing starts from the first character.
     expect(result.current.editor).toBe(editor);
@@ -344,7 +344,7 @@ describe("useCustomEditor placeholder override", () => {
       editor.commands.setTextSelection(3);
     });
 
-    rerender({ placeholderOverride: "Add a follow-up..." });
+    rerender({ placeholder: "Add a follow-up..." });
 
     expect(result.current.editor).toBe(editor);
     expect(editor.getText()).toBe("hello");

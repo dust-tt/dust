@@ -39,7 +39,6 @@ import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import type { WorkspaceType } from "@app/types/user";
 import { markdownStyles } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -51,7 +50,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
-export const INPUT_BAR_DEFAULT_PLACEHOLDER = msg`Get work done`;
 // Matches the sidebar conversation title TypingAnimation cadence.
 export const TYPING_INTERVAL_MS = 32;
 export const TYPING_MAX_DURATION_MS = 700;
@@ -379,8 +377,8 @@ export interface CustomEditorProps {
     slashMenuModeRef: React.RefObject<InputBarSlashMenuMode | null>;
     spaceIdRef: React.RefObject<string | null | undefined>;
   };
-  // Override the default editor placeholder (e.g. to show a blocked-state reason).
-  placeholderOverride?: string | null;
+  // Shown while the editor is empty (e.g. a hint or a blocked-state reason).
+  placeholder?: string | null;
   onSuggestionActiveChangeRef?: React.RefObject<
     ((active: boolean) => void) | undefined
   >;
@@ -515,7 +513,7 @@ export const buildEditorExtensions = ({
         if (node.type.name !== "paragraph") {
           return "";
         }
-        return placeholderRef?.current ?? t(INPUT_BAR_DEFAULT_PLACEHOLDER);
+        return placeholderRef?.current ?? "";
       },
       emptyNodeClass:
         "first:before:text-faint dark:first:before:text-stone-400 first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -576,14 +574,13 @@ const useCustomEditor = ({
   stripAgentMentions,
   onFirstAgentMentionPasteRef,
   slashSuggestion,
-  placeholderOverride,
+  placeholder,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   const { t } = useLingui();
   const shouldReduceMotion = useReducedMotion();
-  const defaultPlaceholder = t(INPUT_BAR_DEFAULT_PLACEHOLDER);
   // Read through a ref so placeholder changes don't rebuild the editor.
-  const placeholderRef = useRef(placeholderOverride ?? defaultPlaceholder);
+  const placeholderRef = useRef(placeholder ?? "");
 
   const editor = useEditor(
     {
@@ -639,7 +636,7 @@ const useCustomEditor = ({
   // so dispatch an empty transaction for each change. A layout effect, so a new
   // editor never paints its full placeholder before typing starts.
   useLayoutEffect(() => {
-    const target = placeholderOverride ?? defaultPlaceholder;
+    const target = placeholder ?? "";
     if (!editor || editor.isDestroyed) {
       return;
     }
@@ -676,7 +673,7 @@ const useCustomEditor = ({
     }, TYPING_INTERVAL_MS);
 
     return () => clearInterval(typingEffect);
-  }, [editor, placeholderOverride, defaultPlaceholder, shouldReduceMotion]);
+  }, [editor, placeholder, shouldReduceMotion]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);

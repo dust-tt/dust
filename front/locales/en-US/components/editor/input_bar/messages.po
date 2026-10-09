@@ -44,7 +44,3 @@ msgstr "Unavailable skill"
 #: front/components/editor/input_bar/SkillNodeComponent.tsx
 msgid "Skill"
 msgstr "Skill"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Get work done"
-msgstr "Get work done"

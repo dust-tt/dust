@@ -88,6 +88,10 @@ msgid "Agent"
 msgstr "Agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Get work done"
+msgstr "Get work done"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Ask anything"
 msgstr "Ask anything"
 

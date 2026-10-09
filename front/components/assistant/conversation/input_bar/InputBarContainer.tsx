@@ -50,7 +50,6 @@ import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_bui
 import { knowledgeNodeToItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeTypes";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor, {
-  INPUT_BAR_DEFAULT_PLACEHOLDER,
   TYPING_INTERVAL_MS,
   TYPING_MAX_DURATION_MS,
 } from "@app/components/editor/input_bar/useCustomEditor";
@@ -181,7 +180,7 @@ function getPlaceholderHints({
   disableUserMentions?: boolean;
   slashMenuMode: InputBarSlashMenuMode | null;
 }): MessageDescriptor[] {
-  const hints = [INPUT_BAR_DEFAULT_PLACEHOLDER, msg`Ask anything`];
+  const hints = [msg`Get work done`, msg`Ask anything`];
   if (!disableAgentMentions) {
     hints.push(
       msg`Type @ to call an agent`,
@@ -879,7 +878,7 @@ const InputBarContainer = ({
       slashMenuModeRef,
       spaceIdRef,
     },
-    placeholderOverride: editorPlaceholder,
+    placeholder: editorPlaceholder,
     onSuggestionActiveChangeRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -1091,7 +1090,7 @@ const InputBarContainer = ({
 
   // Keep the editor non-editable while the input is fully disabled (e.g. a
   // non-owner viewing a conversation with an active wake-up). The placeholder
-  // reads the block reason via `placeholderOverride`; disabling editability
+  // reads the block reason via `placeholder`; disabling editability
   // prevents typing. Note: this must not fire for send-button-only blocks
   // (such as "another agent is answering"), otherwise the user loses the
   // ability to steer while the other agent is still generating.
@@ -1636,8 +1635,7 @@ const InputBarContainer = ({
   // recording or transcribing, where it shows a timer and a level meter.
   const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
-  const compactDisplayPlaceholder =
-    editorPlaceholder ?? t(INPUT_BAR_DEFAULT_PLACEHOLDER);
+  const compactDisplayPlaceholder = editorPlaceholder ?? "";
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);

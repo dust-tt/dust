@@ -44,7 +44,3 @@ msgstr "Compétence indisponible"
 #: front/components/editor/input_bar/SkillNodeComponent.tsx
 msgid "Skill"
 msgstr "Compétence"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Get work done"
-msgstr "Que souhaitez-vous accomplir ?"
