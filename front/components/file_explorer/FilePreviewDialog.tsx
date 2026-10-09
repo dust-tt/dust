@@ -1,5 +1,4 @@
 import { hasOpenDocumentLayer } from "@app/components/editor/document";
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -165,7 +164,6 @@ export function FilePreviewDialog({
                 <span className="min-w-16 truncate leading-5 text-foreground">
                   {entry?.fileName ?? t`Preview data`}
                 </span>
-                {markdown.richEditor && <CoEditionBadge />}
               </div>
             </DialogTitle>
             {/* Level with the title, where the built-in close button sat. */}

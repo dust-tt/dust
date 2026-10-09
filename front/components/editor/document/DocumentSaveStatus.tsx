@@ -227,6 +227,8 @@ interface DocumentStatusProps {
   children?: ReactNode;
   /** Shown next to the badge, such as the comments button. */
   controls?: ReactNode;
+  /** Shown at the start of the row, apart from the statuses. */
+  badge?: ReactNode;
 }
 
 /** The status row with the save status and the host's controls, and the save error under it. */
@@ -234,7 +236,8 @@ interface DocumentStatusProps {
  * @cc [owner:tdraier,label:product] document-status-placement
  * The save status with its Retry and the statuses given as children MUST show in a badge above
  * the document that stays in view while the document scrolls, with the given controls next to
- * it; the save error's full reason MUST show under them.
+ * it and the given `badge` at the start of the row; the save error's full reason MUST show under
+ * them.
  */
 export const DocumentStatus = ({
   editable,
@@ -245,6 +248,7 @@ export const DocumentStatus = ({
   onRetry,
   children,
   controls,
+  badge,
 }: DocumentStatusProps) => {
   const { t } = useLingui();
   const showSaveStatus = editable || dirty || saving;
@@ -253,12 +257,13 @@ export const DocumentStatus = ({
       ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
       : error;
 
-  if (!showSaveStatus && !children && !controls) {
+  if (!showSaveStatus && !children && !controls && !badge) {
     return null;
   }
   return (
     <>
       <StatusRow>
+        {badge && <div className="mr-auto flex">{badge}</div>}
         {(showSaveStatus || children) && (
           <Chip
             size="xs"

@@ -245,6 +245,7 @@ export const DocumentView = ({
   commentInputExtensions,
   resolveImageSource,
   renderLiveParticipants,
+  badge,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
   const {
@@ -353,6 +354,7 @@ export const DocumentView = ({
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
           controls={showControls && !headerControlsContainer && controls}
+          badge={badge}
         >
           {liveView && <DocumentLiveStatus status={liveView.status} />}
         </DocumentStatus>

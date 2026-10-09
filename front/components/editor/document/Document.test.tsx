@@ -540,6 +540,30 @@ describe("Document comments", () => {
     container.remove();
   });
 
+  it("shows the host's badge above the document, before the save status", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <Document
+        initialContent={SOURCE}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        headerControlsContainer={container}
+        badge={<span data-testid="badge" />}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    const status = await within(documentRoot).findByRole("status");
+    const badge = within(documentRoot).getByTestId("badge");
+    expect(
+      badge.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(within(container).queryByTestId("badge")).toBeNull();
+    container.remove();
+  });
+
   it("renders the host's avatars only for threads on screen", async () => {
     render(
       <Document
