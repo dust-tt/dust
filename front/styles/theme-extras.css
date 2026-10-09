@@ -51,7 +51,7 @@
   --animate-reload: reload 1000ms ease-out;
   --animate-fadeout: fadeout 500ms ease-out;
   /* The text of an agent's edit in a live document (AgentEdits.ts). */
-  --animate-agent-edit-settle: agent-edit-settle 1200ms var(--ease-out-cubic)
+  --animate-agent-edit-settle: agent-edit-settle 3000ms var(--ease-in-out-quad)
     both;
   --animate-marquee: marquee 25s linear infinite;
   --animate-fade-in-up: fade-in-up 0.5s ease-in-out;
@@ -105,12 +105,19 @@
     opacity: 0;
   }
 }
-/* `--agent-edit-highlight` is set once on the text, in the agent's color: only the color animates. */
+/* `--agent-edit-highlight` is set once on the text, in the agent's color: it rises as the text
+   appears, holds a moment so the eye finds it, then fades. Only the color animates. */
 @keyframes agent-edit-settle {
-  from {
+  0% {
+    background-color: transparent;
+    /* `--ease-out-cubic`: variables are not read inside keyframes. */
+    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+  }
+  10%,
+  35% {
     background-color: var(--agent-edit-highlight);
   }
-  to {
+  100% {
     background-color: transparent;
   }
 }

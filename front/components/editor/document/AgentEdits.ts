@@ -21,7 +21,7 @@ import * as Y from "yjs";
 
 // The duration of `animate-agent-edit-settle` (theme-extras.css): the browser runs the fade, the
 // plugin only removes the decorations once it is done.
-const GLOW_MS = 1_200;
+const GLOW_MS = 3_000;
 const GLOW_PERCENT = 25;
 /** Inserted characters past which an edit just shows, without a glow. */
 const MAX_GLOWED_CHARS = 20_000;
@@ -41,7 +41,6 @@ export interface AgentEditGlow {
 interface Glow {
   agent: LiveAgent;
   ranges: TextRange[];
-  startedAt: number;
 }
 
 type AgentEditsMeta = ({ type: "glow" } & AgentEditGlow) | { type: "end" };
@@ -203,7 +202,7 @@ const applyAgentEdits = (
   if (meta?.type === "glow") {
     // Only while its ranges are this document's: otherwise the text just shows.
     return meta.doc === newState.doc
-      ? { agent: meta.agent, ranges: meta.ranges, startedAt: Date.now() }
+      ? { agent: meta.agent, ranges: meta.ranges }
       : glow;
   }
   // Any later change, or the fade's end, removes the glow: no tracking through other changes.
