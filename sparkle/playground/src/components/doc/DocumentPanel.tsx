@@ -18,6 +18,7 @@ import {
   Pencil01,
   Robot,
   Spinner,
+  Tooltip,
   ZapOff,
 } from "@dust-tt/sparkle";
 import {
@@ -216,6 +217,8 @@ interface DocumentPanelProps {
   agentRunCount: number;
   /** Element in the panel's top bar where the document's actions render. */
   toolbarSlot: HTMLElement | null;
+  /** Element next to the file name where the agent and live chips render. */
+  titleSlot: HTMLElement | null;
 }
 
 /** Where the live session stands (production's DocumentLiveStatus). */
@@ -271,6 +274,22 @@ function AgentActivityChip({ activity }: { activity: AgentActivity }) {
   );
 }
 
+/** Production's CoEditionBadge. */
+function CoEditionBadge() {
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      label="This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+      trigger={
+        // Opaque backing: the badge stays readable over scrolling text.
+        <span className="shrink-0 rounded-md bg-background shadow-xs">
+          <Chip size="mini" color="info" label="Co-edition · Unstable alpha" />
+        </span>
+      }
+    />
+  );
+}
+
 // Prototype: how long joining the live session takes.
 const CONNECT_MS = 1200;
 
@@ -286,6 +305,7 @@ export function DocumentPanel({
   agents,
   fileAgents,
   toolbarSlot,
+  titleSlot,
   isConversationBusy,
   conversationAgent,
   agentRunCount,
@@ -1131,6 +1151,23 @@ export function DocumentPanel({
           {/* The panel's top bar, as production's file preview header
           (dust#34675): comments, download, then the panel's full screen and
           close. Prototype-only controls sit behind "…", first. */}
+          {/* Next to the file name: what the agent is doing, and the live
+          status. */}
+          {titleSlot &&
+            createPortal(
+              <>
+                {agentActivity && (
+                  <AgentActivityChip activity={agentActivity} />
+                )}
+                <Chip
+                  size="xs"
+                  className="gap-2.5 border border-border bg-background"
+                >
+                  <LiveStatusChip status={liveStatus} />
+                </Chip>
+              </>,
+              titleSlot
+            )}
           {toolbarSlot &&
             createPortal(
               <>
@@ -1269,21 +1306,11 @@ export function DocumentPanel({
                   editorRef.current?.focusEnd();
                 }}
               >
-                {/* Above the document, as in production: the live status in a
-                badge that stays in view while the document scrolls. Only the
-                badge takes clicks, so the text under the row stays clickable. */}
-                <div className="pointer-events-none sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end text-xs text-muted-foreground [&>*]:pointer-events-auto">
-                  <div className="flex items-center gap-1.5">
-                    {agentActivity && (
-                      <AgentActivityChip activity={agentActivity} />
-                    )}
-                    <Chip
-                      size="xs"
-                      className="gap-2.5 border border-border bg-background"
-                    >
-                      <LiveStatusChip status={liveStatus} />
-                    </Chip>
-                  </div>
+                {/* The alpha badge, at the top of the document and over
+                everything (the comments list included) while it scrolls.
+                Only the badge takes clicks. */}
+                <div className="pointer-events-none sticky top-3 z-40 mb-5 flex [&>*]:pointer-events-auto">
+                  <CoEditionBadge />
                 </div>
                 <DocEditor
                   ref={editorRef}
