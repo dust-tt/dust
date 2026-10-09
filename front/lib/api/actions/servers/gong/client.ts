@@ -7,7 +7,7 @@ import {
   GongCallsResponseSchema,
   GongTranscriptsResponseSchema,
 } from "@app/lib/api/actions/servers/gong/schemas";
-import { staticIpFetch } from "@app/lib/egress/server";
+import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -80,7 +80,7 @@ export class GongClient {
       url += `?${params.toString()}`;
     }
 
-    const response = await staticIpFetch(url, {
+    const response = await untrustedFetch(url, {
       method: options.method,
       headers: {
         "Content-Type": "application/json",
