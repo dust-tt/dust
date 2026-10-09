@@ -2,7 +2,9 @@
 import type { EditHunk } from "@app/components/editor/document/AgentEdits";
 import {
   agentEditsPlugin,
+  isPlayingAgentEdit,
   withPlayedEdit,
+  withRemappedHunks,
 } from "@app/components/editor/document/AgentEdits";
 import {
   documentSchema,
@@ -182,6 +184,53 @@ describe("agentEditsPlugin", () => {
 
     expect(typed.doc.textContent).toBe("Hello. InMINEdeed.");
     expect(shown(typed)).toMatchObject({ hidden: "", count: 0 });
+  });
+
+  it("takes recomputed hunks where its own mapping can only guess", () => {
+    // "aa": the agent's "a" is the first one, then another editor types an "a" before it.
+    const state = agentInsert(start("a"), "a", 1);
+    const theirs = state.apply(
+      state.tr.replaceWith(0, state.doc.content.size, doc("aaa").content)
+    );
+
+    const remapped = theirs.apply(
+      withRemappedHunks(theirs, {
+        hunks: [{ inserted: [{ from: 2, to: 3 }], at: 2, removed: "" }],
+        doc: theirs.doc,
+      })
+    );
+    const decorations = plugin.props.decorations?.call(plugin, remapped);
+    const hidden =
+      decorations instanceof DecorationSet
+        ? decorations
+            .find()
+            .filter(({ spec }) => spec.agentEdit === "hidden")
+            .map(({ from, to }) => ({ from, to }))
+        : [];
+
+    expect(isPlayingAgentEdit(remapped)).toBe(true);
+    expect(hidden).toEqual([{ from: 2, to: 3 }]);
+  });
+
+  it("ignores recomputed hunks of another document, and when nothing plays", () => {
+    const state = editAsAgent(start("Hello."));
+    const later = state.apply(state.tr.insertText("Oh. ", 1));
+    const stale = later.apply(
+      withRemappedHunks(later, {
+        hunks: [{ inserted: [{ from: 1, to: 2 }], at: 1, removed: "" }],
+        doc: state.doc,
+      })
+    );
+    expect(shown(stale).hidden).toBe(" Indeed.");
+
+    const idle = start("Hello.");
+    const ignored = idle.apply(
+      withRemappedHunks(idle, {
+        hunks: [{ inserted: [{ from: 1, to: 2 }], at: 1, removed: "" }],
+        doc: idle.doc,
+      })
+    );
+    expect(isPlayingAgentEdit(ignored)).toBe(false);
   });
 
   it("follows the text when the document changes during playback", () => {

@@ -59,7 +59,16 @@ export interface PlayedEdit {
   doc: Node;
 }
 
-type AgentEditsMeta = ({ type: "play" } & PlayedEdit) | { type: "frame" };
+/** A playing edit's hunks, recomputed in `doc` after a change of the document. */
+export interface RemappedHunks {
+  hunks: EditHunk[];
+  doc: Node;
+}
+
+type AgentEditsMeta =
+  | ({ type: "play" } & PlayedEdit)
+  | ({ type: "remap" } & RemappedHunks)
+  | { type: "frame" };
 
 const agentEditsKey = new PluginKey<AgentEditsState>("agentEdits");
 
@@ -205,6 +214,11 @@ const applyAgentEdits = (
       // A new change replaces one still playing: its text is shown whole.
       animation = startAnimation(meta.agent, meta.hunks, now);
     }
+  } else if (meta?.type === "remap") {
+    // Exact where the mapping below can only guess, such as text repeated around a change.
+    if (animation && meta.doc === newState.doc) {
+      animation = { ...animation, hunks: meta.hunks };
+    }
   } else if (animation && transaction.docChanged) {
     const region = changedRegion(oldState.doc.content, newState.doc.content);
     if (region && touchesAnimation(animation, region)) {
@@ -327,6 +341,19 @@ export const withPlayedEdit = (
   return state.tr.setMeta(agentEditsKey, meta);
 };
 
+/** A transaction moving the playing edit to `remapped`, its hunks in the document it applies to. */
+export const withRemappedHunks = (
+  state: EditorState,
+  remapped: RemappedHunks
+): Transaction => {
+  const meta: AgentEditsMeta = { type: "remap", ...remapped };
+  return state.tr.setMeta(agentEditsKey, meta);
+};
+
+/** Whether an agent's edit is playing back in `state`. */
+export const isPlayingAgentEdit = (state: EditorState): boolean =>
+  agentEditsKey.getState(state)?.animation != null;
+
 /**
  * @cc [owner:PopDaph,label:product;performance] live-agent-edit-playback
  * An edit given by `withPlayedEdit`, while its hunks are in the current document, MUST be played
@@ -334,8 +361,9 @@ export const withPlayedEdit = (
  * `LIVE_REMOVED_TEXT_MAX_CHARS` characters, fading where it stood, then its new text revealed in
  * document order behind a caret labelled with the agent's name, then highlighted until it settles.
  * Playback MUST only add decorations, never change the document, the selection or undo history,
- * and MUST follow later changes of the document, ending at once, its new text all shown, when a
- * later change touches that text; it MAY also end so when one change surrounds that text. With reduced
+ * and MUST follow later changes of the document, taking the hunks `withRemappedHunks` gives while
+ * they are in the current document, ending at once, its new text all shown, when a later change
+ * touches that text; it MAY also end so when one change surrounds that text. With reduced
  * motion, or more than `MAX_TYPED_CHARS` of new text, the new text MUST show at once, highlighted
  * until it settles. The fading of removed text and of the highlight MUST run in CSS, with
  * decorations unchanged while they run: only typing MAY draw a new frame per display frame.
