@@ -249,6 +249,10 @@ msgid "Paste or type a link"
 msgstr "Collez ou saisissez un lien"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Remove link"
+msgstr "Retirer le lien"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Bold"
 msgstr "Gras"
 
@@ -281,8 +285,8 @@ msgid "Lists"
 msgstr "Listes"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
-msgid "Remove link"
-msgstr "Retirer le lien"
+msgid "Edit link"
+msgstr "Modifier le lien"
 
 #: front/components/editor/document/DocumentSourcePreview.tsx
 msgid "{reason} The original Markdown is shown below and editing is disabled to preserve it."

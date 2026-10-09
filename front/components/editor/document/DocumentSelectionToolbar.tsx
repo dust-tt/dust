@@ -1,4 +1,5 @@
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
   Bold01,
   Button,
@@ -12,6 +13,7 @@ import {
   Link01,
   List,
   MessagePlusCircle,
+  Trash01,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -29,8 +31,12 @@ interface DocumentSelectionToolbarProps {
   onComment?: () => void;
 }
 
+interface StrokeIconProps {
+  className?: string;
+}
+
 // Sparkle has no underline or strikethrough icon; drawn to match its stroke set.
-const UnderlineIcon = ({ className }: { className?: string }) => (
+const UnderlineIcon = ({ className }: StrokeIconProps) => (
   <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
     <path
       d="M7 4v6a5 5 0 0 0 10 0V4M5 20h14"
@@ -42,7 +48,7 @@ const UnderlineIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-const StrikethroughIcon = ({ className }: { className?: string }) => (
+const StrikethroughIcon = ({ className }: StrokeIconProps) => (
   <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
     <path
       d="M16.5 7.5C16 5.6 14.2 4.5 12 4.5c-2.8 0-4.5 1.5-4.5 3.4 0 1.6 1 2.7 3.5 3.4M4 12h16M8 16.5c.5 1.9 2.2 3 4.2 3 2.7 0 4.5-1.4 4.5-3.4 0-.8-.2-1.5-.7-2.1"
@@ -78,25 +84,36 @@ const LIST_STYLES: {
 /** Keeps the editor's selection, and so the toolbar, while a control is pressed. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
 
-/** An http(s) or mailto link; bare domains get https. Null for anything else. */
+/** An http(s) or mailto link; a value without a scheme reads as https. Null for anything else. */
 export const normalizeHref = (value: string): string | null => {
   const trimmed = value.trim();
-  if (!trimmed) {
-    return null;
+  if (/^mailto:/i.test(trimmed)) {
+    return /^mailto:[^\s@]+@[^\s@]+$/i.test(trimmed) ? trimmed : null;
   }
-  const href = /^[a-z][a-z\d+.-]*:/i.test(trimmed)
-    ? trimmed
-    : `https://${trimmed}`;
-  return /^(https?:\/\/|mailto:)/i.test(href) ? href : null;
+  const { valid, standardized } = validateUrl(
+    trimmed.includes("://") ? trimmed : `https://${trimmed}`
+  );
+  return valid ? standardized : null;
+};
+
+const linkHref = (editor: Editor): string => {
+  const { href } = editor.getAttributes("link");
+  return typeof href === "string" ? href : "";
 };
 
 interface LinkFieldProps {
   initialHref: string;
   onApply: (href: string) => void;
   onCancel: () => void;
+  onRemove?: () => void;
 }
 
-const LinkField = ({ initialHref, onApply, onCancel }: LinkFieldProps) => {
+const LinkField = ({
+  initialHref,
+  onApply,
+  onCancel,
+  onRemove,
+}: LinkFieldProps) => {
   const { t } = useLingui();
   const [value, setValue] = useState(initialHref);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -116,6 +133,9 @@ const LinkField = ({ initialHref, onApply, onCancel }: LinkFieldProps) => {
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
+          if (event.nativeEvent.isComposing) {
+            return;
+          }
           if (event.key === "Enter" && href) {
             event.preventDefault();
             onApply(href);
@@ -135,6 +155,16 @@ const LinkField = ({ initialHref, onApply, onCancel }: LinkFieldProps) => {
         onMouseDown={keepSelection}
         onClick={() => href && onApply(href)}
       />
+      {onRemove && (
+        <Button
+          size="xs"
+          variant="ghost-secondary"
+          icon={Trash01}
+          tooltip={t`Remove link`}
+          onMouseDown={keepSelection}
+          onClick={onRemove}
+        />
+      )}
     </div>
   );
 };
@@ -148,8 +178,14 @@ const LinkField = ({ initialHref, onApply, onCancel }: LinkFieldProps) => {
  * @cc [owner:PopDaph;tdraier,label:product] document-selection-toolbar
  * The toolbar MUST offer, over a nonempty text selection of an editable document: a text style
  * menu (text, headings 1 to 3), bold, italic, underline, strikethrough, inline code, a list menu
- * (bulleted, numbered) and a link control. A link MUST be an http(s) or mailto URL, a bare domain
- * reading as https. Using a control MUST keep the editor's selection.
+ * (bulleted, numbered) and a link control. A link MUST be a valid http(s) URL, a value without a
+ * scheme reading as https, or a mailto address. Using a control MUST keep the editor's selection,
+ * except that applying or removing a link MUST act on the whole link under the selection.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-link-editing
+ * Over a linked selection, the link control MUST open the link field prefilled with the link's
+ * URL, with an action to remove the link.
  */
 export const DocumentSelectionToolbar = ({
   editor,
@@ -166,7 +202,7 @@ export const DocumentSelectionToolbar = ({
       strike: editor.isActive("strike"),
       code: editor.isActive("code"),
       link: editor.isActive("link"),
-      href: (editor.getAttributes("link").href as string | undefined) ?? "",
+      href: linkHref(editor),
       canComment: editor.can().startCommentDraft(),
     }),
   });
@@ -259,6 +295,14 @@ export const DocumentSelectionToolbar = ({
                 setEditingLink(false);
                 editor.commands.focus();
               }}
+              onRemove={
+                selection.link
+                  ? () => {
+                      setEditingLink(false);
+                      chain().extendMarkRange("link").unsetLink().run();
+                    }
+                  : undefined
+              }
             />
           ) : (
             <>
@@ -339,16 +383,10 @@ export const DocumentSelectionToolbar = ({
                 size="xs"
                 variant={selection.link ? "primary" : "ghost-secondary"}
                 icon={Link01}
-                tooltip={selection.link ? t`Remove link` : t`Link`}
+                tooltip={selection.link ? t`Edit link` : t`Link`}
                 aria-pressed={selection.link}
                 onMouseDown={keepSelection}
-                onClick={() => {
-                  if (selection.link) {
-                    chain().extendMarkRange("link").unsetLink().run();
-                  } else {
-                    setEditingLink(true);
-                  }
-                }}
+                onClick={() => setEditingLink(true)}
               />
             </>
           )}
