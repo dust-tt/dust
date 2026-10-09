@@ -167,6 +167,7 @@ describe("getSearchFilterPresets", () => {
     lastName: null,
     fullName: "Alice",
     image: null,
+    pronouns: null,
     lastLoginAt: null,
   };
 

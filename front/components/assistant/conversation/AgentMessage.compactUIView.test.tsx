@@ -152,6 +152,7 @@ const mockUser: UserType = {
   lastName: "User",
   fullName: "Test User",
   image: null,
+  pronouns: null,
   lastLoginAt: null,
 };
 

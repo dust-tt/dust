@@ -39,7 +39,6 @@ import type {
   UserType,
 } from "@app/types/user";
 import type { UserProfileType } from "@app/types/user_profile";
-import { USER_PRONOUNS_METADATA_KEY } from "@app/types/user_profile";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import chunk from "lodash/chunk";
 import escape from "lodash/escape";
@@ -764,21 +763,6 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async getMetadataValues(
-    keys: string[],
-    workspaceModelId?: ModelId | null
-  ): Promise<Map<string, string>> {
-    const rows = await UserMetadataModel.findAll({
-      attributes: ["key", "value"],
-      where: {
-        userId: this.id,
-        key: { [Op.in]: keys },
-        workspaceId: workspaceModelId ?? null,
-      },
-    });
-    return new Map(rows.map((row) => [row.key, row.value]));
-  }
-
   async setMetadata(
     key: string,
     value: string,
@@ -843,29 +827,15 @@ export class UserResource extends BaseResource<UserModel> {
   }
 
   async getProfile(): Promise<UserProfileType> {
-    const values = await this.getMetadataValues([
-      USER_PRONOUNS_METADATA_KEY,
-      "job_type",
-    ]);
-    const jobType = values.get("job_type");
+    const jobType = (await this.getMetadata("job_type"))?.value;
     return {
-      pronouns: values.get(USER_PRONOUNS_METADATA_KEY) ?? null,
+      pronouns: this.pronouns,
       jobType: isJobType(jobType) ? jobType : null,
     };
   }
 
   async updatePronouns(pronouns: string | null): Promise<void> {
-    // Written to both the `users.pronouns` column and the legacy metadata while the column is
-    // backfilled; reads still use the metadata.
     await this.update({ pronouns });
-    if (pronouns === null) {
-      await this.deleteMetadata({
-        key: USER_PRONOUNS_METADATA_KEY,
-        workspaceId: null,
-      });
-    } else {
-      await this.setMetadata(USER_PRONOUNS_METADATA_KEY, pronouns);
-    }
   }
 
   /**
@@ -1109,6 +1079,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: this.lastName,
       fullName: this.fullName(),
       image: this.imageUrl,
+      pronouns: this.pronouns,
       lastLoginAt: this.lastLoginAt?.getTime() ?? null,
     };
   }

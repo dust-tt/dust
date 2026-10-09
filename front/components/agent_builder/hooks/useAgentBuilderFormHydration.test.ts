@@ -47,6 +47,7 @@ function makeUser(sId: string, id: number): UserType {
     lastName: "User",
     fullName: "Test User",
     image: null,
+    pronouns: null,
     lastLoginAt: null,
   };
 }

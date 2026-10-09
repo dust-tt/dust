@@ -30,6 +30,7 @@ function makeWakeUp(scheduleConfig: WakeUpType["scheduleConfig"]): WakeUpType {
       lastName: null,
       fullName: "Test",
       image: null,
+      pronouns: null,
       lastLoginAt: null,
     },
   };

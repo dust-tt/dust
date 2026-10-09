@@ -97,6 +97,7 @@ function mockUser(username: string): UserType {
     lastName: null,
     fullName: username,
     image: null,
+    pronouns: null,
     lastLoginAt: null,
   };
 }
