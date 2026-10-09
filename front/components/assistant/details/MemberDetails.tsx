@@ -61,6 +61,9 @@ function MemberDetailsHeaderSkeleton({ isSelf }: { isSelf: boolean }) {
         <div className="flex h-7 items-center">
           <LoadingBlock className="h-5 w-32" />
         </div>
+        <div className="flex h-4 items-center">
+          <LoadingBlock className="h-3 w-16" />
+        </div>
         <div className="flex h-5 items-center">
           <LoadingBlock className="h-3.5 w-24" />
         </div>
