@@ -352,61 +352,88 @@ export function truncateSummary(summary: string, limit = 60000): string {
   ].join("\n");
 }
 
-type GitResult = { ok: true; stdout: string } | { ok: false; stderr: string };
+// Mirrors the repository's Result type, which this standalone script cannot import.
+class Ok<T> {
+  value: T;
+  constructor(value: T) {
+    this.value = value;
+  }
+  isOk(): this is Ok<T> {
+    return true;
+  }
+  isErr(): this is Err<never> {
+    return false;
+  }
+}
+
+class Err<E> {
+  error: E;
+  constructor(error: E) {
+    this.error = error;
+  }
+  isOk(): this is Ok<never> {
+    return false;
+  }
+  isErr(): this is Err<E> {
+    return true;
+  }
+}
+
+type Result<T, E> = Ok<T> | Err<E>;
 
 // Git reports a path missing from a revision with the same exit code as any other failure, so
 // only its message tells an absent file apart from a broken repository or revision.
 const MISSING_PATH = /does not exist in|exists on disk, but not in/;
 
 // The exec call throws on any nonzero exit, so it is the only place a catch is needed.
-function git(args: string[]): GitResult {
+function git(args: string[]): Result<string, string> {
   try {
     const stdout = execFileSync("git", args, {
       encoding: "utf8",
       maxBuffer: 1 << 26,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    return { ok: true, stdout };
+    return new Ok(stdout);
   } catch (error) {
     const stderr =
       typeof error === "object" && error !== null && "stderr" in error
         ? String(error.stderr)
         : "";
-    return { ok: false, stderr };
+    return new Err(stderr);
   }
 }
 
 function gitOutput(args: string[]): string {
   const result = git(args);
-  if (!result.ok) {
-    throw new Error(`git ${args.join(" ")} failed: ${result.stderr.trim()}`);
+  if (result.isErr()) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.error.trim()}`);
   }
-  return result.stdout;
+  return result.value;
 }
 
 function readAt(revision: string, path: string): string {
   const result = git(["show", `${revision}:${path}`]);
-  if (result.ok) {
-    return result.stdout;
+  if (result.isOk()) {
+    return result.value;
   }
-  if (MISSING_PATH.test(result.stderr)) {
+  if (MISSING_PATH.test(result.error)) {
     return "";
   }
   throw new Error(
-    `git show ${revision}:${path} failed: ${result.stderr.trim()}`
+    `git show ${revision}:${path} failed: ${result.error.trim()}`
   );
 }
 
 function existsAt(revision: string, path: string): boolean {
   const result = git(["cat-file", "-e", `${revision}:${path}`]);
-  if (result.ok) {
+  if (result.isOk()) {
     return true;
   }
-  if (MISSING_PATH.test(result.stderr)) {
+  if (MISSING_PATH.test(result.error)) {
     return false;
   }
   throw new Error(
-    `git cat-file ${revision}:${path} failed: ${result.stderr.trim()}`
+    `git cat-file ${revision}:${path} failed: ${result.error.trim()}`
   );
 }
 

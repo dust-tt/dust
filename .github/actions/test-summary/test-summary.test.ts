@@ -37,7 +37,9 @@ describe("collectTests", () => {
       "a.test.ts"
     );
 
-    assert.equal(compact.get("x")?.body, spread.get("x")?.body);
+    const compactBody = compact.get("x")?.body;
+    assert.ok(compactBody);
+    assert.equal(spread.get("x")?.body, compactBody);
   });
 
   it("parses generic arrows in .ts files", () => {
@@ -142,11 +144,12 @@ describe("renderSummary", () => {
 describe("truncateSummary", () => {
   it("cuts on a line boundary and closes open collapsed sections", () => {
     const summary = `head\n<details><summary>s</summary>\n\n${"[link](url)\n".repeat(10)}</details>`;
-    const truncated = truncateSummary(summary, 60);
+    // The limit falls in the middle of the second link.
+    const truncated = truncateSummary(summary, 55);
 
-    assert.ok(
-      truncated.includes("[link](url)\n\n</details>\n\n_Summary truncated")
+    assert.equal(
+      truncated,
+      "head\n<details><summary>s</summary>\n\n[link](url)\n\n</details>\n\n_Summary truncated: run the script locally for the full list._"
     );
-    assert.ok(!truncated.includes("[link](u\n"));
   });
 });
