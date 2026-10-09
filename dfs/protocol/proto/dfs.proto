@@ -85,6 +85,15 @@ message ObjectRef {
   }
 }
 
+// @cc [owner:fontanierh,label:api] dfs-object-kind-symlink-reserved
+// SYMLINK is reserved until symlink targets are specified. Servers MUST reject a CreateOperation
+// with kind SYMLINK with UNSUPPORTED, and MUST NOT report SYMLINK in Attr or SearchAttr.
+enum ObjectKind {
+  FILE = 0;
+  DIRECTORY = 1;
+  SYMLINK = 2;
+}
+
 // Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
 message Attr {
   required ObjectRef id = 1;
@@ -95,7 +104,7 @@ message Attr {
   // The stored tenant root and virtual root MUST report an empty name; virtual shared MUST report
   // "shared". Projected listing names, including /shared ID suffixes, belong in Entry.name.
   required string name = 13;
-  required bool directory = 3;
+  required ObjectKind kind = 3;
   required uint64 size = 4;
   // @cc [owner:spolu,label:api;security] dfs-attribute-mode
   // For real objects, owner r/w bits MUST equal the session's effective grant permissions shifted
@@ -411,7 +420,7 @@ message CreateOperation {
   required string name = 2;
   // The caller supplies a fresh UUIDv7.
   required ObjectId object_id = 3;
-  required bool directory = 4;
+  required ObjectKind kind = 4;
   optional string mime_type = 5;
   map<string, bytes> xattrs = 6;
 }
@@ -456,17 +465,12 @@ message RenameOperation {
 
 message RemoveOperation {
   required ObjectId object_id = 1;
-  required bool directory = 2;
+  required ObjectKind kind = 2;
 }
 
 enum SearchField {
   NAME = 0;
   CONTENT = 1;
-}
-
-enum SearchKind {
-  FILE = 0;
-  DIRECTORY = 1;
 }
 
 // @cc [owner:spolu,label:api] dfs-search-request-limits
@@ -489,7 +493,7 @@ message SearchScope {
 // MIME type filters MUST contain at most 32 values, each valid and at most 255 UTF-8 bytes.
 // Xattr filters MUST contain at most 64 predicates.
 message SearchFilter {
-  optional SearchKind kind = 1;
+  optional ObjectKind kind = 1;
   optional string name = 2;
   optional string name_prefix = 3;
   repeated string mime_types = 4;
@@ -533,7 +537,7 @@ message SearchHit {
 message SearchAttr {
   required ObjectId id = 1;
   required string name = 2;
-  required bool directory = 3;
+  required ObjectKind kind = 3;
   required uint64 size = 4;
   optional uint64 atime = 5;
   optional uint64 mtime = 6;

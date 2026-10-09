@@ -20,11 +20,12 @@ may be empty unless a minimum is specified. Numeric sizes and offsets are in byt
 ObjectId = UUIDv7               // Exactly 16 bytes; identifies a real stored object.
 ObjectRef = ObjectId | root | shared
 Timestamp = uint64              // Milliseconds since 1970-01-01T00:00:00Z.
+ObjectKind = FILE | DIRECTORY | SYMLINK
 
 Attr {
   id: ObjectRef
   name: string                   // Stored basename; empty for the stored and virtual roots.
-  directory: bool
+  kind: ObjectKind
   size: uint64                   // Logical file size; zero for directories.
   mode: uint32                   // Owner r/w bits, plus derived directory x.
   atime?: Timestamp
@@ -53,6 +54,10 @@ ErrorDetails {
 
 Empty {}
 ```
+
+`kind` is `FILE` for regular files and `DIRECTORY` for directories, including the stored and virtual
+roots. `SYMLINK` is reserved until symlink targets are specified: creating one fails with
+`UNSUPPORTED`, and attributes never report it.
 
 `Attr.name` is the stored basename for real non-root objects, independent of the alias used to
 access them. The stored tenant root and virtual `root` use an empty name; virtual `shared` uses
@@ -757,7 +762,7 @@ CreateOperation {
   parent_id: ObjectId
   name: string
   object_id: ObjectId            // Fresh UUIDv7 supplied by the caller.
-  directory: bool                // True for a directory, false for a regular file.
+  kind: ObjectKind               // FILE or DIRECTORY; SYMLINK fails with UNSUPPORTED.
   mime_type?: string             // Defaults to inode/directory or application/octet-stream.
   xattrs: map<string, bytes>
 }
@@ -840,7 +845,7 @@ Removes an authorized file or empty directory from its accessible parent.
 ```text
 RemoveOperation {
   object_id: ObjectId
-  directory: bool                // Must match the object's kind.
+  kind: ObjectKind               // Must match the object's kind.
 }
 ```
 
@@ -867,7 +872,6 @@ SearchRequest {
 }
 
 SearchField = NAME | CONTENT
-SearchKind = FILE | DIRECTORY
 
 SearchScope {
   directory_id: ObjectId         // Must be an authorized real directory.
@@ -875,7 +879,7 @@ SearchScope {
 }
 
 SearchFilter {
-  kind?: SearchKind
+  kind?: ObjectKind
   name?: string                 // Exact basename.
   name_prefix?: string          // Exact basename prefix.
   mime_types: string[]           // OR within the list, at most 32 values.
@@ -908,7 +912,7 @@ SearchHit {
 SearchAttr {
   id: ObjectId
   name: string                   // Stored basename; empty for the stored tenant root.
-  directory: bool
+  kind: ObjectKind
   size: uint64                   // Logical file size; zero for directories.
   atime?: Timestamp
   mtime?: Timestamp
