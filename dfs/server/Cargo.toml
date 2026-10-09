@@ -9,6 +9,8 @@ anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 dfs-protocol = { path = "../protocol" }
 foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
+ring = "0.17.14"
+sha2 = "0.10.8"
 tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = "0.14"
