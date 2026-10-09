@@ -8,16 +8,13 @@ use dfs_protocol::{
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
-use foundationdb::Database;
 use tonic::{Request, Response, Status};
 
 use crate::storage::{fdb, resources::tenant::TenantResource};
 
 /// RPCs without an implementation answer UNSUPPORTED.
 #[allow(clippy::upper_case_acronyms)]
-pub struct API {
-    pub database: Database,
-}
+pub struct API;
 
 #[tonic::async_trait]
 impl Dfs for API {
@@ -35,14 +32,11 @@ impl Dfs for API {
         // Unlike front's `makeNew`, the tenant is built before the transaction: FDB re-runs the body
         // on retry, and a fresh key and root per attempt would hide our own earlier commit.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
-        let created = self
-            .database
-            .run(|transaction, _maybe_committed| {
-                let tenant = &tenant;
-                async move { tenant.create(&transaction).await }
-            })
-            .await
-            .map_err(fdb::internal_status)?;
+        let created = fdb::with_transaction(|transaction| {
+            let tenant = &tenant;
+            async move { tenant.create(&transaction).await }
+        })
+        .await?;
         if !created {
             return Err(status(ErrorCode::AlreadyExists));
         }

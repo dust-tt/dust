@@ -2,7 +2,6 @@ use std::{future::Future, time::Duration};
 
 use anyhow::{Context, Result};
 use dfs_protocol::rpc::dfs_server::DfsServer;
-use foundationdb::Database;
 use tokio::{net::TcpListener, sync::oneshot};
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic::{service::interceptor::InterceptedService, transport::Server};
@@ -26,14 +25,10 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  * Bearer validation MUST apply only to DFS RPCs. The gRPC health Check and Watch methods MUST
  * respond without authorization metadata.
  */
-pub async fn serve(
-    listener: TcpListener,
-    database: Database,
-    shutdown: impl Future<Output = ()>,
-) -> Result<()> {
+pub async fn serve(listener: TcpListener, shutdown: impl Future<Output = ()>) -> Result<()> {
     let (reporter, health) = tonic_health::server::health_reporter();
     reporter.set_serving::<DfsServer<api::API>>().await;
-    let service = DfsServer::new(api::API { database })
+    let service = DfsServer::new(api::API)
         .max_decoding_message_size(MAX_MESSAGE_SIZE)
         .max_encoding_message_size(MAX_MESSAGE_SIZE);
     let (stop, stopped) = oneshot::channel();

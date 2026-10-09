@@ -1,7 +1,9 @@
+use std::sync::OnceLock;
+
 use anyhow::{Context, Result};
 use dfs_protocol::{error::status, rpc::ErrorCode};
 use foundationdb::{
-    Database, FdbBindingError,
+    Database, FdbBindingError, RetryableTransaction,
     options::{DatabaseOption, TransactionOption},
 };
 use tonic::Status;
@@ -13,8 +15,34 @@ const DEFAULT_CLUSTER_FILE: &str = "fdb.cluster";
 /// `Database::run` retries forever by default; this bounds every transaction, retries included.
 const TRANSACTION_TIMEOUT_MS: i32 = 5_000;
 
-/// Opens the database named by `FDB_CLUSTER_FILE`. The caller must have booted the network first.
-pub fn open() -> Result<Database> {
+static DATABASE: OnceLock<Database> = OnceLock::new();
+
+/// The process-wide database, opened on first use. The caller must have booted the network first.
+pub fn database() -> Result<&'static Database> {
+    if let Some(database) = DATABASE.get() {
+        return Ok(database);
+    }
+    let database = open()?;
+    Ok(DATABASE.get_or_init(|| database))
+}
+
+/// Runs `body` in a retried transaction on the process-wide database, answering INTERNAL on failure.
+pub async fn with_transaction<F, Fut, T>(body: F) -> Result<T, Status>
+where
+    F: Fn(RetryableTransaction) -> Fut,
+    Fut: Future<Output = Result<T, FdbBindingError>>,
+{
+    let database = database().map_err(|error| {
+        tracing::error!(error = format!("{error:#}"), "fdb database unavailable");
+        status(ErrorCode::Internal)
+    })?;
+    database
+        .run(|transaction, _maybe_committed| body(transaction))
+        .await
+        .map_err(internal_status)
+}
+
+fn open() -> Result<Database> {
     let cluster_file =
         std::env::var(CLUSTER_FILE_ENV).unwrap_or_else(|_| DEFAULT_CLUSTER_FILE.to_owned());
     tracing::info!(cluster_file = %cluster_file, "opening FoundationDB");
@@ -25,7 +53,7 @@ pub fn open() -> Result<Database> {
 }
 
 /// Logs a failed transaction and answers INTERNAL, so FDB details never reach the client.
-pub fn internal_status(error: FdbBindingError) -> Status {
+fn internal_status(error: FdbBindingError) -> Status {
     tracing::error!(%error, "fdb transaction failed");
     status(ErrorCode::Internal)
 }

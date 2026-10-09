@@ -28,19 +28,18 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // SAFETY: `boot` runs once, here, and `_network` lives until `main` returns, so the network is
-    // stopped before exit on every path. It is declared before `database`, so it outlives it.
+    // stopped before exit on every path.
     // See https://docs.rs/foundationdb/0.11.0/foundationdb/fn.boot.html
     #[allow(unsafe_code)]
     let _network = unsafe { foundationdb::boot() };
-    let database = fdb::open()?;
-    fdb::ping(&database).await?;
+    fdb::ping(fdb::database()?).await?;
     tracing::info!("connected to FoundationDB");
 
     let mut interrupt = signal(SignalKind::interrupt())?;
     let mut terminate = signal(SignalKind::terminate())?;
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %listener.local_addr()?, "dfs-api listening");
-    serve(listener, database, async {
+    serve(listener, async {
         tokio::select! {
             _ = interrupt.recv() => {}
             _ = terminate.recv() => {}

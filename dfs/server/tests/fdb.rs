@@ -20,8 +20,7 @@ fn fdb_client() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
-        let database = fdb::open()?;
-        fdb::ping(&database).await?;
+        fdb::ping(fdb::database()?).await?;
         ping_fails_instead_of_hanging_when_fdb_is_unreachable().await
     })
 }

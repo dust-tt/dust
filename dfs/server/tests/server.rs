@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
-use dfs_api::storage::fdb;
 use dfs_protocol::rpc::{Empty, ErrorCode, ErrorDetails, dfs_client::DfsClient};
 use prost::Message;
 use tokio::{net::TcpListener, sync::oneshot, time::timeout};
@@ -13,8 +12,7 @@ use tonic_health::pb::{
 async fn serve() -> Result<Channel> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
-    let database = fdb::open()?;
-    tokio::spawn(dfs_api::serve(listener, database, std::future::pending()));
+    tokio::spawn(dfs_api::serve(listener, std::future::pending()));
     Ok(Channel::from_shared(format!("http://{address}"))?
         .connect()
         .await?)
@@ -55,8 +53,7 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let (stop, stopped) = oneshot::channel();
-    let database = fdb::open()?;
-    let server = tokio::spawn(dfs_api::serve(listener, database, async {
+    let server = tokio::spawn(dfs_api::serve(listener, async {
         let _ = stopped.await;
     }));
     let channel = Channel::from_shared(format!("http://{address}"))?
