@@ -1,12 +1,16 @@
 import type { GongClient } from "@app/lib/api/actions/servers/gong/client";
 import { getGongClient } from "@app/lib/api/actions/servers/gong/client";
-import { staticIpFetch } from "@app/lib/egress/server";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import { Response } from "undici";
+import { fetch as undiciFetch, Response } from "undici";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/egress/server", () => ({
-  staticIpFetch: vi.fn(),
+  getStaticIPProxyAgent: () => undefined,
+}));
+
+vi.mock("undici", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("undici")>()),
+  fetch: vi.fn(),
 }));
 
 function makeAuthInfo(apiBaseUrl?: string): AuthInfo {
@@ -33,7 +37,7 @@ describe("GongClient", () => {
   });
 
   it("uses the customer-specific Gong API base URL", async () => {
-    vi.mocked(staticIpFetch).mockResolvedValue(
+    vi.mocked(undiciFetch).mockResolvedValue(
       new Response(
         JSON.stringify({ calls: [], records: { totalRecords: 0 } }),
         {
@@ -47,14 +51,14 @@ describe("GongClient", () => {
     const result = await client.listCalls({});
 
     expect(result.isOk()).toBe(true);
-    expect(staticIpFetch).toHaveBeenCalledWith(
+    expect(undiciFetch).toHaveBeenCalledWith(
       "https://eu-2086.api.gong.io/v2/calls?",
       expect.objectContaining({ method: "GET" })
     );
   });
 
   it("uses the global Gong API base URL for legacy connections", async () => {
-    vi.mocked(staticIpFetch).mockResolvedValue(
+    vi.mocked(undiciFetch).mockResolvedValue(
       new Response(
         JSON.stringify({ calls: [], records: { totalRecords: 0 } }),
         {
@@ -68,7 +72,7 @@ describe("GongClient", () => {
     const result = await client.listCalls({});
 
     expect(result.isOk()).toBe(true);
-    expect(staticIpFetch).toHaveBeenCalledWith(
+    expect(undiciFetch).toHaveBeenCalledWith(
       "https://api.gong.io/v2/calls?",
       expect.objectContaining({ method: "GET" })
     );
