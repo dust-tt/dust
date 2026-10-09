@@ -1,0 +1,557 @@
+// Proto2 keeps required message fields as T in Prost's generated Rust types; proto3 wraps them in
+// Option<T>. Explicit optional fields preserve presence where the API needs it.
+syntax = "proto2";
+
+package dfs.v1;
+
+// All calls are unary and authenticate with authorization: Bearer <key> metadata.
+// Session-key calls derive their tenant and subjects exclusively from the authenticated session.
+
+// @cc [owner:spolu,label:api;performance] dfs-request-size
+// Every RPC request MUST fit in 4 MiB (4,194,304 bytes) of uncompressed protobuf payload, including
+// encoding overhead. Servers MUST reject oversized requests before executing them. Tighter limits
+// on individual messages and fields MUST also apply.
+
+// @cc [owner:spolu,label:api;performance] dfs-response-size
+// Every RPC response MUST fit in 4 MiB (4,194,304 bytes) of uncompressed protobuf payload.
+// All results, attributes, metadata, errors, cursors, and encoding overhead MUST count toward it.
+// Tighter response limits MUST also apply. gRPC framing and transport headers are excluded.
+
+// These budgets bound RPC work alongside FDB's separate affected-data transaction limit. A request
+// that fits its protobuf budget can still exceed the store's transaction budget.
+
+// @cc [owner:spolu,label:api;concurrency;error-handling] dfs-rpc-results
+// Non-batch RPCs MUST return their declared payload on success, or Empty when no data is returned.
+// Failures MUST use gRPC status with ErrorDetails. Atomic mutations MUST complete before returning
+// success and MUST NOT commit partial changes on failure.
+// RPCs that process multiple inputs with independent outcomes MUST return an XXXBatch message.
+// Batch responses MUST contain exactly one result per input, in input order. Each result MUST
+// report either success or an ErrorDetails failure. An element's failure MUST NOT suppress other
+// results. Request-wide failures MUST use gRPC status with ErrorDetails.
+service Dfs {
+  // Requires the server key; tenant_id names the tenant to create.
+  rpc CreateTenant(CreateTenantRequest) returns (Tenant);
+
+  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc CreateSession(CreateSessionRequest) returns (Session);
+
+  // Requires an active session key; returns the authenticated session.
+  rpc CurrentSession(Empty) returns (Session);
+
+  // Requires an active session key; closes the authenticated session.
+  rpc CloseSession(Empty) returns (Empty);
+
+  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc ListGrants(ListGrantsRequest) returns (GrantPage);
+
+  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
+
+  // Requires an active session key.
+  rpc Stat(StatRequest) returns (AttrBatch);
+
+  // Requires an active session key.
+  rpc Lookup(LookupRequest) returns (AttrBatch);
+
+  // Requires an active session key.
+  rpc List(ListRequest) returns (EntryPage);
+
+  // Requires an active session key.
+  rpc Read(ReadRequest) returns (ReadData);
+
+  // Requires an active session key.
+  rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
+
+  // Requires an active session key.
+  // Valid checks on virtual shared always return CHANGED, even when supplied versions match.
+  rpc Validate(ValidateRequest) returns (ValidationBatch);
+
+  // Requires an active session key.
+  rpc Apply(ApplyRequest) returns (OperationBatch);
+
+  // Requires an active session key.
+  rpc Search(SearchRequest) returns (SearchResults);
+}
+
+message Empty {}
+
+// The value contains exactly 16 UUIDv7 bytes, including for the stored tenant root.
+message ObjectId {
+  required bytes value = 1;
+}
+
+// Virtual tags are selected with true; an absent value or a false tag is invalid.
+message ObjectRef {
+  oneof value {
+    ObjectId id = 1;
+    bool root = 2;
+    bool shared = 3;
+  }
+}
+
+// Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
+message Attr {
+  required ObjectRef id = 1;
+  // @cc [owner:spolu,label:api] dfs-attribute-name
+  // Real non-root objects MUST report their stored basename, independent of the access alias.
+  // Stored basenames MUST contain 1-255 UTF-8 bytes without slash or NUL. Neither "." nor ".."
+  // is a valid basename.
+  // The stored tenant root and virtual root MUST report an empty name; virtual shared MUST report
+  // "shared". Projected listing names, including /shared ID suffixes, belong in Entry.name.
+  required string name = 13;
+  required bool directory = 3;
+  required uint64 size = 4;
+  // @cc [owner:spolu,label:api;security] dfs-attribute-mode
+  // For real objects, owner r/w bits MUST equal the session's effective grant permissions shifted
+  // left by six bits: r=0o400, w=0o200. Directories MUST add owner x (0o100) if and only if owner r
+  // is set; w alone MUST NOT imply x. Regular files MUST report no execute bits. Mode MUST use the
+  // response's authorization state, not independent stored permissions. Group, other, special, and
+  // file-type bits MUST be zero. Virtual shared MUST report 0o500. Virtual root MUST report 0o700
+  // when the session has w on the stored tenant root, and 0o500 otherwise. Namespace mutations at
+  // virtual root MUST use the session's real root_id and grants. Executable-file handling is future
+  // work, likely client heuristics based on MIME types and/or xattrs; any future executable-file
+  // classification MUST be independent of the session and its grants.
+  required uint32 mode = 5;
+  optional uint64 atime = 6;
+  optional uint64 mtime = 7;
+  optional uint64 ctime = 8;
+  // Grant changes do not advance this version, including changes to visible mode.
+  required uint64 attr_version = 9;
+  // Directory entry versions track topology changes; grant changes do not advance them.
+  required uint64 content_version = 10;
+  required ReadView view = 11;
+  optional ExtendedMetadata metadata = 12;
+}
+
+// @cc [owner:spolu,label:api] dfs-extended-metadata-limits
+// MIME types MUST be valid and at most 255 UTF-8 bytes. Xattr names MUST contain 1-255 UTF-8 bytes
+// without NUL. Combined xattr key/value byte lengths MUST NOT exceed 32 KiB (32,768 bytes).
+message ExtendedMetadata {
+  required uint64 created = 1;
+  required string mime_type = 3;
+  map<string, bytes> xattrs = 4;
+}
+
+message ReadView {
+  required int64 store_version = 1;
+  required int64 auth_version = 2;
+}
+
+// Exactly one rule is required. Rules inherit from root to object; a deeper ALLOW can restore bits.
+// At each object, subjectless DENY modes remove inherited bits before matching ALLOW modes are added.
+message Grant {
+  oneof kind {
+    AllowGrant allow = 1;
+    DenyGrant deny = 2;
+  }
+}
+
+message AllowGrant {
+  // @cc [owner:spolu,label:api] dfs-allow-subject-size
+  // Subjects MUST contain 1-1,024 UTF-8 bytes, matched exactly against session subjects.
+  required string subject = 1;
+  // @cc [owner:spolu,label:api] dfs-allow-mode
+  // Mode MUST use only r=4 and w=2, with no bits outside 0o6. Matching ALLOW modes MUST add
+  // these permissions after local DENY modes remove inherited permissions. Zero MUST leave
+  // permission bits unchanged. Other bits, including x=1, MUST fail with INVALID_INPUT.
+  required uint32 mode = 2;
+}
+
+message DenyGrant {
+  // @cc [owner:spolu,label:api] dfs-deny-mode
+  // Mode MUST use only r=4 and w=2, with no bits outside 0o6. DENY modes MUST remove these
+  // inherited permissions for every subject before matching local ALLOW modes are added. They
+  // MUST NOT remove permissions granted by an ALLOW at the same object. Zero MUST leave
+  // permission bits unchanged. Other bits, including x=1, MUST fail with INVALID_INPUT.
+  required uint32 mode = 1;
+}
+
+// @cc [owner:spolu,label:api] dfs-create-tenant-limits
+// Tenant IDs MUST contain 1-256 UTF-8 bytes. Root grants MUST contain at most 512 distinct grant
+// values; identical values MUST be deduplicated.
+message CreateTenantRequest {
+  required string tenant_id = 1;
+  repeated Grant root_grants = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-tenant-limits
+// Tenant IDs MUST contain 1-256 UTF-8 bytes. Tenant keys MUST contain exactly 64 characters.
+message Tenant {
+  required string tenant_id = 1;
+  required ObjectId root_id = 2;
+  required string tenant_key = 3;
+}
+
+// The tenant is derived exclusively from the authenticated tenant key.
+// @cc [owner:spolu,label:api] dfs-create-session-limits
+// Subjects MUST contain at most 512 distinct values, each containing 1-1,024 UTF-8 bytes.
+// Repeated values MUST be deduplicated.
+message CreateSessionRequest {
+  repeated string subjects = 1;
+}
+
+// @cc [owner:spolu,label:api] dfs-session-limits
+// Tenant IDs MUST contain 1-256 UTF-8 bytes. Subjects MUST contain at most 512 unique values, each
+// containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for CreateSession and
+// MUST be empty for CurrentSession.
+message Session {
+  required string id = 1;
+  required string tenant_id = 2;
+  repeated string subjects = 3;
+  required string session_key = 4;
+  required uint64 expires_at = 5;
+  required ObjectId root_id = 6;
+}
+
+// The tenant is derived exclusively from the authenticated tenant key.
+// @cc [owner:spolu,label:api] dfs-list-grants-limit
+// The requested limit MUST be between 1 and 512, inclusive.
+message ListGrantsRequest {
+  required ObjectId object_id = 1;
+  optional string after = 2;
+  required uint32 limit = 3;
+}
+
+// @cc [owner:spolu,label:api] dfs-grant-page-limit
+// The number of grants MUST NOT exceed the requested limit, with at most 512 grants per page.
+message GrantPage {
+  repeated Grant grants = 1;
+  optional string next_after = 2;
+}
+
+// The tenant is derived exclusively from the authenticated tenant key.
+// @cc [owner:spolu,label:api] dfs-update-grants-limit
+// Changes MUST contain at most 512 elements, with no repeated grant value.
+message UpdateGrantsRequest {
+  required ObjectId object_id = 1;
+  repeated GrantUpdate changes = 2;
+}
+
+message GrantUpdate {
+  required Grant grant = 1;
+  // @cc [owner:spolu,label:api] dfs-grant-update-remove
+  // True MUST detach the grant; false MUST attach it.
+  required bool remove = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-stat-limit
+// Object references MUST contain between 1 and 256 elements, inclusive. Repeated references count
+// toward this limit and MUST retain their individual results.
+message StatRequest {
+  repeated ObjectRef object_ids = 1;
+  optional bool include_metadata = 2 [default = false];
+}
+
+// @cc [owner:spolu,label:api;performance] dfs-attr-batch-size
+// Responses MUST contain at most 256 results and fit within 4 MiB. If requested metadata
+// would exceed the budget, the RPC MUST fail with CAPACITY; requested metadata MUST NOT be silently
+// omitted from a successful result.
+message AttrBatch {
+  repeated AttrResult results = 1;
+}
+
+message AttrResult {
+  optional Attr object = 1;
+  optional ErrorDetails error = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-lookup-limit
+// Targets MUST contain between 1 and 256 elements, inclusive.
+message LookupRequest {
+  repeated LookupTarget targets = 1;
+  optional bool include_metadata = 2 [default = false];
+}
+
+// @cc [owner:spolu,label:api] dfs-lookup-name-limit
+// For real directories and virtual root, names MUST satisfy Attr's stored-basename limits.
+// For virtual shared, names MUST match the projected listing names from Entry.name.
+message LookupTarget {
+  required ObjectRef parent_id = 1;
+  required string name = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-list-limit
+// The requested limit MUST be between 1 and 4,096 entries, inclusive.
+message ListRequest {
+  required ObjectRef directory_id = 1;
+  optional string after = 2;
+  required uint32 limit = 3;
+}
+
+// @cc [owner:spolu,label:api;performance] dfs-entry-page-size
+// Pages MUST obey both the requested entry limit and the 4 MiB encoded response budget, including
+// child attributes and the continuation cursor. At most 4,096 entries MUST be returned per page.
+message EntryPage {
+  repeated Entry entries = 1;
+  optional string next_after = 2;
+}
+
+message Entry {
+  required string name = 1;
+  optional Attr object = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-read-length-limit
+// The requested length MUST NOT exceed 1 MiB (1,048,576 bytes).
+message ReadRequest {
+  required ObjectId object_id = 1;
+  required uint64 offset = 2;
+  required uint32 length = 3;
+}
+
+// @cc [owner:spolu,label:api] dfs-read-data-limit
+// Data MUST NOT exceed the requested length or 1 MiB. Attributes and encoding overhead MUST also
+// fit within the global response budget.
+message ReadData {
+  required bytes data = 1;
+  required Attr object = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-read-files-limit
+// Object IDs MUST contain between 1 and 256 elements, inclusive.
+message ReadFilesRequest {
+  repeated ObjectId object_ids = 1;
+}
+
+// @cc [owner:spolu,label:api;performance] dfs-files-batch-size
+// All results MUST fit within the 4 MiB encoded reply budget, including errors and attributes.
+// Files larger than 1 MiB or unable to fit in the remaining budget MUST receive an individual
+// CAPACITY error without downloading that file. Every input MUST retain its result.
+message FilesBatch {
+  repeated FileResult results = 1;
+}
+
+// @cc [owner:spolu,label:api] dfs-file-result-size
+// Successful data MUST contain the entire file and MUST NOT exceed 1 MiB; empty files are valid.
+message FileResult {
+  required ObjectId object_id = 1;
+  optional Attr object = 2;
+  optional bytes data = 3;
+  optional ErrorDetails error = 4;
+}
+
+// @cc [owner:spolu,label:api] dfs-validate-limit
+// Checks MUST contain between 1 and 256 elements, inclusive.
+message ValidateRequest {
+  repeated VersionCheck checks = 1;
+}
+
+message VersionCheck {
+  required ObjectRef object_id = 1;
+  optional uint64 attr_version = 2;
+  optional uint64 content_version = 3;
+}
+
+message ValidationBatch {
+  repeated ValidationResult results = 1;
+  required ReadView view = 2;
+}
+
+enum ValidationOutcome {
+  UNCHANGED = 0;
+  CHANGED = 1;
+  DENIED = 2;
+  MISSING = 3;
+  ERROR = 4;
+}
+
+message ValidationResult {
+  required ValidationOutcome outcome = 1;
+  optional ErrorDetails error = 2;
+}
+
+// @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
+// Operations MUST be nonempty. The entire encoded request, including write data, metadata, and
+// encoding overhead, MUST NOT exceed 1 MiB. FDB transaction size MUST be checked separately;
+// exceeding the store's transaction budget MUST fail the request with CAPACITY before committing.
+message ApplyRequest {
+  repeated Operation operations = 1;
+}
+
+message Operation {
+  oneof operation {
+    CreateOperation create = 1;
+    UpdateOperation update = 2;
+    WriteOperation write = 3;
+    RenameOperation rename = 4;
+    RemoveOperation remove = 5;
+  }
+}
+
+// @cc [owner:spolu,label:api;backend;performance] dfs-operation-batch-size
+// All required operation results and final attributes MUST fit within the 4 MiB encoded response
+// budget. If they cannot fit, Apply MUST fail with CAPACITY before committing any changes.
+message OperationBatch {
+  repeated OperationResult results = 1;
+}
+
+message OperationResult {
+  optional Mutation mutation = 1;
+  optional ErrorDetails error = 2;
+}
+
+message Mutation {
+  optional Attr object = 1;
+  // @cc [owner:spolu,label:api;backend] dfs-removal-parent-attributes
+  // For a successful removal, related MUST include the removed object's parent's final Attr
+  // unless that parent is also removed later in the Apply batch.
+  repeated Attr related = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-create-metadata-limits
+// Name MUST satisfy Attr's stored-basename limits. A supplied MIME type and xattrs MUST satisfy
+// ExtendedMetadata's limits, including the 32 KiB total xattr key/value budget.
+message CreateOperation {
+  required ObjectId parent_id = 1;
+  required string name = 2;
+  // The caller supplies a fresh UUIDv7.
+  required ObjectId object_id = 3;
+  required bool directory = 4;
+  optional string mime_type = 5;
+  map<string, bytes> xattrs = 6;
+}
+
+// @cc [owner:spolu,label:api] dfs-update-metadata-limits
+// A supplied MIME type and the resulting stored xattrs MUST satisfy ExtendedMetadata's limits.
+// The resulting xattr set MUST NOT exceed 32 KiB of combined key/value bytes.
+message UpdateOperation {
+  required ObjectId object_id = 1;
+  optional string mime_type = 2;
+  repeated XattrChange xattrs = 3;
+  optional uint64 atime = 4;
+  optional uint64 mtime = 5;
+  optional uint64 size = 6;
+}
+
+// @cc [owner:spolu,label:api] dfs-xattr-change-name-limit
+// Names MUST contain 1-255 UTF-8 bytes without NUL, including when removing an xattr.
+message XattrChange {
+  required string name = 1;
+  optional bytes value = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-write-data-limit
+// Write data MUST fit within ApplyRequest's 1 MiB budget together with every operation and all
+// encoding overhead.
+message WriteOperation {
+  required ObjectId object_id = 1;
+  required uint64 offset = 2;
+  required bytes data = 3;
+  required bool append = 4;
+}
+
+// @cc [owner:spolu,label:api] dfs-rename-name-limit
+// The destination name MUST satisfy the stored-basename limits in Attr.name.
+message RenameOperation {
+  required ObjectId object_id = 1;
+  required ObjectId parent_id = 2;
+  required string name = 3;
+  required bool replace = 4;
+}
+
+message RemoveOperation {
+  required ObjectId object_id = 1;
+  required bool directory = 2;
+}
+
+enum SearchField {
+  NAME = 0;
+  CONTENT = 1;
+}
+
+enum SearchKind {
+  FILE = 0;
+  DIRECTORY = 1;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-request-limits
+// Query MUST NOT exceed 4,096 UTF-8 bytes. Limit MUST be between 1 and 100, inclusive; an omitted
+// limit MUST default to 20.
+message SearchRequest {
+  required string query = 1;
+  repeated SearchField fields = 2;
+  optional SearchScope scope = 3;
+  optional SearchFilter filter = 4;
+  optional uint32 limit = 5 [default = 20];
+}
+
+message SearchScope {
+  required ObjectId directory_id = 1;
+  optional bool recursive = 2 [default = true];
+}
+
+// @cc [owner:spolu,label:api] dfs-search-filter-limits
+// MIME type filters MUST contain at most 32 values, each valid and at most 255 UTF-8 bytes.
+// Xattr filters MUST contain at most 64 predicates.
+message SearchFilter {
+  optional SearchKind kind = 1;
+  optional string name = 2;
+  optional string name_prefix = 3;
+  repeated string mime_types = 4;
+  optional uint64 min_size = 5;
+  optional uint64 max_size = 6;
+  optional uint64 modified_after = 7;
+  optional uint64 modified_before = 8;
+  repeated SearchXattr xattrs = 9;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-xattr-name-limit
+// Names MUST contain 1-255 UTF-8 bytes without NUL.
+message SearchXattr {
+  required string name = 1;
+  optional bytes value = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-read-view
+// Search responses MUST NOT expose ReadView, including on individual hits. Index-backed results
+// do not represent a store read snapshot.
+
+// @cc [owner:spolu,label:api;performance] dfs-search-result-limits
+// Results MUST fit within 1 MiB of encoded protobuf and contain no more than the requested limit
+// of hits, at most 100. Evaluation MUST stop at 4,096 candidates or a ten-second retrieval budget.
+// The partial flag MUST indicate when bounded evaluation stopped before finishing.
+message SearchResults {
+  repeated SearchHit hits = 1;
+  required bool partial = 2;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-excerpt-limit
+// Excerpts MUST NOT exceed 512 characters and MUST be omitted for directories.
+message SearchHit {
+  required SearchAttr object = 1;
+  optional string excerpt = 3;
+}
+
+// @cc [owner:spolu,label:api] dfs-search-attributes
+// Search attributes MUST use Attr's stored-name, size, timestamp, and metadata semantics for real
+// objects. They MUST NOT be treated as cache-validation results or evidence of current permissions.
+message SearchAttr {
+  required ObjectId id = 1;
+  required string name = 2;
+  required bool directory = 3;
+  required uint64 size = 4;
+  optional uint64 atime = 5;
+  optional uint64 mtime = 6;
+  optional uint64 ctime = 7;
+  optional ExtendedMetadata metadata = 8;
+}
+
+enum ErrorCode {
+  INTERNAL = 0;
+  INVALID_INPUT = 1;
+  NOT_FOUND = 2;
+  FORBIDDEN = 3;
+  UNAUTHENTICATED = 4;
+  ALREADY_EXISTS = 5;
+  NOT_DIRECTORY = 6;
+  IS_DIRECTORY = 7;
+  NOT_EMPTY = 8;
+  CAPACITY = 9;
+  UNAVAILABLE = 10;
+  UNSUPPORTED = 11;
+  NAME_TOO_LONG = 12;
+}
+
+message ErrorDetails {
+  required ErrorCode code = 1;
+}

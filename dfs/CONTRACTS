@@ -1,0 +1,3 @@
+@cc [owner:spolu,notify:spolu,label:security] dfs-tenant-isolation
+Tenant data and metadata MUST be isolated. A tenant MUST NOT be allowed to read or modify another
+tenant state.
