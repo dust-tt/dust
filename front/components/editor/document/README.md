@@ -55,7 +55,7 @@ code, keeps the file read-only, since a save would drop or shrink it.
 
 Pass `commentAuthor` to let the current user comment; without it, or read-only, comments stay
 browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Alt+M, which
-opens a new comment card floating under the text. Clicking a highlight or its margin marker floats
+opens a new comment card floating under the text. Clicking a highlight floats
 its thread in a card under the text; the comments button above the document opens a list of every
 thread, pinned at the top right, where the picked thread unfolds in place. Posting,
 replying, resolving and deleting stay out of text undo history. A message the codec cannot
@@ -122,7 +122,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |
 | `useDocumentComments.ts` | Comment state and actions for the components below. |
 | `DocumentCommentThread.tsx`, `DocumentCommentInput.tsx` | A thread and the new comment card, and the message field. |
-| `DocumentCommentCard.tsx`, `DocumentCommentsList.tsx`, `DocumentCommentMarkers.tsx` | The card floating under commented text, the comments list and its button, and the gutter markers. |
+| `DocumentCommentCard.tsx`, `DocumentCommentsList.tsx` | The card floating under commented text, and the comments list and its button. |
 | `commentInputExtensions.ts` | The message field's schema, its Markdown and its keys. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`

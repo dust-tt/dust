@@ -3,7 +3,6 @@ import {
   useDocumentBlockMenu,
 } from "@app/components/editor/document/DocumentBlockMenu";
 import { DocumentCommentCard } from "@app/components/editor/document/DocumentCommentCard";
-import { DocumentCommentMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import {
   DocumentCommentsList,
   DocumentCommentsToggle,
@@ -54,7 +53,7 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
  * Commenting MUST require an editable document and commentAuthor. Existing comments MUST
- * remain visible and browsable, through highlights, markers, their card and the list, in read-only
+ * remain visible and browsable, through highlights, their card and the list, in read-only
  * documents and without an author. Clicking a highlight without selecting text MUST reveal its
  * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
@@ -275,21 +274,13 @@ export const DocumentView = ({
           />
         )}
         {/* Only catches clicks bubbling from highlights; keyboard users reach comments through
-            the markers and the list. */}
+            the list. */}
         <div
           role="presentation"
           onClick={(event) => comments.revealClicked(event.target)}
         >
           <EditorContent editor={editor} />
         </div>
-        {editor && comments.unresolved.length > 0 && (
-          <DocumentCommentMarkers
-            editor={editor}
-            comments={comments}
-            containerRef={contentRef}
-            mountPortalContainer={mountPortalContainer}
-          />
-        )}
         {editor && (
           <DocumentCommentCard
             editor={editor}
