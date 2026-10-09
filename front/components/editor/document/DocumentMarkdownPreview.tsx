@@ -1,5 +1,7 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import type { DocumentProps } from "@app/components/editor/document/types";
+import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   checkInputBounds,
   extractAnchors,
@@ -14,6 +16,7 @@ import { useMemo } from "react";
 interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
+  resolveImageSource: DocumentProps["resolveImageSource"];
 }
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
@@ -51,6 +54,7 @@ function readableBody(source: string): string | null {
 export const DocumentMarkdownPreview = ({
   source,
   className,
+  resolveImageSource,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -64,6 +68,10 @@ export const DocumentMarkdownPreview = ({
       element: findUnsupportedElement(body),
     };
   }, [source]);
+  const markdownComponents = useMemo(
+    () => ({ img: getMarkdownImagePlugin(resolveImageSource) }),
+    [resolveImageSource]
+  );
 
   return (
     <article className={className}>
@@ -83,6 +91,7 @@ export const DocumentMarkdownPreview = ({
             content={preview.text}
             isStreaming={false}
             optimizeForStreaming={false}
+            additionalMarkdownComponents={markdownComponents}
           />
         ) : (
           <pre

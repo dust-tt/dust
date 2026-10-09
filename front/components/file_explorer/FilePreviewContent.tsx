@@ -11,7 +11,7 @@ import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
-import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
+import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
 import { useCollabTicket } from "@app/hooks/useCollabTicket";
 import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
 import { AuthContext } from "@app/lib/auth/AuthContext";
@@ -39,7 +39,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useCallback, useContext, useMemo } from "react";
+import { useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -402,10 +402,7 @@ function RichMarkdownDocument({
     owner,
     documentPath: editor.path,
   });
-  const resolveImageSource = useCallback(
-    (src: string) => resolveDocumentImageSource(owner, src),
-    [owner]
-  );
+  const resolveImageSource = useResolveMarkdownImageUrl(owner);
 
   const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
@@ -466,6 +463,8 @@ export function FilePreviewContent({
   owner,
   processedContent,
 }: FilePreviewContentProps) {
+  const resolveImageUrl = useResolveMarkdownImageUrl(owner);
+
   if (isContentLoading) {
     return (
       <div
@@ -553,6 +552,7 @@ export function FilePreviewContent({
             viewMode={markdownViewMode}
             onContentChange={onMarkdownContentChange}
             onViewModeChange={onMarkdownViewModeChange}
+            resolveImageUrl={resolveImageUrl}
           />
         );
       }

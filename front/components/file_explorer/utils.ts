@@ -1,5 +1,4 @@
 import { compareStrings } from "@app/lib/i18n/format";
-import { getFilePathViewUrl } from "@app/lib/swr/files";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import {
@@ -7,11 +6,7 @@ import {
   isFrameV2ContentType,
   isInteractiveContentType,
 } from "@app/types/files";
-import {
-  parseCanonicalScopedPath,
-  TOOL_OUTPUTS_FOLDER_NAME,
-} from "@app/types/mount_path";
-import type { LightWorkspaceType } from "@app/types/user";
+import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 
@@ -587,30 +582,4 @@ export function getChildrenAtFolderPath(
 
   const folder = findTreeNodeByPath(tree, folderPath);
   return folder?.isDirectory ? folder.children : [];
-}
-
-/**
- * @cc [owner:tdraier,label:security] document-image-file-api-only
- * A document image MUST resolve only to the file API URL of a file path in a conversation or a
- * pod, its Markdown destination percent-decoded, so the file API checks the reader's access. Any
- * other source, such as an external URL or a path with `.` or `..` segments, MUST resolve to null.
- */
-export function resolveDocumentImageSource(
-  owner: LightWorkspaceType,
-  src: string
-): string | null {
-  let path: string;
-  try {
-    path = decodeURIComponent(src);
-  } catch {
-    return null;
-  }
-  const parsed = parseCanonicalScopedPath(path);
-  if (
-    !parsed?.relPath ||
-    path.split("/").some((segment) => segment === "." || segment === "..")
-  ) {
-    return null;
-  }
-  return getFilePathViewUrl(owner, path);
 }
