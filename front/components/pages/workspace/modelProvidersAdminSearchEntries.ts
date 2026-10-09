@@ -7,7 +7,11 @@ const M = ADMIN_SECTION_IDS.modelProviders;
 const A = ADMIN_SECTION_IDS.appCredentials;
 const PAGE = "models" as const;
 
-/** Search entries for Models (providers, access tiers, members, groups, apps). */
+/**
+ * Search entries for Models (providers, access tiers, members, groups, apps).
+ * Tier-related entries (Settings / Members / Groups) apply to credit-priced
+ * plans only; Providers and App Credentials remain available on every plan.
+ */
 export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
