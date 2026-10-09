@@ -81,7 +81,7 @@ describe("CreateOrUpdateConnectionBigQueryModal", () => {
 
     expect(
       screen.getByText(
-        /^Champs manquants ou invalides\s: project_id, private_key_id et private_key\.$/
+        /^Champs manquants ou non valides\s: project_id, private_key_id et private_key\.$/
       )
     ).toBeTruthy();
   });
