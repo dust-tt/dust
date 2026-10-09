@@ -1,6 +1,7 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { getLocalTimeZone } from "@app/lib/i18n/format";
 import datadogLogger from "@app/logger/datadogLogger";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useVisualizationRevert({
@@ -10,6 +11,8 @@ export function useVisualizationRevert({
   workspaceId: string | null;
   conversationId?: string | null;
 }) {
+  const { t } = useLingui();
+
   const handleVisualizationRevert = useCallback(
     async ({
       fileId,
@@ -27,7 +30,7 @@ export function useVisualizationRevert({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              content: `Please revert the previous change in ${fileId}`,
+              content: t`Please revert the previous change in ${fileId}`,
               mentions: [
                 {
                   configurationId: agentConfigurationId,
@@ -51,7 +54,7 @@ export function useVisualizationRevert({
         return false;
       }
     },
-    [workspaceId, conversationId]
+    [workspaceId, conversationId, t]
   );
 
   return {

@@ -154,6 +154,14 @@ msgstr "Des modèles de pointe, bien plus chers que Premium, pour les travaux le
 msgid "all efforts"
 msgstr "tous les niveaux d’effort"
 
+#: front/lib/client/visualization.ts
+msgid "The visualization code failed with this error:"
+msgstr "Le code de la visualisation a échoué avec cette erreur :"
+
+#: front/lib/client/visualization.ts
+msgid "Please fix the code."
+msgstr "Veuillez corriger le code."
+
 #: front/lib/client/wakeup_schedule.ts
 msgid "at {time}"
 msgstr "à {time}"

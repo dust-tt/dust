@@ -154,6 +154,14 @@ msgstr "Frontier models priced far above Premium, for the most demanding work."
 msgid "all efforts"
 msgstr "all efforts"
 
+#: front/lib/client/visualization.ts
+msgid "The visualization code failed with this error:"
+msgstr "The visualization code failed with this error:"
+
+#: front/lib/client/visualization.ts
+msgid "Please fix the code."
+msgstr "Please fix the code."
+
 #: front/lib/client/wakeup_schedule.ts
 msgid "at {time}"
 msgstr "at {time}"
