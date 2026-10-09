@@ -18,6 +18,7 @@ import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
   finalizeUnavailableAgentLoop,
+  notifyAgentMessageError,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
@@ -41,7 +42,10 @@ import type {
   AgentLoopArgsWithTiming,
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
-import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import {
+  isAgentLoopDataAgentNotFoundError,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -169,6 +173,20 @@ async function _runModelAndCreateActionsActivity({
         },
         "Message or conversation was deleted, exiting"
       );
+      return new Ok(null);
+    }
+    if (isAgentLoopDataAgentNotFoundError(contextProviderRes.error)) {
+      // Retrying cannot make the agent loadable again: fail the message now.
+      await notifyAgentMessageError(authType, runAgentArgs, {
+        error: {
+          code: "agent_not_available",
+          message:
+            "This agent is no longer available to you. Contact your workspace administrator or " +
+            "use another agent.",
+          metadata: { errorTitle: "Agent not available" },
+        },
+        step,
+      });
       return new Ok(null);
     }
     throw contextProviderRes.error;
