@@ -76,16 +76,19 @@ export function useInputBarSlashCommandCapabilities({
     disabled,
     swrOptions: CAPABILITIES_SWR_OPTIONS,
   });
-  const { skills, resolvedSearchTerm, isSkillsLoading } = useSearchSkills({
-    owner,
-    searchTerm: query,
-    selectionMode: "favorites_or_all",
-    excludeSkillId,
-    limit: MAX_RENDERED_CAPABILITY_ITEMS,
-    disabled,
-  });
+  const { skills, resolvedSearchTerm, isSkillsError, isSkillsLoading } =
+    useSearchSkills({
+      owner,
+      searchTerm: query,
+      selectionMode: "favorites_or_all",
+      excludeSkillId,
+      limit: MAX_RENDERED_CAPABILITY_ITEMS,
+      disabled,
+    });
   // Use the displayed skills' query so tools and skills update together.
   const capabilityQuery = resolvedSearchTerm ?? "";
+  // Hold tools back until skills have loaded once, so skills are not pushed in above them.
+  const hasSkillsSettled = resolvedSearchTerm !== null || isSkillsError;
   // The JIT views endpoint only returns views whose tools can be enabled directly in a
   // conversation, no further filtering needed here.
   const { serverViews, isLoading: isServerViewsLoading } =
@@ -103,16 +106,23 @@ export function useInputBarSlashCommandCapabilities({
             query: capabilityQuery,
             useSearchRanking: true,
             skills,
-            tools: serverViews,
+            tools: hasSkillsSettled ? serverViews : [],
           }),
-    [capabilityQuery, disabled, excludeSkillId, serverViews, skills]
+    [
+      capabilityQuery,
+      disabled,
+      excludeSkillId,
+      hasSkillsSettled,
+      serverViews,
+      skills,
+    ]
   );
 
   return {
     capabilityItems,
     resolvedQuery: capabilityQuery,
     // Every workspace has at least one global skill and one tool, so stop loading
-    // as soon as either source returns a matching capability.
+    // as soon as a matching capability is shown (tools only show once skills have loaded).
     isLoading:
       !disabled &&
       capabilityItems.length === 0 &&
