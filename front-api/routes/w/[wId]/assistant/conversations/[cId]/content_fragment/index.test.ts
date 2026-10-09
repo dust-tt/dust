@@ -1,12 +1,16 @@
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
+import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 function postContentFragmentAsBob(
   workspace: { sId: string },
@@ -142,6 +146,32 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/content_fragment", () =>
       aliceAuth,
       aliceUnattachedFile.sId
     );
+    expect(file?.useCaseMetadata?.conversationId).toBeUndefined();
+  });
+
+  it("returns 409 without attaching the file when another user owns an active wake-up", async () => {
+    vi.spyOn(
+      wakeUpClient,
+      "launchOrScheduleWakeUpTemporalWorkflow"
+    ).mockResolvedValue(new Ok(undefined));
+    const { workspace, aliceAuth, bobAuth, bobUnattachedFile } = await setup();
+
+    const agent = await AgentConfigurationFactory.createTestAgent(aliceAuth);
+    const aliceConversation = await ConversationFactory.create(aliceAuth, {
+      agentConfigurationId: agent.sId,
+      messagesCreatedAt: [],
+    });
+    await WakeUpFactory.cron(aliceAuth, aliceConversation, agent);
+
+    const response = await postContentFragmentAsBob(
+      workspace,
+      aliceConversation.sId,
+      bobUnattachedFile.sId
+    );
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("conversation_locked");
+    const file = await FileResource.fetchById(bobAuth, bobUnattachedFile.sId);
     expect(file?.useCaseMetadata?.conversationId).toBeUndefined();
   });
 });

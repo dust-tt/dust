@@ -182,6 +182,7 @@ const API_ERROR_TYPES = [
   "batch_suggestion_not_found",
   // Wake-ups
   "wakeup_not_found",
+  "conversation_locked",
 ] as const;
 
 export type RegionRedirectError = CellInfo;

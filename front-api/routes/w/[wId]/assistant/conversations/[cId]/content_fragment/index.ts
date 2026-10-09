@@ -1,5 +1,5 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
-import { DustError } from "@app/lib/error";
+import { isDustErrorWithCode } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalPostContentFragmentRequestBodySchema } from "@app/types/api/assistant";
 import { ConversationError } from "@app/types/assistant/conversation";
@@ -126,13 +126,11 @@ app.post(
     );
     if (contentFragmentRes.isErr()) {
       const { error } = contentFragmentRes;
+      const isLocked = isDustErrorWithCode(error, "conversation_locked");
       return apiError(ctx, {
-        status_code:
-          error instanceof DustError && error.code === "conversation_locked"
-            ? 409
-            : 400,
+        status_code: isLocked ? 409 : 400,
         api_error: {
-          type: "invalid_request_error",
+          type: isLocked ? "conversation_locked" : "invalid_request_error",
           message: error.message,
         },
       });

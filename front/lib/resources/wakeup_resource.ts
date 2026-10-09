@@ -428,7 +428,7 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_locked",
         message:
           "This conversation has an active wake-up owned by another user. " +
           "Only the wake-up owner can post messages, edit them or attach " +

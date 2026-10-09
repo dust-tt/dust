@@ -21,7 +21,7 @@ import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/eve
 import * as attachmentsModule from "@app/lib/api/files/attachments";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
-import { DustError } from "@app/lib/error";
+import { isDustErrorWithCode } from "@app/lib/error";
 import { serializeMention } from "@app/lib/mentions/format";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -4758,8 +4758,9 @@ describe("postNewContentFragment", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(result.error).toBeInstanceOf(DustError);
-        expect((result.error as DustError).code).toBe("conversation_locked");
+        expect(isDustErrorWithCode(result.error, "conversation_locked")).toBe(
+          true
+        );
       }
       expect(getContentFragmentBlob).not.toHaveBeenCalled();
     });

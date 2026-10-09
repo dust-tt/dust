@@ -53,6 +53,7 @@ describe("POST /api/v1/w/[wId]/assistant/conversations/[cId]/content_fragments",
     );
 
     expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("conversation_locked");
     expect(
       await FileModel.count({ where: { workspaceId: workspace.id } })
     ).toBe(0);

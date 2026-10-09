@@ -84,3 +84,10 @@ export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
     super(message);
   }
 }
+
+export function isDustErrorWithCode<T extends DustErrorCode>(
+  error: unknown,
+  code: T
+): error is DustError<T> {
+  return error instanceof DustError && error.code === code;
+}
