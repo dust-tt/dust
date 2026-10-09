@@ -147,6 +147,43 @@ const handleDocumentShortcut = (
   onBlockMenuKeyDown(event);
 };
 
+/**
+ * @cc [owner:tdraier,label:react] document-escape
+ * An Escape from the document or its controls MUST close, first found, the comments list, the
+ * pending comment draft or the active thread's card, even when a host already prevented the
+ * event's default, as dialogs do with every Escape. It MUST NOT when the selection toolbar or a
+ * comment field used it, nor when none is open, so the host can handle it. While the list, a card,
+ * the block menu or the link field is open, its element MUST carry `data-document-layer`, so hosts
+ * can leave such an Escape to the document; an Escape from elsewhere stays the host's.
+ */
+const handleDocumentEscape = (
+  event: React.KeyboardEvent<HTMLElement>,
+  comments: DocumentCommentsController
+) => {
+  if (
+    event.key !== "Escape" ||
+    event.nativeEvent.isComposing ||
+    (event.target instanceof Element &&
+      event.target.closest("[data-document-selection]"))
+  ) {
+    return;
+  }
+  if (comments.listOpen) {
+    comments.closeList();
+  } else if (comments.draft) {
+    comments.cancelDraft();
+  } else if (comments.activeId !== null) {
+    comments.closeThread();
+  } else {
+    return;
+  }
+  event.preventDefault();
+};
+
+/** Whether a document under `root` shows a layer that Escape closes before its host does. */
+export const hasOpenDocumentLayer = (root: ParentNode) =>
+  root.querySelector("[data-document-layer]") !== null;
+
 /** The editor's binding to the shared document, and whether it still waits for one. */
 const liveEditorMode = (liveView: DocumentViewProps["liveView"]) => ({
   binding: liveView?.binding ?? undefined,
@@ -258,6 +295,7 @@ export const DocumentView = ({
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
+      onKeyDown={(event) => handleDocumentEscape(event, comments)}
     >
       {showCommentsToggle &&
         headerControlsContainer &&

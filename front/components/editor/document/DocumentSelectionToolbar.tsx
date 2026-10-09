@@ -82,7 +82,7 @@ const LinkField = ({
   }, []);
 
   return (
-    <div className="flex items-center gap-1">
+    <div data-document-layer="" className="flex items-center gap-1">
       <input
         ref={inputRef}
         type="url"

@@ -1,3 +1,4 @@
+import { hasOpenDocumentLayer } from "@app/components/editor/document";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
@@ -41,6 +42,11 @@ interface FilePreviewDialogProps {
   onPrev?: () => void;
 }
 
+/**
+ * @cc [owner:tdraier,label:react] file-preview-dialog-escape
+ * Escape MUST close the dialog, except an Escape from the document or its header controls while
+ * a document layer is open (`hasOpenDocumentLayer`), which the document closes first.
+ */
 export function FilePreviewDialog({
   entry,
   fileUrl,
@@ -55,6 +61,7 @@ export function FilePreviewDialog({
   const [isDownloading, setIsDownloading] = useState(false);
   const [documentControls, setDocumentControls] =
     useState<HTMLDivElement | null>(null);
+  const [documentArea, setDocumentArea] = useState<HTMLDivElement | null>(null);
 
   const handleDownload = async () => {
     if (!entry) {
@@ -128,7 +135,22 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
+      <DialogContent
+        size="2xl"
+        height="2xl"
+        className="gap-4 px-4"
+        onEscapeKeyDown={(event) => {
+          const target = event.target instanceof Node ? event.target : null;
+          const reachesDocument =
+            target !== null &&
+            [documentArea, documentControls].some((element) =>
+              element?.contains(target)
+            );
+          if (reachesDocument && hasOpenDocumentLayer(document)) {
+            event.preventDefault();
+          }
+        }}
+      >
         <DialogHeader hideButton className="flex gap-4">
           <div className="flex items-center gap-2">
             <DialogTitle className="min-w-0 flex-1">
@@ -182,6 +204,7 @@ export function FilePreviewDialog({
           </div>
         )}
         <div
+          ref={setDocumentArea}
           className={cn(
             "min-h-0 flex-1 px-4",
             filePreviewLayoutClassName(category)

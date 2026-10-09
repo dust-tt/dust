@@ -51,6 +51,25 @@ const hasContent = (editor: Editor | null) => {
   return found;
 };
 
+/**
+ * Whether a suggestion list opened from the field, such as mentions, is showing: a suggestion is
+ * active and the host's list for it is on the page. An active suggestion with nothing to list
+ * shows nothing.
+ */
+const hasOpenSuggestionList = (editor: Editor | null) =>
+  !!editor &&
+  editor.view.dom.ownerDocument.querySelector("[data-suggestion-list]") !==
+    null &&
+  editor.state.plugins.some((plugin) => {
+    const state: unknown = plugin.getState(editor.state);
+    return (
+      typeof state === "object" &&
+      state !== null &&
+      "active" in state &&
+      state.active === true
+    );
+  });
+
 /** Selects the text of the last suggestion block, so typing replaces it; false without one. */
 const selectLastSuggestion = (editor: Editor): boolean => {
   let range: { from: number; to: number } | null = null;
@@ -87,7 +106,8 @@ const selectLastSuggestion = (editor: Editor): boolean => {
  * the content MUST NOT change or submit again, and Send MUST show progress. An accepted submission
  * MUST clear the field; a refused one MUST keep the content and show the reason. Once a submission
  * sent while the field had focus is no longer pending, focus MUST return to the field if it is
- * still mounted. Escape that closes a mention list or arrives while an input method is composing
+ * still mounted. Escape that closes a shown mention list (the host's list carries
+ * `data-suggestion-list`) or arrives while an input method is composing
  * text MUST NOT reach the parent nor clear the field. Otherwise, Escape with onCancel MUST NOT
  * reach the parent and MUST clear the field then call onCancel, unless a submission is pending,
  * when it MUST do neither.
@@ -119,6 +139,7 @@ export const DocumentCommentInput = ({
   const refocusRef = useRef(false);
   const submitRef = useRef<() => void>(() => undefined);
   const onFilledChangeRef = useRef(onFilledChange);
+  const escapeClosesListRef = useRef(false);
 
   // Captured at mount: a changed extension list or props object would reconfigure the editor.
   const [options] = useState(() => ({
@@ -238,12 +259,18 @@ export const DocumentCommentInput = ({
       role="group"
       className={className}
       onClick={(event) => event.stopPropagation()}
+      // Read before the field handles the key: a host dialog prevents every Escape's default, so
+      // `defaultPrevented` cannot tell whether the field closed its list.
+      onKeyDownCapture={(event) => {
+        escapeClosesListRef.current =
+          event.key === "Escape" && hasOpenSuggestionList(editor);
+      }}
       onKeyDown={(event) => {
         if (event.key !== "Escape") {
           return;
         }
         // The field already used it, such as to close the mention list or end a composition.
-        if (event.defaultPrevented || event.nativeEvent.isComposing) {
+        if (escapeClosesListRef.current || event.nativeEvent.isComposing) {
           event.stopPropagation();
           return;
         }
