@@ -39,7 +39,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
-import { AgentSuggestedPromptModel } from "@app/lib/models/agent/agent_suggested_prompt";
+import { AgentSuggestedPromptsModel } from "@app/lib/models/agent/agent_suggested_prompts";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { canonicalizeSaveParamsForComparison } from "@app/lib/resources/agent_configuration_comparison";
@@ -1708,15 +1708,14 @@ export class AgentResource
   }
 
   async listSuggestedPrompts(auth: Authenticator): Promise<string[]> {
-    const rows = await AgentSuggestedPromptModel.findAll({
+    const row = await AgentSuggestedPromptsModel.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId: this.sId,
       },
-      order: [["id", "ASC"]],
     });
 
-    return rows.map((row) => row.prompt);
+    return row?.prompts ?? [];
   }
 
   /**
@@ -1728,22 +1727,14 @@ export class AgentResource
     auth: Authenticator,
     prompts: string[]
   ): Promise<void> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    await withTransaction(async (transaction) => {
-      await AgentSuggestedPromptModel.destroy({
-        where: { workspaceId, agentConfigurationId: this.sId },
-        transaction,
-      });
-      await AgentSuggestedPromptModel.bulkCreate(
-        prompts.map((prompt) => ({
-          workspaceId,
-          agentConfigurationId: this.sId,
-          prompt,
-        })),
-        { transaction }
-      );
-    });
+    await AgentSuggestedPromptsModel.upsert(
+      {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: this.sId,
+        prompts,
+      },
+      { conflictFields: ["workspaceId", "agentConfigurationId"] }
+    );
   }
 
   async listEditors(
@@ -2913,7 +2904,7 @@ export class AgentResource
     await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
 
     await AgentUserRelationResource.deleteForAgents(auth, sIds);
-    await AgentSuggestedPromptModel.destroy({
+    await AgentSuggestedPromptsModel.destroy({
       where: { workspaceId: owner.id, agentConfigurationId: sIds },
     });
 
@@ -3028,7 +3019,7 @@ export class AgentResource
           workspaceId: workspaceModelId,
         },
       });
-      await AgentSuggestedPromptModel.destroy({
+      await AgentSuggestedPromptsModel.destroy({
         where: {
           agentConfigurationId: agent.sId,
           workspaceId: workspaceModelId,
