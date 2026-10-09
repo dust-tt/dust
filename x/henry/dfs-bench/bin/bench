@@ -22,16 +22,19 @@ for _ in $(seq 60); do
   sleep 5
 done
 [[ -n "$ip" ]] || die "echo load balancer has no IP"
-# A new load balancer gets its IP before it forwards traffic; wait for a real round trip.
+# A new load balancer gets its IP before it forwards traffic, then answers intermittently for a
+# while; wait for 3 round trips in a row.
 echo_answers() {
   python3 -I -c 'import socket, sys; s = socket.create_connection((sys.argv[1], 7500), timeout=3); s.settimeout(3); s.sendall(b"x"); assert s.recv(1) == b"x"' \
     "$ip" 2>/dev/null
 }
-for _ in $(seq 60); do
-  echo_answers && break
+streak=0
+for _ in $(seq 120); do
+  if echo_answers; then streak=$((streak + 1)); else streak=0; fi
+  [[ "$streak" -ge 3 ]] && break
   sleep 5
 done
-echo_answers || die "echo load balancer at $ip does not answer"
+[[ "$streak" -ge 3 ]] || die "echo load balancer at $ip does not answer reliably"
 export ECHO_ENDPOINT="$ip:7500"
 
 [[ -d "$BENCH_DIR/orchestrator/node_modules" ]] || npm --prefix "$BENCH_DIR/orchestrator" install --silent

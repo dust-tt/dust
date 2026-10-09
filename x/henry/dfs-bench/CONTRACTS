@@ -25,5 +25,5 @@ application default credentials or kubeconfig, which hold production access.
 
 @cc [owner:fontanierh,label:testing] comparable-results
 Every result file MUST record the scenario, the corpus (kind, and for jd its manifest sha256), each
-mount's freshness budget and the mount client's memory limit. Rounds MUST only be compared when
-these match: the scatter corpus and jd's corpus stress a mount differently.
+mount's freshness budget, and the mount client's cache budget and memory limit. Rounds MUST only be
+compared when these match: the scatter corpus and jd's corpus stress a mount differently.

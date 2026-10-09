@@ -40,6 +40,9 @@ struct Cli {
     /// of fetching each again. Off by default.
     #[arg(long, env = "DFS_REVALIDATE", value_parser = clap::builder::BoolishValueParser::new())]
     revalidate_listings: bool,
+    /// Most file content cached, in MiB. Listings, attributes and pending writes are not counted.
+    #[arg(long, env = "DFS_CACHE_MIB", default_value_t = 256)]
+    cache_mib: usize,
     mountpoint: PathBuf,
 }
 
@@ -57,7 +60,7 @@ fn main() -> anyhow::Result<()> {
         Err(errno) => bail!("hello failed: errno {}", errno.0),
     };
     let budget = Budget::new(Duration::from_millis(cli.max_delay_ms));
-    let fs = Arc::new(Fs::new(rt.clone(), client.clone(), root, (metadata.uid(), metadata.gid()), budget, cli.revalidate_listings));
+    let fs = Arc::new(Fs::new(rt.clone(), client.clone(), root, (metadata.uid(), metadata.gid()), budget, cli.revalidate_listings, cli.cache_mib << 20));
     rt.spawn(commit::run(fs.clone()));
 
     let mut config = Config::default();
@@ -70,7 +73,7 @@ fn main() -> anyhow::Result<()> {
     config.clone_fd = true;
     let session = fuser::Session::new(Mount(fs.clone()), &cli.mountpoint, &config)?;
     let background = session.spawn()?;
-    eprintln!("{}", serde_json::json!({ "message": "mount budget", "window_ms": budget.window.as_millis() as u64, "ttl_ms": budget.ttl.as_millis() as u64, "revalidate_listings": cli.revalidate_listings }));
+    eprintln!("{}", serde_json::json!({ "message": "mount budget", "window_ms": budget.window.as_millis() as u64, "ttl_ms": budget.ttl.as_millis() as u64, "revalidate_listings": cli.revalidate_listings, "cache_mib": cli.cache_mib }));
     println!("mounted {}", cli.mountpoint.display());
 
     let stop = Arc::new(AtomicBool::new(false));

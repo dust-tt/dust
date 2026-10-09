@@ -1,0 +1,80 @@
+# spolu's dfs-server-v5: one replica, since sessions live in server memory and would not carry over
+# to another replica. Plain gRPC (--allow-insecure) behind a public L4 load balancer open to all:
+# data is synthetic and mounts need a session key. Placeholders are filled by impls/spolu/deploy.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfs-server
+  namespace: dfs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dfs-server
+  template:
+    metadata:
+      labels:
+        app: dfs-server
+    spec:
+      nodeSelector:
+        dfs-bench/role: server
+      tolerations:
+        - key: dfs-bench/role
+          operator: Equal
+          value: server
+          effect: NoSchedule
+      # The FDB client rewrites its cluster file when coordinators change, so it gets a writable copy.
+      initContainers:
+        - name: cluster-file
+          image: busybox:1.36
+          command: ["/bin/cp", "/config/cluster-file", "/fdb/cluster-file"]
+          volumeMounts:
+            - { name: fdb-config, mountPath: /config }
+            - { name: fdb, mountPath: /fdb }
+      containers:
+        - name: server
+          image: __IMAGE__
+          args:
+            - --listen=0.0.0.0:7400
+            - --allow-insecure
+            - --server-key-file=/keys/server.key
+            - --fdb-cluster-file=/fdb/cluster-file
+            - --fdb-prefix=__PREFIX__
+          env:
+            - { name: RUST_LOG, value: info }
+          ports:
+            - containerPort: 7400
+          readinessProbe:
+            tcpSocket:
+              port: 7400
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "6"
+              memory: 40Gi
+          volumeMounts:
+            - { name: fdb, mountPath: /fdb }
+            - { name: keys, mountPath: /keys, readOnly: true }
+      volumes:
+        - name: fdb-config
+          configMap:
+            name: fdb-config
+        - name: fdb
+          emptyDir: {}
+        - name: keys
+          secret:
+            secretName: dfs-server-key
+            defaultMode: 0400
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dfs-server
+  namespace: dfs
+spec:
+  type: LoadBalancer
+  selector:
+    app: dfs-server
+  ports:
+    - port: 7400
+      targetPort: 7400

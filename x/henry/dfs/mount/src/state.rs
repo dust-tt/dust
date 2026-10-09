@@ -21,7 +21,6 @@ const OP_COST: usize = 256;
 /// `Apply` latencies admission projects from (the most recent ones), and the least it assumes.
 const RECENT_APPLIES: usize = 8;
 const MIN_APPLY: Duration = Duration::from_millis(5);
-const CONTENT_BYTES: usize = 256 << 20;
 const CONTENT_FILES: usize = 1 << 16;
 /// Most listings kept for revalidation.
 const STORED_LISTINGS: usize = 1 << 16;
@@ -56,8 +55,9 @@ type Slot = (Id, Option<u64>);
 /// File bytes are cached by `(id, rev)`, whole for small files and by `BLOCK_BYTES` block for
 /// large ones, and are installed only from a reply at or above `floor(id)`. They MUST be served
 /// only under a live (`ttl-at-serve`) server attribute of `id` with that same rev.
-#[derive(Default)]
 pub struct Content {
+    /// Most file bytes held (`--cache-mib`).
+    limit: usize,
     slots: HashMap<Slot, (u64, Arc<[u8]>)>,
     order: VecDeque<(Slot, u64)>,
     bytes: usize,
@@ -66,6 +66,10 @@ pub struct Content {
 }
 
 impl Content {
+    pub fn new(limit: usize) -> Self {
+        Self { limit, slots: HashMap::new(), order: VecDeque::new(), bytes: 0, fetching: HashSet::new() }
+    }
+
     pub fn get(&self, id: Id, rev: u64) -> Option<Arc<[u8]>> {
         self.slot((id, None), rev)
     }
@@ -92,7 +96,7 @@ impl Content {
             self.bytes -= old.len();
         }
         self.order.push_back((slot, rev));
-        while self.bytes > CONTENT_BYTES || self.slots.len() > CONTENT_FILES {
+        while self.bytes > self.limit || self.slots.len() > CONTENT_FILES {
             let Some((slot, rev)) = self.order.pop_front() else { break };
             if self.slots.get(&slot).is_some_and(|(r, _)| *r == rev)
                 && let Some((_, bytes)) = self.slots.remove(&slot)
@@ -254,7 +258,10 @@ pub struct CommitStats {
     pub ops: u64,
     pub dropped: u64,
     pub missed: u64,
+    /// Ack to commit returned: includes the apply RPC (network and FDB commit).
     pub max_lag: Duration,
+    /// Ack to batch sent: the delay the client alone adds.
+    pub max_send_delay: Duration,
     pub apply: Duration,
     pub max_apply: Duration,
 }
@@ -323,7 +330,7 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(budget: Budget, revalidate: bool) -> Self {
+    pub fn new(budget: Budget, revalidate: bool, content_bytes: usize) -> Self {
         Self {
             budget,
             stored: HashMap::new(),
@@ -337,7 +344,7 @@ impl State {
             places: HashMap::new(),
             sizes: HashMap::new(),
             windows: HashMap::new(),
-            content: Content::default(),
+            content: Content::new(content_bytes),
             locals: HashMap::new(),
             pnames: HashMap::new(),
             pdirs: HashMap::new(),
@@ -800,6 +807,8 @@ impl State {
         for (pending, result) in batch.iter().zip(results) {
             let lag = now - pending.acked;
             self.log.stats.max_lag = self.log.stats.max_lag.max(lag);
+            let send_delay = sent.saturating_duration_since(pending.acked);
+            self.log.stats.max_send_delay = self.log.stats.max_send_delay.max(send_delay);
             if lag > self.budget.window {
                 self.log.stats.missed += 1;
             }

@@ -179,8 +179,8 @@ fn mask(read: bool, write: bool, exec: bool) -> i32 {
 }
 
 impl Fs {
-    pub fn new(rt: tokio::runtime::Handle, client: Arc<Client>, root: Attr, owner: (u32, u32), budget: Budget, revalidate: bool) -> Self {
-        let mut state = State::new(budget, revalidate);
+    pub fn new(rt: tokio::runtime::Handle, client: Arc<Client>, root: Attr, owner: (u32, u32), budget: Budget, revalidate: bool, content_bytes: usize) -> Self {
+        let mut state = State::new(budget, revalidate, content_bytes);
         let id = root.id;
         state.install_attr(root, Instant::now(), 0);
         Self {
@@ -812,6 +812,7 @@ impl Fs {
                 "dropped_ops": commit.dropped,
                 "missed_windows": commit.missed,
                 "max_lag_ms": ms(commit.max_lag),
+                "max_send_delay_ms": ms(commit.max_send_delay),
                 "apply_ms": ms(commit.apply),
                 "max_apply_ms": ms(commit.max_apply),
             },
