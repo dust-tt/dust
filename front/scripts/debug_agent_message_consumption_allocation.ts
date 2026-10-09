@@ -20,7 +20,10 @@
  */
 
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
-import { buildLatestMessageConsumptionAllocation } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
+import {
+  buildLatestMessageConsumptionAllocation,
+  compareRunsChronologically,
+} from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
   splitRecordedUsageCost,
@@ -311,10 +314,15 @@ async function analyzeAgentMessage(
       );
 
   const runByModelId = new Map(runs.map((run) => [run.id, run]));
+  const runIndexByModelId = new Map(
+    [...runs]
+      .sort(compareRunsChronologically)
+      .map((run, index) => [run.id, index])
+  );
   const orderedUsages = [...usages].sort(
     (left, right) =>
-      (runByModelId.get(left.runModelId)?.createdAt.getTime() ?? 0) -
-        (runByModelId.get(right.runModelId)?.createdAt.getTime() ?? 0) ||
+      (runIndexByModelId.get(left.runModelId) ?? -1) -
+        (runIndexByModelId.get(right.runModelId) ?? -1) ||
       left.runModelId - right.runModelId ||
       left.runUsageModelId - right.runUsageModelId
   );
