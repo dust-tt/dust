@@ -53,6 +53,7 @@ async function renderCommentedEditor(
         autosaveDebounceMs: 60_000,
         onSave,
         onStateChange: undefined,
+        resolveImageSource: () => null,
       });
       const comments = useDocumentComments({
         editor: document.editor,

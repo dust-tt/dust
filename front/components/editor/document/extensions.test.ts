@@ -32,7 +32,10 @@ afterEach(() => {
 
 function editInsideTheMark(live: boolean) {
   editor = new Editor({
-    extensions: buildDocumentEditorExtensions(translate, { live }),
+    extensions: buildDocumentEditorExtensions(translate, {
+      live,
+      resolveImageSource: () => null,
+    }),
     content: ORPHAN_MARK_DOCUMENT,
   });
   editor.commands.insertContentAt(3, "x");
@@ -50,9 +53,10 @@ describe("buildDocumentExtensions", () => {
 
   it("leaves StarterKit's undo history out of a live document", () => {
     const undoRedo = (live: boolean) =>
-      buildDocumentEditorExtensions(translate, { live }).find(
-        ({ name }) => name === "starterKit"
-      )?.options.undoRedo;
+      buildDocumentEditorExtensions(translate, {
+        live,
+        resolveImageSource: () => null,
+      }).find(({ name }) => name === "starterKit")?.options.undoRedo;
 
     expect(undoRedo(false)).not.toBe(false);
     expect(undoRedo(true)).toBe(false);

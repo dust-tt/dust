@@ -85,7 +85,7 @@ export const buildLiveDocumentExtensions = ({
   awareness: Awareness | null;
   user: DocumentLiveUser;
   comments: LiveCommentChannel;
-  resolveImageSource?: DocumentImageOptions["resolveSource"];
+  resolveImageSource: DocumentImageOptions["resolveSource"];
 }): AnyExtension[] => [
   ...buildDocumentEditorExtensions(t, { live: true, resolveImageSource }),
   liveCommentThreads(comments),

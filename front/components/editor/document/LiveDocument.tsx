@@ -4,9 +4,10 @@ import type {
   DocumentLiveSession,
   DocumentProps,
 } from "@app/components/editor/document/types";
+import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
 import { useLiveSession } from "@app/hooks/useLiveSession";
 import { useLingui } from "@lingui/react/macro";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface LiveDocumentProps extends DocumentProps {
   live: DocumentLiveSession;
@@ -17,8 +18,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
   const { t } = useLingui();
   const { connection, status } = useLiveSession(props.live);
   const { name, color } = props.live.user;
-  // Captured at mount, as for a file-saving document: a new resolver would rebuild the editor.
-  const [resolveImageSource] = useState(() => props.resolveImageSource);
+  const resolveImageSource = useImageSourceResolver(props.resolveImageSource);
   const extensions = useMemo(
     () =>
       connection

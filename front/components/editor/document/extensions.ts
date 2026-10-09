@@ -110,8 +110,8 @@ export const buildDocumentEditorExtensions = (
     resolveImageSource,
   }: {
     live?: boolean;
-    resolveImageSource?: DocumentImageOptions["resolveSource"];
-  } = {}
+    resolveImageSource: DocumentImageOptions["resolveSource"];
+  }
 ): AnyExtension[] => [
   ...buildSchemaExtensions({ live, resolveImageSource }),
   Placeholder.configure({

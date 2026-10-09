@@ -18,6 +18,7 @@ function renderEditor(
         autosaveDebounceMs: 60_000,
         onSave,
         onStateChange: undefined,
+        resolveImageSource: () => null,
       }),
     { initialProps: { initialContent } }
   );

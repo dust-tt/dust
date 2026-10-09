@@ -107,8 +107,9 @@ only when it is one paragraph of text: anything else is refused with the reason.
 
 An image is ordinary Markdown, `![alt](destination "title")`, read as an inline `image` node that
 keeps its alt text, destination and title as written. The editor loads nothing by itself: the
-host's `resolveImageSource` turns a destination into the URL to display, and an image it does not
-resolve, or every image without it, shows as its alt text. The file preview resolves a file path in
+host's required `resolveImageSource` turns a destination into the URL to display, and an image it
+does not resolve shows as its alt text. A new resolver applies to images displayed after it, without
+rebuilding the editor. The file preview resolves a file path in
 a conversation or a pod, such as `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read
 from `files.list`, to the file API, which checks the reader's access; it resolves nothing else, so
 an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
