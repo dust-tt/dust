@@ -497,7 +497,6 @@ export function ConversationContainerVirtuoso({
             >
               {shownAgentPrompts ? (
                 <AgentSuggestedPrompts
-                  agent={shownAgentPrompts.agent}
                   onPick={(prompt) =>
                     setPendingInputText("", {
                       replace: true,
