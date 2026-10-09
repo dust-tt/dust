@@ -92,12 +92,16 @@ msgid "Ask anything"
 msgstr "Posez n’importe quelle question"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type @ to mention agents or people"
-msgstr "Mentionnez agents et personnes avec @"
+msgid "Type @ to call on an agent"
+msgstr "Tapez @ pour solliciter un agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type / for skills, tools, and more"
-msgstr "Tapez / : compétences, outils et plus"
+msgid "Type @ to loop in a teammate"
+msgstr "Tapez @ pour inviter un collègue"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add skills, tools, and more"
+msgstr "Ajoutez compétences et outils avec /"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"

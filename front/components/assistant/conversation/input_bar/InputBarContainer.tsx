@@ -173,18 +173,23 @@ const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
 
 // Placeholder hints, only advertising the @ and / menus when the composer has them.
 function getPlaceholderHints({
-  hasMentions,
+  disableAgentMentions,
+  disableUserMentions,
   slashMenuMode,
 }: {
-  hasMentions: boolean;
+  disableAgentMentions?: boolean;
+  disableUserMentions?: boolean;
   slashMenuMode: InputBarSlashMenuMode | null;
 }): MessageDescriptor[] {
   const hints = [INPUT_BAR_DEFAULT_PLACEHOLDER, msg`Ask anything`];
-  if (hasMentions) {
-    hints.push(msg`Type @ to mention agents or people`);
+  if (!disableAgentMentions) {
+    hints.push(msg`Type @ to call on an agent`);
+  }
+  if (!disableUserMentions) {
+    hints.push(msg`Type @ to loop in a teammate`);
   }
   if (slashMenuMode === "commands") {
-    hints.push(msg`Type / for skills, tools, and more`);
+    hints.push(msg`Type / to add skills, tools, and more`);
   }
   return hints;
 }
@@ -826,7 +831,8 @@ const InputBarContainer = ({
   // Picked once per mount so the hint doesn't change while the input bar is shown.
   const [placeholderHintSeed] = useState(Math.random);
   const placeholderHints = getPlaceholderHints({
-    hasMentions: !disableUserMentions && !disableAgentMentions,
+    disableAgentMentions,
+    disableUserMentions,
     slashMenuMode,
   });
   const editorPlaceholder = disableInput

@@ -92,12 +92,16 @@ msgid "Ask anything"
 msgstr "Ask anything"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type @ to mention agents or people"
-msgstr "Type @ to mention agents or people"
+msgid "Type @ to call on an agent"
+msgstr "Type @ to call on an agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type / for skills, tools, and more"
-msgstr "Type / for skills, tools, and more"
+msgid "Type @ to loop in a teammate"
+msgstr "Type @ to loop in a teammate"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add skills, tools, and more"
+msgstr "Type / to add skills, tools, and more"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"
