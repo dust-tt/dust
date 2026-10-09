@@ -447,9 +447,10 @@ export class DustFileSystem {
    * authenticated user.
    */
   /**
-   * @cc [owner:aubin-tchoi,label:security] user-and-conversation-not-agent-facing
-   * The returned file system MUST NOT be exposed to agent tools: it mounts the user scope, which the
-   * agent loop file system deliberately excludes (see `forAgentLoop`).
+   * @cc [owner:aubin-tchoi,label:performance] user-and-conversation-not-agent-facing
+   * The returned file system MUST NOT be exposed to agent tools: agents must not modify the
+   * conversation memory file it writes. That file is rendered on every model call, so a change would
+   * retroactively change the conversation prefix and invalidate the prompt cache.
    */
   static async forUserAndConversationInGCS(
     auth: Authenticator,
