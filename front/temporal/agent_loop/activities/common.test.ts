@@ -1401,6 +1401,10 @@ describe("finalizeCancellation", () => {
       { requestedSpaceIds: [restrictedSpace.id] },
       { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
     );
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation,
+      isRunningAgentLoop: true,
+    });
 
     await finalizeCancellation(auth.toJSON(), {
       agentMessageId: agentMessage.sId,
@@ -1419,6 +1423,11 @@ describe("finalizeCancellation", () => {
       },
     });
     expect(dbMessage?.status).toBe("cancelled");
+    const conversationResource = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    expect(conversationResource?.isRunningAgentLoop).toBe(false);
   });
 });
 

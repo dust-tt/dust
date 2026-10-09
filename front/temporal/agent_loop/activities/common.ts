@@ -559,6 +559,14 @@ async function stopWithoutAgentConfiguration(
     messageIds: [agentMessageId],
     status,
   });
+  // As the regular cancelled event does (`processEventForDatabase`). An interrupt keeps the flag:
+  // promoted messages start a new loop.
+  if (status === "cancelled") {
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation: conversation.toJSON(),
+      isRunningAgentLoop: false,
+    });
+  }
   logger.info(
     { conversationId, agentMessageId, messageStatus: status },
     "Agent configuration unavailable, agent message stopped without it"
