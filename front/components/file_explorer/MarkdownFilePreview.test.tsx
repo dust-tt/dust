@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MarkdownFilePreview } from "./MarkdownFilePreview";
 
+const NO_IMAGE_URL = () => null;
+
 describe("MarkdownFilePreview", () => {
   const scrollIntoView = vi.fn();
   let originalScrollIntoView: Element["scrollIntoView"];
@@ -24,6 +26,7 @@ describe("MarkdownFilePreview", () => {
           "# Overview\n\nKey Concepts\n============\n\n## Résumé Café\n\n## Overview"
         }
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
       />
     );
 
@@ -45,6 +48,7 @@ describe("MarkdownFilePreview", () => {
       <MarkdownFilePreview
         content={"[Résumé Café](#r%C3%A9sum%C3%A9-caf%C3%A9)\n\n## Résumé Café"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
       />
     );
 
@@ -64,6 +68,7 @@ describe("MarkdownFilePreview", () => {
       <MarkdownFilePreview
         content={"[Dust](https://www.dust.tt)"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
       />
     );
 
@@ -80,6 +85,7 @@ describe("MarkdownFilePreview", () => {
         canEdit
         content={"# Hello\n\nClick me"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
         onViewModeChange={onViewModeChange}
       />
     );
@@ -97,6 +103,7 @@ describe("MarkdownFilePreview", () => {
         canEdit
         content={"[Dust](https://www.dust.tt)"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
         onViewModeChange={onViewModeChange}
       />
     );
@@ -111,6 +118,7 @@ describe("MarkdownFilePreview", () => {
       <MarkdownFilePreview
         content={"- item one\n- item two"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
       />
     );
 
@@ -120,10 +128,36 @@ describe("MarkdownFilePreview", () => {
       <MarkdownFilePreview
         content={"- item one\n- updated item two"}
         viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
       />
     );
 
     expect(screen.getByText("updated item two")).toBeInTheDocument();
     expect(screen.queryByText("item two")).not.toBeInTheDocument();
+  });
+
+  it("shows an image only from the URL the resolver returns, and alt text otherwise", () => {
+    render(
+      <MarkdownFilePreview
+        content={
+          "![Chart](pod-abc/chart.png)\n\n![Logo](https://example.com/logo.png)"
+        }
+        viewMode="preview"
+        resolveImageUrl={(src) =>
+          src.startsWith("pod-") ? `https://files.test/${src}` : null
+        }
+      />
+    );
+
+    const image = screen.getByRole("img", { name: "Chart" });
+    expect(image).toHaveAttribute(
+      "src",
+      "https://files.test/pod-abc/chart.png"
+    );
+    expect(image).toHaveAttribute("aria-busy", "true");
+    fireEvent.load(image);
+    expect(image).not.toHaveAttribute("aria-busy");
+    expect(screen.queryByRole("img", { name: "Logo" })).toBeNull();
+    expect(screen.getByText("Logo")).toBeDefined();
   });
 });

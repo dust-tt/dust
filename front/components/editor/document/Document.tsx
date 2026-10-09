@@ -308,6 +308,7 @@ export const DocumentView = ({
       <DocumentMarkdownPreview
         className={className}
         source={unsupported.source}
+        resolveImageSource={resolveImageSource}
       />
     );
   }

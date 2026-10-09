@@ -1,8 +1,14 @@
 import { PreviewableCitation } from "@app/components/assistant/conversation/attachment/PreviewableCitation";
+import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
+import type { MarkdownImageSource } from "@app/components/markdown/image_source";
+import { resolveMarkdownImageSource } from "@app/components/markdown/image_source";
 import config from "@app/lib/api/config";
-import { FILE_ID_REGEX } from "@app/lib/files";
 import {
-  getFileProcessedUrl,
+  getFileNameFromScopedPath,
+  getFilePreviewContentType,
+} from "@app/lib/markdown/file_preview";
+import {
+  getFilePathDownloadUrl,
   getProcessedFileDownloadUrl,
   useFileMetadata,
 } from "@app/lib/swr/files";
@@ -17,25 +23,55 @@ interface ImgProps {
   alt: string;
   owner: LightWorkspaceType;
 }
+
+interface PathImgProps {
+  source: Extract<MarkdownImageSource, { kind: "file_path" }>;
+  alt: string;
+  owner: LightWorkspaceType;
+}
+
+function PathImg({ source, alt, owner }: PathImgProps) {
+  const fileName = getFileNameFromScopedPath(source.filePath);
+  const contentType = getFilePreviewContentType({ fileName });
+
+  if (!isSupportedImageContentType(contentType)) {
+    return <FilePreviewBlock path={source.filePath} title={alt || undefined} />;
+  }
+
+  return (
+    <PreviewableCitation
+      filePath={source.filePath}
+      contentType={contentType}
+      title={alt || fileName}
+      thumbnailUrl={source.url}
+      downloadUrl={getFilePathDownloadUrl(owner, source.filePath)}
+      containerClassName="aspect-square w-48"
+    />
+  );
+}
+
 function Img({ src, alt, owner }: ImgProps) {
   const { t } = useLingui();
-  const matches = src?.match(FILE_ID_REGEX);
-  const fileId = matches?.length === 1 ? matches[0] : null;
+  const source = src ? resolveMarkdownImageSource(owner, src) : null;
+  const fileId = source?.kind === "file_id" ? source.fileId : null;
 
   const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
     fileId,
     owner,
   });
 
-  if (!src || !fileId) {
+  if (!source) {
     return null;
+  }
+
+  if (source.kind === "file_path") {
+    return <PathImg source={source} alt={alt} owner={owner} />;
   }
 
   const baseUrl = config.getApiBaseUrl();
 
-  const viewSuffix = getFileProcessedUrl(owner, fileId);
-  const downloadSuffix = getProcessedFileDownloadUrl(owner, fileId);
-  const viewURL = new URL(viewSuffix, baseUrl);
+  const downloadSuffix = getProcessedFileDownloadUrl(owner, source.fileId);
+  const viewURL = new URL(source.url, baseUrl);
   const downloadURL = new URL(downloadSuffix, baseUrl);
 
   // Loading state while fetching metadata: render a CitationImage placeholder.
@@ -59,7 +95,7 @@ function Img({ src, alt, owner }: ImgProps) {
 
   return (
     <PreviewableCitation
-      fileId={fileId}
+      fileId={source.fileId}
       contentType={fileMetadata.contentType}
       title={fileMetadata.fileName}
       thumbnailUrl={viewURL.toString()}
