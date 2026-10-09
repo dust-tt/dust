@@ -20,7 +20,7 @@ export class DfsWireFactory {
     return {
       id: DfsWireFactory.objectRef(id),
       name: "notes.txt",
-      directory: false,
+      kind: "FILE",
       size: "5",
       mode: 0o600,
       mtime: "1700000000000",

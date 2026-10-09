@@ -99,7 +99,7 @@ const implementation: UntypedServiceImplementation = {
         {
           object: DfsWireFactory.attr(ROOT_ID, {
             name: "docs",
-            directory: true,
+            kind: "DIRECTORY",
             size: "0",
             mode: 0o700,
             attrVersion: "1",
@@ -189,7 +189,7 @@ describe("DfsGrpcTransport", () => {
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       status: "ok",
-      object: { id: ROOT_ID, name: "docs", directory: true },
+      object: { id: ROOT_ID, name: "docs", kind: "directory" },
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       object: {

@@ -56,11 +56,14 @@ export interface DfsExtendedMetadata {
   xattrs: Record<string, Uint8Array>;
 }
 
+// Servers never report "symlink" and reject creating one until symlink targets are specified.
+export type DfsObjectKind = "file" | "directory" | "symlink";
+
 export interface DfsAttr {
   id: DfsObjectRef;
   // Stored basename; empty for the tenant root and virtual root, "shared" for virtual shared.
   name: string;
-  directory: boolean;
+  kind: DfsObjectKind;
   size: number;
   // The session's effective grant permissions in the owner bits (r=0o400, w=0o200), plus x=0o100
   // on directories readable by the session. Not stored per object.
@@ -184,7 +187,7 @@ export interface DfsCreateOperation {
   name: string;
   // Fresh UUIDv7 supplied by the caller, see `newDfsObjectId`.
   objectId: DfsObjectId;
-  directory: boolean;
+  kind: DfsObjectKind;
   mimeType?: string;
   xattrs?: Record<string, Uint8Array>;
 }
@@ -225,7 +228,7 @@ export interface DfsRenameOperation {
 export interface DfsRemoveOperation {
   type: "remove";
   objectId: DfsObjectId;
-  directory: boolean;
+  kind: DfsObjectKind;
 }
 
 export type DfsOperation =
@@ -252,7 +255,6 @@ export interface DfsOperationBatch {
 // Search.
 
 export type DfsSearchField = "name" | "content";
-export type DfsSearchKind = "file" | "directory";
 
 export interface DfsSearchScope {
   directoryId: DfsObjectId;
@@ -267,7 +269,7 @@ export interface DfsSearchXattr {
 }
 
 export interface DfsSearchFilter {
-  kind?: DfsSearchKind;
+  kind?: DfsObjectKind;
   name?: string;
   namePrefix?: string;
   mimeTypes?: string[];
@@ -291,7 +293,7 @@ export interface DfsSearchRequest {
 export interface DfsSearchAttr {
   id: DfsObjectId;
   name: string;
-  directory: boolean;
+  kind: DfsObjectKind;
   size: number;
   atimeMs?: number;
   mtimeMs?: number;
