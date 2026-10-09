@@ -11,6 +11,7 @@ import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
+import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
@@ -58,6 +59,7 @@ interface UseDocumentEditorProps {
     /** Editing pauses while the connection is down. */
     connected: boolean;
   };
+  resolveImageSource: DocumentProps["resolveImageSource"];
 }
 
 /**
@@ -92,10 +94,12 @@ export const useDocumentEditor = ({
   onSave,
   onStateChange,
   live,
+  resolveImageSource,
 }: UseDocumentEditorProps) => {
   const { t } = useLingui();
   const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
   const [initial] = useState(() => loadDfm(initialContent));
+  const resolveSource = useImageSourceResolver(resolveImageSource);
   // Captured with the parse: a later source must not show under the reason this one was refused.
   const [unsupported] = useState(() =>
     initial.isErr() ? { reason: initial.error, source: initialContent } : null
@@ -132,7 +136,11 @@ export const useDocumentEditor = ({
     };
   }, [persist, onStateChange, editable, saveErrorMessage]);
 
-  const savedExtensions = useMemo(() => buildDocumentEditorExtensions(t), [t]);
+  const savedExtensions = useMemo(
+    () =>
+      buildDocumentEditorExtensions(t, { resolveImageSource: resolveSource }),
+    [t, resolveSource]
+  );
 
   const editor = useEditor({
     extensions: live?.extensions ?? savedExtensions,

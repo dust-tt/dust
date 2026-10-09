@@ -18,6 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const AUTHOR: DfmAuthor = { kind: "user", id: "usr_tom", name: "Tom" };
 const AT = "2026-09-25T14:16:32.380Z";
+const NO_IMAGE_SOURCE = () => null;
 const SOURCE = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`;
 
 const hasEditor = (
@@ -41,6 +42,7 @@ async function renderDocument(
       renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
       signCommentMessage={signCommentMessage}
+      resolveImageSource={NO_IMAGE_SOURCE}
     />
   );
   const dom = await waitFor(() => {
@@ -443,6 +445,7 @@ describe("Document comments", () => {
         renderCommentAuthorAvatar={(author, size) => (
           <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
         )}
+        resolveImageSource={NO_IMAGE_SOURCE}
       />
     );
     const toggle = await screen.findByRole("button", { name: /^Comments/ });
@@ -561,6 +564,7 @@ describe("Document for a file the editor cannot open", () => {
         commentAuthor={AUTHOR}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
       />
     );
 
@@ -602,5 +606,118 @@ describe("Document for a file the editor cannot open", () => {
     );
     expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
     expect(container.querySelector(".tiptap")).toBeNull();
+  });
+});
+
+describe("Document images", () => {
+  const renderImages = async (
+    resolveImageSource: DocumentProps["resolveImageSource"]
+  ) => {
+    const { container } = render(
+      <Document
+        initialContent={
+          "![Chart](pod-abc/chart.png)\n\n![Logo](https://example.com/logo.png) and text\n"
+        }
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={resolveImageSource}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows an image from the URL the host resolves, and alt text otherwise", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+
+    const image = within(dom).getByRole("img", { name: "Chart" });
+    expect(image.getAttribute("src")).toBe(
+      "https://files.test/pod-abc/chart.png"
+    );
+    expect(within(dom).queryByRole("img", { name: "Logo" })).toBeNull();
+    expect(within(dom).getByText("Logo")).toBeDefined();
+  });
+
+  it("shows a resolved image as busy until it loads", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+    const image = within(dom).getByRole("img", { name: "Chart" });
+
+    expect(image.getAttribute("aria-busy")).toBe("true");
+    fireEvent.load(image);
+    expect(image.getAttribute("aria-busy")).toBeNull();
+  });
+
+  it("keeps an image's destination when its HTML is pasted back", async () => {
+    const dom = await renderImages((src) =>
+      src.startsWith("pod-") ? `https://files.test/${src}` : null
+    );
+    const image = within(dom).getByRole("img", { name: "Chart" });
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        `<p>${image.outerHTML}</p>`
+      );
+    });
+
+    const markdown = dom.editor.getMarkdown();
+    expect(markdown.match(/!\[Chart\]\(pod-abc\/chart\.png\)/g)).toHaveLength(
+      2
+    );
+    expect(markdown).not.toContain("files.test");
+  });
+
+  it("shows every image as its alt text when the host resolves none", async () => {
+    const dom = await renderImages(NO_IMAGE_SOURCE);
+
+    expect(within(dom).queryAllByRole("img")).toHaveLength(0);
+    expect(within(dom).getByText("Chart")).toBeDefined();
+  });
+
+  it("shows new images through the latest resolver without rebuilding the editor", async () => {
+    const element = (
+      resolveImageSource: DocumentProps["resolveImageSource"]
+    ) => (
+      <Document
+        initialContent={"Intro\n"}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={resolveImageSource}
+      />
+    );
+    const { container, rerender } = render(
+      element((src) => `https://old.test/${src}`)
+    );
+    const mounted = () => {
+      const dom = container.querySelector(".tiptap");
+      if (!hasEditor(dom)) {
+        throw new Error("Editor did not mount.");
+      }
+      return dom;
+    };
+    const { editor } = await waitFor(mounted);
+
+    rerender(element((src) => `https://new.test/${src}`));
+    const dom = mounted();
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        '<p><img data-document-image="pod-abc/chart.png" data-alt="Chart"></p>'
+      );
+    });
+
+    expect(dom.editor).toBe(editor);
+    expect(
+      within(dom).getByRole("img", { name: "Chart" }).getAttribute("src")
+    ).toBe("https://new.test/pod-abc/chart.png");
   });
 });

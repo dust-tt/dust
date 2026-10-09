@@ -8,6 +8,7 @@ import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFileP
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
 import {
   useDfmMessageVerifier,
   useSignDfmCommentMessage,
@@ -38,7 +39,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -390,6 +391,10 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       }),
     ];
   }, [owner, editor.path]);
+  const resolveImageSource = useCallback(
+    (src: string) => resolveDocumentImageSource(owner, src),
+    [owner]
+  );
 
   const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
   const live =
@@ -421,6 +426,7 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
         <CommentBodyMarkdown owner={owner} body={body} />
       )}
       commentInputExtensions={commentInputExtensions}
+      resolveImageSource={resolveImageSource}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

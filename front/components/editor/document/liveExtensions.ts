@@ -1,4 +1,5 @@
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
+import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
@@ -77,14 +78,16 @@ export const buildLiveDocumentExtensions = ({
   awareness,
   user,
   comments,
+  resolveImageSource,
 }: {
   t: Translate;
   document: Y.Doc;
   awareness: Awareness | null;
   user: DocumentLiveUser;
   comments: LiveCommentChannel;
+  resolveImageSource: DocumentImageOptions["resolveSource"];
 }): AnyExtension[] => [
-  ...buildDocumentEditorExtensions(t, { live: true }),
+  ...buildDocumentEditorExtensions(t, { live: true, resolveImageSource }),
   liveCommentThreads(comments),
   Collaboration.configure({ document, field: BODY_FRAGMENT_NAME }),
   ...(awareness

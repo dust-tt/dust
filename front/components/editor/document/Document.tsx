@@ -180,6 +180,7 @@ export const DocumentView = ({
   verifyCommentMessage,
   renderCommentBody,
   commentInputExtensions,
+  resolveImageSource,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
   const {
@@ -198,6 +199,7 @@ export const DocumentView = ({
     onSave,
     onStateChange,
     live: live.binding,
+    resolveImageSource,
   });
   // Live documents are edited through the session: no file saves.
   const canEditFile = editable && liveView === undefined;

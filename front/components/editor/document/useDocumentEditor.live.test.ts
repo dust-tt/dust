@@ -91,6 +91,7 @@ function renderLiveEditor(
       autosaveDebounceMs: 0,
       onSave,
       onStateChange: undefined,
+      resolveImageSource: () => null,
       live: {
         extensions: buildLiveDocumentExtensions({
           t: (descriptor) => descriptor.id ?? "",
@@ -98,6 +99,7 @@ function renderLiveEditor(
           awareness: null,
           user: { name: "Daph", color: "#0ea5e9" },
           comments,
+          resolveImageSource: () => null,
         }),
         connected: true,
       },
@@ -171,6 +173,7 @@ describe("useDocumentEditor in a live session", () => {
         awareness: null,
         user: { name: "Daph", color: "#0ea5e9" },
         comments: channel,
+        resolveImageSource: () => null,
       }),
     });
 
@@ -207,6 +210,7 @@ describe("useDocumentEditor in a live session", () => {
       awareness: null,
       user: { name: "Daph", color: "#0ea5e9" },
       comments: channel,
+      resolveImageSource: () => null,
     });
     const lost = new Editor({ extensions });
     push(SESSION_THREADS);

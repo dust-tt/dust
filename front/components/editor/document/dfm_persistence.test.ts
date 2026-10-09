@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { documentSchema } from "@app/components/editor/document/content";
 import {
   loadDfm,
   saveDfm,
@@ -435,6 +436,24 @@ describe("saveDfm", () => {
 
   it("writes LF line endings for a CRLF file", () => {
     expect(roundTrip("# Title\r\n\r\nText\r\n")).toBe("# Title\n\nText\n");
+  });
+
+  it("round-trips images with their Markdown source", () => {
+    for (const source of [
+      "![Revenue chart](pod-abc/charts/revenue.png)\n",
+      "# Report\n\n![Chart](pod-abc/chart.png)\n\nText.\n",
+      "> ![Chart](pod-abc/chart.png)\n",
+      "- ![Chart](pod-abc/chart.png)\n",
+      '![A \\[draft\\] chart](<conversation-c1/my chart.png> "Q3 \\"draft\\"")\n',
+      "Before ![x](pod-abc/x%20y.png) after.\n",
+      ":comment-start{id=c1}See ![x](pod-abc/x.png) here.:comment-end{id=c1}\n\n" +
+        OPEN_THREAD,
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
   });
 
   it("refuses content the editor cannot write as Markdown", () => {
