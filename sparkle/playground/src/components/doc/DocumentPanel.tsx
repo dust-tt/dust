@@ -1,7 +1,9 @@
 import {
   AlertCircle,
   Button,
+  Avatar,
   Check,
+  CheckCircle,
   Chip,
   cn,
   ContentMessage,
@@ -13,16 +15,16 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Icon,
   MessageCircle01,
   MessagePlusCircle,
   Pencil01,
   Robot,
+  RefreshCw05,
   Spinner,
   Tooltip,
-  ZapOff,
 } from "@dust-tt/sparkle";
 import {
-  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -217,60 +219,124 @@ interface DocumentPanelProps {
   agentRunCount: number;
   /** Element in the panel's top bar where the document's actions render. */
   toolbarSlot: HTMLElement | null;
-  /** Element next to the file name where the agent and live chips render. */
+  /** Element next to the file name where the save status renders. */
   titleSlot: HTMLElement | null;
 }
 
-/** Where the live session stands (production's DocumentLiveStatus). */
-type LiveStatus = "connecting" | "live" | "offline";
-
-const LIVE_STATES: Record<LiveStatus, { label: string; icon: ReactNode }> = {
-  connecting: { label: "Connecting…", icon: <Spinner size="xs" /> },
-  live: {
-    label: "Live",
-    icon: <span className="mx-1 size-1.5 rounded-full bg-success-500" />,
-  },
-  offline: { label: "Reconnecting…", icon: <Spinner size="xs" /> },
-};
-
-function LiveStatusChip({ status }: { status: LiveStatus }) {
-  const { label, icon } = LIVE_STATES[status];
-  return (
-    <span role="status" className="inline-flex items-center gap-1.5">
-      <span aria-hidden className="inline-flex items-center">
-        {icon}
-      </span>
-      {label}
-    </span>
-  );
-}
-
-/** An agent working on the document, shown next to the live status. */
+/** An agent working on the document: thinking, or typing its edit. */
 export interface AgentActivity {
   name: string;
   status: "thinking" | "typing";
 }
 
-function AgentActivityChip({ activity }: { activity: AgentActivity }) {
+/**
+ * The save status next to the file name: a spinning icon and "saving" while
+ * changes are saved, then only a check.
+ */
+function SaveStatus({ isSaving }: { isSaving: boolean }) {
   return (
-    <Chip
-      size="xs"
-      className="gap-1.5 border border-border bg-background text-muted-foreground"
+    <span
+      role="status"
+      className="inline-flex items-center gap-1 text-xs text-muted-foreground"
     >
-      <span role="status" className="inline-flex items-center gap-1.5">
-        {/* Three dots, as a typing indicator. */}
-        <span aria-hidden className="inline-flex items-center gap-0.5">
-          {[0, 150, 300].map((delay) => (
-            <span
-              key={delay}
-              className="size-1 animate-pulse rounded-full bg-current motion-reduce:animate-none"
-              style={{ animationDelay: `${delay}ms` }}
+      {isSaving ? (
+        <>
+          <Icon
+            visual={RefreshCw05}
+            size="sm"
+            className="animate-spin motion-reduce:animate-none"
+          />
+          saving
+        </>
+      ) : (
+        <>
+          <Icon visual={CheckCircle} size="sm" />
+          <span className="sr-only">Saved</span>
+        </>
+      )}
+    </span>
+  );
+}
+
+/** Someone on the document, for the avatars in the top bar. */
+interface DocPresence extends DocAuthor {
+  kind: "person" | "agent";
+}
+
+/**
+ * Overlapping avatars (8px, as in the Figma); past `max`, the last slot is a
+ * "+N" counter.
+ */
+function AvatarRow({ people, max }: { people: DocPresence[]; max?: number }) {
+  const overflow = max !== undefined && people.length > max;
+  const shown = overflow ? people.slice(0, max - 1) : people;
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      label={people.map((p) => p.name).join(", ")}
+      trigger={
+        <div className="flex items-center -space-x-2">
+          {shown.map((p) => (
+            <Avatar
+              key={p.name}
+              size="xs"
+              name={p.name}
+              visual={p.pictureUrl}
+              isRounded={p.kind === "person"}
+              className="ring-2 ring-background"
             />
           ))}
-        </span>
-        {activity.name} is {activity.status}
-      </span>
-    </Chip>
+          {overflow && (
+            <Avatar
+              size="xs"
+              isRounded
+              name={`+${people.length - shown.length}`}
+              className="ring-2 ring-background"
+            />
+          )}
+        </div>
+      }
+    />
+  );
+}
+
+/**
+ * Who is on the document, as in the Figma (Co-edition, top bar): who is
+ * writing (or thinking) at full opacity with what they do, then everyone
+ * else faded, two avatars and a "+N".
+ */
+function DocPresences({
+  writing,
+  thinking,
+  others,
+}: {
+  writing: DocPresence[];
+  thinking: DocPresence[];
+  others: DocPresence[];
+}) {
+  const active = [
+    { label: "writing...", people: writing },
+    { label: "thinking...", people: thinking },
+  ].filter((group) => group.people.length > 0);
+  return (
+    <div className="flex items-center gap-3">
+      {active.map(({ label, people }) => (
+        <div
+          key={label}
+          role="status"
+          aria-label={`${people.map((p) => p.name).join(", ")} ${label.replace("...", "")}`}
+          className="flex items-center gap-1 text-xs text-muted-foreground"
+        >
+          <AvatarRow people={people} />
+          <span aria-hidden>{label}</span>
+        </div>
+      ))}
+      {others.length > 0 && (
+        <div className="opacity-40">
+          <AvatarRow people={others} max={3} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -290,8 +356,8 @@ function CoEditionBadge() {
   );
 }
 
-// Prototype: how long joining the live session takes.
-const CONNECT_MS = 1200;
+// Prototype: how long saving a change takes.
+const SAVE_MS = 800;
 
 export function DocumentPanel({
   title,
@@ -321,7 +387,7 @@ export function DocumentPanel({
   const [threadAgent, setThreadAgent] = useState<string | null>(null);
   // The agent whose edit is being written on screen.
   const [typingAgent, setTypingAgent] = useState<string | null>(null);
-  const [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting");
+  const [isSaving, setIsSaving] = useState(false);
   const [isCommentsListOpen, setIsCommentsListOpen] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DocDraft | null>(null);
@@ -329,18 +395,21 @@ export function DocumentPanel({
   // suggest edits that someone who can edit accepts or rejects.
   const [canEdit, setCanEdit] = useState(true);
 
-  // Prototype: the live session connects shortly after the document opens,
-  // and again after a simulated drop.
+  // Prototype: each change saves for a moment (the document lives in memory).
+  const markdown = session?.markdown;
+  const savedOnce = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (liveStatus === "live") {
+    if (markdown === undefined) {
       return;
     }
-    const timer = setTimeout(
-      () => setLiveStatus("live"),
-      liveStatus === "offline" ? 2 * CONNECT_MS : CONNECT_MS
-    );
+    if (savedOnce.current === undefined) {
+      savedOnce.current = markdown;
+      return;
+    }
+    setIsSaving(true);
+    const timer = setTimeout(() => setIsSaving(false), SAVE_MS);
     return () => clearTimeout(timer);
-  }, [liveStatus]);
+  }, [markdown]);
 
   // Kept in a ref: callers may pass a new function on every render.
   const loadDocumentRef = useRef(loadDocument);
@@ -597,6 +666,14 @@ export function DocumentPanel({
   // An agent reply may have edited the document (edits asked in the
   // conversation): reload it and apply the new version.
   const seenRunCount = useRef(agentRunCount);
+  // The conversation's agent while it edits this document: it stays shown as
+  // writing from the end of its reply until its edit is on screen.
+  const conversationWriterRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (conversationAgent?.status === "typing") {
+      conversationWriterRef.current = conversationAgent.name;
+    }
+  }, [conversationAgent]);
   useEffect(() => {
     if (agentRunCount === seenRunCount.current || !session) {
       return;
@@ -604,6 +681,11 @@ export function DocumentPanel({
     seenRunCount.current = agentRunCount;
     if (isAgentRunning) {
       return; // A comment edit applies its own result.
+    }
+    const writer = conversationWriterRef.current;
+    conversationWriterRef.current = null;
+    if (writer) {
+      setTypingAgent(writer);
     }
     readContent()
       .then((latest) => {
@@ -613,13 +695,18 @@ export function DocumentPanel({
           normalize(latest) !== normalize(current.savedMarkdown) &&
           normalize(latest) !== normalize(current.markdown)
         ) {
+          // The replay shows the writer until the edit is on screen.
           applyAgentEdit(latest);
-        } else if (current) {
+          return;
+        }
+        if (current) {
           onSessionChange((s) => ({ ...s, savedMarkdown: latest }));
         }
+        setTypingAgent(null);
       })
       .catch(() => {
         // The document stays as it was.
+        setTypingAgent(null);
       });
   }, [
     agentRunCount,
@@ -1114,12 +1201,38 @@ export function DocumentPanel({
     );
   };
 
-  // Typing wins: the edit on screen is the most visible thing going on.
-  const agentActivity: AgentActivity | null = typingAgent
-    ? { name: typingAgent, status: "typing" }
-    : threadAgent
-      ? { name: threadAgent, status: "thinking" }
-      : conversationAgent;
+  // Who is on the document: the people of this file and the agents that
+  // worked on it, plus anyone writing in it right now.
+  const presenceOf = (name: string): DocPresence => {
+    const known = [
+      ...mentionCandidates.inThisFile,
+      ...mentionCandidates.people,
+      ...mentionCandidates.agents,
+    ].find((c) => c.name === name);
+    return known ?? { name, kind: findAgent(name) ? "agent" : "person" };
+  };
+  const writingNames = new Set([
+    // Carets on screen: an agent's edit, or a collaborator typing.
+    ...presences.filter((p) => !p.fading).map((p) => p.name),
+    ...(typingAgent ? [typingAgent] : []),
+    ...(conversationAgent?.status === "typing" ? [conversationAgent.name] : []),
+  ]);
+  const thinkingNames = new Set(
+    [
+      threadAgent,
+      conversationAgent?.status === "thinking" ? conversationAgent.name : null,
+    ].filter((n): n is string => !!n && !writingNames.has(n))
+  );
+  const onDoc = [
+    ...mentionCandidates.inThisFile.map((c) => c.name),
+    ...writingNames,
+    ...thinkingNames,
+  ].filter((name, i, all) => all.indexOf(name) === i);
+  const writing = [...writingNames].map(presenceOf);
+  const thinking = [...thinkingNames].map(presenceOf);
+  const others = onDoc
+    .filter((n) => !writingNames.has(n) && !thinkingNames.has(n))
+    .map(presenceOf);
 
   const threadHandlers: ThreadHandlers = {
     agentName,
@@ -1151,26 +1264,20 @@ export function DocumentPanel({
           {/* The panel's top bar, as production's file preview header
           (dust#34675): comments, download, then the panel's full screen and
           close. Prototype-only controls sit behind "…", first. */}
-          {/* Next to the file name: what the agent is doing, and the live
-          status. */}
+          {/* Next to the file name: the save status. */}
           {titleSlot &&
-            createPortal(
-              <>
-                {agentActivity && (
-                  <AgentActivityChip activity={agentActivity} />
-                )}
-                <Chip
-                  size="xs"
-                  className="gap-2.5 border border-border bg-background"
-                >
-                  <LiveStatusChip status={liveStatus} />
-                </Chip>
-              </>,
-              titleSlot
-            )}
+            createPortal(<SaveStatus isSaving={isSaving} />, titleSlot)}
           {toolbarSlot &&
             createPortal(
               <>
+                {/* Who is on the document, before the actions. */}
+                <div className="mr-3">
+                  <DocPresences
+                    writing={writing}
+                    thinking={thinking}
+                    others={others}
+                  />
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -1211,12 +1318,6 @@ export function DocumentPanel({
                       label="The agent rewrites a paragraph"
                       disabled={isSimulating}
                       onClick={() => void simulateAgentEdit()}
-                    />
-                    <DropdownMenuItem
-                      icon={ZapOff}
-                      label="The connection drops"
-                      disabled={liveStatus !== "live"}
-                      onClick={() => setLiveStatus("offline")}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>

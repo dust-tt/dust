@@ -7,9 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  File02,
   Folder,
-  Icon,
   Markdown,
   MessageCircle01,
   NavigationList,
@@ -379,7 +377,7 @@ export function AgentConversations({
   const docKey = openFile ? `${active.id}:${openFile.key}` : null;
   // Slot in the document panel's top bar where DocumentPanel renders its
   // actions (download, prototype options).
-  // Slot next to the file name for the agent and live status chips.
+  // Slot next to the file name for the save status.
   const [docTitleSlot, setDocTitleSlot] = useState<HTMLDivElement | null>(
     null
   );
@@ -548,17 +546,15 @@ export function AgentConversations({
         fullscreenEnabled
         isOpen={openFile !== null}
         onClose={() => setOpenFile(null)}
-        // The file's icon and name, then the agent and live status chips.
+        // The file's name, then its save status (Figma, Co-edition top bar).
         topBarLeft={
-          <div className="flex min-w-0 items-center gap-1.5">
-            <Icon visual={File02} size="sm" className="shrink-0" />
+          <div className="flex min-w-0 items-center gap-3">
             <span className="min-w-16 truncate text-sm font-medium text-foreground">
               {openFile?.title ?? "File"}
             </span>
-            {/* The agent and live status chips (DocumentPanel). */}
             <div
               ref={setDocTitleSlot}
-              className="flex shrink-0 items-center gap-1.5 empty:hidden"
+              className="flex shrink-0 items-center empty:hidden"
             />
           </div>
         }
