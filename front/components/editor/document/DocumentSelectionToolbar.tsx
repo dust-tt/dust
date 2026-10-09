@@ -65,7 +65,7 @@ const TEXT_STYLES: {
   apply: (chain: ChainedCommands) => ChainedCommands;
 }[] = [
   {
-    label: msg({ message: "Text", context: "document block type" }),
+    label: msg({ message: "Text", context: "document paragraph style" }),
     apply: (chain) => chain.setParagraph(),
   },
   { label: msg`Heading 1`, apply: (chain) => chain.setHeading({ level: 1 }) },

@@ -211,7 +211,7 @@ msgstr "L’enregistrement est indisponible. Vos modifications non enregistrées
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Text"
 msgstr "Texte"
 
@@ -317,7 +317,7 @@ msgid "Keep things in order"
 msgstr "Mettre les éléments dans l’ordre"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Quote"
 msgstr "Citation"
 
@@ -326,7 +326,7 @@ msgid "Make a passage stand out"
 msgstr "Mettre un passage en valeur"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Code"
 msgstr "Code"
 

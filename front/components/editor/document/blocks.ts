@@ -28,7 +28,7 @@ export const getBlockQuery = (state: EditorState) => {
 
 export const BLOCKS = [
   {
-    name: msg({ message: "Text", context: "document block type" }),
+    name: msg({ message: "Text", context: "document paragraph style" }),
     description: msg`Start writing with plain text`,
     icon: Type01,
     keywords: "paragraph",
@@ -70,14 +70,14 @@ export const BLOCKS = [
     apply: (chain: ChainedCommands) => chain.toggleOrderedList().run(),
   },
   {
-    name: msg({ message: "Quote", context: "document block type" }),
+    name: msg({ message: "Quote", context: "document paragraph style" }),
     description: msg`Make a passage stand out`,
     icon: DoubleQuotes,
     keywords: "blockquote",
     apply: (chain: ChainedCommands) => chain.toggleBlockquote().run(),
   },
   {
-    name: msg({ message: "Code", context: "document block type" }),
+    name: msg({ message: "Code", context: "document paragraph style" }),
     description: msg`A block of code`,
     icon: Code01,
     keywords: "codeblock",

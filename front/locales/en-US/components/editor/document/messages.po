@@ -211,7 +211,7 @@ msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them be
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Text"
 msgstr "Text"
 
@@ -317,7 +317,7 @@ msgid "Keep things in order"
 msgstr "Keep things in order"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Quote"
 msgstr "Quote"
 
@@ -326,7 +326,7 @@ msgid "Make a passage stand out"
 msgstr "Make a passage stand out"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Code"
 msgstr "Code"
 
