@@ -7,12 +7,13 @@ import {
   GongCallsResponseSchema,
   GongTranscriptsResponseSchema,
 } from "@app/lib/api/actions/servers/gong/schemas";
-import { staticIpFetch } from "@app/lib/egress/server";
+import { getStaticIPProxyAgent } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { fetch as undiciFetch } from "undici";
 import type { z } from "zod";
 
 const DEFAULT_GONG_API_BASE_URL = "https://api.gong.io";
@@ -80,7 +81,9 @@ export class GongClient {
       url += `?${params.toString()}`;
     }
 
-    const response = await staticIpFetch(url, {
+    // Gong requires partner apps to whitelist their egress IPs.
+    const response = await undiciFetch(url, {
+      dispatcher: getStaticIPProxyAgent(),
       method: options.method,
       headers: {
         "Content-Type": "application/json",
