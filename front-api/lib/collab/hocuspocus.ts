@@ -23,6 +23,9 @@ import {
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  LiveAgent,
+  LiveAgentActivity,
+  LiveAgentServerMessage,
   LiveCommentErrorCode,
   LiveCommentServerMessage,
   LiveSourceReadResponse,
@@ -57,6 +60,16 @@ interface LiveSession {
 
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
+
+const agentActivityMessage = (
+  agent: LiveAgent,
+  activity: LiveAgentActivity
+): string =>
+  JSON.stringify({
+    type: "agent_activity",
+    agent,
+    activity,
+  } satisfies LiveAgentServerMessage);
 
 const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
@@ -501,6 +514,24 @@ export async function readLiveSource(
 }
 
 /**
+ * @cc [owner:PopDaph,label:product] collab-agent-activity
+ * Every connection of a document Hocuspocus holds MUST be told what `agent` is doing in it, and
+ * nothing MUST be sent for a document it does not hold. Callers MUST only report an agent whose
+ * user may read the document live (`checkLiveReadAccess`).
+ */
+export function showLiveAgentActivity(
+  hocuspocus: Hocuspocus<LiveFile>,
+  documentName: string,
+  agent: LiveAgent,
+  activity: LiveAgentActivity
+): void {
+  const document = hocuspocus.documents.get(documentName);
+  if (document && !document.isDestroyed) {
+    document.broadcastStateless(agentActivityMessage(agent, activity));
+  }
+}
+
+/**
  * @cc [owner:tdraier,label:product;concurrency;security] collab-live-source-write
  * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
  * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
@@ -516,11 +547,18 @@ export async function readLiveSource(
  * within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
  * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
- * them.
+ * them. With `agent`, a change of the source MUST be announced to every connection as that agent
+ * editing right before it is applied; it MUST be announced as reading again if the change is then
+ * refused or leaves the document unchanged.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
-  { file, base, source }: { file: LiveFile; base: string; source: string }
+  {
+    file,
+    base,
+    source,
+    agent,
+  }: { file: LiveFile; base: string; source: string; agent?: LiveAgent }
 ): Promise<Result<LiveSourceWriteResult, string>> {
   if (!file.canWrite) {
     return new Err("The file cannot be written.");
@@ -558,11 +596,37 @@ export async function writeLiveSource(
       return new Ok("changed");
     }
 
-    // As a direct connection's change, so `onChange` records `file` as its writer.
-    const comments = replaceYDocContent(document, source, {
-      source: "local",
-      context: file,
-    });
+    // Before the change: Hocuspocus may batch the update, never a stateless message.
+    const announced = agent !== undefined && source !== current.value;
+    if (announced) {
+      document.broadcastStateless(agentActivityMessage(agent, "editing"));
+    }
+    // Another spelling of the same document changes nothing, and Yjs then emits no update. The
+    // state vector would miss a deletion, which emits one without advancing it.
+    let changed = false;
+    const onUpdate = () => {
+      changed = true;
+    };
+    if (announced) {
+      document.on("update", onUpdate);
+    }
+    let comments: Result<DfmComment[], string> = new Err(
+      "The change could not be applied."
+    );
+    try {
+      // As a direct connection's change, so `onChange` records `file` as its writer.
+      comments = replaceYDocContent(document, source, {
+        source: "local",
+        context: file,
+      });
+    } finally {
+      if (announced) {
+        document.off("update", onUpdate);
+        if (comments.isErr() || !changed) {
+          document.broadcastStateless(agentActivityMessage(agent, "reading"));
+        }
+      }
+    }
     if (comments.isErr()) {
       return comments;
     }
