@@ -238,9 +238,9 @@ The server enforces grant permissions on every call. Mount/client checks of the 
 Namespace permissions are checked on each participating object using its effective read/write
 permissions. Directory traversal follows read access; there is no separate execution permission or
 file-execution RPC. Virtual root/shared support namespace reads, with permissions checked separately
-on real entries. Virtual shared remains read-only. Namespace mutations at virtual root use the
-session's real `root_id` and its effective grant permissions. Tenant administration uses its tenant
-key and is not restricted by object grants.
+on real entries. Virtual shared remains read-only. Namespace mutations at virtual root resolve the
+authenticated tenant's stored root on the server and enforce the session's effective grant
+permissions. Tenant administration uses its tenant key and is not restricted by object grants.
 
 Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
 explicitly. Mutation permission failures use `FORBIDDEN`.
@@ -302,18 +302,20 @@ CreateSessionRequest {
 
 ```text
 Session {
-  id: string                    // Session identifier, not a bearer credential.
+  id: string                    // Session identifier used for revocation, not a bearer credential.
   tenant_id: string
   subjects: string[]             // Deduplicated session subjects.
   session_key: string            // Bearer key for filesystem and search calls.
   expires_at: Timestamp          // Session expiration time in Unix milliseconds.
-  root_id: ObjectId              // Real tenant root directory.
 }
 ```
 
+Clients address the virtual `root`; the server resolves the stored root directory from the session's
+tenant. The root directory ID belongs to tenant state, not session state.
+
 Subjects may be included before any ALLOW grants reference them. Sessions live in server memory,
-expire after one hour, and are lost on restart. There is no session renewal or subject-set update
-RPC; create a new session instead.
+initially expire after one hour, and are lost on restart. An active session can extend its expiry
+through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
 
 ### CurrentSession
 
@@ -324,14 +326,37 @@ Returns information about the authenticated session. Requires the **session key*
 **Returns:** `Session`, with the fields defined above. `session_key` is an empty string; this call
 never reissues the credential. The session's subject set and expiration are unchanged.
 
-### CloseSession
+### RevokeSession
 
-Closes the authenticated session. Requires the **session key**.
+Revokes a session in the tenant identified by the **tenant key**. The tenant is derived exclusively
+from the authenticated key; the request does not accept a tenant ID or require the session key.
+
+**Arguments**
+
+```text
+RevokeSessionRequest {
+  session_id: string             // Nonempty identifier returned by CreateSession.
+}
+```
+
+**Returns:** `Empty {}` after admitted mutations finish and the session is invalidated.
+Revocation prevents new admissions; subsequent calls using that session key fail authentication.
+Unknown sessions and sessions belonging to another tenant return `NOT_FOUND`. A concurrent refresh
+cannot undo revocation.
+
+### RefreshSession
+
+Extends the authenticated session's expiry. Requires an active **session key**.
 
 **Arguments:** `Empty {}`.
 
-**Returns:** `Empty {}` after admitted mutations finish and the session is invalidated.
-Subsequent calls using that session key fail authentication.
+**Returns:** `Session`, with `expires_at` set to `max(current_expires_at, server_now + 3_600_000)` in
+Unix milliseconds. Refresh never shortens expiry, and repeated refreshes do not accumulate an extra
+hour each time. The session ID, tenant, subjects, and bearer key stay unchanged; `session_key` is an
+empty string in the response, as with `CurrentSession`.
+
+Expired or revoked sessions fail with `UNAUTHENTICATED`; refresh cannot revive them. Create a new
+session with the tenant key instead.
 
 ## Grant management
 
