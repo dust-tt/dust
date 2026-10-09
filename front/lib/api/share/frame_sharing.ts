@@ -21,7 +21,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
-import type { WorkspaceSharingPolicy } from "@app/types/user";
+import type {
+  LightWorkspaceType,
+  WorkspaceSharingPolicy,
+} from "@app/types/user";
 import crypto from "crypto";
 
 export interface FrameSharingState {
@@ -399,9 +402,9 @@ export async function sendFrameOtpEmail({
   to: string;
   code: string;
   sharedByName: string;
-  workspace: { sId: string; name: string };
+  workspace: LightWorkspaceType;
 }): Promise<Result<void, Error>> {
-  const [recipient] = await emailRecipientsFromAddresses([to]);
+  const [recipient] = await emailRecipientsFromAddresses(workspace, [to]);
   return notifyFrameLoginCode({
     recipient,
     workspaceId: workspace.sId,
@@ -468,7 +471,7 @@ function notifyFrameSharingInvitations(
     const shareToken = frameUrl.split("/").at(-1) ?? "";
 
     const workspace = auth.getNonNullableWorkspace();
-    const recipients = await emailRecipientsFromAddresses(emails);
+    const recipients = await emailRecipientsFromAddresses(workspace, emails);
     for (const recipient of recipients) {
       fireAndForgetNotification(
         sendFrameSharedEmail({

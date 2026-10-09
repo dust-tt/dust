@@ -12,6 +12,7 @@ import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { frameV2ContentType } from "@app/types/files";
 import assert from "assert";
@@ -232,19 +233,20 @@ describe("validateFrameOtpChallenge", () => {
 
 describe("sendFrameOtpEmail", () => {
   it("emails the code to an external recipient in the frame's workspace", async () => {
+    const workspace = await WorkspaceFactory.basic();
     const result = await sendFrameOtpEmail({
       to: "outsider@example.com",
       code: "123456",
       sharedByName: "Alice",
-      workspace: { sId: "w_frame", name: "Acme" },
+      workspace,
     });
 
     expect(result.isOk()).toBe(true);
     expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
     const call = vi.mocked(notifyFrameLoginCode).mock.calls[0][0];
     expect(call).toMatchObject({
-      workspaceId: "w_frame",
-      workspaceName: "Acme",
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
       sharedByName: "Alice",
       code: "123456",
       expiresInMinutes: 15,
