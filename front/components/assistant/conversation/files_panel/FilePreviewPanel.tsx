@@ -51,6 +51,11 @@ interface FilePreviewPanelProps {
   owner: LightWorkspaceType;
 }
 
+/**
+ * @cc [owner:tdraier,label:product] file-preview-panel-full-screen
+ * The full screen toggle MUST show only for a file open in the rich document editor, behind the
+ * co_edition flag; other previews MUST keep the panel without it.
+ */
 export function FilePreviewPanel({
   conversation,
   owner,
@@ -228,7 +233,7 @@ export function FilePreviewPanel({
               target="_blank"
               rel="noopener noreferrer"
             />
-            {!isMobile && clientType !== "extension" && (
+            {!isMobile && clientType !== "extension" && markdown.richEditor && (
               <Button
                 variant="ghost"
                 size="sm"
