@@ -122,7 +122,7 @@ export function GroupBudgetOrderTab({
         <DataTable.BasicCellContent
           label={
             info.row.original.sharedMemberCount === null
-              ? "-"
+              ? "--"
               : `${info.row.original.sharedMemberCount}`
           }
         />
