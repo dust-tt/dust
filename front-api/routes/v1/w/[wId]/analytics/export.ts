@@ -76,6 +76,8 @@
  *         description: Invalid request query parameters
  *       403:
  *         description: Requires an API key with admin scope
+ *       429:
+ *         description: Rate limit exceeded (60 requests per minute per workspace)
  */
 
 import {

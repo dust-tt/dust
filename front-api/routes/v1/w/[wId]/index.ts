@@ -1,5 +1,6 @@
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { publicApiAuth } from "@front-api/middlewares/public_api_auth";
+import { publicApiRateLimit } from "@front-api/middlewares/public_api_rate_limit";
 import analytics from "./analytics";
 import apps from "./apps";
 import assistant from "./assistant";
@@ -22,6 +23,7 @@ import verifiedDomains from "./verified_domains";
 const app = publicApiApp();
 
 app.use("*", publicApiAuth);
+app.use("*", publicApiRateLimit);
 
 app.route("/analytics", analytics);
 app.route("/apps", apps);
