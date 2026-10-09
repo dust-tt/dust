@@ -30,7 +30,7 @@ export function FilterCategoryNav<Category extends string>({
   const { t } = useLingui();
 
   return (
-    <div className={cn("flex h-full w-44 flex-col p-2", className)}>
+    <div className={cn("flex h-full min-w-44 flex-col p-2", className)}>
       <NavigationListLabel
         label={t({ message: "Filter", context: "noun, filter panel heading" })}
         className="bg-transparent pt-1.5 font-medium"

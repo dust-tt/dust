@@ -792,7 +792,7 @@ function buildSeatUsageColumn(t: Translate): ColumnDef<RowData, string> {
       );
     },
     meta: {
-      className: "hidden @4xl:table-cell @4xl:w-32",
+      className: "hidden @4xl:table-cell @4xl:w-44",
       headerAlign: "center",
     },
   };
@@ -1254,7 +1254,7 @@ function buildCreditPlanColumns({
       ...(showPremiumMessageUsage
         ? buildPremiumMessageUsageColumn(premiumMessageWindowDays, t)
         : buildPoolCreditUsageColumn(hasPool)),
-      meta: { className: "w-32 @xs:w-56" },
+      meta: { className: "w-32 @xs:w-60" },
     },
     // Premium message plans also carry a fixed AWU credit allowance for
     // usage on non-premium models, alongside the rolling message limit.

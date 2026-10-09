@@ -99,7 +99,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-40 @lg:w-full" },
+      meta: { className: "w-36 @lg:w-full" },
     },
     {
       header: headers.editors,
@@ -117,7 +117,7 @@ function getColumns(
           <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />
         );
       },
-      meta: { className: "w-32" },
+      meta: { className: "w-28" },
     },
     {
       header: headers.enabled,
@@ -153,7 +153,7 @@ function getColumns(
           label={info.row.original.currentSpentFormatted}
         />
       ),
-      meta: { className: "w-32" },
+      meta: { className: "w-44" },
     },
     {
       header: headers.cap,
@@ -175,7 +175,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: unit === "awu_credits" ? "w-48" : "w-40" },
+      meta: { className: unit === "awu_credits" ? "w-52" : "w-40" },
     },
     {
       header: headers.lockState,
@@ -194,7 +194,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-24" },
+      meta: { className: "w-32" },
     },
   ];
 }
@@ -401,21 +401,25 @@ export function SelfImprovingSkillsListSection({
         currentlySpent:
           unit === "awu_credits"
             ? () => (
-                <Trans>
-                  Currently Spent
-                  <br />
-                  (credits)
-                </Trans>
+                <span>
+                  <Trans>
+                    Currently Spent
+                    <br />
+                    (credits)
+                  </Trans>
+                </span>
               )
             : t`Currently Spent ($)`,
         cap:
           unit === "awu_credits"
             ? () => (
-                <Trans>
-                  Cap
-                  <br />
-                  (credits)
-                </Trans>
+                <span>
+                  <Trans>
+                    Cap
+                    <br />
+                    (credits)
+                  </Trans>
+                </span>
               )
             : t`Cap ($)`,
         lockState: t`Lock State`,

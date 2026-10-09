@@ -35,25 +35,27 @@ export function InputBarModelPicker({
   const isWidthConstrained = useIsWidthConstrained();
 
   return (
-    <ModelPickerHighlight>
-      <ModelPicker
-        agentModel={agentModel}
-        agentId={agentId}
-        lastRequestedModel={lastRequestedModel}
-        owner={owner}
-        buttonVariant="ghost-secondary"
-        buttonSize={buttonSize}
-        showLabel={!isWidthConstrained}
-        showDropdownArrow
-        side={side}
-        disabled={disabled}
-        selectionRef={selectionRef}
-        onSelectionChange={onSelectionChange}
-        stickyModelOverride={stickyModelOverride}
-        setStickyModelOverride={setStickyModelOverride}
-        commitApiRef={commitApiRef}
-        trackingSurface="conversation_input_bar"
-      />
-    </ModelPickerHighlight>
+    <span className="contents @max-[32rem]/conversation:[&_button>*:not(:first-child)]:hidden">
+      <ModelPickerHighlight>
+        <ModelPicker
+          agentModel={agentModel}
+          agentId={agentId}
+          lastRequestedModel={lastRequestedModel}
+          owner={owner}
+          buttonVariant="ghost-secondary"
+          buttonSize={buttonSize}
+          showLabel={!isWidthConstrained}
+          showDropdownArrow
+          side={side}
+          disabled={disabled}
+          selectionRef={selectionRef}
+          onSelectionChange={onSelectionChange}
+          stickyModelOverride={stickyModelOverride}
+          setStickyModelOverride={setStickyModelOverride}
+          commitApiRef={commitApiRef}
+          trackingSurface="conversation_input_bar"
+        />
+      </ModelPickerHighlight>
+    </span>
   );
 }

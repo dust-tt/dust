@@ -81,7 +81,8 @@ function SortDropdown({ value, onValueChange }: SortDropdownProps) {
           size="sm"
           icon={current.icon}
           label={isMobile ? undefined : currentLabel}
-          tooltip={isMobile ? currentLabel : undefined}
+          tooltip={currentLabel}
+          className="[&>span]:sr-only @xs:[&>span]:not-sr-only"
           isSelect
         />
       </DropdownMenuTrigger>
@@ -123,7 +124,7 @@ export function FileExplorerToolbar({
 }: FileExplorerToolbarProps) {
   const { t } = useLingui();
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex shrink-0 items-center gap-2 @container">
       <SearchInput
         name="file-explorer-search"
         placeholder={t`Search files`}

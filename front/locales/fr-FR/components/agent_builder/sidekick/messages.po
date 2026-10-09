@@ -18,13 +18,5 @@ msgid "Reject suggestion"
 msgstr "Refuser la suggestion"
 
 #: front/components/agent_builder/sidekick/SuggestionBubbleMenu.tsx
-msgid "Reject"
-msgstr "Refuser"
-
-#: front/components/agent_builder/sidekick/SuggestionBubbleMenu.tsx
 msgid "Accept suggestion"
 msgstr "Accepter la suggestion"
-
-#: front/components/agent_builder/sidekick/SuggestionBubbleMenu.tsx
-msgid "Accept"
-msgstr "Accepter"

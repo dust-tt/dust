@@ -380,7 +380,7 @@ export function CommandPalette({
     <>
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogContent
-          size="lg"
+          size="xl"
           variant="command"
           trapFocusScope
           onEscapeKeyDown={handleEscapeKeyDown}
