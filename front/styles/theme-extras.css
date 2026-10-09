@@ -42,6 +42,40 @@
   );
 }
 
+/* Document themes. A DFM file names its theme in front matter (`theme: memo`,
+   see `lib/editor/document_themes.ts`); `Document` sets
+   `data-document-theme` on its article, and only the document content opts in
+   through the utilities below, so the editor's controls and comments keep the
+   app's typography. Serif fonts render at Geist's x-height (0.53), as for the
+   conversation font. */
+:root {
+  --document-font-body: var(--font-sans);
+  --document-font-body-size-adjust: none;
+  --document-font-heading: var(--font-sans);
+  --document-font-heading-size-adjust: none;
+  --document-max-width: 50rem;
+}
+[data-document-theme="memo"] {
+  --document-font-body: var(--font-serif);
+  --document-font-body-size-adjust: 0.53;
+  --document-font-heading: var(--font-serif);
+  --document-font-heading-size-adjust: 0.53;
+  --document-max-width: 42rem;
+}
+[data-document-theme="report"] {
+  --document-font-heading: var(--font-serif);
+  --document-font-heading-size-adjust: 0.53;
+  --document-max-width: 58rem;
+}
+@utility font-document-body {
+  font-family: var(--document-font-body);
+  font-size-adjust: var(--document-font-body-size-adjust);
+}
+@utility font-document-heading {
+  font-family: var(--document-font-heading);
+  font-size-adjust: var(--document-font-heading-size-adjust);
+}
+
 @theme {
   /* Front overrides the shared move-square/breathing timings (3s -> 4s). */
   --animate-move-square: move-square 4s ease-out infinite;

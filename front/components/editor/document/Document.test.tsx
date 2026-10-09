@@ -534,3 +534,34 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 });
+
+describe("Document theme", () => {
+  const renderTheme = (initialContent: string) =>
+    render(
+      <Document
+        initialContent={initialContent}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+      />
+    ).container.querySelector("[data-document-theme]");
+
+  it("applies the theme the front matter names", () => {
+    expect(
+      renderTheme("---\ntheme: memo\n---\n\n# Notes\n")?.getAttribute(
+        "data-document-theme"
+      )
+    ).toBe("memo");
+  });
+
+  it("applies the default theme without one", () => {
+    expect(renderTheme("# Notes\n")?.getAttribute("data-document-theme")).toBe(
+      "default"
+    );
+  });
+
+  it("shows a file the editor cannot open without a theme", () => {
+    expect(
+      renderTheme("---\ntheme: memo\n---\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
+    ).toBeNull();
+  });
+});

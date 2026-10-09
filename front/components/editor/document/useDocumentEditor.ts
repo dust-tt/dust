@@ -11,6 +11,10 @@ import type {
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
+import {
+  DEFAULT_DOCUMENT_THEME,
+  getDocumentTheme,
+} from "@app/lib/editor/document_themes";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
@@ -111,6 +115,9 @@ export const useDocumentEditor = ({
     (live ? live.connected : onSave !== undefined);
   // A live editor never saves: the session owns the file.
   const persist = live ? undefined : onSave;
+  const theme = initial.isOk()
+    ? getDocumentTheme(initial.value.envelope.frontMatter)
+    : DEFAULT_DOCUMENT_THEME;
   const persistenceRef = useRef({
     onSave: persist,
     onStateChange,
@@ -154,7 +161,7 @@ export const useDocumentEditor = ({
         "aria-label": t`Document content`,
         "aria-multiline": "true",
         class: cn(
-          "min-h-96 text-base leading-7 wrap-anywhere caret-foreground outline-none [&>:first-child]:mt-0",
+          "min-h-96 font-document-body text-base leading-7 wrap-anywhere caret-foreground outline-none [&>:first-child]:mt-0",
           "[&>h1:first-child]:mb-6 [&>h1:first-child]:heading-3xl @sm:[&>h1:first-child]:heading-4xl",
           "[&_.is-empty]:before:pointer-events-none [&_.is-empty]:before:float-left [&_.is-empty]:before:h-0 [&_.is-empty]:before:text-muted-foreground [&_.is-empty]:before:content-[attr(data-placeholder)]",
           "[&_h1.is-empty]:before:text-foreground/35 print:[&_.is-empty]:before:hidden",
@@ -316,6 +323,7 @@ export const useDocumentEditor = ({
   return {
     editor,
     editable,
+    theme,
     /** Why the file cannot be edited, with its source, or null when it opened. */
     unsupported,
     dirty,

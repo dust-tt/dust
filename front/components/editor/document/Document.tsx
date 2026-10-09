@@ -36,11 +36,18 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
- * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
- * document editor's instance, extensions, or toolbar configuration; `commentInputExtensions`
- * MUST reach only the comment and reply fields' editors. Inline controls MUST require a nonempty
+ * Formatting controls MUST remain fixed, and typography and layout MUST vary only with the
+ * built-in theme the file names. Callers MUST NOT supply the document editor's instance,
+ * extensions, toolbar configuration, or typography; `commentInputExtensions` MUST reach only the
+ * comment and reply fields' editors. Inline controls MUST require a nonempty
  * text selection. Block commands MUST require an editable document and a typed `/`.
  * className MUST apply only to the outer container.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-theme-scope
+ * The theme read from the file's front matter MUST style only the document content: the status
+ * row, toolbars, block menu and comments MUST look the same under every theme. A file the editor
+ * cannot open MUST show with the default theme.
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
@@ -185,6 +192,7 @@ export const DocumentView = ({
   const {
     editor,
     editable,
+    theme,
     unsupported,
     dirty,
     saving,
@@ -236,6 +244,7 @@ export const DocumentView = ({
   return (
     <article
       className={cn("@container relative", className)}
+      data-document-theme={theme}
       onKeyDownCapture={handleKeyDown}
     >
       {/* Container queries resolve against the article, so the push padding lives one level down. */}
@@ -248,7 +257,7 @@ export const DocumentView = ({
         <div
           ref={contentRef}
           className={cn(
-            "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
+            "relative mx-auto max-w-(--document-max-width) px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
             editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
           )}
         >
