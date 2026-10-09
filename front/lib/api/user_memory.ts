@@ -118,7 +118,7 @@ export async function readConversationMemoryFile(
     return memoryFilePathResult;
   }
 
-  const fsResult = await DustFileSystem.forUserAndConversationInGCS(
+  const fsResult = await DustFileSystem.forConversationMetadata(
     auth,
     conversation
   );
