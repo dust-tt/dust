@@ -15,8 +15,8 @@ msgstr ""
 
 #: front/lib/skills/conversational_building.ts
 msgid "Use {skillTag} to help me create a new agent"
-msgstr "Utilisez {skillTag} pour m’aider à créer un nouvel agent"
+msgstr "Utilise {skillTag} pour m’aider à créer un nouvel agent"
 
 #: front/lib/skills/conversational_building.ts
 msgid "Use {skillTag} to help me create a new skill"
-msgstr "Utilisez {skillTag} pour m’aider à créer une nouvelle compétence"
+msgstr "Utilise {skillTag} pour m’aider à créer une nouvelle compétence"
