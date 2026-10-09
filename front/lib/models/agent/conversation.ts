@@ -41,7 +41,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
   declare metadata: CreationOptional<ConversationMetadata>;
-  declare userMemorySnapshotPath: CreationOptional<string | null>;
+  declare userMemoryPath: CreationOptional<string | null>;
 
   declare requestedSpaceIds: number[];
 
@@ -101,7 +101,7 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: {},
     },
-    userMemorySnapshotPath: {
+    userMemoryPath: {
       type: DataTypes.STRING,
       allowNull: true,
     },
