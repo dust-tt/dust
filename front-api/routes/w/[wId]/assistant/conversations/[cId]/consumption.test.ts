@@ -4,11 +4,16 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-const BILLED_CREDITS = 7;
+const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
+// The run costs 1 credit of input and 2 credits of output.
+const BILLED_CREDITS = 3;
 const PREVIOUS_ATTRIBUTION_VERSION =
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
@@ -33,9 +38,9 @@ async function setupConversation() {
     throw new Error("Just-created conversation not found.");
   }
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
-    inputTokens: 100,
-    outputTokens: 20,
-    reasoningTokens: 5,
+    inputTokens: INPUT,
+    outputTokens: 2 * OUTPUT,
+    reasoningTokens: 0,
   });
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
@@ -95,19 +100,19 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/consumption", () => {
         {
           itemType: "input",
           runUsageModelId,
-          inputTokensCount: 100,
+          inputTokensCount: INPUT,
           grossAttributedCreditAmountMicro: 8_000_000,
         },
         {
           itemType: "output",
           runUsageModelId,
-          outputTokensCount: 15,
+          outputTokensCount: 2 * OUTPUT,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
         {
           itemType: "reasoning",
           runUsageModelId,
-          outputTokensCount: 5,
+          outputTokensCount: 0,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
       ],
