@@ -175,6 +175,10 @@ msgstr "Resolved ({resolvedCount})"
 msgid "All comments"
 msgstr "All comments"
 
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document is read-only here because editing it could change parts of its content."
+msgstr "This document is read-only here because editing it could change parts of its content."
+
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"
 msgstr "Not saved"
@@ -266,10 +270,6 @@ msgstr "Lists"
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Edit link"
 msgstr "Edit link"
-
-#: front/components/editor/document/DocumentSourcePreview.tsx
-msgid "{reason} The original Markdown is shown below and editing is disabled to preserve it."
-msgstr "{reason} The original Markdown is shown below and editing is disabled to preserve it."
 
 #: front/components/editor/document/blocks.ts
 msgctxt "document paragraph style"

@@ -551,3 +551,58 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 });
+
+describe("Document for a file the editor cannot open", () => {
+  const renderRefused = (initialContent: string) =>
+    render(
+      <Document
+        initialContent={initialContent}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        commentAuthor={AUTHOR}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+      />
+    );
+
+  it("renders the body read-only, without anchors or threads, under the reason", async () => {
+    // A table: valid DFM the editor cannot keep.
+    const { container } = renderRefused(
+      `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
+    );
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent(
+      "This document is read-only here because editing it could change parts of its content."
+    );
+    expect(alert).toHaveTextContent("The Markdown uses formatting");
+    expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
+    expect(container.textContent).not.toContain("comment-start");
+    expect(container.textContent).not.toContain("::message");
+    expect(container.querySelector(".tiptap")).toBeNull();
+  });
+
+  it("shows text too heavy to parse as plain text instead of rendering it", async () => {
+    // Out of the codec's bounds: the Markdown renderer parses with the same parser.
+    const deep = `${">".repeat(1_000)} too deep`;
+    const { container } = renderRefused(`# Notes\n\n${deep}\n`);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(container.querySelector("pre")).toHaveTextContent("too deep");
+    expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
+  });
+
+  it("shows the exact text of a file the codec cannot read", async () => {
+    // An anchor without a thread: invalid DFM, whose syntax is what needs fixing.
+    const { container } = renderRefused(
+      "# Notes\n\nHello :comment-start{id=x}world:comment-end{id=x}.\n"
+    );
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(container.querySelector("pre")).toHaveTextContent(
+      "Hello :comment-start{id=x}world:comment-end{id=x}."
+    );
+    expect(screen.queryByRole("heading", { name: "Notes" })).toBeNull();
+    expect(container.querySelector(".tiptap")).toBeNull();
+  });
+});

@@ -8,12 +8,12 @@ import {
   DocumentCommentsList,
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
+import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
   DocumentLiveStatus,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
-import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
 import type {
   DocumentProps,
   LiveStatus,
@@ -224,7 +224,7 @@ export const DocumentView = ({
 
   if (unsupported !== null) {
     return (
-      <DocumentSourcePreview
+      <DocumentMarkdownPreview
         className={className}
         source={unsupported.source}
         reason={unsupported.reason}
