@@ -64,6 +64,10 @@ msgctxt "clear the selection"
 msgid "Clear all"
 msgstr "Tout désélectionner"
 
+#: front/components/shared/CharacterCountDisplay.tsx
+msgid "{count} / {maxCount} characters"
+msgstr "{count} / {maxCount} caractères"
+
 #: front/components/shared/RegionalFlag.tsx
 msgctxt "European Union"
 msgid "EU"
