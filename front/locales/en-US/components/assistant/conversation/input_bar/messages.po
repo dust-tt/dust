@@ -224,6 +224,14 @@ msgid "You've reached your usage limit"
 msgstr "You've reached your usage limit"
 
 #: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "Your workspace has run out of credits."
+msgstr "Your workspace has run out of credits."
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
+msgid "Your group has reached its shared usage limit."
+msgstr "Your group has reached its shared usage limit."
+
+#: front/components/assistant/conversation/input_bar/InputBarUsageBanner.tsx
 msgid "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
 msgstr "You've used 80% of your usage limit. You'll be automatically upgraded when you reach the limit"
 
