@@ -11,7 +11,7 @@ import {
   WorkspaceDefaultLimitInput,
 } from "@app/components/workspace/WorkspaceDefaultLimitInput";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
-import { formatCreditValue } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
@@ -35,6 +35,7 @@ import {
   Label,
   Page,
 } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -127,7 +128,11 @@ function MemberSpendLimitForm({
   const resetBaselineCredits =
     resetBaselineAwuCredits === null
       ? null
-      : formatCreditValue(resetBaselineAwuCredits, t);
+      : formatCredits(resetBaselineAwuCredits);
+  const resetBaselineCreditCount =
+    resetBaselineAwuCredits === null
+      ? null
+      : roundCredits(resetBaselineAwuCredits);
   const memberName = member?.name;
 
   const memberGroupRows = useMemo(
@@ -342,14 +347,16 @@ function MemberSpendLimitForm({
                 htmlFor="reset-at-next-billing-cycle"
                 className="cursor-pointer text-sm font-normal leading-snug text-foreground"
               >
-                {resetBaselineCredits === null ? (
+                {resetBaselineCredits === null ||
+                resetBaselineCreditCount === null ? (
                   <Trans>
                     Reset to no personal limit at the next billing cycle
                   </Trans>
                 ) : (
-                  <Trans>
-                    Reset to {resetBaselineCredits} at the next billing cycle
-                  </Trans>
+                  t`${plural(resetBaselineCreditCount, {
+                    one: `Reset to ${resetBaselineCredits} credit at the next billing cycle`,
+                    other: `Reset to ${resetBaselineCredits} credits at the next billing cycle`,
+                  })}`
                 )}
               </Label>
             </div>

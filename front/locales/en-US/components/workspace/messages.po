@@ -951,8 +951,8 @@ msgid "Reset to no personal limit at the next billing cycle"
 msgstr "Reset to no personal limit at the next billing cycle"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
-msgid "Reset to {resetBaselineCredits} at the next billing cycle"
-msgstr "Reset to {resetBaselineCredits} at the next billing cycle"
+msgid "{resetBaselineCreditCount, plural, one {Reset to {resetBaselineCredits} credit at the next billing cycle} other {Reset to {resetBaselineCredits} credits at the next billing cycle}}"
+msgstr "{resetBaselineCreditCount, plural, one {Reset to {resetBaselineCredits} credit at the next billing cycle} other {Reset to {resetBaselineCredits} credits at the next billing cycle}}"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "A personal limit applies to this member across the workspace."
@@ -1094,8 +1094,8 @@ msgid "Resets to no personal limit on {resetDate}"
 msgstr "Resets to no personal limit on {resetDate}"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "Resets to {previousLimit} on {resetDate}"
-msgstr "Resets to {previousLimit} on {resetDate}"
+msgid "{previousLimitCreditCount, plural, one {Resets to {previousLimit} credit on {resetDate}} other {Resets to {previousLimit} credits on {resetDate}}}"
+msgstr "{previousLimitCreditCount, plural, one {Resets to {previousLimit} credit on {resetDate}} other {Resets to {previousLimit} credits on {resetDate}}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member pool credit usage"

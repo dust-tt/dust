@@ -25,11 +25,7 @@ import {
   computePoolLimitAwuCredits,
   computeSeatUsage,
 } from "@app/lib/api/credits/seat_usage";
-import {
-  formatCreditValue,
-  formatCredits,
-  roundCredits,
-} from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
   getUserModelTierMenuItemsWithSelection,
@@ -369,13 +365,20 @@ function PoolCreditUsageBar({
       : null;
   const previousLimit =
     poolCapOverridePreviousAwuCredits !== null
-      ? formatCreditValue(poolCapOverridePreviousAwuCredits, t)
+      ? formatCredits(poolCapOverridePreviousAwuCredits)
+      : null;
+  const previousLimitCreditCount =
+    poolCapOverridePreviousAwuCredits !== null
+      ? roundCredits(poolCapOverridePreviousAwuCredits)
       : null;
   const temporaryResetLabel =
     resetDate !== null
-      ? previousLimit === null
+      ? previousLimit === null || previousLimitCreditCount === null
         ? t`Resets to no personal limit on ${resetDate}`
-        : t`Resets to ${previousLimit} on ${resetDate}`
+        : t`${plural(previousLimitCreditCount, {
+            one: `Resets to ${previousLimit} credit on ${resetDate}`,
+            other: `Resets to ${previousLimit} credits on ${resetDate}`,
+          })}`
       : null;
   const consumedLabel = formatCredits(consumedFromPool);
   const limitCreditCount = roundCredits(poolLimit);
