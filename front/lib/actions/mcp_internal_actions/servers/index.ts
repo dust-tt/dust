@@ -408,6 +408,10 @@ export async function getInternalMCPServer(
         auth,
         toolContext
       );
+    case "self_configuration":
+      return (
+        await import("@app/lib/api/actions/servers/self_configuration")
+      ).default(auth, toolContext);
     case "user_analytics":
       return (
         await import("@app/lib/api/actions/servers/user_analytics")

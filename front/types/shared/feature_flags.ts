@@ -485,6 +485,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "PopDaph",
   },
+  self_configuration_tool: {
+    description:
+      "Let @dust raise its own reasoning effort mid-conversation on Claude models that support per-message effort",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";

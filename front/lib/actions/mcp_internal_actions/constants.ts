@@ -76,6 +76,7 @@ import {
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SELF_CONFIGURATION_SERVER } from "@app/lib/api/actions/servers/self_configuration/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SKILL_AUTHORING_SERVER } from "@app/lib/api/actions/servers/skill_authoring/metadata";
@@ -250,6 +251,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "ask_user_question",
   "wakeups",
   "plan_mode",
+  "self_configuration",
   WORKSPACE_ANALYTICS_SERVER_NAME,
   "workspace_management",
   "activation_recommendations",
@@ -1287,6 +1289,19 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: CURSOR_CLOUD_AGENTS_SERVER,
+  },
+  self_configuration: {
+    id: 1052,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("self_configuration_tool");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: SELF_CONFIGURATION_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

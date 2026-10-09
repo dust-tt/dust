@@ -2167,6 +2167,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
+  "self_configuration": {
+    "adjust_reasoning_effort": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "servicenow": {
     "create_record": {
       "freeUsage": false,
@@ -3388,6 +3394,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "search": {
     "semantic_search": "never_ask",
+  },
+  "self_configuration": {
+    "adjust_reasoning_effort": "never_ask",
   },
   "servicenow": {
     "create_record": "low",

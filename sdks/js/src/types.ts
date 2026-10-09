@@ -950,6 +950,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "discovery_homepage"
   | "localisation"
   | "co_edition"
+  | "self_configuration_tool"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
