@@ -85,7 +85,7 @@ interface InputBarButtonsProps {
   slashMenu: InputBarPlusMenuSlashMenu;
 }
 
-// @dust is the most common resolved agent, so showing it while loading avoids a layout shift.
+// @dust is the default agent, so showing it while loading avoids a layout shift.
 const LOADING_AGENT_PLACEHOLDER: RichAgentMention = {
   id: GLOBAL_AGENTS_SID.DUST,
   type: "agent",
