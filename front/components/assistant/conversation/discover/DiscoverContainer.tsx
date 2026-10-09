@@ -130,6 +130,7 @@ export const DiscoverContainer = forwardRef<
             : null
         }
         onClose={closeDetails}
+        showFavoriteButton
       />
       {pinTarget && (
         <DiscoverPinDialog
