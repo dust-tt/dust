@@ -70,6 +70,8 @@ interface EditGroupUsageDialogProps {
   group: EditGroupUsageGroup | null;
   seatOptions?: EditGroupUsageSeatOptions;
   sharedUsageLimitAccess: SharedUsageLimitAccess;
+  // Fired once a save persists successfully (not on cancel or no-op close).
+  onSaved?: () => void;
 }
 
 export function EditGroupUsageDialog({
@@ -79,6 +81,7 @@ export function EditGroupUsageDialog({
   group,
   seatOptions,
   sharedUsageLimitAccess,
+  onSaved,
 }: EditGroupUsageDialogProps) {
   const lastGroupRef = useRef<EditGroupUsageGroup | null>(null);
   useEffect(() => {
@@ -102,6 +105,7 @@ export function EditGroupUsageDialog({
             seatOptions={seatOptions}
             sharedUsageLimitAccess={sharedUsageLimitAccess}
             onClose={onClose}
+            onSaved={onSaved}
           />
         )}
       </DialogContent>
@@ -243,7 +247,8 @@ function useSaveGroupUsage(
   group: EditGroupUsageGroup,
   draft: GroupUsageDraft,
   orderDraft: GroupBudgetOrderDraft,
-  onClose: () => void
+  onClose: () => void,
+  onSaved?: () => void
 ) {
   const { doUpdateSharedUsageLimitPriorities } =
     useUpdateSharedUsageLimitPriorities({ owner });
@@ -293,6 +298,7 @@ function useSaveGroupUsage(
             expectedOrderedGroupIds: orderDraft.baseOrder,
           })));
       if (saved) {
+        onSaved?.();
         onClose();
       }
       return saved;
@@ -472,6 +478,7 @@ interface EditGroupUsageFormProps {
   seatOptions?: EditGroupUsageSeatOptions;
   sharedUsageLimitAccess: SharedUsageLimitAccess;
   onClose: () => void;
+  onSaved?: () => void;
 }
 
 function EditGroupUsageForm({
@@ -480,6 +487,7 @@ function EditGroupUsageForm({
   seatOptions,
   sharedUsageLimitAccess,
   onClose,
+  onSaved,
 }: EditGroupUsageFormProps) {
   const { t } = useLingui();
   const isSharedLimitEditable = sharedUsageLimitAccess === "editable";
@@ -495,7 +503,8 @@ function EditGroupUsageForm({
     group,
     draft,
     orderDraft,
-    onClose
+    onClose,
+    onSaved
   );
   const confirmSeatRemoval = useConfirmSeatRemoval(group);
   const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);

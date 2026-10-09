@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import { UpgradeRequestGroupBudgetModal } from "@app/components/workspace/UpgradeRequestGroupBudgetModal";
 import { UpgradeRequestLimitModal } from "@app/components/workspace/UpgradeRequestLimitModal";
 import { UpgradeRequestsTable } from "@app/components/workspace/UpgradeRequestsTable";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
@@ -88,6 +89,8 @@ export function UpgradeRequests({
   const confirm = useContext(ConfirmContext);
   const [requestToEdit, setRequestToEdit] =
     useState<MembershipUpgradeRequestType | null>(null);
+  const [requestToEditGroupBudget, setRequestToEditGroupBudget] =
+    useState<MembershipUpgradeRequestType | null>(null);
   const [requestToUpgrade, setRequestToUpgrade] =
     useState<MembershipUpgradeRequestType | null>(null);
   const changeSeatMember = useMemo(
@@ -152,6 +155,7 @@ export function UpgradeRequests({
           pendingRequestIds={resolvingRequestIds}
           onUpgradePlan={seatUpgrade ? setRequestToUpgrade : undefined}
           onEditLimit={setRequestToEdit}
+          onEditGroupBudget={setRequestToEditGroupBudget}
           onDeny={(request) => void resolveRequest(request, "denied")}
         />
       )}
@@ -183,6 +187,17 @@ export function UpgradeRequests({
           onClose={() => setRequestToEdit(null)}
           onSavingChange={onSpendLimitSavingChange}
           onSaved={() => handleSaved(requestToEdit)}
+        />
+      )}
+      {requestToEditGroupBudget && (
+        <UpgradeRequestGroupBudgetModal
+          key={requestToEditGroupBudget.sId}
+          owner={owner}
+          request={requestToEditGroupBudget}
+          groups={groups}
+          editableGroupIds={editableGroupIds}
+          onClose={() => setRequestToEditGroupBudget(null)}
+          onSaved={() => handleSaved(requestToEditGroupBudget)}
         />
       )}
     </>
