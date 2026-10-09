@@ -10,6 +10,8 @@
  *   DustFileSystem.forConversations(auth, conversations) multiple conversation mounts (+pod if project space)
  *   DustFileSystem.forPod(auth, space)                   single pod mount
  *   DustFileSystem.forUser(auth)                         the authenticated user's own memory scope
+ *   DustFileSystem.forUserAndConversationInGCS(auth, conversation)
+ *       the user's own scope plus a conversation, always GCS-backed (server-side copies)
  *   DustFileSystem.fromScopedPath(auth, scopedPath)     infers context from the path prefix
  *   DustFileSystem.forAgentLoop(auth, { conversation, scopedPaths })
  *       defaults to the agent loop conversation (+ its pod when applicable), plus any
@@ -436,6 +438,44 @@ export class DustFileSystem {
     return new Ok(
       new DustFileSystem(auth, [createUserMount(user.sId)], backend, "gcs")
     );
+  }
+
+  /**
+   * Build a GCS-backed DustFileSystem mounting the authenticated user's own scope and the given
+   * conversation, whatever the conversation's storage mode, so files can be copied from the user
+   * scope to the conversation server side. Returns `Err("unauthorized")` when there is no
+   * authenticated user.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:security] user-and-conversation-not-agent-facing
+   * The returned file system MUST NOT be exposed to agent tools: it mounts the user scope, which the
+   * agent loop file system deliberately excludes (see `forAgentLoop`).
+   */
+  static async forUserAndConversationInGCS(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<Result<DustFileSystem, DustFileSystemError>> {
+    const user = auth.user();
+    if (!user) {
+      return new Err(
+        new DustFileSystemError(
+          "unauthorized",
+          "No authenticated user for the user file system."
+        )
+      );
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    const backend = new GCSFileSystemBackend(
+      owner.sId,
+      fileStorageConfig.getGcsPrivateUploadsBucket()
+    );
+    const mounts = [
+      createUserMount(user.sId),
+      createConversationMount(conversation, { includeLegacy: false }),
+    ];
+
+    return new Ok(new DustFileSystem(auth, mounts, backend, "gcs"));
   }
 
   /**

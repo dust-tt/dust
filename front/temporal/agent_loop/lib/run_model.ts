@@ -51,6 +51,7 @@ import {
 import { systemPromptToText } from "@app/lib/api/llm/types/options";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { ensureConversationMemoryFile } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { DurationRecorder } from "@app/lib/duration_recorder";
@@ -73,6 +74,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import { constructProjectContext } from "@app/lib/resources/skill/code_defined/global/projects";
+import { userMemorySkill } from "@app/lib/resources/skill/code_defined/system/user_memory";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
@@ -610,6 +612,20 @@ export async function runModel(
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
   });
+
+  if (systemSkills.some((skill) => skill.sId === userMemorySkill.sId)) {
+    const memoryFileResult = await ensureConversationMemoryFile(
+      auth,
+      conversation
+    );
+    if (memoryFileResult.isErr()) {
+      localLogger.error(
+        { err: memoryFileResult.error },
+        "Failed to copy the user memory into the conversation"
+      );
+    }
+  }
+
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
     renderEquippedSkillsUserMessage(equippedSkills),
