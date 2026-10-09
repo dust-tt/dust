@@ -24,9 +24,8 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 /**
  * @cc [owner:tdraier,label:product] markdown-documents-skill
  * In workspaces with `co_edition`, the skill MUST be offered to agents to enable in every agent
- * run of a conversation that uses the file system (`metadata.useFileSystem`), and MUST NOT be
- * offered by itself in other conversations. Its instructions MUST tell agents how to write a
- * document the editor can open and how to embed an image by the file path
+ * run, and MUST NOT be offered by itself in other workspaces. Its instructions MUST tell agents
+ * how to write a document the editor can open and how to embed an image by the file path
  * `resolveDocumentImageSource` displays.
  */
 export const markdownDocumentsSkill = {
@@ -46,6 +45,5 @@ export const markdownDocumentsSkill = {
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) =>
     !(await hasFeatureFlag(auth, "co_edition")),
-  getAutoEnabledOrEquippedForAgentLoop: ({ conversation }) =>
-    conversation.metadata.useFileSystem === true ? "equipped" : undefined,
+  getAutoEnabledOrEquippedForAgentLoop: () => "equipped",
 } as const satisfies GlobalSkillDefinition;
