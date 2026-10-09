@@ -7,6 +7,127 @@
  *       scheme: bearer
  *       description: Your DUST API key is a Bearer token.
  *   schemas:
+ *     ConversationConsumption:
+ *       type: object
+ *       required:
+ *         - billedCredits
+ *         - details
+ *       properties:
+ *         billedCredits:
+ *           type: number
+ *           description: Stable billed Dust credits for terminal agent messages in the conversation and its accessible run-agent descendants, including superseded message versions.
+ *         details:
+ *           type: object
+ *           nullable: true
+ *           allOf:
+ *             - $ref: '#/components/schemas/ConversationConsumptionDetails'
+ *           description: Null when no messages have positive billed credits or any billed message lacks complete attribution.
+ *     ConversationConsumptionDetails:
+ *       type: object
+ *       description: Attribution reconciled to the bill through model input rows. Agent work plus tool attributed credits partition the bill; models and agents are alternative groupings, not additional charges.
+ *       required:
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *         - agents
+ *       properties:
+ *         agentWorkCredits:
+ *           type: number
+ *           description: Credits attributed to agent work rather than visible tools.
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ConversationConsumptionModelDetails'
+ *         agents:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ConversationConsumptionAgentDetails'
+ *     ConversationConsumptionToolDetails:
+ *       type: object
+ *       required:
+ *         - label
+ *         - internalMCPServerName
+ *         - toolName
+ *         - callCount
+ *         - attributedCredits
+ *         - directCredits
+ *         - pending
+ *       properties:
+ *         label:
+ *           type: string
+ *           description: Display label of the tool.
+ *         internalMCPServerName:
+ *           type: string
+ *           nullable: true
+ *           description: Internal MCP server name, or null for an external server.
+ *         toolName:
+ *           type: string
+ *         callCount:
+ *           type: integer
+ *           description: Number of attributed calls grouped under this tool.
+ *         attributedCredits:
+ *           type: number
+ *           description: Share of billed credits attributed to the tool, including model work and direct charges.
+ *         directCredits:
+ *           type: number
+ *           description: Direct tool charges already included in attributedCredits, not an additional charge.
+ *         pending:
+ *           type: boolean
+ *           description: Whether any grouped tool attribution is pending.
+ *     ConversationConsumptionModelDetails:
+ *       type: object
+ *       required:
+ *         - providerId
+ *         - modelId
+ *         - displayName
+ *         - attributedCredits
+ *       properties:
+ *         providerId:
+ *           type: string
+ *         modelId:
+ *           type: string
+ *           description: Provider model identifier, not an internal database identifier.
+ *         displayName:
+ *           type: string
+ *         attributedCredits:
+ *           type: number
+ *           description: Reconciled credits grouped by model, including tool attribution linked to its runs. Overlaps agent work and tool totals.
+ *     ConversationConsumptionAgentDetails:
+ *       type: object
+ *       required:
+ *         - agentId
+ *         - name
+ *         - pictureUrl
+ *         - billedCredits
+ *         - agentWorkCredits
+ *         - tools
+ *         - models
+ *       properties:
+ *         agentId:
+ *           type: string
+ *           description: String identifier of the agent.
+ *         name:
+ *           type: string
+ *         pictureUrl:
+ *           type: string
+ *           nullable: true
+ *         billedCredits:
+ *           type: number
+ *           description: Stable billed credits grouped under this agent. Hidden helpers are folded into their parent agent.
+ *         agentWorkCredits:
+ *           type: number
+ *         tools:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ConversationConsumptionToolDetails'
+ *         models:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/ConversationConsumptionModelDetails'
  *     User:
  *       type: object
  *       properties:
