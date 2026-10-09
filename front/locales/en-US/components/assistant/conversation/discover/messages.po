@@ -85,10 +85,6 @@ msgid "Couldn't load more. Try again in a moment."
 msgstr "Couldn't load more. Try again in a moment."
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
-msgid "Load more"
-msgstr "Load more"
-
-#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Chat with {name}"
 msgstr "Chat with {name}"
 

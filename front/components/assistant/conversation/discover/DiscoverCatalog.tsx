@@ -16,6 +16,7 @@ import {
   trackDiscoverItemSelect,
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { formatNumber } from "@app/lib/i18n/format";
@@ -174,10 +175,9 @@ function SearchCatalog({
       <CatalogResults
         items={catalogSearch.items}
         itemsQuery={catalogSearch.itemsQuery}
-        isLoading={
-          isDebouncing || catalogSearch.isLoading || catalogSearch.isLoadingMore
-        }
+        isLoading={isDebouncing || catalogSearch.isLoading}
         hasError={catalogSearch.hasError}
+        isLoadingMore={catalogSearch.isLoadingMore}
         hasNextPage={catalogSearch.hasMore}
         onLoadMore={catalogSearch.loadMore}
         canClearFilters={canClearFilters}
@@ -382,6 +382,7 @@ interface CatalogResultsProps extends CatalogActions {
   items: CatalogItem[];
   itemsQuery: CatalogQuery;
   isLoading: boolean;
+  isLoadingMore: boolean;
   hasError: boolean;
   hasNextPage: boolean;
   onLoadMore?: () => void;
@@ -393,6 +394,7 @@ function CatalogResults({
   items,
   itemsQuery,
   isLoading,
+  isLoadingMore,
   hasError,
   hasNextPage,
   onLoadMore,
@@ -467,16 +469,17 @@ function CatalogResults({
               <Trans>Couldn't load more. Try again in a moment.</Trans>
             </p>
           )}
-          {hasNextPage && onLoadMore && (
-            <div className="flex justify-center pt-6">
-              <Button
-                variant="outline"
-                size="sm"
-                label={t`Load more`}
-                isLoading={isLoading}
-                onClick={onLoadMore}
-              />
-            </div>
+          {onLoadMore && (
+            <InfiniteScroll
+              nextPage={onLoadMore}
+              hasMore={hasNextPage && !hasError}
+              showLoader={isLoadingMore}
+              loader={
+                <div className="flex justify-center py-4">
+                  <Spinner size="xs" />
+                </div>
+              }
+            />
           )}
         </>
       )}
