@@ -42,7 +42,6 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
-import assert from "assert";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -541,15 +540,19 @@ export async function finalizeUnavailableAgentLoop(
  */
 async function stopWithoutAgentConfiguration(
   authType: AuthenticatorType,
-  { conversationId, agentMessageId }: AgentLoopArgs,
+  agentLoopArgs: AgentLoopArgs,
   status: "cancelled" | "interrupted"
 ): Promise<void> {
+  const { conversationId, agentMessageId } = agentLoopArgs;
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
   const conversation = await ConversationResource.fetchById(
     auth,
     conversationId
   );
-  assert(conversation, `Conversation not found: ${conversationId}`);
+  if (!conversation) {
+    await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
+    return;
+  }
 
   await finalizeAgentMessagesWithoutWorkflow(auth, {
     conversation,
