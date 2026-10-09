@@ -179,10 +179,6 @@ msgstr "Tous les commentaires"
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr "Ce document utilise une mise en forme que l’éditeur ne prend pas encore en charge, il ne peut donc pas être modifié ici."
 
-#: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "Why this document can't be edited"
-msgstr "Pourquoi ce document ne peut pas être modifié"
-
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"
 msgstr "Non enregistré"

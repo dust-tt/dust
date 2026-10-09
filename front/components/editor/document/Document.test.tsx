@@ -3,7 +3,6 @@ import { documentCommentsPluginKey } from "@app/components/editor/document/Docum
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
-import datadogLogger from "@app/logger/datadogLogger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -579,26 +578,6 @@ describe("Document for a file the editor cannot open", () => {
     expect(container.textContent).not.toContain("comment-start");
     expect(container.textContent).not.toContain("::message");
     expect(container.querySelector(".tiptap")).toBeNull();
-  });
-
-  it("gives the refusal reason in a tooltip and logs it without the content", async () => {
-    const warn = vi.spyOn(datadogLogger, "warn");
-    renderRefused("| Step | Owner |\n| --- | --- |\n| Ship | Secret |\n");
-
-    const why = await screen.findByRole("button", {
-      name: "Why this document can't be edited",
-    });
-    fireEvent.focus(why);
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(
-      "The Markdown uses formatting the editor cannot keep."
-    );
-    expect(warn).toHaveBeenCalledWith(
-      { reason: "The Markdown uses formatting the editor cannot keep." },
-      "Document opened read-only"
-    );
-    expect(JSON.stringify(warn.mock.calls)).not.toContain("Secret");
-    warn.mockRestore();
   });
 
   it("shows text too heavy to parse as plain text instead of rendering it", async () => {
