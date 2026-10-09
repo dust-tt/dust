@@ -99,8 +99,8 @@ msgid "Email"
 msgstr "Email"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
-msgid "Clients"
-msgstr "Clients"
+msgid "Clients & Tools"
+msgstr "Clients & Tools"
 
 #: front/components/pages/workspace/IntegrationsPage.tsx
 msgid "Messaging apps"

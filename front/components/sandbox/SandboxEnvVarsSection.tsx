@@ -22,7 +22,6 @@ import type {
 } from "@app/types/sandbox/env_var";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -44,7 +43,6 @@ import {
   Lock01,
   Page,
   Plus,
-  SliderToggle,
   Spinner,
   TextArea,
   Trash01,
@@ -54,6 +52,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import { useController, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -69,18 +68,6 @@ function getEnvVarSuffix(envVar: SandboxEnvVarType): string {
   return envVar.name.startsWith(prefix)
     ? envVar.name.slice(prefix.length)
     : envVar.name;
-}
-
-function labelForKind(kind: SandboxEnvVarKind): MessageDescriptor | null {
-  switch (kind) {
-    case "config":
-      return msg`Config`;
-    case "https_secret":
-      return msg`HTTPS secret`;
-    default:
-      assertNeverAndIgnore(kind);
-      return null;
-  }
 }
 
 function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
@@ -178,9 +165,11 @@ function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
-const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this workspace.`;
-const POD_ENV_VARS_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers.`;
-const POD_ENV_VARS_READ_ONLY_DESCRIPTION = msg`Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers. Workspace admins manage these variables.`;
+const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts.`;
+const POD_ENV_VARS_DESCRIPTION = msg`Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts.`;
+const POD_ENV_VARS_READ_ONLY_DESCRIPTION = msg`Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables.`;
+const HTTPS_SECRETS_DESCRIPTION = msg`Encrypted; injected only into outbound HTTPS requests to allowlisted domains.`;
+const CONFIG_DESCRIPTION = msg`Plain, non-sensitive environment variables.`;
 
 const DEFAULT_FORM_VALUES: FormValues = {
   name: "",
@@ -252,10 +241,8 @@ export function SandboxEnvVarsSection({
     handleSubmit,
     register,
     reset,
-    trigger,
   } = form;
   const { field: nameField } = useController({ control, name: "name" });
-  const { field: kindField } = useController({ control, name: "kind" });
   const nameValue = nameField.value;
   const valueValue = useWatch({ control, name: "value" });
   const kindValue = useWatch({ control, name: "kind" });
@@ -385,8 +372,8 @@ export function SandboxEnvVarsSection({
     reset(DEFAULT_FORM_VALUES);
   };
 
-  const openAddDialog = () => {
-    reset(DEFAULT_FORM_VALUES);
+  const openAddDialog = (kind: SandboxEnvVarKind) => {
+    reset({ ...DEFAULT_FORM_VALUES, kind });
     setEnvVarToReplace(null);
     setIsNameLocked(false);
     setIsDialogOpen(true);
@@ -498,155 +485,148 @@ export function SandboxEnvVarsSection({
     const description = t(
       spaceId ? podDescription : WORKSPACE_ENV_VARS_DESCRIPTION
     );
+    const httpsSecretPrefix = envVarPrefixForKind("https_secret");
+    const configPrefix = envVarPrefixForKind("config");
+    const httpsSecrets = envVars.filter(
+      (envVar) => envVar.kind === "https_secret"
+    );
+    const configVars = envVars.filter((envVar) => envVar.kind === "config");
+    const isAnyMutationPending =
+      isUpsertingSandboxEnvVar ||
+      isDeletingSandboxEnvVar ||
+      isPatchingSandboxEnvVar;
+
+    const renderEnvVarList = (
+      vars: SandboxEnvVarType[],
+      emptyMessage: ReactNode
+    ) => {
+      if (vars.length === 0) {
+        return (
+          <ContentMessage variant="primary" size="lg">
+            {emptyMessage}
+          </ContentMessage>
+        );
+      }
+
+      return (
+        <ListGroup>
+          {vars.map((envVar) => {
+            const envVarName = envVar.name;
+            const updatedAgo = timeAgoFrom(envVar.updatedAt, {
+              useLongFormat: true,
+            });
+            const updatedBy =
+              envVar.lastUpdatedByName ?? envVar.createdByName ?? t`Unknown`;
+            const allowedDomains = envVar.allowedDomains ?? [];
+
+            return (
+              <ListItem key={envVar.name} itemsAlignment="center">
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <pre
+                    title={envVar.name}
+                    className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
+                  >
+                    {envVar.name}
+                  </pre>
+                  <div className="text-xs text-muted-foreground">
+                    <Trans>
+                      Updated {updatedAgo} by {updatedBy}
+                    </Trans>
+                  </div>
+                  {allowedDomains.length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {allowedDomains.map((domain) => (
+                        <Chip
+                          key={domain}
+                          size="xs"
+                          color="primary"
+                          label={domain}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                {allowEdit && (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="mini"
+                      icon={envVar.kind === "config" ? Lock01 : Globe01}
+                      tooltip={
+                        envVar.kind === "config"
+                          ? t`Promote ${envVarName} to HTTPS secret`
+                          : t`Edit allowed domains for ${envVarName}`
+                      }
+                      disabled={isAnyMutationPending}
+                      onClick={() => openConfigureDomainsDialog(envVar)}
+                    />
+                    <Button
+                      variant="outline"
+                      size="mini"
+                      icon={Edit04}
+                      tooltip={t`Replace value of ${envVarName}`}
+                      disabled={isAnyMutationPending}
+                      onClick={() => openReplaceDialog(envVar)}
+                    />
+                    <Button
+                      variant="warning"
+                      size="mini"
+                      icon={Trash01}
+                      tooltip={t`Delete ${envVarName}`}
+                      disabled={isAnyMutationPending}
+                      onClick={() => setEnvVarToDelete(envVar)}
+                    />
+                  </div>
+                )}
+              </ListItem>
+            );
+          })}
+        </ListGroup>
+      );
+    };
 
     return (
       <Page.Vertical align="stretch" gap="lg">
-        <Page.SectionHeader
-          title={t`Environment variables`}
-          description={description}
-        />
+        <Page.P variant="secondary">{description}</Page.P>
 
-        {allowEdit && (
-          <ContentMessage
-            variant="primary"
-            icon={InfoCircle}
-            size="lg"
-            title={t`Choose the right kind for each value`}
-          >
-            <div className="flex flex-col gap-2">
-              <div>
-                <Trans>
-                  <strong>HTTPS secrets (DSEC_)</strong> — for credentials and
-                  anything sensitive. Stored encrypted on the host. The dsbx
-                  forwarder injects the value only into outbound HTTPS requests
-                  to the domains you whitelist; code running in the Computer
-                  never sees the raw value. Safe for API keys, tokens, and other
-                  secrets bound to a known external service.
-                </Trans>
-              </div>
-              <div>
-                <Trans>
-                  <strong>Config ({SANDBOX_ENV_VAR_PREFIX})</strong> — for
-                  non-sensitive configuration: feature flags, identifiers,
-                  public endpoints, model names. Mounted as plain env vars on
-                  every new Computer and read directly by the agent and the code
-                  it runs. Anything you put here should be safe to log; do not
-                  use for credentials.
-                </Trans>
-              </div>
-              <div>
-                <Trans>
-                  Values are write-only: they cannot be viewed after saving,
-                  only overwritten or deleted. Env vars are snapshotted when the
-                  Computer starts: an already-running Computer keeps its
-                  original values, and any new Computer (new conversation,
-                  restart) picks up the latest.
-                </Trans>
-              </div>
-            </div>
-          </ContentMessage>
-        )}
+        <Page.Vertical align="stretch" gap="md">
+          <Page.SectionHeader
+            title={t`HTTPS secrets (${httpsSecretPrefix})`}
+            description={t(HTTPS_SECRETS_DESCRIPTION)}
+            action={
+              allowEdit
+                ? {
+                    label: t`Add secret`,
+                    icon: Plus,
+                    onClick: () => openAddDialog("https_secret"),
+                    disabled: isUpsertingSandboxEnvVar,
+                  }
+                : undefined
+            }
+          />
+          {renderEnvVarList(httpsSecrets, <Trans>No HTTPS secrets yet.</Trans>)}
+        </Page.Vertical>
 
-        {allowEdit && (
-          <div className="flex justify-end">
-            <Button
-              label={t`Add variable`}
-              icon={Plus}
-              onClick={openAddDialog}
-              disabled={isUpsertingSandboxEnvVar}
-            />
-          </div>
-        )}
-
-        {envVars.length === 0 ? (
-          <ContentMessage variant="primary" size="lg">
-            <Trans>No environment variables yet.</Trans>
-          </ContentMessage>
-        ) : (
-          <ListGroup>
-            {envVars.map((envVar) => {
-              const envVarName = envVar.name;
-              const kindLabel = labelForKind(envVar.kind);
-              const updatedAgo = timeAgoFrom(envVar.updatedAt, {
-                useLongFormat: true,
-              });
-              const updatedBy =
-                envVar.lastUpdatedByName ?? envVar.createdByName ?? t`Unknown`;
-              const isAnyMutationPending =
-                isUpsertingSandboxEnvVar ||
-                isDeletingSandboxEnvVar ||
-                isPatchingSandboxEnvVar;
-
-              return (
-                <ListItem key={envVar.name} itemsAlignment="center">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1">
-                    <pre
-                      title={envVar.name}
-                      className="min-w-0 self-start overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
-                    >
-                      {envVar.name}
-                    </pre>
-                    <div className="text-xs text-muted-foreground">
-                      <Trans>
-                        Updated {updatedAgo} by {updatedBy}
-                      </Trans>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Chip
-                        size="xs"
-                        color={
-                          envVar.kind === "https_secret" ? "warning" : "info"
-                        }
-                        label={kindLabel ? t(kindLabel) : ""}
-                      />
-                      {envVar.kind === "https_secret" &&
-                        envVar.allowedDomains?.map((domain) => (
-                          <Chip
-                            key={domain}
-                            size="xs"
-                            color="primary"
-                            label={domain}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                  {allowEdit && (
-                    <div className="flex shrink-0 items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="mini"
-                        icon={envVar.kind === "config" ? Lock01 : Globe01}
-                        tooltip={
-                          envVar.kind === "config"
-                            ? t`Promote ${envVarName} to HTTPS secret`
-                            : t`Edit allowed domains for ${envVarName}`
-                        }
-                        disabled={isAnyMutationPending}
-                        onClick={() => openConfigureDomainsDialog(envVar)}
-                      />
-                      <Button
-                        variant="outline"
-                        size="mini"
-                        icon={Edit04}
-                        tooltip={t`Replace value of ${envVarName}`}
-                        disabled={isAnyMutationPending}
-                        onClick={() => openReplaceDialog(envVar)}
-                      />
-                      <Button
-                        variant="warning"
-                        size="mini"
-                        icon={Trash01}
-                        tooltip={t`Delete ${envVarName}`}
-                        disabled={isAnyMutationPending}
-                        onClick={() => setEnvVarToDelete(envVar)}
-                      />
-                    </div>
-                  )}
-                </ListItem>
-              );
-            })}
-          </ListGroup>
-        )}
+        <Page.Vertical align="stretch" gap="md">
+          <Page.SectionHeader
+            title={t`Config (${configPrefix})`}
+            description={t(CONFIG_DESCRIPTION)}
+            action={
+              allowEdit
+                ? {
+                    label: t`Add variable`,
+                    icon: Plus,
+                    onClick: () => openAddDialog("config"),
+                    disabled: isUpsertingSandboxEnvVar,
+                  }
+                : undefined
+            }
+          />
+          {renderEnvVarList(
+            configVars,
+            <Trans>No config variables yet.</Trans>
+          )}
+        </Page.Vertical>
       </Page.Vertical>
     );
   };
@@ -666,6 +646,8 @@ export function SandboxEnvVarsSection({
             <DialogTitle>
               {isReplacing ? (
                 <Trans>Replace variable</Trans>
+              ) : kindValue === "https_secret" ? (
+                <Trans>Add secret</Trans>
               ) : (
                 <Trans>Add variable</Trans>
               )}
@@ -673,53 +655,6 @@ export function SandboxEnvVarsSection({
           </DialogHeader>
           <DialogContainer>
             <Page.Vertical align="stretch" gap="md">
-              {!isNameLocked ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex flex-col">
-                      <Label>
-                        <Trans>HTTPS secret</Trans>
-                      </Label>
-                      <span className="text-xs text-muted-foreground">
-                        <Trans>
-                          Keep the value out of the Computer environment.
-                        </Trans>
-                      </span>
-                    </div>
-                    <SliderToggle
-                      selected={kindField.value === "https_secret"}
-                      disabled={isUpsertingSandboxEnvVar}
-                      onClick={() => {
-                        kindField.onChange(
-                          kindField.value === "https_secret"
-                            ? "config"
-                            : "https_secret"
-                        );
-                        void trigger(["value", "allowedDomainsText"]);
-                      }}
-                    />
-                  </div>
-                  <ContentMessage
-                    variant={kindValue === "https_secret" ? "info" : "warning"}
-                    icon={kindValue === "https_secret" ? Lock01 : Globe01}
-                    size="sm"
-                  >
-                    {kindValue === "https_secret" ? (
-                      <Trans>
-                        Stored securely. The dsbx forwarder injects it only into
-                        outbound HTTPS requests to whitelisted domains; Computer
-                        code never reads it.
-                      </Trans>
-                    ) : (
-                      <Trans>
-                        Mounted as a prefixed env var on every new Computer and
-                        read directly by the agent and any code it runs. Use for
-                        non-sensitive values.
-                      </Trans>
-                    )}
-                  </ContentMessage>
-                </div>
-              ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-name">
                   <Trans>Name</Trans>
@@ -751,35 +686,17 @@ export function SandboxEnvVarsSection({
                   />
                 </div>
               </div>
-              {envVarToReplace === null ? (
-                <div
-                  className={
-                    kindValue === "https_secret"
-                      ? undefined
-                      : "pointer-events-none opacity-40"
+              {envVarToReplace === null && kindValue === "https_secret" ? (
+                <Input
+                  label={t`Allowed domains`}
+                  placeholder={t`e.g. api.openai.com, *.mistral.ai`}
+                  message={allowedDomainsMessage?.message}
+                  messageStatus={
+                    allowedDomainsMessage?.isError ? "error" : "info"
                   }
-                  aria-disabled={kindValue !== "https_secret"}
-                >
-                  <Input
-                    label={t`Allowed domains`}
-                    placeholder={t`e.g. api.openai.com, *.mistral.ai`}
-                    message={
-                      kindValue === "https_secret"
-                        ? allowedDomainsMessage?.message
-                        : t`Only used when HTTPS secret is on.`
-                    }
-                    messageStatus={
-                      kindValue === "https_secret" &&
-                      allowedDomainsMessage?.isError
-                        ? "error"
-                        : "info"
-                    }
-                    disabled={
-                      isUpsertingSandboxEnvVar || kindValue !== "https_secret"
-                    }
-                    {...register("allowedDomainsText")}
-                  />
-                </div>
+                  disabled={isUpsertingSandboxEnvVar}
+                  {...register("allowedDomainsText")}
+                />
               ) : null}
               <div className="flex flex-col gap-1">
                 <Label htmlFor="sandbox-env-var-value">

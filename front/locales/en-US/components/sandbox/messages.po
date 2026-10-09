@@ -187,14 +187,6 @@ msgid "This domain is already allowed in every selected Pod."
 msgstr "This domain is already allowed in every selected Pod."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Config"
-msgstr "Config"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "HTTPS secret"
-msgstr "HTTPS secret"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Uppercase letters, digits and underscores. Up to 64 characters after the prefix."
 msgstr "Uppercase letters, digits and underscores. Up to 64 characters after the prefix."
 
@@ -227,16 +219,24 @@ msgid "HTTPS secrets require at least one allowed domain."
 msgstr "HTTPS secrets require at least one allowed domain."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Secrets mounted as env vars on every Computer in this workspace."
-msgstr "Secrets mounted as env vars on every Computer in this workspace."
+msgid "Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts."
+msgstr "Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers."
-msgstr "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers."
+msgid "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts."
+msgstr "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers. Workspace admins manage these variables."
-msgstr "Secrets mounted as env vars on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Changes apply to future Computers. Workspace admins manage these variables."
+msgid "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables."
+msgstr "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables."
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Encrypted; injected only into outbound HTTPS requests to allowlisted domains."
+msgstr "Encrypted; injected only into outbound HTTPS requests to allowlisted domains."
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Plain, non-sensitive environment variables."
+msgstr "Plain, non-sensitive environment variables."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Use exact domains such as api.openai.com or wildcards such as *.mistral.ai."
@@ -275,34 +275,6 @@ msgid "The Computer environment variables could not be loaded."
 msgstr "The Computer environment variables could not be loaded."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Environment variables"
-msgstr "Environment variables"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Choose the right kind for each value"
-msgstr "Choose the right kind for each value"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "<0>HTTPS secrets (DSEC_)</0> — for credentials and anything sensitive. Stored encrypted on the host. The dsbx forwarder injects the value only into outbound HTTPS requests to the domains you whitelist; code running in the Computer never sees the raw value. Safe for API keys, tokens, and other secrets bound to a known external service."
-msgstr "<0>HTTPS secrets (DSEC_)</0> — for credentials and anything sensitive. Stored encrypted on the host. The dsbx forwarder injects the value only into outbound HTTPS requests to the domains you whitelist; code running in the Computer never sees the raw value. Safe for API keys, tokens, and other secrets bound to a known external service."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "<0>Config ({SANDBOX_ENV_VAR_PREFIX})</0> — for non-sensitive configuration: feature flags, identifiers, public endpoints, model names. Mounted as plain env vars on every new Computer and read directly by the agent and the code it runs. Anything you put here should be safe to log; do not use for credentials."
-msgstr "<0>Config ({SANDBOX_ENV_VAR_PREFIX})</0> — for non-sensitive configuration: feature flags, identifiers, public endpoints, model names. Mounted as plain env vars on every new Computer and read directly by the agent and the code it runs. Anything you put here should be safe to log; do not use for credentials."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Values are write-only: they cannot be viewed after saving, only overwritten or deleted. Env vars are snapshotted when the Computer starts: an already-running Computer keeps its original values, and any new Computer (new conversation, restart) picks up the latest."
-msgstr "Values are write-only: they cannot be viewed after saving, only overwritten or deleted. Env vars are snapshotted when the Computer starts: an already-running Computer keeps its original values, and any new Computer (new conversation, restart) picks up the latest."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Add variable"
-msgstr "Add variable"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "No environment variables yet."
-msgstr "No environment variables yet."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Unknown"
 msgstr "Unknown"
 
@@ -327,20 +299,32 @@ msgid "Delete {envVarName}"
 msgstr "Delete {envVarName}"
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "HTTPS secrets ({httpsSecretPrefix})"
+msgstr "HTTPS secrets ({httpsSecretPrefix})"
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Add secret"
+msgstr "Add secret"
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "No HTTPS secrets yet."
+msgstr "No HTTPS secrets yet."
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Config ({configPrefix})"
+msgstr "Config ({configPrefix})"
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "Add variable"
+msgstr "Add variable"
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
+msgid "No config variables yet."
+msgstr "No config variables yet."
+
+#: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Replace variable"
 msgstr "Replace variable"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Keep the value out of the Computer environment."
-msgstr "Keep the value out of the Computer environment."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Stored securely. The dsbx forwarder injects it only into outbound HTTPS requests to whitelisted domains; Computer code never reads it."
-msgstr "Stored securely. The dsbx forwarder injects it only into outbound HTTPS requests to whitelisted domains; Computer code never reads it."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Mounted as a prefixed env var on every new Computer and read directly by the agent and any code it runs. Use for non-sensitive values."
-msgstr "Mounted as a prefixed env var on every new Computer and read directly by the agent and any code it runs. Use for non-sensitive values."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Name"
@@ -353,10 +337,6 @@ msgstr "The {namePrefix} prefix is reserved and cannot be removed."
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "e.g. api.openai.com, *.mistral.ai"
 msgstr "e.g. api.openai.com, *.mistral.ai"
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Only used when HTTPS secret is on."
-msgstr "Only used when HTTPS secret is on."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Value"
