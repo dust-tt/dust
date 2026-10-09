@@ -176,6 +176,30 @@ msgid "All comments"
 msgstr "All comments"
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a table."
+msgstr "This document can't be edited here yet because it has a table."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has HTML."
+msgstr "This document can't be edited here yet because it has HTML."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a task list."
+msgstr "This document can't be edited here yet because it has a task list."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a code block fenced with ~~~."
+msgstr "This document can't be edited here yet because it has a code block fenced with ~~~."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has an indented code fence."
+msgstr "This document can't be edited here yet because it has an indented code fence."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a reference link definition."
+msgstr "This document can't be edited here yet because it has a reference link definition."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 
