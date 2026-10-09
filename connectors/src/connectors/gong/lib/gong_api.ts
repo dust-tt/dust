@@ -241,11 +241,11 @@ const GongPermissionProfilesResponseCodec = t.intersection([
 ]);
 
 // Gong's documented Retry-After unit is seconds, we have observerd it to be in anything betwee 1 to
-// 55k.  We thought before that it was milliseconds but we've observed in the while a decrease of
-// that value with following a second pattern (spolu). We floor at 10s and ceil at 1h to avoid
+// 80k.  We thought before that it was milliseconds but we've observed in the while a decrease of
+// that value with following a second pattern (spolu). We floor at 10s and ceil at 24h to avoid
 // outliers.
 const RETRY_AFTER_FLOOR_SECONDS = 10;
-const RETRY_AFTER_CEILING_SECONDS = 3600;
+const RETRY_AFTER_CEILING_SECONDS = 24 * 3600;
 
 const GONG_INVALID_CREDENTIALS_MESSAGES = [
   "Validate credentials failed. Please check your credentials and try again.",
@@ -255,6 +255,12 @@ const GONG_INVALID_CREDENTIALS_MESSAGES = [
   "Company is inactive",
 ];
 
+/**
+ * @cc [owner:philipperolet,label:error-handling] keeps-daily-quota-delay
+ * A `raw` value between 10 seconds and 24 hours MUST be returned unchanged, so that a 429 caused by
+ * the customer's used-up daily Gong API quota (Retry-After up to ~22h observed) is retried once, at
+ * the quota reset, rather than every hour until then.
+ */
 export function clampRetryAfterSeconds(
   raw: number | undefined
 ): number | undefined {
