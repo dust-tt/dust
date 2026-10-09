@@ -1,7 +1,6 @@
 import type {
   CatalogItem,
   CatalogQuery,
-  SearchCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   deduplicateCatalogItems,
@@ -18,7 +17,7 @@ import { useCallback, useMemo } from "react";
 
 interface CatalogPage {
   query: CatalogQuery;
-  items: SearchCatalogItem[];
+  items: CatalogItem[];
   next: {
     agents: number | null;
     skills: number | null;
@@ -181,8 +180,12 @@ export function useCatalogSearch({
     }
   }, [hasMore, isValidating, setSize, size]);
   const setItemFavorite = useCallback(
-    (target: CatalogItem, isFavorite: boolean) =>
-      mutate(
+    async (
+      target: CatalogItem,
+      isFavorite: boolean,
+      save: () => Promise<boolean>
+    ) => {
+      await mutate(
         (pages) =>
           pages?.map((page) => ({
             ...page,
@@ -193,7 +196,10 @@ export function useCatalogSearch({
             ),
           })),
         { revalidate: false }
-      ),
+      );
+      await save();
+      await mutate();
+    },
     [mutate]
   );
 

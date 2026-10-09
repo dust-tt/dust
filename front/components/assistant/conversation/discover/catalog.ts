@@ -3,15 +3,11 @@ import type {
   AgentSearchFilters,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
-import type {
-  SearchSkillsResponseBody,
-  SkillSearchFilters,
-} from "@app/types/api/skills";
+import type { SkillSearchFilters } from "@app/types/api/skills";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 
 type DiscoverAgentSearchResult = SearchAgentsResponseBody["agents"][number];
-type DiscoverSkillSearchResult = SearchSkillsResponseBody["skills"][number];
 
 type CatalogSkill = Pick<
   SkillListItemType,
@@ -22,6 +18,7 @@ interface CatalogMetadata {
   authors: readonly string[];
   isDustProvided: boolean;
   activeUsersCount: number | null;
+  isFavorite: boolean;
 }
 
 export type CatalogItem = CatalogMetadata &
@@ -29,8 +26,6 @@ export type CatalogItem = CatalogMetadata &
     | { kind: "agent"; agent: RichAgentMentionCandidate }
     | { kind: "skill"; skill: CatalogSkill }
   );
-
-export type SearchCatalogItem = CatalogItem & { isFavorite: boolean };
 
 export type CatalogView = "favorites" | "popular" | "all" | "mine";
 export type CatalogKind = "all" | CatalogItem["kind"];
@@ -112,7 +107,7 @@ export function getItemDescription(item: CatalogItem): string {
 
 export function toSearchAgentCatalogItem(
   agent: DiscoverAgentSearchResult
-): SearchCatalogItem {
+): CatalogItem {
   return {
     kind: "agent",
     agent,
@@ -124,8 +119,8 @@ export function toSearchAgentCatalogItem(
 }
 
 export function toSearchSkillCatalogItem(
-  skill: DiscoverSkillSearchResult
-): SearchCatalogItem {
+  skill: SkillListItemType & { isFavorite: boolean }
+): CatalogItem {
   return {
     kind: "skill",
     skill,
@@ -157,9 +152,7 @@ export function interleaveCatalogItems<T>(agents: T[], skills: T[]): T[] {
   return items;
 }
 
-export function deduplicateCatalogItems<T extends CatalogItem>(
-  items: T[]
-): T[] {
+export function deduplicateCatalogItems(items: CatalogItem[]): CatalogItem[] {
   const seen = new Set<string>();
   return items.filter((item) => {
     const key = `${item.kind}-${getItemId(item)}`;

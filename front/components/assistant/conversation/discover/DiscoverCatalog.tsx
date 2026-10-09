@@ -4,7 +4,6 @@ import type {
   CatalogKind,
   CatalogQuery,
   CatalogView,
-  SearchCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   buildCatalogQuery,
@@ -195,9 +194,7 @@ function SearchCatalog({
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         owner={owner}
-        onFavoriteChange={(item, isFavorite) =>
-          void catalogSearch.setItemFavorite(item, isFavorite)
-        }
+        onFavoriteChange={catalogSearch.setItemFavorite}
         onDetails={(item) =>
           onDetails(item, () => {
             void catalogSearch.mutate();
@@ -395,7 +392,7 @@ function CatalogFiltersNav({
 }
 
 interface CatalogResultsProps extends CatalogActions {
-  items: SearchCatalogItem[];
+  items: CatalogItem[];
   itemsQuery: CatalogQuery;
   isLoading: boolean;
   isLoadingMore: boolean;
@@ -405,7 +402,11 @@ interface CatalogResultsProps extends CatalogActions {
   canClearFilters: boolean;
   onClearFilters: () => void;
   owner: LightWorkspaceType;
-  onFavoriteChange: (item: CatalogItem, isFavorite: boolean) => void;
+  onFavoriteChange: (
+    item: CatalogItem,
+    isFavorite: boolean,
+    save: () => Promise<boolean>
+  ) => Promise<void>;
 }
 
 function CatalogResults({
@@ -478,8 +479,8 @@ function CatalogResults({
                 <CatalogFavoriteButton
                   owner={owner}
                   item={item}
-                  onFavoriteChange={(isFavorite) =>
-                    onFavoriteChange(item, isFavorite)
+                  onFavoriteChange={(isFavorite, save) =>
+                    onFavoriteChange(item, isFavorite, save)
                   }
                 />
               }
@@ -518,8 +519,11 @@ function CatalogResults({
 
 interface CatalogFavoriteButtonProps {
   owner: LightWorkspaceType;
-  item: SearchCatalogItem;
-  onFavoriteChange: (isFavorite: boolean) => void;
+  item: CatalogItem;
+  onFavoriteChange: (
+    isFavorite: boolean,
+    save: () => Promise<boolean>
+  ) => Promise<void>;
 }
 
 function CatalogFavoriteButton({
@@ -533,18 +537,19 @@ function CatalogFavoriteButton({
   });
   const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const { t } = useLingui();
 
   const toggleFavorite = async () => {
     const isFavorite = !item.isFavorite;
-    onFavoriteChange(isFavorite);
-    const didUpdate =
+    setIsSaving(true);
+    await onFavoriteChange(isFavorite, () =>
       item.kind === "agent"
-        ? await updateUserFavorite(isFavorite)
-        : await updateSkillFavorite(item.skill, isFavorite);
-    if (!didUpdate) {
-      onFavoriteChange(!isFavorite);
-    }
+        ? updateUserFavorite(isFavorite)
+        : updateSkillFavorite(item.skill, isFavorite)
+    );
+    setIsSaving(false);
   };
 
   return (
@@ -555,6 +560,7 @@ function CatalogFavoriteButton({
       aria-pressed={item.isFavorite}
       tooltip={item.isFavorite ? t`Remove from favorites` : t`Add to favorites`}
       onClick={toggleFavorite}
+      disabled={isSaving}
       className={cn(!item.isFavorite && REVEAL_ON_ROW_HOVER_CLASSES)}
     />
   );

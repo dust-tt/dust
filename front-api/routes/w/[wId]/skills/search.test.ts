@@ -5,6 +5,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillListItemFactory } from "@app/tests/utils/SkillListItemFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -275,25 +276,11 @@ describe("POST /api/w/:wId/skills/search", () => {
     const favorite = await SkillFactory.create(auth, { name: "Favorite" });
     const other = await SkillFactory.create(auth, { name: "Other" });
     expect((await favorite.setFavorite(auth, true)).isOk()).toBe(true);
-    const listItem = {
-      status: "active",
-      canWrite: false,
-      canAdministrate: false,
-      availability: "workspace_users",
-      mcpServerViewIds: [],
-      editorIds: [],
-      activeUsersCount: null,
-      updatedAt: null,
-      icon: null,
-      name: "Search result",
-      requestedSpaceIds: [],
-      userFacingDescription: "Description",
-    };
     searchSkills.mockResolvedValue(
       new Ok({
         skills: [
-          { ...listItem, sId: favorite.sId },
-          { ...listItem, sId: other.sId },
+          SkillListItemFactory.build({ sId: favorite.sId }),
+          SkillListItemFactory.build({ sId: other.sId }),
         ],
         total: 2,
         hasMore: false,

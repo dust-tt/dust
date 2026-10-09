@@ -52,28 +52,26 @@ export async function searchAgentListings(
   const facetCountsById = (
     values: { value: string; count: number }[] | undefined
   ) => new Map((values ?? []).map(({ value, count }) => [value, count]));
-  const [users, tags, skills, spaces, mcpServerViews, favoriteIds] =
-    await Promise.all([
-      UserResource.fetchByIds(editorIds),
-      tagIds.length > 0 ? TagResource.fetchByIds(auth, tagIds) : [],
-      facetValues.skills?.length
-        ? SkillResource.fetchByIds(auth, facetIds(facetValues.skills), {
-            withInstructions: false,
-            withTools: false,
-            withFileAttachments: false,
-          })
-        : [],
-      facetValues.spaces?.length
-        ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
-        : [],
-      facetValues.mcpServerViews?.length
-        ? MCPServerViewResource.fetchByIds(
-            auth,
-            facetIds(facetValues.mcpServerViews)
-          )
-        : [],
-      AgentResource.listFavoriteIdsForCurrentUser(auth),
-    ]);
+  const users = await UserResource.fetchByIds(editorIds);
+  const tags = await TagResource.fetchByIds(auth, tagIds);
+  const skills = await SkillResource.fetchByIds(
+    auth,
+    facetIds(facetValues.skills),
+    {
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    }
+  );
+  const spaces = await SpaceResource.fetchByIds(
+    auth,
+    facetIds(facetValues.spaces)
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    facetIds(facetValues.mcpServerViews)
+  );
+  const favoriteIds = await AgentResource.listFavoriteIdsForCurrentUser(auth);
 
   const favoriteIdSet = new Set(favoriteIds);
   const editorsById = new Map(

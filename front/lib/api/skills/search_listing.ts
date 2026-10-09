@@ -54,27 +54,25 @@ export async function searchSkillListings(
       ...facetIds(facetValues.editors),
     ]),
   ];
-  const [users, childSkills, spaces, mcpServerViews, favoriteIds] =
-    await Promise.all([
-      UserResource.fetchByIds(editorIds),
-      facetValues.childSkills?.length
-        ? SkillResource.fetchByIds(auth, facetIds(facetValues.childSkills), {
-            withInstructions: false,
-            withTools: false,
-            withFileAttachments: false,
-          })
-        : [],
-      facetValues.spaces?.length
-        ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
-        : [],
-      facetValues.mcpServerViews?.length
-        ? MCPServerViewResource.fetchByIds(
-            auth,
-            facetIds(facetValues.mcpServerViews)
-          )
-        : [],
-      SkillResource.listFavoriteIdsForCurrentUser(auth),
-    ]);
+  const users = await UserResource.fetchByIds(editorIds);
+  const childSkills = await SkillResource.fetchByIds(
+    auth,
+    facetIds(facetValues.childSkills),
+    {
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    }
+  );
+  const spaces = await SpaceResource.fetchByIds(
+    auth,
+    facetIds(facetValues.spaces)
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    facetIds(facetValues.mcpServerViews)
+  );
+  const favoriteIds = await SkillResource.listFavoriteIdsForCurrentUser(auth);
 
   const favoriteIdSet = new Set(favoriteIds);
   const editorsById = new Map(

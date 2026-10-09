@@ -1,6 +1,7 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentSearchListItemFactory } from "@app/tests/utils/AgentSearchListItemFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -168,26 +169,11 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     expect((await favoriteResource.setUserFavorite(auth, true)).isOk()).toBe(
       true
     );
-    const listItem = {
-      status: "active",
-      scope: "visible",
-      name: "Search result",
-      description: "Description",
-      pictureUrl: "https://dust.tt/static/agent.png",
-      model: null,
-      feedbacks: { up: 0, down: 0 },
-      requestedSpaceIds: [],
-      tagIds: [],
-      editorIds: [],
-      editedBy: null,
-      activeUsersCount: null,
-      updatedAt: null,
-    };
     searchAgents.mockResolvedValue(
       new Ok({
         agents: [
-          { ...listItem, sId: favorite.sId },
-          { ...listItem, sId: other.sId },
+          AgentSearchListItemFactory.build({ sId: favorite.sId }),
+          AgentSearchListItemFactory.build({ sId: other.sId }),
         ],
         total: 2,
         hasMore: false,
