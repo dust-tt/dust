@@ -83,6 +83,7 @@ function titleText(
 export function collectTests(source: string, fileName: string): TestBodies {
   const sourceFile = parse(source, fileName);
   const tests: TestBodies = new Map();
+  const occurrences = new Map<string, number>();
 
   const visit = (node: ts.Node, groups: string[]): void => {
     if (ts.isCallExpression(node)) {
@@ -106,10 +107,10 @@ export function collectTests(source: string, fileName: string): TestBodies {
         );
         // Same-titled tests are keyed by occurrence so neither hides the other.
         const fullTitle = [...groups, title].join(" › ");
-        let key = fullTitle;
-        for (let occurrence = 2; tests.has(key); occurrence++) {
-          key = `${fullTitle} #${occurrence}`;
-        }
+        const occurrence = (occurrences.get(fullTitle) ?? 0) + 1;
+        occurrences.set(fullTitle, occurrence);
+        const key =
+          occurrence === 1 ? fullTitle : `${fullTitle} #${occurrence}`;
         tests.set(key, {
           groups,
           name: title,
@@ -292,7 +293,9 @@ export function renderSummary(
           .map(({ text, label, url }) => withLink(text, label, url))
           .join(" › ");
         const line = `${title ? "&emsp;" : ""}${CHANGE_MARKERS[kind]} ${testLabel(entry, kind)}`;
-        blocks.set(title, [...(blocks.get(title) ?? []), line]);
+        const block = blocks.get(title) ?? [];
+        block.push(line);
+        blocks.set(title, block);
       }
     }
     if (blocks.size === 0) {
@@ -349,33 +352,66 @@ export function truncateSummary(summary: string, limit = 60000): string {
   ].join("\n");
 }
 
-function git(args: string[]): string {
-  return execFileSync("git", args, {
-    encoding: "utf8",
-    maxBuffer: 1 << 26,
-    stdio: ["ignore", "pipe", "ignore"],
-  });
+type GitResult = { ok: true; stdout: string } | { ok: false; stderr: string };
+
+// Git reports a path missing from a revision with the same exit code as any other failure, so
+// only its message tells an absent file apart from a broken repository or revision.
+const MISSING_PATH = /does not exist in|exists on disk, but not in/;
+
+// The exec call throws on any nonzero exit, so it is the only place a catch is needed.
+function git(args: string[]): GitResult {
+  try {
+    const stdout = execFileSync("git", args, {
+      encoding: "utf8",
+      maxBuffer: 1 << 26,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { ok: true, stdout };
+  } catch (error) {
+    const stderr =
+      typeof error === "object" && error !== null && "stderr" in error
+        ? String(error.stderr)
+        : "";
+    return { ok: false, stderr };
+  }
+}
+
+function gitOutput(args: string[]): string {
+  const result = git(args);
+  if (!result.ok) {
+    throw new Error(`git ${args.join(" ")} failed: ${result.stderr.trim()}`);
+  }
+  return result.stdout;
 }
 
 function readAt(revision: string, path: string): string {
-  try {
-    return git(["show", `${revision}:${path}`]);
-  } catch {
+  const result = git(["show", `${revision}:${path}`]);
+  if (result.ok) {
+    return result.stdout;
+  }
+  if (MISSING_PATH.test(result.stderr)) {
     return "";
   }
+  throw new Error(
+    `git show ${revision}:${path} failed: ${result.stderr.trim()}`
+  );
 }
 
 function existsAt(revision: string, path: string): boolean {
-  try {
-    git(["cat-file", "-e", `${revision}:${path}`]);
+  const result = git(["cat-file", "-e", `${revision}:${path}`]);
+  if (result.ok) {
     return true;
-  } catch {
+  }
+  if (MISSING_PATH.test(result.stderr)) {
     return false;
   }
+  throw new Error(
+    `git cat-file ${revision}:${path} failed: ${result.stderr.trim()}`
+  );
 }
 
 function changedFiles(base: string, head: string): ChangedFile[] {
-  return git(["diff", "--name-status", "--find-renames", base, head])
+  return gitOutput(["diff", "--name-status", "--find-renames", base, head])
     .split("\n")
     .filter(Boolean)
     .map((line) => {
@@ -389,7 +425,7 @@ export function summarize(
   head: string,
   pullUrl: string | null = null
 ): string | null {
-  const mergeBase = git(["merge-base", base, head]).trim();
+  const mergeBase = gitOutput(["merge-base", base, head]).trim();
   const changes = changedFiles(mergeBase, head);
 
   // Each test file to report, with the path it had at the merge base.
@@ -442,7 +478,7 @@ export function summarize(
     ? {
         pullUrl,
         repoUrl: pullUrl.replace(/\/pull\/\d+$/, ""),
-        headSha: git(["rev-parse", head]).trim(),
+        headSha: gitOutput(["rev-parse", head]).trim(),
       }
     : null;
 
@@ -453,7 +489,7 @@ if (import.meta.main) {
   const [base = "origin/main", head = "HEAD", pullUrl = null] =
     process.argv.slice(2);
   const summary = summarize(base, head, pullUrl);
-  console.log(
-    summary ? truncateSummary(summary) : "No tests related to this change."
+  process.stdout.write(
+    `${summary ? truncateSummary(summary) : "No tests related to this change."}\n`
   );
 }

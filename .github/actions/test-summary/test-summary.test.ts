@@ -122,12 +122,20 @@ describe("renderSummary", () => {
     const fileHash = createHash("sha256").update("a.test.ts").digest("hex");
 
     assert.ok(
-      body.includes(`https://github.com/o/r/pull/7/files#diff-${fileHash}R5`)
+      body.includes(
+        `new <sub>[L5](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)</sub>`
+      )
     );
     assert.ok(
-      body.includes(`https://github.com/o/r/pull/7/files#diff-${fileHash}L3`)
+      body.includes(
+        `~~dropped~~ <sub>[L3](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)</sub>`
+      )
     );
-    assert.ok(body.includes("https://github.com/o/r/blob/abc/a.test.ts#L1"));
+    assert.ok(
+      body.includes(
+        "kept <sub>[L1](https://github.com/o/r/blob/abc/a.test.ts#L1)</sub>"
+      )
+    );
   });
 });
 
