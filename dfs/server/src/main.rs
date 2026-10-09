@@ -42,7 +42,7 @@ async fn main() -> anyhow::Result<()> {
     let mut terminate = signal(SignalKind::terminate())?;
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %listener.local_addr()?, "dfs-api listening");
-    serve(listener, async {
+    serve(listener, database, async {
         tokio::select! {
             _ = interrupt.recv() => {}
             _ = terminate.recv() => {}

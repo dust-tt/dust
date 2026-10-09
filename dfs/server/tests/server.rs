@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use anyhow::{Context, Result};
+use dfs_api::storage::fdb;
 use dfs_protocol::{
     ObjectId,
     rpc::{
@@ -17,10 +18,16 @@ use tonic_health::pb::{
     HealthCheckRequest, health_check_response::ServingStatus, health_client::HealthClient,
 };
 
+/// Same lookup as the server: dust-hive envs export their own cluster file through `env.sh`.
+fn cluster_file() -> String {
+    std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| "fdb.cluster".to_owned())
+}
+
 async fn serve() -> Result<Channel> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
-    tokio::spawn(dfs_api::serve(listener, std::future::pending()));
+    let database = fdb::open(&cluster_file())?;
+    tokio::spawn(dfs_api::serve(listener, database, std::future::pending()));
     Ok(Channel::from_shared(format!("http://{address}"))?
         .connect()
         .await?)
@@ -67,7 +74,8 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let (stop, stopped) = oneshot::channel();
-    let server = tokio::spawn(dfs_api::serve(listener, async {
+    let database = fdb::open(&cluster_file())?;
+    let server = tokio::spawn(dfs_api::serve(listener, database, async {
         let _ = stopped.await;
     }));
     let channel = Channel::from_shared(format!("http://{address}"))?

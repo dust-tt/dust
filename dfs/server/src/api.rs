@@ -8,11 +8,14 @@ use dfs_protocol::{
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
+use foundationdb::Database;
 use tonic::{Request, Response, Status};
 
 /// Every RPC answers UNSUPPORTED until its implementation lands.
 #[allow(clippy::upper_case_acronyms)]
-pub struct API;
+pub struct API {
+    pub database: Database,
+}
 
 #[tonic::async_trait]
 impl Dfs for API {
