@@ -251,17 +251,8 @@ async function analyzeAgentMessage(
       toolName: getToolNameFromFunctionCallName(action.functionCallName),
     })),
     contextOrigin: creditContext.triggeringUserMessageOrigin,
-    getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
     runUsages: usages,
   });
-  const billedCreditMicroByRunUsageModelId = new Map(
-    billingPlan.llm.flatMap((line) =>
-      (line.usageAllocations ?? []).map(
-        ({ usage, allocatedBilledCreditMicro }) =>
-          [usage.runUsageModelId, allocatedBilledCreditMicro] as const
-      )
-    )
-  );
   const llmCreditsWithoutWaivers = buildAgentMessageBillingPlan({
     actions: [],
     contextOrigin: null,
@@ -283,6 +274,17 @@ async function analyzeAgentMessage(
   > = allocationResult.isOk()
     ? allocationResult.value.reconciledCreditAmounts.byItem
     : new Map();
+  const billingGroups = allocationResult.isOk()
+    ? allocationResult.value.billingGroups
+    : [];
+  const billedCreditMicroByRunUsageModelId = new Map(
+    billingGroups.flatMap((group) =>
+      group.usages.map(
+        ({ usage, billedCreditMicro }) =>
+          [usage.runUsageModelId, billedCreditMicro] as const
+      )
+    )
+  );
   const newestAttributionVersion = Math.max(
     ...items.map(({ attributionVersion }) => attributionVersion)
   );
@@ -448,6 +450,19 @@ async function analyzeAgentMessage(
         directCreditAmountMicro / 1_000_000,
     },
   ]);
+
+  console.log("\nBilling groups (recomputed: this branch)");
+  console.table(
+    billingGroups.map((group) => ({
+      runKey: group.runKey,
+      provider: group.providerId,
+      model: group.modelId,
+      calls: group.usages.length,
+      costCredits: credits(Math.round(group.costCreditMicro)),
+      billedCredits: credits(group.billedCreditMicro),
+      roundingCredits: credits(Math.round(group.roundingCreditMicro)),
+    }))
+  );
 
   const modelActivities = await listAgentLoopModelActivities({
     agentMessageId,
