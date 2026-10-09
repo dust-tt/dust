@@ -378,9 +378,24 @@ export function AgentMessage({
     [triggeringUser, user.sId]
   );
 
+  // GenerationContext: to know if we are generating or not. Destructure the (stable) mutators
+  // so the effect below doesn't re-run on every context value change — which happens on every
+  // add/remove since the context value ref is tied to the generatingMessages state.
+  const {
+    generatingMessages,
+    addGeneratingMessage,
+    removeGeneratingMessage,
+    setStopRequested,
+    getConversationGeneratingMessages,
+  } = useGenerationContext();
+  const isStopRequested = generatingMessages.some(
+    (m) => m.messageId === sId && m.stopRequested
+  );
+
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
+    isStopRequested,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {
@@ -606,15 +621,6 @@ export function AgentMessage({
     [agentMessage.citations]
   );
 
-  // GenerationContext: to know if we are generating or not. Destructure the (stable) mutators
-  // so the effect below doesn't re-run on every context value change — which happens on every
-  // add/remove since the context value ref is tied to the generatingMessages state.
-  const {
-    addGeneratingMessage,
-    removeGeneratingMessage,
-    getConversationGeneratingMessages,
-  } = useGenerationContext();
-
   // Once a handoff user message exists for this agent message, the agent has
   // effectively handed over: the child agent owns the generation from here.
   // Treat this message as no longer generating so we don't show duplicate
@@ -763,7 +769,10 @@ export function AgentMessage({
         variant="ghost-secondary"
         size="xs"
         onClick={async () => {
-          await cancelMessage([sId]);
+          setStopRequested([sId], true);
+          if (!(await cancelMessage([sId]))) {
+            setStopRequested([sId], false);
+          }
         }}
         icon={Stop}
         className="text-muted-foreground"

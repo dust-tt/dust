@@ -104,7 +104,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   >(null);
   const pendingActionRef = useRef(pendingAction);
   pendingActionRef.current = pendingAction;
-  const pendingMessageIdsRef = useRef<string[]>([]);
   const generationContext = useGenerationContext();
   const { getBlockedActionItems, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
@@ -355,9 +354,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     if (
       pendingAction !== null &&
       !generationContext.generatingMessages.some(
-        (m) =>
-          m.conversationId === context.conversation?.sId &&
-          pendingMessageIdsRef.current.includes(m.messageId)
+        (m) => m.conversationId === context.conversation?.sId && m.stopRequested
       )
     ) {
       setPendingAction(null);
@@ -391,10 +388,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       const messageIds = generationContext.generatingMessages
         .filter((m) => m.conversationId === context.conversation?.sId)
         .map((m) => m.messageId);
-      pendingMessageIdsRef.current = messageIds;
+      generationContext.setStopRequested(messageIds, true);
       generationContext.clearPendingSteeringCount(context.conversation.sId);
       void cancelMessage(messageIds, action).then((ok) => {
         if (!ok) {
+          generationContext.setStopRequested(messageIds, false);
           setPendingAction(null);
         }
         mutateConversation();
@@ -480,10 +478,11 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     }
     setPendingAction(action === "interrupt" ? "interrupt" : "stop");
     const messageIds = getConversationMessageIds();
-    pendingMessageIdsRef.current = messageIds;
+    generationContext.setStopRequested(messageIds, true);
     generationContext.clearPendingSteeringCount(context.conversation.sId);
     const ok = await cancelMessage(messageIds, action);
     if (!ok) {
+      generationContext.setStopRequested(messageIds, false);
       setPendingAction(null);
     }
     void mutateConversation();

@@ -75,8 +75,10 @@ vi.mock(
   "@app/components/assistant/conversation/GenerationContextProvider",
   () => ({
     useGenerationContext: () => ({
+      generatingMessages: [],
       addGeneratingMessage: vi.fn(),
       removeGeneratingMessage: vi.fn(),
+      setStopRequested: vi.fn(),
       getConversationGeneratingMessages: () => [],
     }),
   })
