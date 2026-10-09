@@ -1,8 +1,10 @@
 import { apiConfig } from "@connectors/lib/api/config";
+import { EnvironmentConfig } from "@connectors/types";
 import type {
   RequestInfo as UndiciRequestInfo,
   RequestInit as UndiciRequestInit,
 } from "undici";
+import type { Dispatcher } from "undici";
 import { Agent, ProxyAgent, fetch as undiciFetch } from "undici";
 
 // Undici 8 changed two defaults. We keep the Undici 7 behavior until we roll them out on purpose:
@@ -19,6 +21,26 @@ export function createProxyAgent(proxyUrl: string): ProxyAgent {
 
 // Replaces Undici's default agent, which uses HTTP/2 since Undici 8. See `createProxyAgent`.
 export const http1Agent = new Agent({ allowH2: false });
+
+/**
+ * Returns a dispatcher routing requests through the static-IP proxy when PROXY_* env vars are set
+ * (always the case in deployed environments), for providers that whitelist our egress IPs.
+ * Otherwise (local development), returns the default HTTP/1.1 agent.
+ */
+export function getStaticIpProxyDispatcher(): Dispatcher {
+  const user = EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_NAME");
+  const password = EnvironmentConfig.getOptionalEnvVariable(
+    "PROXY_USER_PASSWORD"
+  );
+  const host = EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST");
+  const port = EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT");
+
+  if (user && password && host && port) {
+    return createProxyAgent(`http://${user}:${password}@${host}:${port}`);
+  }
+
+  return http1Agent;
+}
 
 /**
  * Creates a fetch function with proxy support if configured.

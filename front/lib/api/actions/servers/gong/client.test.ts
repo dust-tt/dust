@@ -1,12 +1,12 @@
 import type { GongClient } from "@app/lib/api/actions/servers/gong/client";
 import { getGongClient } from "@app/lib/api/actions/servers/gong/client";
-import { untrustedFetch } from "@app/lib/egress/server";
+import { staticIpFetch } from "@app/lib/egress/server";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { Response } from "undici";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/egress/server", () => ({
-  untrustedFetch: vi.fn(),
+  staticIpFetch: vi.fn(),
 }));
 
 function makeAuthInfo(apiBaseUrl?: string): AuthInfo {
@@ -33,7 +33,7 @@ describe("GongClient", () => {
   });
 
   it("uses the customer-specific Gong API base URL", async () => {
-    vi.mocked(untrustedFetch).mockResolvedValue(
+    vi.mocked(staticIpFetch).mockResolvedValue(
       new Response(
         JSON.stringify({ calls: [], records: { totalRecords: 0 } }),
         {
@@ -47,14 +47,14 @@ describe("GongClient", () => {
     const result = await client.listCalls({});
 
     expect(result.isOk()).toBe(true);
-    expect(untrustedFetch).toHaveBeenCalledWith(
+    expect(staticIpFetch).toHaveBeenCalledWith(
       "https://eu-2086.api.gong.io/v2/calls?",
       expect.objectContaining({ method: "GET" })
     );
   });
 
   it("uses the global Gong API base URL for legacy connections", async () => {
-    vi.mocked(untrustedFetch).mockResolvedValue(
+    vi.mocked(staticIpFetch).mockResolvedValue(
       new Response(
         JSON.stringify({ calls: [], records: { totalRecords: 0 } }),
         {
@@ -68,7 +68,7 @@ describe("GongClient", () => {
     const result = await client.listCalls({});
 
     expect(result.isOk()).toBe(true);
-    expect(untrustedFetch).toHaveBeenCalledWith(
+    expect(staticIpFetch).toHaveBeenCalledWith(
       "https://api.gong.io/v2/calls?",
       expect.objectContaining({ method: "GET" })
     );
