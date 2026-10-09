@@ -41,8 +41,8 @@ describe("useLiveSession", () => {
   it("reports local changes as syncing until the server has them", async () => {
     await server.destroy();
     let hold = false;
-    let release = () => undefined as unknown;
-    const held = new Promise((resolve) => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
       release = resolve;
     });
     server = newServer({

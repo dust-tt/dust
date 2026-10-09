@@ -519,6 +519,7 @@ describe("Document comments", () => {
         statusContainer={container}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
+        resolveImageSource={NO_IMAGE_SOURCE}
       />
     );
 
