@@ -13,7 +13,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  Check,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -253,20 +252,11 @@ export function AgentPicker({
                         />
                       )}
                       {isSelected && (
-                        // Show a tick by default; on hover swap it for an X to
-                        // signal that clicking will deselect the agent.
-                        <>
-                          <Icon
-                            visual={Check}
-                            size="sm"
-                            className="group-hover:hidden"
-                          />
-                          <Icon
-                            visual={XClose}
-                            size="sm"
-                            className="hidden group-hover:block"
-                          />
-                        </>
+                        <Icon
+                          visual={XClose}
+                          size="sm"
+                          className="hidden group-hover:block"
+                        />
                       )}
                       {onAgentDetailsClick && clientType !== "extension" ? (
                         <Button
