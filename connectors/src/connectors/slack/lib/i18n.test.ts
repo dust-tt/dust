@@ -19,6 +19,13 @@ describe("getSlackI18n", () => {
     ).toBe("Answered by *Dust*");
   });
 
+  it("renders translations in fr-FR", async () => {
+    const fr = await getSlackI18n("fr-FR");
+    expect(
+      fr._("Answered by *{assistantName}*", { assistantName: "Dust" })
+    ).toBe("Réponse de *Dust*");
+  });
+
   it("falls back to the English text for messages missing from the catalog", async () => {
     const fr = await getSlackI18n("fr-FR");
     expect(fr._("Not in any catalog, {name}", { name: "Ada" })).toBe(

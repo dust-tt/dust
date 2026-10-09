@@ -1,7 +1,9 @@
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import type { SlackChatBotMessageModel } from "@connectors/lib/models/slack";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import type {
   AgentEvent,
   ConversationPublicType,
@@ -75,6 +77,7 @@ describe("streamConversationToSlack", () => {
     } as unknown as SlackStreamHandler;
 
     const res = await streamConversationToSlack(dustAPI as unknown as DustAPI, {
+      i18n: await getSlackI18n(DEFAULT_LOCALE),
       assistantName: "Support",
       agentConfigurations: [],
       connector: {

@@ -1,0 +1,119 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-05 18:45+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "✅ Feedback submitted"
+msgstr "✅ Feedback submitted"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Ask another agent"
+msgstr "Ask another agent"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "*{assistantName}* is thinking..."
+msgstr "*{assistantName}* is thinking..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "*{assistantName}* encountered an error"
+msgstr "*{assistantName}* encountered an error"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Answered by *{assistantName}*"
+msgstr "Answered by *{assistantName}*"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Thinking..."
+msgstr "Thinking..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Error"
+msgstr "Error"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Answered"
+msgstr "Answered"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "View full conversation"
+msgstr "View full conversation"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Agent is thinking..."
+msgstr "Agent is thinking..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Agent is thinking... ({thinkingAction})"
+msgstr "Agent is thinking... ({thinkingAction})"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "The agent is requesting permission to use tool `{toolName}`"
+msgstr "The agent is requesting permission to use tool `{toolName}`"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Approve"
+msgstr "Approve"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Reject"
+msgstr "Reject"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "The agent requires personal authentication for `{serverName}`"
+msgstr "The agent requires personal authentication for `{serverName}`"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Authenticate"
+msgstr "Authenticate"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Type something else…"
+msgstr "Type something else…"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Skip"
+msgstr "Skip"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Submit"
+msgstr "Submit"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "The agent requires file authorization for `{fileName}`"
+msgstr "The agent requires file authorization for `{fileName}`"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Authorize file"
+msgstr "Authorize file"
