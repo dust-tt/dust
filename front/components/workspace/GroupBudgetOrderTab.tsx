@@ -1,4 +1,5 @@
 import { SharedUsageLimitCell } from "@app/components/workspace/SharedUsageLimitCell";
+import { useFormatErrorDescription } from "@app/hooks/useFormatErrorDescription";
 import { formatCreditValue } from "@app/lib/client/credits";
 import {
   ArrowDown,
@@ -37,7 +38,7 @@ interface GroupBudgetOrderTabProps {
   groupName: string;
   rows: GroupBudgetOrderRow[];
   isLoading: boolean;
-  isError: boolean;
+  error: unknown;
   disabled: boolean;
   onMove: (
     groupId: string,
@@ -50,11 +51,12 @@ export function GroupBudgetOrderTab({
   groupName,
   rows,
   isLoading,
-  isError,
+  error,
   disabled,
   onMove,
 }: GroupBudgetOrderTabProps) {
   const { t } = useLingui();
+  const formatErrorDescription = useFormatErrorDescription();
   const [isFiltered, setIsFiltered] = useState(true);
 
   const visibleRows = useMemo(
@@ -184,11 +186,16 @@ export function GroupBudgetOrderTab({
   if (isLoading) {
     return <Spinner size="sm" />;
   }
-  if (isError) {
+  if (error) {
     return (
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {t`The order of group budgets could not be loaded.`}
-      </span>
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="text-foreground dark:text-foreground-night">
+          {t`The order of group budgets could not be loaded.`}
+        </span>
+        <span className="text-muted-foreground dark:text-muted-foreground-night">
+          {formatErrorDescription(error)}
+        </span>
+      </div>
     );
   }
   if (rows.length === 0) {

@@ -176,7 +176,7 @@ function useGroupBudgetOrderDraft(
   draft: GroupUsageDraft,
   isEnabled: boolean
 ) {
-  const { overlaps, hasLoadedOverlaps, isOverlapsLoading, isOverlapsError } =
+  const { overlaps, hasLoadedOverlaps, isOverlapsLoading, overlapsError } =
     useSharedUsageLimitOverlaps({
       owner,
       groupId: group.groupId,
@@ -228,7 +228,7 @@ function useGroupBudgetOrderDraft(
     baseOrder,
     isOrderChanged: hasLoadedOverlaps && !isSameBudgetOrder(order, baseOrder),
     isOverlapsLoading,
-    isOverlapsError,
+    overlapsError,
     moveGroup: (
       groupId: string,
       direction: "up" | "down",
@@ -557,7 +557,7 @@ function EditGroupUsageForm({
                 groupName={groupName}
                 rows={orderDraft.rows}
                 isLoading={orderDraft.isOverlapsLoading}
-                isError={orderDraft.isOverlapsError}
+                error={orderDraft.overlapsError}
                 disabled={isSaving}
                 onMove={orderDraft.moveGroup}
               />

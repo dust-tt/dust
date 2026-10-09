@@ -1,5 +1,6 @@
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSharedUsageLimitOverlapsResponseBody } from "@app/types/api/groups/shared_usage_limit";
+import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -14,7 +15,7 @@ export function sharedUsageLimitOverlapsUrl(
 export async function invalidateSharedUsageLimitOverlaps(workspaceId: string) {
   await mutate(
     (key) =>
-      typeof key === "string" &&
+      isString(key) &&
       key.startsWith(`/api/w/${workspaceId}/groups/`) &&
       key.endsWith("/shared_usage_limit/overlaps")
   );
@@ -43,6 +44,6 @@ export function useSharedUsageLimitOverlaps({
     overlaps: data?.groups ?? emptyArray(),
     hasLoadedOverlaps: data !== undefined,
     isOverlapsLoading: !error && !data && !disabled,
-    isOverlapsError: !!error,
+    overlapsError: error ?? null,
   };
 }
