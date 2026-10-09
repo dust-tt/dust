@@ -6,7 +6,6 @@ import {
 import { Button } from "@sparkle/components/Button";
 import { type CHIP_COLORS, Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
-import { IconButton } from "@sparkle/components/IconButton";
 import { Tooltip } from "@sparkle/components/Tooltip";
 import { useCopyToClipboard } from "@sparkle/hooks";
 import {
@@ -594,9 +593,9 @@ export function CellContentWithCopy({
   return (
     <div className={cn("flex items-center space-x-2", className)}>
       <span className="truncate">{children}</span>
-      <IconButton
+      <Button
         icon={isCopied ? ClipboardCheck : Clipboard}
-        variant="outline"
+        variant="ghost-secondary"
         onClick={async (e) => {
           e.stopPropagation();
           await handleCopy();
