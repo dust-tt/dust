@@ -50,6 +50,9 @@
   --animate-shake: shake 0.5s ease-in-out both;
   --animate-reload: reload 1000ms ease-out;
   --animate-fadeout: fadeout 500ms ease-out;
+  /* The text of an agent's edit in a live document (AgentEdits.ts). */
+  --animate-agent-edit-settle: agent-edit-settle 1200ms var(--ease-out-cubic)
+    both;
   --animate-marquee: marquee 25s linear infinite;
   --animate-fade-in-up: fade-in-up 0.5s ease-in-out;
   --animate-input-bar-compact-in: input-bar-compact-in 480ms
@@ -100,6 +103,15 @@
   }
   100% {
     opacity: 0;
+  }
+}
+/* `--agent-edit-highlight` is set once on the text, in the agent's color: only the color animates. */
+@keyframes agent-edit-settle {
+  from {
+    background-color: var(--agent-edit-highlight);
+  }
+  to {
+    background-color: transparent;
   }
 }
 @keyframes reload {
