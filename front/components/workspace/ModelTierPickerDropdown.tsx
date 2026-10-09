@@ -1,5 +1,6 @@
 import type { ModelTierPickerOption } from "@app/lib/client/model_tier_options";
 import { getModelTierPickerLabel } from "@app/lib/client/model_tier_options";
+import type { ButtonVariantType } from "@dust-tt/sparkle";
 import {
   Button,
   DropdownMenu,
@@ -17,6 +18,7 @@ interface ModelTierPickerDropdownProps {
   isLoading?: boolean;
   isMutating?: boolean;
   className?: string;
+  variant?: ButtonVariantType;
 }
 
 export function ModelTierPickerDropdown({
@@ -27,6 +29,7 @@ export function ModelTierPickerDropdown({
   isLoading = false,
   isMutating = false,
   className,
+  variant = "outline",
 }: ModelTierPickerDropdownProps) {
   if (isLoading) {
     return <Spinner size="xs" />;
@@ -38,7 +41,7 @@ export function ModelTierPickerDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant={variant}
           size="sm"
           isSelect
           label={label}
@@ -47,7 +50,7 @@ export function ModelTierPickerDropdown({
           className={className ?? "min-w-48 justify-between"}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-(--radix-dropdown-menu-trigger-width)">
+      <DropdownMenuContent className="w-max min-w-(--radix-dropdown-menu-trigger-width) max-w-80">
         {options.map((option) => (
           <DropdownMenuCheckboxItem
             key={option.value}
