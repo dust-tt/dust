@@ -1,5 +1,5 @@
 import type { LiveStatus } from "@app/components/editor/document/types";
-import { AlertCircle, Check, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import { AlertCircle, Check, Chip, cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -22,7 +22,8 @@ interface StatusRowProps {
 
 /** The row above the document, its controls at the right, kept in view while the document scrolls. */
 const StatusRow = ({ children }: StatusRowProps) => (
-  <div className="sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end gap-2.5 bg-background py-1 text-muted-foreground copy-xs print:hidden">
+  // Only its controls take clicks, so the text scrolling under the row stays clickable.
+  <div className="pointer-events-none sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs print:hidden [&>*]:pointer-events-auto">
     {children}
   </div>
 );
@@ -164,15 +165,18 @@ interface DocumentStatusProps {
   error: string | null;
   autosaveDebounceMs: number;
   onRetry: () => Promise<void>;
+  /** Statuses shown in the badge after the save status, such as the live status. */
   children?: ReactNode;
+  /** Shown next to the badge, such as the comments button. */
+  controls?: ReactNode;
 }
 
 /** The status row with the save status and the host's controls, and the save error under it. */
 /**
  * @cc [owner:tdraier,label:product] document-status-placement
- * The save status with its Retry and the controls given as children MUST show in a row above the
- * document that stays in view while the document scrolls, and the save error's full reason MUST
- * show under that row.
+ * The save status with its Retry and the statuses given as children MUST show in a badge above
+ * the document that stays in view while the document scrolls, with the given controls next to
+ * it; the save error's full reason MUST show under them.
  */
 export const DocumentStatus = ({
   editable,
@@ -182,6 +186,7 @@ export const DocumentStatus = ({
   autosaveDebounceMs,
   onRetry,
   children,
+  controls,
 }: DocumentStatusProps) => {
   const { t } = useLingui();
   const showSaveStatus = editable || dirty || saving;
@@ -190,22 +195,27 @@ export const DocumentStatus = ({
       ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
       : error;
 
-  if (!showSaveStatus && !children) {
+  if (!showSaveStatus && !children && !controls) {
     return null;
   }
   return (
     <>
       <StatusRow>
-        {showSaveStatus && (
-          <DocumentSaveStatus
-            dirty={dirty}
-            saving={saving}
-            error={saveError}
-            onRetry={editable ? onRetry : undefined}
-            autosaveDebounceMs={autosaveDebounceMs}
-          />
+        {(showSaveStatus || children) && (
+          <Chip size="xs" className="gap-2.5">
+            {showSaveStatus && (
+              <DocumentSaveStatus
+                dirty={dirty}
+                saving={saving}
+                error={saveError}
+                onRetry={editable ? onRetry : undefined}
+                autosaveDebounceMs={autosaveDebounceMs}
+              />
+            )}
+            {children}
+          </Chip>
         )}
-        {children}
+        {controls}
       </StatusRow>
       {showSaveStatus && saveError && <DocumentSaveError error={saveError} />}
     </>

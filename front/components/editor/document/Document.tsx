@@ -272,9 +272,11 @@ export const DocumentView = ({
           error={error}
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
+          controls={
+            showCommentsToggle && !headerControlsContainer && commentsToggle
+          }
         >
           {liveView && <DocumentLiveStatus status={liveView.status} />}
-          {showCommentsToggle && !headerControlsContainer && commentsToggle}
         </DocumentStatus>
         {editor && showCommentsToggle && (
           <DocumentCommentsList
