@@ -19,7 +19,6 @@ import {
 } from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -507,11 +506,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
   const [localConversationFont, setLocalConversationFont] =
     useState<ConversationFont>(fontContext?.conversationFont ?? "sans");
   const isMac = useIsMac();
-  const { isAgentsSectionVisible, setAgentsSectionVisible } =
-    useAgentsSectionVisibility();
-  const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
-    isAgentsSectionVisible
-  );
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
   const {
@@ -550,7 +544,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
-    localAgentsSectionVisible !== isAgentsSectionVisible ||
     (localLocale !== null && localLocale !== userLocale);
 
   const handleSave = () => {
@@ -566,7 +559,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
-    setAgentsSectionVisible(localAgentsSectionVisible);
     if (
       fontContext !== null &&
       localConversationFont !== fontContext.conversationFont
@@ -708,19 +700,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          }
-        />
-
-        <SettingsList.Row
-          title={t`Show your agents on the home page`}
-          description={t`Access your favorite and most-used agents, or search for one from the home page.`}
-          action={
-            <SliderToggle
-              selected={localAgentsSectionVisible}
-              onClick={() =>
-                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
-              }
-            />
           }
         />
       </SettingsList>

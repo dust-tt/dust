@@ -498,14 +498,6 @@ msgid "Enter"
 msgstr "Enter"
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Show your agents on the home page"
-msgstr "Show your agents on the home page"
-
-#: front/components/UserSettingsPopover.tsx
-msgid "Access your favorite and most-used agents, or search for one from the home page."
-msgstr "Access your favorite and most-used agents, or search for one from the home page."
-
-#: front/components/UserSettingsPopover.tsx
 msgid "Notification preferences saved"
 msgstr "Notification preferences saved"
 
