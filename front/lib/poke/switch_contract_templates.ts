@@ -185,7 +185,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Free pilot — 2 weeks",
     description:
       "Enterprise pooled, 2-week commitment, free workspace seats, 10k free credits per committed seat.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
@@ -206,7 +210,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Paid pilot",
     description:
       "Enterprise pooled, 2-month commitment, workspace seats at 600/year, first 2 weeks free, 10k initial credits per committed seat.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
