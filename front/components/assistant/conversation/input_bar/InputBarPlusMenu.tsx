@@ -34,7 +34,6 @@ export type InputBarPlusMenuSlashMenu = InputBarSlashMenuRefs & {
 
 interface InputBarPlusMenuProps {
   buttonSize: "xs" | "sm";
-  disabled: boolean;
   onOpenChange?: (open: boolean) => void;
   owner: LightWorkspaceType;
   slashMenu: InputBarPlusMenuSlashMenu;
@@ -42,7 +41,6 @@ interface InputBarPlusMenuProps {
 
 export function InputBarPlusMenu({
   buttonSize,
-  disabled,
   onOpenChange,
   owner,
   slashMenu,
@@ -63,7 +61,6 @@ export function InputBarPlusMenu({
           variant="ghost-secondary"
           icon={Plus}
           size={buttonSize}
-          disabled={disabled}
           isRounded
           tooltip={t`More`}
           className={cn(

@@ -88,6 +88,34 @@ msgid "Agent"
 msgstr "Agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Get work done"
+msgstr "Que souhaitez-vous accomplir ?"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Ask anything"
+msgstr "Posez n’importe quelle question"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to call an agent"
+msgstr "Tapez @ pour appeler un agent"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to list your favorite agents"
+msgstr "Tapez @ pour voir vos agents favoris"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to loop in a teammate"
+msgstr "Tapez @ pour inviter un collègue"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to use a skill"
+msgstr "Tapez / pour utiliser une compétence"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add tools and more"
+msgstr "Tapez / pour ajouter des outils et plus"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"
 msgstr "Impossible d’insérer le texte"
 

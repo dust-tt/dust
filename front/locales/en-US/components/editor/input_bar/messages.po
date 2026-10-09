@@ -44,31 +44,3 @@ msgstr "Unavailable skill"
 #: front/components/editor/input_bar/SkillNodeComponent.tsx
 msgid "Skill"
 msgstr "Skill"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Get work done"
-msgstr "Get work done"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Ask anything"
-msgstr "Ask anything"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Start with a question"
-msgstr "Start with a question"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Use @ to call an agent or person"
-msgstr "Use @ to call an agent or person"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Ask an agent for help"
-msgstr "Ask an agent for help"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Use / to call a skill"
-msgstr "Use / to call a skill"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Bring the right people in with @"
-msgstr "Bring the right people in with @"

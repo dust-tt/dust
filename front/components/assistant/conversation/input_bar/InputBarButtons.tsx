@@ -59,9 +59,6 @@ interface InputBarButtonsProps {
   // current member (unpublished/deleted), so @dust is shown instead. Surfaces
   // a notice on the agent pill.
   isDefaultAgentUnavailable: boolean;
-  // When true, disables every picker (tools, attachment) in addition to the
-  // agent selector which is muted via `disableAgentSelector`.
-  isInputDisabled: boolean;
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
@@ -88,12 +85,11 @@ interface InputBarButtonsProps {
 function SelectedAgentPill({
   buttonSize,
   isDefaultAgentUnavailable,
-  isInputDisabled,
   selectedAgent,
   space,
 }: Pick<
   InputBarButtonsProps,
-  "buttonSize" | "isDefaultAgentUnavailable" | "isInputDisabled" | "space"
+  "buttonSize" | "isDefaultAgentUnavailable" | "space"
 > & { selectedAgent: RichAgentMention }) {
   const { t } = useLingui();
   const isMobile = useIsMobile();
@@ -107,17 +103,15 @@ function SelectedAgentPill({
   return (
     <div
       role="button"
-      tabIndex={isInputDisabled ? -1 : 0}
+      tabIndex={0}
       aria-label={t`Selected agent: ${selectedAgentName}`}
-      aria-disabled={isInputDisabled}
       className={cn(
         "inline-flex box-border items-center rounded-full heading-sm px-2 gap-1.5 text-primary-900 transition-colors duration-200",
         buttonSize === "xs" ? "h-6" : "h-8",
         INPUT_BAR_PILL_SURFACE_CLASSNAME,
         isWidthConstrained && "pl-1",
-        isInputDisabled
-          ? "opacity-50 pointer-events-none"
-          : cn("cursor-pointer", INPUT_BAR_PILL_HOVER_CLASSNAME)
+        "cursor-pointer",
+        INPUT_BAR_PILL_HOVER_CLASSNAME
       )}
     >
       <Avatar size="3xs" visual={selectedAgent.pictureUrl} />
@@ -157,7 +151,6 @@ function InputBarAgentButton({
   disableAgentSelector,
   handleSingleAgentSelect,
   isDefaultAgentUnavailable,
-  isInputDisabled,
   onAgentPickerOpenChange,
   onAgentRemove,
   owner,
@@ -172,7 +165,6 @@ function InputBarAgentButton({
   | "disableAgentSelector"
   | "handleSingleAgentSelect"
   | "isDefaultAgentUnavailable"
-  | "isInputDisabled"
   | "onAgentPickerOpenChange"
   | "onAgentRemove"
   | "owner"
@@ -206,7 +198,6 @@ function InputBarAgentButton({
           <SelectedAgentPill
             buttonSize={buttonSize}
             isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-            isInputDisabled={isInputDisabled}
             selectedAgent={selectedAgent}
             space={space}
           />
@@ -220,7 +211,6 @@ function InputBarAgentButton({
                 ? t({ message: "Agent", context: "button label" })
                 : undefined
             }
-            disabled={isInputDisabled}
             isRounded
             className={cn(
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
@@ -237,7 +227,6 @@ function InputBarAgentButton({
 // The capabilities picker with the setup dialog a picked server may need.
 function InputBarCapabilitiesButton({
   buttonSize,
-  isInputDisabled,
   onCapabilitiesPickerOpenChange,
   onMCPServerViewSelect,
   onSkillSelect,
@@ -246,7 +235,6 @@ function InputBarCapabilitiesButton({
 }: Pick<
   InputBarButtonsProps,
   | "buttonSize"
-  | "isInputDisabled"
   | "onCapabilitiesPickerOpenChange"
   | "onMCPServerViewSelect"
   | "onSkillSelect"
@@ -266,7 +254,6 @@ function InputBarCapabilitiesButton({
         onSetupServer={setServerToSetup}
         onOpenChange={onCapabilitiesPickerOpenChange}
         buttonSize={buttonSize}
-        disabled={isInputDisabled}
       />
       {serverToSetup && (
         <CapabilitySetupDialog
@@ -320,7 +307,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   handleSingleAgentSelect,
   hideCapabilities,
   isDefaultAgentUnavailable,
-  isInputDisabled,
   lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
@@ -348,7 +334,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       disableAgentSelector={disableAgentSelector}
       handleSingleAgentSelect={handleSingleAgentSelect}
       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-      isInputDisabled={isInputDisabled}
       onAgentPickerOpenChange={onAgentPickerOpenChange}
       onAgentRemove={onAgentRemove}
       owner={owner}
@@ -385,7 +370,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
               owner={owner}
               buttonSize={buttonSize}
               side={conversation ? "top" : "bottom"}
-              disabled={isInputDisabled}
               selectionRef={modelSelectionRef}
               commitApiRef={modelSelectionCommitRef}
             />
@@ -393,7 +377,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
           {!hideCapabilities && actions.includes("capabilities") && (
             <InputBarCapabilitiesButton
               buttonSize={buttonSize}
-              isInputDisabled={isInputDisabled}
               onCapabilitiesPickerOpenChange={onCapabilitiesPickerOpenChange}
               onMCPServerViewSelect={onMCPServerViewSelect}
               onSkillSelect={onSkillSelect}
@@ -406,7 +389,6 @@ export const InputBarButtons = React.memo(function InputBarButtons({
         shouldShowPlusMenu && (
           <InputBarPlusMenu
             buttonSize={buttonSize}
-            disabled={isInputDisabled}
             onOpenChange={onPlusMenuOpenChange}
             owner={owner}
             slashMenu={slashMenu}

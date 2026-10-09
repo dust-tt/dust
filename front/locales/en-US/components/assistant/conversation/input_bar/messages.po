@@ -88,6 +88,34 @@ msgid "Agent"
 msgstr "Agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Get work done"
+msgstr "Get work done"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Ask anything"
+msgstr "Ask anything"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to call an agent"
+msgstr "Type @ to call an agent"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to list your favorite agents"
+msgstr "Type @ to list your favorite agents"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to loop in a teammate"
+msgstr "Type @ to loop in a teammate"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to use a skill"
+msgstr "Type / to use a skill"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add tools and more"
+msgstr "Type / to add tools and more"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"
 msgstr "Failed to inline text"
 
