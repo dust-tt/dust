@@ -1370,18 +1370,19 @@ impl Inner {
         if let Some(started) = group.dispatched {
             self.rpc
                 .record("writeback.group", started.elapsed(), result.is_err());
-            // Acceptance of the group's first edit to dispatch (client only), and to the outcome.
+            // Acceptance of the group's first edit to dispatch: the client-only delay.
             self.rpc.record(
                 "writeback.client_delay",
                 started.saturating_duration_since(group.accepted),
                 false,
             );
-            self.rpc.record(
-                "writeback.lag",
-                received.saturating_duration_since(group.accepted),
-                result.is_err(),
-            );
         }
+        // Acceptance to outcome, including groups that fail before dispatch.
+        self.rpc.record(
+            "writeback.lag",
+            received.saturating_duration_since(group.accepted),
+            result.is_err(),
+        );
         if let Err(error) = result {
             let name = match error {
                 ErrorCode::Unavailable => "writeback.error.unavailable",

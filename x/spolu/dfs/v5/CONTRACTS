@@ -49,5 +49,6 @@ Userspace owns caching and expiry. Shared writable mmap is unsupported.
 
 @cc [owner:fontanierh,label:testing] v5-commit-delay-metrics
 The client's `dfs_client_metrics` MUST keep reporting, each with `max_ms`: `writeback.client_delay`
-(a group's first edit accepted to dispatch), `writeback.group` (dispatch to outcome) and
-`writeback.lag` (first edit accepted to outcome). x/henry/dfs-bench reads them to compare clients.
+(a dispatched group's first edit accepted to dispatch), `writeback.group` (dispatch to outcome) and
+`writeback.lag` (first edit accepted to outcome, for every group, including those failed before
+dispatch). x/henry/dfs-bench reads them to compare clients.
