@@ -243,6 +243,17 @@ describe("splitThreadContent", () => {
     expect(userMessage).toBe("Can you go deeper on point 2?");
     expect(restOfThread).toContain("Here is my answer.");
   });
+
+  // Pinned timeout so this test still fails on quadratic splitting if the global timeout in
+  // vite.config.mjs changes.
+  it("returns quickly on a body made only of newlines", async () => {
+    const { userMessage, restOfThread } = await splitThreadContent(
+      "\n".repeat(100_000)
+    );
+
+    expect(userMessage).toBe("");
+    expect(restOfThread).toBe("");
+  }, 1_000);
 });
 
 describe("getThreadingLookupMessageIds", () => {
