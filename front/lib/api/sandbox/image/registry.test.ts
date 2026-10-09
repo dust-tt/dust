@@ -91,10 +91,6 @@ function getCommandPath(command: string): string {
 }
 
 describe("sandbox image registry", () => {
-  test("exposes the dust_filesystem capability", () => {
-    expect(getDustBaseImage().hasCapability("dust_filesystem")).toBe(true);
-  });
-
   test("loads Fluent Bit credentials from a root-only runtime file", () => {
     const serviceUnit = getCopiedContent(
       getCopyOperations(getDustBaseImageOperations()),

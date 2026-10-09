@@ -89,13 +89,6 @@ export async function getFrameShareLinkFromSource(
     return new Err(fsResult.error);
   }
   const dustFs = fsResult.value;
-  if (!dustFs.isGCSBacked()) {
-    return shareLinkError(
-      "invalid_source",
-      "Frame share links do not support the database-backed filesystem."
-    );
-  }
-
   const mount = dustFs
     .getMounts()
     .find(

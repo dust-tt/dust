@@ -122,12 +122,6 @@ export async function moveFrameV2Source(
   }
   const paths = pathsResult.value;
 
-  if (!dustFs.isGCSBacked()) {
-    return moveError(
-      "invalid_source",
-      "Frames v2 source moves do not support database-backed mounts."
-    );
-  }
   for (const scopedPath of [
     paths.sourceDirectoryPath,
     paths.destinationDirectoryPath,

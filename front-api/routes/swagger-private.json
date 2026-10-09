@@ -9253,13 +9253,7 @@
                   },
                   "metadata": {
                     "type": "object",
-                    "nullable": true,
-                    "properties": {
-                      "useDatabaseFileSystem": {
-                        "type": "boolean",
-                        "description": "Use the database-backed filesystem for a fresh standalone conversation."
-                      }
-                    }
+                    "nullable": true
                   },
                   "selectedSpaceIds": {
                     "type": "array",
