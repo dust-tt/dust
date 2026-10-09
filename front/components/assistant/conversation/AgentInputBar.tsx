@@ -91,6 +91,11 @@ interface AgentInputBarProps {
   context: VirtuosoMessageListContext;
 }
 
+/**
+ * @cc [owner:avervaet,label:react;product] stop-pending-until-generation-ends
+ * A stop/skip stays pending until the messages it targeted stop generating, not when its request
+ * returns. A failed request releases it immediately.
+ */
 export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const { t } = useLingui();
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
@@ -99,6 +104,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   >(null);
   const pendingActionRef = useRef(pendingAction);
   pendingActionRef.current = pendingAction;
+  const pendingMessageIdsRef = useRef<string[]>([]);
   const generationContext = useGenerationContext();
   const { getBlockedActionItems, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
@@ -349,7 +355,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     if (
       pendingAction !== null &&
       !generationContext.generatingMessages.some(
-        (m) => m.conversationId === context.conversation?.sId
+        (m) =>
+          m.conversationId === context.conversation?.sId &&
+          pendingMessageIdsRef.current.includes(m.messageId)
       )
     ) {
       setPendingAction(null);
@@ -383,9 +391,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       const messageIds = generationContext.generatingMessages
         .filter((m) => m.conversationId === context.conversation?.sId)
         .map((m) => m.messageId);
+      pendingMessageIdsRef.current = messageIds;
       generationContext.clearPendingSteeringCount(context.conversation.sId);
-      void cancelMessage(messageIds, action).then(() => {
-        setPendingAction(null);
+      void cancelMessage(messageIds, action).then((ok) => {
+        if (!ok) {
+          setPendingAction(null);
+        }
         mutateConversation();
       });
     };
@@ -468,9 +479,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       return;
     }
     setPendingAction(action === "interrupt" ? "interrupt" : "stop");
+    const messageIds = getConversationMessageIds();
+    pendingMessageIdsRef.current = messageIds;
     generationContext.clearPendingSteeringCount(context.conversation.sId);
-    await cancelMessage(getConversationMessageIds(), action);
-    setPendingAction(null);
+    const ok = await cancelMessage(messageIds, action);
+    if (!ok) {
+      setPendingAction(null);
+    }
     void mutateConversation();
   };
 
