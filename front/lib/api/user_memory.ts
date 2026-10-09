@@ -6,7 +6,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MAX_USER_MEMORY_CONTENT_LENGTH } from "@app/types/api/me/memory";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { conversationScopedPath, userScopedPath } from "@app/types/file_system";
+import {
+  conversationMetadataScopedPath,
+  userScopedPath,
+} from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -43,9 +46,10 @@ export async function getUserMemory(
 /**
  * @cc [owner:aubin-tchoi,label:product;performance] memory-file-copied-once
  * When the conversation's `memoryFilePath` is null, the authenticated user's `MEMORY.md` MUST be
- * copied server side in GCS to `conversation-{cId}/MEMORY.md`, whatever the conversation's storage
- * mode, before that path is recorded; when the user has no memory file, nothing is copied and the
- * path is still recorded. Once recorded, the path MUST be returned unchanged and nothing is copied.
+ * copied server side in GCS to the conversation metadata path
+ * `conversation_metadata-{cId}/MEMORY.md`, whatever the conversation's storage mode, before that
+ * path is recorded; when the user has no memory file, nothing is copied and the path is still
+ * recorded. Once recorded, the path MUST be returned unchanged and nothing is copied.
  */
 export async function ensureConversationMemoryFile(
   auth: Authenticator,
@@ -68,7 +72,7 @@ export async function ensureConversationMemoryFile(
     return new Ok(conversationResource.memoryFilePath);
   }
 
-  const fsResult = await DustFileSystem.forUserAndConversationInGCS(
+  const fsResult = await DustFileSystem.forConversationMetadata(
     auth,
     conversation
   );
@@ -76,9 +80,9 @@ export async function ensureConversationMemoryFile(
     return fsResult;
   }
 
-  // Having a user is guaranteed by DustFileSystem.forUserAndConversationInGCS.
+  // Having a user is guaranteed by DustFileSystem.forConversationMetadata.
   const user = auth.getNonNullableUser();
-  const memoryFilePath = conversationScopedPath({
+  const memoryFilePath = conversationMetadataScopedPath({
     conversationId: conversation.sId,
     rel: MEMORY_FILE_NAME,
   });

@@ -55,7 +55,7 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
   ) {
     this.scope = new FileSystemScope(
       mounts.flatMap((mount) =>
-        mount.kind === "user"
+        mount.kind === "user" || mount.kind === "conversation_metadata"
           ? []
           : [
               {
@@ -75,7 +75,11 @@ export class DatabaseFileSystemBackend implements FileSystemBackend {
         scopedPath === candidate.scopedPrefix ||
         scopedPath.startsWith(`${candidate.scopedPrefix}/`)
     );
-    if (!mount || mount.kind === "user") {
+    if (
+      !mount ||
+      mount.kind === "user" ||
+      mount.kind === "conversation_metadata"
+    ) {
       return null;
     }
     const relativePath = scopedPath.slice(mount.scopedPrefix.length + 1);
