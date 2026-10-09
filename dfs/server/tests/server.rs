@@ -43,7 +43,26 @@ const WELL_FORMED_AUTHORIZATION: &str =
 
 const SHUTDOWN_TEST_DEADLINE: Duration = Duration::from_secs(5);
 
-#[tokio::test]
+/// The FDB network boots once per process and cannot restart once stopped, so every server check
+/// runs under this one test, which holds the guard and drops it before the binary exits.
+#[test]
+fn server() -> Result<()> {
+    // SAFETY: the only `boot` in this test binary; `_network` is dropped when this test returns.
+    #[allow(unsafe_code)]
+    let _network = unsafe { foundationdb::boot() };
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
+
+    runtime.block_on(async {
+        health_checks_and_shutdown_work_without_authorization().await?;
+        dfs_rejects_oversized_requests().await?;
+        dfs_rejects_a_request_without_authorization_as_unauthenticated().await?;
+        dfs_rejects_a_malformed_authorization_as_unauthenticated().await?;
+        every_dfs_rpc_answers_unsupported_to_an_authenticated_request().await
+    })
+}
+
 async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
@@ -93,7 +112,6 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
 async fn dfs_rejects_oversized_requests() -> Result<()> {
     let mut client = DfsClient::new(serve().await?);
     let error = client
@@ -112,7 +130,6 @@ async fn dfs_rejects_oversized_requests() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test]
 async fn dfs_rejects_a_request_without_authorization_as_unauthenticated() -> Result<()> {
     let mut client = DfsClient::new(serve().await?);
 
@@ -125,7 +142,6 @@ async fn dfs_rejects_a_request_without_authorization_as_unauthenticated() -> Res
     Ok(())
 }
 
-#[tokio::test]
 async fn dfs_rejects_a_malformed_authorization_as_unauthenticated() -> Result<()> {
     let mut client = DfsClient::new(serve().await?);
     let key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
@@ -152,7 +168,6 @@ async fn dfs_rejects_a_malformed_authorization_as_unauthenticated() -> Result<()
     Ok(())
 }
 
-#[tokio::test]
 async fn every_dfs_rpc_answers_unsupported_to_an_authenticated_request() -> Result<()> {
     let mut client = DfsClient::new(serve().await?);
     let auth = WELL_FORMED_AUTHORIZATION;
