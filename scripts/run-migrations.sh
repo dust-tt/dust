@@ -47,10 +47,11 @@ if [[ "$COMMAND" == "post-deploy" ]]; then
   echo "   Make sure the following are deployed with the latest code before continuing:"
   echo "     • front"
   echo "     • front-sse"
+  echo "     • front-collab"
   echo ""
-  read -r -p "   Have you deployed front and front-sse? [y/N] " confirm
+  read -r -p "   Have you deployed front, front-sse and front-collab? [y/N] " confirm
   if [[ "$(printf '%s' "$confirm" | tr '[:upper:]' '[:lower:]')" != "y" ]]; then
-    echo "❌ Aborted. Deploy front and front-sse first." >&2
+    echo "❌ Aborted. Deploy front, front-sse and front-collab first." >&2
     exit 1
   fi
   echo ""
