@@ -65,7 +65,6 @@ export const SkillSourceMetadataSchema = z.object({
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
 export const SkillWithoutInstructionsAndToolsSchema = z.object({
-  id: z.number(),
   sId: z.string(),
   createdAt: z.number().nullable(),
   updatedAt: z.number().nullable(),

@@ -67,7 +67,6 @@ import { isString } from "@app/types/shared/utils/general";
 
 function makeSkillType(config: MockSkillConfig): SkillType {
   return {
-    id: 0,
     sId: config.sId,
     createdAt: null,
     updatedAt: null,
