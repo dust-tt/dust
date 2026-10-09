@@ -12,6 +12,8 @@ import type {
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
+import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -97,6 +99,21 @@ function startComment(dom: HTMLElement, editor: Editor, text: string) {
 const floatingCard = () =>
   document.querySelector<HTMLElement>(
     '[data-document-comment-card][data-state="open"]'
+  );
+
+/** The editor's content element under `root`. */
+const editorOf = (root: HTMLElement) => {
+  const element = root.querySelector<HTMLElement>(".tiptap");
+  if (!element) {
+    throw new Error("No editor content.");
+  }
+  return element;
+};
+
+/** Whether `element` comes before the document's content, as the page lays them out. */
+const isAbove = (element: Element, content: Element) =>
+  !!(
+    element.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING
   );
 
 /** The comment field's own editor, once it has mounted. */
@@ -530,9 +547,9 @@ describe("Document comments", () => {
       />
     );
 
-    expect(
-      (await within(documentRoot).findByRole("status")).textContent
-    ).toContain("Saved");
+    const status = await within(documentRoot).findByRole("status");
+    expect(status.textContent).toContain("Saved");
+    expect(isAbove(status, editorOf(documentRoot))).toBe(true);
     expect(within(container).queryByRole("status")).toBeNull();
     expect(
       within(documentRoot).queryByRole("button", { name: /^Comments/ })
@@ -560,6 +577,7 @@ describe("Document comments", () => {
     expect(
       badge.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+    expect(isAbove(badge, editorOf(documentRoot))).toBe(true);
     expect(within(container).queryByTestId("badge")).toBeNull();
     container.remove();
   });
@@ -752,8 +770,8 @@ describe("Document comments", () => {
 
 describe("Document live participants", () => {
   const PARTICIPANTS: DocumentLiveParticipant[] = [
-    { id: "usr_bob", name: "Bob" },
-    { id: "usr_ada", name: "Ada" },
+    LiveParticipantFactory.build({ id: "usr_bob", name: "Bob" }),
+    LiveParticipantFactory.build({ id: "usr_ada", name: "Ada" }),
   ];
 
   const renderLiveView = (
@@ -797,9 +815,9 @@ describe("Document live participants", () => {
     const toggle = await within(container).findByRole("button", {
       name: /^Comments/,
     });
-    expect(
-      within(container).getByTestId("participants").nextElementSibling
-    ).toBe(toggle);
+    const participants = within(container).getByTestId("participants");
+    expect(participants.nextElementSibling).toBe(toggle);
+    expect(isAbove(participants, editorOf(container))).toBe(true);
   });
 
   it("shows the agent at work with its avatar before the participants in the host's container", async () => {
@@ -813,7 +831,7 @@ describe("Document live participants", () => {
           status: "live",
           participants: PARTICIPANTS,
           agent: {
-            agent: { agentId: "dust", name: "Dust" },
+            agent: LiveAgentFactory.build({ agentId: "dust", name: "Dust" }),
             activity: "editing",
           },
           binding: null,

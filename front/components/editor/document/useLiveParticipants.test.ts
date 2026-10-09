@@ -1,24 +1,13 @@
 import { useLiveParticipants } from "@app/components/editor/document/useLiveParticipants";
+import { AwarenessFactory } from "@app/tests/utils/AwarenessFactory";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
+import type { Awareness } from "y-protocols/awareness";
 import {
-  Awareness,
   applyAwarenessUpdate,
   encodeAwarenessUpdate,
   removeAwarenessStates,
 } from "y-protocols/awareness";
-import * as Y from "yjs";
-
-const awarenesses: Awareness[] = [];
-
-const newAwareness = (user?: unknown) => {
-  const awareness = new Awareness(new Y.Doc());
-  awarenesses.push(awareness);
-  if (user !== undefined) {
-    awareness.setLocalStateField("user", user);
-  }
-  return awareness;
-};
 
 // What the session relays from another client.
 const receive = (local: Awareness, remote: Awareness) =>
@@ -32,18 +21,36 @@ const receive = (local: Awareness, remote: Awareness) =>
 
 describe("useLiveParticipants", () => {
   afterEach(() => {
-    awarenesses.splice(0).forEach((awareness) => awareness.destroy());
+    AwarenessFactory.destroyAll();
   });
 
   it("lists the current user first, then the others once each, in the order they joined", () => {
-    const local = newAwareness();
+    const local = AwarenessFactory.build();
     const { result } = renderHook(() => useLiveParticipants(local));
     expect(result.current).toEqual([]);
 
-    receive(local, newAwareness({ id: "bob", name: "Bob", color: "#111" }));
-    receive(local, newAwareness({ id: "ada", name: "Ada", color: "#222" }));
-    receive(local, newAwareness({ id: "bob", name: "Bob", color: "#111" }));
-    receive(local, newAwareness({ id: "me", name: "Me", color: "#000" }));
+    receive(
+      local,
+      AwarenessFactory.build({
+        user: { id: "bob", name: "Bob", color: "#111" },
+      })
+    );
+    receive(
+      local,
+      AwarenessFactory.build({
+        user: { id: "ada", name: "Ada", color: "#222" },
+      })
+    );
+    receive(
+      local,
+      AwarenessFactory.build({
+        user: { id: "bob", name: "Bob", color: "#111" },
+      })
+    );
+    receive(
+      local,
+      AwarenessFactory.build({ user: { id: "me", name: "Me", color: "#000" } })
+    );
     act(() =>
       local.setLocalStateField("user", { id: "me", name: "Me", color: "#000" })
     );
@@ -55,19 +62,55 @@ describe("useLiveParticipants", () => {
     ]);
   });
 
+  it("keeps a user's place while one of their editors stays", () => {
+    const local = AwarenessFactory.build();
+    const bobFirstTab = AwarenessFactory.build({
+      user: { id: "bob", name: "Bob", color: "#111" },
+    });
+    const { result } = renderHook(() => useLiveParticipants(local));
+    receive(local, bobFirstTab);
+    receive(
+      local,
+      AwarenessFactory.build({
+        user: { id: "ada", name: "Ada", color: "#222" },
+      })
+    );
+    receive(
+      local,
+      AwarenessFactory.build({
+        user: { id: "bob", name: "Bob", color: "#111" },
+      })
+    );
+
+    act(() => removeAwarenessStates(local, [bobFirstTab.clientID], "remote"));
+
+    expect(result.current).toEqual([
+      { id: "bob", name: "Bob" },
+      { id: "ada", name: "Ada" },
+    ]);
+  });
+
   it("ignores states without a user id", () => {
-    const local = newAwareness();
+    const local = AwarenessFactory.build();
     const { result } = renderHook(() => useLiveParticipants(local));
 
-    receive(local, newAwareness({ name: "Anonymous", color: "#111" }));
-    receive(local, newAwareness({ id: "", name: "Empty", color: "#111" }));
+    receive(
+      local,
+      AwarenessFactory.build({ user: { name: "Anonymous", color: "#111" } })
+    );
+    receive(
+      local,
+      AwarenessFactory.build({ user: { id: "", name: "Empty", color: "#111" } })
+    );
 
     expect(result.current).toEqual([]);
   });
 
   it("drops a user once their editor leaves", () => {
-    const local = newAwareness();
-    const bob = newAwareness({ id: "bob", name: "Bob", color: "#111" });
+    const local = AwarenessFactory.build();
+    const bob = AwarenessFactory.build({
+      user: { id: "bob", name: "Bob", color: "#111" },
+    });
     const { result } = renderHook(() => useLiveParticipants(local));
     receive(local, bob);
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);
@@ -78,8 +121,13 @@ describe("useLiveParticipants", () => {
   });
 
   it("starts with none on a new awareness, and without one", () => {
-    const first = newAwareness();
-    receive(first, newAwareness({ id: "bob", name: "Bob", color: "#111" }));
+    const first = AwarenessFactory.build();
+    receive(
+      first,
+      AwarenessFactory.build({
+        user: { id: "bob", name: "Bob", color: "#111" },
+      })
+    );
     const { result, rerender } = renderHook<
       ReturnType<typeof useLiveParticipants>,
       { awareness: Awareness | null }
@@ -88,7 +136,7 @@ describe("useLiveParticipants", () => {
     });
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);
 
-    rerender({ awareness: newAwareness() });
+    rerender({ awareness: AwarenessFactory.build() });
     expect(result.current).toEqual([]);
 
     rerender({ awareness: null });
