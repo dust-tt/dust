@@ -2,16 +2,11 @@
 import { DfsClient } from "@app/lib/dfs/client";
 import { MAX_UINT64 } from "@app/lib/dfs/codec";
 import { newDfsObjectId } from "@app/lib/dfs/object_id";
-import type { DfsMethod, DfsWireMessage } from "@app/lib/dfs/proto";
-import {
-  DFS_METHODS,
-  decodeDfsMessage,
-  encodeDfsMessage,
-} from "@app/lib/dfs/proto";
-import type { DfsTransport } from "@app/lib/dfs/transport";
+import type { DfsMethod } from "@app/lib/dfs/proto";
 import { DfsWireFactory } from "@app/tests/utils/DfsWireFactory";
+import type { FakeDfsAnswer } from "@app/tests/utils/FakeDfsTransport";
+import { FakeDfsTransport } from "@app/tests/utils/FakeDfsTransport";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
-import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { describe, expect, it } from "vitest";
 
@@ -21,53 +16,8 @@ const SESSION_KEY = "s".repeat(64);
 
 const { objectId: wireId, objectRef: wireRef, attr: wireAttr } = DfsWireFactory;
 
-type Answer = Result<DfsWireMessage, DfsError>;
-
-/**
- * Fake transport answering with canned wire responses. Requests and answers go through the real
- * protobuf encoding so that field names and types are checked against `dfs.proto`.
- */
-class FakeTransport implements DfsTransport {
-  readonly calls: {
-    method: DfsMethod;
-    request: DfsWireMessage;
-    key: string;
-  }[] = [];
-
-  constructor(private readonly answers: Partial<Record<DfsMethod, Answer>>) {}
-
-  async call(
-    method: DfsMethod,
-    request: DfsWireMessage,
-    key: string
-  ): Promise<Answer> {
-    const types = DFS_METHODS[method];
-    this.calls.push({
-      method,
-      request: decodeDfsMessage(
-        types.request,
-        encodeDfsMessage(types.request, request)
-      ),
-      key,
-    });
-    const answer = this.answers[method];
-    if (!answer) {
-      throw new Error(`Unexpected call to ${method}`);
-    }
-    if (answer.isErr()) {
-      return answer;
-    }
-    return new Ok(
-      decodeDfsMessage(
-        types.response,
-        encodeDfsMessage(types.response, answer.value)
-      )
-    );
-  }
-}
-
-function setup(answers: Partial<Record<DfsMethod, Answer>>) {
-  const transport = new FakeTransport(answers);
+function setup(answers: Partial<Record<DfsMethod, FakeDfsAnswer>>) {
+  const transport = new FakeDfsTransport(answers);
   return { transport, client: new DfsClient(transport, SESSION_KEY) };
 }
 
