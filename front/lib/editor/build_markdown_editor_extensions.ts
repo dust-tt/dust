@@ -71,6 +71,8 @@ export function buildMarkdownEditorExtensions({
       undoRedo: {
         depth: 100,
       },
+      // Underline has no standard markdown syntax.
+      underline: false,
       code: false,
       codeBlock: {
         HTMLAttributes: {

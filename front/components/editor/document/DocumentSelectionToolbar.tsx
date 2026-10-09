@@ -216,7 +216,8 @@ export const DocumentSelectionToolbar = ({
       active: selection.code,
       run: () => chain().toggleCode().run(),
     },
-  ];
+    // Keys are mark names: editors without a given mark (e.g. underline) don't show its button.
+  ].filter(({ key }) => key in editor.schema.marks);
 
   return (
     <BubbleMenu
