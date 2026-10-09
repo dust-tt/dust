@@ -51,6 +51,31 @@ msgstr "Envoi en cours"
 msgid "Send"
 msgstr "Envoyer"
 
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "{count, plural, one {# comment} other {# comments}}"
+msgstr "{count, plural, one {# commentaire} other {# commentaires}}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show {count, plural, one {# comment} other {# comments}}"
+msgstr "Afficher {count, plural, one {# commentaire} other {# commentaires}}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Comment by {authorName}"
+msgstr "Commentaire de {authorName}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by {authorName}"
+msgstr "Afficher le commentaire de {authorName}"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Comment by unknown"
+msgstr "Commentaire d’un auteur inconnu"
+
+#: front/components/editor/document/DocumentCommentMarkers.tsx
+msgid "Show comment by unknown"
+msgstr "Afficher le commentaire d’un auteur inconnu"
+
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
 msgstr "Dust ne peut pas confirmer l’auteur de ce message. Il peut provenir d’un agent ou d’une modification faite en dehors de l’éditeur."
@@ -92,10 +117,6 @@ msgstr "Commenter"
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Comment or @mention…"
 msgstr "Commentez ou @mentionnez…"
-
-#: front/components/editor/document/DocumentCommentThread.tsx
-msgid "Comment by {authorName}"
-msgstr "Commentaire de {authorName}"
 
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reopen"

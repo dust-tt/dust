@@ -176,7 +176,7 @@ export interface CommentsFocusRequest {
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-navigation
  * Selecting a thread MUST make it active and scroll its highlight into view. Revealing a
- * comment from a highlight MUST close the comments list, make the comment active so its
+ * comment from a highlight or marker MUST close the comments list, make the comment active so its
  * card floats under its text, and request focus on that thread. Opening the list from its toggle
  * MUST cancel a pending draft and request focus on the list. Starting a draft MUST close the list.
  * Closing the list while focus is inside it MUST return focus to the toggle.
@@ -621,7 +621,7 @@ export const useDocumentComments = ({
       }
       setListOpen((open) => !open);
     },
-    /** Floats a comment's card under its text, from a highlight. */
+    /** Floats a comment's card under its text, from a highlight or marker. */
     reveal,
     /** Clears the active comment, closing its card, and hands focus back to the text. */
     closeThread: () => {
