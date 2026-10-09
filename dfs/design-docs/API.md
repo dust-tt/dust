@@ -318,9 +318,9 @@ Session {
 Clients address the virtual `root`; the server resolves the stored root directory from the session's
 tenant. The root directory ID belongs to tenant state, not session state.
 
-Subjects may be included before any ALLOW grants reference them. Sessions live in server memory,
-initially expire after one hour, and are lost on restart. An active session can extend its expiry
-through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
+Subjects may be included before any ALLOW grants reference them. Sessions are stored in FoundationDB
+and survive server restarts. They initially expire after one hour; an active session can extend its
+expiry through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
 
 ### CurrentSession
 

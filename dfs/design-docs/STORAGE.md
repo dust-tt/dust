@@ -1,7 +1,7 @@
 # dfs:// storage proposal
 
-FoundationDB stores objects, directory entries, contents, and grants. [API.md](API.md) defines
-observable behavior. Initially, authorization reads topology and grants directly from FDB.
+FoundationDB stores sessions, objects, directory entries, contents, and grants. [API.md](API.md)
+defines observable behavior. Initially, authorization reads session state, topology, and grants from FDB.
 Search and a full in-memory authorization index are future work.
 
 ## Key layout
@@ -15,7 +15,8 @@ dfs-v1-{env}/tenants/<tenantId>/<family>/...
 ```
 
 The authenticated tenant key or session determines `tenantId`. Object IDs are stored as 16-byte
-UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices use big-endian `u64` encoding.
+UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and session expiry timestamps
+use big-endian `u64` encoding; expiry timestamps are Unix milliseconds.
 Variable-length components need unambiguous boundaries and must preserve ordering where required
 for pagination. Exact family tags and value encodings remain to be chosen.
 
@@ -23,6 +24,41 @@ UUIDv7 tends to cluster newly created objects within each family or reverse gran
 Directory entries cluster by parent and sort by name; blocks cluster by file and sort by offset.
 Subtrees are not contiguous, and allocation order does not establish commit order. Locality gains
 and write concentration need measurement.
+
+## Sessions
+
+Sessions are durable FDB state shared by all API servers and survive server restarts. They are
+independent of HTTP/2 connections. Each session has a fixed subject set and initially expires after
+one hour. Its root is resolved from tenant state.
+
+| Key | Value | Rationale |
+| --- | --- | --- |
+| `dfs-v1-{env}/tenants/<tenantId>/session/<sessionId>/state` | Credential hash and `expires_at`. | Authoritative session state; supports tenant-scoped revocation by session ID. |
+| `dfs-v1-{env}/tenants/<tenantId>/session/<sessionId>/subject/<subject>` | Membership marker. | Stores the exact, deduplicated subject set under the session prefix. |
+| `dfs-v1-{env}/session-key/<keyHash>` | Tenant ID and session ID. | Resolves an opaque session key before the tenant is known. |
+| `dfs-v1-{env}/session-expiry/<expiresAtMs>/<tenantId>/<sessionId>` | Expiry marker. | Finds expired sessions across tenants in bounded batches. |
+
+`keyHash` is SHA-256 of the bearer key. Plaintext keys are returned only by `CreateSession` and are
+never persisted. The global lookup only locates the tenant-scoped record; authentication verifies
+the matching hash and unexpired state in the same transaction before using its tenant and subjects.
+Subjects have separate keys because the allowed set can exceed FDB's
+[100,000-byte value limit](https://apple.github.io/foundationdb/known-limitations.html).
+
+Creation writes the state, subjects, credential lookup, and expiry entry atomically, checking that
+the session ID and credential hash are unused. `RefreshSession` reads an existing active session and
+sets expiry to the maximum of its current value and server time plus one hour, replacing the expiry
+entry in the same transaction. It preserves the session ID, subjects, and credential hash.
+
+`RevokeSession` derives the tenant from the authenticated tenant key and resolves the session ID
+under that tenant. An unknown or cross-tenant ID returns `NOT_FOUND`. Revocation atomically clears
+the session prefix, credential lookup, and expiry entry. Refresh uses conflict-tracked reads, so
+it cannot recreate a revoked session. Mutations likewise read session state with conflict tracking
+in the transaction that performs their writes, preventing commits authorized by a revoked session.
+Coordination to drain admitted RPCs remains part of the server lifecycle design.
+
+Expiry cleanup reads bounded batches from the global expiry index and rechecks the current session
+state before deleting it and its indexes in one transaction. An obsolete expiry entry cannot delete
+a refreshed session. Authentication rejects expired sessions even before cleanup runs.
 
 ## Objects and contents
 
@@ -37,7 +73,7 @@ and write concentration need measurement.
 The stored parent and basename support inheritance and namespace maintenance. They change
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
 IDs and content keys and require no descendant path rewrites. Virtual `root` and `shared` are
-projections; the real tenant root is an ordinary stored object. Sessions remain in server memory.
+projections; the real tenant root is an ordinary stored object.
 
 Effective `mode` and `ReadView` are computed per response. Directory execute/traverse derives from
 read permission. File size, versions, and affected blocks commit together. Missing blocks read as
