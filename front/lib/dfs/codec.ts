@@ -14,6 +14,7 @@ import type {
   DfsGrant,
   DfsGrantPage,
   DfsObjectId,
+  DfsObjectKind,
   DfsObjectRef,
   DfsOperation,
   DfsOperationResult,
@@ -22,7 +23,6 @@ import type {
   DfsReadData,
   DfsReadView,
   DfsSearchField,
-  DfsSearchKind,
   DfsSearchAttr,
   DfsSearchRequest,
   DfsSearchResults,
@@ -177,6 +177,34 @@ const WireObjectRefSchema = z
 
 // Attributes.
 
+function encodeObjectKind(kind: DfsObjectKind): string {
+  switch (kind) {
+    case "file":
+      return "FILE";
+    case "directory":
+      return "DIRECTORY";
+    case "symlink":
+      return "SYMLINK";
+    default:
+      assertNever(kind);
+  }
+}
+
+const WireObjectKindSchema = z
+  .enum(["FILE", "DIRECTORY", "SYMLINK"])
+  .transform((k): DfsObjectKind => {
+    switch (k) {
+      case "FILE":
+        return "file";
+      case "DIRECTORY":
+        return "directory";
+      case "SYMLINK":
+        return "symlink";
+      default:
+        assertNever(k);
+    }
+  });
+
 const WireReadViewSchema = z
   .object({ storeVersion: WireBigInt64Schema, authVersion: WireBigInt64Schema })
   .transform((v): DfsReadView => v);
@@ -197,7 +225,7 @@ export const WireAttrSchema = z
   .object({
     id: WireObjectRefSchema,
     name: z.string(),
-    directory: z.boolean(),
+    kind: WireObjectKindSchema,
     size: WireNumberUint64Schema,
     mode: z.number().int(),
     atime: WireNumberUint64Schema.optional(),
@@ -211,7 +239,7 @@ export const WireAttrSchema = z
   .transform((a): DfsAttr => ({
     id: a.id,
     name: a.name,
-    directory: a.directory,
+    kind: a.kind,
     size: a.size,
     mode: a.mode,
     atimeMs: a.atime,
@@ -407,7 +435,7 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
           parentId: encodeObjectId(operation.parentId),
           name: operation.name,
           objectId: encodeObjectId(operation.objectId),
-          directory: operation.directory,
+          kind: encodeObjectKind(operation.kind),
           mimeType: operation.mimeType,
           xattrs: operation.xattrs ?? {},
         },
@@ -445,7 +473,7 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
       return {
         remove: {
           objectId: encodeObjectId(operation.objectId),
-          directory: operation.directory,
+          kind: encodeObjectKind(operation.kind),
         },
       };
     default:
@@ -495,17 +523,6 @@ function encodeSearchField(field: DfsSearchField): string {
   }
 }
 
-function encodeSearchKind(kind: DfsSearchKind): string {
-  switch (kind) {
-    case "file":
-      return "FILE";
-    case "directory":
-      return "DIRECTORY";
-    default:
-      assertNever(kind);
-  }
-}
-
 export function encodeSearchRequest(request: DfsSearchRequest): DfsWireMessage {
   const { scope, filter } = request;
   return {
@@ -516,7 +533,7 @@ export function encodeSearchRequest(request: DfsSearchRequest): DfsWireMessage {
       recursive: scope.recursive,
     },
     filter: filter && {
-      kind: filter.kind && encodeSearchKind(filter.kind),
+      kind: filter.kind && encodeObjectKind(filter.kind),
       name: filter.name,
       namePrefix: filter.namePrefix,
       mimeTypes: filter.mimeTypes ?? [],
@@ -540,7 +557,7 @@ const WireSearchAttrSchema = z
   .object({
     id: WireObjectIdSchema,
     name: z.string(),
-    directory: z.boolean(),
+    kind: WireObjectKindSchema,
     size: WireNumberUint64Schema,
     atime: WireNumberUint64Schema.optional(),
     mtime: WireNumberUint64Schema.optional(),
@@ -550,7 +567,7 @@ const WireSearchAttrSchema = z
   .transform((a): DfsSearchAttr => ({
     id: a.id,
     name: a.name,
-    directory: a.directory,
+    kind: a.kind,
     size: a.size,
     atimeMs: a.atime,
     mtimeMs: a.mtime,

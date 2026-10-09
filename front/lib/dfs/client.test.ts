@@ -90,7 +90,7 @@ describe("DfsClient", () => {
             object: wireAttr(ROOT_ID, {
               id: { root: true },
               name: "",
-              directory: true,
+              kind: "DIRECTORY",
               size: "0",
               metadata: {
                 created: "0",
@@ -133,7 +133,7 @@ describe("DfsClient", () => {
       object: {
         id: "root",
         name: "",
-        directory: true,
+        kind: "directory",
         metadata: { createdMs: 0, xattrs: {} },
       },
     });
@@ -321,7 +321,7 @@ describe("DfsClient", () => {
           parentId: ROOT_ID,
           name: "new.txt",
           objectId: newId,
-          directory: false,
+          kind: "file",
           xattrs: { "user.k": Buffer.from("v") },
         },
         {
@@ -338,7 +338,7 @@ describe("DfsClient", () => {
           name: "new.txt",
           replace: false,
         },
-        { type: "remove", objectId: FILE_ID, directory: false },
+        { type: "remove", objectId: FILE_ID, kind: "file" },
       ],
     });
 
@@ -349,7 +349,7 @@ describe("DfsClient", () => {
             parentId: wireId(ROOT_ID),
             name: "new.txt",
             objectId: wireId(newId),
-            directory: false,
+            kind: "FILE",
             xattrs: { "user.k": Buffer.from("v") },
           },
         },
@@ -370,7 +370,7 @@ describe("DfsClient", () => {
           },
         },
         {
-          remove: { objectId: wireId(FILE_ID), directory: false },
+          remove: { objectId: wireId(FILE_ID), kind: "FILE" },
         },
       ],
     });
@@ -442,7 +442,7 @@ describe("DfsClient", () => {
             object: {
               id: wireId(FILE_ID),
               name: "notes.txt",
-              directory: false,
+              kind: "FILE",
               size: "5",
               mtime: "1700000000000",
             },
@@ -610,8 +610,8 @@ describe("DfsClient", () => {
 
     const res = await client.apply({
       operations: [
-        { type: "remove", objectId: FILE_ID, directory: false },
-        { type: "remove", objectId: ROOT_ID, directory: true },
+        { type: "remove", objectId: FILE_ID, kind: "file" },
+        { type: "remove", objectId: ROOT_ID, kind: "directory" },
       ],
     });
 
