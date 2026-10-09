@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/editor/MarkdownEditor.tsx
-msgid "{count} / {maxCount} characters"
-msgstr "{count} / {maxCount} characters"
-
 #: front/components/editor/MarkdownFileEditor.tsx
 msgid "Content too long"
 msgstr "Content too long"

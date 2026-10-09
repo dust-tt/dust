@@ -77,10 +77,6 @@ msgstr "Restore this version"
 msgid "What is the purpose of the agent? How should it behave?"
 msgstr "What is the purpose of the agent? How should it behave?"
 
-#: front/components/agent_builder/instructions/AgentBuilderInstructionsEditor.tsx
-msgid "{count} / {maxCount} characters"
-msgstr "{count} / {maxCount} characters"
-
 #: front/components/agent_builder/instructions/AgentInstructionsHistory.tsx
 msgid "Unknown"
 msgstr "Unknown"
