@@ -717,8 +717,11 @@ provider page.
 In a file under `components/`, `hooks/` or `lib/` that imports a Lingui macro, every user-visible
 string (JSX text, labels, placeholders, tooltips, `aria-label`, `alt`, toasts, validation messages)
 MUST go through the Lingui macros with the English text as the message, and a sentence MUST be a
-single message, never assembled by concatenating strings or translated fragments. Text sent to
-models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST NOT be wrapped.
+single message, never assembled by concatenating strings or translated fragments. In any file,
+text the UI writes on the user's behalf and shows as their own words, whether posted to an agent as
+the user's message or prefilled in the composer, is user-visible and MUST be translated. Text meant
+only for models and not shown as the user's message (`lib/actions/**`, skill and agent definitions,
+zod `.describe()`, hidden instructions) MUST NOT be wrapped.
 Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
 server code by the `noClientImportsInServer` lint rule.
 
@@ -733,11 +736,6 @@ User-visible text in `.tsx` files under `components/`, outside `components/poke/
 with `+`: each sentence is a single string literal or a single template literal. Error messages are
 exempt. In every `.tsx` file, a `+` with a string or template literal operand inside JSX props or
 children is rejected by the `noStringConcatInJsx` lint rule.
-
-@cc [owner:sfriquet,label:react;product] user-voice-text-in-ui-locale
-Text the UI writes on the user's behalf and shows as their own words, whether posted to an agent as
-the user's message or prefilled in the composer, MUST be in the user's UI locale. Text meant only for
-the model and not shown as the user's message MUST stay in English.
 
 @cc [owner:frankaloia,label:security;backend] oauth-connection-ownership-before-token
 Before calling getMCPConnectionAccessToken or otherwise using a caller-supplied OAuth
