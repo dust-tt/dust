@@ -576,13 +576,22 @@ describe("Document for a file the editor cannot open", () => {
     );
 
     expect(await screen.findByRole("alert")).toHaveTextContent(
-      "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+      "This document can't be edited here yet because it has a table."
     );
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
     expect(container.textContent).not.toContain("comment-start");
     expect(container.textContent).not.toContain("::message");
     expect(container.querySelector(".tiptap")).toBeNull();
+  });
+
+  it("keeps the general note when the refusal names no element", async () => {
+    // Mixed bullet markers: supported elements that would not read back the same.
+    renderRefused("A\n\n* a\n+ b\n");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This document uses formatting the editor doesn't support yet, so it can't be edited here."
+    );
   });
 
   it("logs a refused document once, with its reason and without its content", async () => {
