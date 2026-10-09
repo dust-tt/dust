@@ -46,3 +46,8 @@ Directory prefetch MUST be bounded by pages and bytes.
 @cc [owner:spolu,label:architecture] v5-userspace-cache
 FUSE MUST use direct I/O, zero metadata/name TTLs, and no kernel writeback or directory caching.
 Userspace owns caching and expiry. Shared writable mmap is unsupported.
+
+@cc [owner:fontanierh,label:testing] v5-commit-delay-metrics
+The client's `dfs_client_metrics` MUST keep reporting, each with `max_ms`: `writeback.client_delay`
+(a group's first edit accepted to dispatch), `writeback.group` (dispatch to outcome) and
+`writeback.lag` (first edit accepted to outcome). x/henry/dfs-bench reads them to compare clients.
