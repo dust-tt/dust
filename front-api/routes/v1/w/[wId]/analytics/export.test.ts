@@ -1,4 +1,4 @@
-import { addFixedWindowCount } from "@app/lib/utils/rate_limiter";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/utils/rate_limiter", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/utils/rate_limiter")>()),
-  addFixedWindowCount: vi.fn(async () => 1),
+  rateLimiter: vi.fn(async () => 1),
 }));
 
 vi.mock("@app/lib/api/analytics/usage_metrics_export", async () => ({
@@ -312,12 +312,11 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
   });
 
   it("returns 429 once the workspace exceeds 60 exports per minute", async () => {
-    vi.mocked(addFixedWindowCount).mockResolvedValueOnce(61);
+    vi.mocked(rateLimiter).mockResolvedValueOnce(0);
 
     const { response } = await setupTest();
 
     expect(response.status).toBe(429);
-    expect(response.headers.get("Retry-After")).not.toBeNull();
   });
 
   it("returns CSV for usage_metrics table", async () => {

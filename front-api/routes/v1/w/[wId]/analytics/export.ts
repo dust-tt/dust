@@ -89,12 +89,15 @@ import { GetAnalyticsExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
+import { withRateLimit } from "@front-api/middlewares/with_rate_limit";
 
 // Mounted at /api/v1/w/:wId/analytics/export. publicApiAuth is applied by the
 // parent v1 workspace sub-app, so ctx.get("auth") is always available here.
 const app = publicApiApp();
 
-app.get("/", ensureIsAdmin(), async (ctx) => {
+const exportRateLimit = withRateLimit({ maxPerMinute: 60 });
+
+app.get("/", ensureIsAdmin(), exportRateLimit, async (ctx) => {
   const auth = ctx.get("auth");
 
   if (!auth.isKey()) {

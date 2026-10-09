@@ -582,8 +582,7 @@ export function getTimeframeSecondsFromLiteral(
  * identified by `bounds`. Unlike the rolling `addRateLimiterCount`, the key
  * encodes the current window (via `bounds.label`) and is a plain `INCRBY` with
  * `PEXPIREAT` set to `bounds.windowEndMs` — enforcement (reading the count and
- * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here,
- * or by the caller comparing the returned total to its limit.
+ * comparing to a limit) happens beforehand via `getFixedWindowCount`, not here.
  *
  * `incrementBy` is a raw integer in caller-defined units, stored verbatim: the
  * caller owns the unit and must read back with the same unit via
@@ -591,11 +590,6 @@ export function getTimeframeSecondsFromLiteral(
  * fair-use callers use microCredits). This differs from `addRateLimiterCount`,
  * which takes a (possibly fractional) credit amount and converts to microCredits
  * internally — do not pass credits here.
- */
-/**
- * @cc [owner:philipperolet,label:performance] returns-total-or-null
- * MUST return the counter's total after the increment, or `null` when nothing was recorded
- * (invalid `incrementBy` or store error) — never throws.
  */
 export async function addFixedWindowCount({
   key,
@@ -607,10 +601,10 @@ export async function addFixedWindowCount({
   bounds: FixedWindowBounds;
   incrementBy: number;
   logger: LoggerInterface;
-}): Promise<number | null> {
+}): Promise<void> {
   // Fail open on invalid input, matching the Redis-error path below: recording
-  // runs on the message-send and public API request paths, so a bad increment
-  // must never throw and break them — log and skip instead.
+  // runs on the message-send path, so a bad increment must never throw and
+  // break the send — log and skip instead.
   if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
     statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:add_fixed_window",
@@ -619,7 +613,7 @@ export async function addFixedWindowCount({
       { key, label: bounds.label, incrementBy },
       "addFixedWindowCount: incrementBy must be a positive integer, skipping"
     );
-    return null;
+    return;
   }
 
   const redisKey = makeRateLimiterKey(`${key}:${bounds.label}`);
@@ -637,14 +631,10 @@ export async function addFixedWindowCount({
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    const total = await redis.eval(luaScript, {
+    await redis.eval(luaScript, {
       keys: [redisKey],
       arguments: [incrementBy.toString(), expireAtMs.toString()],
     });
-    if (typeof total !== "number") {
-      throw new Error(`Non-numeric fixed-window total: ${String(total)}`);
-    }
-    return total;
   } catch (e) {
     statsDMetrics.increment("ratelimiter.error.count", 1, [
       "operation:add_fixed_window",
@@ -653,7 +643,6 @@ export async function addFixedWindowCount({
       { key, label: bounds.label, incrementBy, error: e },
       "addFixedWindowCount error"
     );
-    return null;
   }
 }
 
