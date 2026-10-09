@@ -26,6 +26,7 @@ on:
           - connectors
           - core
           - front-sse
+          - front-collab
           - prodbox
           - oauth
           - viz
@@ -168,7 +169,7 @@ jobs:
       contents: read
       id-token: write
     needs: [prepare, notify-start]
-    if: ${{ !failure() && !cancelled() && contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) }}
+    if: ${{ !failure() && !cancelled() && contains(fromJSON('["front","front-edge","front-sse","front-collab","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -181,7 +182,7 @@ jobs:
         with:
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
-          component: ${{ inputs.component == 'front-sse' && 'front' || inputs.component }}
+          component: ${{ (inputs.component == 'front-sse' || inputs.component == 'front-collab') && 'front' || inputs.component }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
@@ -202,7 +203,7 @@ jobs:
       contents: read
       id-token: write
     needs: [prepare, notify-start, create-matrix, verify-sandbox-images]
-    if: ${{ !failure() && !cancelled() && !contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && !contains(fromJSON('["front","front-edge","front-sse","front-collab","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -229,7 +230,7 @@ jobs:
         with:
           commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
           commit_sha: ${{ needs.prepare.outputs.short_sha }}
-          component: ${{ inputs.component == 'front-sse' && 'front' || inputs.component }}
+          component: ${{ (inputs.component == 'front-sse' || inputs.component == 'front-collab') && 'front' || inputs.component }}
           dd_api_key: ${{ secrets.DD_API_KEY }}
           dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
           depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
