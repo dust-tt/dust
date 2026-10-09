@@ -102,6 +102,14 @@ msgctxt "action"
 msgid "Download"
 msgstr "Télécharger"
 
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "Exit full screen mode"
+msgstr "Quitter le mode plein écran"
+
+#: front/components/assistant/conversation/files_panel/FilePreviewPanel.tsx
+msgid "Go to full screen mode"
+msgstr "Passer en mode plein écran"
+
 #: front/components/assistant/conversation/files_panel/FilesTab.tsx
 msgid "Conversation attachments & generated content will appear here."
 msgstr "Les pièces jointes et le contenu généré de la conversation apparaîtront ici."

@@ -186,6 +186,10 @@ msgid "Preview data"
 msgstr "Aperçu des données"
 
 #: front/components/file_explorer/FilePreviewDialog.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/file_explorer/FilePreviewDialog.tsx
 msgid "Previous"
 msgstr "Précédent"
 

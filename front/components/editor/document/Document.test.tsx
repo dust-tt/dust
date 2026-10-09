@@ -482,6 +482,54 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 
+  it("shows the comments button in the host's container when given one", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    render(
+      <Document
+        initialContent={SOURCE}
+        headerControlsContainer={container}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByRole("complementary", { name: "Comments" }).dataset.state
+    ).toBe("open");
+    container.remove();
+  });
+
+  it("keeps the save status above the document when the comments button shows in the host's container", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <Document
+        initialContent={SOURCE}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        headerControlsContainer={container}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    expect(
+      (await within(documentRoot).findByRole("status")).textContent
+    ).toContain("Saved");
+    expect(within(container).queryByRole("status")).toBeNull();
+    expect(
+      within(documentRoot).queryByRole("button", { name: /^Comments/ })
+    ).toBeNull();
+    container.remove();
+  });
+
   it("renders the host's avatars only for threads on screen", async () => {
     render(
       <Document

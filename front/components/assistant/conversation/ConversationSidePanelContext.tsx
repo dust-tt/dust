@@ -210,6 +210,12 @@ const isSupportedPanelType = (
   type === "tool" ||
   type === "agent";
 
+/** The panel size and navigation bar to restore when leaving full screen. */
+export interface SidePanelLayout {
+  isNavigationBarOpen: boolean;
+  panelSize: number;
+}
+
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   // Preview affordances render nothing without a conversation to host the panel.
@@ -227,6 +233,8 @@ interface ConversationSidePanelContextType {
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
+  // Held here rather than by the panel's content, which can remount while in full screen.
+  layoutBeforeFullScreenRef: React.MutableRefObject<SidePanelLayout | null>;
   setVirtuosoMsg: (msg: AgentMessageWithStreaming) => void;
   virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
@@ -298,6 +306,7 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const layoutBeforeFullScreenRef = React.useRef<SidePanelLayout | null>(null);
   const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
@@ -353,7 +362,7 @@ export function ConversationSidePanelProvider({
       currentParamsRef.current = params;
       setCurrentPanel(params.type);
       setData(panelDataKey(params));
-      // Only FrameRenderer can leave full screen, so a panel of another type would otherwise be
+      // Only panels with useSidePanelFullScreen can leave full screen, so another one would be
       // stranded at 100% with the nav bar hidden. Same-type shows keep it, so a refreshing Frame
       // does not drop out.
       if (previous && previous.type !== params.type) {
@@ -498,6 +507,7 @@ export function ConversationSidePanelProvider({
       onPanelClosed,
       setPanelRef,
       panelRef,
+      layoutBeforeFullScreenRef,
       setVirtuosoMsg,
       virtuosoMsg,
       data,

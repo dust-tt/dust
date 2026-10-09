@@ -27,6 +27,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
 const LiveDocument = lazy(
@@ -60,6 +61,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
  * first, then cycle outward on repeated clicks.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-comments-button-placement
+ * With headerControlsContainer, the comments button MUST show in it and not above the document;
+ * the save and live statuses MUST stay above the document. Without one, the comments button MUST
+ * show with them.
  */
 export const Document = (props: DocumentProps) =>
   props.live ? (
@@ -169,6 +176,7 @@ export const DocumentView = ({
   initialContent,
   className,
   mountPortalContainer,
+  headerControlsContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
@@ -234,11 +242,22 @@ export const DocumentView = ({
     );
   }
 
+  const commentsToggle = (
+    <DocumentCommentsToggle
+      listId={listId}
+      comments={comments}
+      size={headerControlsContainer ? "sm" : "xs"}
+    />
+  );
+
   return (
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
+      {showCommentsToggle &&
+        headerControlsContainer &&
+        createPortal(commentsToggle, headerControlsContainer)}
       <div
         ref={contentRef}
         className={cn(
@@ -253,11 +272,11 @@ export const DocumentView = ({
           error={error}
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
+          controls={
+            showCommentsToggle && !headerControlsContainer && commentsToggle
+          }
         >
           {liveView && <DocumentLiveStatus status={liveView.status} />}
-          {showCommentsToggle && (
-            <DocumentCommentsToggle listId={listId} comments={comments} />
-          )}
         </DocumentStatus>
         {editor && showCommentsToggle && (
           <DocumentCommentsList

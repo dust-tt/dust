@@ -1,6 +1,5 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
@@ -8,12 +7,11 @@ import { FrameBetaChip } from "@app/components/assistant/conversation/interactiv
 import { FrameEditControls } from "@app/components/assistant/conversation/interactive_content/frame/FrameEditControls";
 import { ShareFramePopover } from "@app/components/assistant/conversation/interactive_content/frame/ShareFramePopover";
 import { useFrameEditSession } from "@app/components/assistant/conversation/interactive_content/frame/useFrameEditSession";
+import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { ConfirmContext } from "@app/components/Confirm";
-import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
-import { useHashParam } from "@app/hooks/useHashParams";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -33,7 +31,6 @@ import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -51,14 +48,7 @@ import {
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 interface FrameRendererProps {
   conversation?: ConversationWithoutContentType;
@@ -82,11 +72,7 @@ export function FrameRenderer({
   const { t } = useLingui();
   const { vizUrl } = useAuth();
   const isMobile = useIsMobile();
-  const { isNavigationBarOpen, setIsNavigationBarOpen } =
-    useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
-  const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
-  const prevPanelSizeRef = useRef(DEFAULT_FRAME_PANEL_SIZE);
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -128,7 +114,6 @@ export function FrameRenderer({
     return entry?.path ?? null;
   }, [fileId, projectFiles]);
 
-  const { closePanel, panelRef } = useConversationSidePanelContext();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // The space to resolve `project/` file paths inside the viz.
@@ -136,12 +121,12 @@ export function FrameRenderer({
   // (a conversation can belong to a project space even before the frame is saved there).
   const frameSpaceId = projectId ?? conversation?.spaceId ?? null;
 
-  const panel = panelRef?.current;
-
-  const [fullScreenHash, setFullScreenHash] = useHashParam(
-    FULL_SCREEN_HASH_PARAM
-  );
-  const isFullScreen = fullScreenHash === "true";
+  const {
+    isFullScreen,
+    enterFullScreen,
+    exitFullScreen,
+    closePanel: onClosePanel,
+  } = useSidePanelFullScreen(DEFAULT_FRAME_PANEL_SIZE);
 
   const { fileContent, error, mutateFileContent, isFileContentLoading } =
     useFileContent({
@@ -250,36 +235,6 @@ export function FrameRenderer({
     [editFrameText, mutateFileContent]
   );
 
-  const restoreLayout = useCallback(() => {
-    if (panel) {
-      setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
-      panel.resize(prevPanelSizeRef.current ?? DEFAULT_FRAME_PANEL_SIZE);
-    }
-  }, [panel, setIsNavigationBarOpen]);
-
-  const exitFullScreen = useCallback(() => {
-    setFullScreenHash(undefined);
-  }, [setFullScreenHash]);
-
-  const enterFullScreen = () => {
-    isNavBarPrevOpenRef.current = isNavigationBarOpen;
-
-    if (panel) {
-      prevPanelSizeRef.current = panel.getSize();
-    }
-
-    setFullScreenHash("true");
-  };
-
-  const onClosePanel = () => {
-    if (panel && isFullScreen) {
-      setFullScreenHash(undefined);
-      restoreLayout();
-    }
-
-    closePanel();
-  };
-
   const reloadFile = async () => {
     setIsLoading(true);
     await mutateFileContent(`/api/w/${owner.sId}/files/${fileId}?action=view`);
@@ -296,42 +251,6 @@ export function FrameRenderer({
       agentConfigurationId: lastEditedByAgentConfigurationId ?? "",
     });
   };
-
-  useEffect(() => {
-    if (!panel) {
-      return;
-    }
-
-    if (isFullScreen) {
-      panel.resize(100);
-      setIsNavigationBarOpen(false);
-    } else {
-      // Only exit fullscreen if we're currently at 100% & nav bar is closed (= full screen mode)
-      if (panel.getSize() === 100 && !isNavigationBarOpen) {
-        restoreLayout();
-      }
-    }
-  }, [
-    panel,
-    isFullScreen,
-    isNavigationBarOpen,
-    setIsNavigationBarOpen,
-    restoreLayout,
-  ]);
-
-  // ESC key event listener to exit full screen mode
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && isFullScreen) {
-        exitFullScreen();
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isFullScreen, exitFullScreen]);
 
   const handleSaveToProject = useCallback(async () => {
     const projectIdToSave = conversation?.spaceId;

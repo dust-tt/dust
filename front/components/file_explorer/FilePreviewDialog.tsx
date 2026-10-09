@@ -18,12 +18,14 @@ import {
   ChevronRight,
   cn,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Download01,
   Icon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
@@ -51,6 +53,8 @@ export function FilePreviewDialog({
 }: FilePreviewDialogProps) {
   const { t } = useLingui();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [documentControls, setDocumentControls] =
+    useState<HTMLDivElement | null>(null);
 
   const handleDownload = async () => {
     if (!entry) {
@@ -125,22 +129,36 @@ export function FilePreviewDialog({
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
-        <DialogHeader className="flex gap-4">
-          <DialogTitle>
-            <div className="flex items-center gap-1.5 overflow-hidden">
-              {FileIcon && (
-                <Icon
-                  visual={FileIcon}
+        <DialogHeader hideButton className="flex gap-4">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                {FileIcon && (
+                  <Icon
+                    visual={FileIcon}
+                    size="sm"
+                    className="shrink-0 text-foreground"
+                  />
+                )}
+                <span className="min-w-16 truncate leading-5 text-foreground">
+                  {entry?.fileName ?? t`Preview data`}
+                </span>
+                {markdown.richEditor && <CoEditionBadge />}
+              </div>
+            </DialogTitle>
+            {/* Level with the title, where the built-in close button sat. */}
+            <div className="-my-1.5 -mr-2 ml-auto flex shrink-0 items-center gap-1">
+              <div ref={setDocumentControls} className="flex empty:hidden" />
+              <DialogClose asChild>
+                <Button
+                  icon={XClose}
+                  variant="ghost"
                   size="sm"
-                  className="shrink-0 text-foreground"
+                  aria-label={t`Close`}
                 />
-              )}
-              <span className="min-w-16 truncate leading-5 text-foreground">
-                {entry?.fileName ?? t`Preview data`}
-              </span>
-              {markdown.richEditor && <CoEditionBadge />}
+              </DialogClose>
             </div>
-          </DialogTitle>
+          </div>
           <div className="flex items-center justify-between">
             {recordCounts && (
               <span
@@ -177,6 +195,7 @@ export function FilePreviewDialog({
             entry={entry}
             fileUrl={fileUrl}
             markdown={markdown}
+            markdownHeaderControlsContainer={documentControls}
             onMarkdownViewModeChange={
               markdown.canEdit ? markdown.setViewMode : undefined
             }

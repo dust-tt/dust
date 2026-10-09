@@ -1,9 +1,11 @@
+import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import {
   parseFilePreviewData,
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
+import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
@@ -17,6 +19,7 @@ import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
+import { useClientType } from "@app/lib/context/clientType";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   getFileDownloadUrl,
@@ -25,25 +28,46 @@ import {
   getFileViewUrl,
   useFileMetadata,
 } from "@app/lib/swr/files";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { contentTypeFromFileName } from "@app/types/files";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, cn, Download01, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  Button,
+  cn,
+  Download01,
+  Icon,
+  Maximize01,
+  Minimize01,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
+import { useState } from "react";
 
 interface FilePreviewPanelProps {
   conversation: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
+/**
+ * @cc [owner:tdraier,label:product] file-preview-panel-full-screen
+ * The full screen toggle MUST show only for a file open in the rich document editor, behind the
+ * co_edition flag; other previews MUST keep the panel without it.
+ */
 export function FilePreviewPanel({
   conversation,
   owner,
 }: FilePreviewPanelProps) {
   const { t } = useLingui();
-  const { data, closePanel } = useConversationSidePanelContext();
+  const { data } = useConversationSidePanelContext();
+  const { isFullScreen, enterFullScreen, exitFullScreen, closePanel } =
+    useSidePanelFullScreen(DEFAULT_RIGHT_PANEL_SIZE);
+  const isMobile = useIsMobile();
+  const clientType = useClientType();
+  const [documentControls, setDocumentControls] =
+    useState<HTMLDivElement | null>(null);
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
 
@@ -170,6 +194,60 @@ export function FilePreviewPanel({
       <ConversationSidePanelHeader
         onClose={closePanel}
         closeDisabled={markdown.holdsNavigation}
+        actions={
+          <>
+            {markdown.canEdit && !markdown.richEditor && (
+              <>
+                <MarkdownFilePreviewViewModeSwitch
+                  viewMode={markdown.viewMode}
+                  onViewModeChange={markdown.setViewMode}
+                />
+                {markdown.isDirty && (
+                  <>
+                    <Button
+                      label={t`Save`}
+                      variant="highlight"
+                      size="xs"
+                      isLoading={markdown.isSaving}
+                      disabled={markdown.isSaving}
+                      onClick={() => void markdown.save()}
+                    />
+                    <Button
+                      label={t`Revert`}
+                      variant="outline"
+                      size="xs"
+                      disabled={markdown.isSaving}
+                      onClick={markdown.revert}
+                    />
+                  </>
+                )}
+              </>
+            )}
+            <div ref={setDocumentControls} className="flex empty:hidden" />
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={Download01}
+              tooltip={t({ message: "Download", context: "action" })}
+              href={urls.downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            />
+            {!isMobile && clientType !== "extension" && markdown.richEditor && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={isFullScreen ? Minimize01 : Maximize01}
+                tooltip={
+                  isFullScreen
+                    ? t`Exit full screen mode`
+                    : t`Go to full screen mode`
+                }
+                onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+              />
+            )}
+          </>
+        }
       >
         <div className="flex min-w-0 items-center gap-1.5">
           <Icon visual={FileIcon} size="sm" className="shrink-0" />
@@ -177,44 +255,6 @@ export function FilePreviewPanel({
             {fileName}
           </span>
           {markdown.richEditor && <CoEditionBadge />}
-        </div>
-        <div className="ml-2 flex items-center gap-1">
-          {markdown.canEdit && !markdown.richEditor && (
-            <>
-              <MarkdownFilePreviewViewModeSwitch
-                viewMode={markdown.viewMode}
-                onViewModeChange={markdown.setViewMode}
-              />
-              {markdown.isDirty && (
-                <>
-                  <Button
-                    label={t`Save`}
-                    variant="highlight"
-                    size="xs"
-                    isLoading={markdown.isSaving}
-                    disabled={markdown.isSaving}
-                    onClick={() => void markdown.save()}
-                  />
-                  <Button
-                    label={t`Revert`}
-                    variant="outline"
-                    size="xs"
-                    disabled={markdown.isSaving}
-                    onClick={markdown.revert}
-                  />
-                </>
-              )}
-            </>
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Download01}
-            tooltip={t({ message: "Download", context: "action" })}
-            href={urls.downloadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          />
         </div>
       </ConversationSidePanelHeader>
       <div
@@ -234,6 +274,7 @@ export function FilePreviewPanel({
           fileUrl={urls.baseUrl}
           isFullWidth
           markdown={markdown}
+          markdownHeaderControlsContainer={documentControls}
           owner={owner}
           preview={preview}
         />
