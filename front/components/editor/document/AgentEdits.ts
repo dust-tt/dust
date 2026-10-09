@@ -27,8 +27,8 @@ import * as Y from "yjs";
 // plugin only removes the decorations once it is done.
 export const GLOW_MS = 3_000;
 const GLOW_PERCENT = 25;
-/** Inserted characters past which an edit just shows, without a glow. */
-const MAX_GLOWED_CHARS = 20_000;
+/** Text ranges past which an edit just shows: a decoration each, built at once. */
+const MAX_GLOWED_RANGES = 200;
 
 interface TextRange {
   from: number;
@@ -42,14 +42,10 @@ export interface AgentEditGlow {
   doc: Node;
 }
 
-interface Glow {
-  agent: LiveAgent;
-  ranges: TextRange[];
-}
-
 type AgentEditsMeta = ({ type: "glow" } & AgentEditGlow) | { type: "end" };
 
-const agentEditsKey = new PluginKey<Glow | null>("agentEdits");
+// The glow's decorations, built once: the set never changes while the glow runs.
+const agentEditsKey = new PluginKey<DecorationSet | null>("agentEdits");
 
 /** A Yjs type the binding maps to the editor's nodes. */
 type BoundType =
@@ -196,27 +192,7 @@ export const withAgentEditGlow = (
   return state.tr.setMeta(agentEditsKey, meta);
 };
 
-const applyAgentEdits = (
-  transaction: Transaction,
-  glow: Glow | null,
-  _oldState: EditorState,
-  newState: EditorState
-): Glow | null => {
-  const meta: AgentEditsMeta | undefined = transaction.getMeta(agentEditsKey);
-  if (meta?.type === "glow") {
-    // Only while its ranges are this document's: otherwise the text just shows.
-    return meta.doc === newState.doc
-      ? { agent: meta.agent, ranges: meta.ranges }
-      : glow;
-  }
-  // Any later change, or the fade's end, removes the glow: no tracking through other changes.
-  if (meta?.type === "end" || transaction.docChanged) {
-    return null;
-  }
-  return glow;
-};
-
-const glowDecorations = (doc: Node, { agent, ranges }: Glow) => {
+const glowDecorations = (doc: Node, agent: LiveAgent, ranges: TextRange[]) => {
   const highlight = `color-mix(in srgb, ${liveCaretColor(agent.agentId)} ${GLOW_PERCENT}%, transparent)`;
   return DecorationSet.create(
     doc,
@@ -234,6 +210,26 @@ const glowDecorations = (doc: Node, { agent, ranges }: Glow) => {
   );
 };
 
+const applyAgentEdits = (
+  transaction: Transaction,
+  glow: DecorationSet | null,
+  _oldState: EditorState,
+  newState: EditorState
+): DecorationSet | null => {
+  const meta: AgentEditsMeta | undefined = transaction.getMeta(agentEditsKey);
+  if (meta?.type === "glow") {
+    // Only while its ranges are this document's: otherwise the text just shows.
+    return meta.doc === newState.doc
+      ? glowDecorations(newState.doc, meta.agent, meta.ranges)
+      : glow;
+  }
+  // Any later change, or the fade's end, removes the glow: no tracking through other changes.
+  if (meta?.type === "end" || transaction.docChanged) {
+    return null;
+  }
+  return glow;
+};
+
 /**
  * @cc [owner:PopDaph,label:product;performance] live-agent-edit-glow
  * A glow given by `withAgentEditGlow`, while its ranges are in the current document, MUST show
@@ -242,21 +238,19 @@ const glowDecorations = (doc: Node, { agent, ranges }: Glow) => {
  * undo history, and MUST end at once on any later change of the document.
  */
 export const agentEditsPlugin = () =>
-  new Plugin<Glow | null>({
+  new Plugin<DecorationSet | null>({
     key: agentEditsKey,
     state: {
       init: () => null,
       apply: applyAgentEdits,
     },
     props: {
-      decorations: (state) => {
-        const glow = agentEditsKey.getState(state);
-        return glow ? glowDecorations(state.doc, glow) : DecorationSet.empty;
-      },
+      decorations: (state) =>
+        agentEditsKey.getState(state) ?? DecorationSet.empty,
     },
     view: (view) => {
       let timer: ReturnType<typeof setTimeout> | null = null;
-      let timed: Glow | null = null;
+      let timed: DecorationSet | null = null;
       const schedule = () => {
         const glow = agentEditsKey.getState(view.state) ?? null;
         if (glow === timed) {
@@ -291,21 +285,20 @@ export const agentEditsPlugin = () =>
 /**
  * @cc [owner:PopDaph,label:product] live-agent-edit-shown
  * Each agent edit the session announces MUST glow the text it inserted (`insertedTextRanges`) in
- * the document as it is when the announcement arrives, unless it inserted more than
- * `MAX_GLOWED_CHARS` characters or none of it shows. A failure resolving it MUST only skip the glow,
+ * the document as it is when the announcement arrives, unless that text spans more than
+ * `MAX_GLOWED_RANGES` ranges or none of it shows. A failure resolving it MUST only skip the glow,
  * logged.
  */
 export function agentEditGlow(
   state: EditorState,
   { agent, inserted }: LiveAgentEditMessage
 ): Transaction | null {
-  const length = inserted.reduce((total, range) => total + range.length, 0);
   const binding = ySyncPluginKey.getState(state)?.binding;
-  if (length > MAX_GLOWED_CHARS || !(binding instanceof ProsemirrorBinding)) {
+  if (!(binding instanceof ProsemirrorBinding)) {
     return null;
   }
   const ranges = insertedTextRanges(binding, inserted);
-  return ranges.length > 0
+  return ranges.length > 0 && ranges.length <= MAX_GLOWED_RANGES
     ? withAgentEditGlow(state, { agent, ranges, doc: state.doc })
     : null;
 }

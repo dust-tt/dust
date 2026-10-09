@@ -5,6 +5,7 @@ import {
   insertedTextRanges,
 } from "@app/components/editor/document/AgentEdits";
 import { documentSchema } from "@app/components/editor/document/content";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import type { LiveIdRange } from "@app/types/collab";
 import { EditorState } from "@tiptap/pm/state";
 import { EditorView } from "@tiptap/pm/view";
@@ -222,7 +223,7 @@ describe("insertedTextRanges", () => {
 
     const glow = agentEditGlow(view.state, {
       type: "agent_edit",
-      agent: { agentId: "agt_1", name: "Writer" },
+      agent: LiveAgentFactory.build(),
       inserted: edit.inserted,
     });
     if (glow) {
