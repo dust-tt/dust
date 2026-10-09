@@ -35,6 +35,7 @@
     "**/*.js",
     "**/*.mjs",
     "./.eslintrc.js",
+    "../scripts/i18n/**/*.ts",
   ],
   "exclude": [
     "node_modules",

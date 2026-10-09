@@ -137,8 +137,8 @@ See `connectors/src/connectors/slack/CONTRACTS`.
 ## Workflow
 
 1. Wrap the strings with the macros above.
-2. From `front/` (or `sparkle/` for sparkle code), run `npm run i18n:extract`: it updates every
-   catalog and removes obsolete messages.
+2. From the repository root (or `sparkle/` for sparkle code), run `npm run i18n:extract`: it
+   updates every catalog and removes obsolete messages.
 3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
 4. Run `npm run i18n:check` from the same directory (also run in CI): it fails on stale catalogs
    and missing translations.

@@ -18,6 +18,8 @@
   "scripts": {
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
+    "i18n:extract": "tsx scripts/i18n/extract.ts",
+    "i18n:check": "tsx scripts/i18n/check.ts",
     "knip": "knip",
     "lint": "oxlint sdks/js viz extension cli/dust-cli firebase-functions sparkle connectors front-spa front front-api marketing cli/dust-sandbox/functions-runner cli/dust-sandbox/pod",
     "lint:fix": "oxlint --fix sdks/js viz extension cli/dust-cli firebase-functions sparkle connectors front-spa front front-api marketing cli/dust-sandbox/functions-runner cli/dust-sandbox/pod",
@@ -31,12 +33,16 @@
     "knip:dead-code": "knip --production --workspace front --workspace front-api --workspace front-spa --workspace extension --include files,exports,types"
   },
   "devDependencies": {
+    "@lingui/cli": "6.4.0",
+    "@lingui/conf": "6.4.0",
+    "@lingui/format-po": "6.4.0",
     "@typescript/native-preview": "^7.0.0-dev.20260608.1",
     "knip": "^6.38.0",
     "lefthook": "2.1.8",
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "react-doctor": "^0.5.0",
+    "tsx": "^4.21.0",
     "wrangler": "4.80.0"
   },
   "engines": {

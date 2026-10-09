@@ -7,6 +7,7 @@ on:
       - sdks/js/**
       - front/**
       - lingui.config.ts
+      - scripts/i18n/**
       - sparkle/**
       - viz/app/lib/frame-runtime-imports.ts
       - viz/package.json
@@ -98,4 +99,4 @@ jobs:
       - name: Lint audit log schemas
         run: npm -w front run lint:audit-log-schemas
       - name: Check translation catalogs
-        run: npm -w front run i18n:check
+        run: npm run i18n:check
