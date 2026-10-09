@@ -338,8 +338,9 @@ function CatalogFiltersNav({
       aria-label={t({ message: "Filter", context: "noun, navigation label" })}
       className={cn(
         "flex flex-col gap-6 self-start",
-        // On desktop, filters stay in view and scroll on their own when they overflow.
-        "md:sticky md:top-(--catalog-filters-top) md:max-h-[calc(var(--panel-height)-var(--catalog-filters-top))] md:overflow-y-auto md:pb-8"
+        // On desktop, filters stay in view and scroll on their own when they overflow. Lists must
+        // not shrink to fit, or they clip their items instead of letting the nav scroll.
+        "md:sticky md:top-(--catalog-filters-top) md:max-h-[calc(var(--panel-height)-var(--catalog-filters-top))] md:overflow-y-auto md:pb-8 md:[&>*]:shrink-0"
       )}
     >
       <NavigationList>
