@@ -34,6 +34,30 @@ function describe(error: DfmError): string {
     : `${error.message} (line ${error.line})`;
 }
 
+// The refusals the editor writes, which name only elements and comment ids. A codec error can
+// quote the file, such as a malformed attribute.
+const EDITOR_REFUSALS = [
+  /^The Markdown uses formatting the editor cannot keep: [^\n]+\.$/,
+  /^The Markdown could not be parsed\.$/,
+  /^The Markdown does not fit the editor's document structure\.$/,
+  /^The Markdown would not read back the same after editing\.$/,
+  /^A comment is anchored where the editor cannot show it\.$/,
+  /^Comment "[\w-]+" (starts or ends on text the editor cannot highlight|covers no text the editor can highlight)\.$/,
+  /^Comment anchor "[\w-]+" is (not paired|never closed) where the editor reads it\.$/,
+];
+
+/**
+ * @cc [owner:PopDaph,label:security;product] document-refusal-loggable
+ * A refusal reason MUST reach logs only when it is one the editor writes, which never quotes the
+ * file; any other reason MUST be logged as not valid DFM. Comment ids MUST be masked, so a kind
+ * of refusal is one value.
+ */
+export function loggableRefusal(reason: string): string {
+  return EDITOR_REFUSALS.some((pattern) => pattern.test(reason))
+    ? reason.replace(/"[\w-]+"/g, '"…"')
+    : "The file is not valid DFM.";
+}
+
 export interface LoadedDfm {
   envelope: DfmEnvelope;
   /** The body as a TipTap document, comment threads in its `comments` attribute. */

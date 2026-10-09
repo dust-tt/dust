@@ -68,18 +68,44 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
     token.raw?.startsWith("```") ||
     token.codeBlockStyle === "indented");
 
-const hasSupportedMarkdown = (content: string) => {
-  const tokens = documentMarkdown.instance.lexer(content);
-  let supported = true;
-
-  documentMarkdown.instance.walkTokens(tokens, (token) => {
-    if (!isSupportedMarkdownToken(token)) {
-      supported = false;
-    }
-  });
-
-  return supported;
+const describeUnsupportedToken = (token: MarkdownToken): string => {
+  if (token.type === "list_item" && token.task) {
+    return "a task list";
+  }
+  switch (token.type) {
+    case "code":
+      return token.raw?.trimStart().startsWith("~")
+        ? "a code block fenced with ~~~"
+        : "an indented code fence";
+    case "table":
+      return "a table";
+    case "html":
+      return "HTML";
+    case "def":
+      return "a reference link definition";
+    default:
+      return `"${token.type}" Markdown`;
+  }
 };
+
+/** The first Markdown element in `content` the editor cannot keep, or null. */
+const findUnsupportedMarkdown = (content: string): string | null => {
+  const unsupported: MarkdownToken[] = [];
+  documentMarkdown.instance.walkTokens(
+    documentMarkdown.instance.lexer(content),
+    (token) => {
+      if (!isSupportedMarkdownToken(token)) {
+        unsupported.push(token);
+      }
+    }
+  );
+  return unsupported.length > 0
+    ? describeUnsupportedToken(unsupported[0])
+    : null;
+};
+
+const hasSupportedMarkdown = (content: string) =>
+  findUnsupportedMarkdown(content) === null;
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   const content = document.content ?? [];
@@ -202,11 +228,18 @@ const isValidDocument = (document: JSONContent) => {
  * Parsed Markdown that does not satisfy the editor schema MUST be rejected, never handed to the
  * editor, so a file the editor misreads still shows as source.
  */
+/**
+ * @cc [owner:PopDaph,label:product] document-refusal-reason
+ * A refusal MUST name the first element the editor cannot keep, and MUST NOT quote the content.
+ */
 export const parseDocumentContent = (
   content: string
 ): Result<MarkedDocument, string> => {
-  if (!hasSupportedMarkdown(content)) {
-    return new Err("The Markdown uses formatting the editor cannot keep.");
+  const unsupported = findUnsupportedMarkdown(content);
+  if (unsupported) {
+    return new Err(
+      `The Markdown uses formatting the editor cannot keep: ${unsupported}.`
+    );
   }
 
   let parsed: JSONContent;

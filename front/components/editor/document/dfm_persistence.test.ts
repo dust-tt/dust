@@ -2,6 +2,7 @@
 import { documentSchema } from "@app/components/editor/document/content";
 import {
   loadDfm,
+  loggableRefusal,
   saveDfm,
   isWritableThread,
 } from "@app/components/editor/document/dfm_persistence";
@@ -197,6 +198,73 @@ describe("loadDfm", () => {
     expect(loaded.isErr() && loaded.error).toContain(
       "starts or ends on text the editor cannot highlight"
     );
+  });
+
+  it.each([
+    [
+      "a table",
+      "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      "The Markdown uses formatting the editor cannot keep: a table.",
+    ],
+    [
+      "a task list",
+      "Intro.\n\n- [ ] todo\n",
+      "The Markdown uses formatting the editor cannot keep: a task list.",
+    ],
+    [
+      "HTML",
+      "Intro.\n\n<div>x</div>\n",
+      "The Markdown uses formatting the editor cannot keep: HTML.",
+    ],
+    [
+      "a tilde fence",
+      "Intro.\n\n~~~\ncode\n~~~\n",
+      "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~.",
+    ],
+    [
+      "an indented backtick fence",
+      "Intro.\n\n  ```\n  code\n  ```\n",
+      "The Markdown uses formatting the editor cannot keep: an indented code fence.",
+    ],
+  ])("refuses %s, naming it", (_, source, reason) => {
+    const loaded = loadDfm(source);
+
+    expect(loaded.isErr() && loaded.error).toBe(reason);
+  });
+
+  // Each source makes the editor write one of its own refusals: rewording one without updating
+  // the log allowlist fails here instead of silently logging it as invalid DFM.
+  it.each([
+    ["an unsupported element", "| a | b |\n|---|---|\n| 1 | 2 |\n"],
+    ["Markdown that changes when saved", "A\n\n* a\n+ b\n"],
+    [
+      "an anchor the editor cannot show",
+      `See [docs](https://example.com/:comment-start{id=c1}a:comment-end{id=c1})\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "a comment edge on text the editor cannot highlight",
+      `Hi :comment-start{id=c1}\`code\` there:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "a comment covering no text the editor can highlight",
+      `Run :comment-start{id=c1}\`npm test\`:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+  ])("logs the editor's own refusal for %s, ids masked", (_, source) => {
+    const loaded = loadDfm(source);
+    const reason = loaded.isErr() ? loaded.error : "";
+
+    expect(reason).not.toBe("");
+    expect(loggableRefusal(reason)).toBe(reason.replaceAll('"c1"', '"…"'));
+  });
+
+  it("logs a codec error without what it quotes from the file", () => {
+    const loaded = loadDfm(
+      ":comment-start{id=c1 secret=SensitiveValue broken}hello:comment-end{id=c1}\n"
+    );
+    const reason = loaded.isErr() ? loaded.error : "";
+
+    expect(reason).toContain("SensitiveValue");
+    expect(loggableRefusal(reason)).toBe("The file is not valid DFM.");
   });
 
   it("opens a comment with inline code inside it", () => {
