@@ -1,7 +1,7 @@
 // @vitest-environment node
 import {
   agentEditsPlugin,
-  announceAgentActivity,
+  withAgentActivity,
   diffAgentEdit,
 } from "@app/components/editor/document/AgentEdits";
 import {
@@ -144,7 +144,7 @@ describe("agentEditsPlugin", () => {
 
   function editAsAgent(state: EditorState) {
     const announced = state.apply(
-      announceAgentActivity(state.tr, { agent: AGENT, activity: "editing" })
+      withAgentActivity(state.tr, { agent: AGENT, activity: "editing" })
     );
     return announced.apply(remote(announced.tr.insertText(" Indeed.", 7)));
   }
@@ -174,7 +174,7 @@ describe("agentEditsPlugin", () => {
     ).toBe(0);
 
     const announced = plain.apply(
-      announceAgentActivity(plain.tr, { agent: AGENT, activity: "editing" })
+      withAgentActivity(plain.tr, { agent: AGENT, activity: "editing" })
     );
     vi.advanceTimersByTime(10_000);
     expect(
@@ -185,7 +185,7 @@ describe("agentEditsPlugin", () => {
 
   it("plays back neither the local user's change, nor undo, nor a reading agent's", () => {
     const announced = start("Hello.").apply(
-      announceAgentActivity(start("Hello.").tr, {
+      withAgentActivity(start("Hello.").tr, {
         agent: AGENT,
         activity: "editing",
       })
@@ -205,7 +205,7 @@ describe("agentEditsPlugin", () => {
     ).toBe(0);
 
     const cancelled = announced.apply(
-      announceAgentActivity(announced.tr, { agent: AGENT, activity: "reading" })
+      withAgentActivity(announced.tr, { agent: AGENT, activity: "reading" })
     );
     expect(
       shown(cancelled.apply(remote(cancelled.tr.insertText(" Later.", 7))))

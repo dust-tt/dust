@@ -610,14 +610,16 @@ export async function writeLiveSource(
     const onUpdate = () => {
       changed = true;
     };
-    document.on("update", onUpdate);
+    if (announced) {
+      document.on("update", onUpdate);
+    }
     // As a direct connection's change, so `onChange` records `file` as its writer.
     const comments = replaceYDocContent(document, source, {
       source: "local",
       context: file,
     });
-    document.off("update", onUpdate);
     if (announced) {
+      document.off("update", onUpdate);
       document.flush();
       if (comments.isErr() || !changed) {
         document.broadcastStateless(agentActivityMessage(agent, "reading"));

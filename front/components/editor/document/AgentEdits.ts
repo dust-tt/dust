@@ -478,7 +478,7 @@ export type OnAgentActivity = (
 ) => () => void;
 
 /** Expects an agent's change, after the session announced it editing, or stops expecting one. */
-export const announceAgentActivity = (
+export const withAgentActivity = (
   transaction: Transaction,
   { agent, activity }: LiveAgentEvent
 ): Transaction => {
@@ -549,7 +549,7 @@ export const agentEdits = (onActivity: OnAgentActivity) =>
         this.storage.unsubscribe = onActivity((event) => {
           if (!this.editor.isDestroyed) {
             this.editor.view.dispatch(
-              announceAgentActivity(this.editor.state.tr, event)
+              withAgentActivity(this.editor.state.tr, event)
             );
           }
         });
