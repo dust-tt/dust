@@ -249,12 +249,12 @@ describe("loadDfm", () => {
       "a comment covering no text the editor can highlight",
       `Run :comment-start{id=c1}\`npm test\`:comment-end{id=c1}\n\n${OPEN_THREAD}`,
     ],
-  ])("logs the editor's own refusal for %s as it is", (_, source) => {
+  ])("logs the editor's own refusal for %s, ids masked", (_, source) => {
     const loaded = loadDfm(source);
     const reason = loaded.isErr() ? loaded.error : "";
 
     expect(reason).not.toBe("");
-    expect(loggableRefusal(reason)).toBe(reason);
+    expect(loggableRefusal(reason)).toBe(reason.replaceAll('"c1"', '"…"'));
   });
 
   it("logs a codec error without what it quotes from the file", () => {

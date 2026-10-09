@@ -49,11 +49,12 @@ const EDITOR_REFUSALS = [
 /**
  * @cc [owner:PopDaph,label:security;product] document-refusal-loggable
  * A refusal reason MUST reach logs only when it is one the editor writes, which never quotes the
- * file; any other reason MUST be logged as not valid DFM.
+ * file; any other reason MUST be logged as not valid DFM. Comment ids MUST be masked, so a kind
+ * of refusal is one value.
  */
 export function loggableRefusal(reason: string): string {
   return EDITOR_REFUSALS.some((pattern) => pattern.test(reason))
-    ? reason
+    ? reason.replace(/"[\w-]+"/g, '"…"')
     : "The file is not valid DFM.";
 }
 
