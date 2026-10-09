@@ -234,6 +234,7 @@ function sameSkillIds(a: string[], b: string[]): boolean {
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
+  isAgentsLoading: boolean;
   disableAgentSelector: boolean;
   submitBlockMessage: string | null;
   placeholder?: string;
@@ -299,6 +300,7 @@ function hasActiveSelectionInEditor(
 
 const InputBarContainer = ({
   allAgents,
+  isAgentsLoading,
   onEnterKeyDown,
   owner,
   conversation,
@@ -1592,10 +1594,13 @@ const InputBarContainer = ({
     actions.includes("voice") &&
     !isCompact;
 
+  // The selected agent is resolved against the agents list and the personal default.
+  const isSelectedAgentLoading = isAgentsLoading || !!isDefaultAgentLoading;
+
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
-    !isDefaultAgentLoading &&
+    !isSelectedAgentLoading &&
     !!defaultAgentId &&
     defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
     !agentsById.has(defaultAgentId);
@@ -1826,6 +1831,7 @@ const InputBarContainer = ({
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
+                      isSelectedAgentLoading={isSelectedAgentLoading}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={handleToolSelect}
