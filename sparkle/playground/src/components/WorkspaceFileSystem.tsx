@@ -29,6 +29,7 @@ import {
   readDragId,
 } from "../data/fileMoves";
 import type { DataSource } from "../data/types";
+import { setDragPreview } from "./dragPreview";
 import {
   type CreatableFileType,
   FilesBrowser,
@@ -193,6 +194,11 @@ export function WorkspaceFileSystem({
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData(dragMimeFor(item), item.id);
     event.dataTransfer.setData("text/plain", item.fileName);
+    setDragPreview(event, {
+      label: item.fileName,
+      icon: getDataSourceIcon(item) ?? Folder,
+      avatar: item.avatar,
+    });
     draggingIdRef.current = item.id;
     setDraggingId(item.id);
   };

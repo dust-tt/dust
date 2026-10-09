@@ -69,9 +69,11 @@ import {
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
+  type DragEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
 } from "react";
@@ -81,6 +83,7 @@ import { AvatarCounter } from "../components/AvatarCounter";
 import { ToolDetailsSheet } from "../components/BuildDetails";
 import type { CommandPaletteItem } from "../components/CommandPalette";
 import { CommandPalette } from "../components/CommandPalette";
+import { setDragPreview } from "../components/dragPreview";
 import {
   BUILD_SECTIONS,
   type BuildSection,
@@ -117,6 +120,7 @@ import {
   PanelLayoutPanel,
   type PanelSizingType,
 } from "../components/PanelLayout";
+import { PersonAgentView } from "../components/PersonAgentView";
 import { ProfilePanel } from "../components/Profile";
 import { RequestDetailView } from "../components/RequestDetailView";
 import type { RequestsTab } from "../components/RequestsView";
@@ -131,6 +135,7 @@ import { WorkspaceFileSystem } from "../components/WorkspaceFileSystem";
 import {
   type AdminRequest,
   type Agent,
+  type AvatarData,
   buildWorkspace,
   canDropInto,
   type Conversation,
@@ -141,21 +146,31 @@ import {
   type DataSourceFileType,
   DEFAULT_POD_NOTIFICATION_CONDITION,
   deriveFolderFiles,
+  entryForDataSource,
+  entryKey,
+  getAgentById,
+  getCollaboratorConversations,
   getMembersBySpaceId,
   getRandomUsers,
   getUserById,
+  hasEntry,
+  hasEntryDrag,
   hasFileDrag,
   hasPodDrag,
   indexFilesById,
   indexFilesByParentId,
+  insertEntryAt,
   isDropTargetFolder,
-  isPinnableToSidebar,
   isPodFolder,
   isTriggeredConversation,
   mockAgents,
   moveDataSource,
-  readFileDragId,
-  readPodDragId,
+  parseEntryKey,
+  readDragId,
+  readEntryDragKey,
+  removeEntry,
+  SIDEBAR_ENTRY_DRAG_MIME,
+  type SidebarEntry,
   mockUsers,
   MY_POD_SPACE,
   POD_NOTIFICATION_OPTIONS,
@@ -205,6 +220,13 @@ type Collaborator =
  */
 type AutomatedWorkTab = "conversations" | "triggers" | "wakeups";
 
+/** A kept sidebar entry, resolved to what it stands for. */
+type KeptItem = { key: string; entry: SidebarEntry } & (
+  | { kind: "pod"; space: Space }
+  | { kind: "file"; item: DataSource }
+  | { kind: "agent"; agent: Agent }
+);
+
 type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
@@ -222,6 +244,31 @@ function getSpaceActivity(space: Space) {
   const c = space.id.charCodeAt(space.id.length - 1);
   const count = c % 3 === 0 ? (c % 9) + 1 : undefined;
   return { count, hasActivity: count ? true : c % 2 !== 0 };
+}
+
+/** Busiest first, then the ones with something new, then by name. */
+function compareSpacesByActivity(a: Space, b: Space): number {
+  const { count: cA = 0, hasActivity: hA } = getSpaceActivity(a);
+  const { count: cB = 0, hasActivity: hB } = getSpaceActivity(b);
+  if (cA !== cB) {
+    return cB - cA;
+  }
+  if (hA !== hB) {
+    return hA ? -1 : 1;
+  }
+  return a.name.localeCompare(b.name);
+}
+
+/** Where the drop will land: a line drawn between two kept rows. */
+function DropIndicator({ edge }: { edge: "top" | "bottom" }) {
+  return (
+    <div
+      className={cn(
+        "pointer-events-none absolute inset-x-1 z-10 h-0.5 rounded-full bg-highlight-500",
+        edge === "top" ? "-top-px" : "-bottom-px"
+      )}
+    />
+  );
 }
 
 /** A file as the input bar holds it, when a conversation is started on one. */
@@ -264,9 +311,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // when the simulated workspace changes, so these only need an initial value.
   const [greeting] = useState(() => getRandomGreetingForName(user.firstName));
   const [spaces, setSpaces] = useState<Space[]>(model.pods);
-  const [conversationsWithMessages] = useState<Conversation[]>(
-    model.conversations
-  );
+  const [conversationsWithMessages, setConversationsWithMessages] = useState<
+    Conversation[]
+  >(model.conversations);
   const [collaborators] = useState<Collaborator[]>(() =>
     pickCollaborators(model, user.id)
   );
@@ -281,6 +328,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     /** A file the sidebar keeps, opened in place of the main content rather
      *  than beside the Hub. */
     | { kind: "file"; dataSource: DataSource }
+    /** An agent the sidebar keeps, read as the conversations held with it. */
+    | { kind: "agent"; agentId: string }
     | { kind: "requests" }
     | { kind: "conversations" }
     | { kind: "automations" }
@@ -390,6 +439,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // outlives `p2View` — a Space stays lit without the panel changing.
   const [buildNavItem, setBuildNavItem] = useState("agents");
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  const [isKeptAgentAboutOpen, setIsKeptAgentAboutOpen] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
     useState<Map<string, PodNotificationCondition>>(new Map());
 
@@ -401,12 +451,17 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       new Map(prev).set(spaceId, condition)
     );
   };
-  // The sidebar's Pod list, start to finish: a Pod shows there because it was
+  // Everything the sidebar keeps, in the order the user put it there: Pods,
+  // files, folders and agents in one list. Something shows there because it was
   // put there, not because the user takes part in it. Every other Pod is
-  // reached from the browse menu or from Files.
-  const [favoritePodIds, setFavoritePodIds] = useState<Set<string>>(
-    () => new Set(model.memberPodIds.slice(0, SIDEBAR_POD_COUNT))
-  );
+  // reached from the browse menu or from the Hub.
+  const [sidebarEntries, setSidebarEntries] = useState<SidebarEntry[]>(() => {
+    const kept = new Set(model.memberPodIds.slice(0, SIDEBAR_POD_COUNT));
+    return model.pods
+      .filter((pod) => kept.has(pod.id))
+      .sort(compareSpacesByActivity)
+      .map((pod) => ({ kind: "pod" as const, spaceId: pod.id }));
+  });
   // A Pod the user creates is theirs; the workspace's others stay out of the
   // Inbox until they are in them.
   const otherPodIds = useMemo(() => {
@@ -432,13 +487,12 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   );
   /** A tool opens in its own sheet rather than a panel, the way Build shows it. */
   const [detailedToolId, setDetailedToolId] = useState<string | null>(null);
-  /** A Pod is being dragged over the sidebar's Pod list. */
-  const [isPodDropHovered, setIsPodDropHovered] = useState(false);
-  // What the sidebar's Files section keeps, in the order it was dropped there.
-  const [pinnedFileIds, setPinnedFileIds] = useState<Set<string>>(
-    () => new Set()
-  );
-  const [isFileDropHovered, setIsFileDropHovered] = useState(false);
+  /**
+   * Where a drop would land in the kept list, counted on the rows as they are
+   * drawn: 0 is above the first, `length` below the last. Null when nothing is
+   * being dragged over it.
+   */
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
   // Where the Hub is. Held here so a kept folder can open the Hub on itself
   // and stay lit while the Hub is in it. It starts in the company drive: the
   // top level holds only the two drives, which is nothing to read.
@@ -550,27 +604,99 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     }).length;
   }, [allConversations, otherPodIds]);
 
-  const sortedSpaces = useMemo(() => {
-    return [...spaces].sort((a, b) => {
-      const { count: cA = 0, hasActivity: hA } = getSpaceActivity(a);
-      const { count: cB = 0, hasActivity: hB } = getSpaceActivity(b);
-      if (cA !== cB) return cB - cA;
-      if (hA !== hB) return hA ? -1 : 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [spaces]);
+  const sortedSpaces = useMemo(
+    () => [...spaces].sort(compareSpacesByActivity),
+    [spaces]
+  );
 
-  // The sidebar list itself, plus the Pod you are currently in when it is not
-  // on it — otherwise the selection would have nowhere to show.
-  const sidebarSpaces = useMemo(() => {
-    const favorites = sortedSpaces.filter((s) => favoritePodIds.has(s.id));
-    const openSpaceId = p2View.kind === "space" ? p2View.spaceId : null;
-    if (!openSpaceId || favoritePodIds.has(openSpaceId)) {
-      return favorites;
+  const spacesById = useMemo(
+    () => new Map(spaces.map((space) => [space.id, space])),
+    [spaces]
+  );
+
+  const keptEntryKeys = useMemo(
+    () => new Set(sidebarEntries.map(entryKey)),
+    [sidebarEntries]
+  );
+
+  const isEntryKept = useCallback(
+    (entry: SidebarEntry | null) =>
+      entry !== null && keptEntryKeys.has(entryKey(entry)),
+    [keptEntryKeys]
+  );
+
+  /**
+   * Each kept entry with the thing it stands for. Read through the live
+   * indexes, so a kept item follows a rename or a move and simply stops being
+   * listed once it is deleted.
+   */
+  const keptItems = useMemo<KeptItem[]>(
+    () =>
+      sidebarEntries.flatMap<KeptItem>((entry) => {
+        const key = entryKey(entry);
+        switch (entry.kind) {
+          case "pod": {
+            const space = spacesById.get(entry.spaceId);
+            return space ? [{ key, entry, kind: "pod", space }] : [];
+          }
+          case "file": {
+            const item = filesById.get(entry.fileId);
+            return item ? [{ key, entry, kind: "file", item }] : [];
+          }
+          case "agent": {
+            const agent = getAgentById(entry.agentId);
+            return agent ? [{ key, entry, kind: "agent", agent }] : [];
+          }
+        }
+      }),
+    [filesById, sidebarEntries, spacesById]
+  );
+
+  const keptAgentCollaborator = useMemo((): Collaborator | null => {
+    if (p2View.kind !== "agent") {
+      return null;
     }
-    const openSpace = spaces.find((s) => s.id === openSpaceId);
-    return openSpace ? [...favorites, openSpace] : favorites;
-  }, [favoritePodIds, sortedSpaces, p2View, spaces]);
+    const agent = getAgentById(p2View.agentId);
+    return agent ? { type: "agent", data: agent } : null;
+  }, [p2View]);
+
+  /**
+   * An agent nobody has written to yet is given an invented history, and
+   * opening one of those conversations makes it real — at which point the
+   * generator steps aside and the list would collapse to the single
+   * conversation you just clicked. So each agent keeps the history it was
+   * first handed, however much the pool moves underneath it.
+   */
+  const agentConversationsByAgentId = useRef(new Map<string, Conversation[]>());
+
+  const keptAgentConversations = useMemo(() => {
+    if (!keptAgentCollaborator) {
+      return [];
+    }
+    const agentId = keptAgentCollaborator.data.id;
+    const frozen = agentConversationsByAgentId.current.get(agentId);
+    if (frozen) {
+      return frozen;
+    }
+    const conversations = getCollaboratorConversations(
+      allConversations,
+      user.id,
+      keptAgentCollaborator
+    );
+    agentConversationsByAgentId.current.set(agentId, conversations);
+    return conversations;
+  }, [allConversations, keptAgentCollaborator, user.id]);
+
+  /** The Pod you are in while it is not kept: the selection needs a row. */
+  const openUnkeptSpace = useMemo(() => {
+    if (p2View.kind !== "space") {
+      return null;
+    }
+    if (isEntryKept({ kind: "pod", spaceId: p2View.spaceId })) {
+      return null;
+    }
+    return spacesById.get(p2View.spaceId) ?? null;
+  }, [isEntryKept, p2View, spacesById]);
 
   const [podBrowseSearch, setPodBrowseSearch] = useState("");
   const browsableSpaces = useMemo(() => {
@@ -1074,9 +1200,27 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     return companyDrive?.id ?? podDestinations[0]?.id ?? null;
   }, [files, podDestinations]);
 
-  const addPodToSidebar = useCallback((spaceId: string) => {
-    setFavoritePodIds((prev) => new Set(prev).add(spaceId));
+  /** Kept from a menu rather than dropped, so it goes to the end of the list. */
+  const keepEntry = useCallback((entry: SidebarEntry) => {
+    setSidebarEntries((prev) =>
+      hasEntry(prev, entry) ? prev : [...prev, entry]
+    );
   }, []);
+
+  const dropEntry = useCallback((entry: SidebarEntry) => {
+    setSidebarEntries((prev) => removeEntry(prev, entry));
+  }, []);
+
+  const toggleEntry = useCallback((entry: SidebarEntry) => {
+    setSidebarEntries((prev) =>
+      hasEntry(prev, entry) ? removeEntry(prev, entry) : [...prev, entry]
+    );
+  }, []);
+
+  const addPodToSidebar = useCallback(
+    (spaceId: string) => keepEntry({ kind: "pod", spaceId }),
+    [keepEntry]
+  );
 
   /** Opens the create dialog with a folder already chosen. */
   const handleCreatePodIn = useCallback((parentId: string | null) => {
@@ -1280,36 +1424,6 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     );
   };
 
-  const togglePodFavorite = (spaceId: string) => {
-    setFavoritePodIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(spaceId)) {
-        next.delete(spaceId);
-      } else {
-        next.add(spaceId);
-      }
-      return next;
-    });
-  };
-
-  const togglePinnedFile = (fileId: string) => {
-    setPinnedFileIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(fileId)) {
-        next.delete(fileId);
-      } else {
-        next.add(fileId);
-      }
-      return next;
-    });
-  };
-
-  // Read through the live index, so a kept item follows a rename or a move and
-  // simply stops being listed once it is deleted.
-  const pinnedFiles = [...pinnedFileIds]
-    .map((id) => filesById.get(id))
-    .filter((item): item is DataSource => item !== undefined);
-
   /** A kept folder opens the Hub on itself; a kept file takes the main panel.
    *  A tool is the exception: what there is of one is its settings sheet. */
   const openPinnedItem = (item: DataSource) => {
@@ -1348,11 +1462,41 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     setHubRevealedFileId(null);
   }
 
-  const renderSidebarFileNavItem = (item: DataSource) => (
+  /** Opens the Hub on an agent's own file, which is where it is filed. */
+  const showAgentInHub = (agentId: string) => {
+    const file = files.find(
+      (candidate) =>
+        candidate.fileType === "agent" && candidate.refId === agentId
+    );
+    if (file) {
+      showPinnedItemInHub(file);
+    }
+  };
+
+  /** Picks the row up by its entry, so a drop knows what it is carrying. */
+  const entryDragProps = (
+    entry: SidebarEntry,
+    preview: {
+      label: string;
+      icon?: ComponentType<{ className?: string }>;
+      avatar?: AvatarData;
+    }
+  ) => ({
+    draggable: true,
+    onDragStart: (event: DragEvent<HTMLDivElement>) => {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData(SIDEBAR_ENTRY_DRAG_MIME, entryKey(entry));
+      event.dataTransfer.setData("text/plain", preview.label);
+      setDragPreview(event, preview);
+    },
+    onDragEnd: () => setDropIndex(null),
+  });
+
+  const renderSidebarFileNavItem = (item: DataSource, entry: SidebarEntry) => (
     <NavigationListItem
       key={item.id}
       label={item.fileName}
-      // An agent or a skill reads by its avatar, as it does in the Hub.
+      // A skill reads by its avatar, as it does in the Hub.
       icon={item.avatar ? undefined : (getDataSourceIcon(item) ?? File02)}
       avatar={item.avatar ? <Avatar size="xxs" {...item.avatar} /> : undefined}
       selected={
@@ -1361,6 +1505,11 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           : p2View.kind === "file" && p2View.dataSource.id === item.id
       }
       onClick={() => openPinnedItem(item)}
+      {...entryDragProps(entry, {
+        label: item.fileName,
+        icon: getDataSourceIcon(item) ?? File02,
+        avatar: item.avatar,
+      })}
       moreMenu={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -1381,7 +1530,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                togglePinnedFile(item.id);
+                dropEntry(entry);
               }}
             />
           </DropdownMenuContent>
@@ -1389,6 +1538,117 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       }
     />
   );
+
+  const renderSidebarAgentNavItem = (agent: Agent, entry: SidebarEntry) => {
+    const avatar: AvatarData = {
+      emoji: agent.emoji,
+      backgroundColor: agent.backgroundColor,
+    };
+    return (
+      <NavigationListItem
+        key={agent.id}
+        label={agent.name}
+        avatar={<Avatar size="xxs" {...avatar} />}
+        selected={p2View.kind === "agent" && p2View.agentId === agent.id}
+        onClick={() => {
+          setP2View({ kind: "agent", agentId: agent.id });
+          setP3View(null);
+          setP4View(null);
+        }}
+        {...entryDragProps(entry, { label: agent.name, avatar })}
+        moreMenu={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <NavigationListItemAction />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem
+                label="Show in the Hub"
+                icon={ROOT_FOLDER_ICON}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showAgentInHub(agent.id);
+                }}
+              />
+              <DropdownMenuItem
+                label="Remove from sidebar"
+                icon={Star01}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  dropEntry(entry);
+                }}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+    );
+  };
+
+  /**
+   * Which gap the pointer sits in, counted on the rows as drawn. Measured from
+   * the rows themselves rather than from the list, so a collapsed section or a
+   * scrolled sidebar needs no special case.
+   */
+  const dropIndexAt = (container: HTMLElement, clientY: number): number => {
+    const rows = Array.from(
+      container.querySelectorAll<HTMLElement>("[data-kept-entry]")
+    );
+    const above = rows.findIndex((row) => {
+      const rect = row.getBoundingClientRect();
+      return clientY < rect.top + rect.height / 2;
+    });
+    return above === -1 ? rows.length : above;
+  };
+
+  /** Only `types` is readable during dragover, so this is the hover test. */
+  const isKeepableDrag = (dataTransfer: DataTransfer) =>
+    hasEntryDrag(dataTransfer) ||
+    hasPodDrag(dataTransfer) ||
+    hasFileDrag(dataTransfer);
+
+  /** What the drag is carrying: a row of the list, or an item from the Hub. */
+  const readKeptDrag = (dataTransfer: DataTransfer): SidebarEntry | null => {
+    const key = readEntryDragKey(dataTransfer);
+    if (key) {
+      return parseEntryKey(key);
+    }
+    const draggedId = readDragId(dataTransfer);
+    const item = draggedId ? filesById.get(draggedId) : undefined;
+    return item ? entryForDataSource(item) : null;
+  };
+
+  const handleKeptDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!isKeepableDrag(event.dataTransfer)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropIndex(dropIndexAt(event.currentTarget, event.clientY));
+  };
+
+  const handleKeptDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    // Moving between the rows inside the section is not leaving it.
+    if (
+      event.relatedTarget instanceof Node &&
+      event.currentTarget.contains(event.relatedTarget)
+    ) {
+      return;
+    }
+    setDropIndex(null);
+  };
+
+  const handleKeptDrop = (event: DragEvent<HTMLDivElement>) => {
+    const index = dropIndex ?? dropIndexAt(event.currentTarget, event.clientY);
+    setDropIndex(null);
+    const entry = readKeptDrag(event.dataTransfer);
+    if (!entry) {
+      return;
+    }
+    event.preventDefault();
+    setSidebarEntries((prev) => insertEntryAt(prev, entry, index));
+  };
 
   const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
     setSpacePublicSettings((prev) => new Map(prev).set(spaceId, isPublic));
@@ -1398,8 +1658,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   };
 
   const renderPodNavItem = (space: Space) => {
-    const isFavorite = favoritePodIds.has(space.id);
+    const entry: SidebarEntry = { kind: "pod", spaceId: space.id };
+    const isFavorite = isEntryKept(entry);
     const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+    const icon = isRestricted ? CubeOutline : Cube01;
     const { count, hasActivity } = getSpaceActivity(space);
     const members = getMembersBySpaceId(space.id)
       .map((id) => getUserById(id))
@@ -1409,10 +1671,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       <NavigationListItem
         key={space.id}
         label={space.name}
-        icon={isRestricted ? CubeOutline : Cube01}
+        icon={icon}
         selected={p2View.kind === "space" && p2View.spaceId === space.id}
         count={count}
         hasActivity={hasActivity}
+        // Only a kept Pod can be reordered; the open one is just passing through.
+        {...(isFavorite
+          ? entryDragProps(entry, { label: space.name, icon })
+          : {})}
         moreMenu={
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -1427,7 +1693,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  togglePodFavorite(space.id);
+                  toggleEntry(entry);
                 }}
               />
               <DropdownMenuSeparator />
@@ -1538,6 +1804,17 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     );
   };
 
+  const renderKeptItem = (kept: KeptItem) => {
+    switch (kept.kind) {
+      case "pod":
+        return renderPodNavItem(kept.space);
+      case "file":
+        return renderSidebarFileNavItem(kept.item, kept.entry);
+      case "agent":
+        return renderSidebarAgentNavItem(kept.agent, kept.entry);
+    }
+  };
+
   // ── P2 content ────────────────────────────────────────────────────────────
   // What the three Build screens are called and badged with, in one place: the
   // sidebar row, the breadcrumb and the panel label all read from it.
@@ -1556,6 +1833,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     if (p2View.kind === "inboxAlt") return "Inbox";
     if (p2View.kind === "files") return ROOT_FOLDER_LABEL;
     if (p2View.kind === "file") return p2View.dataSource.fileName;
+    if (p2View.kind === "agent")
+      return getAgentById(p2View.agentId)?.name ?? "Agent";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Free conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1650,14 +1929,45 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           onEditBuildItem={handleEditBuildItem}
           currentFolderId={hubFolderId}
           onCurrentFolderIdChange={setHubFolderId}
-          isPinnedToSidebar={(item) => pinnedFileIds.has(item.id)}
-          onTogglePinnedToSidebar={(item) => togglePinnedFile(item.id)}
+          isPinnedToSidebar={(item) => isEntryKept(entryForDataSource(item))}
+          onTogglePinnedToSidebar={(item) => {
+            const entry = entryForDataSource(item);
+            if (entry) {
+              toggleEntry(entry);
+            }
+          }}
           revealedFileId={hubRevealedFileId}
           onClearRevealedFile={() => setHubRevealedFileId(null)}
         />
       );
     if (p2View.kind === "file")
       return fileSidePanelContent(fileSidePanelView(p2View.dataSource));
+    if (p2View.kind === "agent" && keptAgentCollaborator)
+      return (
+        <PersonAgentView
+          collaborator={keptAgentCollaborator}
+          user={user}
+          conversations={keptAgentConversations}
+          users={mockUsers}
+          agents={model.agents}
+          aboutOpen={isKeptAgentAboutOpen}
+          onAboutOpenChange={setIsKeptAgentAboutOpen}
+          onConversationClick={(conversation) => {
+            // The list stands in a history of its own when the agent has none,
+            // so the conversation has to join the pool before it can open.
+            setConversationsWithMessages((prev) =>
+              prev.some((c) => c.id === conversation.id)
+                ? prev
+                : [...prev, conversation]
+            );
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+        />
+      );
     if (p2View.kind === "requests")
       return (
         <RequestsView
@@ -2173,6 +2483,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           hasLighterFont
         />
       );
+    if (p2View.kind === "agent")
+      return (
+        <Breadcrumbs
+          items={[{ label: p2Label, icon: Robot }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
     if (p2View.kind === "requests")
       return (
         <Breadcrumbs
@@ -2366,104 +2684,21 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
               />
             </NavigationList>
 
-            {/* Above Pods rather than below: with twenty Pods kept, a section
-                under them sits off the bottom of the sidebar, and nothing
-                scrolls it into reach during a drag. */}
+            {/* Pods, files, folders and agents in one list: what the sidebar
+                keeps, in the order it was put there. A drop names a position
+                rather than a section. */}
             <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
               <NavigationListCollapsibleSection
-                label="Files"
+                label="Pinned"
                 type="collapse"
                 defaultOpen={true}
-                className={cn(
-                  "rounded-xl",
-                  isFileDropHovered && "bg-selected ring-1 ring-highlight"
-                )}
-                onDragOver={(event) => {
-                  if (!hasFileDrag(event.dataTransfer)) {
-                    return;
-                  }
-                  event.preventDefault();
-                  setIsFileDropHovered(true);
-                }}
-                onDragLeave={(event) => {
-                  if (
-                    event.relatedTarget instanceof Node &&
-                    event.currentTarget.contains(event.relatedTarget)
-                  ) {
-                    return;
-                  }
-                  setIsFileDropHovered(false);
-                }}
-                onDrop={(event) => {
-                  setIsFileDropHovered(false);
-                  const fileId = readFileDragId(event.dataTransfer);
-                  const item = fileId ? filesById.get(fileId) : undefined;
-                  if (!item || !isPinnableToSidebar(item)) {
-                    return;
-                  }
-                  event.preventDefault();
-                  setPinnedFileIds((prev) => new Set(prev).add(item.id));
-                }}
-              >
-                {pinnedFiles.length > 0 ? (
-                  pinnedFiles.map(renderSidebarFileNavItem)
-                ) : (
-                  <NavigationListItem
-                    label="Add files from the Hub"
-                    icon={Plus}
-                    onClick={() => {
-                      setP2View({ kind: "files" });
-                      setP3View(null);
-                      setP4View(null);
-                    }}
-                  />
-                )}
-              </NavigationListCollapsibleSection>
-            </NavigationList>
-
-            <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
-              <NavigationListCollapsibleSection
-                label="Pods"
-                type="collapse"
-                defaultOpen={true}
-                // Dropping a Pod here keeps it in the list; it stays where it
-                // is in Files.
-                className={cn(
-                  "rounded-xl",
-                  isPodDropHovered && "bg-selected ring-1 ring-highlight"
-                )}
-                onDragOver={(event) => {
-                  if (!hasPodDrag(event.dataTransfer)) {
-                    return;
-                  }
-                  event.preventDefault();
-                  setIsPodDropHovered(true);
-                }}
-                onDragLeave={(event) => {
-                  // Moving between the rows inside the section is not leaving it.
-                  if (
-                    event.relatedTarget instanceof Node &&
-                    event.currentTarget.contains(event.relatedTarget)
-                  ) {
-                    return;
-                  }
-                  setIsPodDropHovered(false);
-                }}
-                onDrop={(event) => {
-                  setIsPodDropHovered(false);
-                  const podFolderId = readPodDragId(event.dataTransfer);
-                  const refId = podFolderId
-                    ? filesById.get(podFolderId)?.refId
-                    : undefined;
-                  if (!refId) {
-                    return;
-                  }
-                  event.preventDefault();
-                  addPodToSidebar(refId);
-                }}
+                className="rounded-xl"
+                onDragOver={handleKeptDragOver}
+                onDragLeave={handleKeptDragLeave}
+                onDrop={handleKeptDrop}
                 action={
                   <>
-                    {sidebarSpaces.length > 0 && (
+                    {keptItems.length > 0 && (
                       <Button
                         size="xs"
                         icon={Plus}
@@ -2507,7 +2742,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                               const isRestricted =
                                 space.id.charCodeAt(space.id.length - 1) % 2 ===
                                 0;
-                              const isFavorite = favoritePodIds.has(space.id);
+                              const isFavorite = isEntryKept({
+                                kind: "pod",
+                                spaceId: space.id,
+                              });
                               return (
                                 <div
                                   key={space.id}
@@ -2552,7 +2790,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      togglePodFavorite(space.id);
+                                      toggleEntry({
+                                        kind: "pod",
+                                        spaceId: space.id,
+                                      });
                                     }}
                                   />
                                 </div>
@@ -2565,15 +2806,28 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                   </>
                 }
               >
-                {sidebarSpaces.length > 0 ? (
-                  sidebarSpaces.map(renderPodNavItem)
+                {keptItems.length > 0 ? (
+                  keptItems.map((kept, index) => (
+                    <div key={kept.key} data-kept-entry className="relative">
+                      {dropIndex === index && <DropIndicator edge="top" />}
+                      {renderKeptItem(kept)}
+                      {dropIndex === keptItems.length &&
+                        index === keptItems.length - 1 && (
+                          <DropIndicator edge="bottom" />
+                        )}
+                    </div>
+                  ))
                 ) : (
-                  <NavigationListItem
-                    label="Create a Pod"
-                    icon={Plus}
-                    onClick={() => handleCreatePodIn(null)}
-                  />
+                  <div className="relative">
+                    {dropIndex !== null && <DropIndicator edge="top" />}
+                    <NavigationListItem
+                      label="Add Pods and files"
+                      icon={Plus}
+                      onClick={() => handleCreatePodIn(null)}
+                    />
+                  </div>
                 )}
+                {openUnkeptSpace && renderPodNavItem(openUnkeptSpace)}
               </NavigationListCollapsibleSection>
             </NavigationList>
           </ScrollArea>

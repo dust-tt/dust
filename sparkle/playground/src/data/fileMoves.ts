@@ -81,12 +81,11 @@ export function hasFileDrag(dataTransfer: DataTransfer): boolean {
 }
 
 /**
- * What the sidebar's Files section keeps. Anything that can be picked up can
- * be kept there, a Pod aside: it has a list of its own, which is where its
- * drag lands.
+ * What the sidebar keeps. Anything that can be picked up can be kept, Pods
+ * included: they all share one list, so there is nothing left to separate.
  */
 export function isPinnableToSidebar(item: DataSource): boolean {
-  return isDraggableItem(item) && !isPodFolder(item);
+  return isDraggableItem(item);
 }
 
 function ancestorsOf(
