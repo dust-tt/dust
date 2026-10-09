@@ -3,9 +3,9 @@ use dfs_protocol::{
     rpc::{
         ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
         ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
-        OperationBatch, ReadData, ReadFilesRequest, ReadRequest, SearchRequest, SearchResults,
-        Session, StatRequest, Tenant, UpdateGrantsRequest, ValidateRequest, ValidationBatch,
-        dfs_server::Dfs,
+        OperationBatch, ReadData, ReadFilesRequest, ReadRequest, RevokeSessionRequest,
+        SearchRequest, SearchResults, Session, StatRequest, Tenant, UpdateGrantsRequest,
+        ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
 use tonic::{Request, Response, Status};
@@ -34,7 +34,15 @@ impl Dfs for API {
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn close_session(&self, _request: Request<Empty>) -> Result<Response<Empty>, Status> {
+    async fn revoke_session(
+        &self,
+        _request: Request<RevokeSessionRequest>,
+    ) -> Result<Response<Empty>, Status> {
+        // TODO(spolu): Authenticate the tenant API key before revoking a session in that tenant.
+        Err(status(ErrorCode::Unsupported))
+    }
+
+    async fn refresh_session(&self, _request: Request<Empty>) -> Result<Response<Session>, Status> {
         Err(status(ErrorCode::Unsupported))
     }
 

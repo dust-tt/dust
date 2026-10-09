@@ -6,7 +6,8 @@ use dfs_protocol::{
     rpc::{
         ApplyRequest, CreateSessionRequest, CreateTenantRequest, Empty, ErrorCode, ErrorDetails,
         ListGrantsRequest, ListRequest, LookupRequest, ReadFilesRequest, ReadRequest,
-        SearchRequest, StatRequest, UpdateGrantsRequest, ValidateRequest, dfs_client::DfsClient,
+        RevokeSessionRequest, SearchRequest, StatRequest, UpdateGrantsRequest, ValidateRequest,
+        dfs_client::DfsClient,
     },
 };
 use prost::Message;
@@ -171,7 +172,16 @@ async fn every_dfs_rpc_answers_unsupported_to_an_authenticated_request() -> Resu
             .await
             .map(drop),
         client
-            .close_session(with_authorization(Empty {}, auth)?)
+            .revoke_session(with_authorization(
+                RevokeSessionRequest {
+                    session_id: "session".into(),
+                },
+                auth,
+            )?)
+            .await
+            .map(drop),
+        client
+            .refresh_session(with_authorization(Empty {}, auth)?)
             .await
             .map(drop),
         client

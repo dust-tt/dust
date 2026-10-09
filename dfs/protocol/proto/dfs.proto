@@ -5,7 +5,6 @@ syntax = "proto2";
 package dfs.v1;
 
 // All calls are unary and authenticate with authorization: Bearer <key> metadata.
-// Session-key calls derive their tenant and subjects exclusively from the authenticated session.
 
 // @cc [owner:spolu,label:api;performance] dfs-request-size
 // Every RPC request MUST fit in 4 MiB (4,194,304 bytes) of uncompressed protobuf payload, including
@@ -42,44 +41,31 @@ service Dfs {
   // Requires the server key; tenant_id names the tenant to create.
   rpc CreateTenant(CreateTenantRequest) returns (Tenant);
 
-  // Requires a tenant key; the authenticated key determines the tenant.
+  // Requires a tenant key, which determines the authenticated tenant.
   rpc CreateSession(CreateSessionRequest) returns (Session);
-
-  // Requires an active session key; returns the authenticated session.
-  rpc CurrentSession(Empty) returns (Session);
-
-  // Requires an active session key; closes the authenticated session.
-  rpc CloseSession(Empty) returns (Empty);
-
-  // Requires a tenant key; the authenticated key determines the tenant.
+  rpc RevokeSession(RevokeSessionRequest) returns (Empty);
   rpc ListGrants(ListGrantsRequest) returns (GrantPage);
-
-  // Requires a tenant key; the authenticated key determines the tenant.
   rpc UpdateGrants(UpdateGrantsRequest) returns (Empty);
 
-  // Requires an active session key.
+  // Requires an active session key, which determines the authenticated tenant and subjects.
+  rpc CurrentSession(Empty) returns (Session);
+
+  // @cc [owner:spolu,label:api;security] dfs-session-refresh
+  // Refresh MUST set expires_at to the maximum of its current value and server time plus one hour,
+  // preserving the session ID, tenant, subjects, and key. Expired or revoked sessions MUST fail
+  // authentication and MUST NOT be revived.
+  rpc RefreshSession(Empty) returns (Session);
+
   rpc Stat(StatRequest) returns (AttrBatch);
-
-  // Requires an active session key.
   rpc Lookup(LookupRequest) returns (AttrBatch);
-
-  // Requires an active session key.
   rpc List(ListRequest) returns (EntryPage);
-
-  // Requires an active session key.
   rpc Read(ReadRequest) returns (ReadData);
-
-  // Requires an active session key.
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
-  // Requires an active session key.
   // Valid checks on virtual shared always return CHANGED, even when supplied versions match.
   rpc Validate(ValidateRequest) returns (ValidationBatch);
 
-  // Requires an active session key.
   rpc Apply(ApplyRequest) returns (OperationBatch);
-
-  // Requires an active session key.
   rpc Search(SearchRequest) returns (SearchResults);
 }
 
@@ -118,9 +104,10 @@ message Attr {
   // response's authorization state, not independent stored permissions. Group, other, special, and
   // file-type bits MUST be zero. Virtual shared MUST report 0o500. Virtual root MUST report 0o700
   // when the session has w on the stored tenant root, and 0o500 otherwise. Namespace mutations at
-  // virtual root MUST use the session's real root_id and grants. Executable-file handling is future
-  // work, likely client heuristics based on MIME types and/or xattrs; any future executable-file
-  // classification MUST be independent of the session and its grants.
+  // virtual root MUST resolve the authenticated tenant's stored root and enforce the session's
+  // effective grant permissions. Executable-file handling is future work, likely client heuristics
+  // based on MIME types and/or xattrs; any future executable-file classification MUST be independent
+  // of the session and its grants.
   required uint32 mode = 5;
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
@@ -200,17 +187,25 @@ message CreateSessionRequest {
   repeated string subjects = 1;
 }
 
+// @cc [owner:spolu,label:api;security] dfs-session-revocation
+// The tenant MUST be derived from the authenticated tenant key. The session ID MUST be nonempty
+// and identify a session in that tenant. Unknown sessions and sessions in another tenant MUST
+// return NOT_FOUND. Success MUST prevent new admissions, drain admitted mutations, and invalidate
+// the session key. Concurrent refresh MUST NOT undo revocation.
+message RevokeSessionRequest {
+  required string session_id = 1;
+}
+
 // @cc [owner:spolu,label:api] dfs-session-limits
 // Tenant IDs MUST contain 1-256 UTF-8 bytes. Subjects MUST contain at most 512 unique values, each
 // containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for CreateSession and
-// MUST be empty for CurrentSession.
+// MUST be empty for CurrentSession and RefreshSession.
 message Session {
   required string id = 1;
   required string tenant_id = 2;
   repeated string subjects = 3;
   required string session_key = 4;
   required uint64 expires_at = 5;
-  required ObjectId root_id = 6;
 }
 
 // The tenant is derived exclusively from the authenticated tenant key.

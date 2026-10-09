@@ -426,11 +426,17 @@ fn sessions_carry_subjects_instead_of_grant_rules() -> Result<()> {
         subjects: request.subjects,
         session_key: String::new(),
         expires_at: 1_800_000_000_000,
-        root_id: ID.parse()?,
     };
     assert_eq!(
         rpc::Session::decode(session.encode_to_vec().as_slice())?,
         session
+    );
+    let revoke = rpc::RevokeSessionRequest {
+        session_id: session.id,
+    };
+    assert_eq!(
+        rpc::RevokeSessionRequest::decode(revoke.encode_to_vec().as_slice())?,
+        revoke
     );
     Ok(())
 }
