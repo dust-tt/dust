@@ -46,6 +46,21 @@ const SEEDS: Record<string, Seed[]> = {
           body: "+1, and let's test them in a social ad too, that's where most puppy parents will meet us first.",
           createdAt: hoursAgo(25),
         },
+        {
+          author: lucas,
+          body: "Retail buyers will see the pouch first, so I'd weigh the mockup results more than the survey.",
+          createdAt: hoursAgo(24),
+        },
+        {
+          author: marco,
+          body: "Mockups are cheap: two pouch variants cost us under $400. Happy to sign off.",
+          createdAt: hoursAgo(23),
+        },
+        {
+          author: amelie,
+          body: "Great, I'll brief the design team and share the mockups by Friday.",
+          createdAt: hoursAgo(22),
+        },
       ],
     },
     {
@@ -59,6 +74,11 @@ const SEEDS: Record<string, Seed[]> = {
           author: lucas,
           body: "Shelf data is in the shared folder: Bocce's 6 oz bag holds about 45 pieces, so roughly 18¢ a treat.",
           createdAt: hoursAgo(19),
+        },
+        {
+          author: YOU,
+          body: "Thanks both, I'll update the price section once the model is in.",
+          createdAt: hoursAgo(18),
         },
       ],
     },

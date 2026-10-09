@@ -25,7 +25,8 @@ export const DOC_TYPOGRAPHY = cn(
 );
 
 /**
- * The area the document sits in: plain padding, on the panel's background.
- * The right side is a little wider than production's to fit comment markers.
+ * The area the document sits in, as in production's Document: a centred
+ * column of at most 50rem, its padding room for the comment markers.
  */
-export const DOC_PAGE = "w-full py-6 pl-8 pr-16";
+export const DOC_PAGE =
+  "mx-auto w-full max-w-[50rem] px-5 pb-16 pt-5 @sm:px-12 @sm:pt-8";

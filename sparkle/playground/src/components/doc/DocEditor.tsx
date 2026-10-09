@@ -146,8 +146,6 @@ interface DocEditorProps {
   initialMarkdown: string;
   initialJson: Record<string, unknown> | null;
   activeCommentId: string | null;
-  /** Comment style "light": softer highlights, no underline. */
-  lightHighlights?: boolean;
   /** Comments to anchor on their quote when the editor first opens. */
   initialAnchors?: Array<{ id: string; quote: string }>;
   /** `markdown` is null when only comment highlights changed, not the text. */
@@ -173,7 +171,6 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
       initialMarkdown,
       initialJson,
       activeCommentId,
-      lightHighlights = false,
       initialAnchors,
       onChange,
       onCommentSelection,
@@ -186,10 +183,12 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
     // The editor captures its handlers once: they read the latest props here.
     const onChangeRef = useRef(onChange);
     const onCommentClickRef = useRef(onCommentClick);
+    const onCommentSelectionRef = useRef(onCommentSelection);
     const readOnlyRef = useRef(readOnly);
     useLayoutEffect(() => {
       onChangeRef.current = onChange;
       onCommentClickRef.current = onCommentClick;
+      onCommentSelectionRef.current = onCommentSelection;
       readOnlyRef.current = readOnly;
     });
 
@@ -213,7 +212,18 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
         // Read-only, the editor stays focusable so text can be selected (the
         // selection bar needs it), but anything that would change the text
         // is swallowed. Moving around and copying still work.
-        handleKeyDown: (_view, event) => {
+        handleKeyDown: (view, event) => {
+          // Cmd/Ctrl+Alt+M comments on the selection, as in production.
+          if (
+            (event.metaKey || event.ctrlKey) &&
+            event.altKey &&
+            event.code === "KeyM"
+          ) {
+            if (!view.state.selection.empty) {
+              onCommentSelectionRef.current();
+            }
+            return true;
+          }
           if (!readOnlyRef.current) {
             return false;
           }
@@ -370,16 +380,14 @@ export const DocEditor = forwardRef<DocEditorHandle, DocEditorProps>(
         className={cn(
           "doc-editor",
           DOC_TYPOGRAPHY,
-          "[&_.doc-comment-mark]:cursor-pointer [&_.doc-comment-mark]:rounded-sm",
-          lightHighlights
-            ? "[&_.doc-comment-mark]:bg-golden-100/70"
-            : "[&_.doc-comment-mark]:bg-golden-100 [&_.doc-comment-mark]:border-b-2 [&_.doc-comment-mark]:border-golden-300"
+          // Production's highlight (DocumentComments.ts).
+          "[&_.doc-comment-mark]:cursor-pointer [&_.doc-comment-mark]:rounded-sm [&_.doc-comment-mark]:bg-golden-100 [&_.doc-comment-mark]:transition-colors hover:[&_.doc-comment-mark]:bg-golden-200/70"
         )}
       >
         {activeCommentId && (
           // The active comment's anchor is emphasised; its id is dynamic, so
           // this can't be a static utility class.
-          <style>{`.doc-editor [data-comment-id="${CSS.escape(activeCommentId)}"] { background-color: var(${lightHighlights ? "--color-golden-200" : "--color-golden-300"}); }`}</style>
+          <style>{`.doc-editor [data-comment-id="${CSS.escape(activeCommentId)}"] { background-color: var(--color-golden-200); }`}</style>
         )}
         <BubbleMenu
           editor={editor}

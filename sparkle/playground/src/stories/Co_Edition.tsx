@@ -11,10 +11,6 @@ export default function CoEdition() {
     <AgentConversations
       conversations={conversations}
       openDocumentOnLoad
-      // The latest comments design: floating comments, with a bubble and
-      // reply count beside each, whose threads open (and stay) in the
-      // comments list.
-      defaultCommentsVariant="list"
       subtitle="Mock agents with fixed answers: send anything to get a document to co-edit."
     />
   );

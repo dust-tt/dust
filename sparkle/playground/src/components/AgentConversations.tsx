@@ -7,7 +7,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  File02,
   Folder,
+  Icon,
   Markdown,
   MessageCircle01,
   NavigationList,
@@ -15,10 +17,10 @@ import {
   ScrollArea,
   ScrollBar,
   Settings01,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import {
   type ReactNode,
-  useCallback,
   useEffect,
   useRef,
   useState,
@@ -34,12 +36,7 @@ import type {
   Conversations,
 } from "../lib/coEdition";
 import { ConversationFilesPanel } from "./ConversationSidePanels";
-import {
-  type CommentStyle,
-  type CommentsVariant,
-  type DocBackground,
-  DocumentPanel,
-} from "./doc/DocumentPanel";
+import { DocumentPanel } from "./doc/DocumentPanel";
 import type { DocSession } from "./doc/docTypes";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
@@ -60,29 +57,19 @@ import { PanelLayout, PanelLayoutNav, PanelLayoutPanel } from "./PanelLayout";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-// A design setting remembered per conversation in this browser, so each
-// conversation keeps the design it's testing.
-function usePerConversationSetting<T extends string>(storageKey: string) {
-  const [values, setValues] = useState<Record<string, T>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) ?? "{}");
-    } catch {
-      return {};
-    }
-  });
-  const setValue = useCallback(
-    (conversationId: string, value: T) =>
-      setValues((prev) => ({ ...prev, [conversationId]: value })),
-    []
+/** Production's CoEditionBadge, next to the file name. */
+function CoEditionBadge() {
+  return (
+    <Tooltip
+      tooltipTriggerAsChild
+      label="This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
+      trigger={
+        <span className="shrink-0">
+          <Chip size="mini" color="info" label="Co-edition · Unstable alpha" />
+        </span>
+      }
+    />
   );
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(values));
-    } catch {
-      // Not persisted (storage unavailable); still applies for this visit.
-    }
-  }, [storageKey, values]);
-  return [values, setValue] as const;
 }
 
 function formatTime(date: Date): string {
@@ -248,7 +235,6 @@ function ConversationView({
   onSelectAgent,
   onSend,
   onOpenFile,
-  isGrey,
   subtitle,
 }: {
   conversation: Conversation;
@@ -257,8 +243,6 @@ function ConversationView({
   onSelectAgent: (agent: ChatAgent) => void;
   onSend: (text: string) => void;
   onOpenFile: (file: ChatFile) => void;
-  /** Prototype option: grey conversation, with white user messages. */
-  isGrey: boolean;
   /** Under the empty conversation's heading. */
   subtitle: string;
 }) {
@@ -271,12 +255,7 @@ function ConversationView({
   }, [conversation.messages]);
 
   return (
-    <div
-      className={cn(
-        "relative flex h-full w-full flex-col overflow-hidden",
-        isGrey && "bg-muted-background"
-      )}
-    >
+    <div className="relative flex h-full w-full flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {conversation.messages.length === 0 ? (
           <div className="m-auto pb-32 text-center">
@@ -296,7 +275,6 @@ function ConversationView({
                   timestamp={formatTime(message.createdAt)}
                 >
                   <NewConversationUserMessage
-                    className={isGrey ? "bg-background" : undefined}
                     hideActions
                     isLastMessage={message.id === lastMessageId}
                   >
@@ -375,16 +353,11 @@ export function AgentConversations({
   conversations: conversationsApi,
   subtitle,
   openDocumentOnLoad = false,
-  defaultCommentsVariant = "list",
-  defaultCommentStyle = "default",
 }: {
   conversations: Conversations;
   subtitle: string;
   /** Opens the active conversation's first document on load. */
   openDocumentOnLoad?: boolean;
-  /** Comments design for conversations that haven't picked one. */
-  defaultCommentsVariant?: CommentsVariant;
-  defaultCommentStyle?: CommentStyle;
 }) {
   const {
     agents,
@@ -404,18 +377,11 @@ export function AgentConversations({
     {}
   );
   const docKey = openFile ? `${active.id}:${openFile.key}` : null;
-  const [commentsVariants, setCommentsVariant] =
-    usePerConversationSetting<CommentsVariant>("co-edition-comments-variants");
-  const [docBackgrounds, setDocBackground] =
-    usePerConversationSetting<DocBackground>("co-edition-doc-backgrounds");
-  const [commentStyles, setCommentStyle] =
-    usePerConversationSetting<CommentStyle>("co-edition-comment-styles");
   // Slot in the document panel's top bar where DocumentPanel renders its
-  // actions (comments, download, prototype options).
+  // actions (download, prototype options).
   const [docToolbarSlot, setDocToolbarSlot] = useState<HTMLDivElement | null>(
     null
   );
-  const background: DocBackground = docBackgrounds[active.id] || "white";
 
   const selectedAgent =
     agents.find((a) => a.id === agentId) ??
@@ -516,7 +482,6 @@ export function AgentConversations({
         // Never narrower than this, including when the document panel is
         // dragged wider.
         minimalWidth={400}
-        tone={background === "grey-conversation" ? "muted" : "default"}
         topBarLeft={
           <Breadcrumbs
             items={[{ label: active.title }]}
@@ -548,7 +513,6 @@ export function AgentConversations({
           onSelectAgent={(agent) => setAgentId(agent.id)}
           onSend={handleSend}
           onOpenFile={openFileInPanel}
-          isGrey={background === "grey-conversation"}
           subtitle={subtitle}
         />
       </PanelLayoutPanel>
@@ -577,16 +541,19 @@ export function AgentConversations({
         label={openFile?.title ?? "File"}
         // A document being edited takes focus, like a page.
         sizingType="default"
-        tone={background === "grey" ? "muted" : "default"}
         fullscreenEnabled
         isOpen={openFile !== null}
         onClose={() => setOpenFile(null)}
+        // As production's file preview: the file's icon and name, and the
+        // Co-edition badge.
         topBarLeft={
-          <Breadcrumbs
-            items={[{ label: openFile?.title ?? "File" }]}
-            size="sm"
-            hasLighterFont
-          />
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Icon visual={File02} size="sm" className="shrink-0" />
+            <span className="min-w-16 truncate text-sm font-medium text-foreground">
+              {openFile?.title ?? "File"}
+            </span>
+            <CoEditionBadge />
+          </div>
         }
         topBarRight={
           <div ref={setDocToolbarSlot} className="flex items-center gap-1" />
@@ -615,17 +582,7 @@ export function AgentConversations({
                 (m) => m.role === "agent" && m.status !== "streaming"
               ).length
             }
-            commentsVariant={
-              commentsVariants[active.id] || defaultCommentsVariant
-            }
             toolbarSlot={docToolbarSlot}
-            background={background}
-            commentStyle={commentStyles[active.id] || defaultCommentStyle}
-            onCommentStyleChange={(style) => setCommentStyle(active.id, style)}
-            onBackgroundChange={(value) => setDocBackground(active.id, value)}
-            onCommentsVariantChange={(variant) =>
-              setCommentsVariant(active.id, variant)
-            }
             askAgent={(request) =>
               askFromComment(active, { ...request, fileKey: openFile.key })
             }

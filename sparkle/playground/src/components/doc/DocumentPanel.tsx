@@ -17,8 +17,10 @@ import {
   Pencil01,
   Robot,
   Spinner,
+  ZapOff,
 } from "@dust-tt/sparkle";
 import {
+  type ReactNode,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -28,15 +30,16 @@ import {
 import { createPortal } from "react-dom";
 
 import { usePanelFullscreen } from "../PanelLayout";
-import { CommentsPanel } from "./CommentsPanel";
+import {
+  CommentMarkers,
+  CommentsList,
+  CommentsToggle,
+  ThreadCard,
+  type ThreadHandlers,
+} from "./Comments";
 import { DocEditor, type DocEditorHandle } from "./DocEditor";
 import { type Presence, presenceColor, PresenceLayer } from "./Presence";
 import { GlintOutline } from "./GlintOutline";
-import {
-  CommentMarkers,
-  CommentsListPopover,
-  FloatingComments,
-} from "./FloatingComments";
 import { seedCommentsFor, WORKSPACE_PEOPLE, YOU } from "./docSeeds";
 import { type MentionCandidates, MentionProvider } from "./MentionMenu";
 import { narrowSuggestion, SuggestionProvider } from "./Suggestions";
@@ -205,48 +208,36 @@ interface DocumentPanelProps {
    * edited the document, so the panel reloads it.
    */
   agentRunCount: number;
-  /** Prototype option: comment chrome (see LightComments). */
-  commentStyle: CommentStyle;
-  onCommentStyleChange: (style: CommentStyle) => void;
-  /** Prototype option: the document area's background. */
-  background: DocBackground;
-  onBackgroundChange: (background: DocBackground) => void;
   /** Element in the panel's top bar where the document's actions render. */
   toolbarSlot: HTMLElement | null;
-  /** Which comments design to show (see CommentsPanel / FloatingComments). */
-  commentsVariant: CommentsVariant;
-  onCommentsVariantChange: (variant: CommentsVariant) => void;
 }
 
-export type CommentsVariant = "margin" | "floating" | "list";
+/** Where the live session stands (production's DocumentLiveStatus). */
+type LiveStatus = "connecting" | "live" | "offline";
 
-/** "light" applies to the floating and list designs (not the margin). */
-export type CommentStyle = "default" | "light";
-
-/**
- * Where the grey goes (the user messages' bg-muted-background): nowhere, on
- * the document, or on the conversation (whose messages then turn white).
- */
-export type DocBackground = "white" | "grey" | "grey-conversation";
-
-const DOC_BACKGROUNDS: Record<DocBackground, string> = {
-  white: "All white (default)",
-  grey: "Grey document",
-  "grey-conversation": "Grey conversation, white document",
-};
-
-// Menu order: the preferred design first.
-const COMMENTS_VARIANTS: Record<
-  CommentsVariant,
-  { label: string; short: string }
-> = {
-  list: {
-    label: "Floating, threads open in the comments list",
-    short: "List",
+const LIVE_STATES: Record<LiveStatus, { label: string; icon: ReactNode }> = {
+  connecting: { label: "Connecting…", icon: <Spinner size="xs" /> },
+  live: {
+    label: "Live",
+    icon: <span className="mx-1 size-1.5 rounded-full bg-success-500" />,
   },
-  floating: { label: "Comments floating on the text", short: "Floating" },
-  margin: { label: "Comments in the margin", short: "Margin" },
+  offline: { label: "Reconnecting…", icon: <Spinner size="xs" /> },
 };
+
+function LiveStatusChip({ status }: { status: LiveStatus }) {
+  const { label, icon } = LIVE_STATES[status];
+  return (
+    <span role="status" className="inline-flex items-center gap-1.5">
+      <span aria-hidden className="inline-flex items-center">
+        {icon}
+      </span>
+      {label}
+    </span>
+  );
+}
+
+// Prototype: how long joining the live session takes.
+const CONNECT_MS = 1200;
 
 export function DocumentPanel({
   title,
@@ -259,36 +250,37 @@ export function DocumentPanel({
   findAgent,
   agents,
   fileAgents,
-  commentsVariant,
-  onCommentsVariantChange,
   toolbarSlot,
-  background,
-  onBackgroundChange,
-  commentStyle,
-  onCommentStyleChange,
   isConversationBusy,
   agentRunCount,
 }: DocumentPanelProps) {
   const { isFullscreen, setFullscreen } = usePanelFullscreen();
   const editorRef = useRef<DocEditorHandle>(null);
   const pageRef = useRef<HTMLDivElement>(null);
-  // Top right of the document area: where the comments list is pinned.
-  const listAnchorRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  // "list" floats like "floating"; it differs only in how the list behaves.
-  const isFloating = commentsVariant !== "margin";
-  const isListThreads = commentsVariant === "list";
-  const isLight = commentStyle === "light";
   const [loadError, setLoadError] = useState<string | null>(null);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
-  const [showComments, setShowComments] = useState(true);
+  const [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting");
   const [isCommentsListOpen, setIsCommentsListOpen] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DocDraft | null>(null);
   // Prototype: the viewer's access. Without edit rights, they comment or
   // suggest edits that someone who can edit accepts or rejects.
   const [canEdit, setCanEdit] = useState(true);
+
+  // Prototype: the live session connects shortly after the document opens,
+  // and again after a simulated drop.
+  useEffect(() => {
+    if (liveStatus === "live") {
+      return;
+    }
+    const timer = setTimeout(
+      () => setLiveStatus("live"),
+      liveStatus === "offline" ? 2 * CONNECT_MS : CONNECT_MS
+    );
+    return () => clearTimeout(timer);
+  }, [liveStatus]);
 
   // Kept in a ref: callers may pass a new function on every render.
   const loadDocumentRef = useRef(loadDocument);
@@ -1012,6 +1004,67 @@ export function DocumentPanel({
     }
   };
 
+  const deleteComment = (id: string) => {
+    updateComments((comments) => comments.filter((c) => c.id !== id));
+    editorRef.current?.removeComment(id);
+    setActiveCommentId(null);
+  };
+
+  const deleteReply = (commentId: string, replyId: string) =>
+    setReplies(commentId, (replies) => replies.filter((r) => r.id !== replyId));
+
+  // A suggested edit posted in an existing thread: the thread now holds it,
+  // with the note as the viewer's reply.
+  const suggestOnThread = (id: string, text: string, note: string) => {
+    const comment = session.comments.find((c) => c.id === id);
+    const view = editorRef.current?.getView();
+    const range = editorRef.current?.getCommentRange(id);
+    if (!comment || !view || !range) {
+      return;
+    }
+    anchorSuggestion(view, id, range, comment.quote, text);
+    updateComments((comments) =>
+      comments.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              suggestion: { text, status: "pending" },
+              replies: note
+                ? [
+                    ...c.replies,
+                    {
+                      id: crypto.randomUUID(),
+                      author: YOU,
+                      body: note,
+                      createdAt: new Date(),
+                    },
+                  ]
+                : c.replies,
+            }
+          : c
+      )
+    );
+  };
+
+  const threadHandlers: ThreadHandlers = {
+    agentName,
+    isAgentBusy: isAgentRunning,
+    onReply: reply,
+    onResolve: resolveComment,
+    onDelete: deleteComment,
+    onDeleteReply: deleteReply,
+    onSuggest: suggestOnThread,
+  };
+
+  const startDraft = (suggest: boolean) => {
+    const id = crypto.randomUUID();
+    const quote = editorRef.current?.addComment(id);
+    if (quote) {
+      setDraft({ id, quote, suggest });
+      setActiveCommentId(id);
+    }
+  };
+
   return (
     <MentionProvider candidates={mentionCandidates}>
       <SuggestionProvider
@@ -1021,63 +1074,11 @@ export function DocumentPanel({
       >
         <div className="flex h-full min-h-0 flex-col">
           {/* Lives in the panel's top bar, next to expand and close (the page
-          passes the slot). Prototype-only controls sit behind "…". */}
+          passes the slot), as production's Download. Prototype-only controls
+          sit behind "…". */}
           {toolbarSlot &&
             createPortal(
               <>
-                {isFloating ? (
-                  <CommentsListPopover
-                    anchorRef={listAnchorRef}
-                    light={isLight}
-                    comments={session.comments}
-                    open={isCommentsListOpen}
-                    onOpenChange={setIsCommentsListOpen}
-                    onResolve={resolveComment}
-                    onPick={(id) => {
-                      if (!isListThreads) {
-                        setIsCommentsListOpen(false);
-                      }
-                      setActiveCommentId(id);
-                      editorRef.current?.focusComment(id);
-                    }}
-                    thread={
-                      isListThreads
-                        ? {
-                            activeCommentId,
-                            agentName,
-                            isAgentBusy: isAgentRunning,
-                            onReply: reply,
-                          }
-                        : undefined
-                    }
-                    trigger={
-                      <Button
-                        size="sm"
-                        variant={isCommentsListOpen ? "primary" : "ghost"}
-                        icon={MessageCircle01}
-                        label={
-                          openComments.length > 0
-                            ? String(openComments.length)
-                            : undefined
-                        }
-                        tooltip="All comments"
-                      />
-                    }
-                  />
-                ) : (
-                  <Button
-                    size="sm"
-                    variant={showComments ? "primary" : "ghost"}
-                    icon={MessageCircle01}
-                    label={
-                      openComments.length > 0
-                        ? String(openComments.length)
-                        : undefined
-                    }
-                    tooltip="Comments"
-                    onClick={() => setShowComments((v) => !v)}
-                  />
-                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -1126,229 +1127,164 @@ export function DocumentPanel({
                       disabled={isSimulating}
                       onClick={() => void simulateAgentEdit()}
                     />
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel label="Comments design" />
-                    {(Object.keys(COMMENTS_VARIANTS) as CommentsVariant[]).map(
-                      (variant) => (
-                        <DropdownMenuItem
-                          key={variant}
-                          label={COMMENTS_VARIANTS[variant].label}
-                          icon={variant === commentsVariant ? Check : undefined}
-                          onClick={() => onCommentsVariantChange(variant)}
-                        />
-                      )
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel label="Comment style" />
-                    {(["default", "light"] as CommentStyle[]).map((value) => (
-                      <DropdownMenuItem
-                        key={value}
-                        label={value === "default" ? "Default" : "Light"}
-                        icon={value === commentStyle ? Check : undefined}
-                        onClick={() => onCommentStyleChange(value)}
-                      />
-                    ))}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel label="Backgrounds" />
-                    {(Object.keys(DOC_BACKGROUNDS) as DocBackground[]).map(
-                      (value) => (
-                        <DropdownMenuItem
-                          key={value}
-                          label={DOC_BACKGROUNDS[value]}
-                          icon={value === background ? Check : undefined}
-                          onClick={() => onBackgroundChange(value)}
-                        />
-                      )
-                    )}
+                    <DropdownMenuItem
+                      icon={ZapOff}
+                      label="The connection drops"
+                      disabled={liveStatus !== "live"}
+                      onClick={() => setLiveStatus("offline")}
+                    />
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>,
               toolbarSlot
             )}
 
-          <div className="flex min-h-0 flex-1">
-            <div className="relative flex min-w-0 flex-1 flex-col">
-              <div
-                ref={listAnchorRef}
-                aria-hidden
-                className="pointer-events-none absolute right-3 top-2 h-0 w-0"
-              />
-              {isFullscreen && (
-                <div className="absolute left-4 top-4 z-30">
-                  {/* Back to the conversation; the outline glints while the agent
-                  works (same animation as the input bar's stop button). */}
-                  <div className="relative rounded-[15px]">
-                    <Button
-                      size="md"
-                      variant="outline"
-                      icon={MessageCircle01}
-                      tooltip={
-                        isConversationBusy
-                          ? `@${agentName} is working… Show the conversation`
-                          : "Show the conversation"
-                      }
-                      className="shadow-md"
-                      onClick={() => setFullscreen(false)}
-                    />
-                    {isConversationBusy && <GlintOutline radius={15} />}
-                  </div>
-                </div>
-              )}
-              <div
-                ref={scrollAreaRef}
-                className={cn(
-                  "min-h-0 flex-1 overflow-y-auto",
-                  background === "grey" && "bg-muted-background"
-                )}
-              >
-                <div
-                  ref={pageRef}
-                  className={cn(
-                    DOC_PAGE,
-                    "relative cursor-text",
-                    // The text column is never wider than 600px, in the side
-                    // panel or full page: extra width becomes centered margins
-                    // (DOC_PAGE's side padding is 96px in total).
-                    "mx-auto max-w-[696px]"
-                  )}
-                  // Clicks on the sheet's margins, or below the text, still start
-                  // typing: only clicks on the text itself reach the editor.
-                  // A pointer convenience: keyboard users are in the editor.
-                  role="presentation"
-                  onMouseDown={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (
-                      target.closest(
-                        ".ProseMirror, button, a, input, textarea, [data-floating-comment]"
-                      )
-                    ) {
-                      return;
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            {isFullscreen && (
+              <div className="absolute left-4 top-4 z-30">
+                {/* Back to the conversation; the outline glints while the agent
+                works (same animation as the input bar's stop button). */}
+                <div className="relative rounded-[15px]">
+                  <Button
+                    size="md"
+                    variant="outline"
+                    icon={MessageCircle01}
+                    tooltip={
+                      isConversationBusy
+                        ? `@${agentName} is working… Show the conversation`
+                        : "Show the conversation"
                     }
-                    e.preventDefault();
-                    editorRef.current?.focusEnd();
-                  }}
-                >
-                  <div>
-                    <DocEditor
-                      lightHighlights={isLight}
-                      ref={editorRef}
-                      initialMarkdown={session.markdown}
-                      initialJson={session.editorJson}
-                      activeCommentId={activeCommentId}
-                      initialAnchors={
-                        session.editorJson
-                          ? undefined
-                          : session.comments.map((c) => ({
-                              id: c.id,
-                              quote: c.quote,
-                            }))
-                      }
-                      onChange={({ markdown, json }) =>
-                        onSessionChange((s) => ({
-                          ...s,
-                          markdown: markdown ?? s.markdown,
-                          editorJson: json,
-                        }))
-                      }
-                      readOnly={!canEdit}
-                      onSuggestSelection={() => {
-                        const id = crypto.randomUUID();
-                        const quote = editorRef.current?.addComment(id);
-                        if (quote) {
-                          setDraft({ id, quote, suggest: true });
-                          setActiveCommentId(id);
-                          if (!isFloating) {
-                            setShowComments(true);
-                          }
-                        }
-                      }}
-                      onCommentSelection={() => {
-                        const id = crypto.randomUUID();
-                        const quote = editorRef.current?.addComment(id);
-                        if (quote) {
-                          setDraft({ id, quote });
-                          setActiveCommentId(id);
-                          if (!isFloating) {
-                            setShowComments(true);
-                          }
-                        }
-                      }}
-                      onCommentClick={(id) => {
-                        setActiveCommentId(id);
-                        if (id && !isFloating) {
-                          setShowComments(true);
-                        }
-                      }}
-                    />
-                  </div>
-                  <PresenceLayer
-                    view={editorRef.current?.getView() ?? null}
-                    containerRef={pageRef}
-                    presences={presences}
-                    layoutKey={session.markdown}
+                    className="shadow-md"
+                    onClick={() => setFullscreen(false)}
                   />
-                  {isFloating && (
-                    <CommentMarkers
-                      light={isLight}
-                      containerRef={pageRef}
-                      comments={session.comments}
-                      activeCommentId={activeCommentId}
-                      layoutKey={session.markdown}
-                      onOpen={(id) => setActiveCommentId(id)}
-                    />
-                  )}
-                  {isFloating && !(isListThreads && isCommentsListOpen) && (
-                    <FloatingComments
-                      light={isLight}
-                      containerRef={pageRef}
-                      comments={session.comments}
-                      draft={draft}
-                      activeCommentId={activeCommentId}
-                      agentName={agentName}
-                      isAgentBusy={isAgentRunning}
-                      layoutKey={session.markdown}
-                      onSaveDraft={saveDraft}
-                      onSaveSuggestion={saveSuggestion}
-                      onCancelDraft={cancelDraft}
-                      onClose={() => setActiveCommentId(null)}
-                      onReply={reply}
-                      onResolve={resolveComment}
-                    />
-                  )}
+                  {isConversationBusy && <GlintOutline radius={15} />}
                 </div>
               </div>
-              <div className="shrink-0 px-6">
-                {agentError && (
-                  <div className="pb-4">
-                    <ContentMessage
-                      variant="warning"
-                      icon={AlertCircle}
-                      title="Agent edit"
-                    >
-                      {agentError}
-                    </ContentMessage>
-                  </div>
+            )}
+            {/* Pinned at the top right of the document, over the text. */}
+            {isCommentsListOpen && (
+              <div className="pointer-events-none absolute inset-y-3 right-3 z-30 flex items-start">
+                <div className="pointer-events-auto flex max-h-full">
+                  <CommentsList
+                    comments={session.comments}
+                    activeCommentId={activeCommentId}
+                    handlers={threadHandlers}
+                    onPick={(id) => {
+                      setDraft(null);
+                      setActiveCommentId(id);
+                      editorRef.current?.focusComment(id);
+                    }}
+                    onClose={() => {
+                      setIsCommentsListOpen(false);
+                      setActiveCommentId(null);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            <div
+              ref={scrollAreaRef}
+              className="@container min-h-0 flex-1 overflow-y-auto bg-background"
+            >
+              <div
+                ref={pageRef}
+                className={cn(DOC_PAGE, "relative cursor-text")}
+                // Clicks on the sheet's margins, or below the text, still start
+                // typing: only clicks on the text itself reach the editor.
+                // A pointer convenience: keyboard users are in the editor.
+                role="presentation"
+                onMouseDown={(e) => {
+                  const target = e.target as HTMLElement;
+                  if (
+                    target.closest(
+                      ".ProseMirror, button, a, input, textarea, [role=status], [data-floating-comment]"
+                    )
+                  ) {
+                    return;
+                  }
+                  e.preventDefault();
+                  editorRef.current?.focusEnd();
+                }}
+              >
+                {/* The status row above the document, as in production. */}
+                <div className="mb-6 flex min-h-6 items-center justify-end gap-2.5 text-xs text-muted-foreground">
+                  <LiveStatusChip status={liveStatus} />
+                  <CommentsToggle
+                    comments={session.comments}
+                    isOpen={isCommentsListOpen}
+                    onToggle={() => {
+                      setIsCommentsListOpen((v) => !v);
+                      setActiveCommentId(null);
+                    }}
+                  />
+                </div>
+                <DocEditor
+                  ref={editorRef}
+                  initialMarkdown={session.markdown}
+                  initialJson={session.editorJson}
+                  activeCommentId={activeCommentId}
+                  initialAnchors={
+                    session.editorJson
+                      ? undefined
+                      : session.comments.map((c) => ({
+                          id: c.id,
+                          quote: c.quote,
+                        }))
+                  }
+                  onChange={({ markdown, json }) =>
+                    onSessionChange((s) => ({
+                      ...s,
+                      markdown: markdown ?? s.markdown,
+                      editorJson: json,
+                    }))
+                  }
+                  readOnly={!canEdit}
+                  onSuggestSelection={() => startDraft(true)}
+                  onCommentSelection={() => startDraft(false)}
+                  onCommentClick={(id) => setActiveCommentId(id)}
+                />
+                <PresenceLayer
+                  view={editorRef.current?.getView() ?? null}
+                  containerRef={pageRef}
+                  presences={presences}
+                  layoutKey={session.markdown}
+                />
+                <CommentMarkers
+                  containerRef={pageRef}
+                  comments={session.comments}
+                  activeCommentId={activeCommentId}
+                  layoutKey={session.markdown}
+                  onOpen={(id) => setActiveCommentId(id)}
+                />
+                {/* With the list open, threads open in the list instead. */}
+                {(!isCommentsListOpen || draft) && (
+                  <ThreadCard
+                    containerRef={pageRef}
+                    comments={session.comments}
+                    draft={draft}
+                    activeCommentId={activeCommentId}
+                    layoutKey={session.markdown}
+                    handlers={threadHandlers}
+                    onSaveDraft={saveDraft}
+                    onSaveSuggestion={saveSuggestion}
+                    onSuggestDraft={() =>
+                      setDraft((d) => (d ? { ...d, suggest: true } : d))
+                    }
+                    onCancelDraft={cancelDraft}
+                    onClose={() => setActiveCommentId(null)}
+                  />
                 )}
               </div>
             </div>
-
-            {!isFloating && showComments && (
-              <div className="w-72 shrink-0 overflow-y-auto border-l border-border p-4">
-                <CommentsPanel
-                  comments={session.comments}
-                  draft={draft}
-                  activeCommentId={activeCommentId}
-                  agentName={agentName}
-                  onSaveDraft={saveDraft}
-                  onSaveSuggestion={saveSuggestion}
-                  onCancelDraft={cancelDraft}
-                  onSelect={(id) => {
-                    setActiveCommentId(id);
-                    editorRef.current?.focusComment(id);
-                  }}
-                  onReply={reply}
-                  onResolve={resolveComment}
-                />
+            {agentError && (
+              <div className="shrink-0 px-6 pb-4">
+                <ContentMessage
+                  variant="warning"
+                  icon={AlertCircle}
+                  title="Agent edit"
+                >
+                  {agentError}
+                </ContentMessage>
               </div>
             )}
           </div>
