@@ -333,7 +333,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const resolvedModel = resolvedModelFromAgentMessageRow({
     resolvedModelId: agentMessage.resolvedModelId,
     resolvedProviderId: agentMessage.resolvedProviderId,
-    resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
+    // The effort the message actually reasoned at, after a raise by the agent.
+    resolvedReasoningEffort:
+      agentMessage.appliedReasoningEffort ??
+      agentMessage.resolvedReasoningEffort,
   });
 
   return {

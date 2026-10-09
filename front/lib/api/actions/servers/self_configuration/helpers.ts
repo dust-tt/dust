@@ -67,3 +67,18 @@ export function resolveEffortChanges<M extends ModelMessageTypeMultiActions>(
     })
   );
 }
+
+// Effort the run actually reasons at once `messages` (rendered up to the triggering user message,
+// with resolved effort changes) is sent: the last resolved change, else the top-level effort.
+export function getAppliedReasoningEffort(
+  { reasoningEffort }: StreamModelInfo,
+  messages: ModelMessageTypeMultiActions[]
+): ReasoningEffort | undefined {
+  const lastEffortChange = messages.findLast((m) => m.role === "effort_change");
+
+  return (
+    (lastEffortChange?.role === "effort_change"
+      ? lastEffortChange.effort
+      : null) ?? reasoningEffort
+  );
+}

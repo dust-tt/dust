@@ -512,6 +512,10 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare resolvedProviderId: string | null;
   declare resolvedModelId: string | null;
   declare resolvedReasoningEffort: string | null;
+  // Effort the message actually reasoned at when the agent raised its effort earlier in the
+  // conversation (adjust_reasoning_effort). Null when it is the resolved one: the resolved effort
+  // stays the run's top-level effort so the prompt cache holds.
+  declare appliedReasoningEffort: string | null;
   declare modelResolutionMethod: ModelResolutionMethodType | null;
 
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
@@ -627,6 +631,11 @@ AgentMessageModel.init(
       defaultValue: null,
     },
     resolvedReasoningEffort: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: null,
+    },
+    appliedReasoningEffort: {
       type: DataTypes.STRING,
       allowNull: true,
       defaultValue: null,

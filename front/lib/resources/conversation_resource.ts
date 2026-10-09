@@ -135,6 +135,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     resolvedModelId: string | null;
     resolvedProviderId: string | null;
     resolvedReasoningEffort: string | null;
+    appliedReasoningEffort: string | null;
     runIds: string[] | null;
     status: AgentMessageStatus;
     updatedAt: Date;
@@ -980,6 +981,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         resolvedModelId: agentMessage.resolvedModelId,
         resolvedProviderId: agentMessage.resolvedProviderId,
         resolvedReasoningEffort: agentMessage.resolvedReasoningEffort,
+        appliedReasoningEffort: agentMessage.appliedReasoningEffort,
         runIds: agentMessage.runIds,
         status: agentMessage.status,
         updatedAt: agentMessage.updatedAt,
