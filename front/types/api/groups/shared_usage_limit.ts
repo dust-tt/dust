@@ -33,3 +33,7 @@ export type SharedUsageLimitOverlap = {
 export type GetSharedUsageLimitOverlapsResponseBody = {
   groups: SharedUsageLimitOverlap[];
 };
+
+export type PutSharedUsageLimitPrioritiesResponseBody = {
+  orderedGroupIds: string[];
+};

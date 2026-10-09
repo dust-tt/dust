@@ -33,6 +33,7 @@ import {
   readFixedWindowCountWithLazySeed,
   setFixedWindowCount,
 } from "@app/lib/utils/rate_limiter";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   SharedUsageLimit,
@@ -46,6 +47,7 @@ import { isCapEligibleGroupKind } from "@app/types/groups";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -54,6 +56,8 @@ type SharedUsageLimitErrorType =
   | "group_not_found"
   | "invalid_group_kind"
   | "invalid_threshold"
+  | "invalid_order"
+  | "order_changed"
   | "unauthorized";
 
 export class SharedUsageLimitError extends Error {
@@ -188,9 +192,7 @@ export async function setGroupSharedUsageLimit(
   }
   const group = groupRes.value;
 
-  const previousAwuCredits = group.sharedUsageLimitAwuCredits;
-
-  await group.updateSharedUsageLimit(
+  const { previousAwuCredits } = await group.updateSharedUsageLimit(
     limit.kind === "limited" ? limit.awuCredits : null
   );
 
@@ -262,6 +264,109 @@ export async function getSharedUsageLimitOverlaps(
             ).length,
     }))
   );
+}
+
+/**
+ * Reorders every group with a shared usage limit. `orderedGroupIds` and `expectedOrderedGroupIds`
+ * list all of them by sId, first applying first; `expectedOrderedGroupIds` is the order the caller
+ * loaded, and nothing is written
+ * when it no longer matches. The read, the check and the write run in one transaction that locks the
+ * groups, so concurrent reorders are serialized and the later one gets `order_changed`. The groups
+ * keep the priority numbers they hold, in the new order. Emits one audit event per group whose
+ * position changed, once committed.
+ */
+export async function setSharedUsageLimitOrder(
+  auth: Authenticator,
+  {
+    orderedGroupIds,
+    expectedOrderedGroupIds,
+    auditContext,
+  }: {
+    orderedGroupIds: string[];
+    expectedOrderedGroupIds: string[];
+    auditContext: AuditLogContext;
+  }
+): Promise<Result<{ orderedGroupIds: string[] }, SharedUsageLimitError>> {
+  const canManage = await ensureCanManageSharedUsageLimits(auth);
+  if (canManage.isErr()) {
+    return canManage;
+  }
+
+  const reordered = await withTransaction(async (transaction) => {
+    const groups = await GroupResource.listGroupsWithSharedUsageLimit(auth, {
+      transaction,
+      forUpdate: true,
+    });
+    const currentGroupIds = groups.map((group) => group.sId);
+    if (
+      expectedOrderedGroupIds.length !== currentGroupIds.length ||
+      expectedOrderedGroupIds.some(
+        (groupId, index) => groupId !== currentGroupIds[index]
+      )
+    ) {
+      return new Err(
+        new SharedUsageLimitError(
+          "order_changed",
+          "The order of the groups changed since it was loaded."
+        )
+      );
+    }
+
+    const groupById = new Map(groups.map((group) => [group.sId, group]));
+    const orderedGroups = removeNulls(
+      orderedGroupIds.map((groupId) => groupById.get(groupId) ?? null)
+    );
+    if (
+      orderedGroupIds.length !== groups.length ||
+      new Set(orderedGroupIds).size !== orderedGroupIds.length ||
+      orderedGroups.length !== groups.length
+    ) {
+      return new Err(
+        new SharedUsageLimitError(
+          "invalid_order",
+          "The order must list every group with a shared usage limit exactly once."
+        )
+      );
+    }
+
+    await GroupResource.reorderSharedUsageLimitPriorities(
+      auth,
+      orderedGroups,
+      transaction
+    );
+    return new Ok({ currentGroupIds, orderedGroups });
+  });
+  if (reordered.isErr()) {
+    return reordered;
+  }
+  const { currentGroupIds, orderedGroups } = reordered.value;
+  const previousPositionByGroupId = new Map(
+    currentGroupIds.map((groupId, index) => [groupId, index + 1])
+  );
+
+  const workspace = auth.getNonNullableWorkspace();
+  for (const [index, group] of orderedGroups.entries()) {
+    const position = index + 1;
+    const previousPosition = previousPositionByGroupId.get(group.sId);
+    if (position === previousPosition) {
+      continue;
+    }
+    void emitAuditLogEvent({
+      auth,
+      action: "group.shared_usage_limit_priority_updated",
+      targets: [
+        buildAuditLogTarget("workspace", workspace),
+        buildAuditLogTarget("group", { sId: group.sId, name: group.name }),
+      ],
+      context: auditContext,
+      metadata: {
+        position: String(position),
+        previous_position: String(previousPosition),
+      },
+    });
+  }
+
+  return new Ok({ orderedGroupIds });
 }
 
 /**

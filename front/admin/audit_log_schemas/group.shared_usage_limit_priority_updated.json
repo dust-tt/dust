@@ -1,0 +1,15 @@
+{
+  "action": "group.shared_usage_limit_priority_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "position": "string",
+    "previous_position": "string"
+  }
+}

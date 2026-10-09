@@ -17,6 +17,22 @@ export function sharedUsageLimitErrorToApiError(
         status_code: 400,
         api_error: { type: "invalid_request_error", message: error.message },
       };
+    case "invalid_order":
+      return {
+        status_code: 400,
+        api_error: {
+          type: "invalid_shared_usage_limit_order",
+          message: error.message,
+        },
+      };
+    case "order_changed":
+      return {
+        status_code: 409,
+        api_error: {
+          type: "shared_usage_limit_order_changed",
+          message: error.message,
+        },
+      };
     case "unauthorized":
       return {
         status_code: 403,

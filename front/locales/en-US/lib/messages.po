@@ -422,6 +422,14 @@ msgid "Group not found."
 msgstr "Group not found."
 
 #: front/lib/api_error_messages.ts
+msgid "The order sent does not list every group with a budget exactly once."
+msgstr "The order sent does not list every group with a budget exactly once."
+
+#: front/lib/api_error_messages.ts
+msgid "The order of group budgets changed since you opened it. Reopen the group to see the current order."
+msgstr "The order of group budgets changed since you opened it. Reopen the group to see the current order."
+
+#: front/lib/api_error_messages.ts
 msgid "Coupon not found."
 msgstr "Coupon not found."
 

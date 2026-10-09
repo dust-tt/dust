@@ -432,6 +432,37 @@ describe("setGroupSharedUsageLimit", () => {
       expect((await reload(auth, sales)).sharedUsageLimitPriority).toBe(2);
     });
 
+    it("gives a new priority when the limit was removed after the group was loaded", async () => {
+      const { workspace, auth } = await setup();
+      const sales = await GroupFactory.regularManual(workspace, "Sales");
+      const engineering = await GroupFactory.regularManual(
+        workspace,
+        "Engineering"
+      );
+      await setLimit(auth, sales, { kind: "limited", awuCredits: 6_000 });
+      await setLimit(auth, engineering, {
+        kind: "limited",
+        awuCredits: 10_000,
+      });
+      const loaded = await GroupResource.fetchById(auth, engineering.sId);
+      if (loaded.isErr()) {
+        throw loaded.error;
+      }
+      await GroupFactory.withRawSharedUsageLimit(engineering, {
+        sharedUsageLimitAwuCredits: null,
+        sharedUsageLimitPriority: null,
+      });
+
+      const { previousAwuCredits } =
+        await loaded.value.updateSharedUsageLimit(15_000);
+
+      expect(previousAwuCredits).toBeNull();
+      expect(await reload(auth, engineering)).toEqual({
+        sharedUsageLimitAwuCredits: 15_000,
+        sharedUsageLimitPriority: 2,
+      });
+    });
+
     it("assigns a priority to a limited group that has none", async () => {
       const { workspace, auth } = await setup();
       const engineering = await GroupFactory.regularManual(

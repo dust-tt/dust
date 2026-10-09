@@ -116,6 +116,8 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   space_not_found: msg`Space not found.`,
   project_task_not_found: msg`Task not found.`,
   group_not_found: msg`Group not found.`,
+  invalid_shared_usage_limit_order: msg`The order sent does not list every group with a budget exactly once.`,
+  shared_usage_limit_order_changed: msg`The order of group budgets changed since you opened it. Reopen the group to see the current order.`,
   coupon_not_found: msg`Coupon not found.`,
   coupon_not_redeemable: msg`This coupon can't be redeemed.`,
   coupon_already_redeemed: msg`This coupon was already redeemed.`,

@@ -88,7 +88,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes } from "sequelize";
+import { col, fn, literal, Op, QueryTypes } from "sequelize";
 
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
@@ -1307,7 +1307,11 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   static async listGroupsWithSharedUsageLimit(
-    auth: Authenticator
+    auth: Authenticator,
+    {
+      transaction,
+      forUpdate,
+    }: { transaction?: Transaction; forUpdate?: boolean } = {}
   ): Promise<GroupResource[]> {
     const groups = await GroupModel.findAll({
       where: {
@@ -1319,10 +1323,20 @@ export class GroupResource extends BaseResource<GroupModel> {
         ["sharedUsageLimitPriority", "ASC"],
         ["id", "ASC"],
       ],
+      transaction,
+      ...(transaction && forUpdate ? { lock: transaction.LOCK.UPDATE } : {}),
     });
+    // With FOR UPDATE, Postgres sorts before waiting on the row locks and returns the rows' latest
+    // values in the earlier order, so the rows are sorted again on the values they came back with.
     return groups
       .map((group) => new GroupResource(GroupModel, group.get()))
-      .filter((group) => auth.can("read", group));
+      .filter((group) => auth.can("read", group))
+      .sort(
+        (a, b) =>
+          (a.sharedUsageLimitPriority ?? Number.MAX_SAFE_INTEGER) -
+            (b.sharedUsageLimitPriority ?? Number.MAX_SAFE_INTEGER) ||
+          a.id - b.id
+      );
   }
 
   /**
@@ -2484,39 +2498,103 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Gives `orderedGroups` the priorities they currently hold, in the new order (the first gets the
+   * lowest, so it applies first). Two statements in one transaction: the partial unique index on
+   * `(workspaceId, sharedUsageLimitPriority)` is checked row by row, so the priorities are first
+   * set to their negatives (priorities are positive, so the negated values stay unique and cannot
+   * collide with the final ones), then to their final values from a `CASE` on the group id.
+   */
+  static async reorderSharedUsageLimitPriorities(
+    auth: Authenticator,
+    orderedGroups: GroupResource[],
+    transaction?: Transaction
+  ): Promise<void> {
+    const priorities = removeNulls(
+      orderedGroups.map((group) => group.sharedUsageLimitPriority)
+    ).sort((a, b) => a - b);
+    assert(
+      priorities.length === orderedGroups.length,
+      "Only groups with a shared usage limit can be reordered."
+    );
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const groupModelIds = orderedGroups.map((group) => group.id);
+    const whenClauses = orderedGroups
+      .map(
+        (group, index) =>
+          `WHEN ${frontSequelize.escape(group.id)} THEN ${frontSequelize.escape(priorities[index])}`
+      )
+      .join(" ");
+
+    await withTransaction(async (transaction) => {
+      await GroupModel.update(
+        { sharedUsageLimitPriority: literal('-"sharedUsageLimitPriority"') },
+        {
+          where: { id: groupModelIds, workspaceId: workspaceModelId },
+          transaction,
+        }
+      );
+      await GroupModel.update(
+        { sharedUsageLimitPriority: literal(`CASE "id" ${whenClauses} END`) },
+        {
+          where: { id: groupModelIds, workspaceId: workspaceModelId },
+          transaction,
+        }
+      );
+    }, transaction);
+  }
+
+  /**
    * @cc [owner:rfrenoy,label:product;backend] group-shared-usage-limit-columns-paired
    * `sharedUsageLimitAwuCredits` and `sharedUsageLimitPriority` MUST be both null or both non-null, and MUST
-   * only be written by this method. A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
+   * only be written by this method and `reorderSharedUsageLimitPriorities` (which only permutes existing
+   * priorities). Both MUST decide what to write from the row as locked in their write transaction, not
+   * from a copy read earlier. A group is "limited" iff `sharedUsageLimitAwuCredits IS NOT NULL`
    */
   async updateSharedUsageLimit(
     sharedUsageLimitAwuCredits: number | null
-  ): Promise<void> {
-    if (sharedUsageLimitAwuCredits === null) {
-      await this.update({
-        sharedUsageLimitAwuCredits: null,
-        sharedUsageLimitPriority: null,
+  ): Promise<{ previousAwuCredits: number | null }> {
+    return withTransaction(async (transaction) => {
+      const current = await GroupModel.findOne({
+        attributes: ["sharedUsageLimitAwuCredits", "sharedUsageLimitPriority"],
+        where: { id: this.id, workspaceId: this.workspaceId },
+        lock: transaction.LOCK.UPDATE,
+        transaction,
       });
-      return;
-    }
+      const previousAwuCredits = current?.sharedUsageLimitAwuCredits ?? null;
 
-    if (this.sharedUsageLimitPriority !== null) {
-      await this.update({ sharedUsageLimitAwuCredits });
-      return;
-    }
-
-    const maxPriority = await GroupModel.max<number | null, GroupModel>(
-      "sharedUsageLimitPriority",
-      {
-        where: {
-          workspaceId: this.workspaceId,
-          sharedUsageLimitPriority: { [Op.ne]: null },
-        },
+      if (sharedUsageLimitAwuCredits === null) {
+        await this.update(
+          { sharedUsageLimitAwuCredits: null, sharedUsageLimitPriority: null },
+          transaction
+        );
+        return { previousAwuCredits };
       }
-    );
 
-    await this.update({
-      sharedUsageLimitAwuCredits,
-      sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
+      if ((current?.sharedUsageLimitPriority ?? null) !== null) {
+        await this.update({ sharedUsageLimitAwuCredits }, transaction);
+        return { previousAwuCredits };
+      }
+
+      const maxPriority = await GroupModel.max<number | null, GroupModel>(
+        "sharedUsageLimitPriority",
+        {
+          where: {
+            workspaceId: this.workspaceId,
+            sharedUsageLimitPriority: { [Op.ne]: null },
+          },
+          transaction,
+        }
+      );
+
+      await this.update(
+        {
+          sharedUsageLimitAwuCredits,
+          sharedUsageLimitPriority: (maxPriority ?? 0) + 1,
+        },
+        transaction
+      );
+      return { previousAwuCredits };
     });
   }
 
