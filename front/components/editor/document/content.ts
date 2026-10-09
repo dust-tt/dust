@@ -28,7 +28,8 @@ const documentMarkdown = new MarkdownManager({
 
 /**
  * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
- * Supported token names MUST derive from the editor extensions' parse and render handlers.
+ * Supported token names MUST derive from the editor extensions' parse and render handlers, plus
+ * `TEXT_ONLY_TOKENS`, which carry only text and need no extension.
  */
 const supportedMarkdownTokens = new Set(
   flattenExtensions(documentExtensions)
@@ -52,10 +53,14 @@ const supportedMarkdownTokens = new Set(
     )
 );
 
+// Whitespace separates blocks, and an escape (`\*`, `\_`, `\~`) is a character the serializer
+// escapes in plain text: neither has an editor extension.
+const TEXT_ONLY_TOKENS = new Set(["space", "escape"]);
+
 const isSupportedMarkdownToken = (token: MarkdownToken) =>
   token.type !== undefined &&
-  // Whitespace separates blocks without an editor extension.
-  (token.type === "space" || supportedMarkdownTokens.has(token.type)) &&
+  (TEXT_ONLY_TOKENS.has(token.type) ||
+    supportedMarkdownTokens.has(token.type)) &&
   // Registered list and code handlers still discard task markers and tilde fences.
   !(token.type === "list_item" && token.task) &&
   (token.type !== "code" ||
