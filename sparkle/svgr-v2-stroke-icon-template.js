@@ -1,5 +1,6 @@
 // index-template.js
 const path = require("path");
+const { sortExports } = require("./svgr-export-sort-template");
 
 /**
  * Export names kept alive after their SVG source was retired.
@@ -29,11 +30,6 @@ function defaultIndexTemplate(filePaths) {
   const exportNameFor = (basename) =>
     basename === "Container" ? "ContainerIcon" : basename;
 
-  const exportEntries = basenames.map(
-    (basename) =>
-      `export { default as ${exportNameFor(basename)} } from './${basename}'`
-  );
-
   const modules = new Set(basenames);
   const exportNames = new Set(basenames.map(exportNameFor));
 
@@ -57,11 +53,26 @@ function defaultIndexTemplate(filePaths) {
             `The SVG source it was standing in for is back, so remove the alias from DEPRECATED_ALIASES.`
         );
       }
-      return `export { default as ${aliasName} } from './${target}'`;
+      return [target, aliasName];
     }
   );
 
-  return [...exportEntries, ...aliasEntries].join("\n");
+  const exportEntries = basenames.map((basename) => {
+    const names = [
+      exportNameFor(basename),
+      ...aliasEntries
+        .filter(([target]) => target === basename)
+        .map(([, aliasName]) => aliasName),
+    ];
+    return {
+      from: `./${basename}`,
+      statement: `export { ${names
+        .map((name) => `default as ${name}`)
+        .join(", ")} } from './${basename}'`,
+    };
+  });
+
+  return sortExports(exportEntries).join("\n");
 }
 
 module.exports = defaultIndexTemplate;

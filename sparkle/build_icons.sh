@@ -8,15 +8,18 @@ rm -rf src/logo/dust
 find src/logo/platforms -name '*.tsx' -delete
 rm -f src/logo/platforms/index.ts
 
-npx @svgr/cli --no-prettier --index-template svgr-v2-stroke-icon-template.js --out-dir src/icons/v2-stroke/ src/icons/src/v2-stroke
+npx @svgr/cli --no-prettier --template svgr-component-template.js --index-template svgr-v2-stroke-icon-template.js --out-dir src/icons/v2-stroke/ src/icons/src/v2-stroke
 # Platform logos are brand marks — a fixed ink colour on a coloured or light
 # chip — so their palette must survive the conversion untouched. svgr.config.js
 # rewrites black to `currentColor`, which is right for stroke icons and the Dust
 # mono logos but would leave these marks invisible against their own chip in
 # dark mode. --no-runtime-config skips that file, so its other options are
 # repeated here explicitly.
-npx @svgr/cli --no-prettier --no-runtime-config --icon --typescript --expand-props end --index-template svgr-platform-template.js --out-dir src/logo/platforms/ src/logo/src/platforms/
-npx @svgr/cli --no-prettier --index-template svgr-logo-template.js --out-dir src/logo/dust/ src/logo/src/dust/
+npx @svgr/cli --no-prettier --no-runtime-config --icon --typescript --expand-props end --template svgr-component-template.js --index-template svgr-platform-template.js --out-dir src/logo/platforms/ src/logo/src/platforms/
+npx @svgr/cli --no-prettier --template svgr-component-template.js --index-template svgr-logo-template.js --out-dir src/logo/dust/ src/logo/src/dust/
+
+# SVGR drops blank lines and oxfmt does not add one after the imports, so add it here.
+perl -pi -e 's/^(import \* as React from "react";)$/$1\n/' src/icons/v2-stroke/*.tsx src/logo/platforms/*.tsx src/logo/dust/*.tsx
 
 # Format and lint generated files from the repo root so the root oxc configs apply
 (cd .. && npx oxlint --fix sparkle/src/icons/v2-stroke sparkle/src/logo && npx oxfmt sparkle/src/icons/v2-stroke sparkle/src/logo)
