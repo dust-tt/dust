@@ -91,8 +91,8 @@ const selectLastSuggestion = (editor: Editor) => {
  */
 /**
  * @cc [owner:PopDaph,label:react] document-comment-input-filled
- * onFilledChange MUST receive, at mount and whenever it changes, whether the content would
- * submit: text, a mention or a code block, as for Send.
+ * onFilledChange MUST receive, whenever the content changes, whether it would submit: text, a
+ * mention or a code block, as for Send.
  */
 export const DocumentCommentInput = ({
   label,
@@ -115,6 +115,7 @@ export const DocumentCommentInput = ({
   const pendingRef = useRef(false);
   const refocusRef = useRef(false);
   const submitRef = useRef<() => void>(() => undefined);
+  const onFilledChangeRef = useRef(onFilledChange);
 
   // Captured at mount: a changed extension list or props object would reconfigure the editor.
   const [options] = useState(() => ({
@@ -141,7 +142,9 @@ export const DocumentCommentInput = ({
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       setError(null);
-      setFilled(hasContent(editor));
+      const nowFilled = hasContent(editor);
+      setFilled(nowFilled);
+      onFilledChangeRef.current?.(nowFilled);
     },
   });
 
@@ -156,10 +159,6 @@ export const DocumentCommentInput = ({
       }
     }
   }, [editor, pending]);
-
-  useEffect(() => {
-    onFilledChange?.(filled);
-  }, [filled, onFilledChange]);
 
   useEffect(() => {
     if (autoFocus && editor) {
@@ -193,6 +192,7 @@ export const DocumentCommentInput = ({
     }
   };
   useLayoutEffect(() => {
+    onFilledChangeRef.current = onFilledChange;
     submitRef.current = () => {
       void submit();
     };

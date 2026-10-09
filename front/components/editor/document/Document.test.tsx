@@ -237,18 +237,22 @@ describe("Document comments", () => {
     const other = document.createElement("input");
     document.body.appendChild(other);
 
-    startComment(dom, editor, "brave");
-    const field = await findCommentField("Comment");
-    await waitFor(() => expect(document.activeElement).toBe(field));
-    fireEvent.pointerDown(other);
-    other.focus();
-    await act(
-      () => new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
-    );
+    try {
+      startComment(dom, editor, "brave");
+      const field = await findCommentField("Comment");
+      await waitFor(() => expect(document.activeElement).toBe(field));
+      fireEvent.pointerDown(other);
+      other.focus();
+      await act(
+        () =>
+          new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+      );
 
-    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
-    expect(document.activeElement).toBe(other);
-    other.remove();
+      expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+      expect(document.activeElement).toBe(other);
+    } finally {
+      other.remove();
+    }
   });
 
   it("keeps an empty new comment on a pointer press inside the card", async () => {

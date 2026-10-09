@@ -15,14 +15,7 @@ import type { Result } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, Extensions } from "@tiptap/core";
 import type { ReactNode, RefObject } from "react";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 const CARD_WIDTH_PX = 320;
 const DRAFT = "draft";
@@ -198,8 +191,8 @@ interface DocumentCommentCardProps {
  * draft's text, with its field focused. Escape in the field hands to its onCancel (see
  * `document-comment-input`), which MUST cancel the draft. A pointer press outside the card MUST
  * cancel the draft while its field holds no content, leaving focus where the press put it, and
- * MUST NOT once it does, so typed text survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item.
- * A refused submission MUST keep the typed text and show the reason.
+ * MUST NOT once it does, so typed text survives a stray click. Enter MUST submit the trimmed
+ * Markdown, outside a list item. A refused submission MUST keep the typed text and show the reason.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-card
@@ -256,9 +249,6 @@ export const DocumentCommentCard = ({
   const cardRef = useRef<HTMLDivElement | null>(null);
   // Read on each press, so typing does not re-subscribe the listener below.
   const draftFilledRef = useRef(false);
-  const onDraftFilledChange = useCallback((filled: boolean) => {
-    draftFilledRef.current = filled;
-  }, []);
 
   const target: typeof DRAFT | DfmComment | undefined = showsDraft
     ? DRAFT
@@ -324,7 +314,9 @@ export const DocumentCommentCard = ({
         <DocumentCommentDraftCard
           onSubmit={submitDraft}
           onCancel={cancelDraft}
-          onFilledChange={onDraftFilledChange}
+          onFilledChange={(filled) => {
+            draftFilledRef.current = filled;
+          }}
           onSuggest={draftSuggestable ? draftSuggestionTemplate : undefined}
           inputExtensions={commentInputExtensions}
           mountPortalContainer={mountPortalContainer}
