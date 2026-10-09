@@ -452,6 +452,7 @@ export function CommandPalette({
         user={user}
         skillId={skillDetailsId}
         onClose={() => setSkillDetailsId(null)}
+        showFavoriteButton
       />
 
       <MemberDetails
