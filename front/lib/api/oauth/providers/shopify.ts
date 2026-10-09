@@ -232,11 +232,6 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
-  /**
-   * @cc [owner:spolu,label:security] safe-shopify-metadata
-   * The returned extra config MUST contain only client_id and shopify_store_domain.
-   * When reusing workspace credentials, both values MUST come from that workspace connection.
-   */
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {
