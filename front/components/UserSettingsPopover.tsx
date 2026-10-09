@@ -10,6 +10,7 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import { ROLE_LABELS } from "@app/components/members/Roles";
 import { JOB_TYPE_LABELS } from "@app/components/onboarding/ProfileOnboardingSteps";
 import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
 import {
@@ -297,7 +298,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           onChange={handleImageUpload}
         />
 
-        <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
+        <SettingsList className={MODAL_SETTINGS_LIST_CLASSES} density="compact">
           <SettingsList.Row
             title={t`Profile picture`}
             description={
@@ -437,6 +438,32 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
               </span>
             }
           />
+
+          {userDetails && (
+            <>
+              <SettingsList.Row
+                title={t`Groups`}
+                description={t`Defined in workspace settings`}
+                action={
+                  <span className="copy-sm block max-w-64 text-right text-muted-foreground">
+                    {userDetails.groups.length > 0
+                      ? userDetails.groups.join(", ")
+                      : t`No groups`}
+                  </span>
+                }
+              />
+
+              <SettingsList.Row
+                title={t`Dust role`}
+                description={t`Defined in workspace settings`}
+                action={
+                  <span className="copy-sm text-muted-foreground">
+                    {t(ROLE_LABELS[userDetails.role])}
+                  </span>
+                }
+              />
+            </>
+          )}
         </SettingsList>
       </FormProvider>
     </SectionContent>

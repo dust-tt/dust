@@ -414,6 +414,22 @@ msgid "Used to sign in and receive notifications"
 msgstr "Utilisé pour vous connecter et recevoir les notifications"
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Groups"
+msgstr "Groupes"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Defined in workspace settings"
+msgstr "Défini dans les paramètres du workspace"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "No groups"
+msgstr "Aucun groupe"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Dust role"
+msgstr "Rôle Dust"
+
+#: front/components/UserSettingsPopover.tsx
 msgctxt "theme"
 msgid "Light"
 msgstr "Clair"
