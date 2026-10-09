@@ -1,6 +1,5 @@
 // index-template.js
 const path = require("path");
-const { sortExports } = require("./svgr-export-sort-template");
 
 /**
  * Export names kept alive after their SVG source was retired.
@@ -21,14 +20,21 @@ const DEPRECATED_ALIASES = {
 };
 
 function defaultIndexTemplate(filePaths) {
-  const basenames = filePaths.map(({ path: filePath }) =>
-    path.basename(filePath, path.extname(filePath))
-  );
+  const basenames = filePaths
+    .map(({ path: filePath }) =>
+      path.basename(filePath, path.extname(filePath))
+    )
+    .sort();
 
   // "Container" would collide with the existing `Container` component export
   // from sparkle, so it is exported as `ContainerIcon` instead.
   const exportNameFor = (basename) =>
     basename === "Container" ? "ContainerIcon" : basename;
+
+  const exportEntries = basenames.map(
+    (basename) =>
+      `export { default as ${exportNameFor(basename)} } from './${basename}'`
+  );
 
   const modules = new Set(basenames);
   const exportNames = new Set(basenames.map(exportNameFor));
@@ -53,26 +59,11 @@ function defaultIndexTemplate(filePaths) {
             `The SVG source it was standing in for is back, so remove the alias from DEPRECATED_ALIASES.`
         );
       }
-      return [target, aliasName];
+      return `export { default as ${aliasName} } from './${target}'`;
     }
   );
 
-  const exportEntries = basenames.map((basename) => {
-    const names = [
-      exportNameFor(basename),
-      ...aliasEntries
-        .filter(([target]) => target === basename)
-        .map(([, aliasName]) => aliasName),
-    ];
-    return {
-      from: `./${basename}`,
-      statement: `export { ${names
-        .map((name) => `default as ${name}`)
-        .join(", ")} } from './${basename}'`,
-    };
-  });
-
-  return sortExports(exportEntries).join("\n");
+  return [...exportEntries, ...aliasEntries].join("\n");
 }
 
 module.exports = defaultIndexTemplate;

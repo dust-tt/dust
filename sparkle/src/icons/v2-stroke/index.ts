@@ -145,8 +145,8 @@ export { default as Mail01 } from "./Mail01";
 export { default as MailAi } from "./MailAi";
 export { default as MailClose } from "./MailClose";
 export { default as Map01 } from "./Map01";
-export { default as MarkerPin01 } from "./MarkerPin01";
 export { default as MarkPen } from "./MarkPen";
+export { default as MarkerPin01 } from "./MarkerPin01";
 export { default as Maximize01 } from "./Maximize01";
 export { default as MedicalCross } from "./MedicalCross";
 export { default as Menu01 } from "./Menu01";
@@ -224,10 +224,8 @@ export { default as Stars02 } from "./Stars02";
 export { default as Stop } from "./Stop";
 export { default as Sun } from "./Sun";
 export { default as Sword } from "./Sword";
-export {
-  default as SyncCloud02,
-  default as CloudArrowLeftRight,
-} from "./SyncCloud02";
+export { default as SyncCloud02 } from "./SyncCloud02";
+export { default as TShirt } from "./TShirt";
 export { default as Table } from "./Table";
 export { default as Tag01 } from "./Tag01";
 export { default as TagBlock } from "./TagBlock";
@@ -243,7 +241,6 @@ export { default as Trash01 } from "./Trash01";
 export { default as Trash04 } from "./Trash04";
 export { default as Triangle } from "./Triangle";
 export { default as Trophy01 } from "./Trophy01";
-export { default as TShirt } from "./TShirt";
 export { default as Type01 } from "./Type01";
 export { default as Umbrella02 } from "./Umbrella02";
 export { default as Umbrella03 } from "./Umbrella03";
@@ -263,3 +260,4 @@ export { default as XClose } from "./XClose";
 export { default as Youtube } from "./Youtube";
 export { default as Zap } from "./Zap";
 export { default as ZapOff } from "./ZapOff";
+export { default as CloudArrowLeftRight } from "./SyncCloud02";
