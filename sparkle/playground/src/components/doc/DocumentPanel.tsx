@@ -249,10 +249,16 @@ function SaveStatus({ isSaving }: { isSaving: boolean }) {
           saving
         </>
       ) : (
-        <>
-          <Icon visual={CheckCircle} size="sm" />
-          <span className="sr-only">Saved</span>
-        </>
+        <Tooltip
+          label="Saved"
+          tooltipTriggerAsChild
+          trigger={
+            <span className="inline-flex">
+              <Icon visual={CheckCircle} size="sm" />
+              <span className="sr-only">Saved</span>
+            </span>
+          }
+        />
       )}
     </span>
   );
