@@ -70,6 +70,7 @@ vi.mock(
       onPanelClosed: vi.fn(),
       setPanelRef: vi.fn(),
       panelRef: { current: null },
+      layoutBeforeFullScreenRef: { current: null },
       setVirtuosoMsg: vi.fn(),
       virtuosoMsg: null,
       data: undefined,

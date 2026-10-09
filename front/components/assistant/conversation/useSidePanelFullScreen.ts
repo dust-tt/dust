@@ -2,21 +2,20 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 
 /**
  * @cc [owner:tdraier,label:react] side-panel-full-screen
  * Entering full screen MUST widen the side panel to the whole window and close the navigation
  * bar, and leaving it, by its toggle, Escape or closing the panel, MUST restore the panel size and
- * navigation bar from before. Escape MUST NOT leave full screen when something in the panel
- * already used it, such as closing a menu or a field.
+ * navigation bar from before, even when the panel's content remounted meanwhile. Escape MUST NOT
+ * leave full screen when something in the panel already used it, such as closing a menu or a field.
  */
 export const useSidePanelFullScreen = (defaultPanelSize: number) => {
-  const { closePanel, panelRef } = useConversationSidePanelContext();
+  const { closePanel, panelRef, layoutBeforeFullScreenRef } =
+    useConversationSidePanelContext();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
-  const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
-  const prevPanelSizeRef = useRef(defaultPanelSize);
   const panel = panelRef?.current;
 
   const [fullScreenHash, setFullScreenHash] = useHashParam(
@@ -26,22 +25,26 @@ export const useSidePanelFullScreen = (defaultPanelSize: number) => {
 
   const restoreLayout = useCallback(() => {
     if (panel) {
-      setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
-      panel.resize(prevPanelSizeRef.current ?? defaultPanelSize);
+      const layout = layoutBeforeFullScreenRef.current;
+      setIsNavigationBarOpen(layout?.isNavigationBarOpen ?? true);
+      panel.resize(layout?.panelSize ?? defaultPanelSize);
     }
-  }, [panel, setIsNavigationBarOpen, defaultPanelSize]);
+  }, [
+    panel,
+    layoutBeforeFullScreenRef,
+    setIsNavigationBarOpen,
+    defaultPanelSize,
+  ]);
 
   const exitFullScreen = useCallback(() => {
     setFullScreenHash(undefined);
   }, [setFullScreenHash]);
 
   const enterFullScreen = () => {
-    isNavBarPrevOpenRef.current = isNavigationBarOpen;
-
-    if (panel) {
-      prevPanelSizeRef.current = panel.getSize();
-    }
-
+    layoutBeforeFullScreenRef.current = {
+      isNavigationBarOpen,
+      panelSize: panel?.getSize() ?? defaultPanelSize,
+    };
     setFullScreenHash("true");
   };
 
