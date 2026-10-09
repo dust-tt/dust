@@ -48,27 +48,3 @@ msgstr "Compétence"
 #: front/components/editor/input_bar/useCustomEditor.tsx
 msgid "Get work done"
 msgstr "Que souhaitez-vous accomplir ?"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Ask anything"
-msgstr "Posez n’importe quelle question"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Start with a question"
-msgstr "Commencez par une question"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Use @ to call an agent or person"
-msgstr "Utilisez @ pour solliciter un agent ou une personne"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Ask an agent for help"
-msgstr "Demandez de l’aide à un agent"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Use / to call a skill"
-msgstr "Utilisez / pour appeler une compétence"
-
-#: front/components/editor/input_bar/useCustomEditor.tsx
-msgid "Bring the right people in with @"
-msgstr "Impliquez les bonnes personnes avec @"

@@ -18,7 +18,10 @@ import { ToolBarContent } from "@app/components/assistant/conversation/input_bar
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
 import { EditorContent } from "@app/components/editor/EditorContent";
 import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
-import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
+import type {
+  InputBarSlashCommand,
+  InputBarSlashMenuMode,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
   getInputBarSlashMenuMode,
@@ -120,6 +123,8 @@ import {
   TooltipTrigger,
   VoicePicker,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/react";
 import type { BezierDefinition } from "framer-motion";
@@ -165,6 +170,24 @@ const TYPING_EASE: BezierDefinition = [0.86, 0, 0.07, 1];
 const EMPTY_SPACE_IDS: string[] = [];
 const EMPTY_SELECTABLE_SPACES: SelectableConversationSpaceType[] = [];
 const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
+
+// Placeholder hints, only advertising the @ and / menus when the composer has them.
+function getPlaceholderHints({
+  hasMentions,
+  slashMenuMode,
+}: {
+  hasMentions: boolean;
+  slashMenuMode: InputBarSlashMenuMode | null;
+}): MessageDescriptor[] {
+  const hints = [INPUT_BAR_DEFAULT_PLACEHOLDER, msg`Ask anything`];
+  if (hasMentions) {
+    hints.push(msg`Type @ to mention agents or people`);
+  }
+  if (slashMenuMode === "commands") {
+    hints.push(msg`Type / for skills, tools, and more`);
+  }
+  return hints;
+}
 
 export interface DefaultSkillReference {
   sId: string;
@@ -213,7 +236,6 @@ export interface InputBarContainerProps {
   disableInput: boolean;
   submitBlockMessage: string | null;
   placeholder?: string;
-  animatePlaceholder?: boolean;
   onShake: () => void;
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
@@ -308,7 +330,6 @@ const InputBarContainer = ({
   disableInput,
   submitBlockMessage,
   placeholder,
-  animatePlaceholder,
   onShake,
   isCompact = false,
   onEditorFocusChange,
@@ -802,6 +823,21 @@ const InputBarContainer = ({
   const spaceIdRef = useRef<string | null | undefined>(spaceId);
   spaceIdRef.current = spaceId;
 
+  // Picked once per mount so the hint doesn't change while the input bar is shown.
+  const [placeholderHintSeed] = useState(Math.random);
+  const placeholderHints = getPlaceholderHints({
+    hasMentions: !disableUserMentions && !disableAgentMentions,
+    slashMenuMode,
+  });
+  const editorPlaceholder = disableInput
+    ? submitBlockMessage
+    : (placeholder ??
+      t(
+        placeholderHints[
+          Math.floor(placeholderHintSeed * placeholderHints.length)
+        ]
+      ));
+
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
     disableAutoFocus,
@@ -834,8 +870,7 @@ const InputBarContainer = ({
       slashMenuModeRef,
       spaceIdRef,
     },
-    placeholderOverride: disableInput ? submitBlockMessage : placeholder,
-    animatePlaceholder: !disableInput && animatePlaceholder,
+    placeholderOverride: editorPlaceholder,
     onSuggestionActiveChangeRef,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -1593,8 +1628,7 @@ const InputBarContainer = ({
   const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
   const compactDisplayPlaceholder =
-    (disableInput ? submitBlockMessage : placeholder) ??
-    t(INPUT_BAR_DEFAULT_PLACEHOLDER);
+    editorPlaceholder ?? t(INPUT_BAR_DEFAULT_PLACEHOLDER);
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);

@@ -278,17 +278,14 @@ describe("useCustomEditor placeholder override", () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(0);
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.restoreAllMocks();
   });
 
   interface EditorHookProps {
     placeholderOverride: string | null;
-    animatePlaceholder?: boolean;
   }
 
   function renderEditorHook() {
@@ -296,14 +293,13 @@ describe("useCustomEditor placeholder override", () => {
       placeholderOverride: null,
     };
     const { result, rerender } = renderHook(
-      ({ placeholderOverride, animatePlaceholder }: EditorHookProps) =>
+      ({ placeholderOverride }: EditorHookProps) =>
         useCustomEditor({
           onEnterKeyDown: vi.fn(),
           disableAutoFocus: true,
           owner,
           conversationId: "cId",
           placeholderOverride,
-          animatePlaceholder,
         }),
       { initialProps }
     );
@@ -320,15 +316,12 @@ describe("useCustomEditor placeholder override", () => {
     return editor.view.dom.querySelector("p")?.getAttribute("data-placeholder");
   }
 
-  it("types the animated placeholder without recreating the editor", () => {
+  it("types the new placeholder without recreating the editor", () => {
     const { editor, result, rerender } = renderEditorHook();
 
     expect(getPlaceholderText(editor)).toBe("Get work done");
 
-    rerender({
-      placeholderOverride: "Add a follow-up...",
-      animatePlaceholder: true,
-    });
+    rerender({ placeholderOverride: "Add a follow-up..." });
 
     // Typing starts from the first character.
     expect(result.current.editor).toBe(editor);
@@ -341,51 +334,6 @@ describe("useCustomEditor placeholder override", () => {
     expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
   });
 
-  it("fades to the new placeholder when not animated", () => {
-    const { editor, result, rerender } = renderEditorHook();
-
-    rerender({
-      placeholderOverride: "Add a follow-up...",
-      animatePlaceholder: true,
-    });
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-
-    rerender({ placeholderOverride: null });
-
-    expect(editor.view.dom.className).toContain("animate-out");
-    expect(getPlaceholderText(editor)).toBe("Add a follow-up...");
-
-    act(() => {
-      vi.advanceTimersByTime(150);
-    });
-
-    expect(editor.view.dom.className).toContain("animate-in");
-    expect(result.current.editor).toBe(editor);
-    expect(getPlaceholderText(editor)).toBe("Get work done");
-
-    act(() => {
-      vi.advanceTimersByTime(250);
-    });
-
-    expect(editor.view.dom.className).not.toContain("animate-");
-  });
-
-  it("rolls the default placeholder every 15 seconds", () => {
-    const { editor, result } = renderEditorHook();
-
-    act(() => {
-      vi.advanceTimersByTime(15_000);
-    });
-    act(() => {
-      vi.advanceTimersByTime(150);
-    });
-
-    expect(result.current.editor).toBe(editor);
-    expect(getPlaceholderText(editor)).toBe("Ask anything");
-  });
-
   it("preserves content and selection across placeholder changes", () => {
     const { editor, result, rerender } = renderEditorHook();
 
@@ -394,10 +342,7 @@ describe("useCustomEditor placeholder override", () => {
       editor.commands.setTextSelection(3);
     });
 
-    rerender({
-      placeholderOverride: "Add a follow-up...",
-      animatePlaceholder: true,
-    });
+    rerender({ placeholderOverride: "Add a follow-up..." });
 
     expect(result.current.editor).toBe(editor);
     expect(editor.getText()).toBe("hello");

@@ -46,41 +46,15 @@ import { Markdown } from "@tiptap/markdown";
 import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
 export const INPUT_BAR_DEFAULT_PLACEHOLDER = msg`Get work done`;
-const INPUT_BAR_ROLLING_PLACEHOLDERS = [
-  INPUT_BAR_DEFAULT_PLACEHOLDER,
-  msg`Ask anything`,
-  msg`Start with a question`,
-  msg`Use @ to call an agent or person`,
-  msg`Ask an agent for help`,
-  msg`Use / to call a skill`,
-  msg`Bring the right people in with @`,
-];
-const PLACEHOLDER_ROLL_INTERVAL_MS = 15_000;
-const PLACEHOLDER_EXIT_MS = 150;
-const PLACEHOLDER_ENTER_MS = 250;
-const PLACEHOLDER_EXIT_CLASSES =
-  "[&_.is-editor-empty]:before:animate-out [&_.is-editor-empty]:before:fade-out [&_.is-editor-empty]:before:slide-out-to-top-1 [&_.is-editor-empty]:before:blur-out-[2px] [&_.is-editor-empty]:before:fill-mode-forwards [&_.is-editor-empty]:before:duration-150 [&_.is-editor-empty]:before:ease-out motion-reduce:[&_.is-editor-empty]:before:animate-none".split(
-    " "
-  );
-const PLACEHOLDER_ENTER_CLASSES =
-  "[&_.is-editor-empty]:before:animate-in [&_.is-editor-empty]:before:fade-in [&_.is-editor-empty]:before:slide-in-from-bottom-1 [&_.is-editor-empty]:before:blur-in-[2px] [&_.is-editor-empty]:before:duration-250 [&_.is-editor-empty]:before:ease-out motion-reduce:[&_.is-editor-empty]:before:animate-none".split(
-    " "
-  );
 // Matches the sidebar conversation title TypingAnimation cadence.
 export const TYPING_INTERVAL_MS = 32;
 export const TYPING_MAX_DURATION_MS = 700;
-
-function pickNextRollingPlaceholderIndex(currentIndex: number) {
-  const index = Math.floor(
-    Math.random() * (INPUT_BAR_ROLLING_PLACEHOLDERS.length - 1)
-  );
-  return index >= currentIndex ? index + 1 : index;
-}
 
 function isLongTextPaste(text: string, maxCharThreshold?: number) {
   const maxChars = maxCharThreshold ?? DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD;
@@ -407,8 +381,6 @@ export interface CustomEditorProps {
   };
   // Override the default editor placeholder (e.g. to show a blocked-state reason).
   placeholderOverride?: string | null;
-  // When true, placeholder changes are typed character by character.
-  animatePlaceholder?: boolean;
   onSuggestionActiveChangeRef?: React.RefObject<
     ((active: boolean) => void) | undefined
   >;
@@ -605,16 +577,11 @@ const useCustomEditor = ({
   onFirstAgentMentionPasteRef,
   slashSuggestion,
   placeholderOverride,
-  animatePlaceholder,
   onSuggestionActiveChangeRef,
 }: CustomEditorProps) => {
   const { t } = useLingui();
-  const [rollingPlaceholderIndex, setRollingPlaceholderIndex] = useState(() =>
-    Math.floor(Math.random() * INPUT_BAR_ROLLING_PLACEHOLDERS.length)
-  );
-  const defaultPlaceholder = t(
-    INPUT_BAR_ROLLING_PLACEHOLDERS[rollingPlaceholderIndex]
-  );
+  const shouldReduceMotion = useReducedMotion();
+  const defaultPlaceholder = t(INPUT_BAR_DEFAULT_PLACEHOLDER);
   // Read through a ref so placeholder changes don't rebuild the editor.
   const placeholderRef = useRef(placeholderOverride ?? defaultPlaceholder);
 
@@ -666,16 +633,8 @@ const useCustomEditor = ({
     [conversationId]
   );
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRollingPlaceholderIndex(pickNextRollingPlaceholderIndex);
-    }, PLACEHOLDER_ROLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Apply placeholder changes. With animatePlaceholder, type the new
-  // placeholder character by character, like the sidebar conversation titles.
-  // Otherwise, fade the old placeholder out and the new one in.
+  // Apply placeholder changes by typing the new placeholder from left to right,
+  // like the sidebar conversation titles.
   // The Placeholder extension only re-reads placeholderRef on a state update,
   // so dispatch an empty transaction for each change. Skipped on mount since
   // the ref starts in sync with the override.
@@ -690,44 +649,31 @@ const useCustomEditor = ({
       editor.view.dispatch(editor.state.tr);
     };
 
-    if (animatePlaceholder) {
-      // Start at one character, like TypingAnimation.
-      let length = 1;
-      setPlaceholder(target.substring(0, length));
-
-      const typingEffect = setInterval(() => {
-        if (editor.isDestroyed || length >= target.length) {
-          clearInterval(typingEffect);
-          return;
-        }
-        length += 1;
-        setPlaceholder(target.substring(0, length));
-      }, TYPING_INTERVAL_MS);
-
-      return () => clearInterval(typingEffect);
+    // The placeholder is hidden while the editor has content: no need to type it.
+    if (shouldReduceMotion || !editor.isEmpty) {
+      setPlaceholder(target);
+      return;
     }
 
-    const { classList } = editor.view.dom;
-    classList.add(...PLACEHOLDER_EXIT_CLASSES);
-    let enterTimeout: ReturnType<typeof setTimeout> | undefined;
-    const exitTimeout = setTimeout(() => {
-      classList.remove(...PLACEHOLDER_EXIT_CLASSES);
-      classList.add(...PLACEHOLDER_ENTER_CLASSES);
-      setPlaceholder(target);
-      enterTimeout = setTimeout(() => {
-        classList.remove(...PLACEHOLDER_ENTER_CLASSES);
-      }, PLACEHOLDER_ENTER_MS);
-    }, PLACEHOLDER_EXIT_MS);
+    // Type several characters per tick on long placeholders so typing never
+    // exceeds TYPING_MAX_DURATION_MS.
+    const charsPerTick = Math.ceil(
+      (target.length * TYPING_INTERVAL_MS) / TYPING_MAX_DURATION_MS
+    );
+    let length = charsPerTick;
+    setPlaceholder(target.substring(0, length));
 
-    return () => {
-      clearTimeout(exitTimeout);
-      clearTimeout(enterTimeout);
-      classList.remove(
-        ...PLACEHOLDER_EXIT_CLASSES,
-        ...PLACEHOLDER_ENTER_CLASSES
-      );
-    };
-  }, [editor, placeholderOverride, animatePlaceholder, defaultPlaceholder]);
+    const typingEffect = setInterval(() => {
+      if (editor.isDestroyed || length >= target.length) {
+        clearInterval(typingEffect);
+        return;
+      }
+      length += charsPerTick;
+      setPlaceholder(target.substring(0, length));
+    }, TYPING_INTERVAL_MS);
+
+    return () => clearInterval(typingEffect);
+  }, [editor, placeholderOverride, defaultPlaceholder, shouldReduceMotion]);
 
   const isMobileViewport = useIsMobile();
   const editorService = useEditorService(editor, isMobileViewport);
