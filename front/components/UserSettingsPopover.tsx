@@ -298,7 +298,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           onChange={handleImageUpload}
         />
 
-        <SettingsList className={MODAL_SETTINGS_LIST_CLASSES}>
+        <SettingsList className={MODAL_SETTINGS_LIST_CLASSES} density="compact">
           <SettingsList.Row
             title={t`Profile picture`}
             description={
