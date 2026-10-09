@@ -29,6 +29,7 @@ vi.mock(import("@connectors/types"), async (importOriginal) => {
   };
 });
 
+import { getSlackI18n } from "./i18n";
 import { notifyIfSlackUserIsNotAllowed } from "./workspace_limits";
 
 const slackUserInfo: SlackUserInfo = {
@@ -94,6 +95,7 @@ describe("notifyIfSlackUserIsNotAllowed", () => {
     );
 
     const res = await notifyIfSlackUserIsNotAllowed(
+      await getSlackI18n("en-US"),
       connector,
       slackClient,
       slackUserInfo,
@@ -111,6 +113,7 @@ describe("notifyIfSlackUserIsNotAllowed", () => {
     vi.spyOn(slackClient.chat, "postMessage").mockRejectedValue(error);
 
     const res = await notifyIfSlackUserIsNotAllowed(
+      await getSlackI18n("en-US"),
       connector,
       slackClient,
       slackUserInfo,

@@ -33,14 +33,17 @@ import {
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
 import {
   isBotAllowed,
+  makeSlackBotNotIdentifiedMessage,
   notifyIfSlackUserIsNotAllowed,
-  SLACK_BOT_NOT_IDENTIFIED_MESSAGE,
 } from "@connectors/connectors/slack/lib/workspace_limits";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
-import type { MentionMatch } from "@connectors/lib/bot/mentions";
+import type {
+  AgentMentionError,
+  MentionMatch,
+} from "@connectors/lib/bot/mentions";
 import { processMentions } from "@connectors/lib/bot/mentions";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { sectionFullText } from "@connectors/lib/data_sources";
@@ -73,6 +76,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import {
+  assertNever,
   DustAPI,
   Err,
   isSupportedAudioContentType,
@@ -81,18 +85,51 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
 
-const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
-  "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <https://dust4ai.slack.com/marketplace/A09214D6XQT-dust|Dust App for Slack>).";
-const SLACK_ERROR_TEXT =
-  "An unexpected error occurred while answering your message, please retry.";
-const SLACK_POSTING_PERMISSION_ERROR_MARKDOWN =
-  "Dust doesn't have permission to post in this channel. The agent answered, but " +
-  "Slack rejected the reply. Ask a workspace admin to allow the Dust app to post " +
-  "here, then retry.";
+const SLACK_APP_MARKETPLACE_URL =
+  "https://dust4ai.slack.com/marketplace/A09214D6XQT-dust";
+
+function makeSlackRateLimitErrorMarkdown(i18n: I18n): string {
+  return i18n._(
+    "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <{marketplaceUrl}|Dust App for Slack>).",
+    { marketplaceUrl: SLACK_APP_MARKETPLACE_URL }
+  );
+}
+
+function makeSlackErrorText(i18n: I18n): string {
+  return i18n._(
+    "An unexpected error occurred while answering your message, please retry."
+  );
+}
+
+function makeSlackPostingPermissionErrorMarkdown(i18n: I18n): string {
+  return i18n._(
+    "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+  );
+}
+
+function makeAgentMentionErrorMessage(
+  i18n: I18n,
+  { code, mentionCandidate }: AgentMentionError
+): string {
+  switch (code) {
+    case "agent_not_available":
+      return i18n._(
+        "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access.",
+        { mentionCandidate }
+      );
+    case "agent_not_found":
+      return i18n._("Agent {mentionCandidate} has not been found.", {
+        mentionCandidate,
+      });
+    default:
+      assertNever(code);
+  }
+}
 
 // Keep aligned with front/types/files.ts MAX_FILE_SIZES for conversation uploads.
 const MAX_OTHER_FILE_SIZE_TO_UPLOAD = 50 * 1024 * 1024; // 50 MB
@@ -115,12 +152,25 @@ function getMaxFileSizeToUpload(contentType: SupportedFileContentType): number {
 // Pattern to match +mention, ~mention, or =mention at the beginning of the string.
 const SLACK_MENTION_PATTERN = /^\s*([+~=][a-zA-Z0-9_\.-]{1,40})(?=\s|,|$)/;
 
+// Slack prefixes the status with the app name: "Dust is thinking...".
 function makeSlackAssistantThreadStatus(
+  i18n: I18n,
   agentName: string,
   status: "thinking" | "queued"
 ) {
-  const statusText = `is ${status}...`;
-  return agentName === "dust" ? statusText : `(${agentName}) ${statusText}`;
+  const isDefaultAgent = agentName === "dust";
+  switch (status) {
+    case "thinking":
+      return isDefaultAgent
+        ? i18n._("is thinking...")
+        : i18n._("({agentName}) is thinking...", { agentName });
+    case "queued":
+      return isDefaultAgent
+        ? i18n._("is queued...")
+        : i18n._("({agentName}) is queued...", { agentName });
+    default:
+      assertNever(status);
+  }
 }
 
 type BotAnswerParams = {
@@ -202,6 +252,7 @@ export async function botAnswerMessage(
     );
 
     const slackClient = await getSlackClient(connector.id);
+    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     try {
       reportSlackUsage({
         connectorId: connector.id,
@@ -212,21 +263,23 @@ export async function botAnswerMessage(
       if (e instanceof ProviderRateLimitError || isWebAPIRateLimitedError(e)) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
+          blocks: makeMarkdownBlock(makeSlackRateLimitErrorMarkdown(i18n)),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
       } else if (isSlackPostingPermissionError(e)) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
+          blocks: makeMarkdownBlock(
+            makeSlackPostingPermissionErrorMarkdown(i18n)
+          ),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
       } else {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          text: SLACK_ERROR_TEXT,
+          text: makeSlackErrorText(i18n),
           thread_ts: slackMessageTs,
         });
       }
@@ -291,6 +344,7 @@ export async function botReplaceMention(
       "Unexpected exception updating mention on Chat Bot message"
     );
     const slackClient = await getSlackClient(connector.id);
+    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",
@@ -301,21 +355,23 @@ export async function botReplaceMention(
       if (e instanceof ProviderRateLimitError) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          blocks: makeMarkdownBlock(SLACK_RATE_LIMIT_ERROR_MARKDOWN),
+          blocks: makeMarkdownBlock(makeSlackRateLimitErrorMarkdown(i18n)),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
       } else if (isSlackPostingPermissionError(e)) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          blocks: makeMarkdownBlock(SLACK_POSTING_PERMISSION_ERROR_MARKDOWN),
+          blocks: makeMarkdownBlock(
+            makeSlackPostingPermissionErrorMarkdown(i18n)
+          ),
           thread_ts: slackMessageTs,
           unfurl_links: false,
         });
       } else {
         await slackClient.chat.postMessage({
           channel: slackChannel,
-          text: SLACK_ERROR_TEXT,
+          text: makeSlackErrorText(i18n),
           thread_ts: slackMessageTs,
         });
       }
@@ -341,6 +397,7 @@ export async function botReplaceMention(
  * grants nothing to a non-member.
  */
 async function getInteractingSlackUserGroups(
+  i18n: I18n,
   connector: ConnectorResource,
   slackConfig: SlackConfigurationResource,
   slackClient: WebClient,
@@ -386,6 +443,7 @@ async function getInteractingSlackUserGroups(
   }
 
   const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
+    i18n,
     connector,
     slackClient,
     slackUserInfo,
@@ -410,8 +468,29 @@ type ToolValidationParams = {
   conversationId: string;
   messageId: string;
   slackChatBotMessageId: number;
-  text: string;
+  toolName: string;
 };
+
+function makeToolValidationConfirmationText(
+  i18n: I18n,
+  approved: "approved" | "rejected",
+  toolName: string
+): string {
+  switch (approved) {
+    case "approved":
+      return i18n._(
+        "The agent's request to use tool `{toolName}` was ✅ approved",
+        { toolName }
+      );
+    case "rejected":
+      return i18n._(
+        "The agent's request to use tool `{toolName}` was ❌ rejected",
+        { toolName }
+      );
+    default:
+      assertNever(approved);
+  }
+}
 
 /**
  * @cc [owner:tdraier,label:security] bot-message-scoped-to-connector
@@ -426,7 +505,7 @@ export async function botValidateToolExecution(
     conversationId,
     messageId,
     slackChatBotMessageId,
-    text,
+    toolName,
   }: ToolValidationParams,
   params: BotAnswerParams
 ) {
@@ -443,6 +522,7 @@ export async function botValidateToolExecution(
     return connectorRes;
   }
   const { connector, slackConfig } = connectorRes.value;
+  const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
@@ -459,6 +539,7 @@ export async function botValidateToolExecution(
         : undefined;
 
     const requestedGroupsRes = await getInteractingSlackUserGroups(
+      i18n,
       connector,
       slackConfig,
       slackClient,
@@ -556,11 +637,15 @@ export async function botValidateToolExecution(
     // `action_not_blocked` and the click is a no-op: surface that to the user.
     let confirmationText: string;
     if (res.isOk()) {
-      confirmationText = text;
+      confirmationText = makeToolValidationConfirmationText(
+        i18n,
+        approved,
+        toolName
+      );
     } else if (String(res.error.type) === "action_not_blocked") {
-      confirmationText = "Tool validation was already handled in Dust.";
+      confirmationText = i18n._("Tool validation was already handled in Dust.");
     } else {
-      confirmationText = "An error occurred while validating the tool.";
+      confirmationText = i18n._("An error occurred while validating the tool.");
     }
 
     reportSlackUsage({
@@ -597,7 +682,9 @@ export async function botValidateToolExecution(
       });
       await slackClient.chat.postMessage({
         channel: slackChannel,
-        text: "An unexpected error occurred while sending the validation. Our team has been notified.",
+        text: i18n._(
+          "An unexpected error occurred while sending the validation. Our team has been notified."
+        ),
         thread_ts: slackMessageTs,
       });
     } catch (postError) {
@@ -676,8 +763,10 @@ export async function botAnswerUserQuestion({
       : undefined;
 
   const slackClient = await getSlackClient(connector.id);
+  const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
   const requestedGroupsRes = await getInteractingSlackUserGroups(
+    i18n,
     connector,
     slackConfig,
     slackClient,
@@ -729,8 +818,8 @@ export async function botAnswerUserQuestion({
 
     const confirmationText =
       answer.selectedOptions.length === 0 && !answer.customResponse
-        ? "Question skipped ⏭️"
-        : "Your answer was submitted ✅";
+        ? i18n._("Question skipped ⏭️")
+        : i18n._("Your answer was submitted ✅");
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postEphemeral",
@@ -771,10 +860,14 @@ async function processErrorResult(
       "Failed answering to Slack Chat Bot message"
     );
 
+    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
-        : `An error occurred : ${res.error.message}. Our team has been notified and will work on it as soon as possible.`;
+        : i18n._(
+            "An error occurred: {errorMessage}. Our team has been notified and will work on it as soon as possible.",
+            { errorMessage: res.error.message }
+          );
 
     const { slackChatBotMessage, streamTs } =
       res.error instanceof SlackMessageError
@@ -790,7 +883,6 @@ async function processErrorResult(
     );
 
     const slackClient = await getSlackClient(connector.id);
-    const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
     const errorPost = makeErrorBlock(
       i18n,
@@ -928,7 +1020,7 @@ async function answerMessage(
         "Could not identify the bot posting a Slack message"
       );
       return new Err(
-        new SlackExternalUserError(SLACK_BOT_NOT_IDENTIFIED_MESSAGE)
+        new SlackExternalUserError(makeSlackBotNotIdentifiedMessage(i18n))
       );
     }
   }
@@ -941,7 +1033,7 @@ async function answerMessage(
   let skipToolsValidation = false;
 
   if (slackUserInfo.is_bot) {
-    const isBotAllowedRes = await isBotAllowed(connector, slackUserInfo);
+    const isBotAllowedRes = await isBotAllowed(i18n, connector, slackUserInfo);
     if (isBotAllowedRes.isErr()) {
       if (slackUserInfo.real_name === "Dust Data Sync") {
         // The Dust Data Sync bot mentions Dust to let ther user know which bot to use so we should
@@ -955,6 +1047,7 @@ async function answerMessage(
     skipToolsValidation = true;
   } else {
     const hasChatbotAccessRes = await notifyIfSlackUserIsNotAllowed(
+      i18n,
       connector,
       slackClient,
       slackUserInfo,
@@ -1140,7 +1233,7 @@ async function answerMessage(
     if (secondMatch) {
       return new Err(
         new SlackExternalUserError(
-          "Only one agent at a time can be called through Slack."
+          i18n._("Only one agent at a time can be called through Slack.")
         )
       );
     }
@@ -1153,7 +1246,9 @@ async function answerMessage(
       (ac) => ac.sId === mentionOverride
     );
     if (!agentConfig) {
-      return new Err(new SlackExternalUserError("Cannot find selected agent."));
+      return new Err(
+        new SlackExternalUserError(i18n._("Cannot find selected agent."))
+      );
     }
     // Removing all previous mentions.
     if (mentionCandidate) {
@@ -1170,7 +1265,11 @@ async function answerMessage(
       mentionCandidate,
     });
     if (mentionResult.isErr()) {
-      return new Err(new SlackExternalUserError(mentionResult.error.message));
+      return new Err(
+        new SlackExternalUserError(
+          makeAgentMentionErrorMessage(i18n, mentionResult.error)
+        )
+      );
     }
 
     mention = mentionResult.value.mention;
@@ -1214,7 +1313,7 @@ async function answerMessage(
         return new Err(
           // not actually reachable, gpt-4 cannot be disabled.
           new SlackExternalUserError(
-            "No agent has been configured to reply on Slack."
+            i18n._("No agent has been configured to reply on Slack.")
           )
         );
       }
@@ -1252,12 +1351,13 @@ async function answerMessage(
 
     // If agent is from a restricted space, we send an error message to Slack
     if (isRestrictedRes.value) {
-      const errorMsg = new RestrictedSpaceAgentError();
       const errorBlock = makeErrorBlock(
         i18n,
         null, // No conversation URL for this error
         connector.workspaceId,
-        errorMsg.message
+        i18n._(
+          "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+        )
       );
 
       await slackClient.chat.postMessage({
@@ -1277,15 +1377,20 @@ async function answerMessage(
     }
     slackUserId = botUserIdRes.value;
   }
-  const streamHandler = new SlackStreamHandler(slackClient, connector.id, {
-    slackChannel,
-    slackMessageTs,
-    slackThreadTs,
-    slackTeamId,
-    slackUserId,
-  });
+  const streamHandler = new SlackStreamHandler(
+    i18n,
+    slackClient,
+    connector.id,
+    {
+      slackChannel,
+      slackMessageTs,
+      slackThreadTs,
+      slackTeamId,
+      slackUserId,
+    }
+  );
   await streamHandler.setThinking(
-    makeSlackAssistantThreadStatus(mention.agentName, "thinking")
+    makeSlackAssistantThreadStatus(i18n, mention.agentName, "thinking")
   );
 
   const buildSlackMessageError = (
@@ -1425,12 +1530,13 @@ async function answerMessage(
   const isPendingUserMessage = userMessage.visibility === "pending";
   if (isPendingUserMessage) {
     await streamHandler.setThinking(
-      makeSlackAssistantThreadStatus(mention.agentName, "queued"),
-      "Queued..."
+      makeSlackAssistantThreadStatus(i18n, mention.agentName, "queued"),
+      i18n._("Queued...")
     );
   }
 
   const pendingUserMessageRes = await resolveSlackPendingUserMessage({
+    i18n,
     connector,
     conversation,
     dustAPI,
@@ -1455,7 +1561,7 @@ async function answerMessage(
   conversation = pendingUserMessageRes.value;
   if (isPendingUserMessage) {
     await streamHandler.setThinking(
-      makeSlackAssistantThreadStatus(mention.agentName, "thinking")
+      makeSlackAssistantThreadStatus(i18n, mention.agentName, "thinking")
     );
   }
 
@@ -1795,15 +1901,6 @@ async function makeContentFragments(
   });
 
   return new Ok(allContentFragments);
-}
-
-class RestrictedSpaceAgentError extends Error {
-  constructor() {
-    super(
-      "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
-    );
-    this.name = "RestrictedSpaceAgentError";
-  }
 }
 
 async function isAgentAccessingRestrictedSpace(

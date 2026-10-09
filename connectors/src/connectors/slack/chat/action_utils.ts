@@ -4,29 +4,37 @@ import {
   type AgentActionPublicType,
   type NotificationRunAgentContent,
   NotificationRunAgentContentSchema,
-  TOOL_RUNNING_LABEL,
   type ToolNotificationEvent,
 } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import { z } from "zod";
 
-// run_agent actions have null displayLabels due to a gap in the server-side
-// tool type system (ServerSideMCPToolType doesn't carry displayLabels).
-// Fall back to the label defined in the run_agent server metadata.
-const RUN_AGENT_RUNNING_LABEL = "Running agent";
-export const AWAITING_TOOL_APPROVAL_LABEL = "Awaiting tool approval";
+export function getAwaitingToolApprovalLabel(i18n: I18n): string {
+  return i18n._("Awaiting tool approval");
+}
 
-export function getActionRunningLabel(action: AgentActionPublicType): string {
+export function getActionRunningLabel(
+  i18n: I18n,
+  action: AgentActionPublicType
+): string {
   if (action.displayLabels?.running) {
     return action.displayLabels.running;
   }
+  // run_agent actions have null displayLabels due to a gap in the server-side
+  // tool type system (ServerSideMCPToolType doesn't carry displayLabels).
+  // Fall back to the label defined in the run_agent server metadata.
   if (action.internalMCPServerName === "run_agent") {
-    return RUN_AGENT_RUNNING_LABEL;
+    return i18n._("Running agent");
   }
-  return TOOL_RUNNING_LABEL;
+  // Same text as `TOOL_RUNNING_LABEL` of `@dust-tt/client`.
+  return i18n._("Using a tool");
 }
 
-export function getActionDoneLabel(action: AgentActionPublicType): string {
-  return action.displayLabels?.done ?? "Done";
+export function getActionDoneLabel(
+  i18n: I18n,
+  action: AgentActionPublicType
+): string {
+  return action.displayLabels?.done ?? i18n._("Done");
 }
 
 const SearchParamsSchema = z.object({ query: z.string() });

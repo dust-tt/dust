@@ -17,6 +17,7 @@ import { SlackConfigurationResource } from "@connectors/resources/slack_configur
 import { cacheWithRedis } from "@connectors/types";
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
 import { Err, normalizeError, Ok } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
@@ -84,6 +85,7 @@ async function isAutoJoinEnabledForDomain(
 }
 
 function makeSlackMembershipAccessBlocksForConnector(
+  i18n: I18n,
   connector: ConnectorResource
 ) {
   return {
@@ -92,7 +94,9 @@ function makeSlackMembershipAccessBlocksForConnector(
         type: "section",
         text: {
           type: "mrkdwn",
-          text: "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator.",
+          text: i18n._(
+            "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+          ),
         },
       },
       {
@@ -102,7 +106,7 @@ function makeSlackMembershipAccessBlocksForConnector(
             type: "button",
             text: {
               type: "plain_text",
-              text: "Join My Workspace",
+              text: i18n._("Join My Workspace"),
               emoji: true,
             },
             style: "primary",
@@ -120,7 +124,9 @@ function makeSlackMembershipAccessBlocksForConnector(
         type: "section",
         text: {
           type: "mrkdwn",
-          text: "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack.",
+          text: i18n._(
+            "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
+          ),
         },
       },
     ],
@@ -128,6 +134,7 @@ function makeSlackMembershipAccessBlocksForConnector(
 }
 
 async function postMessageForUnauthorizedUser(
+  i18n: I18n,
   connector: ConnectorResource,
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
@@ -140,10 +147,10 @@ async function postMessageForUnauthorizedUser(
     slackUserInfo
   );
 
-  const slackMessageBlocks =
-    makeSlackMembershipAccessBlocksForConnector(connector)[
-      autoJoinEnabled ? "autojoin_enabled" : "autojoin_disabled"
-    ];
+  const slackMessageBlocks = makeSlackMembershipAccessBlocksForConnector(
+    i18n,
+    connector
+  )[autoJoinEnabled ? "autojoin_enabled" : "autojoin_disabled"];
 
   reportSlackUsage({
     connectorId: connector.id,
@@ -162,14 +169,24 @@ async function postMessageForUnauthorizedUser(
   }
 }
 
-export function makeSlackWorkflowNotAllowedMessage(botName: string): string {
-  return `The Slack workflow "${botName}" is not allowed to call Dust agents yet. A Dust admin can allow it from the Automations page in Dust.`;
+export function makeSlackWorkflowNotAllowedMessage(
+  i18n: I18n,
+  botName: string
+): string {
+  return i18n._(
+    'The Slack workflow "{botName}" is not allowed to call Dust agents yet. A Dust admin can allow it from the Automations page in Dust.',
+    { botName }
+  );
 }
 
-export const SLACK_BOT_NOT_IDENTIFIED_MESSAGE =
-  "Dust could not identify the bot or workflow that posted this message, so it cannot call Dust agents. Contact support@dust.tt if this is a Slack workflow.";
+export function makeSlackBotNotIdentifiedMessage(i18n: I18n): string {
+  return i18n._(
+    "Dust could not identify the bot or workflow that posted this message, so it cannot call Dust agents. Contact support@dust.tt if this is a Slack workflow."
+  );
+}
 
 export async function isBotAllowed(
+  i18n: I18n,
   connector: ConnectorResource,
   slackUserInfo: SlackUserInfo
 ): Promise<Result<undefined, Error>> {
@@ -197,7 +214,9 @@ export async function isBotAllowed(
     );
 
     return new Err(
-      new SlackExternalUserError(makeSlackWorkflowNotAllowedMessage(botName))
+      new SlackExternalUserError(
+        makeSlackWorkflowNotAllowedMessage(i18n, botName)
+      )
     );
   }
 
@@ -321,6 +340,7 @@ async function isSlackUserAllowed(
 }
 
 export async function notifyIfSlackUserIsNotAllowed(
+  i18n: I18n,
   connector: ConnectorResource,
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
@@ -377,6 +397,7 @@ export async function notifyIfSlackUserIsNotAllowed(
     );
 
     const postMessageRes = await postMessageForUnauthorizedUser(
+      i18n,
       connector,
       slackClient,
       slackUserInfo,

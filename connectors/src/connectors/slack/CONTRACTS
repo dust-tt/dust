@@ -6,3 +6,12 @@ and its English text: `lingui extract` only collects literal ids passed to a cal
 Dynamic parts MUST be named ICU placeholders (`{agentName}`) passed in `values`, never concatenated
 or interpolated into the literal. Lingui macros (`@lingui/*/macro`) MUST NOT be imported: connectors
 runs under `tsx`, which does not compile them.
+
+@cc [owner:Nils-Fedrigo,label:product] slack-user-text-translated
+Text the Slack bot writes for Slack users (messages, ephemerals, assistant statuses, plan titles,
+modals, buttons, placeholders, and `SlackExternalUserError` messages) MUST be translated as
+specified by `slack-text-extractable`. Content not authored by the bot (agent answers, agent and
+tool names, front API error messages, Slack data) MUST be interpolated untranslated through
+placeholders. The `message` of other `Error`s is diagnostic: it MAY stay English and MUST only reach
+users through the placeholder of a translated sentence. Text sent to the Dust API or to models
+(message content, content fragments) MUST NOT be translated.

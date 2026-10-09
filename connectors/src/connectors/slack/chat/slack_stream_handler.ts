@@ -2,6 +2,7 @@ import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/err
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { throttleWithRedis } from "@connectors/lib/throttle";
 import logger from "@connectors/logger/logger";
+import type { I18n } from "@lingui/core";
 import type { ChatStreamer, WebClient } from "@slack/web-api";
 
 export class SlackStreamHandler {
@@ -17,6 +18,7 @@ export class SlackStreamHandler {
   }
 
   constructor(
+    private readonly i18n: I18n,
     private readonly slackClient: WebClient,
     private readonly connectorId: number,
     {
@@ -45,12 +47,12 @@ export class SlackStreamHandler {
     });
   }
 
-  async setThinking(status: string, loadingMessage = "Thinking...") {
+  async setThinking(status: string, loadingMessage?: string) {
     await this.slackClient.assistant.threads.setStatus({
       channel_id: this.channelId,
       thread_ts: this.threadTs ?? this.slackMessageTs,
       status,
-      loading_messages: [loadingMessage],
+      loading_messages: [loadingMessage ?? this.i18n._("Thinking...")],
     });
   }
 

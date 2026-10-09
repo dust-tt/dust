@@ -14,6 +14,141 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <{marketplaceUrl}|Dust App for Slack>)."
+msgstr "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <{marketplaceUrl}|Dust App for Slack>)."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "An unexpected error occurred while answering your message, please retry."
+msgstr "An unexpected error occurred while answering your message, please retry."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+msgstr "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access."
+msgstr "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Agent {mentionCandidate} has not been found."
+msgstr "Agent {mentionCandidate} has not been found."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "is thinking..."
+msgstr "is thinking..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "({agentName}) is thinking..."
+msgstr "({agentName}) is thinking..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "is queued..."
+msgstr "is queued..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "({agentName}) is queued..."
+msgstr "({agentName}) is queued..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "The agent's request to use tool `{toolName}` was ✅ approved"
+msgstr "The agent's request to use tool `{toolName}` was ✅ approved"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "The agent's request to use tool `{toolName}` was ❌ rejected"
+msgstr "The agent's request to use tool `{toolName}` was ❌ rejected"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Tool validation was already handled in Dust."
+msgstr "Tool validation was already handled in Dust."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "An error occurred while validating the tool."
+msgstr "An error occurred while validating the tool."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "An unexpected error occurred while sending the validation. Our team has been notified."
+msgstr "An unexpected error occurred while sending the validation. Our team has been notified."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Question skipped ⏭️"
+msgstr "Question skipped ⏭️"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Your answer was submitted ✅"
+msgstr "Your answer was submitted ✅"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "An error occurred: {errorMessage}. Our team has been notified and will work on it as soon as possible."
+msgstr "An error occurred: {errorMessage}. Our team has been notified and will work on it as soon as possible."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Only one agent at a time can be called through Slack."
+msgstr "Only one agent at a time can be called through Slack."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Cannot find selected agent."
+msgstr "Cannot find selected agent."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "No agent has been configured to reply on Slack."
+msgstr "No agent has been configured to reply on Slack."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+msgstr "This agent belongs to a restricted space and cannot be invoked on Slack for this workspace. Contact your workspace administrator if you need access."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot.ts
+msgid "Queued..."
+msgstr "Queued..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/bot_pending_message.ts
+msgid "Dust is still finishing the previous request."
+msgstr "Dust is still finishing the previous request."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/action_utils.ts
+msgid "Awaiting tool approval"
+msgstr "Awaiting tool approval"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/action_utils.ts
+msgid "Running agent"
+msgstr "Running agent"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/action_utils.ts
+msgid "Using a tool"
+msgstr "Using a tool"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/action_utils.ts
+msgid "Done"
+msgstr "Done"
+
+#. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/blocks.ts
 msgid "✅ Feedback submitted"
 msgstr "✅ Feedback submitted"
@@ -40,6 +175,7 @@ msgstr "Answered by *{assistantName}*"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/blocks.ts
+#: connectors/src/connectors/slack/chat/slack_stream_handler.ts
 msgid "Thinking..."
 msgstr "Thinking..."
 
@@ -105,6 +241,7 @@ msgstr "Skip"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/blocks.ts
+#: connectors/src/connectors/slack/feedback_modal.ts
 msgid "Submit"
 msgstr "Submit"
 
@@ -117,3 +254,183 @@ msgstr "The agent requires file authorization for `{fileName}`"
 #: connectors/src/connectors/slack/chat/blocks.ts
 msgid "Authorize file"
 msgstr "Authorize file"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Authentication for `{serverName}` successful ✅"
+msgstr "Authentication for `{serverName}` successful ✅"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Streaming was interrupted after 5 mins waiting on a tool execution approval."
+msgstr "Streaming was interrupted after 5 mins waiting on a tool execution approval."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Streaming was interrupted after 5 mins waiting on a file access authorization."
+msgstr "Streaming was interrupted after 5 mins waiting on a file access authorization."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Streaming was interrupted after 5 mins waiting on a tool authentication."
+msgstr "Streaming was interrupted after 5 mins waiting on a tool authentication."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Streaming was interrupted after 5 mins waiting on a response to a question."
+msgstr "Streaming was interrupted after 5 mins waiting on a response to a question."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Dust could not display the Slack controls for a tool execution approval."
+msgstr "Dust could not display the Slack controls for a tool execution approval."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Dust could not display the Slack controls for a file access authorization."
+msgstr "Dust could not display the Slack controls for a file access authorization."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Dust could not display the Slack controls for a tool authentication."
+msgstr "Dust could not display the Slack controls for a tool authentication."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Dust could not display the Slack controls for a response to a question."
+msgstr "Dust could not display the Slack controls for a response to a question."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Approve tool execution"
+msgstr "Approve tool execution"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Personal authentication required"
+msgstr "Personal authentication required"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Waiting for authentication…"
+msgstr "Waiting for authentication…"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "File authorization required"
+msgstr "File authorization required"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Waiting for file authorization..."
+msgstr "Waiting for file authorization..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Feedback and agent selection"
+msgstr "Feedback and agent selection"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Message generation was cancelled."
+msgstr "Message generation was cancelled."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
+msgid "Slack couldn't upload the generated files, so they aren't attached."
+msgstr "Slack couldn't upload the generated files, so they aren't attached."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Helpful"
+msgstr "Helpful"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Not helpful"
+msgstr "Not helpful"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Leave feedback"
+msgstr "Leave feedback"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Cancel"
+msgstr "Cancel"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Share whether this helped you get things done."
+msgstr "Share whether this helped you get things done."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Did this help you in your work?"
+msgstr "Did this help you in your work?"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Additional feedback"
+msgstr "Additional feedback"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "Tell us more about your experience..."
+msgstr "Tell us more about your experience..."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/feedback_modal.ts
+msgid "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+msgstr "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/continue_on_dust.ts
+msgid "Continue on Dust"
+msgstr "Continue on Dust"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/format_agent_markdown_for_slack.ts
+msgid "*Task:* {label}"
+msgstr "*Task:* {label}"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/format_agent_markdown_for_slack.ts
+msgid "Suggestion"
+msgstr "Suggestion"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/format_agent_markdown_for_slack.ts
+msgid "Visualization"
+msgstr "Visualization"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/workspace_limits.ts
+msgid "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+msgstr "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/workspace_limits.ts
+msgid "Join My Workspace"
+msgstr "Join My Workspace"
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/workspace_limits.ts
+msgid "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
+msgstr "It looks like you're not a member of your company's Dust workspace yet. Please reach out to an administrator to join and start using Dust on Slack."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/workspace_limits.ts
+msgid "The Slack workflow \"{botName}\" is not allowed to call Dust agents yet. A Dust admin can allow it from the Automations page in Dust."
+msgstr "The Slack workflow \"{botName}\" is not allowed to call Dust agents yet. A Dust admin can allow it from the Automations page in Dust."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/lib/workspace_limits.ts
+msgid "Dust could not identify the bot or workflow that posted this message, so it cannot call Dust agents. Contact support@dust.tt if this is a Slack workflow."
+msgstr "Dust could not identify the bot or workflow that posted this message, so it cannot call Dust agents. Contact support@dust.tt if this is a Slack workflow."
+
+#. js-lingui-explicit-id
+#: connectors/src/connectors/slack/temporal/webhook_activities.ts
+msgid "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel."
+msgstr "You can now talk to Dust in this channel. ⚠️ If private channel synchronization has been allowed on your Dust workspace, admins will now be able to synchronize data from this channel."

@@ -6,6 +6,8 @@ vi.mock("@connectors/lib/bot/conversation_utils", () => ({
   makeConversationUrl: () => "https://dust.test/conversation",
 }));
 
+import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+
 import { resolveSlackPendingUserMessage } from "./bot_pending_message";
 
 type PendingMessage =
@@ -56,6 +58,7 @@ async function resolvePending({
   };
 
   const res = await resolveSlackPendingUserMessage({
+    i18n: await getSlackI18n("en-US"),
     connector,
     conversation: makeConversation([[pendingUserMessage]]),
     dustAPI,

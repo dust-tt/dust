@@ -1,6 +1,7 @@
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
 export const FEEDBACK_MODAL_SUBMIT = "feedback_modal_submit";
@@ -18,6 +19,7 @@ export interface FeedbackModalMetadata {
 }
 
 export async function openFeedbackModal({
+  i18n,
   slackClient,
   triggerId,
   conversationId,
@@ -30,6 +32,7 @@ export async function openFeedbackModal({
   slackThreadTs,
   responseUrl,
 }: {
+  i18n: I18n;
   slackClient: WebClient;
   triggerId: string;
   conversationId: string;
@@ -55,6 +58,9 @@ export async function openFeedbackModal({
       responseUrl,
     };
 
+    const helpfulLabel = `👍 ${i18n._("Helpful")}`;
+    const notHelpfulLabel = `👎 ${i18n._("Not helpful")}`;
+
     await slackClient.views.open({
       trigger_id: triggerId,
       view: {
@@ -63,22 +69,22 @@ export async function openFeedbackModal({
         private_metadata: JSON.stringify(metadata),
         title: {
           type: "plain_text",
-          text: "Leave Feedback",
+          text: i18n._("Leave feedback"),
         },
         submit: {
           type: "plain_text",
-          text: "Submit",
+          text: i18n._("Submit"),
         },
         close: {
           type: "plain_text",
-          text: "Cancel",
+          text: i18n._("Cancel"),
         },
         blocks: [
           {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "Share whether this helped you get things done.",
+              text: i18n._("Share whether this helped you get things done."),
             },
           },
           {
@@ -86,7 +92,7 @@ export async function openFeedbackModal({
             block_id: "feedback_rating",
             label: {
               type: "plain_text",
-              text: "Did this help you in your work?",
+              text: i18n._("Did this help you in your work?"),
             },
             element: {
               type: "radio_buttons",
@@ -97,8 +103,8 @@ export async function openFeedbackModal({
                       type: "plain_text",
                       text:
                         preselectedThumb === "up"
-                          ? "👍 Helpful"
-                          : "👎 Not helpful",
+                          ? helpfulLabel
+                          : notHelpfulLabel,
                     },
                     value: preselectedThumb,
                   }
@@ -107,14 +113,14 @@ export async function openFeedbackModal({
                 {
                   text: {
                     type: "plain_text",
-                    text: "👍 Helpful",
+                    text: helpfulLabel,
                   },
                   value: "up",
                 },
                 {
                   text: {
                     type: "plain_text",
-                    text: "👎 Not helpful",
+                    text: notHelpfulLabel,
                   },
                   value: "down",
                 },
@@ -126,7 +132,7 @@ export async function openFeedbackModal({
             block_id: "feedback_text",
             label: {
               type: "plain_text",
-              text: "Additional feedback",
+              text: i18n._("Additional feedback"),
             },
             element: {
               type: "plain_text_input",
@@ -134,7 +140,7 @@ export async function openFeedbackModal({
               multiline: true,
               placeholder: {
                 type: "plain_text",
-                text: "Tell us more about your experience...",
+                text: i18n._("Tell us more about your experience..."),
               },
             },
             optional: true,
@@ -143,7 +149,9 @@ export async function openFeedbackModal({
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "_By submitting feedback, you agree to share your conversation internally with the agent's editors._",
+              text: `_${i18n._(
+                "By submitting feedback, you agree to share your conversation internally with the agent's editors."
+              )}_`,
             },
           },
         ],

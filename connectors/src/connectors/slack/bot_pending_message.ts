@@ -1,4 +1,5 @@
 import type { SlackStreamHandler } from "@connectors/connectors/slack/chat/slack_stream_handler";
+import { makeContinueOnDustSuffix } from "@connectors/connectors/slack/lib/continue_on_dust";
 import { reportSlackUsage } from "@connectors/connectors/slack/lib/slack_client";
 import { makeConversationUrl } from "@connectors/lib/bot/conversation_utils";
 import logger from "@connectors/logger/logger";
@@ -11,6 +12,7 @@ import type {
   UserMessageType,
 } from "@dust-tt/client";
 import { Err, normalizeError, Ok } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
 const SLACK_PENDING_PROMOTION_RECONNECT_DELAY_MS = 1_000;
@@ -128,6 +130,7 @@ async function stopSlackStreamBestEffort({
 export async function resolveSlackPendingUserMessage<
   TConversation extends SlackPendingConversation = ConversationPublicType,
 >({
+  i18n,
   connector,
   conversation,
   dustAPI,
@@ -136,6 +139,7 @@ export async function resolveSlackPendingUserMessage<
   timeoutMs,
   userMessage,
 }: {
+  i18n: I18n;
   connector: Pick<ConnectorResource, "id" | "workspaceId">;
   conversation: TConversation;
   dustAPI: SlackPendingUserMessageDustAPI<TConversation>;
@@ -211,9 +215,9 @@ export async function resolveSlackPendingUserMessage<
     connector.workspaceId,
     conversation.sId
   );
-  const fallbackText = `:hourglass_flowing_sand: _Dust is still finishing the previous request.${
-    conversationUrl ? ` <${conversationUrl}|Continue on Dust>.` : ""
-  }_`;
+  const fallbackText = `:hourglass_flowing_sand: _${i18n._(
+    "Dust is still finishing the previous request."
+  )}${makeContinueOnDustSuffix(i18n, conversationUrl)}_`;
 
   try {
     reportSlackUsage({
