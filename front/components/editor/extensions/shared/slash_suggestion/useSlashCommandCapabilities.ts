@@ -85,6 +85,13 @@ export function useInputBarSlashCommandCapabilities({
       limit: MAX_RENDERED_CAPABILITY_ITEMS,
       disabled,
     });
+  const { skills: favoriteSkills } = useSearchSkills({
+    owner,
+    searchTerm: "",
+    selectionMode: "favorites_only",
+    limit: MAX_RENDERED_CAPABILITY_ITEMS,
+    disabled,
+  });
   // Use the displayed skills' query so tools and skills update together.
   const capabilityQuery = resolvedSearchTerm ?? "";
   // Hold tools back until skills have loaded once, so skills are not pushed in above them.
@@ -105,13 +112,19 @@ export function useInputBarSlashCommandCapabilities({
             excludeSkillId,
             query: capabilityQuery,
             useSearchRanking: true,
-            skills,
+            skills: skills.map((skill) => ({
+              ...skill,
+              isFavorite: favoriteSkills.some(
+                (favorite) => favorite.sId === skill.sId
+              ),
+            })),
             tools: hasSkillsSettled ? serverViews : [],
           }),
     [
       capabilityQuery,
       disabled,
       excludeSkillId,
+      favoriteSkills,
       hasSkillsSettled,
       serverViews,
       skills,

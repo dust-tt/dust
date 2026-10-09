@@ -7,6 +7,7 @@ import { AuthContext } from "@app/lib/auth/AuthContext";
 import type { FetcherFn, FetcherWithBodyFn } from "@app/lib/swr/fetcher";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { StarFilled } from "@dust-tt/sparkle";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
@@ -46,20 +47,18 @@ async function setup(hasFavorites = true) {
     }
     return { serverViews: [] };
   });
-  const fetcherWithBody = vi.fn<FetcherWithBodyFn>().mockResolvedValue({
-    skills: [listedSkills[2]],
-    total: 1,
-    hasMore: false,
-    facets: {},
+  const favoriteSkills = hasFavorites ? listedSkills.slice(0, 2) : [];
+  const fetcherWithBody = vi.fn<FetcherWithBodyFn>(async ([, body]) => {
+    const { query, selectionMode } = body as {
+      query: string;
+      selectionMode: string;
+    };
+    const skills =
+      selectionMode === "favorites_only" || (hasFavorites && !query.trim())
+        ? favoriteSkills
+        : [listedSkills[2]];
+    return { skills, total: skills.length, hasMore: false, facets: {} };
   });
-  if (hasFavorites) {
-    fetcherWithBody.mockResolvedValueOnce({
-      skills: listedSkills.slice(0, 2),
-      total: 2,
-      hasMore: false,
-      facets: {},
-    });
-  }
   const swrConfig = { provider: () => new Map(), shouldRetryOnError: false };
   const wrapper = ({ children }: WrapperProps) => (
     <AuthContext.Provider value={context}>
@@ -69,6 +68,15 @@ async function setup(hasFavorites = true) {
     </AuthContext.Provider>
   );
   return { owner, fetcher, fetcherWithBody, wrapper };
+}
+
+function searchCalls(
+  fetcherWithBody: ReturnType<typeof vi.fn<FetcherWithBodyFn>>
+) {
+  return fetcherWithBody.mock.calls.filter(
+    ([[, body]]) =>
+      (body as { selectionMode: string }).selectionMode !== "favorites_only"
+  );
 }
 
 describe.each([
@@ -88,7 +96,7 @@ describe.each([
         "beta",
         "zulu",
       ]);
-      expect(fetcherWithBody).toHaveBeenCalledOnce();
+      expect(searchCalls(fetcherWithBody)).toHaveLength(1);
       expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
         false
       );
@@ -123,7 +131,7 @@ describe.each([
       }
     );
     await waitFor(() => expect(result.current.capabilityItems).toHaveLength(2));
-    expect(fetcherWithBody).toHaveBeenCalledOnce();
+    expect(searchCalls(fetcherWithBody)).toHaveLength(1);
     expect(fetcher.mock.calls.some(([url]) => url.includes("/skills"))).toBe(
       false
     );
@@ -143,5 +151,32 @@ describe.each([
       }),
       "POST",
     ]);
+  });
+});
+
+describe("input bar slash capabilities favorites", () => {
+  it("stars favorite skills whatever the query", async () => {
+    const { owner, wrapper } = await setup();
+    const { result, rerender } = renderHook(
+      ({ query }) => useInputBarSlashCommandCapabilities({ owner, query }),
+      { wrapper, initialProps: { query: "" } }
+    );
+
+    await waitFor(() =>
+      expect(
+        result.current.capabilityItems.map((item) => [item.id, item.endIcon])
+      ).toEqual([
+        ["beta", StarFilled],
+        ["zulu", StarFilled],
+      ])
+    );
+
+    rerender({ query: "al" });
+
+    await waitFor(() =>
+      expect(
+        result.current.capabilityItems.map((item) => [item.id, item.endIcon])
+      ).toEqual([["alpha", undefined]])
+    );
   });
 });

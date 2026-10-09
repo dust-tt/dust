@@ -169,6 +169,7 @@ export function parseMentionSelectParam(
  * With agents selected, a blank query MUST return only active,
  * readable favorites in alphabetical order when any exist, without searching. No favorites
  * or a nonblank query MUST retain the existing suggestions behavior.
+ * Every agent suggestion MUST carry userFavorite, true iff the agent is a favorite of the caller.
  */
 export async function suggestionsOfMentions(
   auth: Authenticator,
@@ -302,6 +303,9 @@ export async function suggestionsOfMentions(
     if (result.isErr()) {
       throw result.error;
     }
+    const favoriteIds = new Set(
+      await AgentResource.listFavoriteIdsForCurrentUser(auth)
+    );
     const searchResults: RichAgentMentionInConversation[] =
       result.value.agents.map((agent) => ({
         type: "agent",
@@ -309,6 +313,7 @@ export async function suggestionsOfMentions(
         label: agent.name,
         pictureUrl: agent.pictureUrl,
         description: agent.description,
+        userFavorite: favoriteIds.has(agent.sId),
       }));
     const searchResultsById = new Map(
       searchResults.map((agent) => [agent.id, agent])
@@ -346,7 +351,7 @@ export async function suggestionsOfMentions(
               isParticipant: true,
               lastActivityAt: participant.lastActivityAt ?? 0,
             }
-          : participant;
+          : { ...participant, userFavorite: favoriteIds.has(participant.id) };
       }),
       ...searchResults
         .filter((agent) => !participantIds.has(agent.id))

@@ -11,7 +11,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Icon,
   Spinner,
+  StarFilled,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type React from "react";
@@ -207,6 +209,13 @@ export const MentionDropdown = forwardRef<
                         {suggestion.label}
                       </span>
                     </div>
+                    {suggestion.type === "agent" && suggestion.userFavorite && (
+                      <Icon
+                        visual={StarFilled}
+                        size="xs"
+                        className="ml-2 shrink-0 text-muted-foreground"
+                      />
+                    )}
                     {suggestion.type === "user" && (
                       <Chip
                         size="mini"
