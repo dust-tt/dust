@@ -782,7 +782,6 @@ msgid "Open in web app"
 msgstr "Ouvrir dans l’application web"
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Loading..."
 msgstr "Chargement…"
 
@@ -928,40 +927,6 @@ msgid "Older"
 msgstr "Plus anciennes"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
-msgctxt "Pod status"
-msgid "Archived"
-msgstr "Archivé"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgctxt "button label"
-msgid "New"
-msgstr "Nouveau"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "No results found"
-msgstr "Aucun résultat trouvé"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Show more"
-msgstr "Afficher plus"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Conversations"
-msgstr "Conversations"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Conversations options"
-msgstr "Options des conversations"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Show triggered"
-msgstr "Afficher les déclenchées"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Hide triggered"
-msgstr "Masquer les déclenchées"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Conversations successfully deleted"
 msgstr "Conversations supprimées"
 
@@ -994,6 +959,11 @@ msgid "Starred"
 msgstr "Favoris"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "button label"
+msgid "New"
+msgstr "Nouveau"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Create a Pod"
 msgstr "Créer un Pod"
 
@@ -1022,10 +992,6 @@ msgid "From existing"
 msgstr "À partir d’une compétence existante"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Create a new conversation"
-msgstr "Créer une nouvelle conversation"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Error loading conversations"
 msgstr "Erreur lors du chargement des conversations"
 
@@ -1049,6 +1015,22 @@ msgstr "Suggestions de compétences"
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Inbox"
 msgstr "Boîte de réception"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations"
+msgstr "Conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations options"
+msgstr "Options des conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Show triggered"
+msgstr "Afficher les déclenchées"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Hide triggered"
+msgstr "Masquer les déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Edit history"

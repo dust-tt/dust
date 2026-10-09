@@ -173,7 +173,6 @@ export function PodConversationsTab({
     return conversations.length
       ? (getGroupConversationsByDate({
           conversations,
-          titleFilter: "",
         }) as Record<RelativeDateBucket, PodConversationListItemType[]>)
       : ({} as Record<RelativeDateBucket, typeof conversations>);
   }, [conversations]);

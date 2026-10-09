@@ -782,7 +782,6 @@ msgid "Open in web app"
 msgstr "Open in web app"
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Loading..."
 msgstr "Loading..."
 
@@ -928,40 +927,6 @@ msgid "Older"
 msgstr "Older"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
-msgctxt "Pod status"
-msgid "Archived"
-msgstr "Archived"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgctxt "button label"
-msgid "New"
-msgstr "New"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "No results found"
-msgstr "No results found"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Show more"
-msgstr "Show more"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Conversations"
-msgstr "Conversations"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Conversations options"
-msgstr "Conversations options"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Show triggered"
-msgstr "Show triggered"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Hide triggered"
-msgstr "Hide triggered"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Conversations successfully deleted"
 msgstr "Conversations successfully deleted"
 
@@ -994,6 +959,11 @@ msgid "Starred"
 msgstr "Starred"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
+msgctxt "button label"
+msgid "New"
+msgstr "New"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Create a Pod"
 msgstr "Create a Pod"
 
@@ -1022,10 +992,6 @@ msgid "From existing"
 msgstr "From existing"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Create a new conversation"
-msgstr "Create a new conversation"
-
-#: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Error loading conversations"
 msgstr "Error loading conversations"
 
@@ -1049,6 +1015,22 @@ msgstr "Skill suggestions"
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Inbox"
 msgstr "Inbox"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations"
+msgstr "Conversations"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Conversations options"
+msgstr "Conversations options"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Show triggered"
+msgstr "Show triggered"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Hide triggered"
+msgstr "Hide triggered"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Edit history"

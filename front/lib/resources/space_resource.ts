@@ -561,7 +561,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @cc [owner:aubin-tchoi,label:product] readable-before-limit
    * Pagination MUST apply to spaces the caller can read. Filtering read access after
    * the SQL `limit` under-fills pages (including empty pages) when unreadable Pods sort
-   * ahead of readable ones — the command palette and sidebar search both surface this.
+   * ahead of readable ones — the command palette surfaces this.
    */
   static async searchProjectsByNamePaginated(
     auth: Authenticator,
