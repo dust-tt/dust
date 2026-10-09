@@ -212,34 +212,40 @@ function blobUrl(links: LinkTargets, path: string, line?: number): string {
   return `${links.repoUrl}/blob/${links.headSha}/${path}${anchor}`;
 }
 
-function testLink(
+// Names stay plain text with a small trailing link, so lists do not read as a wall of links.
+function withLink(text: string, label: string, url: string | null): string {
+  return url ? `${text} <sub>[${label}](${url})</sub>` : text;
+}
+
+function testUrl(
   path: string,
   entry: TestEntry,
   kind: "added" | "changed" | "removed" | "unchanged",
   links: LinkTargets | null
-): string {
-  const name = escapeMarkdown(entry.name);
+): string | null {
   if (!links) {
-    return name;
+    return null;
   }
-  const url =
-    kind === "unchanged"
-      ? blobUrl(links, path, entry.line)
-      : `${links.pullUrl}/files${diffAnchor(path, kind === "removed" ? "L" : "R", entry.line)}`;
-  return `[${name}](${url})`;
+  return kind === "unchanged"
+    ? blobUrl(links, path, entry.line)
+    : `${links.pullUrl}/files${diffAnchor(path, kind === "removed" ? "L" : "R", entry.line)}`;
 }
 
-// Describe titles naming a declaration of the source file link to that declaration.
-function groupLink(
+// Describe titles naming a declaration of the source file read as code and link to it.
+function groupTitle(
   group: string,
   source: SourceDefinitions | null,
   links: LinkTargets | null
-): string {
+): { text: string; label: string; url: string | null } {
   const line = source?.lines.get(group);
-  if (!links || !source || !line) {
-    return escapeMarkdown(group);
+  if (!source || !line) {
+    return { text: escapeMarkdown(group), label: "", url: null };
   }
-  return `[\`${group}\`](${blobUrl(links, source.path, line)})`;
+  return {
+    text: `\`${group}\``,
+    label: `L${line}`,
+    url: links ? blobUrl(links, source.path, line) : null,
+  };
 }
 
 // Colored symbols only render through GitHub math, as emoji cannot be tinted.
@@ -261,21 +267,31 @@ export function renderSummary(
     lines.push(
       "---",
       "",
-      `#### 📄 ${links ? `[${fileName}](${blobUrl(links, file.path)})` : fileName}`,
+      `#### 📄 ${withLink(fileName, "view file", links && blobUrl(links, file.path))}`,
       ""
     );
-    const groupTitle = (entry: TestEntry) =>
-      entry.groups
-        .map((group) => groupLink(group, file.source, links))
-        .join(" › ");
+    const groups = (entry: TestEntry) =>
+      entry.groups.map((group) => groupTitle(group, file.source, links));
+    const testLabel = (
+      entry: TestEntry,
+      kind: "added" | "changed" | "removed" | "unchanged"
+    ) => {
+      const name = escapeMarkdown(entry.name);
+      return withLink(
+        kind === "removed" ? `~~${name}~~` : name,
+        `L${entry.line}`,
+        testUrl(file.path, entry, kind, links)
+      );
+    };
 
     // Changed tests are listed under their describe titles, one block per group.
     const blocks = new Map<string, string[]>();
     for (const kind of ["added", "changed", "removed"] as const) {
       for (const entry of file[kind]) {
-        const title = groupTitle(entry);
-        const test = testLink(file.path, entry, kind, links);
-        const line = `${title ? "&emsp;" : ""}${CHANGE_MARKERS[kind]} ${kind === "removed" ? `~~${test}~~` : test}`;
+        const title = groups(entry)
+          .map(({ text, label, url }) => withLink(text, label, url))
+          .join(" › ");
+        const line = `${title ? "&emsp;" : ""}${CHANGE_MARKERS[kind]} ${testLabel(entry, kind)}`;
         blocks.set(title, [...(blocks.get(title) ?? []), line]);
       }
     }
@@ -294,7 +310,7 @@ export function renderSummary(
         "",
         ...file.unchanged.map(
           (entry) =>
-            `- ${[groupTitle(entry), testLink(file.path, entry, "unchanged", links)].filter(Boolean).join(" › ")}`
+            `- ${[...groups(entry).map(({ text }) => text), testLabel(entry, "unchanged")].join(" › ")}`
         ),
         "",
         "</details>",

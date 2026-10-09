@@ -203,16 +203,18 @@ describe("renderSummary", () => {
 
     assert.ok(
       body.includes(
-        `[new](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)`
+        `new <sub>[L5](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)</sub>`
       )
     );
     assert.ok(
       body.includes(
-        `~~[dropped](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)~~`
+        `~~dropped~~ <sub>[L3](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)</sub>`
       )
     );
     assert.ok(
-      body.includes("- [kept](https://github.com/o/r/blob/abc/a.test.ts#L1)")
+      body.includes(
+        "- kept <sub>[L1](https://github.com/o/r/blob/abc/a.test.ts#L1)</sub>"
+      )
     );
   });
 
@@ -222,10 +224,10 @@ describe("renderSummary", () => {
         {
           path: "a.test.ts",
           source: { path: "a.ts", lines: new Map([["parse", 12]]) },
-          added: [],
+          added: [{ groups: ["parse", "edge cases"], name: "x", line: 4 }],
           changed: [],
           removed: [],
-          unchanged: [{ groups: ["parse", "edge cases"], name: "x", line: 4 }],
+          unchanged: [],
         },
       ],
       [],
@@ -234,12 +236,12 @@ describe("renderSummary", () => {
 
     assert.ok(
       body.includes(
-        "#### 📄 [`a.test.ts`](https://github.com/o/r/blob/abc/a.test.ts)"
+        "#### 📄 `a.test.ts` <sub>[view file](https://github.com/o/r/blob/abc/a.test.ts)</sub>"
       )
     );
     assert.ok(
       body.includes(
-        "[`parse`](https://github.com/o/r/blob/abc/a.ts#L12) › edge cases › [x](https://github.com/o/r/blob/abc/a.test.ts#L4)"
+        "`parse` <sub>[L12](https://github.com/o/r/blob/abc/a.ts#L12)</sub> › edge cases\\"
       )
     );
   });
