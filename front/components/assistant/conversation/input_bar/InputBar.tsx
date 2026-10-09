@@ -90,6 +90,7 @@ interface InputBarProps {
   conversation?: ConversationWithoutContentType;
   space?: SpaceType;
   stickyMentions?: RichMention[];
+  isStickyMentionsLoading?: boolean;
   defaultAgentId?: string | null;
   isDefaultAgentLoading?: boolean;
   lastRequestedModel?: ModelSelectionType | null;
@@ -121,6 +122,7 @@ export const InputBar = React.memo(function InputBar({
   homepageVariant,
   space,
   stickyMentions,
+  isStickyMentionsLoading,
   defaultAgentId,
   isDefaultAgentLoading,
   lastRequestedModel = null,
@@ -697,6 +699,7 @@ export const InputBar = React.memo(function InputBar({
             pendingInputText={pendingInputText}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}
+            isStickyMentionsLoading={isStickyMentionsLoading}
             defaultAgentId={defaultAgentId}
             isDefaultAgentLoading={isDefaultAgentLoading}
             lastRequestedModel={lastRequestedModel}

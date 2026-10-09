@@ -282,6 +282,7 @@ export interface InputBarContainerProps {
   isSelectableSpacesLoading?: boolean;
   onSelectedSpaceIdsChange?: (spaceIds: string[]) => Promise<string[] | null>;
   stickyMentions?: RichMention[];
+  isStickyMentionsLoading?: boolean;
   user: UserType | null;
 }
 
@@ -308,6 +309,7 @@ const InputBarContainer = ({
   selectedAgent,
   pendingInputText,
   stickyMentions,
+  isStickyMentionsLoading,
   actions,
   disableAutoFocus,
   disableUserMentions,
@@ -1514,6 +1516,7 @@ const InputBarContainer = ({
     pendingInputText,
     selectedAgent,
     stickyMentions,
+    isStickyMentionsLoading,
   });
 
   useEffect(() => {

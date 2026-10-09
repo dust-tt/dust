@@ -36,6 +36,8 @@ interface UseHandleMentionsOptions {
   pendingInputText?: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   stickyMentions?: RichMention[];
+  // While true, `stickyMentions` is still loading (e.g. the conversation's messages).
+  isStickyMentionsLoading?: boolean;
 }
 
 // The user's personal default if set and still accessible, else @dust.
@@ -61,6 +63,7 @@ const useHandleMentions = ({
   pendingInputText,
   selectedAgent,
   stickyMentions,
+  isStickyMentionsLoading,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const {
@@ -197,19 +200,25 @@ const useHandleMentions = ({
     setHasHadSelectedAgent(true);
   }
 
-  // A new conversation selects its agent asynchronously (from ?agent= or the default agent),
-  // through fetches and effects: it is pending until selected, as long as there is one to select.
-  const willSelectAgent = agentSearchParam
-    ? allAgents.some((a) => a.sId === agentSearchParam)
-    : !!findDefaultAgent(allAgents, defaultAgentId);
+  // The agent is selected asynchronously, through fetches and effects: from the conversation's
+  // sticky mentions, or for a new conversation from ?agent= or the default agent. It is pending
+  // until selected, as long as there is one to select.
+  const willSelectAgent = conversation
+    ? !!stickyMentions?.some(isRichAgentMention)
+    : agentSearchParam
+      ? allAgents.some((a) => a.sId === agentSearchParam)
+      : !!findDefaultAgent(allAgents, defaultAgentId);
+  const isNewConversationAgentCleared =
+    !conversation && (!!userSearchParam || suppressDefaultAgent);
   const isSelectedAgentPending =
-    !conversation &&
     !isAgentBuilder &&
-    !userSearchParam &&
-    !suppressDefaultAgent &&
+    !isNewConversationAgentCleared &&
     !selectedSingleAgent &&
     !hasHadSelectedAgent &&
-    (isAgentsLoading || !!isDefaultAgentLoading || willSelectAgent);
+    (isAgentsLoading ||
+      !!isDefaultAgentLoading ||
+      !!isStickyMentionsLoading ||
+      willSelectAgent);
 
   return { stickyMentionsTextContent, isSelectedAgentPending };
 };
