@@ -46,17 +46,34 @@ const AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES = [
   "user_message_deleted",
 ] as const;
 
+/**
+ * Error types for getAgentLoopRuntimeData when the agent version pinned by the message, or its
+ * model, can no longer be loaded, e.g. the user lost access to the agent while the loop was paused.
+ * Retrying won't make them available either, but unlike soft deletes the agent message remains:
+ * callers must stop it.
+ */
+const AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES = [
+  "agent_not_found",
+  "model_not_found",
+] as const;
+
 // Cache for 200 seconds, which maps to P95 execution time of the agent loop.
 const AGENT_CONFIGURATION_CACHE_TTL_MS = 200 * 1000;
 
-type AgentLoopDataSoftDeleteErrorType =
-  (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number];
+type AgentLoopConfigNotFoundErrorType =
+  (typeof AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES)[number];
+type AgentLoopDataErrorType =
+  | (typeof AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES)[number]
+  | AgentLoopConfigNotFoundErrorType;
 
 class AgentLoopDataError extends Error {
-  readonly type: AgentLoopDataSoftDeleteErrorType;
+  readonly type: AgentLoopDataErrorType;
 
-  constructor(type: AgentLoopDataSoftDeleteErrorType) {
-    super(`Agent loop data unavailable: ${type}`);
+  constructor(
+    type: AgentLoopDataErrorType,
+    message = `Agent loop data unavailable: ${type}`
+  ) {
+    super(message);
     this.type = type;
   }
 }
@@ -66,40 +83,17 @@ export function isAgentLoopDataSoftDeleteError(
 ): error is AgentLoopDataError {
   return (
     error instanceof AgentLoopDataError &&
-    AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES.includes(error.type)
+    AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES.some((type) => type === error.type)
   );
 }
 
-class AgentLoopDataModelNotFoundError extends Error {
-  readonly type = "model_not_found" as const;
-
-  constructor(modelId: string) {
-    super(`The selected model was not found ${modelId}.`);
-    this.name = "AgentLoopDataModelNotFoundError";
-  }
-}
-
-export function isAgentLoopDataModelNotFoundError(
+export function isAgentLoopConfigNotFoundError(
   error: Error
-): error is AgentLoopDataModelNotFoundError {
-  return error instanceof AgentLoopDataModelNotFoundError;
-}
-
-// The agent version pinned by the message is missing or no longer readable by the user, e.g. the
-// user lost access to the agent while the loop was paused.
-class AgentLoopDataAgentNotFoundError extends Error {
-  readonly type = "agent_not_found" as const;
-
-  constructor(agentId: string) {
-    super(`Agent configuration not found ${agentId}`);
-    this.name = "AgentLoopDataAgentNotFoundError";
-  }
-}
-
-export function isAgentLoopDataAgentNotFoundError(
-  error: Error
-): error is AgentLoopDataAgentNotFoundError {
-  return error instanceof AgentLoopDataAgentNotFoundError;
+): error is AgentLoopDataError & { type: AgentLoopConfigNotFoundErrorType } {
+  return (
+    error instanceof AgentLoopDataError &&
+    AGENT_LOOP_CONFIG_NOT_FOUND_ERROR_TYPES.some((type) => type === error.type)
+  );
 }
 
 export type ConversationCaching =
@@ -491,7 +485,12 @@ async function buildAgentLoopRuntimeData(
   });
 
   if (!agentConfiguration) {
-    return new Err(new AgentLoopDataAgentNotFoundError(agentId));
+    return new Err(
+      new AgentLoopDataError(
+        "agent_not_found",
+        `Agent configuration not found ${agentId}`
+      )
+    );
   }
 
   const { model: _model, ...agentConfigurationWithoutModel } =
@@ -520,7 +519,10 @@ async function buildAgentLoopRuntimeData(
 
   if (!endpoint) {
     return new Err(
-      new AgentLoopDataModelNotFoundError(resolvedModelConfig.modelId)
+      new AgentLoopDataError(
+        "model_not_found",
+        `The selected model was not found ${resolvedModelConfig.modelId}.`
+      )
     );
   }
 

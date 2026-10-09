@@ -4,7 +4,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import {
   getAgentLoopRuntimeDataWithAuth,
-  isAgentLoopDataModelNotFoundError,
+  isAgentLoopConfigNotFoundError,
 } from "@app/types/assistant/agent_run";
 import { AUTO_MODEL_ID } from "@app/types/assistant/models/auto";
 import { describe, expect, it } from "vitest";
@@ -110,7 +110,7 @@ describe("getAgentLoopRuntimeDataWithAuth", () => {
     if (result.isOk()) {
       throw new Error("expected model-not-found error");
     }
-    expect(isAgentLoopDataModelNotFoundError(result.error)).toBe(true);
+    expect(isAgentLoopConfigNotFoundError(result.error)).toBe(true);
     expect(result.error.message).toBe(
       "The selected model was not found claude-smores-eap."
     );
