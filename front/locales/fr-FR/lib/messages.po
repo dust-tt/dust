@@ -820,8 +820,17 @@ msgid "Invite failed"
 msgstr "Échec de l’invitation"
 
 #: front/lib/invitations.ts
+msgid "{email}: {error_message}"
+msgstr "{email} : {error_message}"
+
+#: front/lib/invitations.ts
 msgid "Some invites failed"
 msgstr "Certaines invitations ont échoué"
+
+#. placeholder {0}: failures.length
+#: front/lib/invitations.ts
+msgid "{0, plural, one {# invite could not be sent.} other {# invites could not be sent.}}"
+msgstr "{0, plural, one {# invitation n’a pas pu être envoyée.} other {# invitations n’ont pas pu être envoyées.}}"
 
 #: front/lib/invitations.ts
 msgid "Invites sent"

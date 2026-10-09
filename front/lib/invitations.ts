@@ -148,13 +148,18 @@ export async function sendInvitations({
     const failures = result.filter((r) => !r.success);
 
     if (failures.length > 0) {
+      const failureDetails = failures.flatMap(({ email, error_message }) =>
+        error_message ? [t`${email}: ${error_message}`] : []
+      );
       sendNotification({
         type: "error",
         title: t`Some invites failed`,
-        description: result
-          .filter((r) => r.error_message)
-          .map((r) => r.error_message)
-          .join(", "),
+        description: t`${plural(failures.length, {
+          one: "# invite could not be sent.",
+          other: "# invites could not be sent.",
+        })}`,
+        details:
+          failureDetails.length > 0 ? failureDetails.join("\n") : undefined,
       });
     } else {
       sendNotification({

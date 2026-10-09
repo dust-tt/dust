@@ -923,7 +923,8 @@ function notifyImportResult(
     sendNotification({
       type: "error",
       title: t(msg`Import failed`),
-      description: skipped[0] ?? t(msg`Failed to import skills.`),
+      description: t(msg`Failed to import skills.`),
+      details: skipped.length > 0 ? skipped.join("\n") : undefined,
     });
   }
 
