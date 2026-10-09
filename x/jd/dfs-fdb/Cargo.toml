@@ -67,3 +67,7 @@ harness = false
 [[test]]
 name = "buffered"
 harness = false
+
+[[test]]
+name = "import"
+harness = false

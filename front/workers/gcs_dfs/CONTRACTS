@@ -1,0 +1,20 @@
+@cc [owner:id13,label:security] trusted-source-bindings
+Every notification MUST match an enrolled notification configuration and exactly one trusted bucket/prefix binding before any content access or DFS mutation. Tenant credentials and read grants MUST come only from that binding, never from object metadata. Prefix bindings within a bucket MUST NOT overlap.
+
+@cc [owner:id13,label:backend;concurrency] source-version-publication
+GCS generations and metagenerations MUST remain exact decimal strings. Generations MUST NOT be compared numerically across object versions. Every notification MUST trigger a current live GCS read after the DFS cursor read. Publication MUST bind that observation, content, metadata and trusted grants to an atomic compare-and-swap against the expected DFS cursor. A cursor conflict MUST cause fresh reads before retry. Acknowledgements MUST follow durable publication or an equal current observation. Historical delete/archive events MUST NOT remove a live replacement.
+
+@cc [owner:id13,label:error-handling] worker-transport-errors
+The standalone worker's configuration parsing and transport adapters MAY throw validation or remote-operation failures. The message-handler boundary MUST catch these failures, classify them without logging source content or credentials, and leave failed messages unacknowledged for retry/dead-letter delivery. Startup failures MUST terminate the process. This exception does not apply to other front code.
+
+@cc [owner:id13,label:performance;concurrency] bounded-worker-admission
+Pull batches, concurrent handlers, object bytes, manifests and chunk requests MUST have explicit bounds. Acknowledgement leases MUST be renewed while a handler runs. Shutdown MUST stop admission and drain admitted handlers or leave their messages unacknowledged.
+
+@cc [owner:id13,label:architecture;performance] event-driven-replication-only
+Automated replication MUST remain notification-driven. Health checks MUST NOT list source objects, scan DFS inventory, publish repair events or write directly to the DFS importer. Repairs and backfills require a separate operator action.
+
+@cc [owner:id13,label:security] canary-source-write-boundary
+The health runner MUST restrict source writes to the reserved `.dust-gcs-dfs-canary` object under each explicitly selected trusted binding prefix. Canary replacement MUST use the previously observed generation as a write precondition, or zero for initial creation. The replication worker MUST NOT acquire source-write permissions to run canaries.
+
+@cc [owner:id13,label:backend;error-handling] canary-completion-and-health-failures
+A canary MUST succeed only after observing its newly written generation and metageneration as live in the durable DFS cursor before its deadline. Existing or deleted cursor state MUST NOT count as success. Failed, missing, stale or invalid health observations MUST report an unhealthy result. Health transport adapters MAY throw validation or remote-operation failures; the health-check boundary MUST catch them without logging credentials or source payloads. This exception is limited to health transport and configuration boundaries.
