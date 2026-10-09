@@ -263,11 +263,61 @@ describe("POST /api/w/:wId/skills/search", () => {
             requestedSpaceIds: [],
             sId: "search-result",
             userFacingDescription: "Description",
+            isFavorite: false,
           },
         ],
       });
     }
   );
+
+  it("flags the current user's favorite skills", async () => {
+    const { workspace, auth } = await setup();
+    const favorite = await SkillFactory.create(auth, { name: "Favorite" });
+    const other = await SkillFactory.create(auth, { name: "Other" });
+    expect((await favorite.setFavorite(auth, true)).isOk()).toBe(true);
+    const listItem = {
+      status: "active",
+      canWrite: false,
+      canAdministrate: false,
+      availability: "workspace_users",
+      mcpServerViewIds: [],
+      editorIds: [],
+      activeUsersCount: null,
+      updatedAt: null,
+      icon: null,
+      name: "Search result",
+      requestedSpaceIds: [],
+      userFacingDescription: "Description",
+    };
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [
+          { ...listItem, sId: favorite.sId },
+          { ...listItem, sId: other.sId },
+        ],
+        total: 2,
+        hasMore: false,
+        isFavoritesOnly: false,
+        facets: {},
+      })
+    );
+
+    const response = await searchRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    const { skills } = await response.json();
+    expect(
+      skills.map(
+        ({ sId, isFavorite }: { sId: string; isFavorite: boolean }) => ({
+          sId,
+          isFavorite,
+        })
+      )
+    ).toEqual([
+      { sId: favorite.sId, isFavorite: true },
+      { sId: other.sId, isFavorite: false },
+    ]);
+  });
 
   it("passes offset through and returns total", async () => {
     const { workspace } = await setup();

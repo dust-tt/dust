@@ -17,14 +17,17 @@ import {
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
+import { useUpdateSkillFavorite } from "@app/lib/swr/skill_configurations";
 import { tagsSorter } from "@app/lib/utils";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -43,6 +46,7 @@ import {
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
@@ -51,6 +55,12 @@ const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
   { id: "favorites", label: msg`Favorites` },
   { id: "mine", label: msg({ message: "Mine", context: "catalog filter" }) },
 ];
+
+const REVEAL_ON_ROW_HOVER_CLASSES = cn(
+  "transition-opacity duration-150 motion-reduce:transition-none",
+  "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+  "focus-within:opacity-100 group-hover:opacity-100"
+);
 
 const CATALOG_SKELETON_ROW_COUNT = 6;
 const TAGS_SKELETON_WIDTHS = ["w-20", "w-28", "w-16", "w-24"];
@@ -182,6 +192,10 @@ function SearchCatalog({
         onLoadMore={catalogSearch.loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
+        owner={owner}
+        onFavoriteChange={async () => {
+          await catalogSearch.mutate();
+        }}
         onDetails={(item) =>
           onDetails(item, () => {
             void catalogSearch.mutate();
@@ -388,6 +402,8 @@ interface CatalogResultsProps extends CatalogActions {
   onLoadMore?: () => void;
   canClearFilters: boolean;
   onClearFilters: () => void;
+  owner: LightWorkspaceType;
+  onFavoriteChange: () => Promise<void>;
 }
 
 function CatalogResults({
@@ -400,6 +416,8 @@ function CatalogResults({
   onLoadMore,
   canClearFilters,
   onClearFilters,
+  owner,
+  onFavoriteChange,
   onUse,
   onPin,
   onDetails,
@@ -454,6 +472,16 @@ function CatalogResults({
                 onUse(item);
               }}
               onPin={onPin && (() => onPin(item))}
+              favoriteToggle={
+                item.isFavorite !== null && (
+                  <CatalogFavoriteToggle
+                    owner={owner}
+                    item={item}
+                    isFavorite={item.isFavorite}
+                    onFavoriteChange={onFavoriteChange}
+                  />
+                )
+              }
               onDetails={() => {
                 trackDiscoverItemDetailsOpen({
                   source: "catalog",
@@ -487,14 +515,112 @@ function CatalogResults({
   );
 }
 
+interface CatalogFavoriteToggleProps {
+  owner: LightWorkspaceType;
+  item: CatalogItem;
+  isFavorite: boolean;
+  onFavoriteChange: () => Promise<void>;
+}
+
+function CatalogFavoriteToggle({
+  owner,
+  item,
+  isFavorite,
+  onFavoriteChange,
+}: CatalogFavoriteToggleProps) {
+  return (
+    <div className={cn(!isFavorite && REVEAL_ON_ROW_HOVER_CLASSES)}>
+      {item.kind === "agent" ? (
+        <AgentFavoriteButton
+          owner={owner}
+          agentId={item.agent.sId}
+          isFavorite={isFavorite}
+          onFavoriteChange={onFavoriteChange}
+        />
+      ) : (
+        <SkillCatalogFavoriteButton
+          owner={owner}
+          skill={item.skill}
+          isFavorite={isFavorite}
+          onFavoriteChange={onFavoriteChange}
+        />
+      )}
+    </div>
+  );
+}
+
+interface AgentFavoriteButtonProps {
+  owner: LightWorkspaceType;
+  agentId: string;
+  isFavorite: boolean;
+  onFavoriteChange: () => Promise<void>;
+}
+
+function AgentFavoriteButton({
+  owner,
+  agentId,
+  isFavorite,
+  onFavoriteChange,
+}: AgentFavoriteButtonProps) {
+  const { updateUserFavorite } = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId: agentId,
+  });
+  return (
+    <SkillFavoriteButton
+      isFavorite={isFavorite}
+      variant="ghost"
+      onFavoriteChange={async (nextIsFavorite) => {
+        if (await updateUserFavorite(nextIsFavorite)) {
+          await onFavoriteChange();
+        }
+      }}
+    />
+  );
+}
+
+interface SkillCatalogFavoriteButtonProps {
+  owner: LightWorkspaceType;
+  skill: Extract<CatalogItem, { kind: "skill" }>["skill"];
+  isFavorite: boolean;
+  onFavoriteChange: () => Promise<void>;
+}
+
+function SkillCatalogFavoriteButton({
+  owner,
+  skill,
+  isFavorite,
+  onFavoriteChange,
+}: SkillCatalogFavoriteButtonProps) {
+  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
+  return (
+    <SkillFavoriteButton
+      isFavorite={isFavorite}
+      variant="ghost"
+      onFavoriteChange={async (nextIsFavorite) => {
+        if (await updateSkillFavorite(skill, nextIsFavorite)) {
+          await onFavoriteChange();
+        }
+      }}
+    />
+  );
+}
+
 interface CatalogRowProps {
   item: CatalogItem;
   onUse: () => void;
   onPin?: () => void;
+  favoriteToggle?: ReactNode;
   onDetails: () => void;
 }
 
-export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
+export function CatalogRow({
+  item,
+  onUse,
+  onPin,
+  favoriteToggle,
+  onDetails,
+}: CatalogRowProps) {
   const { t } = useLingui();
   const name = getItemName(item);
   const avatar =
@@ -540,6 +666,7 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
         </p>
       </div>
       <div className="relative flex shrink-0 items-center gap-1 self-start">
+        {favoriteToggle}
         {onPin && (
           <Button
             variant="ghost"
@@ -548,11 +675,7 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
             tooltip={t`Pin to Featured`}
             aria-label={t`Pin ${name} to Featured`}
             onClick={onPin}
-            className={cn(
-              "transition-opacity duration-150 motion-reduce:transition-none",
-              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-              "focus-visible:opacity-100 group-hover:opacity-100"
-            )}
+            className={REVEAL_ON_ROW_HOVER_CLASSES}
           />
         )}
         <Button

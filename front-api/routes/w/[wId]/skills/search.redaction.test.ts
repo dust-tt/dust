@@ -385,13 +385,14 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
               image: user.toJSON().image,
             },
           ],
+          isFavorite: false,
         })),
         total: 3,
         hasMore: false,
         isFavoritesOnly: false,
         facets: {},
       });
-      for (const hit of body.skills) {
+      for (const { isFavorite: _isFavorite, ...hit } of body.skills) {
         expect(SkillListItemSchema.strict().parse(hit)).toEqual(hit);
         expect(hit).not.toHaveProperty("instructions");
         expect(hit).not.toHaveProperty("instructionsHtml");

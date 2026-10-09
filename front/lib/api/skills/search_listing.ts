@@ -32,6 +32,12 @@ function facetCountsById(
  * unreadable ones are dropped from the facets. Editors-only skills are only named for callers
  * who can write to them.
  */
+/**
+ * @cc [owner:adrsimon,label:product] skill-search-listing-favorite
+ * Each listed skill MUST carry `isFavorite`, true iff the skill is in the calling user's
+ * favorites, regardless of the selection mode; it is false for every skill when there is no
+ * calling user.
+ */
 export async function searchSkillListings(
   auth: Authenticator,
   options: Parameters<typeof searchSkills>[1]
@@ -48,26 +54,29 @@ export async function searchSkillListings(
       ...facetIds(facetValues.editors),
     ]),
   ];
-  const [users, childSkills, spaces, mcpServerViews] = await Promise.all([
-    UserResource.fetchByIds(editorIds),
-    facetValues.childSkills?.length
-      ? SkillResource.fetchByIds(auth, facetIds(facetValues.childSkills), {
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        })
-      : [],
-    facetValues.spaces?.length
-      ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
-      : [],
-    facetValues.mcpServerViews?.length
-      ? MCPServerViewResource.fetchByIds(
-          auth,
-          facetIds(facetValues.mcpServerViews)
-        )
-      : [],
-  ]);
+  const [users, childSkills, spaces, mcpServerViews, favoriteIds] =
+    await Promise.all([
+      UserResource.fetchByIds(editorIds),
+      facetValues.childSkills?.length
+        ? SkillResource.fetchByIds(auth, facetIds(facetValues.childSkills), {
+            withInstructions: false,
+            withTools: false,
+            withFileAttachments: false,
+          })
+        : [],
+      facetValues.spaces?.length
+        ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
+        : [],
+      facetValues.mcpServerViews?.length
+        ? MCPServerViewResource.fetchByIds(
+            auth,
+            facetIds(facetValues.mcpServerViews)
+          )
+        : [],
+      SkillResource.listFavoriteIdsForCurrentUser(auth),
+    ]);
 
+  const favoriteIdSet = new Set(favoriteIds);
   const editorsById = new Map(
     users.map((user) => {
       const { sId, fullName, image } = user.toJSON();
@@ -144,6 +153,7 @@ export async function searchSkillListings(
     },
     skills: result.value.skills.map((skill) => ({
       ...skill,
+      isFavorite: favoriteIdSet.has(skill.sId),
       editors: removeNulls(
         [...new Set(skill.editorIds)].map((id) => editorsById.get(id))
       ),

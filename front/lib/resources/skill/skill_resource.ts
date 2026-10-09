@@ -1665,22 +1665,28 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {
+  static async listFavoriteIdsForCurrentUser(
+    auth: Authenticator
+  ): Promise<string[]> {
     const user = auth.user();
     if (!user) {
-      return false;
+      return [];
     }
 
-    const workspace = auth.getNonNullableWorkspace();
     const favorites = await SkillUserFavoriteModel.findOne({
       attributes: ["skillIds"],
       where: {
-        workspaceId: workspace.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
         userId: user.id,
       },
     });
 
-    return favorites?.skillIds.includes(this.sId) ?? false;
+    return favorites?.skillIds ?? [];
+  }
+
+  async isFavoriteForCurrentUser(auth: Authenticator): Promise<boolean> {
+    const favoriteIds = await SkillResource.listFavoriteIdsForCurrentUser(auth);
+    return favoriteIds.includes(this.sId);
   }
 
   async setFavorite(

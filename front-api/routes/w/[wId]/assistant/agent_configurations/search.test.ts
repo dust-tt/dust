@@ -1,4 +1,6 @@
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -7,6 +9,7 @@ import { TagFactory } from "@app/tests/utils/TagFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const searchAgents = vi.hoisted(() => vi.fn());
@@ -138,6 +141,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
       agents: [
         {
           ...agent,
+          userFavorite: false,
           tags: [],
           editors: [
             {
@@ -149,6 +153,63 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
         },
       ],
     });
+  });
+
+  it("flags the current user's favorite agents", async () => {
+    const { workspace, auth } = await setup();
+    const favorite = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Favorite",
+    });
+    const other = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Other",
+    });
+    const favoriteResource = await AgentResource.fetchById(auth, favorite.sId);
+    assert(favoriteResource);
+    expect((await favoriteResource.setUserFavorite(auth, true)).isOk()).toBe(
+      true
+    );
+    const listItem = {
+      status: "active",
+      scope: "visible",
+      name: "Search result",
+      description: "Description",
+      pictureUrl: "https://dust.tt/static/agent.png",
+      model: null,
+      feedbacks: { up: 0, down: 0 },
+      requestedSpaceIds: [],
+      tagIds: [],
+      editorIds: [],
+      editedBy: null,
+      activeUsersCount: null,
+      updatedAt: null,
+    };
+    searchAgents.mockResolvedValue(
+      new Ok({
+        agents: [
+          { ...listItem, sId: favorite.sId },
+          { ...listItem, sId: other.sId },
+        ],
+        total: 2,
+        hasMore: false,
+        facets: {},
+      })
+    );
+
+    const response = await searchRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    const { agents } = await response.json();
+    expect(
+      agents.map(
+        ({ sId, userFavorite }: { sId: string; userFavorite: boolean }) => ({
+          sId,
+          userFavorite,
+        })
+      )
+    ).toEqual([
+      { sId: favorite.sId, userFavorite: true },
+      { sId: other.sId, userFavorite: false },
+    ]);
   });
 
   it("accepts structured filters and sorts", async () => {

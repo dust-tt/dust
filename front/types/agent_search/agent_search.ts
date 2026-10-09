@@ -142,6 +142,7 @@ export type SearchAgentsResponseBody = {
   agents: (AgentSearchListItemType & {
     editors: Pick<UserType, "sId" | "fullName" | "image">[];
     tags: Pick<TagType, "sId" | "name" | "kind">[];
+    userFavorite: boolean;
   })[];
   total: number;
   hasMore: boolean;

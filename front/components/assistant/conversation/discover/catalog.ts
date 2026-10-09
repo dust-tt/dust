@@ -3,11 +3,15 @@ import type {
   AgentSearchFilters,
   SearchAgentsResponseBody,
 } from "@app/types/agent_search/agent_search";
-import type { SkillSearchFilters } from "@app/types/api/skills";
+import type {
+  SearchSkillsResponseBody,
+  SkillSearchFilters,
+} from "@app/types/api/skills";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
 import type { SkillListItemType } from "@app/types/assistant/skill_configuration";
 
 type DiscoverAgentSearchResult = SearchAgentsResponseBody["agents"][number];
+type DiscoverSkillSearchResult = SearchSkillsResponseBody["skills"][number];
 
 type CatalogSkill = Pick<
   SkillListItemType,
@@ -18,6 +22,7 @@ interface CatalogMetadata {
   authors: readonly string[];
   isDustProvided: boolean;
   activeUsersCount: number | null;
+  isFavorite: boolean | null;
 }
 
 export type CatalogItem = CatalogMetadata &
@@ -113,11 +118,12 @@ export function toSearchAgentCatalogItem(
     authors: agent.editors.map((editor) => editor.fullName),
     isDustProvided: agent.scope === "global",
     activeUsersCount: agent.activeUsersCount,
+    isFavorite: agent.userFavorite,
   };
 }
 
 export function toSearchSkillCatalogItem(
-  skill: SkillListItemType
+  skill: DiscoverSkillSearchResult
 ): CatalogItem {
   return {
     kind: "skill",
@@ -125,6 +131,7 @@ export function toSearchSkillCatalogItem(
     authors: skill.editors.map((editor) => editor.fullName),
     isDustProvided: isDustProvidedSkill(skill),
     activeUsersCount: skill.activeUsersCount,
+    isFavorite: skill.isFavorite,
   };
 }
 

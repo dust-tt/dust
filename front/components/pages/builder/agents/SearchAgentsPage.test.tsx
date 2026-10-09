@@ -146,6 +146,7 @@ async function setup({
     editedBy: sId,
     activeUsersCount: 3,
     updatedAt: Date.now(),
+    userFavorite: false,
   };
   const context: AuthContextValue = {
     workspace: authenticator.getNonNullableWorkspace(),

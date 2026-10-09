@@ -64,6 +64,7 @@ function resolveCatalogItems(items: DiscoveryRankedItemType[]): CatalogItem[] {
           authors: target.lastAuthors,
           isDustProvided: target.scope === "global",
           activeUsersCount: null,
+          isFavorite: null,
         });
         break;
       }
@@ -79,6 +80,7 @@ function resolveCatalogItems(items: DiscoveryRankedItemType[]): CatalogItem[] {
           authors: target.editors,
           isDustProvided: isDustProvidedSkill(target),
           activeUsersCount: null,
+          isFavorite: null,
         });
         break;
       }

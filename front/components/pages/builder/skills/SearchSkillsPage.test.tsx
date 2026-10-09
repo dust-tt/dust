@@ -93,6 +93,7 @@ async function setup({
   const skill = {
     ...toSkillListItem(authenticator, document),
     editors: [{ sId, fullName, image }],
+    isFavorite: false,
   };
   const fullSkill = {
     ...resource.toJSON(authenticator),

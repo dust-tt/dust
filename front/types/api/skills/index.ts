@@ -97,7 +97,7 @@ export type SkillSearchSelectionMode =
   (typeof SKILL_SEARCH_SELECTION_MODES)[number];
 
 export type SearchSkillsResponseBody = {
-  skills: SkillListItemType[];
+  skills: (SkillListItemType & { isFavorite: boolean })[];
   total: number;
   hasMore: boolean;
   // Whether this result is restricted to favorites, rather than ordinary search.
