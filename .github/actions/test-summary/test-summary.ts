@@ -39,8 +39,19 @@ export type LinkTargets = { pullUrl: string; repoUrl: string; headSha: string };
 
 type ChangedFile = { status: string; oldPath: string; path: string };
 
+// Parsing a .ts file as TSX misreads generic arrows and angle-bracket casts, dropping tests.
+function parse(source: string, fileName: string): ts.SourceFile {
+  return ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    fileName.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
+}
+
 function calleeName(expression: ts.Expression): string | null {
-  // Covers it(...), it.skip(...), it.each(...)(...) and describe.concurrent(...).
+  // Covers it(...), it.skip(...), it.each(...)(...), it.each`...`(...) and describe.concurrent(...).
   if (ts.isIdentifier(expression)) {
     return expression.text;
   }
@@ -49,6 +60,9 @@ function calleeName(expression: ts.Expression): string | null {
     ts.isCallExpression(expression)
   ) {
     return calleeName(expression.expression);
+  }
+  if (ts.isTaggedTemplateExpression(expression)) {
+    return calleeName(expression.tag);
   }
   return null;
 }
@@ -67,13 +81,7 @@ function titleText(
 }
 
 export function collectTests(source: string, fileName: string): TestBodies {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX
-  );
+  const sourceFile = parse(source, fileName);
   const tests: TestBodies = new Map();
 
   const visit = (node: ts.Node, groups: string[]): void => {
@@ -87,13 +95,22 @@ export function collectTests(source: string, fileName: string): TestBodies {
         return;
       }
       if (name && TEST_FUNCTIONS.has(name)) {
-        // Whitespace is collapsed so formatting-only edits do not count as changes.
-        const body =
-          node.arguments[1]?.getText(sourceFile).replace(/\s+/g, " ") ?? "";
+        // The callee is hashed with the test function so edits to it.each case tables count as
+        // changes. Whitespace is collapsed so formatting-only edits do not.
+        const body = [node.expression, node.arguments[1]]
+          .map((part) => part?.getText(sourceFile) ?? "")
+          .join(" ")
+          .replace(/\s+/g, " ");
         const { line } = sourceFile.getLineAndCharacterOfPosition(
           node.getStart(sourceFile)
         );
-        tests.set([...groups, title].join(" › "), {
+        // Same-titled tests are keyed by occurrence so neither hides the other.
+        const fullTitle = [...groups, title].join(" › ");
+        let key = fullTitle;
+        for (let occurrence = 2; tests.has(key); occurrence++) {
+          key = `${fullTitle} #${occurrence}`;
+        }
+        tests.set(key, {
           groups,
           name: title,
           body,
@@ -113,13 +130,7 @@ export function collectDefinitions(
   source: string,
   fileName: string
 ): Map<string, number> {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TSX
-  );
+  const sourceFile = parse(source, fileName);
   const lines = new Map<string, number>();
   const record = (name: ts.Node) => {
     const { line } = sourceFile.getLineAndCharacterOfPosition(
@@ -297,6 +308,22 @@ export function renderSummary(
   return lines.join("\n");
 }
 
+// GitHub rejects comments longer than 65536 characters. Cutting on a line boundary keeps links
+// whole, and open collapsed sections are closed so the note stays visible.
+export function truncateSummary(summary: string, limit = 60000): string {
+  if (summary.length <= limit) {
+    return summary;
+  }
+  const kept = summary.slice(0, summary.lastIndexOf("\n", limit));
+  const openSections =
+    kept.split("<details>").length - kept.split("</details>").length;
+  return [
+    kept,
+    ...Array.from({ length: openSections }, () => "\n</details>"),
+    "\n_Summary truncated: run the script locally for the full list._",
+  ].join("\n");
+}
+
 function git(args: string[]): string {
   return execFileSync("git", args, {
     encoding: "utf8",
@@ -400,7 +427,8 @@ export function summarize(
 if (import.meta.main) {
   const [base = "origin/main", head = "HEAD", pullUrl = null] =
     process.argv.slice(2);
+  const summary = summarize(base, head, pullUrl);
   console.log(
-    summarize(base, head, pullUrl) ?? "No tests related to this change."
+    summary ? truncateSummary(summary) : "No tests related to this change."
   );
 }

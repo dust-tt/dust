@@ -51,29 +51,32 @@ jobs:
         run: npm install --no-save --prefix .github/actions/test-summary typescript@5.9.3
 
       - name: Summarize tests
+        id: summarize
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           PULL_URL: ${{ github.event.pull_request.html_url }}
         run: node .github/actions/test-summary/test-summary.ts "$BASE_SHA" "$HEAD_SHA" "$PULL_URL" > "$RUNNER_TEMP/test-summary.md"
 
+      # Runs on failure too so the placeholder never stays stuck on "Computing…".
       - name: Post or update the summary comment
+        if: ${{ !cancelled() }}
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           SUMMARY_PATH: ${{ runner.temp }}/test-summary.md
+          SUMMARIZE_OUTCOME: ${{ steps.summarize.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         with:
           script: |
             const { readFileSync } = require('node:fs');
             const marker = '<!-- test-summary -->';
-            const summary = readFileSync(process.env.SUMMARY_PATH, 'utf8');
-            // GitHub rejects comments longer than 65536 characters.
-            const limit = 60000;
-            const truncated = summary.length > limit
-              ? `${summary.slice(0, limit)}\n\n_Summary truncated: run the script locally for the full list._`
-              : summary;
-            const body = summary.startsWith(marker)
-              ? truncated
-              : `${marker}\n### 🧪 Test recap\n\nNo tests related to this PR's changes.`;
+            const failed = process.env.SUMMARIZE_OUTCOME !== 'success';
+            const summary = failed ? '' : readFileSync(process.env.SUMMARY_PATH, 'utf8');
+            const body = failed
+              ? `${marker}\n### 🧪 Test recap\n\n⚠️ Could not compute the summary, see the [workflow run](${process.env.RUN_URL}).`
+              : summary.startsWith(marker)
+                ? summary
+                : `${marker}\n### 🧪 Test recap\n\nNo tests related to this PR's changes.`;
 
             const params = { ...context.repo, issue_number: context.payload.pull_request.number };
             const comments = await github.paginate(github.rest.issues.listComments, params);
@@ -81,6 +84,6 @@ jobs:
 
             if (existing) {
               await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
-            } else if (summary.startsWith(marker)) {
+            } else if (failed || summary.startsWith(marker)) {
               await github.rest.issues.createComment({ ...params, body });
             }

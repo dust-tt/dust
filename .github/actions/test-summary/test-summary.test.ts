@@ -9,6 +9,7 @@ import {
   diffTests,
   renderSummary,
   siblingTestPath,
+  truncateSummary,
 } from "./test-summary.ts";
 
 describe("collectTests", () => {
@@ -49,6 +50,38 @@ describe("collectTests", () => {
     );
 
     assert.equal(tests.get("outer › x")?.line, 3);
+  });
+
+  it("parses generic arrows in .ts files", () => {
+    const tests = collectTests(
+      `const id = <T,>(value: T) => value;\nconst cast = <string>id("a");\nit("x", () => {});\nit("y", () => {});`,
+      "a.test.ts"
+    );
+
+    assert.deepEqual([...tests.keys()], ["x", "y"]);
+  });
+
+  it("counts it.each case tables as part of the test body", () => {
+    const before = collectTests(
+      `it.each([1, 2])("x %s", (n) => {});\nit.each\`a\${1}\`("y", () => {});`,
+      "a.test.ts"
+    );
+    const after = collectTests(
+      `it.each([1, 2, 3])("x %s", (n) => {});\nit.each\`a\${2}\`("y", () => {});`,
+      "a.test.ts"
+    );
+
+    assert.notEqual(before.get("x %s")?.body, after.get("x %s")?.body);
+    assert.notEqual(before.get("y")?.body, after.get("y")?.body);
+  });
+
+  it("keeps same-titled tests apart", () => {
+    const tests = collectTests(
+      `it("x", () => { a(); });\nit("x", () => { b(); });`,
+      "a.test.ts"
+    );
+
+    assert.deepEqual([...tests.keys()], ["x", "x #2"]);
   });
 });
 
@@ -198,5 +231,17 @@ describe("renderSummary", () => {
         "[parse](https://github.com/o/r/blob/abc/a.ts#L12) › edge cases › [x](https://github.com/o/r/blob/abc/a.test.ts#L4)"
       )
     );
+  });
+});
+
+describe("truncateSummary", () => {
+  it("cuts on a line boundary and closes open collapsed sections", () => {
+    const summary = `head\n<details><summary>s</summary>\n\n${"[link](url)\n".repeat(10)}</details>`;
+    const truncated = truncateSummary(summary, 60);
+
+    assert.ok(
+      truncated.includes("[link](url)\n\n</details>\n\n_Summary truncated")
+    );
+    assert.ok(!truncated.includes("[link](u\n"));
   });
 });
