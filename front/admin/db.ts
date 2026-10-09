@@ -50,6 +50,7 @@ import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webho
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BatchSuggestionModel } from "@app/lib/models/batch_suggestion";
+import { DfsTenantModel } from "@app/lib/models/dfs_tenant";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -294,6 +295,7 @@ export function loadAllModels() {
     UserProjectPreferencesModel,
     WorkspaceSensitivityLabelConfigModel,
     SandboxEnvVarModel,
+    DfsTenantModel,
     WorkspaceSeatLimitModel,
     WorkspacePlanLimitOverrideModel,
     ActivationPodModel,
