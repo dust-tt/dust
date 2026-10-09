@@ -15,7 +15,14 @@ import type { Result } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, Extensions } from "@tiptap/core";
 import type { ReactNode, RefObject } from "react";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const CARD_WIDTH_PX = 320;
 const DRAFT = "draft";
@@ -189,8 +196,9 @@ interface DocumentCommentCardProps {
  * @cc [owner:tdraier,label:react] document-comment-draft-card
  * While a draft is pending and the user can comment, a new comment card MUST float under the
  * draft's text, with its field focused. Escape in the field hands to its onCancel (see
- * `document-comment-input`), which MUST cancel the draft; a pointer press elsewhere MUST NOT, so
- * typed text survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item.
+ * `document-comment-input`), which MUST cancel the draft. A pointer press outside the card MUST
+ * cancel the draft while its field holds no content, leaving focus where the press put it, and
+ * MUST NOT once it does, so typed text survives a stray click. Enter MUST submit the trimmed Markdown, outside a list item.
  * A refused submission MUST keep the typed text and show the reason.
  */
 /**
@@ -223,6 +231,7 @@ export const DocumentCommentCard = ({
     draftSuggestionTemplate,
     submitDraft,
     cancelDraft,
+    dismissDraft,
     closeThread,
     busyThreadIds,
     threadError,
@@ -244,6 +253,12 @@ export const DocumentCommentCard = ({
     holding
   );
   const threadRef = useRef<HTMLElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  // Read on each press, so typing does not re-subscribe the listener below.
+  const draftFilledRef = useRef(false);
+  const onDraftFilledChange = useCallback((filled: boolean) => {
+    draftFilledRef.current = filled;
+  }, []);
 
   const target: typeof DRAFT | DfmComment | undefined = showsDraft
     ? DRAFT
@@ -262,12 +277,29 @@ export const DocumentCommentCard = ({
     }
   }, [focusRequest, threadId, open]);
 
+  const draftOpen = showsDraft && open;
+  useEffect(() => {
+    if (!draftOpen) {
+      return;
+    }
+    const onPointerDown = (event: PointerEvent) => {
+      const inside =
+        event.target instanceof Node && cardRef.current?.contains(event.target);
+      if (!inside && !draftFilledRef.current) {
+        dismissDraft();
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [draftOpen, dismissDraft]);
+
   if (!shown) {
     return null;
   }
 
   return (
     <div
+      ref={cardRef}
       data-document-comment-card=""
       data-state={open ? "open" : "closed"}
       aria-hidden={!open || undefined}
@@ -292,6 +324,7 @@ export const DocumentCommentCard = ({
         <DocumentCommentDraftCard
           onSubmit={submitDraft}
           onCancel={cancelDraft}
+          onFilledChange={onDraftFilledChange}
           onSuggest={draftSuggestable ? draftSuggestionTemplate : undefined}
           inputExtensions={commentInputExtensions}
           mountPortalContainer={mountPortalContainer}

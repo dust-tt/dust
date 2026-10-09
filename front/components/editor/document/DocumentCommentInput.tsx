@@ -23,6 +23,8 @@ interface DocumentCommentInputProps {
    * Escape bubbles to the parent.
    */
   onCancel?: () => void;
+  /** Told whether the field holds content, each time that changes. */
+  onFilledChange?: (filled: boolean) => void;
   author?: DfmAuthor;
   renderAuthorAvatar: DocumentProps["renderCommentAuthorAvatar"];
   /** Focuses the field while true, once it is visible. */
@@ -87,11 +89,17 @@ const selectLastSuggestion = (editor: Editor) => {
  * reach the parent and MUST clear the field then call onCancel, unless a submission is pending,
  * when it MUST do neither.
  */
+/**
+ * @cc [owner:PopDaph,label:react] document-comment-input-filled
+ * onFilledChange MUST receive, at mount and whenever it changes, whether the content would
+ * submit: text, a mention or a code block, as for Send.
+ */
 export const DocumentCommentInput = ({
   label,
   placeholder,
   onSubmit,
   onCancel,
+  onFilledChange,
   author,
   renderAuthorAvatar,
   autoFocus = false,
@@ -148,6 +156,10 @@ export const DocumentCommentInput = ({
       }
     }
   }, [editor, pending]);
+
+  useEffect(() => {
+    onFilledChange?.(filled);
+  }, [filled, onFilledChange]);
 
   useEffect(() => {
     if (autoFocus && editor) {
