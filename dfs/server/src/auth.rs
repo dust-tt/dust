@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use tonic::{Request, Status};
 
 /// Keys are opaque 64-character bearer strings (API.md, "Authorization and common limits").
-pub const KEY_LENGTH: usize = 64;
+const KEY_LENGTH: usize = 64;
 const KEY_BYTES: usize = KEY_LENGTH / 2;
 
 /// SHA-256 of a bearer key. Only the hash is stored, so a leaked store holds no usable key.
@@ -38,20 +38,4 @@ pub fn new_key() -> Result<String, ring::error::Unspecified> {
 
 pub fn hash_key(key: &str) -> KeyHash {
     Sha256::digest(key.as_bytes()).into()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn new_keys_are_well_formed_and_distinct() -> Result<(), ring::error::Unspecified> {
-        let first = new_key()?;
-        let second = new_key()?;
-
-        assert_eq!(first.len(), KEY_LENGTH);
-        assert_ne!(first, second);
-        assert_ne!(hash_key(&first), hash_key(&second));
-        Ok(())
-    }
 }

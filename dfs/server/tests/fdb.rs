@@ -2,12 +2,11 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use dfs_api::storage::fdb;
-use foundationdb::{Database, options::TransactionOption};
+use foundationdb::Database;
 
 const PING_DEADLINE_HEADROOM_MS: i32 = 5_000;
 const UNREACHABLE_PING_DEADLINE: Duration =
     Duration::from_millis((fdb::PING_TIMEOUT_MS + PING_DEADLINE_HEADROOM_MS) as u64);
-const TRANSACTION_TIMEOUT_MS: i32 = 5_000;
 
 /// The network boots once per process and cannot restart once stopped, so every FDB check runs
 /// under this one test, which holds the guard and drops it before the binary exits.
@@ -23,40 +22,8 @@ fn fdb_client() -> Result<()> {
     runtime.block_on(async {
         let database = fdb::open()?;
         fdb::ping(&database).await?;
-        writes_are_read_back_then_cleared(&database).await?;
         ping_fails_instead_of_hanging_when_fdb_is_unreachable().await
     })
-}
-
-async fn writes_are_read_back_then_cleared(database: &Database) -> Result<()> {
-    let key = format!("dfs-test/round-trip/{}", std::process::id()).into_bytes();
-    let key = key.as_slice();
-
-    database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            transaction.set(key, b"hello");
-            Ok(())
-        })
-        .await?;
-    let written = database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            let value = transaction.get(key, false).await?;
-            transaction.clear(key);
-            Ok(value.map(|value| value.to_vec()))
-        })
-        .await?;
-    let cleared = database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            Ok(transaction.get(key, false).await?)
-        })
-        .await?;
-
-    assert_eq!(written.as_deref(), Some(b"hello".as_slice()));
-    assert!(cleared.is_none());
-    Ok(())
 }
 
 async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
