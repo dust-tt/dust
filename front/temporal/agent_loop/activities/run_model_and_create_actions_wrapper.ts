@@ -178,11 +178,14 @@ async function _runModelAndCreateActionsActivity({
     if (isAgentLoopDataAgentNotFoundError(contextProviderRes.error)) {
       // Retrying cannot make the agent loadable again: fail the message now.
       await notifyAgentMessageError(authType, runAgentArgs, {
-        code: "agent_not_available",
-        message:
-          "This agent is no longer available to you. Contact your workspace administrator or " +
-          "use another agent.",
-        metadata: { errorTitle: "Agent not available" },
+        error: {
+          code: "agent_not_available",
+          message:
+            "This agent is no longer available to you. Contact your workspace administrator or " +
+            "use another agent.",
+          metadata: { errorTitle: "Agent not available" },
+        },
+        step,
       });
       return new Ok(null);
     }

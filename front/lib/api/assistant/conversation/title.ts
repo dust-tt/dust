@@ -13,6 +13,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
+  isAgentLoopDataAgentNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -96,6 +97,10 @@ export async function ensureConversationTitleFromAgentLoop(
         },
         "Message or conversation was deleted, exiting"
       );
+      return null;
+    }
+    // Retrying cannot make the agent loadable again: leave the title for a later message.
+    if (isAgentLoopDataAgentNotFoundError(runAgentDataRes.error)) {
       return null;
     }
     throw runAgentDataRes.error;

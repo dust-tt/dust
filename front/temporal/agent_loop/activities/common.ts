@@ -599,23 +599,26 @@ export async function notifyWorkflowError(
   error: { message: string; name: string }
 ): Promise<ModelId | null> {
   return notifyAgentMessageError(authType, agentLoopArgs, {
-    code: "workflow_error",
-    message: toUserFriendlyMessage(error),
-    metadata: {
-      category: "critical_failure",
-      errorTitle: "Agent response generation failed",
-      // Ensure errorName is a string (not an Error object or undefined)
-      errorName: error.name || "UnknownError",
+    error: {
+      code: "workflow_error",
+      message: toUserFriendlyMessage(error),
+      metadata: {
+        category: "critical_failure",
+        errorTitle: "Agent response generation failed",
+        // Ensure errorName is a string (not an Error object or undefined)
+        errorName: error.name || "UnknownError",
+      },
     },
+    step: 0, // Workflow-level error, not tied to a specific step
   });
 }
 
-// Fails the agent message with `error` without loading its agent configuration. Returns the agent
-// message's model id, or null when the conversation is gone.
+// Fails the agent message with `error`, stored at `step`, without loading its agent configuration.
+// Returns the agent message's model id, or null when the conversation is gone.
 export async function notifyAgentMessageError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
-  error: GenericErrorContent
+  { error, step }: { error: GenericErrorContent; step: number }
 ): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
@@ -701,7 +704,7 @@ export async function notifyAgentMessageError(
     event: errorEvent,
     agentMessage,
     conversation: conversation.toJSON(),
-    step: 0, // Workflow-level error, not tied to a specific step
+    step,
   });
 
   return messageRow.agentMessage.id;
