@@ -100,8 +100,12 @@ msgid "Type @ to loop in a teammate"
 msgstr "Tapez @ pour inviter un collègue"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type / to add skills, tools, and more"
-msgstr "Ajoutez compétences et outils avec /"
+msgid "Type / to add a skill"
+msgstr "Tapez / pour ajouter une compétence"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type / to add tools and more"
+msgstr "Tapez / pour ajouter des outils et plus"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"
