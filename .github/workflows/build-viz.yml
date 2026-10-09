@@ -22,6 +22,8 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sparkle: "true"
+      - name: Check translations
+        run: npm -w viz run i18n:check
       - name: Build
         run: npm -w viz run build
   test:
