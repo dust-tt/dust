@@ -1,32 +1,31 @@
-import { stackMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
+import { placeMarkers } from "@app/components/editor/document/DocumentCommentMarkers";
 import { describe, expect, it } from "vitest";
 
-describe("stackMarkers", () => {
-  it("keeps bubbles level with anchors far enough apart", () => {
+describe("placeMarkers", () => {
+  it("places one bubble per line, level with it", () => {
     expect(
-      stackMarkers([
+      placeMarkers([
         { id: "a", center: 10 },
-        { id: "b", center: 100 },
+        { id: "b", center: 14 },
+        { id: "c", center: 100 },
       ])
     ).toEqual([
-      { id: "a", center: 10 },
-      { id: "b", center: 100 },
+      { ids: ["a", "b"], center: 10 },
+      { ids: ["c"], center: 100 },
     ]);
   });
 
-  it("stacks bubbles of anchors on one line, or too close, below one another", () => {
+  it("moves a bubble below the previous one when lines are too close", () => {
     expect(
-      stackMarkers([
+      placeMarkers([
         { id: "a", center: 10 },
-        { id: "b", center: 10 },
-        { id: "c", center: 20 },
-        { id: "d", center: 80 },
+        { id: "b", center: 25 },
+        { id: "c", center: 40 },
       ])
     ).toEqual([
-      { id: "a", center: 10 },
-      { id: "b", center: 38 },
-      { id: "c", center: 66 },
-      { id: "d", center: 94 },
+      { ids: ["a"], center: 10 },
+      { ids: ["b"], center: 38 },
+      { ids: ["c"], center: 66 },
     ]);
   });
 });

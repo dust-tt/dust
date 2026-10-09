@@ -578,6 +578,28 @@ describe("Document comments", () => {
     expect(bubble.getAttribute("aria-current")).toBe("true");
   });
 
+  it("shares one bubble between the comments of a line and cycles through them", async () => {
+    const thread = (id: string, name: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n`;
+    const { editor } = await renderDocument(
+      `:comment-start{id=a}One:comment-end{id=a} two :comment-start{id=b}three:comment-end{id=b}\n\n:::annotations\n${thread("a", "Al")}\n${thread("b", "Bea")}:::\n`
+    );
+    const activeId = () =>
+      documentCommentsPluginKey.getState(editor.state)?.activeId;
+
+    const bubble = screen.getByRole("button", {
+      name: "Show 2 comments with 2 messages",
+    });
+    expect(bubble.textContent).toBe("2");
+
+    fireEvent.click(bubble);
+    expect(activeId()).toBe("a");
+    fireEvent.click(bubble);
+    expect(activeId()).toBe("b");
+    fireEvent.click(bubble);
+    expect(activeId()).toBe("a");
+  });
+
   it.each([
     [false, 1],
     [true, 0],
