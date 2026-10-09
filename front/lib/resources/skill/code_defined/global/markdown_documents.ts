@@ -9,7 +9,6 @@ import {
 import {
   FILES_COPY_ACTION_NAME,
   FILES_CREATE_ACTION_NAME,
-  FILES_GREP_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
   FILES_RESOLVE_ACTION_NAME,
   FILES_SERVER_NAME,
@@ -59,7 +58,8 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
 People read your answers to comments in the document's threads rather than in this conversation.
 
-**Answering a comment.** A message that opens with "Comment in thread \`<thread id>\` of the document \`<path>\`" was left in that thread; it gives the commented passage and the new comment. Read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\` for context. The thread itself, with its earlier messages, is in the \`:::annotations\` block at the end of the file, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message; in a long document, find it with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` rather than reading the whole file. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document. 
+**Answering a comment.** A message that opens with "Comment in thread \`<thread id>\` of the document \`<path>\`" was left in that thread; it gives the commented passage and the new comment. Read the document with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)}\` for context. The thread itself, with its earlier messages, is in the \`:::annotations\` block at the end of what it returns, under \`::comment{id=<thread id> …}\`, one \`::message{author=… name=… at=…}\` line per message. Then answer with \`${getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME)}\`, passing that path and that thread id as \`comment_id\`, so your answer shows in the document.
+
 Write like a reviewer in the margin: short, about the passage, no headings.
 
 **Suggesting a change.** When the thread asks for new wording, or new wording is the clearest answer, suggest it rather than describe it: add a fenced code block whose language is \`suggestion\`, holding the Markdown that would replace the commented passage.
