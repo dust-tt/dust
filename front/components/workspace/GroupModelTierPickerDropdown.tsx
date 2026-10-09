@@ -9,16 +9,19 @@ import {
 } from "@app/lib/swr/model_tiers";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { ButtonVariantType } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
 interface GroupModelTierPickerDropdownProps {
   owner: LightWorkspaceType;
   groupId: string;
+  variant?: ButtonVariantType;
 }
 
 export function GroupModelTierPickerDropdown({
   owner,
   groupId,
+  variant,
 }: GroupModelTierPickerDropdownProps) {
   const { t } = useLingui();
   const { groups: groupAllowedModelTiers, isGroupAllowedModelTiersLoading } =
@@ -50,6 +53,7 @@ export function GroupModelTierPickerDropdown({
       }}
       isLoading={isGroupAllowedModelTiersLoading}
       isMutating={isGroupAllowedModelTierMutating}
+      variant={variant}
     />
   );
 }

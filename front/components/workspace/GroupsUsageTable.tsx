@@ -197,12 +197,14 @@ export function GroupsUsageTable({
               meta: { className: "hidden @2xl:table-cell @2xl:w-64" },
               cell: (info: GroupInfo) => (
                 <div
+                  className="-ml-3"
                   onClick={(event) => event.stopPropagation()}
                   onPointerDown={(event) => event.stopPropagation()}
                 >
                   <GroupModelTierPickerDropdown
                     owner={owner}
                     groupId={info.row.original.groupId}
+                    variant="ghost"
                   />
                 </div>
               ),
