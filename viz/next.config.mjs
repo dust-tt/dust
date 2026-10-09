@@ -46,8 +46,8 @@ const linguiMacroLoader = {
 
 const nextConfig = {
   webpack(config) {
-    // `enforce: "pre"` runs it in every compilation (server, client, edge).
-    config.module.rules.unshift({
+    //`enforce: "pre"` runs the macro pass before Next's SWC loader.
+    config.module.rules.push({
       enforce: "pre",
       test: /\.(ts|tsx)$/,
       include: ["app", "components", "hooks", "lib"].map((dir) =>
