@@ -10,6 +10,8 @@ import {
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 
 // Version 1 attributed the model token buckets only. Version 2 added per-tool rows and netted the
@@ -110,13 +112,31 @@ function creditAmountMicroFromCostMicroUsd(costMicroUsd: number): number {
   );
 }
 
+function priceUsageTokens(
+  usage: RunUsageForAttribution,
+  tokens: {
+    promptTokens: number;
+    completionTokens: number;
+    cachedTokens: number | null;
+    cacheCreationTokens: number | null;
+  }
+): number {
+  return computeTokensCostForUsageInMicroUsd({
+    modelId: usage.modelId,
+    ...tokens,
+    isBatch: usage.isBatch,
+    serviceTier: usage.serviceTier,
+    inferenceRegion: usage.region
+      ? inferenceRegionForEndpointRegion(usage.region)
+      : "global",
+  });
+}
+
 /**
- * Derives input and output rates from model pricing, intentionally cache-naive: every token is
- * priced at full rate. We do not try to attribute cache discounts to individual items because
- * reconstructing which tokens were served from cache is too hard to do fairly. The bet is that
- * every token is paid in full at least once, so full-price attribution is a fair floor for what a
- * component costs, and it ranks cost drivers correctly even though it overstates absolute credits.
- * Empty usages use one token for the rate calculation to avoid division by zero.
+ * Derives input and output rates from model pricing at full rate, ignoring cache reads and writes.
+ * Gross rows are stored at this cache-naive price; reconciliation applies each call's cache
+ * discounts and premiums from its recorded cost. Empty usages use one token for the rate
+ * calculation to avoid division by zero.
  */
 /**
  * @cc [owner:sfriquet,label:product] rates-match-recorded-cost-pricing
@@ -130,28 +150,17 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
 } {
   const promptTokensForRate = Math.max(usage.promptTokens, 1);
   const completionTokensForRate = Math.max(usage.completionTokens, 1);
-  const inferenceRegion = usage.region
-    ? inferenceRegionForEndpointRegion(usage.region)
-    : "global";
-  const inputCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: usage.modelId,
+  const inputCostMicroUsd = priceUsageTokens(usage, {
     promptTokens: promptTokensForRate,
     completionTokens: 0,
     cachedTokens: null,
     cacheCreationTokens: null,
-    isBatch: usage.isBatch,
-    serviceTier: usage.serviceTier,
-    inferenceRegion,
   });
-  const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: usage.modelId,
+  const totalCostMicroUsd = priceUsageTokens(usage, {
     promptTokens: promptTokensForRate,
     completionTokens: completionTokensForRate,
     cachedTokens: null,
     cacheCreationTokens: null,
-    isBatch: usage.isBatch,
-    serviceTier: usage.serviceTier,
-    inferenceRegion,
   });
 
   return {
@@ -171,26 +180,36 @@ const RECORDED_COST_ROUNDING_MICRO_USD = 0.5;
  * its input. The split MUST fail when the output alone costs more than the call's recorded cost,
  * beyond the rounding of the stored cost.
  */
-export function splitRecordedUsageCost(
+export function splitRecordedCostIntoInputAndOutput(
   usage: RunUsageForAttribution & Pick<RunUsageWithRunKeyType, "costMicroUsd">
-): {
-  cacheWriteTokenWeight: number;
-  cachedTokenWeight: number;
-  inputCostMicroUsd: number;
-  outputCostMicroUsd: number;
-} | null {
+): Result<
+  { inputCostMicroUsd: number; outputCostMicroUsd: number },
+  "output_exceeds_recorded_cost"
+> {
   const outputCostMicroUsd =
     usage.completionTokens * getRunTokenRates(usage).outputCostMicroUsdPerToken;
   if (
     outputCostMicroUsd >
     usage.costMicroUsd + RECORDED_COST_ROUNDING_MICRO_USD
   ) {
-    return null;
+    return new Err("output_exceeds_recorded_cost");
   }
-  const pricedPromptTokens = Math.max(usage.promptTokens, 1);
-  const inferenceRegion = usage.region
-    ? inferenceRegionForEndpointRegion(usage.region)
-    : "global";
+
+  return new Ok({
+    inputCostMicroUsd: Math.max(usage.costMicroUsd - outputCostMicroUsd, 0),
+    outputCostMicroUsd,
+  });
+}
+
+export type CachedTokenPriceRatios = {
+  cached: number;
+  cacheWrite: number;
+};
+
+export function getCachedTokenPriceRatios(
+  usage: RunUsageForAttribution
+): CachedTokenPriceRatios {
+  const promptTokens = Math.max(usage.promptTokens, 1);
   const pricePromptTokens = ({
     cachedTokens,
     cacheCreationTokens,
@@ -198,38 +217,32 @@ export function splitRecordedUsageCost(
     cachedTokens: number | null;
     cacheCreationTokens: number | null;
   }) =>
-    computeTokensCostForUsageInMicroUsd({
-      modelId: usage.modelId,
-      promptTokens: pricedPromptTokens,
+    priceUsageTokens(usage, {
+      promptTokens,
       completionTokens: 0,
       cachedTokens,
       cacheCreationTokens,
-      isBatch: usage.isBatch,
-      serviceTier: usage.serviceTier,
-      inferenceRegion,
     });
-  const fullInputCostMicroUsd = pricePromptTokens({
+  const uncachedCostMicroUsd = pricePromptTokens({
     cachedTokens: null,
     cacheCreationTokens: null,
   });
-  const tokenWeight = (promptCostMicroUsd: number) =>
-    fullInputCostMicroUsd > 0 ? promptCostMicroUsd / fullInputCostMicroUsd : 1;
+  const ratioToUncached = (costMicroUsd: number) =>
+    uncachedCostMicroUsd > 0 ? costMicroUsd / uncachedCostMicroUsd : 1;
 
   return {
-    cacheWriteTokenWeight: tokenWeight(
+    cached: ratioToUncached(
       pricePromptTokens({
-        cachedTokens: null,
-        cacheCreationTokens: pricedPromptTokens,
-      })
-    ),
-    cachedTokenWeight: tokenWeight(
-      pricePromptTokens({
-        cachedTokens: pricedPromptTokens,
+        cachedTokens: promptTokens,
         cacheCreationTokens: null,
       })
     ),
-    inputCostMicroUsd: Math.max(usage.costMicroUsd - outputCostMicroUsd, 0),
-    outputCostMicroUsd,
+    cacheWrite: ratioToUncached(
+      pricePromptTokens({
+        cachedTokens: null,
+        cacheCreationTokens: promptTokens,
+      })
+    ),
   };
 }
 
@@ -288,8 +301,7 @@ function normalizeTokenMeasurements({
 
 /**
  * Partitions one provider-reported RunUsage into semantic model and tool-call
- * contributions. Remaining non-reasoning tokens become assistant output. Tool
- * result footprints are not part of prompt reconciliation.
+ * contributions. Remaining non-reasoning tokens become assistant output.
  */
 export function buildRunUsageAttribution<TTool>({
   usage,
