@@ -1,3 +1,4 @@
+import type { MetronomePackageSummary } from "@app/lib/metronome/client";
 import {
   CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
   CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
@@ -51,7 +52,11 @@ export type SwitchContractTemplate = {
   name: string;
   description?: string;
   // Contract type. Resolved to a concrete package at apply time.
-  package?: { tier: "business" | "enterprise"; namePattern?: string };
+  package?: {
+    tier: "business" | "enterprise";
+    namePattern?: string;
+    billingAnchor?: MetronomePackageSummary["billingAnchor"];
+  };
   planCode?: string;
   startMode?: "immediately" | "retroactive_first_of_month" | "select";
   // datetime-local shape ("YYYY-MM-DDTHH:mm", interpreted as UTC). Only used
@@ -98,7 +103,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     id: "enterprise-pooled",
     name: "Enterprise pooled",
     description: "Enterprise Pooled, yearly workspace seats, pooled credits.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
@@ -111,7 +120,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Enterprise pooled — monthly",
     description:
       "Enterprise Pooled billed monthly: monthly workspace seats at 1/12 the yearly rate, pooled credits.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
@@ -172,7 +185,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Free pilot — 2 weeks",
     description:
       "Enterprise pooled, 2-week commitment, free workspace seats, 10k free credits per committed seat.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
@@ -193,7 +210,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Paid pilot",
     description:
       "Enterprise pooled, 2-month commitment, workspace seats at 600/year, first 2 weeks free, 10k initial credits per committed seat.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_PILOT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",

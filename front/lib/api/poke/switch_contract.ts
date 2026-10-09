@@ -396,27 +396,6 @@ async function resolveAndValidatePackage(
     );
   }
   const pkgSeatByType = new Map(pkg.seats.map((s) => [s.seatType, s]));
-  for (const [seatType, seat] of Object.entries(body.seats)) {
-    if (!isMembershipSeatType(seatType)) {
-      continue;
-    }
-    const pkgSeat = pkgSeatByType.get(seatType);
-    if (
-      seat.selected &&
-      pkgSeat &&
-      !pkgSeat.entitled &&
-      seatType !== "free" &&
-      seat.rate <= 0
-    ) {
-      return new Err(
-        new SwitchContractError(
-          "invalid_request",
-          `Seat "${seatType}" is not entitled by the selected package and ` +
-            "requires a rate greater than 0 to entitle it."
-        )
-      );
-    }
-  }
   const packageAlias = pkg.aliases[0];
   if (!packageAlias) {
     return new Err(
