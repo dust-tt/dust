@@ -202,7 +202,10 @@ export const DocumentStatus = ({
     <>
       <StatusRow>
         {(showSaveStatus || children) && (
-          <Chip size="xs" className="gap-2.5">
+          <Chip
+            size="xs"
+            className="gap-2.5 border border-border bg-background"
+          >
             {showSaveStatus && (
               <DocumentSaveStatus
                 dirty={dirty}
