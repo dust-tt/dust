@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use tonic::{Request, Status};
 
 /// Keys are opaque 64-character bearer strings (API.md, "Authorization and common limits").
-const KEY_LENGTH: usize = 64;
+pub const KEY_LENGTH: usize = 64;
 const KEY_BYTES: usize = KEY_LENGTH / 2;
 
 /// SHA-256 of a bearer key. Only the hash is stored, so a leaked store holds no usable key.

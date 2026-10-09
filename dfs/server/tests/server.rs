@@ -66,7 +66,8 @@ fn server() -> Result<()> {
         dfs_rejects_oversized_requests().await?;
         dfs_rejects_a_request_without_authorization_as_unauthenticated().await?;
         dfs_rejects_a_malformed_authorization_as_unauthenticated().await?;
-        every_dfs_rpc_answers_unsupported_to_an_authenticated_request().await
+        every_unimplemented_dfs_rpc_answers_unsupported_to_an_authenticated_request().await?;
+        create_tenant_creates_a_tenant_once().await
     })
 }
 
@@ -176,16 +177,13 @@ async fn dfs_rejects_a_malformed_authorization_as_unauthenticated() -> Result<()
     Ok(())
 }
 
-async fn every_dfs_rpc_answers_unsupported_to_an_authenticated_request() -> Result<()> {
+async fn every_unimplemented_dfs_rpc_answers_unsupported_to_an_authenticated_request() -> Result<()>
+{
     let mut client = DfsClient::new(serve().await?);
     let auth = WELL_FORMED_AUTHORIZATION;
     let object_id = ObjectId::new_v7();
 
     let results = [
-        client
-            .create_tenant(with_authorization(CreateTenantRequest::default(), auth)?)
-            .await
-            .map(drop),
         client
             .create_session(with_authorization(CreateSessionRequest::default(), auth)?)
             .await
@@ -274,5 +272,35 @@ async fn every_dfs_rpc_answers_unsupported_to_an_authenticated_request() -> Resu
         assert_eq!(status.code(), Code::Unimplemented, "RPC #{index}");
         assert_eq!(error_code(&status)?, ErrorCode::Unsupported, "RPC #{index}");
     }
+    Ok(())
+}
+
+async fn create_tenant_creates_a_tenant_once() -> Result<()> {
+    let mut client = DfsClient::new(serve().await?);
+    let request = CreateTenantRequest {
+        tenant_id: format!("test-{}", ObjectId::new_v7()),
+        ..Default::default()
+    };
+
+    let tenant = client
+        .create_tenant(with_authorization(
+            request.clone(),
+            WELL_FORMED_AUTHORIZATION,
+        )?)
+        .await?
+        .into_inner();
+    let Err(duplicate) = client
+        .create_tenant(with_authorization(
+            request.clone(),
+            WELL_FORMED_AUTHORIZATION,
+        )?)
+        .await
+    else {
+        anyhow::bail!("expected ALREADY_EXISTS");
+    };
+
+    assert_eq!(tenant.tenant_id, request.tenant_id);
+    assert_eq!(tenant.tenant_key.len(), dfs_api::auth::KEY_LENGTH);
+    assert_eq!(error_code(&duplicate)?, ErrorCode::AlreadyExists);
     Ok(())
 }

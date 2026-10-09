@@ -1,4 +1,5 @@
 use dfs_protocol::{
+    ObjectId,
     error::status,
     rpc::{
         ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
@@ -8,10 +9,19 @@ use dfs_protocol::{
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
-use foundationdb::Database;
+use foundationdb::{Database, FdbBindingError};
 use tonic::{Request, Response, Status};
 
-/// Every RPC answers UNSUPPORTED until its implementation lands.
+use crate::{auth, storage::resources::tenant::TenantResource};
+
+const TENANT_ID_MAX_BYTES: usize = 256;
+
+fn internal(error: FdbBindingError) -> Status {
+    tracing::error!(%error, "fdb transaction failed");
+    status(ErrorCode::Internal)
+}
+
+/// RPCs without an implementation answer UNSUPPORTED.
 #[allow(clippy::upper_case_acronyms)]
 pub struct API {
     pub database: Database,
@@ -21,9 +31,51 @@ pub struct API {
 impl Dfs for API {
     async fn create_tenant(
         &self,
-        _request: Request<CreateTenantRequest>,
+        request: Request<CreateTenantRequest>,
     ) -> Result<Response<Tenant>, Status> {
-        Err(status(ErrorCode::Unsupported))
+        let CreateTenantRequest {
+            tenant_id,
+            root_grants,
+        } = request.into_inner();
+        if tenant_id.is_empty() || tenant_id.len() > TENANT_ID_MAX_BYTES {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        if !root_grants.is_empty() {
+            return Err(status(ErrorCode::Unsupported));
+        }
+        let tenant_key = auth::new_key().map_err(|_| status(ErrorCode::Internal))?;
+        let tenant = TenantResource {
+            tenant_id,
+            root_id: ObjectId::new_v7(),
+            key_hash: auth::hash_key(&tenant_key),
+        };
+
+        let created = self
+            .database
+            .run(|transaction, _maybe_committed| {
+                let tenant = &tenant;
+                async move {
+                    match TenantResource::fetch(&transaction, &tenant.tenant_id).await? {
+                        // A retry after an unknown commit result finds our own record.
+                        Some(existing) => Ok(existing.root_id == tenant.root_id),
+                        None => {
+                            tenant.create(&transaction);
+                            Ok(true)
+                        }
+                    }
+                }
+            })
+            .await
+            .map_err(internal)?;
+        if !created {
+            return Err(status(ErrorCode::AlreadyExists));
+        }
+
+        Ok(Response::new(Tenant {
+            tenant_id: tenant.tenant_id,
+            root_id: tenant.root_id,
+            tenant_key,
+        }))
     }
 
     async fn create_session(
