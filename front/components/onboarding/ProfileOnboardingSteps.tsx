@@ -1,3 +1,4 @@
+import { PronounPresetChips } from "@app/components/me/PronounPresetChips";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
@@ -5,6 +6,7 @@ import type { JobType } from "@app/types/job_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
+import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
 import {
   Button,
   Card,
@@ -62,12 +64,14 @@ export const JOB_TYPE_LABELS: Record<JobType, MessageDescriptor> = {
 export interface ProfileFormData {
   firstName: string;
   lastName: string;
+  pronouns: string;
   jobType: JobType | null;
 }
 
 export interface ProfileFormErrors {
   firstName?: MessageDescriptor;
   lastName?: MessageDescriptor;
+  pronouns?: MessageDescriptor;
   jobType?: MessageDescriptor;
 }
 
@@ -78,6 +82,9 @@ export function validateProfileForm(data: ProfileFormData): ProfileFormErrors {
   }
   if (!data.lastName.trim()) {
     errors.lastName = msg`Last name is required`;
+  }
+  if (data.pronouns.trim().length > MAX_USER_PRONOUNS_LENGTH) {
+    errors.pronouns = msg`Pronouns must be at most ${MAX_USER_PRONOUNS_LENGTH} characters`;
   }
   if (!data.jobType) {
     errors.jobType = msg`Please select your job type`;
@@ -176,6 +183,37 @@ export function UserProfileStep({
             )}
           </div>
         </div>
+      </div>
+      <div>
+        <p className="pb-2 text-muted-foreground">
+          <Trans>Your pronouns (optional):</Trans>
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <div className="sm:w-64">
+            <Input
+              name="pronouns"
+              placeholder={t`Type your own`}
+              value={formData.pronouns}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, pronouns: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              <Trans>Suggestions:</Trans>
+            </span>
+            <PronounPresetChips
+              value={formData.pronouns}
+              onSelect={(pronouns) =>
+                setFormData((prev) => ({ ...prev, pronouns }))
+              }
+            />
+          </div>
+        </div>
+        {showErrors && formErrors.pronouns && (
+          <p className="mt-1 text-sm text-red-500">{t(formErrors.pronouns)}</p>
+        )}
       </div>
       <div>
         <p className="pb-2 text-muted-foreground">

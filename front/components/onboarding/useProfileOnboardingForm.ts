@@ -41,6 +41,7 @@ export function useProfileOnboardingForm({
   const [formData, setFormData] = useState<ProfileFormData>({
     firstName: user.firstName,
     lastName: user.lastName ?? "",
+    pronouns: "",
     jobType: null,
   });
   const [selectedPlatforms, setSelectedPlatforms] = useState<
@@ -70,6 +71,8 @@ export function useProfileOnboardingForm({
       lastName: formData.lastName.trim(),
       notifySuccess: false,
       jobType: formData.jobType ?? undefined,
+      // Left unset when blank so onboarding never clears pronouns set elsewhere.
+      pronouns: formData.pronouns.trim() || undefined,
       favoritePlatforms: showFavoritePlatformsStep
         ? Array.from(selectedPlatforms)
         : undefined,
