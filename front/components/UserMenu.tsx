@@ -194,10 +194,10 @@ export function UserMenu({
       setSelectedAgent({
         type: "agent",
         id: GLOBAL_AGENTS_SID.HELPER,
-        label: "Help",
+        label: t`Help`,
         pictureUrl:
           "https://dust.tt/static/systemavatar/helper_avatar_full.png",
-        description: "Help on how to use Dust",
+        description: t`Help on how to use Dust`,
       });
     } else {
       void router.push(
@@ -463,7 +463,7 @@ export function UserMenu({
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_invite_users_question");
-                    void handleHelpSubmit("How do I invite new users?", []);
+                    void handleHelpSubmit(t`How do I invite new users?`, []);
                   }}
                 />
                 <DropdownMenuItem
@@ -472,7 +472,7 @@ export function UserMenu({
                   onClick={() => {
                     trackUserMenuEvent("help_slack_workflow_question");
                     void handleHelpSubmit(
-                      "How do I use agents in Slack workflow?",
+                      t`How do I use agents in Slack workflow?`,
                       []
                     );
                   }}
@@ -482,7 +482,7 @@ export function UserMenu({
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_billing_question");
-                    void handleHelpSubmit("How do I manage billing?", []);
+                    void handleHelpSubmit(t`How do I manage billing?`, []);
                   }}
                 />
               </DropdownMenuSubContent>

@@ -717,8 +717,11 @@ provider page.
 In a file under `components/`, `hooks/` or `lib/` that imports a Lingui macro, every user-visible
 string (JSX text, labels, placeholders, tooltips, `aria-label`, `alt`, toasts, validation messages)
 MUST go through the Lingui macros with the English text as the message, and a sentence MUST be a
-single message, never assembled by concatenating strings or translated fragments. Text sent to
-models (`lib/actions/**`, skill and agent definitions, zod `.describe()`) MUST NOT be wrapped.
+single message, never assembled by concatenating strings or translated fragments. In any file,
+text the UI writes on the user's behalf and shows as their own words, whether posted to an agent as
+the user's message or prefilled in the composer, is user-visible and MUST be translated. Text meant
+only for models and not shown as the user's message (`lib/actions/**`, skill and agent definitions,
+zod `.describe()`, hidden instructions) MUST NOT be wrapped.
 Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
 server code by the `noClientImportsInServer` lint rule.
 

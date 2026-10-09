@@ -134,11 +134,11 @@ function ActionCard({
           actionsPosition="header"
           onClickAccept={() => {
             setStatus("actioned");
-            void onSend?.(actionMessage ?? "Accept");
+            void onSend?.(actionMessage ?? t`Accept`);
           }}
           onClickReject={() => {
             setStatus("dismissed");
-            void onSend?.(dismissMessage ?? "Dismiss");
+            void onSend?.(dismissMessage ?? t`Dismiss`);
           }}
         />
       );
