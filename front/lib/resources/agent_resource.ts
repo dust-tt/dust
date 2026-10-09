@@ -39,6 +39,7 @@ import {
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import { AgentSuggestedPromptModel } from "@app/lib/models/agent/agent_suggested_prompt";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { canonicalizeSaveParamsForComparison } from "@app/lib/resources/agent_configuration_comparison";
@@ -1706,6 +1707,45 @@ export class AgentResource
     );
   }
 
+  async listSuggestedPrompts(auth: Authenticator): Promise<string[]> {
+    const rows = await AgentSuggestedPromptModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: this.sId,
+      },
+      order: [["id", "ASC"]],
+    });
+
+    return rows.map((row) => row.prompt);
+  }
+
+  /**
+   * @cc [owner:adrsimon,label:backend;product] set-suggested-prompts-replaces-list
+   * After success, `listSuggestedPrompts` MUST return exactly `prompts`, in that order. The
+   * replacement MUST be atomic: a failure leaves the previous list untouched.
+   */
+  async setSuggestedPrompts(
+    auth: Authenticator,
+    prompts: string[]
+  ): Promise<void> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    await withTransaction(async (transaction) => {
+      await AgentSuggestedPromptModel.destroy({
+        where: { workspaceId, agentConfigurationId: this.sId },
+        transaction,
+      });
+      await AgentSuggestedPromptModel.bulkCreate(
+        prompts.map((prompt) => ({
+          workspaceId,
+          agentConfigurationId: this.sId,
+          prompt,
+        })),
+        { transaction }
+      );
+    });
+  }
+
   async listEditors(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -2873,6 +2913,9 @@ export class AgentResource
     await WakeUpResource.deleteByModelIds(auth, deletableWakeUpIds);
 
     await AgentUserRelationResource.deleteForAgents(auth, sIds);
+    await AgentSuggestedPromptModel.destroy({
+      where: { workspaceId: owner.id, agentConfigurationId: sIds },
+    });
 
     // Three independent, bounded verification reads — run together (not a per-item fan-out, so this
     // stays within `batch-database-queries`).
@@ -2980,6 +3023,12 @@ export class AgentResource
         },
       });
       await AgentMemoryModel.destroy({
+        where: {
+          agentConfigurationId: agent.sId,
+          workspaceId: workspaceModelId,
+        },
+      });
+      await AgentSuggestedPromptModel.destroy({
         where: {
           agentConfigurationId: agent.sId,
           workspaceId: workspaceModelId,
