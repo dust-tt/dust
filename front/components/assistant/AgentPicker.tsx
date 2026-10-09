@@ -24,7 +24,6 @@ import {
   LoadingBlock,
   Robot,
   StarFilled,
-  XClose,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
@@ -242,37 +241,30 @@ export function AgentPicker({
                   className={`group p-1 notranslate ${
                     isSelected ? "bg-primary-100" : ""
                   }`}
+                  labelEndComponent={
+                    favoriteIds.has(agent.sId) ? (
+                      <Icon
+                        visual={StarFilled}
+                        size="xs"
+                        className="shrink-0 text-muted-foreground"
+                      />
+                    ) : undefined
+                  }
                   endComponent={
-                    <div className="z-10 flex items-center gap-1">
-                      {favoriteIds.has(agent.sId) && (
-                        <Icon
-                          visual={StarFilled}
-                          size="xs"
-                          className="text-muted-foreground"
-                        />
-                      )}
-                      {isSelected && (
-                        <Icon
-                          visual={XClose}
-                          size="sm"
-                          className="hidden group-hover:block"
-                        />
-                      )}
-                      {onAgentDetailsClick && clientType !== "extension" ? (
-                        <Button
-                          icon={DotsHorizontal}
-                          variant="outline"
-                          size="xmini"
-                          className="opacity-0 group-hover:opacity-100"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            onAgentDetailsClick(agent.sId);
-                            setIsOpen(false);
-                          }}
-                        />
-                      ) : undefined}
-                    </div>
+                    onAgentDetailsClick && clientType !== "extension" ? (
+                      <Button
+                        icon={DotsHorizontal}
+                        variant="outline"
+                        size="xmini"
+                        className="z-10 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          onAgentDetailsClick(agent.sId);
+                          setIsOpen(false);
+                        }}
+                      />
+                    ) : undefined
                   }
                   onClick={() => {
                     // Clicking the selected agent deselects it; keep the picker

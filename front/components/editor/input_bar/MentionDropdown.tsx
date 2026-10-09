@@ -208,14 +208,15 @@ export const MentionDropdown = forwardRef<
                       >
                         {suggestion.label}
                       </span>
+                      {suggestion.type === "agent" &&
+                        suggestion.userFavorite && (
+                          <Icon
+                            visual={StarFilled}
+                            size="xs"
+                            className="-ml-1 shrink-0 text-muted-foreground"
+                          />
+                        )}
                     </div>
-                    {suggestion.type === "agent" && suggestion.userFavorite && (
-                      <Icon
-                        visual={StarFilled}
-                        size="xs"
-                        className="ml-2 shrink-0 text-muted-foreground"
-                      />
-                    )}
                     {suggestion.type === "user" && (
                       <Chip
                         size="mini"

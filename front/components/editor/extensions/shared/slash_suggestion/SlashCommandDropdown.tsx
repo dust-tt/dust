@@ -111,6 +111,7 @@ export interface SlashCommand {
   icon: React.ComponentType<any>;
   id: string;
   label: string;
+  labelEndIcon?: React.ComponentType<any>;
   // Extra text a search query matches, on top of the label and descriptions (e.g. their
   // default-locale rendering).
   searchText?: string[];
@@ -213,6 +214,18 @@ function getPointerHighlightProps(
       event.preventDefault();
     },
   };
+}
+
+function getSlashCommandLabelEndComponent(
+  item: SlashCommand
+): React.ReactNode | undefined {
+  return item.labelEndIcon ? (
+    <Icon
+      visual={item.labelEndIcon}
+      size="xs"
+      className="shrink-0 text-muted-foreground"
+    />
+  ) : undefined;
 }
 
 // Trailing content of a row: the details "…" button and/or the end action appear on hover or
@@ -566,6 +579,9 @@ export const SlashCommandDropdown = forwardRef<
                         icon={item.icon}
                         itemId={item.id}
                         label={item.label}
+                        labelEndComponent={getSlashCommandLabelEndComponent(
+                          item
+                        )}
                         description={item.description}
                         truncateText
                         endComponent={getSlashCommandEndComponent({
@@ -685,6 +701,7 @@ export const SlashCommandDropdown = forwardRef<
                       icon={item.icon}
                       itemId={item.id}
                       label={item.label}
+                      labelEndComponent={getSlashCommandLabelEndComponent(item)}
                       description={item.description}
                       truncateText
                       endComponent={getSlashCommandEndComponent({

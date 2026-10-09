@@ -249,11 +249,11 @@ export function getSkillSlashCommandItem(
       skill,
     },
     description: skill.userFacingDescription,
-    endIcon: skill.isFavorite ? StarFilled : undefined,
     hasDetails: true,
     icon: () => React.createElement(getSkillAvatarIcon(skill)),
     id: skill.sId,
     label: skill.name,
+    labelEndIcon: skill.isFavorite ? StarFilled : undefined,
     tooltipLabel: skill.name,
   };
 }

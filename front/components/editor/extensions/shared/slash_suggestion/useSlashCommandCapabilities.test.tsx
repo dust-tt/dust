@@ -164,7 +164,10 @@ describe("input bar slash capabilities favorites", () => {
 
     await waitFor(() =>
       expect(
-        result.current.capabilityItems.map((item) => [item.id, item.endIcon])
+        result.current.capabilityItems.map((item) => [
+          item.id,
+          item.labelEndIcon,
+        ])
       ).toEqual([
         ["beta", StarFilled],
         ["zulu", StarFilled],
@@ -175,7 +178,10 @@ describe("input bar slash capabilities favorites", () => {
 
     await waitFor(() =>
       expect(
-        result.current.capabilityItems.map((item) => [item.id, item.endIcon])
+        result.current.capabilityItems.map((item) => [
+          item.id,
+          item.labelEndIcon,
+        ])
       ).toEqual([["alpha", undefined]])
     );
   });
