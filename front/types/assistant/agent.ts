@@ -332,7 +332,7 @@ export interface TemplateAgentConfigurationType {
   tags: TagType[];
 }
 
-export const MAX_STEPS_USE_PER_RUN_LIMIT = 64;
+export const MAX_STEPS_USE_PER_RUN_LIMIT = 128;
 const ACTIONS_PER_STEP_BY_DEPTH = [8, 8, 4, 2] as const;
 const MAX_DEPTH_WITH_ACTION_LIMIT = ACTIONS_PER_STEP_BY_DEPTH.length - 1;
 

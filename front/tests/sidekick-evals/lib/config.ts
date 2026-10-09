@@ -46,7 +46,7 @@ export const SIDEKICK_REASONING_EFFORT = process.env.SIDEKICK_REASONING_EFFORT;
 
 export const TIMEOUT_MS = 300_000;
 export const SIDEKICK_ON_SIDEKICK_TIMEOUT_MS = 600_000;
-// Production allows MAX_STEPS_USE_PER_RUN_LIMIT (64) steps. A low cap here
+// Production allows MAX_STEPS_USE_PER_RUN_LIMIT (128) steps. A low cap here
 // silently truncates the run before the sidekick's closing message, leaving the
 // judge with an empty response, so keep enough headroom for multi-suggestion
 // scenarios. Hitting the cap is reported as a failure rather than judged.
