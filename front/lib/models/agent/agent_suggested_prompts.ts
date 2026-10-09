@@ -3,16 +3,16 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional } from "sequelize";
 
-export class AgentSuggestedPromptModel extends WorkspaceAwareModel<AgentSuggestedPromptModel> {
+export class AgentSuggestedPromptsModel extends WorkspaceAwareModel<AgentSuggestedPromptsModel> {
   declare id: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare agentConfigurationId: string;
-  declare prompt: string;
+  declare prompts: string[];
 }
 
-AgentSuggestedPromptModel.init(
+AgentSuggestedPromptsModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -28,8 +28,8 @@ AgentSuggestedPromptModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    prompt: {
-      type: DataTypes.STRING(256),
+    prompts: {
+      type: DataTypes.ARRAY(DataTypes.STRING(256)),
       allowNull: false,
     },
   },
@@ -40,6 +40,7 @@ AgentSuggestedPromptModel.init(
       {
         name: "agent_suggested_prompts_workspace_agent_idx",
         fields: ["workspaceId", "agentConfigurationId"],
+        unique: true,
       },
     ],
   }
