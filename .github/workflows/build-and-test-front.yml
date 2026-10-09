@@ -6,6 +6,7 @@ on:
       - package-lock.json
       - sdks/js/**
       - front/**
+      - lingui.config.ts
       - sparkle/**
       - viz/app/lib/frame-runtime-imports.ts
       - viz/package.json

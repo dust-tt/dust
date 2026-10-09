@@ -47,13 +47,24 @@ export default defineConfig({
   sourceLocale: DEFAULT_LOCALE,
   locales: [...CATALOG_LOCALES],
   fallbackLocales: { default: DEFAULT_LOCALE },
-  catalogs: SOURCE_DIRECTORIES.flatMap(listTranslatedDirectories).map(
-    (directory) => ({
-      path: `<rootDir>/front/locales/{locale}/${path.relative("front", directory)}/messages`,
-      include: [`<rootDir>/${directory}/*.ts`, `<rootDir>/${directory}/*.tsx`],
-      exclude: ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx"],
-    })
-  ),
+  catalogs: [
+    ...SOURCE_DIRECTORIES.flatMap(listTranslatedDirectories).map(
+      (directory) => ({
+        path: `<rootDir>/front/locales/{locale}/${path.relative("front", directory)}/messages`,
+        include: [
+          `<rootDir>/${directory}/*.ts`,
+          `<rootDir>/${directory}/*.tsx`,
+        ],
+        exclude: ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx"],
+      })
+    ),
+    // The Slack bot has a single catalog of its own: see `connectors/src/connectors/slack/CONTRACTS`.
+    {
+      path: "<rootDir>/connectors/locales/{locale}/messages",
+      include: ["<rootDir>/connectors/src/connectors/slack"],
+      exclude: ["**/node_modules/**", "**/*.test.ts"],
+    },
+  ],
   orderBy: "origin",
   format: formatter({ lineNumbers: false }),
 });

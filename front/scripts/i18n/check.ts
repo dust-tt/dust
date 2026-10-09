@@ -1,14 +1,20 @@
 import { execSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import logger from "@app/logger/logger";
+import * as frontLocales from "@app/types/locale";
 import { CATALOG_LOCALES, DEFAULT_LOCALE } from "@app/types/locale";
 import { getCatalogs } from "@lingui/cli/api";
 import { getConfig } from "@lingui/conf";
 import { formatter } from "@lingui/format-po";
 
+// Connectors cannot import front: it keeps a copy of the locales, checked below.
+import * as connectorsLocales from "../../../connectors/src/types/locale";
+
 const FRONT_DIR = path.resolve(__dirname, "../..");
-const LOCALES_DIR = path.join(FRONT_DIR, "locales");
+// The `locales/` directories of every catalog in `lingui.config.ts`, relative to front.
+const LOCALES_DIRS = ["locales", "../connectors/locales"];
 
 async function listCatalogPaths(locale: string): Promise<string[]> {
   const catalogs = await getCatalogs(getConfig({ cwd: FRONT_DIR }));
@@ -16,6 +22,10 @@ async function listCatalogPaths(locale: string): Promise<string[]> {
 }
 
 function listPoFiles(directory: string): string[] {
+  // `i18n:extract` deletes empty catalogs: the connectors one has no file until it has a message.
+  if (!existsSync(directory)) {
+    return [];
+  }
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
@@ -27,9 +37,10 @@ function listPoFiles(directory: string): string[] {
 
 async function listStaleCatalogs(): Promise<string[]> {
   execSync("npm run i18n:extract", { cwd: FRONT_DIR, stdio: "ignore" });
+  const localesDirs = LOCALES_DIRS.join(" ");
   const changedOrUntracked = [
-    "git diff --name-only -- locales",
-    "git ls-files --others --exclude-standard -- locales",
+    `git diff --name-only -- ${localesDirs}`,
+    `git ls-files --others --exclude-standard -- ${localesDirs}`,
   ].map((command) => execSync(command, { cwd: FRONT_DIR, encoding: "utf8" }));
   const catalogPaths = new Set(
     (
@@ -38,7 +49,9 @@ async function listStaleCatalogs(): Promise<string[]> {
       )
     ).flat()
   );
-  const orphanCatalogs = listPoFiles(LOCALES_DIR)
+  const orphanCatalogs = LOCALES_DIRS.flatMap((localesDir) =>
+    listPoFiles(path.join(FRONT_DIR, localesDir))
+  )
     .filter((file) => !catalogPaths.has(file))
     .map((file) => path.relative(FRONT_DIR, file));
   return [
@@ -61,19 +74,23 @@ async function listUntranslatedMessages(locale: string): Promise<string[]> {
       sourceLocale: DEFAULT_LOCALE,
       filename,
     });
+    // Messages with an explicit id (the connectors catalog uses the English text as id) have no
+    // `message`: report the id instead.
     untranslated.push(
-      ...Object.values(catalog)
-        .filter((entry) => !entry.obsolete && !entry.translation)
-        .map((entry) => entry.message ?? "")
+      ...Object.entries(catalog)
+        .filter(([, entry]) => !entry.obsolete && !entry.translation)
+        .map(([id, entry]) => entry.message ?? id)
     );
   }
   return untranslated;
 }
 
 async function listConflictingTranslations(locale: string) {
-  const translationsById = new Map<
+  // Keyed by PO `msgid` and `msgctxt`, not by Lingui id: front ids are hashes of the message while
+  // the connectors catalog uses the English text as id, so the same message has different ids.
+  const translationsByMessage = new Map<
     string,
-    { message?: string; context?: string; translations: Record<string, string> }
+    { message: string; context?: string; translations: Record<string, string> }
   >();
   for (const catalog of await getCatalogs(getConfig({ cwd: FRONT_DIR }))) {
     const filename = path.relative(FRONT_DIR, catalog.getFilename(locale));
@@ -83,25 +100,41 @@ async function listConflictingTranslations(locale: string) {
       if (entry.obsolete || !entry.translation) {
         continue;
       }
-      const translations = translationsById.get(id) ?? {
-        message: entry.message,
+      // Messages with an explicit id have no `message`: their `msgid` is the id.
+      const message = entry.message ?? id;
+      const key = `${message}\u0004${entry.context ?? ""}`;
+      const translations = translationsByMessage.get(key) ?? {
+        message,
         context: entry.context,
         translations: {},
       };
       translations.translations[filename] = entry.translation;
-      translationsById.set(id, translations);
+      translationsByMessage.set(key, translations);
     }
   }
-  return [...translationsById.values()].filter(
+  return [...translationsByMessage.values()].filter(
     ({ translations }) => new Set(Object.values(translations)).size > 1
   );
 }
 
+function listDriftedConnectorsLocales(): string[] {
+  return Object.entries(connectorsLocales)
+    .filter(([, value]) => typeof value !== "function")
+    .filter(
+      ([name, value]) =>
+        !isDeepStrictEqual(
+          value,
+          frontLocales[name as keyof typeof frontLocales]
+        )
+    )
+    .map(([name]) => name);
+}
+
 /**
  * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-stale-or-missing
- * The check MUST exit non-zero when running `npm run i18n:extract` leaves any file under `locales/`
- * modified or untracked, when a `.po` file under `locales/` belongs to no catalog of
- * `lingui.config.ts`, or when any non-obsolete message of any catalog of a `CATALOG_LOCALES` entry
+ * The check MUST exit non-zero when running `npm run i18n:extract` leaves any file under one of
+ * `LOCALES_DIRS` modified or untracked, when a `.po` file under one of `LOCALES_DIRS` belongs to no
+ * catalog of `lingui.config.ts`, or when any non-obsolete message of any catalog of a `CATALOG_LOCALES` entry
  * other than `DEFAULT_LOCALE` has an empty translation.
  */
 /**
@@ -110,7 +143,21 @@ async function listConflictingTranslations(locale: string) {
  * `CATALOG_LOCALES` entry hold the same non-obsolete message (same `msgid` and `msgctxt`) with
  * different non-empty translations.
  */
+/**
+ * @cc [owner:Nils-Fedrigo,label:testing] i18n-check-fails-on-locale-drift
+ * The check MUST exit non-zero when an export of `connectors/src/types/locale.ts` that is not a
+ * function differs from the export of the same name in `front/types/locale.ts`.
+ */
 async function main() {
+  const driftedLocales = listDriftedConnectorsLocales();
+  if (driftedLocales.length > 0) {
+    logger.error(
+      { driftedLocales },
+      "`connectors/src/types/locale.ts` differs from `front/types/locale.ts`: copy the front values."
+    );
+    process.exit(1);
+  }
+
   const staleCatalogs = await listStaleCatalogs();
   if (staleCatalogs.length > 0) {
     logger.error(

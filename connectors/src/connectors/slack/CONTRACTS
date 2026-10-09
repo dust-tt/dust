@@ -1,0 +1,8 @@
+@cc [owner:Nils-Fedrigo,label:product] slack-text-extractable
+Translated Slack text MUST be rendered with `i18n._("<English text>", values)` on an `I18n` instance
+returned by `getSlackI18n` (`lib/i18n.ts`), held in a binding named `i18n`, never with the global
+`i18n` of `@lingui/core`. The first argument MUST be a string literal, which is both the message id
+and its English text: `lingui extract` only collects literal ids passed to a callee named `i18n._`.
+Dynamic parts MUST be named ICU placeholders (`{agentName}`) passed in `values`, never concatenated
+or interpolated into the literal. Lingui macros (`@lingui/*/macro`) MUST NOT be imported: connectors
+runs under `tsx`, which does not compile them.
