@@ -1,7 +1,7 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
-use dfs_api::{fdb, serve};
+use dfs_api::{serve, storage::fdb};
 use tokio::{
     net::TcpListener,
     signal::unix::{SignalKind, signal},
@@ -29,6 +29,11 @@ async fn main() -> anyhow::Result<()> {
         .json()
         .init();
 
+    // SAFETY: `boot` runs once, here, and `_network` lives until `main` returns, so the network is
+    // stopped before exit on every path. It is declared before `database`, so it outlives it.
+    // See https://docs.rs/foundationdb/0.11.0/foundationdb/fn.boot.html
+    #[allow(unsafe_code)]
+    let _network = unsafe { foundationdb::boot() };
     let database = fdb::open(&config.fdb_cluster_file)?;
     fdb::ping(&database).await?;
     tracing::info!(cluster_file = %config.fdb_cluster_file, "connected to FoundationDB");

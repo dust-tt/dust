@@ -1,20 +1,8 @@
-use std::sync::OnceLock;
-
 use anyhow::{Context, Result};
-use foundationdb::{Database, api::NetworkAutoStop, options::TransactionOption};
+use foundationdb::{Database, options::TransactionOption};
 
-static NETWORK: OnceLock<NetworkAutoStop> = OnceLock::new();
-
-/// Opens the database named by `cluster_file`, booting the client network on first use.
+/// Opens the database named by `cluster_file`. The caller must have booted the network first.
 pub fn open(cluster_file: &str) -> Result<Database> {
-    NETWORK.get_or_init(|| {
-        // SAFETY: `get_or_init` runs this once per process, and the static keeps the network
-        // alive until the process exits.
-        #[allow(unsafe_code)]
-        unsafe {
-            foundationdb::boot()
-        }
-    });
     Database::from_path(cluster_file)
         .with_context(|| format!("opening cluster file {cluster_file}"))
 }
