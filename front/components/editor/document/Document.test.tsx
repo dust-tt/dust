@@ -570,11 +570,9 @@ describe("Document for a file the editor cannot open", () => {
       `# Plan\n\nSee :comment-start{id=c1}this:comment-end{id=c1}.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Daph |\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
     );
 
-    const alert = await screen.findByRole("alert");
-    expect(alert).toHaveTextContent(
-      "This document is read-only here because editing it could change parts of its content."
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This document can't be edited here yet."
     );
-    expect(alert).toHaveTextContent("The Markdown uses formatting");
     expect(screen.getByRole("heading", { name: "Plan" })).toBeInTheDocument();
     expect(screen.getByRole("cell", { name: "Ship" })).toBeInTheDocument();
     expect(container.textContent).not.toContain("comment-start");

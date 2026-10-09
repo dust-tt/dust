@@ -227,7 +227,6 @@ export const DocumentView = ({
       <DocumentMarkdownPreview
         className={className}
         source={unsupported.source}
-        reason={unsupported.reason}
       />
     );
   }

@@ -9,8 +9,6 @@ import { useMemo } from "react";
 
 interface DocumentMarkdownPreviewProps {
   source: string;
-  /** Why editing is disabled, shown above the document. */
-  reason: string;
   className?: string;
 }
 
@@ -29,7 +27,7 @@ function readableBody(source: string): string | null {
 
 /**
  * @cc [owner:PopDaph,label:product;performance] document-markdown-preview
- * A file the editor cannot open MUST show read-only, under why it cannot be edited: a file the
+ * A file the editor cannot open MUST show read-only, under a note that it cannot be edited: a file the
  * codec reads as its body rendered as Markdown, without front matter, comment anchors or comment
  * threads; any other file as its exact text. A body that fails `checkInputBounds` MUST NOT reach
  * the Markdown renderer, which parses with the same parser, and MUST show as plain text instead.
@@ -37,7 +35,6 @@ function readableBody(source: string): string | null {
  */
 export const DocumentMarkdownPreview = ({
   source,
-  reason,
   className,
 }: DocumentMarkdownPreviewProps) => {
   const preview = useMemo(() => {
@@ -50,15 +47,9 @@ export const DocumentMarkdownPreview = ({
   return (
     <article className={className}>
       <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
-        <div role="alert" className="mb-6 flex flex-col gap-1">
-          <p className="text-muted-foreground copy-sm">
-            <Trans>
-              This document is read-only here because editing it could change
-              parts of its content.
-            </Trans>
-          </p>
-          <p className="text-faint copy-xs">{reason}</p>
-        </div>
+        <p role="alert" className="mb-6 text-muted-foreground copy-sm">
+          <Trans>This document can't be edited here yet.</Trans>
+        </p>
         {preview.rendered ? (
           <Markdown
             content={preview.text}

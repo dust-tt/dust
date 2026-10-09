@@ -176,8 +176,8 @@ msgid "All comments"
 msgstr "All comments"
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
-msgid "This document is read-only here because editing it could change parts of its content."
-msgstr "This document is read-only here because editing it could change parts of its content."
+msgid "This document can't be edited here yet."
+msgstr "This document can't be edited here yet."
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"
