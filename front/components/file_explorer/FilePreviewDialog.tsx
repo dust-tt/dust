@@ -1,4 +1,4 @@
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CollabBadge } from "@app/components/file_explorer/CollabBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -138,8 +138,8 @@ export function FilePreviewDialog({
               <span className="min-w-16 truncate leading-5 text-foreground">
                 {entry?.fileName ?? t`Preview data`}
               </span>
-              {markdown.coEdition && (
-                <CoEditionBadge coEdition={markdown.coEdition} />
+              {markdown.collab && (
+                <CollabBadge collab={markdown.collab} />
               )}
             </div>
           </DialogTitle>

@@ -1,7 +1,7 @@
 import type { DocumentSaveResult } from "@app/components/editor/document";
 import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
-import { useCoEditionPreference } from "@app/components/file_explorer/useCoEditionPreference";
+import { useCollabPreference } from "@app/components/file_explorer/useCollabPreference";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -36,8 +36,8 @@ interface UseMarkdownFileEditorParams {
   processedContent: ProcessedContent | null;
 }
 
-/** Switches an editable Markdown file between the Co-edition editor and the regular one. */
-export interface CoEditionSwitch {
+/** Switches an editable Markdown file between the collab editor and the regular one. */
+export interface CollabSwitch {
   isOn: boolean;
   /** Switching unmounts the open editor, so it waits until its edits are saved. */
   canSwitch: boolean;
@@ -47,7 +47,7 @@ export interface CoEditionSwitch {
 export interface MarkdownFileEditor {
   canEdit: boolean;
   /** Set when the co_edition flag is on and the file can open in the rich editor. */
-  coEdition: CoEditionSwitch | null;
+  collab: CollabSwitch | null;
   content: string | undefined;
   /** True while leaving the file would drop an edit the rich editor has not saved yet. */
   holdsNavigation: boolean;
@@ -90,7 +90,7 @@ export function useMarkdownFileEditor({
   const { mutate } = useSWRConfig();
   const { hasFeature } = useFeatureFlags();
   const collabUrl = useCollabUrl();
-  const { isCoEditionOn, setIsCoEditionOn } = useCoEditionPreference();
+  const { isCollabOn, setIsCollabOn } = useCollabPreference();
 
   const editablePath =
     entryPath && owner && parseCanonicalScopedPath(entryPath)
@@ -98,7 +98,7 @@ export function useMarkdownFileEditor({
       : null;
   const canOpenEditor =
     category === "markdown" && !!editablePath && !isTooLarge && canWrite;
-  const canUseCoEdition = hasFeature("co_edition") && canOpenEditor;
+  const canUseCollab = hasFeature("co_edition") && canOpenEditor;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
@@ -217,7 +217,7 @@ export function useMarkdownFileEditor({
 
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
-    enabled: canUseCoEdition && isCoEditionOn,
+    enabled: canUseCollab && isCollabOn,
     liveUrl: collabUrl,
     entryPath,
     isActive,
@@ -236,11 +236,11 @@ export function useMarkdownFileEditor({
 
   return {
     canEdit,
-    coEdition: canUseCoEdition
+    collab: canUseCollab
       ? {
-          isOn: isCoEditionOn,
+          isOn: isCollabOn,
           canSwitch: !isDirty && !isAnySaving,
-          setIsOn: setIsCoEditionOn,
+          setIsOn: setIsCollabOn,
         }
       : null,
     content:

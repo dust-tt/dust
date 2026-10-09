@@ -138,23 +138,23 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor?.initialContent).toBe("# Notes\n");
   });
 
-  it("offers no Co-edition switch when co_edition is off", () => {
+  it("offers no collab switch when co_edition is off", () => {
     const { result } = renderHook(() => useMarkdownFileEditor(params));
 
-    expect(result.current.coEdition).toBeNull();
+    expect(result.current.collab).toBeNull();
   });
 
-  it("switches to the plain editor and remembers it when Co-edition is switched off", () => {
+  it("switches to the plain editor and remembers it when collab is switched off", () => {
     flags.add("co_edition");
     const { result } = renderHook(() => useMarkdownFileEditor(params));
 
     act(() => {
-      result.current.coEdition?.setIsOn(false);
+      result.current.collab?.setIsOn(false);
     });
 
     expect(result.current.richEditor).toBeNull();
     expect(result.current.canEdit).toBe(true);
-    expect(result.current.coEdition?.isOn).toBe(false);
+    expect(result.current.collab?.isOn).toBe(false);
 
     const reopened = renderHook(() => useMarkdownFileEditor(params));
     expect(reopened.result.current.richEditor).toBeNull();
@@ -164,14 +164,14 @@ describe("useMarkdownFileEditor", () => {
     flags.add("co_edition");
     const { result } = renderHook(() => useMarkdownFileEditor(params));
     act(() => {
-      result.current.coEdition?.setIsOn(false);
+      result.current.collab?.setIsOn(false);
     });
 
     act(() => {
       result.current.setDraft("# Notes\n\nUnsaved");
     });
 
-    expect(result.current.coEdition?.canSwitch).toBe(false);
+    expect(result.current.collab?.canSwitch).toBe(false);
   });
 
   it("opens no editor for writing when the preview text was cut", () => {

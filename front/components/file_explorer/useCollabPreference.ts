@@ -1,10 +1,10 @@
 import { useCallback, useState } from "react";
 
-const LOCAL_STORAGE_KEY = "coEditionEnabled";
+const LOCAL_STORAGE_KEY = "collabEnabled";
 
-/** Whether the user wants the Co-edition editor on Markdown files; on unless switched off. */
-export function useCoEditionPreference() {
-  const [isCoEditionOn, setIsCoEditionOnState] = useState<boolean>(() => {
+/** Whether the user wants the collab editor on Markdown files; on unless switched off. */
+export function useCollabPreference() {
+  const [isCollabOn, setIsCollabOnState] = useState<boolean>(() => {
     if (typeof window === "undefined") {
       return true;
     }
@@ -15,8 +15,8 @@ export function useCoEditionPreference() {
     }
   });
 
-  const setIsCoEditionOn = useCallback((isOn: boolean) => {
-    setIsCoEditionOnState(isOn);
+  const setIsCollabOn = useCallback((isOn: boolean) => {
+    setIsCollabOnState(isOn);
     try {
       localStorage.setItem(LOCAL_STORAGE_KEY, isOn ? "true" : "false");
     } catch {
@@ -24,5 +24,5 @@ export function useCoEditionPreference() {
     }
   }, []);
 
-  return { isCoEditionOn, setIsCoEditionOn };
+  return { isCollabOn, setIsCollabOn };
 }
