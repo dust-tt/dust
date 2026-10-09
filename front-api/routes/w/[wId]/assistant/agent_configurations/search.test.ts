@@ -198,15 +198,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations/search", () => {
     const response = await searchRequest(workspace.sId);
 
     expect(response.status).toBe(200);
-    const { agents } = await response.json();
-    expect(
-      agents.map(
-        ({ sId, userFavorite }: { sId: string; userFavorite: boolean }) => ({
-          sId,
-          userFavorite,
-        })
-      )
-    ).toEqual([
+    expect((await response.json()).agents).toMatchObject([
       { sId: favorite.sId, userFavorite: true },
       { sId: other.sId, userFavorite: false },
     ]);

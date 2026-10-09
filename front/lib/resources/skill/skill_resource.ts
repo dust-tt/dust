@@ -1641,25 +1641,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     context?: SkillFetchContext & SkillHydrationOptions
   ): Promise<SkillResource[]> {
-    const user = auth.user();
-    if (!user) {
+    const favoriteIds = await this.listFavoriteIdsForCurrentUser(auth);
+    if (favoriteIds.length === 0) {
       return [];
     }
 
-    const workspace = auth.getNonNullableWorkspace();
-    const favorites = await SkillUserFavoriteModel.findOne({
-      attributes: ["skillIds"],
-      where: {
-        workspaceId: workspace.id,
-        userId: user.id,
-      },
-    });
-
-    if (!favorites || favorites.skillIds.length === 0) {
-      return [];
-    }
-
-    return this.fetchByIds(auth, favorites.skillIds, {
+    return this.fetchByIds(auth, favoriteIds, {
       ...context,
       onlyActive: true,
     });

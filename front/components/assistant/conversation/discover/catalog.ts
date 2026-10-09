@@ -22,7 +22,6 @@ interface CatalogMetadata {
   authors: readonly string[];
   isDustProvided: boolean;
   activeUsersCount: number | null;
-  isFavorite: boolean | null;
 }
 
 export type CatalogItem = CatalogMetadata &
@@ -30,6 +29,8 @@ export type CatalogItem = CatalogMetadata &
     | { kind: "agent"; agent: RichAgentMentionCandidate }
     | { kind: "skill"; skill: CatalogSkill }
   );
+
+export type SearchCatalogItem = CatalogItem & { isFavorite: boolean };
 
 export type CatalogView = "favorites" | "popular" | "all" | "mine";
 export type CatalogKind = "all" | CatalogItem["kind"];
@@ -111,7 +112,7 @@ export function getItemDescription(item: CatalogItem): string {
 
 export function toSearchAgentCatalogItem(
   agent: DiscoverAgentSearchResult
-): CatalogItem {
+): SearchCatalogItem {
   return {
     kind: "agent",
     agent,
@@ -124,7 +125,7 @@ export function toSearchAgentCatalogItem(
 
 export function toSearchSkillCatalogItem(
   skill: DiscoverSkillSearchResult
-): CatalogItem {
+): SearchCatalogItem {
   return {
     kind: "skill",
     skill,
@@ -156,7 +157,9 @@ export function interleaveCatalogItems<T>(agents: T[], skills: T[]): T[] {
   return items;
 }
 
-export function deduplicateCatalogItems(items: CatalogItem[]): CatalogItem[] {
+export function deduplicateCatalogItems<T extends CatalogItem>(
+  items: T[]
+): T[] {
   const seen = new Set<string>();
   return items.filter((item) => {
     const key = `${item.kind}-${getItemId(item)}`;

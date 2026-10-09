@@ -1,9 +1,11 @@
 import type {
   CatalogItem,
   CatalogQuery,
+  SearchCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   deduplicateCatalogItems,
+  getItemId,
   interleaveCatalogItems,
   toSearchAgentCatalogItem,
   toSearchSkillCatalogItem,
@@ -16,7 +18,7 @@ import { useCallback, useMemo } from "react";
 
 interface CatalogPage {
   query: CatalogQuery;
-  items: CatalogItem[];
+  items: SearchCatalogItem[];
   next: {
     agents: number | null;
     skills: number | null;
@@ -178,6 +180,22 @@ export function useCatalogSearch({
       void setSize(size + 1);
     }
   }, [hasMore, isValidating, setSize, size]);
+  const setItemFavorite = useCallback(
+    (target: CatalogItem, isFavorite: boolean) =>
+      mutate(
+        (pages) =>
+          pages?.map((page) => ({
+            ...page,
+            items: page.items.map((item) =>
+              item.kind === target.kind && getItemId(item) === getItemId(target)
+                ? { ...item, isFavorite }
+                : item
+            ),
+          })),
+        { revalidate: false }
+      ),
+    [mutate]
+  );
 
   return {
     items,
@@ -188,5 +206,6 @@ export function useCatalogSearch({
     hasError: Boolean(error),
     loadMore,
     mutate,
+    setItemFavorite,
   };
 }

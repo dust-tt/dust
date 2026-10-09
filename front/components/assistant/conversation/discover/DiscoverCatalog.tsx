@@ -4,6 +4,7 @@ import type {
   CatalogKind,
   CatalogQuery,
   CatalogView,
+  SearchCatalogItem,
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   buildCatalogQuery,
@@ -17,7 +18,6 @@ import {
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
-import { SkillFavoriteButton } from "@app/components/skills/SkillFavoriteButton";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { formatNumber } from "@app/lib/i18n/format";
@@ -41,6 +41,8 @@ import {
   Pin02,
   SearchInput,
   Spinner,
+  Star01,
+  StarFilled,
   Users01,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
@@ -193,9 +195,9 @@ function SearchCatalog({
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
         owner={owner}
-        onFavoriteChange={async () => {
-          await catalogSearch.mutate();
-        }}
+        onFavoriteChange={(item, isFavorite) =>
+          void catalogSearch.setItemFavorite(item, isFavorite)
+        }
         onDetails={(item) =>
           onDetails(item, () => {
             void catalogSearch.mutate();
@@ -393,7 +395,7 @@ function CatalogFiltersNav({
 }
 
 interface CatalogResultsProps extends CatalogActions {
-  items: CatalogItem[];
+  items: SearchCatalogItem[];
   itemsQuery: CatalogQuery;
   isLoading: boolean;
   isLoadingMore: boolean;
@@ -403,7 +405,7 @@ interface CatalogResultsProps extends CatalogActions {
   canClearFilters: boolean;
   onClearFilters: () => void;
   owner: LightWorkspaceType;
-  onFavoriteChange: () => Promise<void>;
+  onFavoriteChange: (item: CatalogItem, isFavorite: boolean) => void;
 }
 
 function CatalogResults({
@@ -473,14 +475,13 @@ function CatalogResults({
               }}
               onPin={onPin && (() => onPin(item))}
               favoriteToggle={
-                item.isFavorite !== null && (
-                  <CatalogFavoriteToggle
-                    owner={owner}
-                    item={item}
-                    isFavorite={item.isFavorite}
-                    onFavoriteChange={onFavoriteChange}
-                  />
-                )
+                <CatalogFavoriteButton
+                  owner={owner}
+                  item={item}
+                  onFavoriteChange={(isFavorite) =>
+                    onFavoriteChange(item, isFavorite)
+                  }
+                />
               }
               onDetails={() => {
                 trackDiscoverItemDetailsOpen({
@@ -515,93 +516,46 @@ function CatalogResults({
   );
 }
 
-interface CatalogFavoriteToggleProps {
+interface CatalogFavoriteButtonProps {
   owner: LightWorkspaceType;
-  item: CatalogItem;
-  isFavorite: boolean;
-  onFavoriteChange: () => Promise<void>;
+  item: SearchCatalogItem;
+  onFavoriteChange: (isFavorite: boolean) => void;
 }
 
-function CatalogFavoriteToggle({
+function CatalogFavoriteButton({
   owner,
   item,
-  isFavorite,
   onFavoriteChange,
-}: CatalogFavoriteToggleProps) {
-  return (
-    <div className={cn(!isFavorite && REVEAL_ON_ROW_HOVER_CLASSES)}>
-      {item.kind === "agent" ? (
-        <AgentFavoriteButton
-          owner={owner}
-          agentId={item.agent.sId}
-          isFavorite={isFavorite}
-          onFavoriteChange={onFavoriteChange}
-        />
-      ) : (
-        <SkillCatalogFavoriteButton
-          owner={owner}
-          skill={item.skill}
-          isFavorite={isFavorite}
-          onFavoriteChange={onFavoriteChange}
-        />
-      )}
-    </div>
-  );
-}
-
-interface AgentFavoriteButtonProps {
-  owner: LightWorkspaceType;
-  agentId: string;
-  isFavorite: boolean;
-  onFavoriteChange: () => Promise<void>;
-}
-
-function AgentFavoriteButton({
-  owner,
-  agentId,
-  isFavorite,
-  onFavoriteChange,
-}: AgentFavoriteButtonProps) {
+}: CatalogFavoriteButtonProps) {
   const { updateUserFavorite } = useUpdateUserFavorite({
     owner,
-    agentConfigurationId: agentId,
+    agentConfigurationId: item.kind === "agent" ? item.agent.sId : "",
   });
-  return (
-    <SkillFavoriteButton
-      isFavorite={isFavorite}
-      variant="ghost"
-      onFavoriteChange={async (nextIsFavorite) => {
-        if (await updateUserFavorite(nextIsFavorite)) {
-          await onFavoriteChange();
-        }
-      }}
-    />
-  );
-}
-
-interface SkillCatalogFavoriteButtonProps {
-  owner: LightWorkspaceType;
-  skill: Extract<CatalogItem, { kind: "skill" }>["skill"];
-  isFavorite: boolean;
-  onFavoriteChange: () => Promise<void>;
-}
-
-function SkillCatalogFavoriteButton({
-  owner,
-  skill,
-  isFavorite,
-  onFavoriteChange,
-}: SkillCatalogFavoriteButtonProps) {
   const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
+
+  const { t } = useLingui();
+
+  const toggleFavorite = async () => {
+    const isFavorite = !item.isFavorite;
+    onFavoriteChange(isFavorite);
+    const didUpdate =
+      item.kind === "agent"
+        ? await updateUserFavorite(isFavorite)
+        : await updateSkillFavorite(item.skill, isFavorite);
+    if (!didUpdate) {
+      onFavoriteChange(!isFavorite);
+    }
+  };
+
   return (
-    <SkillFavoriteButton
-      isFavorite={isFavorite}
+    <Button
       variant="ghost"
-      onFavoriteChange={async (nextIsFavorite) => {
-        if (await updateSkillFavorite(skill, nextIsFavorite)) {
-          await onFavoriteChange();
-        }
-      }}
+      size="sm"
+      icon={item.isFavorite ? StarFilled : Star01}
+      aria-pressed={item.isFavorite}
+      tooltip={item.isFavorite ? t`Remove from favorites` : t`Add to favorites`}
+      onClick={toggleFavorite}
+      className={cn(!item.isFavorite && REVEAL_ON_ROW_HOVER_CLASSES)}
     />
   );
 }
@@ -636,48 +590,54 @@ export function CatalogRow({
     <div className="group relative flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       <div className="shrink-0 self-start">{avatar}</div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label={useLabel}
-            onClick={onUse}
-            className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
-          >
-            {name}
-          </button>
-        </div>
-        <div className="flex h-5 items-center gap-4 copy-sm">
-          <ItemAuthor item={item} />
-          {activeUsersCount !== null && (
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Icon visual={Users01} size="xs" />
-              <span aria-hidden>{formatNumber(activeUsersCount)}</span>
-              <span className="sr-only">
-                {t`${plural(activeUsersCount, {
-                  one: "# active user",
-                  other: "# active users",
-                })}`}
-              </span>
-            </span>
-          )}
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label={useLabel}
+                onClick={onUse}
+                className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
+              >
+                {name}
+              </button>
+            </div>
+            <div className="flex h-5 items-center gap-4 copy-sm">
+              <ItemAuthor item={item} />
+              {activeUsersCount !== null && (
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Icon visual={Users01} size="xs" />
+                  <span aria-hidden>{formatNumber(activeUsersCount)}</span>
+                  <span className="sr-only">
+                    {t`${plural(activeUsersCount, {
+                      one: "# active user",
+                      other: "# active users",
+                    })}`}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="relative flex shrink-0 items-center gap-1">
+            {onPin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Pin02}
+                tooltip={t`Pin to Featured`}
+                aria-label={t`Pin ${name} to Featured`}
+                onClick={onPin}
+                className={REVEAL_ON_ROW_HOVER_CLASSES}
+              />
+            )}
+            {favoriteToggle}
+          </div>
         </div>
         <p className="copy-sm mt-1 line-clamp-2 text-muted-foreground">
           {getItemDescription(item)}
         </p>
       </div>
-      <div className="relative flex shrink-0 items-center gap-1 self-start">
-        {onPin && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Pin02}
-            tooltip={t`Pin to Featured`}
-            aria-label={t`Pin ${name} to Featured`}
-            onClick={onPin}
-            className={REVEAL_ON_ROW_HOVER_CLASSES}
-          />
-        )}
-        {favoriteToggle}
+      <div className="relative shrink-0 self-start">
         <Button
           variant="outline"
           size="sm"

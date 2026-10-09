@@ -305,15 +305,7 @@ describe("POST /api/w/:wId/skills/search", () => {
     const response = await searchRequest(workspace.sId);
 
     expect(response.status).toBe(200);
-    const { skills } = await response.json();
-    expect(
-      skills.map(
-        ({ sId, isFavorite }: { sId: string; isFavorite: boolean }) => ({
-          sId,
-          isFavorite,
-        })
-      )
-    ).toEqual([
+    expect((await response.json()).skills).toMatchObject([
       { sId: favorite.sId, isFavorite: true },
       { sId: other.sId, isFavorite: false },
     ]);
