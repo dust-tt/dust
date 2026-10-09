@@ -29,7 +29,7 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -112,10 +112,7 @@ function getFileTooLargeDescription(
         msg`File "${fileName}" (${fileSize}) exceeds the audio limit of ${maxFileSize}. Upload a smaller file.`
       );
     default:
-      assertNeverAndIgnore(category);
-      return t(
-        msg`File "${fileName}" (${fileSize}) exceeds the limit of ${maxFileSize}. Upload a smaller file.`
-      );
+      return assertNever(category);
   }
 }
 

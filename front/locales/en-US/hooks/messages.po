@@ -206,10 +206,6 @@ msgid "File \"{fileName}\" ({fileSize}) exceeds the audio limit of {maxFileSize}
 msgstr "File \"{fileName}\" ({fileSize}) exceeds the audio limit of {maxFileSize}. Upload a smaller file."
 
 #: front/hooks/useFileUploaderService.ts
-msgid "File \"{fileName}\" ({fileSize}) exceeds the limit of {maxFileSize}. Upload a smaller file."
-msgstr "File \"{fileName}\" ({fileSize}) exceeds the limit of {maxFileSize}. Upload a smaller file."
-
-#: front/hooks/useFileUploaderService.ts
 msgid "File \"{renamedFileName}\" is not supported ({fileType})."
 msgstr "File \"{renamedFileName}\" is not supported ({fileType})."
 
