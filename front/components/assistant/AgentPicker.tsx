@@ -13,6 +13,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
+  Check,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +25,7 @@ import {
   LoadingBlock,
   Robot,
   StarFilled,
+  XClose,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useState } from "react";
@@ -243,6 +245,20 @@ export function AgentPicker({
                   }`}
                   endComponent={
                     <div className="z-10 flex items-center gap-1">
+                      {isSelected && (
+                        <>
+                          <Icon
+                            visual={Check}
+                            size="sm"
+                            className="group-hover:hidden"
+                          />
+                          <Icon
+                            visual={XClose}
+                            size="sm"
+                            className="hidden group-hover:block"
+                          />
+                        </>
+                      )}
                       {favoriteIds.has(agent.sId) && (
                         <Icon
                           visual={StarFilled}
