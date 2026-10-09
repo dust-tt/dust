@@ -14,7 +14,7 @@ import {
   getManageSkillsRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import { IconButton, LinkExternal01, Spinner } from "@dust-tt/sparkle";
+import { Button, LinkExternal01, Spinner } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 
 export function MCPSkillEnableActionDetails({
@@ -66,7 +66,7 @@ export function MCPSkillEnableActionDetails({
       actionName={actionName}
       headerAction={
         displayContext !== "conversation" && enabledSkillId ? (
-          <IconButton
+          <Button
             href={
               skill?.canAdministrate
                 ? getSkillBuilderRoute(owner.sId, enabledSkillId)
@@ -75,6 +75,7 @@ export function MCPSkillEnableActionDetails({
             icon={LinkExternal01}
             size="xs"
             tooltip={skill?.canAdministrate ? t`Edit skill` : t`View skill`}
+            variant="ghost-secondary"
           />
         ) : undefined
       }
