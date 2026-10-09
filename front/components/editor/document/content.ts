@@ -68,18 +68,68 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
     token.raw?.startsWith("```") ||
     token.codeBlockStyle === "indented");
 
-const hasSupportedMarkdown = (content: string) => {
-  const tokens = documentMarkdown.instance.lexer(content);
-  let supported = true;
+/** A Markdown element the editor cannot keep, and the line where its block starts. */
+interface UnsupportedMarkdown {
+  element: string;
+  line: number;
+}
 
-  documentMarkdown.instance.walkTokens(tokens, (token) => {
-    if (!isSupportedMarkdownToken(token)) {
-      supported = false;
-    }
-  });
-
-  return supported;
+const describeUnsupportedToken = (token: MarkdownToken): string => {
+  if (token.type === "list_item" && token.task) {
+    return "a task list";
+  }
+  switch (token.type) {
+    case "code":
+      return token.raw?.trimStart().startsWith("~")
+        ? "a code block fenced with ~~~"
+        : "an indented code fence";
+    case "table":
+      return "a table";
+    case "html":
+      return "HTML";
+    case "def":
+      return "a reference link definition";
+    default:
+      return `"${token.type}" Markdown`;
+  }
 };
+
+/** The line each top-level block of `content` starts on, `firstLine` being its first line. */
+const blockLines = <T extends { raw?: string }>(
+  blocks: T[],
+  firstLine: number
+) => {
+  let line = firstLine;
+  return blocks.map((block) => {
+    const start = line;
+    line += (block.raw ?? "").split("\n").length - 1;
+    return { block, line: start };
+  });
+};
+
+const findUnsupportedMarkdown = (
+  content: string,
+  firstLine = 1
+): UnsupportedMarkdown | null => {
+  for (const { block, line } of blockLines(
+    documentMarkdown.instance.lexer(content),
+    firstLine
+  )) {
+    const unsupported: MarkdownToken[] = [];
+    documentMarkdown.instance.walkTokens([block], (token) => {
+      if (!isSupportedMarkdownToken(token)) {
+        unsupported.push(token);
+      }
+    });
+    if (unsupported.length > 0) {
+      return { element: describeUnsupportedToken(unsupported[0]), line };
+    }
+  }
+  return null;
+};
+
+const hasSupportedMarkdown = (content: string) =>
+  findUnsupportedMarkdown(content) === null;
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   const content = document.content ?? [];
@@ -193,6 +243,72 @@ const isValidDocument = (document: JSONContent) => {
 };
 
 /**
+ * The line of the first block of `content` that saving `document` would not give back the same,
+ * or null when it cannot tell.
+ */
+const firstChangedBlockLine = (
+  content: string,
+  parsed: JSONContent,
+  document: JSONContent,
+  anchorOrder: string[],
+  firstLine: number
+): number | null => {
+  try {
+    const original = withoutTrailingParagraphs(document);
+    const markdown = serializeWithAnchors(original, anchorOrder, "commented");
+    if (markdown.isErr()) {
+      return null;
+    }
+    const reopened = anchorsToMarks(
+      parseMarkdown(markdown.value),
+      documentSchema
+    );
+    if (reopened.isErr()) {
+      return null;
+    }
+    const before = normalizeTextNodes(documentSchema.nodeFromJSON(original));
+    const after = normalizeTextNodes(
+      documentSchema.nodeFromJSON(
+        withoutTrailingParagraphs(reopened.value.document)
+      )
+    );
+    let changed = -1;
+    for (let i = 0; i < before.childCount && changed === -1; i++) {
+      if (i >= after.childCount || !before.child(i).eq(after.child(i))) {
+        changed = i;
+      }
+    }
+    // Extra blank lines open empty paragraphs, which have no block in the source. Read before the
+    // anchors become marks, where a paragraph holding only an anchor is not empty yet.
+    const sourceBlocks = parsed.content ?? [];
+    const isSourceBlock = (index: number) =>
+      sourceBlocks[index]?.type !== "paragraph" ||
+      (sourceBlocks[index]?.content?.length ?? 0) > 0;
+    if (
+      changed === -1 ||
+      sourceBlocks.length !== before.childCount ||
+      !isSourceBlock(changed)
+    ) {
+      return null;
+    }
+    let sourceBlock = 0;
+    for (let i = 0; i < changed; i++) {
+      if (isSourceBlock(i)) {
+        sourceBlock++;
+      }
+    }
+    const blocks = blockLines(
+      documentMarkdown.instance.lexer(content),
+      firstLine
+    ).filter(({ block }) => block.type !== "space");
+    return blocks[sourceBlock]?.line ?? null;
+  } catch {
+    // The serializer or the parser threw on an unknown node: no line to point at.
+    return null;
+  }
+};
+
+/**
  * @cc [owner:flvndvd,label:product] document-source-preservation
  * Markdown containing unsupported tokens or formatting that cannot survive serialization
  * MUST be rejected before editing. Callers MUST retain the original source for display.
@@ -202,11 +318,21 @@ const isValidDocument = (document: JSONContent) => {
  * Parsed Markdown that does not satisfy the editor schema MUST be rejected, never handed to the
  * editor, so a file the editor misreads still shows as source.
  */
+/**
+ * @cc [owner:PopDaph,label:product] document-refusal-reason
+ * A refusal MUST name the first element the editor cannot keep and the line its block starts on,
+ * or, for Markdown that would not read back the same, the line of the first block that changes
+ * when one can be found, counting lines from `firstLine`. A reason MUST NOT quote the content.
+ */
 export const parseDocumentContent = (
-  content: string
+  content: string,
+  firstLine = 1
 ): Result<MarkedDocument, string> => {
-  if (!hasSupportedMarkdown(content)) {
-    return new Err("The Markdown uses formatting the editor cannot keep.");
+  const unsupported = findUnsupportedMarkdown(content, firstLine);
+  if (unsupported) {
+    return new Err(
+      `The Markdown uses formatting the editor cannot keep: ${unsupported.element} at line ${unsupported.line}.`
+    );
   }
 
   let parsed: JSONContent;
@@ -233,7 +359,18 @@ export const parseDocumentContent = (
       marked.value.anchorOrder
     ).isErr()
   ) {
-    return new Err("The Markdown would not read back the same after editing.");
+    const line = firstChangedBlockLine(
+      content,
+      parsed,
+      marked.value.document,
+      marked.value.anchorOrder,
+      firstLine
+    );
+    return new Err(
+      line === null
+        ? "The Markdown would not read back the same after editing."
+        : `The Markdown would not read back the same after editing, from line ${line}.`
+    );
   }
 
   return marked;

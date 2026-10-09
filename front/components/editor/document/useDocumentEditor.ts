@@ -1,5 +1,6 @@
 import {
   loadDfm,
+  loggableRefusal,
   saveDfm,
 } from "@app/components/editor/document/dfm_persistence";
 import {
@@ -12,6 +13,8 @@ import type {
   DocumentSaveResult,
 } from "@app/components/editor/document/types";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
+import { rand } from "@app/lib/utils/seeded_random";
+import datadogLogger from "@app/logger/datadogLogger";
 import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
@@ -62,6 +65,27 @@ interface UseDocumentEditorProps {
   resolveImageSource: DocumentProps["resolveImageSource"];
 }
 
+// Refusals this page has logged, by reason and a hash of the source: a document mounting again, for
+// a new live connection or a development double effect, is logged once.
+const loggedRefusals = new Set<string>();
+
+/**
+ * @cc [owner:PopDaph,label:product] document-refusal-logged
+ * A document the editor refuses MUST be logged once per page load, with its reason as
+ * `loggableRefusal` gives it and never its content, so refusals can be counted by reason.
+ */
+const logRefusal = (reason: string, source: string) => {
+  const key = `${rand(source)()}:${reason}`;
+  if (loggedRefusals.has(key)) {
+    return;
+  }
+  loggedRefusals.add(key);
+  datadogLogger.warn(
+    { reason: loggableRefusal(reason) },
+    "Document opened read-only"
+  );
+};
+
 /**
  * @cc [owner:PopDaph,label:product] document-draft-preservation
  * Failed saves, including host callback rejections, MUST preserve the draft. Successful saves
@@ -104,6 +128,11 @@ export const useDocumentEditor = ({
   const [unsupported] = useState(() =>
     initial.isErr() ? { reason: initial.error, source: initialContent } : null
   );
+  useEffect(() => {
+    if (unsupported) {
+      logRefusal(unsupported.reason, unsupported.source);
+    }
+  }, [unsupported]);
   const [baseline, setBaseline] = useState<string | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);

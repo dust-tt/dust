@@ -3,6 +3,7 @@ import { documentCommentsPluginKey } from "@app/components/editor/document/Docum
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import {
@@ -582,6 +583,28 @@ describe("Document for a file the editor cannot open", () => {
     expect(container.textContent).not.toContain("comment-start");
     expect(container.textContent).not.toContain("::message");
     expect(container.querySelector(".tiptap")).toBeNull();
+  });
+
+  it("logs a refused document once, with its reason and without its content", async () => {
+    const warn = vi.spyOn(datadogLogger, "warn");
+    const source =
+      "Intro.\n\n| Step | Owner |\n| --- | --- |\n| Ship | Secret |\n";
+
+    // A live document mounts again for each connection.
+    renderRefused(source).unmount();
+    renderRefused(source);
+    await screen.findByRole("alert");
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(
+      {
+        reason:
+          "The Markdown uses formatting the editor cannot keep: a table at line 3.",
+      },
+      "Document opened read-only"
+    );
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("Secret");
+    warn.mockRestore();
   });
 
   it("shows text too heavy to parse as plain text instead of rendering it", async () => {
