@@ -23,6 +23,7 @@ import {
   globalCoalescer,
 } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
+  GenericErrorContent,
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -594,8 +595,27 @@ function toUserFriendlyMessage(error: {
 // gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
-  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  agentLoopArgs: AgentLoopArgs,
   error: { message: string; name: string }
+): Promise<ModelId | null> {
+  return notifyAgentMessageError(authType, agentLoopArgs, {
+    code: "workflow_error",
+    message: toUserFriendlyMessage(error),
+    metadata: {
+      category: "critical_failure",
+      errorTitle: "Agent response generation failed",
+      // Ensure errorName is a string (not an Error object or undefined)
+      errorName: error.name || "UnknownError",
+    },
+  });
+}
+
+// Fails the agent message with `error` without loading its agent configuration. Returns the agent
+// message's model id, or null when the conversation is gone.
+export async function notifyAgentMessageError(
+  authType: AuthenticatorType,
+  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  error: GenericErrorContent
 ): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
@@ -634,17 +654,8 @@ export async function notifyWorkflowError(
     created: Date.now(),
     configurationId: messageRow.agentMessage.agentConfigurationId || "",
     messageId: agentMessageId,
-    error: {
-      code: "workflow_error",
-      message: toUserFriendlyMessage(error),
-      metadata: {
-        category: "critical_failure",
-        errorTitle: "Agent response generation failed",
-        // Ensure errorName is a string (not an Error object or undefined)
-        errorName: error.name || "UnknownError",
-      },
-    },
-    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    error,
+    // These errors occur outside of LLM execution, so use existing runIds from DB
     runIds: messageRow.agentMessage.runIds ?? [],
   };
 

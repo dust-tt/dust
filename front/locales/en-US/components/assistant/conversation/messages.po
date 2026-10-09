@@ -1361,6 +1361,14 @@ msgid "A tool stopped before it finished. Check whether it completed, then retry
 msgstr "A tool stopped before it finished. Check whether it completed, then retry."
 
 #: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "Agent not available"
+msgstr "Agent not available"
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
+msgid "This agent is no longer available to you. Contact your workspace administrator or use another agent."
+msgstr "This agent is no longer available to you. Contact your workspace administrator or use another agent."
+
+#: front/components/assistant/conversation/agentErrorMessages.ts
 msgid "The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel)."
 msgstr "The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel)."
 
