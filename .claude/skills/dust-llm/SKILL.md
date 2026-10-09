@@ -328,7 +328,23 @@ key works and needs no `gcloud auth application-default login`. Add `--bail 1` o
 A Vertex 404 *"Publisher model … was not found or your project does not have access to it"* on
 **every** location (`global` included), while the sibling model works on the same project, means
 the model is not enabled in the project's Model Garden yet, not that the region lacks it. Ask
-for it to be enabled before concluding anything about EU availability.
+for it to be enabled before concluding anything about EU availability — and until its suite
+runs green, keep that endpoint **unregistered**. A deploy-plan step ("enable it, then re-run")
+does not count: registered means routable, and the router will send traffic to a 404.
+
+**When a run fails for this reason, report it with the big warning below — every time, not
+once.** Put it at the top of your reply, before any other result, and repeat it in every later
+summary of the work until that endpoint's suite runs green or the endpoint is unregistered. A
+one-line mention in a results list is how this was missed for Haiku 5.5.
+
+```
+> [!WARNING]
+> ## ⚠️⚠️⚠️ MODEL NOT ENABLED — `{endpoint}` IS NOT LIVE ⚠️⚠️⚠️
+> The live suite for `{endpoint}` fails with a 404 *"Publisher model … not found"* on
+> `{project}`: the model is **not enabled** in that project's Model Garden.
+> **If this endpoint is registered and merged, every workspace routed to it will fail.**
+> Enable the model and re-run the suite, or keep the endpoint unregistered.
+```
 
 ### 4. Sort every failure into one of three buckets
 
@@ -373,6 +389,13 @@ every case passes, then delete the `// TDD SCAFFOLD` comment.
 A config mixin is shared across regions and provider APIs (e.g. `global/anthropic` +
 `eu/agent-platform`), so narrowing it changes all of them. Run each one.
 
+**Every registered endpoint must have its own green run before merge.** A green
+`global/anthropic` run says nothing about `eu/agent-platform` — different project, different
+Model Garden, different access. If an endpoint's suite is red for an access reason (404, 403,
+quota), unregister it from `stream/index.ts`, `setups.ts` and `llms/stream/index.ts` and ship
+the rest; register it in a follow-up once it runs green. (Haiku 5.5 shipped its EU endpoint on
+a known-404 suite with "enable in Model Garden" as a deploy step, and EU workspaces hit it.)
+
 ### 8. Push the new behavior *up* into the family's shared config
 
 Shared configs are **per family** — Opus, Sonnet, Haiku each have their own; a family with a
@@ -402,6 +425,30 @@ unverified; the live run must still happen before merge.
 
 Without `NODE_ENV=test`+`RUN_LLM_TEST`, the test file loads but its cases are skipped; that
 still validates it compiles and is registered.
+
+## Commit gate — not-enabled endpoints (mandatory)
+
+When the user asks to commit (or to open the PR), **before running `git commit`**, check every
+endpoint the change registers (`stream/index.ts`, `setups.ts`, `llms/stream/index.ts`). If any
+of them has a red live run for a not-enabled reason (Vertex 404 *"Publisher model … not
+found"*, 403, model not in Model Garden), or has no live run at all, **stop and call
+`AskUserQuestion`** — never commit on your own judgment, and never treat an earlier "go ahead
+and commit" as confirmation for this. Shape the question like this:
+
+- `header`: `⚠️ NOT LIVE`
+- `question`: start with `⚠️⚠️⚠️ WARNING: {endpoint} IS NOT ENABLED — registering it routes
+  real traffic to a 404. ⚠️⚠️⚠️`, then name the failing endpoint(s), the error and the GCP
+  project, then ask what to do.
+- `options`, in this order:
+  1. `Unregister it and commit (Recommended)`: commit the rest; the endpoint class stays
+     defined but unregistered, and is registered in a follow-up once its suite runs green.
+  2. `Don't commit yet`: wait until the model is enabled and the suite re-run green.
+  3. `Commit it registered anyway`: the user accepts that workspaces routed to it will fail
+     until the model is enabled.
+
+Show the big warning from §3 in the same reply, above the question. If the user picks option 3,
+put the same warning at the top of the PR description's **Risk** section, not just a line in
+**Tests**.
 
 ## Verify (non-live checks that must pass)
 
@@ -537,6 +584,10 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] New behavior pushed up into the family's shared config, with overrides on the *older*
       models rather than a bespoke schema on the new one
 - [ ] Every endpoint sharing the config mixin re-run green (all regions / provider APIs)
+- [ ] Every **registered** endpoint has its own green live run — a red or unrun suite (e.g.
+      Vertex 404, model not enabled) means unregistered, never "fix in the deploy plan"
+- [ ] Commit gate run: any not-enabled endpoint confirmed via `AskUserQuestion` with the big
+      warning before `git commit`
 - [ ] `llms` dust layer: dust mixin + endpoint(s) + `llms/stream/index.ts`
 - [ ] Every `*_eu_agent_platform.ts` added carries `EU_AGENT_PLATFORM_ENDPOINT_FILTER` (NOT
       compile-forced — `{}` silently routes ineligible workspaces to EU hosting and makes the
