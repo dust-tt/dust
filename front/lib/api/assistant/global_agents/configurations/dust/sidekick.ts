@@ -32,6 +32,8 @@ import {
   AUTO_MODEL_CONFIG,
 } from "@app/types/assistant/models/auto";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
+import type { SupportedLocale } from "@app/types/locale";
+import { DEFAULT_LOCALE } from "@app/types/locale";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { getCompanyDataAction } from "./shared";
 
@@ -244,16 +246,35 @@ function buildSidekickInstructions(): string {
   return parts.join("\n\n");
 }
 
-const SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
+// Agent output, not UI text: written per locale here rather than in the Lingui catalogs, which
+// server code cannot import.
+const EN_SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
   "Need a hand?\nTell me what you're building and I can help you write the instructions and get it set up.",
   "Want help setting this up?\nDescribe what your agent should do and I'll help you draft the instructions.",
   "Not sure where to start?\nTell me what you want your agent to do—I'll help you write the instructions and configure it.",
 ];
 
-function getSidekickNewAgentStaticResponse(): string {
-  return SIDEKICK_NEW_AGENT_STATIC_RESPONSES[
-    Math.floor(Math.random() * SIDEKICK_NEW_AGENT_STATIC_RESPONSES.length)
-  ]!;
+const FR_SIDEKICK_NEW_AGENT_STATIC_RESPONSES = [
+  "Besoin d’un coup de main ?\nDites-moi ce que vous construisez et je vous aiderai à rédiger les instructions et à tout configurer.",
+  "Envie d’aide pour le configurer ?\nDécrivez ce que votre agent doit faire et je vous aiderai à rédiger ses instructions.",
+  "Vous ne savez pas par où commencer ?\nDites-moi ce que votre agent doit faire, je vous aiderai à rédiger ses instructions et à le configurer.",
+];
+
+const SIDEKICK_NEW_AGENT_STATIC_RESPONSES_BY_LOCALE: Record<
+  SupportedLocale,
+  string[]
+> = {
+  "en-US": EN_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
+  "en-GB": EN_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
+  "fr-FR": FR_SIDEKICK_NEW_AGENT_STATIC_RESPONSES,
+};
+
+function getSidekickNewAgentStaticResponse(
+  locale: SupportedLocale | null
+): string {
+  const responses =
+    SIDEKICK_NEW_AGENT_STATIC_RESPONSES_BY_LOCALE[locale ?? DEFAULT_LOCALE];
+  return responses[Math.floor(Math.random() * responses.length)]!;
 }
 
 export function _getSidekickGlobalAgent(
@@ -315,7 +336,11 @@ export function _getSidekickGlobalAgent(
         temperature: 0.7,
         reasoningEffort: modelConfiguration.defaultReasoningEffort,
         ...(isNewAgentFromScratchFirstTurn && {
-          metaData: { staticResponse: getSidekickNewAgentStaticResponse() },
+          metaData: {
+            staticResponse: getSidekickNewAgentStaticResponse(
+              sidekickContext?.newAgentFirstReplyLocale ?? null
+            ),
+          },
         }),
       }
     : dummyModelConfiguration;
