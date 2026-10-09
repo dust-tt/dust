@@ -120,7 +120,11 @@ export const SWITCH_CONTRACT_TEMPLATES: SwitchContractTemplate[] = [
     name: "Enterprise pooled — monthly",
     description:
       "Enterprise Pooled billed monthly: monthly workspace seats at 1/12 the yearly rate, pooled credits.",
-    package: { tier: "enterprise", namePattern: "pooled" },
+    package: {
+      tier: "enterprise",
+      namePattern: "pooled",
+      billingAnchor: "contract_start_date",
+    },
     planCode: CREDIT_PRICED_ENTERPRISE_DEFAULT_PLAN_CODE,
     startMode: "select",
     stripeCollectionMethod: "send_invoice",
