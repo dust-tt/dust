@@ -43,6 +43,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import {
   type ComponentType,
   type DragEvent,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -170,19 +171,30 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
-function CreateFilesMenu({
+/**
+ * Everything the workspace can be given a new one of. Exported so the sidebar
+ * can offer the same list from its own, smaller button.
+ */
+export function CreateFilesMenu({
   onCreatePod,
   onCreateFile,
+  trigger,
+  align = "end",
 }: {
   onCreatePod?: () => void;
   onCreateFile?: (fileType: CreatableFileType) => void;
+  /** Stands in for the default primary "Create" button. */
+  trigger?: ReactNode;
+  align?: "start" | "center" | "end";
 }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="primary" icon={Plus} label="Create" isSelect />
+        {trigger ?? (
+          <Button variant="primary" icon={Plus} label="Create" isSelect />
+        )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent align={align}>
         <DropdownMenuItem
           icon={UploadCloud02}
           label="Upload"

@@ -108,7 +108,10 @@ import {
 import { ConversationView } from "../components/ConversationView";
 import type { PodDestination } from "../components/CreateRoomDialog";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
-import type { CreatableFileType } from "../components/FilesBrowser";
+import {
+  type CreatableFileType,
+  CreateFilesMenu,
+} from "../components/FilesBrowser";
 import { GroupConversationView } from "../components/GroupConversationView";
 import { InboxAltView } from "../components/InboxAltView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -2735,16 +2738,20 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                 action={
                   <>
                     {keptItems.length > 0 && (
-                      <Button
-                        size="xs"
-                        icon={Plus}
-                        label="New"
-                        variant="ghost-secondary"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleCreatePodIn(null);
-                        }}
+                      <CreateFilesMenu
+                        align="start"
+                        trigger={
+                          <Button
+                            size="xs"
+                            icon={Plus}
+                            label="New"
+                            variant="ghost-secondary"
+                          />
+                        }
+                        onCreatePod={() => handleCreatePodIn(null)}
+                        onCreateFile={(fileType) =>
+                          handleCreateFile(fileType, null)
+                        }
                       />
                     )}
                     <DropdownMenu>
