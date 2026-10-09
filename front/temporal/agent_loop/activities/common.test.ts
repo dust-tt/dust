@@ -6,6 +6,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type {
   AgentErrorEvent,
   AgentMessageSuccessEvent,
@@ -1365,6 +1366,59 @@ describe("finalizeCancellation", () => {
         error.type === "ModelNotFound"
       );
     });
+  });
+
+  it("marks the agent message as cancelled when its agent can no longer be loaded", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    // The user loses access to the agent: it now requires a space they are not a member of.
+    const restrictedSpace = await SpaceFactory.regular(
+      auth.getNonNullableWorkspace()
+    );
+    await AgentConfigurationModel.update(
+      { requestedSpaceIds: [restrictedSpace.id] },
+      { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
+    );
+
+    await finalizeCancellation(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("cancelled");
   });
 });
 
