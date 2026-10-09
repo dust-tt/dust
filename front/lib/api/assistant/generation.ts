@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import {
   COMMON_UTILITIES_SERVER_NAME,
+  MARK_CONVERSATION_READ_TOOL_NAME,
   SET_CONVERSATION_TITLE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { FILES_SERVER_NAME } from "@app/lib/api/actions/servers/files/metadata";
@@ -158,7 +159,13 @@ function constructToolsSection({
       `\`${getPrefixedToolName(
         COMMON_UTILITIES_SERVER_NAME,
         SET_CONVERSATION_TITLE_TOOL_NAME
-      )}\` tool to set a concise title that reflects the conversation's topic.\n`;
+      )}\` tool to set a concise title that reflects the conversation's topic.\n` +
+      "When clearing unread conversations, finishing inbox triage, or when " +
+      "the user asks to mark a conversation as read or unread, use the " +
+      `\`${getPrefixedToolName(
+        COMMON_UTILITIES_SERVER_NAME,
+        MARK_CONVERSATION_READ_TOOL_NAME
+      )}\` tool.\n`;
   }
 
   const hasAskUserQuestion = serverToolsAndInstructions?.some(

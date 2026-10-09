@@ -158,7 +158,8 @@ export const COMMON_UTILITIES_SERVER = {
   serverInfo: {
     name: COMMON_UTILITIES_SERVER_NAME,
     version: "1.0.0",
-    description: "Utilities for common tasks.",
+    description:
+      "Conversation helpers (titles, mark read), random numbers, timers, and other common utilities.",
     icon: "ActionAtomIcon",
     authorization: null,
     documentationUrl: null,

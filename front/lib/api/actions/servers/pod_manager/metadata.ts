@@ -524,7 +524,8 @@ export const POD_MANAGER_TOOLS_METADATA = [
       "or false to include all that match the time filter. " +
       "When unreadOnly is false, results are paginated: pass pageCursor from nextPageCursor of the previous response to fetch the next page (efficient, one DB page per call). " +
       "When unreadOnly is true, pagination cursors are not used; the tool scans conversations in the window up to the requested limit. " +
-      "By default, only conversation metadata is returned (no message bodies). Set includeMessages=true to load and format all messages (much heavier).",
+      "By default, only conversation metadata is returned (no message bodies). Set includeMessages=true to load and format all messages (much heavier). " +
+      "To mark conversations as read or unread, use common_utilities__mark_conversation_read.",
     schema: {
       unreadOnly: z
         .boolean()
