@@ -13,7 +13,9 @@ import {
   Link01,
   List,
   MessagePlusCircle,
+  Strikethrough01,
   Trash01,
+  Underline01,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -30,35 +32,6 @@ interface DocumentSelectionToolbarProps {
   /** Shows the Comment action before the formatting controls. */
   onComment?: () => void;
 }
-
-interface StrokeIconProps {
-  className?: string;
-}
-
-// Sparkle has no underline or strikethrough icon; drawn to match its stroke set.
-const UnderlineIcon = ({ className }: StrokeIconProps) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-    <path
-      d="M7 4v6a5 5 0 0 0 10 0V4M5 20h14"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const StrikethroughIcon = ({ className }: StrokeIconProps) => (
-  <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
-    <path
-      d="M16.5 7.5C16 5.6 14.2 4.5 12 4.5c-2.8 0-4.5 1.5-4.5 3.4 0 1.6 1 2.7 3.5 3.4M4 12h16M8 16.5c.5 1.9 2.2 3 4.2 3 2.7 0 4.5-1.4 4.5-3.4 0-.8-.2-1.5-.7-2.1"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 const TEXT_STYLES: {
   label: MessageDescriptor;
@@ -233,7 +206,7 @@ export const DocumentSelectionToolbar = ({
       key: "underline",
       label: t`Underline`,
       shortcut: `${modifier}+U`,
-      icon: UnderlineIcon,
+      icon: Underline01,
       active: selection.underline,
       run: () => chain().toggleUnderline().run(),
     },
@@ -241,7 +214,7 @@ export const DocumentSelectionToolbar = ({
       key: "strike",
       label: t`Strikethrough`,
       shortcut: `${modifier}+Shift+S`,
-      icon: StrikethroughIcon,
+      icon: Strikethrough01,
       active: selection.strike,
       run: () => chain().toggleStrike().run(),
     },

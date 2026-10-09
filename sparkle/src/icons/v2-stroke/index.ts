@@ -222,6 +222,7 @@ export { default as StarCircle } from "./StarCircle";
 export { default as StarFilled } from "./StarFilled";
 export { default as Stars02 } from "./Stars02";
 export { default as Stop } from "./Stop";
+export { default as Strikethrough01 } from "./Strikethrough01";
 export { default as Sun } from "./Sun";
 export { default as Sword } from "./Sword";
 export {
@@ -247,6 +248,7 @@ export { default as TShirt } from "./TShirt";
 export { default as Type01 } from "./Type01";
 export { default as Umbrella02 } from "./Umbrella02";
 export { default as Umbrella03 } from "./Umbrella03";
+export { default as Underline01 } from "./Underline01";
 export { default as Upload01 } from "./Upload01";
 export { default as UploadCloud02 } from "./UploadCloud02";
 export { default as User01 } from "./User01";
