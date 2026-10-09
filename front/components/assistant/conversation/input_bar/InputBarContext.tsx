@@ -86,15 +86,19 @@ type CaptureActions = {
 
 export const InputBarContext = createContext<{
   shouldFocusInput: boolean;
-  getAndClearSelectedAgent: () => RichAgentMention | null;
+  // One-shot agent mention for the input bar; InputBar clears after consuming.
+  selectedAgent: RichAgentMention | null;
   setShouldFocusInput: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  // Clears without touching shouldFocusInput (unlike setSelectedAgent(null)).
+  clearSelectedAgent: () => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   // When true, new-conversation default agent resolution is skipped (e.g. ?user=).
   suppressDefaultAgent: boolean;
   setSuppressDefaultAgent: (suppress: boolean) => void;
-  getAndClearPendingInputText: () => PendingInputText | null;
+  // One-shot text for the input bar; InputBar clears after consuming.
+  pendingInputText: PendingInputText | null;
   setPendingInputText: (
     text: string | null,
     options?: { replace?: boolean; typedSuffix?: string }
@@ -119,14 +123,15 @@ export const InputBarContext = createContext<{
   onBeforeSubmit?: () => void;
 }>({
   shouldFocusInput: false,
-  getAndClearSelectedAgent: () => null,
+  selectedAgent: null,
   setShouldFocusInput: () => {},
   setSelectedAgent: () => {},
+  clearSelectedAgent: () => {},
   selectedSingleAgent: null,
   setSelectedSingleAgent: () => {},
   suppressDefaultAgent: false,
   setSuppressDefaultAgent: () => {},
-  getAndClearPendingInputText: () => null,
+  pendingInputText: null,
   setPendingInputText: () => {},
   pendingSkill: null,
   setPendingSkill: () => {},
@@ -250,18 +255,9 @@ export function InputBarContextProvider({
     [setSelectedAgent]
   );
 
-  // Immediately clear the selected agent and return the previous selected agent to avoid sticky agent mentions.
-  const getAndClearSelectedAgent = useCallback(() => {
-    const previousSelectedAgent = selectedAgent;
+  const clearSelectedAgent = useCallback(() => {
     setSelectedAgent(null);
-    return previousSelectedAgent;
-  }, [selectedAgent, setSelectedAgent]);
-
-  const getAndClearPendingInputText = useCallback(() => {
-    const pending = pendingInputText;
-    setPendingInputTextState(null);
-    return pending;
-  }, [pendingInputText]);
+  }, []);
 
   const setPendingInputText = useCallback(
     (
@@ -285,13 +281,14 @@ export function InputBarContextProvider({
     () => ({
       shouldFocusInput,
       setShouldFocusInput,
-      getAndClearSelectedAgent,
+      selectedAgent,
       setSelectedAgent: setSelectedAgentOuter,
+      clearSelectedAgent,
       selectedSingleAgent,
       setSelectedSingleAgent,
       suppressDefaultAgent,
       setSuppressDefaultAgent,
-      getAndClearPendingInputText,
+      pendingInputText,
       setPendingInputText,
       pendingSkill,
       setPendingSkill,
@@ -308,12 +305,13 @@ export function InputBarContextProvider({
     }),
     [
       shouldFocusInput,
-      getAndClearSelectedAgent,
+      selectedAgent,
       setSelectedAgentOuter,
+      clearSelectedAgent,
       selectedSingleAgent,
       setSelectedSingleAgent,
       suppressDefaultAgent,
-      getAndClearPendingInputText,
+      pendingInputText,
       setPendingInputText,
       pendingSkill,
       peekPendingFirstMessage,

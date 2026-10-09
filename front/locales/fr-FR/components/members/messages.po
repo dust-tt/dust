@@ -180,6 +180,14 @@ msgstr "Rechercher des membres…"
 msgid "Loading users..."
 msgstr "Chargement des utilisateurs…"
 
+#: front/components/members/MemberSelectionTable.tsx
+msgid "This group has no members"
+msgstr "Ce groupe n’a pas de membres"
+
+#: front/components/members/MemberSelectionTable.tsx
+msgid "Add members to the group by searching for them above."
+msgstr "Ajoutez des membres au groupe en les recherchant ci-dessus."
+
 #: front/components/members/MembersList.tsx
 msgid "Active"
 msgstr "Actif"

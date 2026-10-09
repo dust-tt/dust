@@ -152,9 +152,11 @@ export const InputBar = React.memo(function InputBar({
   const modelSelectionRef = useRef<ModelSelectionType | undefined>(undefined);
 
   const {
-    getAndClearSelectedAgent,
+    selectedAgent,
+    clearSelectedAgent,
     selectedSingleAgent,
-    getAndClearPendingInputText,
+    pendingInputText,
+    setPendingInputText,
     fileUploaderService,
     isLoadingGoTemplate,
     onBeforeSubmit,
@@ -190,14 +192,26 @@ export const InputBar = React.memo(function InputBar({
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
 
-  const selectedAgent = useMemo(
-    () => getAndClearSelectedAgent(),
-    [getAndClearSelectedAgent]
-  );
-  const pendingInputText = useMemo(
-    () => getAndClearPendingInputText(),
-    [getAndClearPendingInputText]
-  );
+  // Consume one-shot context values after children have observed them, so they
+  // do not stick across subsequent renders / navigations. Cleanup also clears
+  // on unmount so a stale one-shot cannot leak to a later InputBar mount.
+  useEffect(() => {
+    if (selectedAgent) {
+      clearSelectedAgent();
+    }
+    return () => {
+      clearSelectedAgent();
+    };
+  }, [selectedAgent, clearSelectedAgent]);
+
+  useEffect(() => {
+    if (pendingInputText) {
+      setPendingInputText(null);
+    }
+    return () => {
+      setPendingInputText(null);
+    };
+  }, [pendingInputText, setPendingInputText]);
 
   const { generatingMessages, getConversationGeneratingMessages } =
     useGenerationContext();
