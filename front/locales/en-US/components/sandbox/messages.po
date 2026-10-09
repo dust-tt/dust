@@ -219,16 +219,16 @@ msgid "HTTPS secrets require at least one allowed domain."
 msgstr "HTTPS secrets require at least one allowed domain."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts."
-msgstr "Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts."
+msgid "Environment variables for every Computer in this workspace. Values cannot be viewed after saving. Changes apply to new Computers."
+msgstr "Environment variables for every Computer in this workspace. Values cannot be viewed after saving. Changes apply to new Computers."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts."
-msgstr "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts."
+msgid "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers."
+msgstr "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables."
-msgstr "Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables."
+msgid "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers. Workspace admins manage these variables."
+msgstr "Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers. Workspace admins manage these variables."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "Encrypted; injected only into outbound HTTPS requests to allowlisted domains."

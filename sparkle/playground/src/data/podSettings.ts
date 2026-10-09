@@ -103,7 +103,7 @@ export const MOCK_POD_GROUPS: PodGroup[] = [
   },
 ];
 
-// Env vars mounted on the Pod's Computer. `config` values are plain env vars;
+// Env vars for every Computer running in the Pod. `config` values are plain env vars;
 // `https_secret` values are only injected into requests to their allowed
 // domains and can never be read back.
 export type PodEnvVarKind = "config" | "https_secret";

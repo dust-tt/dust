@@ -112,9 +112,9 @@ export function PodSettingsAdvancedTab({
       <div className="flex w-full flex-col gap-4">
         <div className="heading-lg">Network</div>
         <p className="text-sm text-muted-foreground">
-          Domains this Pod's Computer can reach, in addition to those allowed
-          across your workspace. Changes reach running Computers within a
-          minute.
+          Computers in this Pod can reach the following domains, in addition to
+          the workspace allowlist. Changes apply to every Computer running in
+          the Pod within about a minute.
         </p>
         <form
           className="flex flex-col gap-3 sm:flex-row sm:items-start"
