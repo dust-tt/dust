@@ -92,8 +92,8 @@ msgid "Ask anything"
 msgstr "Ask anything"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type @ to call on an agent"
-msgstr "Type @ to call on an agent"
+msgid "Type @ to call an agent"
+msgstr "Type @ to call an agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Type @ to loop in a teammate"

@@ -183,7 +183,7 @@ function getPlaceholderHints({
 }): MessageDescriptor[] {
   const hints = [INPUT_BAR_DEFAULT_PLACEHOLDER, msg`Ask anything`];
   if (!disableAgentMentions) {
-    hints.push(msg`Type @ to call on an agent`);
+    hints.push(msg`Type @ to call an agent`);
   }
   if (!disableUserMentions) {
     hints.push(msg`Type @ to loop in a teammate`);
