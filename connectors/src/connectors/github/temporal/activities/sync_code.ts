@@ -230,6 +230,7 @@ export async function githubExtractToGcsActivity({
       {
         repoId,
         connectorId,
+        activityContext: Context.current(),
       },
       logger
     );

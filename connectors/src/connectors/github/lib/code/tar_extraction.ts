@@ -17,10 +17,12 @@ import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import type { Context } from "@temporalio/activity";
 import assert from "assert";
 import gunzip from "gunzip-maybe";
 import PQueue from "p-queue";
 import type { Readable } from "stream";
+import { addAbortSignal } from "stream";
 import { pipeline } from "stream/promises";
 import * as tar from "tar-stream";
 
@@ -95,6 +97,9 @@ export interface TarballStreamProvider {
 interface TarExtractionOptions {
   repoId: number;
   connectorId: number;
+  // Passed explicitly rather than read with `Context.current()` in stream callbacks, which may
+  // not run in the activity's async context.
+  activityContext: Context;
 }
 
 interface TarExtractionResult {
@@ -193,6 +198,19 @@ function parseGitHubPath(
 }
 
 /**
+ * @cc [owner:philipperolet,label:performance] stream-bound-to-activity
+ * Each chunk delivered by `stream` MUST trigger an activity heartbeat, and no heartbeat may come
+ * from elsewhere (e.g. a timer), so that a stalled stream lets the activity's heartbeatTimeout
+ * fire. When Temporal cancels the activity, including after one of its timeouts fired, `stream`
+ * MUST be destroyed so that the dropped attempt stops instead of running to the end.
+ */
+function bindStreamToActivity(stream: Readable, activityContext: Context) {
+  // Calling heartbeat on every chunk is cheap: the Temporal SDK throttles what it sends.
+  stream.on("data", () => activityContext.heartbeat());
+  addAbortSignal(activityContext.cancellationSignal, stream);
+}
+
+/**
  * Spool the GitHub tarball into a single GCS object at full network speed.
  *
  * Extraction (per-file GCS uploads) is orders of magnitude slower than the raw download.
@@ -205,6 +223,7 @@ async function spoolTarballToGCS(
   tarballStreamProvider: TarballStreamProvider,
   gcsManager: GCSRepositoryManager,
   tarballGcsPath: string,
+  activityContext: Context,
   childLogger: Logger
 ): Promise<Result<{ bytesSpooled: number }, TarballNotFoundError>> {
   let lastError: unknown;
@@ -224,6 +243,7 @@ async function spoolTarballToGCS(
 
       const { stream: tarballStream } = streamResult.value;
       contentLength = streamResult.value.contentLength;
+      bindStreamToActivity(tarballStream, activityContext);
 
       // Track bytes received for content-length validation.
       // Use Buffer.byteLength for strings to handle multi-byte characters correctly.
@@ -296,7 +316,7 @@ async function spoolTarballToGCS(
 
 export async function extractGitHubTarballToGCS(
   tarballStreamProvider: TarballStreamProvider,
-  { repoId, connectorId }: TarExtractionOptions,
+  { repoId, connectorId, activityContext }: TarExtractionOptions,
   logger: Logger
 ): Promise<
   Result<
@@ -327,6 +347,7 @@ export async function extractGitHubTarballToGCS(
     tarballStreamProvider,
     gcsManager,
     tarballGcsPath,
+    activityContext,
     childLogger
   );
 
@@ -494,6 +515,7 @@ export async function extractGitHubTarballToGCS(
     try {
       // Get a fresh read stream over the spooled tarball for this attempt.
       const tarballStream = gcsManager.createTarballReadStream(tarballGcsPath);
+      bindStreamToActivity(tarballStream, activityContext);
 
       // Track bytes received to validate against the spooled size.
       tarballStream.on("data", (chunk: Buffer | string) => {

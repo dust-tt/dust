@@ -65,10 +65,13 @@ const {
   startToCloseTimeout: "30 minute",
 });
 
+// Unpacking a large repository can take hours on a busy worker. The heartbeat timeout catches
+// stalled or lost attempts, so the overall timeout can stay generous.
 const { githubExtractToGcsActivity } = proxyActivities<
   typeof activitiesSyncCode
 >({
-  startToCloseTimeout: "120 minute",
+  startToCloseTimeout: "300 minute",
+  heartbeatTimeout: "20 minute",
 });
 
 const MAX_CONCURRENT_REPO_SYNC_WORKFLOWS = 3;
