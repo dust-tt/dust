@@ -3,7 +3,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { usePokeSlackWorkflows } from "@app/poke/swr/slack_workflows";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import type { LightWorkspaceType } from "@app/types/user";
-import { IconButton, Trash01 } from "@dust-tt/sparkle";
+import { Button, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 type SlackWorkflowRow = {
@@ -34,10 +34,10 @@ function makeColumnsForSlackWorkflows(
     {
       id: "actions",
       cell: ({ row }) => (
-        <IconButton
+        <Button
           icon={Trash01}
           size="xs"
-          variant="warning"
+          variant="warning-ghost"
           onClick={async () => {
             await onRevoke(row.original.botName);
           }}

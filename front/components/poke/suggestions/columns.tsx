@@ -3,7 +3,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { clientFetch } from "@app/lib/egress/client";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Chip, IconButton, Trash01 } from "@dust-tt/sparkle";
+import { Button, Chip, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 const MAX_ANALYSIS_LENGTH = 80;
@@ -192,10 +192,10 @@ export function makeColumnsForSuggestions(
       cell: ({ row }) => {
         const suggestion = row.original;
         return (
-          <IconButton
+          <Button
             icon={Trash01}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             onClick={async () => {
               await deleteSuggestion(
                 owner,
