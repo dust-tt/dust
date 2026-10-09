@@ -59,6 +59,7 @@ const user = {
   lastName: "Seat",
   fullName: "Free Seat",
   image: null,
+  pronouns: null,
   lastLoginAt: null,
   workspaces: [owner],
   seatType: "free",

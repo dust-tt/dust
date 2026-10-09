@@ -1609,6 +1609,7 @@ export class Authenticator {
       lastName: rest.length > 0 ? rest.join(" ") : null,
       fullName: displayName,
       image: null,
+      pronouns: null,
       lastLoginAt: null,
     };
   }

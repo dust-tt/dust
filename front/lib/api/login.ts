@@ -147,6 +147,7 @@ export async function performLogin(
       firstName: user.firstName,
       lastName: user.lastName,
       image: user.imageUrl,
+      pronouns: user.pronouns,
       fullName: user.name,
       lastLoginAt: user.lastLoginAt?.getTime() ?? null,
     },

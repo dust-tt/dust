@@ -20,6 +20,7 @@ describe("getConversationDisplayTitle", () => {
       lastName: null,
       fullName: "Fork User",
       image: null,
+      pronouns: null,
       lastLoginAt: null,
     },
   };

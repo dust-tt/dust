@@ -193,6 +193,7 @@ export const UserSchema = z.object({
   lastName: z.string().nullable(),
   fullName: z.string(),
   image: z.string().nullable(),
+  pronouns: z.string().nullable(),
   lastLoginAt: z.number().nullable(),
 });
 

@@ -48,6 +48,11 @@
  *           type: string
  *           description: URL of the user's profile image
  *           example: "https://example.com/profile/johndoe.jpg"
+ *         pronouns:
+ *           type: string
+ *           nullable: true
+ *           description: User's pronouns, as entered by the user
+ *           example: "they/them"
  *     Workspace:
  *       type: object
  *       required:
