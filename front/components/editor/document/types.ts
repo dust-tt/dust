@@ -18,8 +18,8 @@ export interface DocumentProps {
   /** Optional container for the comments' tooltips. Defaults to the enclosing sheet or body. */
   mountPortalContainer?: HTMLElement;
   /**
-   * Where the comments button and the live status show, such as the host's header bar. Without
-   * it they show above the document.
+   * Where the save status, the live status and the comments button show, such as the host's
+   * header bar. Without it they show above the document.
    */
   headerControlsContainer?: HTMLElement | null;
   readOnly?: boolean;

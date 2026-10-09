@@ -27,7 +27,6 @@ import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useRef } from "react";
-import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
 const LiveDocument = lazy(
@@ -236,39 +235,22 @@ export const DocumentView = ({
     );
   }
 
-  const headerControls = (
-    <>
-      {liveView && <DocumentLiveStatus status={liveView.status} />}
-      {showCommentsToggle && (
-        <DocumentCommentsToggle
-          listId={listId}
-          comments={comments}
-          size={headerControlsContainer ? "sm" : "xs"}
-        />
-      )}
-    </>
-  );
-
   return (
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
-      {headerControlsContainer &&
-        createPortal(
-          <div className="flex items-center gap-2.5 text-muted-foreground copy-xs">
-            {headerControls}
-          </div>,
-          headerControlsContainer
-        )}
       <div
         ref={contentRef}
         className={cn(
           "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-          editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+          (editable || showCommentsToggle) && !headerControlsContainer
+            ? "pt-5 @sm:pt-8"
+            : "pt-8 @sm:pt-18"
         )}
       >
         <DocumentStatus
+          controlsContainer={headerControlsContainer}
           editable={canEditFile}
           dirty={dirty}
           saving={saving}
@@ -276,7 +258,14 @@ export const DocumentView = ({
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
         >
-          {!headerControlsContainer && headerControls}
+          {liveView && <DocumentLiveStatus status={liveView.status} />}
+          {showCommentsToggle && (
+            <DocumentCommentsToggle
+              listId={listId}
+              comments={comments}
+              size={headerControlsContainer ? "sm" : "xs"}
+            />
+          )}
         </DocumentStatus>
         {editor && showCommentsToggle && (
           <DocumentCommentsList

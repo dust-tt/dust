@@ -4,6 +4,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 interface DocumentSaveStatusProps {
   dirty: boolean;
@@ -158,6 +159,8 @@ export const DocumentSaveError = ({ error }: DocumentSaveErrorProps) => (
 );
 
 interface DocumentStatusProps {
+  /** The host's header bar, where the status shows instead of above the document. */
+  controlsContainer?: HTMLElement | null;
   editable: boolean;
   dirty: boolean;
   saving: boolean;
@@ -167,8 +170,18 @@ interface DocumentStatusProps {
   children?: ReactNode;
 }
 
-/** The status row with the save status and the host's controls, and the save error under it. */
+/**
+ * The status row with the save status and the host's controls, in the host's header bar when
+ * given, and the save error under it.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-status-placement
+ * With a controls container, the save status with its Retry, the live status and the comments
+ * button MUST show in it, and none of them above the document; the save error's full reason MUST
+ * still show above the document. Without one, they MUST show in a row above the document.
+ */
 export const DocumentStatus = ({
+  controlsContainer,
   editable,
   dirty,
   saving,
@@ -187,20 +200,32 @@ export const DocumentStatus = ({
   if (!showSaveStatus && !children) {
     return null;
   }
+  const controls = (
+    <>
+      {showSaveStatus && (
+        <DocumentSaveStatus
+          dirty={dirty}
+          saving={saving}
+          error={saveError}
+          onRetry={editable ? onRetry : undefined}
+          autosaveDebounceMs={autosaveDebounceMs}
+        />
+      )}
+      {children}
+    </>
+  );
   return (
     <>
-      <StatusRow>
-        {showSaveStatus && (
-          <DocumentSaveStatus
-            dirty={dirty}
-            saving={saving}
-            error={saveError}
-            onRetry={editable ? onRetry : undefined}
-            autosaveDebounceMs={autosaveDebounceMs}
-          />
-        )}
-        {children}
-      </StatusRow>
+      {controlsContainer ? (
+        createPortal(
+          <div className="flex items-center gap-2.5 text-muted-foreground copy-xs">
+            {controls}
+          </div>,
+          controlsContainer
+        )
+      ) : (
+        <StatusRow>{controls}</StatusRow>
+      )}
       {showSaveStatus && saveError && <DocumentSaveError error={saveError} />}
     </>
   );

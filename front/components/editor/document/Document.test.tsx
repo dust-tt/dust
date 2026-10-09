@@ -505,6 +505,26 @@ describe("Document comments", () => {
     container.remove();
   });
 
+  it("shows the save status in the host's container when given one, not above the document", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <Document
+        initialContent={SOURCE}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        headerControlsContainer={container}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    expect(
+      (await within(container).findByRole("status")).textContent
+    ).toContain("Saved");
+    expect(within(documentRoot).queryByRole("status")).toBeNull();
+    container.remove();
+  });
+
   it("renders the host's avatars only for threads on screen", async () => {
     render(
       <Document
