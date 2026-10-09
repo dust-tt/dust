@@ -1,0 +1,82 @@
+name: Test summary
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: test-summary-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  test-summary:
+    # Fork PRs get a read-only token and cannot comment.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      # Comments stay in the order they were created, so claim a spot near the PR description
+      # before the slower steps run and other bots get to comment.
+      - name: Post a placeholder comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const marker = '<!-- test-summary -->';
+            const params = { ...context.repo, issue_number: context.payload.pull_request.number };
+            const comments = await github.paginate(github.rest.issues.listComments, params);
+            const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.startsWith(marker));
+            if (!existing) {
+              await github.rest.issues.createComment({ ...params, body: `${marker}\n### 🧪 Test recap\n\n_Computing…_` });
+            }
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24.16.0
+          package-manager-cache: false
+
+      # Only the TypeScript parser is needed, so skip the full workspace install.
+      - name: Install TypeScript
+        run: npm install --no-save --prefix .github/actions/test-summary typescript@5.9.3
+
+      - name: Summarize tests
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PULL_URL: ${{ github.event.pull_request.html_url }}
+        run: node .github/actions/test-summary/test-summary.ts "$BASE_SHA" "$HEAD_SHA" "$PULL_URL" > "$RUNNER_TEMP/test-summary.md"
+
+      - name: Post or update the summary comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          SUMMARY_PATH: ${{ runner.temp }}/test-summary.md
+        with:
+          script: |
+            const { readFileSync } = require('node:fs');
+            const marker = '<!-- test-summary -->';
+            const summary = readFileSync(process.env.SUMMARY_PATH, 'utf8');
+            // GitHub rejects comments longer than 65536 characters.
+            const limit = 60000;
+            const truncated = summary.length > limit
+              ? `${summary.slice(0, limit)}\n\n_Summary truncated: run the script locally for the full list._`
+              : summary;
+            const body = summary.startsWith(marker)
+              ? truncated
+              : `${marker}\n### 🧪 Test recap\n\nNo tests related to this PR's changes.`;
+
+            const params = { ...context.repo, issue_number: context.payload.pull_request.number };
+            const comments = await github.paginate(github.rest.issues.listComments, params);
+            const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.startsWith(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            } else if (summary.startsWith(marker)) {
+              await github.rest.issues.createComment({ ...params, body });
+            }

@@ -514,3 +514,13 @@ try {
   return new Err(normalizeError(err));
 }
 ```
+
+@cc [owner:avervaet,label:testing] test-title-matches-body
+Each test MUST check the behavior its title states: its assertions MUST fail if that behavior
+breaks. A test MUST NOT only restate the implementation's output, assert solely on mocks it
+configured itself, or pass regardless of the code under test. Every claim in the title (e.g.
+"without updating", "before exchanging") MUST be asserted.
+
+Reviewer: For each added or changed test, name a concrete implementation change that breaks the
+titled behavior and check that the test would fail. If it would still pass, or a title claim is not
+asserted, report it.
