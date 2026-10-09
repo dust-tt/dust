@@ -123,9 +123,9 @@ export const DocumentOrTableDeleteDialog = ({
   const deleteConfirmationMessage =
     contentNodeType && contentNodeTitle
       ? t`${select(contentNodeType, {
-          document: `Are you sure you want to delete document '${contentNodeTitle}'?`,
-          table: `Are you sure you want to delete table '${contentNodeTitle}'?`,
-          other: `Are you sure you want to delete folder '${contentNodeTitle}'?`,
+          document: `Are you sure you want to delete document “${contentNodeTitle}”?`,
+          table: `Are you sure you want to delete table “${contentNodeTitle}”?`,
+          other: `Are you sure you want to delete folder “${contentNodeTitle}”?`,
         })}`
       : t`Are you sure you want to delete?`;
 

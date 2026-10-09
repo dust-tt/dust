@@ -1,4 +1,4 @@
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type {
   MaxAwuCreditsTimeframeType,
   MaxMessagesTimeframeType,
@@ -68,28 +68,49 @@ interface FairUsageModalProps {
 }
 
 function getCreditsLimitLine(
-  credits: string,
+  limit: number,
   timeframe: MaxAwuCreditsTimeframeType,
   t: Translate
 ): string {
+  const credits = formatCredits(limit);
+  const displayedLimit = roundCredits(limit);
   switch (timeframe) {
     case "day":
       return t(
-        msg`On your current plan, that is **${credits} credits per day**.`
+        msg`On your current plan, that is **${plural(displayedLimit, {
+          one: `${credits} credit per day`,
+          other: `${credits} credits per day`,
+        })}**.`
       );
     case "week":
       return t(
-        msg`On your current plan, that is **${credits} credits per week**.`
+        msg`On your current plan, that is **${plural(displayedLimit, {
+          one: `${credits} credit per week`,
+          other: `${credits} credits per week`,
+        })}**.`
       );
     case "month":
       return t(
-        msg`On your current plan, that is **${credits} credits per month**.`
+        msg`On your current plan, that is **${plural(displayedLimit, {
+          one: `${credits} credit per month`,
+          other: `${credits} credits per month`,
+        })}**.`
       );
     case "lifetime":
-      return t(msg`On your current plan, that is **${credits} credits**.`);
+      return t(
+        msg`On your current plan, that is **${plural(displayedLimit, {
+          one: `${credits} credit`,
+          other: `${credits} credits`,
+        })}**.`
+      );
     default:
       assertNeverAndIgnore(timeframe);
-      return t(msg`On your current plan, that is **${credits} credits**.`);
+      return t(
+        msg`On your current plan, that is **${plural(displayedLimit, {
+          one: `${credits} credit`,
+          other: `${credits} credits`,
+        })}**.`
+      );
   }
 }
 
@@ -128,11 +149,7 @@ function getFairUseContent(t: Translate, seatLimit?: FairUseSeatLimit): string {
   let limitLine: string;
   switch (seatLimit?.kind) {
     case "credits":
-      limitLine = getCreditsLimitLine(
-        formatCredits(seatLimit.limit),
-        seatLimit.timeframe,
-        t
-      );
+      limitLine = getCreditsLimitLine(seatLimit.limit, seatLimit.timeframe, t);
       break;
     case "messages":
       limitLine = getMessagesLimitLine(seatLimit.limit, seatLimit.timeframe, t);

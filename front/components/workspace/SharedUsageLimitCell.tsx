@@ -3,9 +3,10 @@ import {
   MUTED_BAR_CLASSES,
   OVER_POOL_LIMIT_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, roundCredits } from "@app/lib/client/credits";
 import type { SharedUsageLimitWithUsage } from "@app/types/api/groups/shared_usage_limit";
 import { ProgressBar } from "@dust-tt/sparkle";
+import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 
 interface SharedUsageLimitCellProps {
@@ -30,6 +31,7 @@ export function SharedUsageLimitCell({ usage }: SharedUsageLimitCellProps) {
         : 0;
   const usedLabel = formatCredits(usedAwuCredits);
   const limitLabel = formatCredits(limitAwuCredits);
+  const limitCreditCount = roundCredits(limitAwuCredits);
 
   return (
     <div className="flex w-full flex-col gap-1">
@@ -41,7 +43,10 @@ export function SharedUsageLimitCell({ usage }: SharedUsageLimitCellProps) {
         <ProgressBar
           aria-label={t`Group budget usage`}
           aria-valuenow={percentage}
-          aria-valuetext={t`${usedLabel} of ${limitLabel} credits used`}
+          aria-valuetext={t`${plural(limitCreditCount, {
+            one: `${usedLabel} of ${limitLabel} credit used`,
+            other: `${usedLabel} of ${limitLabel} credits used`,
+          })}`}
           className="h-1 w-full gap-px"
           variant="transparent"
           values={[

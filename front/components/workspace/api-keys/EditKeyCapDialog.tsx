@@ -3,6 +3,7 @@ import {
   dollarsToMicroUsd,
   microUsdToDollarsString,
   getMonthlyCapDollarsSchema,
+  parseDollarsString,
 } from "@app/components/workspace/api-keys/utils";
 import type { KeyType } from "@app/types/key";
 import {
@@ -63,8 +64,7 @@ export function EditKeyCapDialog({
   }, [keyData, reset]);
 
   const onSubmit = async (data: FormValues) => {
-    const dollars =
-      data.capValueDollars === "" ? null : parseFloat(data.capValueDollars);
+    const dollars = parseDollarsString(data.capValueDollars);
     await onSave(dollarsToMicroUsd(dollars));
   };
 

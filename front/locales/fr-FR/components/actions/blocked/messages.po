@@ -167,8 +167,8 @@ msgid "Allow agent to update Pod members?"
 msgstr "Autoriser l’agent à modifier les membres du Pod ?"
 
 #: front/components/actions/blocked/toolValidationLabels.ts
-msgid "Allow agent to add {addCount} and remove {removeCount} Pod users?"
-msgstr "Autoriser l’agent à ajouter {addCount} et retirer {removeCount} utilisateurs du Pod ?"
+msgid "Allow agent to add {addCount, plural, one {# Pod user} other {# Pod users}} and remove {removeCount, plural, one {# Pod user} other {# Pod users}}?"
+msgstr "Autoriser l’agent à ajouter {addCount, plural, one {# utilisateur du Pod} other {# utilisateurs du Pod}} et retirer {removeCount, plural, one {# utilisateur du Pod} other {# utilisateurs du Pod}} ?"
 
 #: front/components/actions/blocked/toolValidationLabels.ts
 msgid "{addCount, plural, one {Allow agent to add # Pod user?} other {Allow agent to add # Pod users?}}"

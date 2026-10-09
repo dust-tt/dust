@@ -74,8 +74,8 @@ msgid "Alert threshold: {threshold} credits"
 msgstr "Alert threshold: {threshold} credits"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
-msgid "Remaining balance: {remaining} credits"
-msgstr "Remaining balance: {remaining} credits"
+msgid "{remainingBalanceCredits, plural, one {Remaining balance: {remaining} credit} other {Remaining balance: {remaining} credits}}"
+msgstr "{remainingBalanceCredits, plural, one {Remaining balance: {remaining} credit} other {Remaining balance: {remaining} credits}}"
 
 #: front/lib/notifications/workflows/balance-threshold-reached.ts
 msgid "To avoid running out of credits, please reach out to your Dust representative."

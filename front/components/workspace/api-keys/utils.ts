@@ -1,3 +1,4 @@
+import { normalizeDecimalSeparator } from "@app/lib/i18n/format";
 import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType } from "@app/types/user";
@@ -62,12 +63,13 @@ export function getMonthlyCapDollarsSchema(
       if (value === "") {
         return true;
       }
+      const normalized = normalizeDecimalSeparator(value);
       // Only allow digits and optional decimal point (no scientific notation)
       // Must have at least one digit (reject "." alone)
-      if (!/^\d*\.?\d*$/.test(value) || !/\d/.test(value)) {
+      if (!/^\d*\.?\d*$/.test(normalized) || !/\d/.test(normalized)) {
         return false;
       }
-      const num = parseFloat(value);
+      const num = parseFloat(normalized);
       return !isNaN(num) && num >= 0;
     },
     { message: t(msg`Monthly cap must be a positive number`) }
@@ -79,6 +81,10 @@ export function microUsdToDollarsString(microUsd: number | null): string {
     return "";
   }
   return (microUsd / 1_000_000).toString();
+}
+
+export function parseDollarsString(value: string): number | null {
+  return value === "" ? null : parseFloat(normalizeDecimalSeparator(value));
 }
 
 export function dollarsToMicroUsd(dollars: number | null): number | null {

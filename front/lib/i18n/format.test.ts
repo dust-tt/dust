@@ -16,6 +16,7 @@ import {
   formatTime,
   formatTimeDistance,
   getLocalTimeZone,
+  normalizeDecimalSeparator,
   NUMERIC_DATE_TIME_OPTIONS,
   prefersTwentyFourHourTime,
   setFormatLocale,
@@ -514,6 +515,22 @@ describe("format locale resolution", () => {
         dateTime
       );
       expect(formatTimeDistance(TIMESTAMP - DAY_MS, TIMESTAMP)).toBe(distance);
+    }
+  );
+
+  it.each([
+    ["en-US", ["12.50", "12,50", "1,000.5"]],
+    ["en-GB", ["12.50", "12,50", "1,000.5"]],
+    ["fr-FR", ["12.50", "12.50", "1.000.5"]],
+  ] as const)(
+    "normalizes the decimal separator in %s once set",
+    (locale, expected) => {
+      setFormatLocale(locale);
+      expect(
+        ["12.50", "12,50", "1,000.5"].map((value) =>
+          normalizeDecimalSeparator(value)
+        )
+      ).toEqual(expected);
     }
   );
 
