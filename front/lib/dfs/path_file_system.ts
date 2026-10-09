@@ -67,8 +67,8 @@ function toBuffer(piece: unknown): Result<Buffer, DfsError> {
 /**
  * @cc [owner:fabiencelier,label:error-handling] content-stream-errors
  * Exception to `no-catching-own-errors`: failures while consuming `content` MUST be thrown as a
- * `DfsError`: a `DfsError` raised by the source stream unchanged,
- * any other source stream error as `invalid_input`. Only `DfsPathFileSystem.writeContent` MAY catch
+ * `DfsError`: a `DfsError` raised by the source stream unchanged, any other `Error` raised by the
+ * source stream as `invalid_input`. Only `DfsPathFileSystem.writeContent` MAY catch
  * them, with an `instanceof DfsError` guard that rethrows anything else.
  */
 async function* contentChunks(
@@ -649,7 +649,7 @@ export class DfsPathFileSystem {
     }
 
     const uploadId = newDfsObjectId();
-    let uploaded: Result<void, DfsError>;
+    let uploaded: Result<void, DfsError> | undefined;
     try {
       uploaded = await this.upload({
         parentId,
@@ -658,13 +658,14 @@ export class DfsPathFileSystem {
         rest: chunks,
         mimeType,
       });
-    } catch (err) {
-      // The content stream failed (see `content-stream-errors`): clean up, then propagate as is.
-      await this.removeUpload(uploadId);
-      throw err;
+    } finally {
+      // Also runs when the content stream throws (see `content-stream-errors`), which then
+      // propagates to `writeContent` untouched.
+      if (!uploaded?.isOk()) {
+        await this.removeUpload(uploadId);
+      }
     }
     if (uploaded.isErr()) {
-      await this.removeUpload(uploadId);
       return uploaded;
     }
 
@@ -861,40 +862,41 @@ export class DfsPathFileSystem {
   private async collectRemovals(
     directoryId: DfsObjectId
   ): Promise<Result<DfsOperation[], DfsError>> {
-    const entries = await this.listById(directoryId);
-    if (entries.isErr()) {
-      return entries;
-    }
+    // Every object is listed in pre-order (parents before children), once; reversing that order
+    // puts each object before all of its ancestors.
     const removals: DfsOperation[] = [];
-    for (const entry of entries.value) {
-      const attr = entry.object
-        ? new Ok(entry.object)
-        : await this.lookupChild(directoryId, entry.name);
-      if (attr.isErr()) {
-        return attr;
+    const pending: DfsObjectId[] = [directoryId];
+    for (let parentId = pending.pop(); parentId; parentId = pending.pop()) {
+      const entries = await this.listById(parentId);
+      if (entries.isErr()) {
+        return entries;
       }
-      if (!attr.value) {
-        // Removed concurrently.
-        continue;
-      }
-      const childId = realIdOf(attr.value);
-      if (childId.isErr()) {
-        return childId;
-      }
-      if (attr.value.directory) {
-        const nested = await this.collectRemovals(childId.value);
-        if (nested.isErr()) {
-          return nested;
+      for (const entry of entries.value) {
+        const attr = entry.object
+          ? new Ok(entry.object)
+          : await this.lookupChild(parentId, entry.name);
+        if (attr.isErr()) {
+          return attr;
         }
-        removals.push(...nested.value);
+        if (!attr.value) {
+          // Removed concurrently.
+          continue;
+        }
+        const childId = realIdOf(attr.value);
+        if (childId.isErr()) {
+          return childId;
+        }
+        removals.push({
+          type: "remove",
+          objectId: childId.value,
+          directory: attr.value.directory,
+        });
+        if (attr.value.directory) {
+          pending.push(childId.value);
+        }
       }
-      removals.push({
-        type: "remove",
-        objectId: childId.value,
-        directory: attr.value.directory,
-      });
     }
-    return new Ok(removals);
+    return new Ok(removals.reverse());
   }
 
   /** Copies the file at `src` to `dest` (bytes and MIME type) by streaming it through front. */
