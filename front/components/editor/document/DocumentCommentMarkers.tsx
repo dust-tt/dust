@@ -19,7 +19,7 @@ interface PlacedMarker {
 }
 
 /**
- * Places markers, from anchors sorted by center, level with their anchor or just below the
+ * Places markers, from anchors in document order, level with their anchor or just below the
  * previous marker, so markers of one line stack and push the next lines' markers down.
  */
 export const stackMarkers = (anchors: PlacedMarker[]): PlacedMarker[] => {
@@ -40,6 +40,7 @@ interface DocumentCommentMarkersProps {
 const measureMarkers = (
   editor: Editor,
   comments: DfmComment[],
+  starts: Map<string, number>,
   container: HTMLElement
 ): PlacedMarker[] => {
   const containerTop = container.getBoundingClientRect().top;
@@ -61,7 +62,11 @@ const measureMarkers = (
         },
       ];
     })
-    .sort((a, b) => a.center - b.center);
+    .sort(
+      (a, b) =>
+        (starts.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+          (starts.get(b.id) ?? Number.MAX_SAFE_INTEGER) || a.center - b.center
+    );
 
   return stackMarkers(anchors);
 };
@@ -69,10 +74,12 @@ const measureMarkers = (
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-markers
  * At every document width, each open comment with visible highlighted text MUST have its own
- * marker in the right gutter, showing the number of messages in its thread, level with its first highlight or just below the previous marker,
- * so markers of comments on one line stack and push the next lines' markers down; no marker MUST
- * overlap the text or another marker. The document MUST keep that gutter wide enough for a marker
- * while it has open comments. Activating a marker MUST reveal its comment.
+ * marker in the right gutter, showing the number of messages in its thread. Markers MUST follow
+ * the order in which their comments start in the document, each level with its first highlight
+ * or just below the previous marker, so markers of comments on one line stack and push the next
+ * lines' markers down; no marker MUST overlap the text or another marker. The document MUST keep
+ * that gutter wide enough for a marker while it has open comments. Activating a marker MUST
+ * reveal its comment.
  */
 export const DocumentCommentMarkers = ({
   editor,
@@ -81,7 +88,7 @@ export const DocumentCommentMarkers = ({
   mountPortalContainer,
 }: DocumentCommentMarkersProps) => {
   const { t } = useLingui();
-  const { unresolved, activeId, reveal } = comments;
+  const { unresolved, starts, activeId, reveal } = comments;
   const [markers, setMarkers] = useState<PlacedMarker[]>([]);
   // Measured here so document updates re-render the markers, not the whole editor chrome.
   const layoutVersion = useEditorLayoutVersion(editor, containerRef);
@@ -91,8 +98,10 @@ export const DocumentCommentMarkers = ({
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    setMarkers(container ? measureMarkers(editor, unresolved, container) : []);
-  }, [editor, unresolved, containerRef, layoutVersion]);
+    setMarkers(
+      container ? measureMarkers(editor, unresolved, starts, container) : []
+    );
+  }, [editor, unresolved, starts, containerRef, layoutVersion]);
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-2 w-9 print:hidden">
