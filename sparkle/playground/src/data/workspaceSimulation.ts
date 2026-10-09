@@ -15,8 +15,10 @@ import { mockCompanySpaces } from "./companySpaces";
 import {
   conversationTitles,
   createConversationsWithMessages,
+  createNewMemberConversation,
   createWelcomeConversation,
   generateDescription,
+  type NewMemberSuggestions,
 } from "./conversations";
 import {
   generateDataSourcesForSpace,
@@ -46,18 +48,25 @@ import { createMockWakeUps } from "./wakeups";
 // Every surface of the Dust File System story — the sidebar Pods, the Inbox,
 // Build, a Pod's Files tab and the Files tree — reads from the single model
 // built here, so the same Pod, conversation, agent or file is the same thing
-// wherever it shows up. The two profiles are the whole point: `clean` is a
-// workspace nobody has used yet, `mature` is one a company has lived in.
+// wherever it shows up. The profiles are the whole point: `newWorkspace` is a
+// workspace nobody has used yet, `busyMember` is one a company has lived in,
+// seen by someone who has been there a while, and `newMember` is that same
+// workspace seen by someone who joined today.
 //
 // Everything is seeded from ids, so a profile always builds the same
 // workspace: switching back and forth does not reshuffle it.
 // ═════════════════════════════════════════════════════════════════════════════
 
-export type WorkspaceProfile = "clean" | "mature";
+export type WorkspaceProfile = "newWorkspace" | "newMember" | "busyMember";
 
 export interface WorkspaceModel {
   profile: WorkspaceProfile;
   pods: Space[];
+  /**
+   * The Pods the user belongs to. The workspace may hold more; the rest are
+   * reached from the Hub, and stay out of the user's Inbox.
+   */
+  memberPodIds: string[];
   companySpaces: Space[];
   agents: ManagedAgent[];
   skills: ManagedSkill[];
@@ -379,6 +388,25 @@ const MATURE_POD_COUNT = 60;
 /** Two Pods in a hundred have been created and never filled. */
 const EMPTY_POD_ODDS = 0.02;
 
+/** The Pods someone joining is added to on their first day, before picking any. */
+const NEW_MEMBER_POD_NAMES = ["Company", "New Onboarding", "Company Events"];
+/**
+ * Where a frontend engineer's work happens, best match first. The new member's
+ * first conversation is written for that role.
+ */
+const NEW_MEMBER_ROLE_POD_NAMES = [
+  "Frontend Team",
+  "Design",
+  "Accessibility",
+  "Release Management",
+  "Testing Strategy",
+  "Mobile App Redesign",
+  "Engineering",
+  "Product",
+];
+const NEW_MEMBER_SUGGESTED_POD_COUNT = 3;
+const NEW_MEMBER_SUGGESTED_AGENT_COUNT = 3;
+
 interface Builder {
   files: DataSource[];
   push: (file: DataSource) => DataSource;
@@ -547,7 +575,7 @@ function workStateFor(seed: string): {
   return {};
 }
 
-function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
+function buildNewWorkspace(currentUserId: string): WorkspaceModel {
   const builder = createBuilder();
   const companyData = mockCompanySpaces[0];
 
@@ -581,8 +609,9 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
   registerAgents([DUST_GLOBAL_AGENT]);
 
   return finalize({
-    profile: "clean",
+    profile: "newWorkspace",
     pods: [],
+    memberPodIds: [],
     companySpaces: [companyData],
     agents: [],
     skills: [],
@@ -599,7 +628,11 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
   });
 }
 
-function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
+function buildMatureWorkspace(
+  currentUserId: string,
+  profile: "newMember" | "busyMember"
+): WorkspaceModel {
+  const isNewMember = profile === "newMember";
   const builder = createBuilder();
   const pods = seededShuffle(mockSpaces, "mature-pods").slice(
     0,
@@ -636,21 +669,42 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   // ── Conversations ────────────────────────────────────────────────────────
   // The ones that carry written messages stay the user's own free
   // conversations; every Pod then gets its own, with that Pod's agents in it.
-  const freeConversations = createConversationsWithMessages(currentUserId).map(
-    (conversation) => ({ ...conversation, spaceId: undefined })
-  );
+  // Someone who joined today has taken part in none of it, and has one
+  // conversation of their own: where to start.
+  const memberPodIds = isNewMember
+    ? pods
+        .filter((pod) => NEW_MEMBER_POD_NAMES.includes(pod.name))
+        .map((pod) => pod.id)
+    : pods.map((pod) => pod.id);
+  const freeConversations = (
+    isNewMember
+      ? [
+          createNewMemberConversation(
+            currentUserId,
+            DUST_GLOBAL_AGENT,
+            newMemberSuggestions(pods, agents)
+          ),
+        ]
+      : createConversationsWithMessages(currentUserId)
+  ).map((conversation) => ({ ...conversation, spaceId: undefined }));
   const podConversations = pods.flatMap((pod) =>
-    buildPodConversations(pod, agentsByPod.get(pod.id) ?? [], currentUserId)
+    buildPodConversations(
+      pod,
+      agentsByPod.get(pod.id) ?? [],
+      isNewMember ? null : currentUserId
+    )
   );
   const conversations = [...freeConversations, ...podConversations];
 
-  const triggers = retargetTriggers(
-    createMockTriggers(currentUserId),
-    pods,
-    agents
-  );
+  // Automations, wake-ups and requests are things you set up or are asked to
+  // handle, which takes longer than a first day.
+  const triggers = isNewMember
+    ? []
+    : retargetTriggers(createMockTriggers(currentUserId), pods, agents);
   const triggeredConversations = createTriggeredConversations(triggers);
-  const wakeUps = createMockWakeUps(conversations, currentUserId);
+  const wakeUps = isNewMember
+    ? []
+    : createMockWakeUps(conversations, currentUserId);
 
   // ── Files ────────────────────────────────────────────────────────────────
   const podFilesBySpaceId = new Map<string, DataSource[]>();
@@ -848,8 +902,9 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
   });
 
   return finalize({
-    profile: "mature",
+    profile,
     pods,
+    memberPodIds,
     companySpaces,
     agents,
     skills,
@@ -857,7 +912,7 @@ function buildMatureWorkspace(currentUserId: string): WorkspaceModel {
     triggeredConversations,
     triggers,
     wakeUps,
-    requests: createMockRequests(),
+    requests: isNewMember ? [] : createMockRequests(),
     files: builder.files,
     podFilesBySpaceId,
     conversationFilesByConversationId,
@@ -1145,10 +1200,11 @@ function buildPodAgents(pods: Space[], skills: ManagedSkill[]): ManagedAgent[] {
 
 // ── Conversations ────────────────────────────────────────────────────────────
 
+/** `currentUserId` is null when the user has taken part in none of them. */
 function buildPodConversations(
   pod: Space,
   podAgents: ManagedAgent[],
-  currentUserId: string
+  currentUserId: string | null
 ): Conversation[] {
   const count = randInt(pod.id, 20, 3, 15);
   const titles = seededShuffle(conversationTitles, `conv-${pod.id}`);
@@ -1167,12 +1223,14 @@ function buildPodConversations(
     const agentParticipants = seededShuffle(podAgents, `agents-${id}`)
       .slice(0, Math.min(podAgents.length, randInt(id, 8, 1, 2)))
       .map((agent) => agent.id);
-    const state = workStateFor(id);
+    // Nothing is waiting on someone who was never in the conversation.
+    const state = currentUserId === null ? {} : workStateFor(id);
     // The user is in every Pod conversation, but rarely the one who spoke
     // last: the work is mostly agents answering, or a colleague replying.
-    const userParticipants = participants.includes(currentUserId)
-      ? participants
-      : [currentUserId, ...participants.slice(1)];
+    const userParticipants =
+      currentUserId === null || participants.includes(currentUserId)
+        ? participants
+        : [currentUserId, ...participants.slice(1)];
 
     return {
       id,
@@ -1193,6 +1251,29 @@ function buildPodConversations(
       ...state,
     };
   });
+}
+
+/**
+ * What the new member's first conversation points to: the Pods of their role
+ * this workspace has, and the agents those Pods use most.
+ */
+function newMemberSuggestions(
+  pods: Space[],
+  agents: ManagedAgent[]
+): NewMemberSuggestions {
+  const suggestedPods = NEW_MEMBER_ROLE_POD_NAMES.flatMap(
+    (name) => pods.find((pod) => pod.name === name) ?? []
+  ).slice(0, NEW_MEMBER_SUGGESTED_POD_COUNT);
+  const suggestedPodIds = new Set(suggestedPods.map((pod) => pod.id));
+  const suggestedAgents = agents
+    .filter(
+      (agent) =>
+        agent.status === "active" &&
+        agent.spaceIds.some((spaceId) => suggestedPodIds.has(spaceId))
+    )
+    .sort((a, b) => b.usageCount - a.usageCount)
+    .slice(0, NEW_MEMBER_SUGGESTED_AGENT_COUNT);
+  return { pods: suggestedPods, agents: suggestedAgents };
 }
 
 /** Points the trigger catalog at Pods and agents this workspace actually has. */
@@ -1232,7 +1313,7 @@ export function buildWorkspace(
   profile: WorkspaceProfile,
   currentUserId: string
 ): WorkspaceModel {
-  return profile === "clean"
-    ? buildCleanWorkspace(currentUserId)
-    : buildMatureWorkspace(currentUserId);
+  return profile === "newWorkspace"
+    ? buildNewWorkspace(currentUserId)
+    : buildMatureWorkspace(currentUserId, profile);
 }

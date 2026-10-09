@@ -405,8 +405,16 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   // put there, not because the user takes part in it. Every other Pod is
   // reached from the browse menu or from Files.
   const [favoritePodIds, setFavoritePodIds] = useState<Set<string>>(
-    () => new Set(model.pods.slice(0, SIDEBAR_POD_COUNT).map((pod) => pod.id))
+    () => new Set(model.memberPodIds.slice(0, SIDEBAR_POD_COUNT))
   );
+  // A Pod the user creates is theirs; the workspace's others stay out of the
+  // Inbox until they are in them.
+  const otherPodIds = useMemo(() => {
+    const memberPodIds = new Set(model.memberPodIds);
+    return new Set(
+      model.pods.map((pod) => pod.id).filter((id) => !memberPodIds.has(id))
+    );
+  }, [model]);
   // ── Space management state ────────────────────────────────────────────────
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
     new Map()
@@ -439,6 +447,10 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       model.files.find(
         (file) => file.folderType === "drive" && file.source === "company"
       )?.id ?? null
+  );
+  /** The row "Show in the Hub" points at, lit until the Hub moves on. */
+  const [hubRevealedFileId, setHubRevealedFileId] = useState<string | null>(
+    null
   );
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
@@ -525,13 +537,18 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     [conversationsWithMessages, leftConversationIds, triggeredConversations]
   );
 
+  const memberSpaces = useMemo(
+    () => spaces.filter((space) => !otherPodIds.has(space.id)),
+    [otherPodIds, spaces]
+  );
+
   const unreadCount = useMemo(() => {
     const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     return allConversations.filter((conv) => {
-      if (!conv.spaceId) return false;
+      if (!conv.spaceId || otherPodIds.has(conv.spaceId)) return false;
       return conv.updatedAt >= twoDaysAgo;
     }).length;
-  }, [allConversations]);
+  }, [allConversations, otherPodIds]);
 
   const sortedSpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {
@@ -1077,6 +1094,16 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     setP4View(null);
   }, []);
 
+  /** A conversation folder opens its conversation beside the Hub, the way
+   *  the Hub's files open. */
+  const handleOpenConversation = useCallback((folder: DataSource) => {
+    if (!folder.refId) {
+      return;
+    }
+    setP3View({ kind: "conversation", conversationId: folder.refId });
+    setP4View(null);
+  }, []);
+
   /** An agent or a skill file opens where it is edited, which is its Build
    *  detail panel rather than a document preview. */
   const handleEditBuildItem = useCallback((file: DataSource) => {
@@ -1300,6 +1327,27 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     setP2View({ kind: "file", dataSource: item });
   };
 
+  /** Opens the Hub where a kept item sits rather than inside it, and points at
+   *  its row. For a folder that is the step a plain click skips. */
+  const showPinnedItemInHub = (item: DataSource) => {
+    setHubFolderId(item.parentId);
+    setHubRevealedFileId(item.id);
+    setFilesSearchText("");
+    setP2View({ kind: "files" });
+    setP3View(null);
+    setP4View(null);
+  };
+
+  // The row stays lit only while the Hub still shows it, so leaving the Hub or
+  // opening another folder from the tree lets it go.
+  if (
+    hubRevealedFileId &&
+    (p2View.kind !== "files" ||
+      filesById.get(hubRevealedFileId)?.parentId !== hubFolderId)
+  ) {
+    setHubRevealedFileId(null);
+  }
+
   const renderSidebarFileNavItem = (item: DataSource) => (
     <NavigationListItem
       key={item.id}
@@ -1319,6 +1367,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
             <NavigationListItemAction />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
+            <DropdownMenuItem
+              label="Show in the Hub"
+              icon={ROOT_FOLDER_ICON}
+              onClick={(e) => {
+                e.stopPropagation();
+                showPinnedItemInHub(item);
+              }}
+            />
             <DropdownMenuItem
               label="Remove from sidebar"
               icon={Star01}
@@ -1543,7 +1599,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     if (p2View.kind === "inboxAlt")
       return (
         <InboxAltView
-          spaces={spaces}
+          spaces={memberSpaces}
           onNewConversation={openNewConversation}
           conversations={allConversations}
           requests={requests}
@@ -1588,6 +1644,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
             setP3View(fileSidePanelView(dataSource));
             setP4View(null);
           }}
+          onOpenConversation={handleOpenConversation}
           onStartConversation={startConversationOn}
           onOpenPod={handleOpenPod}
           onEditBuildItem={handleEditBuildItem}
@@ -1595,6 +1652,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           onCurrentFolderIdChange={setHubFolderId}
           isPinnedToSidebar={(item) => pinnedFileIds.has(item.id)}
           onTogglePinnedToSidebar={(item) => togglePinnedFile(item.id)}
+          revealedFileId={hubRevealedFileId}
+          onClearRevealedFile={() => setHubRevealedFileId(null)}
         />
       );
     if (p2View.kind === "file")
@@ -2633,8 +2692,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
-          {/* Swaps the whole simulated workspace, to show the product either
-              on its first day or after a company has lived in it. */}
+          {/* Swaps the whole simulated workspace, to show the product on its
+              first day, to someone who just joined a busy one, or to someone
+              who has been in it a while. */}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger icon={Beaker02} label="Dev" />
             <DropdownMenuPortal>
@@ -2646,8 +2706,15 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                     onProfileChange(value as WorkspaceProfile)
                   }
                 >
-                  <DropdownMenuRadioItem value="mature" label="Mature" />
-                  <DropdownMenuRadioItem value="clean" label="Clean" />
+                  <DropdownMenuRadioItem
+                    value="newWorkspace"
+                    label="New Workspace"
+                  />
+                  <DropdownMenuRadioItem value="newMember" label="New Member" />
+                  <DropdownMenuRadioItem
+                    value="busyMember"
+                    label="Busy Member"
+                  />
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
@@ -2807,10 +2874,17 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
 
 const PROFILE_STORAGE_KEY = "dust-file-system-workspace-profile";
 
+const WORKSPACE_PROFILES: WorkspaceProfile[] = [
+  "newWorkspace",
+  "newMember",
+  "busyMember",
+];
+
 function readStoredProfile(): WorkspaceProfile {
-  return localStorage.getItem(PROFILE_STORAGE_KEY) === "clean"
-    ? "clean"
-    : "mature";
+  const stored = localStorage.getItem(PROFILE_STORAGE_KEY);
+  return (
+    WORKSPACE_PROFILES.find((profile) => profile === stored) ?? "busyMember"
+  );
 }
 
 function DustFileSystem() {
