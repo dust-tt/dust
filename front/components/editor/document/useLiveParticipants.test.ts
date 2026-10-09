@@ -35,17 +35,21 @@ describe("useLiveParticipants", () => {
     awarenesses.splice(0).forEach((awareness) => awareness.destroy());
   });
 
-  it("lists the other users once each, in the order they joined, without the current user", () => {
-    const local = newAwareness({ id: "me", name: "Me", color: "#000" });
-    const { result } = renderHook(() => useLiveParticipants(local, "me"));
+  it("lists the current user first, then the others once each, in the order they joined", () => {
+    const local = newAwareness();
+    const { result } = renderHook(() => useLiveParticipants(local));
     expect(result.current).toEqual([]);
 
     receive(local, newAwareness({ id: "bob", name: "Bob", color: "#111" }));
     receive(local, newAwareness({ id: "ada", name: "Ada", color: "#222" }));
     receive(local, newAwareness({ id: "bob", name: "Bob", color: "#111" }));
     receive(local, newAwareness({ id: "me", name: "Me", color: "#000" }));
+    act(() =>
+      local.setLocalStateField("user", { id: "me", name: "Me", color: "#000" })
+    );
 
     expect(result.current).toEqual([
+      { id: "me", name: "Me" },
       { id: "bob", name: "Bob" },
       { id: "ada", name: "Ada" },
     ]);
@@ -53,7 +57,7 @@ describe("useLiveParticipants", () => {
 
   it("ignores states without a user id", () => {
     const local = newAwareness();
-    const { result } = renderHook(() => useLiveParticipants(local, "me"));
+    const { result } = renderHook(() => useLiveParticipants(local));
 
     receive(local, newAwareness({ name: "Anonymous", color: "#111" }));
     receive(local, newAwareness({ id: "", name: "Empty", color: "#111" }));
@@ -64,7 +68,7 @@ describe("useLiveParticipants", () => {
   it("drops a user once their editor leaves", () => {
     const local = newAwareness();
     const bob = newAwareness({ id: "bob", name: "Bob", color: "#111" });
-    const { result } = renderHook(() => useLiveParticipants(local, "me"));
+    const { result } = renderHook(() => useLiveParticipants(local));
     receive(local, bob);
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);
 
@@ -79,7 +83,7 @@ describe("useLiveParticipants", () => {
     const { result, rerender } = renderHook<
       ReturnType<typeof useLiveParticipants>,
       { awareness: Awareness | null }
-    >(({ awareness }) => useLiveParticipants(awareness, "me"), {
+    >(({ awareness }) => useLiveParticipants(awareness), {
       initialProps: { awareness: first },
     });
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);

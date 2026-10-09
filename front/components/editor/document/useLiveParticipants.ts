@@ -11,18 +11,15 @@ const awarenessUserSchema = z.object({
 
 const NO_PARTICIPANTS: DocumentLiveParticipant[] = [];
 
-const readParticipants = (
-  awareness: Awareness,
-  selfUserId: string
-): DocumentLiveParticipant[] => {
+const readParticipants = (awareness: Awareness): DocumentLiveParticipant[] => {
+  const remoteStates = [...awareness.getStates()]
+    .filter(([clientId]) => clientId !== awareness.clientID)
+    .map(([, state]) => state);
   const byUserId = new Map<string, DocumentLiveParticipant>();
-  for (const [clientId, state] of awareness.getStates()) {
+  for (const state of [awareness.getLocalState(), ...remoteStates]) {
     const parsed = awarenessUserSchema.safeParse(state);
-    if (clientId === awareness.clientID || !parsed.success) {
-      continue;
-    }
-    const { id, name } = parsed.data.user;
-    if (id !== selfUserId && !byUserId.has(id)) {
+    if (parsed.success && !byUserId.has(parsed.data.user.id)) {
+      const { id, name } = parsed.data.user;
       byUserId.set(id, { id, name });
     }
   }
@@ -31,14 +28,13 @@ const readParticipants = (
 
 /**
  * @cc [owner:tdraier,label:product] live-participants
- * The participants MUST be the users whose editor is on `awareness`, once each, in the order they
- * joined, excluding `selfUserId` in any of their tabs, and kept current as they join and leave. A
+ * The participants MUST be the users whose editor is on `awareness`, once each, the local editor's
+ * user first and then the others in the order they joined, kept current as they join and leave. A
  * state without a user id MUST be ignored. Without awareness, or with a new one until it reports,
  * there MUST be none.
  */
 export function useLiveParticipants(
-  awareness: Awareness | null,
-  selfUserId: string
+  awareness: Awareness | null
 ): DocumentLiveParticipant[] {
   // Kept with its awareness: until the effect's cleanup runs, a new one would see the old one's.
   const [shown, setShown] = useState<{
@@ -51,7 +47,7 @@ export function useLiveParticipants(
       return;
     }
     const update = () => {
-      const participants = readParticipants(awareness, selfUserId);
+      const participants = readParticipants(awareness);
       setShown((current) =>
         current?.awareness === awareness &&
         isEqual(current.participants, participants)
@@ -65,7 +61,7 @@ export function useLiveParticipants(
       awareness.off("change", update);
       setShown(null);
     };
-  }, [awareness, selfUserId]);
+  }, [awareness]);
 
   return shown?.awareness === awareness ? shown.participants : NO_PARTICIPANTS;
 }

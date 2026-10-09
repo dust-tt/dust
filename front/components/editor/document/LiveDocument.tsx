@@ -22,8 +22,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
   const agent = useLiveAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
   const participants = useLiveParticipants(
-    connection?.provider.awareness ?? null,
-    id
+    connection?.provider.awareness ?? null
   );
   const resolveImageSource = useImageSourceResolver(props.resolveImageSource);
   const extensions = useMemo(

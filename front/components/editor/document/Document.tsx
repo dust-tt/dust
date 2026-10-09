@@ -73,9 +73,9 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 /**
  * @cc [owner:tdraier,label:product] document-live-participants
- * While the live session is live and has other participants, `renderLiveParticipants` MUST show
- * them right before the comments button, wherever that button shows; otherwise nothing MUST
- * render for them.
+ * While the live session is live and has participants, `renderLiveParticipants` MUST show them
+ * right before the comments button, wherever that button shows; otherwise nothing MUST render
+ * for them.
  */
 export const Document = (props: DocumentProps) =>
   props.live ? (

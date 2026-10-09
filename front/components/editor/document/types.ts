@@ -64,7 +64,7 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
-  /** Renders the other users in the live session, such as an avatar stack. */
+  /** Renders the users in the live session, the current one first, such as an avatar stack. */
   renderLiveParticipants?: (
     participants: DocumentLiveParticipant[]
   ) => ReactNode;
@@ -79,7 +79,7 @@ export interface DocumentLiveSession {
   user: { id: string; name: string; color: string };
 }
 
-/** Another user with the live document open. */
+/** A user with the live document open. */
 export interface DocumentLiveParticipant {
   id: string;
   name: string;
