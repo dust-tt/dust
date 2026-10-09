@@ -29,6 +29,7 @@ export const MCP_SERVERS_FOR_GLOBAL_AGENTS = [
   "toolsets",
   "data_warehouses",
   "agent_memory",
+  "self_configuration",
 ] as const satisfies AutoInternalMCPServerNameType[];
 
 export type MCPServerViewsForGlobalAgentsMap = Record<
