@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 function makeSkill(overrides: Partial<SkillType> = {}): SkillType {
   return {
-    id: 1,
     sId: "skl_abc123",
     createdAt: Date.now(),
     updatedAt: Date.now(),

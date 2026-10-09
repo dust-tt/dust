@@ -5239,7 +5239,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       this.redactedForCaller;
 
     return {
-      id: this.id,
       sId: this.sId,
       createdAt: this.codeDefinedSkillId ? null : this.createdAt.getTime(),
       updatedAt: this.codeDefinedSkillId ? null : this.updatedAt.getTime(),
