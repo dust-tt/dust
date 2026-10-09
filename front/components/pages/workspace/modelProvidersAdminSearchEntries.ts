@@ -7,7 +7,7 @@ const M = ADMIN_SECTION_IDS.modelProviders;
 const A = ADMIN_SECTION_IDS.appCredentials;
 const PAGE = "models" as const;
 
-/** Search entries for Models (providers, access tiers, app credentials). */
+/** Search entries for Models (providers, access tiers, members, groups, apps). */
 export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
@@ -40,6 +40,28 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
       ],
     ],
     "tiers"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    M.members,
+    [
+      [
+        msg`Members model tiers`,
+        msg`model tiers member access tier per user standard advanced frontier`,
+      ],
+    ],
+    "members"
+  ),
+  ...adminSearchEntries(
+    PAGE,
+    M.groups,
+    [
+      [
+        msg`Group model tiers`,
+        msg`model tiers group access tier per group standard advanced frontier`,
+      ],
+    ],
+    "groups"
   ),
   ...adminSearchEntries(
     PAGE,

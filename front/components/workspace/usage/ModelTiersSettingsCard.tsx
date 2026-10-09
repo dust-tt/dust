@@ -9,7 +9,7 @@ import {
 } from "@app/lib/swr/model_tiers";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
+import { SettingsList, SliderToggle } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ModelTiersSettingsCardProps {
@@ -33,11 +33,11 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
   const selectedValue = workspaceMaxTierName ?? DEFAULT_MAX_MODEL_TIER;
 
   return (
-    <Page.Vertical gap="sm" align="stretch">
-      <span className="flex items-center gap-1 heading-base text-foreground dark:text-foreground-night">
+    <>
+      <div className="heading-base text-foreground">
         <Trans>Models tier</Trans>
         <ModelTiersInfoButton />
-      </span>
+      </div>
       <SettingsList>
         <SettingsList.Row
           title={t`Workspace access`}
@@ -68,6 +68,6 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
           }
         />
       </SettingsList>
-    </Page.Vertical>
+    </>
   );
 }

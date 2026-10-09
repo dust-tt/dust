@@ -1173,7 +1173,10 @@ function buildOffPaceColumn(t: Translate): ColumnDef<RowData, string> {
   };
 }
 
-function buildModelTiersColumn(t: Translate): ColumnDef<RowData, string> {
+function buildModelTiersColumn(
+  t: Translate,
+  forceVisible: boolean
+): ColumnDef<RowData, string> {
   return {
     id: "modelTiers" as const,
     header: () => (
@@ -1189,7 +1192,7 @@ function buildModelTiersColumn(t: Translate): ColumnDef<RowData, string> {
 
       return (
         <DataTable.CellContent>
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
             {info.row.original.hasUserLevelModelTiersOverride
               ? t(msg`${summary} (custom)`)
               : summary}
@@ -1200,7 +1203,9 @@ function buildModelTiersColumn(t: Translate): ColumnDef<RowData, string> {
     meta: {
       // The extra seat + off-pace columns compete for width, so Models tier
       // yields sooner to keep Name readable.
-      className: "hidden @6xl:table-cell @6xl:w-48",
+      className: forceVisible
+        ? "table-cell w-48"
+        : "hidden @6xl:table-cell @6xl:w-48",
     },
   };
 }
@@ -1300,7 +1305,9 @@ function buildColumns({
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [buildGroupsColumn(t)] : []),
-    ...(showModelTiersColumn ? [buildModelTiersColumn(t)] : []),
+    ...(showModelTiersColumn
+      ? [buildModelTiersColumn(t, !showSeatAndCredits)]
+      : []),
     ...(showSeatAndCredits
       ? buildCreditPlanColumns({
           hasPool,

@@ -8,9 +8,11 @@ const PAGE = "credits" as const;
 const SETTINGS_TAB = "settings";
 
 /**
- * Search entries for Credits (formerly Usage). Per-member and per-group model
- * tiers are edited on the Members / Groups tabs; workspace defaults live under
- * Models › Access tiers. Self-improving spend caps sit in programmatic settings.
+ * Search entries for Credits (formerly Usage). On credit-priced plans,
+ * per-member and per-group model tiers are edited on the Members / Groups tabs
+ * here; on non–credit-priced plans they live under Models › Members / Groups.
+ * Workspace defaults live under Models › Access tiers. Self-improving spend
+ * caps sit in programmatic settings.
  */
 export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(

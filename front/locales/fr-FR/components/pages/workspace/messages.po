@@ -64,7 +64,7 @@ msgstr "Gérez les limites de crédits des membres et des groupes de votre péri
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
-#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Members"
@@ -72,7 +72,7 @@ msgstr "Membres"
 
 #: front/components/pages/workspace/GroupManagerUsagePage.tsx
 #: front/components/pages/workspace/MembersPage.tsx
-#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 #: front/components/pages/workspace/peopleAdminSearchEntries.ts
 msgid "Groups"
@@ -128,13 +128,15 @@ msgid "Providers"
 msgstr "Fournisseurs"
 
 #: front/components/pages/workspace/ModelsPage.tsx
-msgid "Access tiers"
-msgstr "Niveaux d’accès"
-
-#: front/components/pages/workspace/ModelsPage.tsx
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "App Credentials"
 msgstr "Identifiants des apps"
+
+#: front/components/pages/workspace/ModelsPage.tsx
+#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
+#: front/components/pages/workspace/UsagePage.tsx
+msgid "Settings"
+msgstr "Paramètres"
 
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
@@ -155,11 +157,6 @@ msgstr "Contrôlez la consommation de crédits dans votre workspace."
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 msgid "Programmatic usage"
 msgstr "Utilisation via l’API"
-
-#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Settings"
-msgstr "Paramètres"
 
 #: front/components/pages/workspace/SecurityPage.tsx
 msgid "Security"
@@ -584,6 +581,26 @@ msgid "model tiers run above member tier published agents"
 msgstr "niveaux de modèles exécuter au-dessus du niveau du membre agents publiés"
 
 #: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Members model tiers"
+msgstr "Niveaux de modèles des membres"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "model tiers member access tier per user standard advanced frontier"
+msgstr "niveaux de modèles membre niveau d’accès par utilisateur standard avancé frontier"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "Group model tiers"
+msgstr "Niveaux de modèles des groupes"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
+#: front/components/pages/workspace/usageAdminSearchEntries.ts
+msgid "model tiers group access tier per group standard advanced frontier"
+msgstr "niveaux de modèles groupe niveau d’accès par groupe standard avancé frontier"
+
+#: front/components/pages/workspace/modelProvidersAdminSearchEntries.ts
 msgid "dust apps providers api keys openai azure anthropic"
 msgstr "dust apps fournisseurs clés api openai azure anthropic"
 
@@ -752,14 +769,6 @@ msgid "seats spend limit upgrade requests"
 msgstr "sièges limite de dépenses demandes d’augmentation"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "Members model tiers"
-msgstr "Niveaux de modèles des membres"
-
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "model tiers member access tier per user standard advanced frontier"
-msgstr "niveaux de modèles membre niveau d’accès par utilisateur standard avancé frontier"
-
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Upgrade requests"
 msgstr "Demandes d’augmentation"
 
@@ -790,14 +799,6 @@ msgstr "Utilisation des groupes"
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "group spend limit seat"
 msgstr "groupe limite de dépenses siège"
-
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "Group model tiers"
-msgstr "Niveaux de modèles des groupes"
-
-#: front/components/pages/workspace/usageAdminSearchEntries.ts
-msgid "model tiers group access tier per group standard advanced frontier"
-msgstr "niveaux de modèles groupe niveau d’accès par groupe standard avancé frontier"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Group monthly spend limit"

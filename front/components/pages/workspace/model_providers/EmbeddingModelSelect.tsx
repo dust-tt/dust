@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  SettingsList,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
@@ -30,41 +31,47 @@ export function EmbeddingModelSelect({ workspace }: EmbeddingModelSelectProps) {
   }, [workspace?.defaultEmbeddingProvider]);
 
   return (
-    <div className="flex flex-col gap-2 p-3">
-      <div className="flex items-center justify-between">
-        <div className="font-semibold">
-          <Trans>Embedding provider:</Trans>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild disabled>
-            <Button
-              disabled
-              tooltip={t`Please contact us if you want to change this setting.`}
-              isSelect
-              label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
-              variant="outline"
-              size="sm"
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            {EMBEDDING_PROVIDER_IDS.map((provider) => (
-              <DropdownMenuItem
-                key={provider}
-                label={PRETTIFIED_PROVIDER_NAMES[provider]}
-                onClick={() => {
-                  setEmbeddingProvider(provider);
-                }}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <>
+      <div className="heading-base text-foreground">
+        <Trans>Embedding provider</Trans>
       </div>
-      <div className="text-sm text-muted-foreground">
-        <Trans>
-          Embedding models are used to create numerical representations of your
-          data powering the semantic search capabilities of your agents.
-        </Trans>
-      </div>
-    </div>
+      <SettingsList>
+        <SettingsList.Row
+          title={t`Embedding provider`}
+          description={
+            <Trans>
+              Embedding models are used to create numerical representations of
+              your data powering the semantic search capabilities of your
+              agents.
+            </Trans>
+          }
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild disabled>
+                <Button
+                  disabled
+                  tooltip={t`Please contact us if you want to change this setting.`}
+                  isSelect
+                  label={PRETTIFIED_PROVIDER_NAMES[embeddingProvider]}
+                  variant="outline"
+                  size="sm"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {EMBEDDING_PROVIDER_IDS.map((provider) => (
+                  <DropdownMenuItem
+                    key={provider}
+                    label={PRETTIFIED_PROVIDER_NAMES[provider]}
+                    onClick={() => {
+                      setEmbeddingProvider(provider);
+                    }}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+      </SettingsList>
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
 import type { RegionType } from "@app/types/region";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ContextItem, SliderToggle } from "@dust-tt/sparkle";
+import { SettingsList, SliderToggle } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -53,10 +53,10 @@ export function RegionalModelsOnlyToggle({
   }
 
   return (
-    <ContextItem
+    <SettingsList.Row
+      icon={config.icon}
       title={t(config.label)}
-      visual={config.icon}
-      hasSeparator={false}
+      description={t(config.description)}
       action={
         <SliderToggle
           selected={workspace.regionalModelsOnly}
@@ -68,12 +68,6 @@ export function RegionalModelsOnlyToggle({
           }}
         />
       }
-    >
-      <ContextItem.Description>
-        <span className="text-sm text-muted-foreground">
-          {t(config.description)}
-        </span>
-      </ContextItem.Description>
-    </ContextItem>
+    />
   );
 }
