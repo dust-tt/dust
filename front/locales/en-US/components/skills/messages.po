@@ -273,8 +273,8 @@ msgid "When to use this skill"
 msgstr "When to use this skill"
 
 #: front/components/skills/SkillInfoTab.tsx
-msgid "Guidelines"
-msgstr "Guidelines"
+msgid "Instructions"
+msgstr "Instructions"
 
 #: front/components/skills/SkillInfoTab.tsx
 msgid "Knowledge"
@@ -383,6 +383,11 @@ msgstr "This affects your entire workspace"
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
 msgstr "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgctxt "selected skills"
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# selected} other {# selected}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "Select all {totalCount, plural, one {# skill} other {# skills}}"

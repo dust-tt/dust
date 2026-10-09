@@ -19,7 +19,7 @@ msgstr "Impossible d’activer l’utilisation des métadonnées BigQuery pour D
 
 #: front/components/data_source/BigQueryOptionsView.tsx
 msgid "Invalid maximum bytes billed"
-msgstr "Nombre maximal d’octets facturés invalide"
+msgstr "Nombre maximal d’octets facturés non valide"
 
 #: front/components/data_source/BigQueryOptionsView.tsx
 msgid "Enter a non-negative number of GB, or leave empty for no limit."
@@ -227,7 +227,7 @@ msgstr "Erreur lors de la suppression de la connexion"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "Deleting {connectorName} connection"
-msgstr "Suppression de la connexion {connectorName}"
+msgstr "Supprimer la connexion {connectorName} ?"
 
 #: front/components/data_source/ConnectorPermissionsModal.tsx
 msgid "<0>Deleting</0> will break Agents using this data."
@@ -364,7 +364,7 @@ msgstr "Tous les champs doivent être renseignés"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Missing or invalid fields: {fields}."
-msgstr "Champs manquants ou invalides : {fields}."
+msgstr "Champs manquants ou non valides : {fields}."
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "The service account JSON must be an object."
@@ -372,11 +372,11 @@ msgstr "Le JSON du compte de service doit être un objet."
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Invalid JSON"
-msgstr "JSON invalide"
+msgstr "JSON non valide"
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "No locations found - make sure you follow the instructions in the guide."
-msgstr "Aucun emplacement trouvé - vérifiez que vous avez suivi les instructions du guide."
+msgstr "Aucun emplacement trouvé : vérifiez que vous avez suivi les instructions du guide."
 
 #: front/components/data_source/CreateOrUpdateConnectionBigQueryModal.tsx
 msgid "Failed to create BigQuery connection"
@@ -416,7 +416,7 @@ msgstr "Impossible de créer la connexion Snowflake"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Invalid Snowflake account identifier. Expected e.g. abc123.us-east-1 or myorg-myaccount (do not paste a URL/hostname)."
-msgstr "Identifiant de compte Snowflake invalide. Format attendu, par ex. abc123.us-east-1 ou myorg-myaccount (ne collez pas d’URL ni de nom d’hôte)."
+msgstr "Identifiant de compte Snowflake non valide. Format attendu, par ex. abc123.us-east-1 ou myorg-myaccount (ne collez pas d’URL ni de nom d’hôte)."
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Failed to update Snowflake connection"
@@ -444,7 +444,7 @@ msgstr "Identifiant du compte Snowflake"
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Invalid format. Use an account identifier like <0>abc123.us-east-1</0> or <1>myorg-myaccount</1>."
-msgstr "Format invalide. Utilisez un identifiant de compte comme <0>abc123.us-east-1</0> ou <1>myorg-myaccount</1>."
+msgstr "Format non valide. Utilisez un identifiant de compte comme <0>abc123.us-east-1</0> ou <1>myorg-myaccount</1>."
 
 #: front/components/data_source/CreateOrUpdateConnectionSnowflakeModal.tsx
 msgid "Role"
@@ -710,11 +710,11 @@ msgstr "Vous devez fournir le contenu du document. Importez un fichier ou saisis
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Invalid document"
-msgstr "Document invalide"
+msgstr "Document non valide"
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 msgid "Please fill in all required fields."
-msgstr "Veuillez remplir tous les champs obligatoires."
+msgstr "Remplissez tous les champs obligatoires."
 
 #: front/components/data_source/DocumentUploadOrEditModal.tsx
 #: front/components/data_source/TableUploadOrEditModal.tsx
@@ -859,7 +859,7 @@ msgstr "Secret du compte de service"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Save this secret - you'll need to re-enter it each time you configure this connector"
-msgstr "Conservez ce secret - vous devrez le saisir à nouveau à chaque configuration de ce connecteur"
+msgstr "Conservez ce secret : vous devrez le saisir à nouveau à chaque configuration de ce connecteur"
 
 #: front/components/data_source/MicrosoftOAuthExtraConfig.tsx
 msgid "Selected SharePoint sites Dust will have access to (one per line)."
@@ -1016,7 +1016,7 @@ msgstr "ID client de l’app Slack"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "The Client ID from your Slack app's, available on the Basic Information page."
-msgstr "Le Client ID de votre app Slack, disponible sur la page « Basic Information »."
+msgstr "L’ID client de votre app Slack, disponible sur la page « Basic Information »."
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "Slack app client secret"
@@ -1024,7 +1024,7 @@ msgstr "Secret client de l’app Slack"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "The Client Secret from your Slack app's, available on the Basic Information page."
-msgstr "Le Client Secret de votre app Slack, disponible sur la page « Basic Information »."
+msgstr "Le secret client de votre app Slack, disponible sur la page « Basic Information »."
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "Slack app signing secret"
@@ -1032,7 +1032,7 @@ msgstr "Secret de signature de l’app Slack"
 
 #: front/components/data_source/SlackOAuthExtraConfig.tsx
 msgid "The Signing Secret from your Slack app's, available on the Basic Information page."
-msgstr "Le Signing Secret de votre app Slack, disponible sur la page « Basic Information »."
+msgstr "Le secret de signature de votre app Slack, disponible sur la page « Basic Information »."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Error"
@@ -1052,7 +1052,7 @@ msgstr "Vous devez importer un fichier pour créer une table."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Invalid name"
-msgstr "Nom invalide"
+msgstr "Nom non valide"
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "You must provide a valid name for the table."
@@ -1060,7 +1060,7 @@ msgstr "Vous devez indiquer un nom valide pour la table."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Invalid description"
-msgstr "Description invalide"
+msgstr "Description non valide"
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "You must provide a description for the table."
@@ -1068,11 +1068,11 @@ msgstr "Vous devez indiquer une description pour la table."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Invalid table"
-msgstr "Table invalide"
+msgstr "Table non valide"
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Please fill all the required fields."
-msgstr "Veuillez remplir tous les champs obligatoires."
+msgstr "Remplissez tous les champs obligatoires."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Edit table"
@@ -1088,7 +1088,7 @@ msgstr "Nom de la table"
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Invalid name: Must be lowercase alphanumeric, max 32 characters and no space."
-msgstr "Nom invalide : il doit être alphanumérique en minuscules, sans espace et faire 32 caractères au maximum."
+msgstr "Nom non valide : il doit être alphanumérique en minuscules, sans espace et faire 32 caractères au maximum."
 
 #: front/components/data_source/TableUploadOrEditModal.tsx
 msgid "Description"
@@ -1141,7 +1141,7 @@ msgstr "Impossible de modifier la configuration Zendesk"
 
 #: front/components/data_source/ZendeskConfigView.tsx
 msgid "Invalid retention period"
-msgstr "Durée de conservation invalide"
+msgstr "Durée de conservation non valide"
 
 #: front/components/data_source/ZendeskConfigView.tsx
 msgid "Retention period must be a positive integer."
@@ -1177,7 +1177,7 @@ msgstr "{savedRetentionDays, plural, one {# jour} other {# jours}}"
 
 #: front/components/data_source/ZendeskCustomTagFilters.tsx
 msgid "Invalid field ID"
-msgstr "ID de champ invalide"
+msgstr "ID de champ non valide"
 
 #: front/components/data_source/ZendeskCustomTagFilters.tsx
 msgid "Field ID cannot be empty."
@@ -1288,7 +1288,7 @@ msgstr "La limite de transactions par seconde est désormais de {configValue}."
 
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 msgid "Invalid rate limit transactions per second"
-msgstr "Limite de transactions par seconde invalide"
+msgstr "Limite de transactions par seconde non valide"
 
 #: front/components/data_source/ZendeskRateLimitConfig.tsx
 msgid "Rate limit transactions per second must be a positive integer."

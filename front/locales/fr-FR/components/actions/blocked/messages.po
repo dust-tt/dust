@@ -48,11 +48,11 @@ msgstr "Connecter {serverDisplayName}"
 
 #: front/components/actions/blocked/SandboxFunctionToolApprovalCard.tsx
 msgid "Failed to assess action approval. Please try again."
-msgstr "Impossible de traiter la validation de l’action. Veuillez réessayer."
+msgstr "Impossible de traiter l’approbation de l’action. Réessayez."
 
 #: front/components/actions/blocked/ToolValidationCard.tsx
 msgid "Approval {current} of {total}"
-msgstr "Validation {current} sur {total}"
+msgstr "Approbation {current} sur {total}"
 
 #: front/components/actions/blocked/ToolValidationCard.tsx
 msgid "Review details"

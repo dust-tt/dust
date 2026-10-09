@@ -67,7 +67,7 @@ msgstr "Afficher plus"
 
 #: front/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation.ts
 msgid "Type to search"
-msgstr "Saisissez une recherche"
+msgstr "Saisissez du texte pour rechercher"
 
 #: front/components/editor/extensions/shared/slash_suggestion/slashStaticCommands.tsx
 msgid "Search knowledge and reference conversation or Pod files"

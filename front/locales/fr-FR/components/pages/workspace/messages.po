@@ -224,7 +224,7 @@ msgstr "Impossible de charger la réserve de crédits du workspace"
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "An error occurred while loading your Workspace Credit Pool data. Please refresh the page or contact support if the issue persists."
-msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits de votre workspace. Veuillez actualiser la page ou contacter le support si le problème persiste."
+msgstr "Une erreur s’est produite lors du chargement des données de la réserve de crédits de votre workspace. Actualisez la page ou contactez le support si le problème persiste."
 
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "/{initialTotalCreditsFormatted} credits"
@@ -826,7 +826,7 @@ msgstr "acheter recharge api"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "Default per-user workspace credit pool monthly limit"
-msgstr "Limite mensuelle par défaut de la réserve de crédits du workspace par utilisateur"
+msgstr "Limite mensuelle par défaut de la réserve de crédits du workspace par membre"
 
 #: front/components/pages/workspace/usageAdminSearchEntries.ts
 msgid "spending policy default limit pool"

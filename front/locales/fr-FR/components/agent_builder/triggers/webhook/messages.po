@@ -39,7 +39,7 @@ msgstr "Décrivez les conditions (ex. : « Pull requests de John sur le dépô
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
 msgid "Please select an event first"
-msgstr "Veuillez d’abord sélectionner un événement"
+msgstr "Sélectionnez d’abord un événement."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
 msgid "Filter expression (optional)"
@@ -173,7 +173,7 @@ msgstr "Vous ne pouvez pas modifier ce déclencheur. Il est géré par <0>{edito
 
 #: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
 msgid "Name is required"
-msgstr "Le nom est obligatoire"
+msgstr "Le nom est obligatoire."
 
 #: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
 msgid "Name should be less than 255 characters"
@@ -181,7 +181,7 @@ msgstr "Le nom doit faire moins de 255 caractères"
 
 #: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
 msgid "Select a webhook source"
-msgstr "Sélectionnez une source de webhook"
+msgstr "Sélectionnez une source de webhook."
 
 #: front/components/agent_builder/triggers/webhook/webhookEditionFormSchema.ts
 msgid "Webhook trigger"

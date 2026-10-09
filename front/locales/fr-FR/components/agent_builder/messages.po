@@ -23,7 +23,7 @@ msgstr "Réessayer"
 
 #: front/components/agent_builder/AgentBuilder.tsx
 msgid "We could not determine the default model for this agent. Please try again."
-msgstr "Impossible de déterminer le modèle par défaut de cet agent. Veuillez réessayer."
+msgstr "Impossible de déterminer le modèle par défaut de cet agent. Réessayez."
 
 #: front/components/agent_builder/AgentBuilder.tsx
 msgid "Cannot save agent"
@@ -198,7 +198,7 @@ msgstr "Impossible de démarrer Sidekick"
 
 #: front/components/agent_builder/AgentBuilderSidekick.tsx
 msgid "There was an issue starting the Sidekick session. Please try again later."
-msgstr "Un problème est survenu lors du démarrage de la session Sidekick. Veuillez réessayer plus tard."
+msgstr "Un problème est survenu lors du démarrage de la session Sidekick. Réessayez plus tard."
 
 #: front/components/agent_builder/AgentBuilderSidekick.tsx
 msgid "Starting Sidekick session..."
@@ -254,7 +254,7 @@ msgstr "Impossible de charger les sources de données"
 
 #: front/components/agent_builder/DataSourceViewsContext.tsx
 msgid "Unable to fetch data source views. Please try again."
-msgstr "Impossible de récupérer les vues des sources de données. Veuillez réessayer."
+msgstr "Impossible de récupérer les vues des sources de données. Réessayez."
 
 #: front/components/agent_builder/FeedbacksSection.tsx
 msgid "Error loading the previous agent versions."
@@ -339,11 +339,11 @@ msgstr "Le nom de l’agent ne peut pas contenir d’espaces."
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Agent description is required"
-msgstr "La description de l’agent est obligatoire"
+msgstr "La description de l’agent est obligatoire."
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Instructions are required"
-msgstr "Les instructions sont obligatoires"
+msgstr "Les instructions sont obligatoires."
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Max steps per run must be at least 1"
@@ -355,7 +355,7 @@ msgstr "Le nom ne peut pas être vide."
 
 #: front/components/agent_builder/types.ts
 msgid "Description is required"
-msgstr "La description est obligatoire"
+msgstr "La description est obligatoire."
 
 #: front/components/agent_builder/types.ts
 msgid "Description should be less than {DESCRIPTION_MAX_LENGTH} characters."

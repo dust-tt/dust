@@ -111,6 +111,13 @@ export function SkillsBatchEditBar({
   return (
     <BulkSelectionBar
       selectedCount={selectedCount}
+      selectedLabel={t({
+        message: plural(selectedCount, {
+          one: "# selected",
+          other: "# selected",
+        }),
+        context: "selected skills",
+      })}
       selectAllLabel={t`Select all ${plural(totalCount, { one: "# skill", other: "# skills" })}`}
       canSelectAll={totalCount > selectedCount}
       onSelectAll={onSelectAll}

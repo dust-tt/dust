@@ -60,7 +60,7 @@ msgstr "Maintenance en cours"
 
 #: front/components/pages/MaintenancePage.tsx
 msgid "We're currently performing maintenance on this workspace.<0/>Please check back in a few minutes."
-msgstr "Nous effectuons actuellement une maintenance sur ce workspace.<0/>Veuillez revenir dans quelques minutes."
+msgstr "Nous effectuons actuellement une maintenance sur ce workspace.<0/>Revenez dans quelques minutes."
 
 #: front/components/pages/MaintenancePage.tsx
 msgid "If this persists for an extended period,<0/>please contact us at support@dust.tt"

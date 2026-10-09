@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/agent_builder/capabilities/mcp/utils/formValidation.ts
 msgid "Tool \"{toolName}\" has invalid configuration. Please reconfigure it."
-msgstr "La configuration de l’outil « {toolName} » n’est pas valide. Veuillez le reconfigurer."
+msgstr "La configuration de l’outil « {toolName} » n’est pas valide. Reconfigurez-le."
 
 #: front/components/agent_builder/capabilities/mcp/utils/infoPageUtils.ts
 msgid "Tool information"
@@ -27,15 +27,15 @@ msgstr "Aucune description disponible"
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Child agent selection is required"
-msgstr "La sélection d’un agent enfant est obligatoire"
+msgstr "La sélection d’un agent enfant est obligatoire."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Please select a valid child agent"
-msgstr "Veuillez sélectionner un agent enfant valide"
+msgstr "Sélectionnez un agent enfant valide."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Please select a Dust app"
-msgstr "Veuillez sélectionner une app Dust"
+msgstr "Sélectionnez une app Dust."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Selected Dust app is not valid"
@@ -51,7 +51,7 @@ msgstr "Le nom ne peut contenir que des lettres minuscules, des chiffres et des 
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Description is required"
-msgstr "La description est obligatoire"
+msgstr "La description est obligatoire."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Description too long"
@@ -59,15 +59,15 @@ msgstr "Description trop longue"
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Secret selection is required"
-msgstr "La sélection d’un secret est obligatoire"
+msgstr "La sélection d’un secret est obligatoire."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Please select a valid secret"
-msgstr "Veuillez sélectionner un secret valide"
+msgstr "Sélectionnez un secret valide."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Please select one Pod"
-msgstr "Veuillez sélectionner un Pod"
+msgstr "Sélectionnez un Pod."
 
 #: front/components/agent_builder/capabilities/mcp/utils/validationMessages.ts
 msgid "Selected Pod is not valid"

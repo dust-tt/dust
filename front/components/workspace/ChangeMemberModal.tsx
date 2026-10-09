@@ -174,7 +174,7 @@ export function ChangeMemberModal({
                         <DialogContent>
                           <DialogHeader>
                             <DialogTitle>
-                              <Trans>Confirm deletion</Trans>
+                              <Trans>Revoke member access</Trans>
                             </DialogTitle>
                           </DialogHeader>
                           {isSaving ? (
@@ -222,9 +222,9 @@ export function ChangeMemberModal({
                     {member.origin !== "provisioned" && (
                       <Page.P>
                         <Trans>
-                          Deleting a member will remove them from the workspace.
-                          They will be able to rejoin if they have an invitation
-                          link.
+                          Revoking access will remove the member from the
+                          workspace. They will be able to rejoin if they have an
+                          invitation link.
                         </Trans>
                       </Page.P>
                     )}

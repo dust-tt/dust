@@ -32,6 +32,10 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
   const router = useAppRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmText, setConfirmText] = useState("");
+  const confirmKeyword = t({
+    message: "delete",
+    context: "keyword the user types to confirm a deletion",
+  });
   const doDelete = useDeleteSpace({ owner, force: true });
   const { mutate: mutatePodConversationsSummary } = usePodConversationsSummary({
     workspaceId: owner.sId,
@@ -74,7 +78,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
             <DialogContainer className="flex flex-col gap-4">
               <p className="text-sm text-muted-foreground">
                 <Trans>
-                  Type <strong>delete</strong> below to confirm. This
+                  Type <strong>{confirmKeyword}</strong> below to confirm. This
                   permanently removes all Pod content and cannot be undone.
                 </Trans>
               </p>
@@ -84,7 +88,7 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
                 onChange={(e: ChangeEvent<HTMLInputElement>) =>
                   setConfirmText(e.target.value)
                 }
-                placeholder={t`Type delete to confirm`}
+                placeholder={t`Type ${confirmKeyword} to confirm`}
                 containerClassName="w-full"
               />
             </DialogContainer>
@@ -96,7 +100,9 @@ export function DeletePodDialog({ owner, pod }: DeletePodDialogProps) {
               rightButtonProps={{
                 label: t`Delete permanently`,
                 variant: "warning",
-                disabled: confirmText.trim().toLowerCase() !== "delete",
+                disabled:
+                  confirmText.trim().toLowerCase() !==
+                  confirmKeyword.toLowerCase(),
                 onClick: async () => {
                   void onDelete();
                 },

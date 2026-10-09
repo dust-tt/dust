@@ -163,7 +163,7 @@ msgstr "Disponible après l’essai"
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
 msgid "Credit purchases are available once you upgrade to a paid plan. If you would like to purchase credits before upgrading, please contact support."
-msgstr "L’achat de crédits est disponible après le passage à un forfait payant. Si vous souhaitez acheter des crédits avant, veuillez contacter le support."
+msgstr "L’achat de crédits est disponible après le passage à un forfait payant. Si vous souhaitez acheter des crédits avant, contactez le support."
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
 msgid "Subscription issue"

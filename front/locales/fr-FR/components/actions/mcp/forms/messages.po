@@ -53,7 +53,7 @@ msgstr "Cas d’usage manquant"
 
 #: front/components/actions/mcp/forms/utils.ts
 msgid "Please select a use case"
-msgstr "Sélectionnez un cas d’usage"
+msgstr "Sélectionnez un cas d’usage."
 
 #: front/components/actions/mcp/forms/utils.ts
 msgid "Failed to connect {providerName}"

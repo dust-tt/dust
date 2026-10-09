@@ -4,6 +4,7 @@ import {
   formatTime,
   prefersTwentyFourHourTime,
 } from "@app/lib/i18n/format";
+import { rewordFrenchCronDescription } from "@app/lib/utils/wakeup_description";
 import type { ScheduleConfig } from "@app/types/assistant/triggers";
 import { isCronScheduleConfig } from "@app/types/assistant/triggers";
 import type { SupportedLocale } from "@app/types/locale";
@@ -40,10 +41,14 @@ export function describeScheduleConfig(
 
   if (isCronScheduleConfig(config)) {
     try {
-      return cronstrue.toString(config.cron, {
-        locale: locale.split("-")[0],
+      const language = locale.split("-")[0];
+      const description = cronstrue.toString(config.cron, {
+        locale: language,
         use24HourTimeFormat: prefersTwentyFourHourTime(locale),
       });
+      return language === "fr"
+        ? rewordFrenchCronDescription(description)
+        : description;
     } catch {
       return "";
     }

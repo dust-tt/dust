@@ -19,7 +19,7 @@ msgstr "{label} non valide. {helpText}"
 
 #: front/components/oauth/PersonalAuthCredentialOverrides.tsx
 msgid "Invalid {label}. Please check the format."
-msgstr "{label} non valide. Veuillez vérifier le format."
+msgstr "{label} non valide. Vérifiez le format."
 
 #: front/components/oauth/PersonalAuthCredentialOverrides.tsx
 msgid "{label} <0>(optional)</0>"

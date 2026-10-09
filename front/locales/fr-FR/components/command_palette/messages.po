@@ -157,31 +157,31 @@ msgstr "Créer un nouveau Pod"
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search."
-msgstr "Saisissez une recherche."
+msgstr "Saisissez du texte pour rechercher."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search conversations."
-msgstr "Saisissez une recherche pour les conversations."
+msgstr "Saisissez du texte pour rechercher des conversations."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search pods."
-msgstr "Saisissez une recherche pour les Pods."
+msgstr "Saisissez du texte pour rechercher des Pods."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search agents."
-msgstr "Saisissez une recherche pour les agents."
+msgstr "Saisissez du texte pour rechercher des agents."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search members."
-msgstr "Saisissez une recherche pour les membres."
+msgstr "Saisissez du texte pour rechercher des membres."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search skills."
-msgstr "Saisissez une recherche pour les compétences."
+msgstr "Saisissez du texte pour rechercher des compétences."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Type to search settings."
-msgstr "Saisissez une recherche pour les paramètres."
+msgstr "Saisissez du texte pour rechercher des paramètres."
 
 #: front/components/command_palette/CommandPaletteSearchPhase.tsx
 msgid "Search…"

@@ -518,16 +518,16 @@ msgstr "La description doit comporter au maximum {maxLength} caractères"
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Skill name is required"
-msgstr "Le nom de la compétence est obligatoire"
+msgstr "Le nom de la compétence est obligatoire."
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Description of when to use the skill is required"
-msgstr "Indiquez quand utiliser cette compétence"
+msgstr "Indiquez quand utiliser cette compétence."
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Skill description is required"
-msgstr "La description de la compétence est obligatoire"
+msgstr "La description de la compétence est obligatoire."
 
 #: front/components/skill_builder/skillBuilderFormSchema.ts
 msgid "Skill instructions are required"
-msgstr "Les instructions de la compétence sont obligatoires"
+msgstr "Les instructions de la compétence sont obligatoires."

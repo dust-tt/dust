@@ -5,6 +5,7 @@ import type { ComponentProps, ReactNode } from "react";
 
 interface BulkSelectionBarProps {
   selectedCount: number;
+  selectedLabel?: string;
   selectAllLabel: string;
   canSelectAll: boolean;
   onSelectAll: () => void;
@@ -18,6 +19,7 @@ interface BulkSelectionBarProps {
 
 export function BulkSelectionBar({
   selectedCount,
+  selectedLabel,
   selectAllLabel,
   canSelectAll,
   onSelectAll,
@@ -49,7 +51,8 @@ export function BulkSelectionBar({
             <Avatar.Stack avatars={selectedAvatars} size="xs" />
           )}
           <span>
-            {t`${plural(selectedCount, { one: "# selected", other: "# selected" })}`}
+            {selectedLabel ??
+              t`${plural(selectedCount, { one: "# selected", other: "# selected" })}`}
           </span>
           {canSelectAll && (
             <Hoverable variant="highlight" onClick={onSelectAll}>

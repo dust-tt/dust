@@ -66,7 +66,7 @@ msgstr "Impossible de créer le déclencheur"
 #: front/lib/swr/pods.ts
 #: front/lib/swr/sandbox.ts
 msgid "An unexpected error occurred. Please try again."
-msgstr "Une erreur inattendue s’est produite. Veuillez réessayer."
+msgstr "Une erreur inattendue s’est produite. Réessayez."
 
 #: front/lib/swr/agent_triggers.ts
 msgid "Trigger updated"
@@ -551,7 +551,7 @@ msgstr "Impossible de supprimer {serverName}"
 
 #: front/lib/swr/mcp_servers.ts
 msgid "Could not delete {serverName}. Please try again."
-msgstr "Impossible de supprimer {serverName}. Veuillez réessayer."
+msgstr "Impossible de supprimer {serverName}. Réessayez."
 
 #: front/lib/swr/mcp_servers.ts
 msgid "{serverName} deleted"
@@ -603,7 +603,7 @@ msgstr "Impossible de connecter {mcpServerDisplayName}"
 
 #: front/lib/swr/mcp_servers.ts
 msgid "Could not connect to {mcpServerDisplayName}. Please try again."
-msgstr "Impossible de se connecter à {mcpServerDisplayName}. Veuillez réessayer."
+msgstr "Impossible de se connecter à {mcpServerDisplayName}. Réessayez."
 
 #: front/lib/swr/mcp_servers.ts
 msgid "{serverName} disconnected"
@@ -619,7 +619,7 @@ msgstr "Impossible de déconnecter {serverName}"
 
 #: front/lib/swr/mcp_servers.ts
 msgid "Could not disconnect from {serverName}. Please try again."
-msgstr "Impossible de se déconnecter de {serverName}. Veuillez réessayer."
+msgstr "Impossible de se déconnecter de {serverName}. Réessayez."
 
 #: front/lib/swr/mcp_servers.ts
 msgid "A workspace admin must first connect {mcpServerDisplayName} at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection."
@@ -627,7 +627,7 @@ msgstr "Un administrateur du workspace doit d’abord connecter {mcpServerDispla
 
 #: front/lib/swr/mcp_servers.ts
 msgid "Unexpected error trying to connect to your provider. Please try again."
-msgstr "Erreur inattendue lors de la connexion à votre fournisseur. Veuillez réessayer."
+msgstr "Erreur inattendue lors de la connexion à votre fournisseur. Réessayez."
 
 #: front/lib/swr/mcp_servers.ts
 msgid "Failed to add actions to space {spaceName}"
@@ -1394,7 +1394,7 @@ msgstr "Impossible de finaliser l’authentification"
 
 #: front/lib/swr/tool_actions.ts
 msgid "The tool could not resume after authentication. Please try again."
-msgstr "L’outil n’a pas pu reprendre après l’authentification. Veuillez réessayer."
+msgstr "L’outil n’a pas pu reprendre après l’authentification. Réessayez."
 
 #: front/lib/swr/tool_actions.ts
 msgid "Failed to complete file authorization"
@@ -1402,11 +1402,11 @@ msgstr "Impossible de finaliser l’autorisation d’accès au fichier"
 
 #: front/lib/swr/tool_actions.ts
 msgid "The tool could not resume after file authorization. Please try again."
-msgstr "L’outil n’a pas pu reprendre après l’autorisation d’accès au fichier. Veuillez réessayer."
+msgstr "L’outil n’a pas pu reprendre après l’autorisation d’accès au fichier. Réessayez."
 
 #: front/lib/swr/tool_actions.ts
 msgid "Failed to record your decision. Please try again."
-msgstr "Impossible d’enregistrer votre décision. Veuillez réessayer."
+msgstr "Impossible d’enregistrer votre décision. Réessayez."
 
 #: front/lib/swr/upgrade_requests.ts
 msgid "Failed to request an upgrade"
@@ -1510,7 +1510,7 @@ msgstr "Impossible de masquer l’astuce e-mail"
 
 #: front/lib/swr/user.ts
 msgid "Please try again."
-msgstr "Veuillez réessayer."
+msgstr "Réessayez."
 
 #: front/lib/swr/user.ts
 msgid "Profile updated"
@@ -1622,4 +1622,4 @@ msgstr "Échec du paiement"
 
 #: front/lib/swr/workspaces.ts
 msgid "Could not initialise the payment form. Please try again."
-msgstr "Impossible d’initialiser le formulaire de paiement. Veuillez réessayer."
+msgstr "Impossible d’initialiser le formulaire de paiement. Réessayez."

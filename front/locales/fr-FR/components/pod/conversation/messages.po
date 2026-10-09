@@ -27,11 +27,11 @@ msgstr "Hier"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Last week"
-msgstr "La semaine dernière"
+msgstr "Les 7 derniers jours"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Last month"
-msgstr "Le mois dernier"
+msgstr "Les 30 derniers jours"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Last 12 months"
@@ -99,11 +99,11 @@ msgstr "Toutes les conversations de ce Pod."
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Show triggered"
-msgstr "Afficher les déclenchées"
+msgstr "Afficher les conversations déclenchées"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Hide triggered"
-msgstr "Masquer les déclenchées"
+msgstr "Masquer les conversations déclenchées"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Search..."
@@ -111,7 +111,7 @@ msgstr "Rechercher…"
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Failed to search conversations. Please try again."
-msgstr "Impossible de rechercher les conversations. Veuillez réessayer."
+msgstr "Impossible de rechercher les conversations. Réessayez."
 
 #: front/components/pod/conversation/PodConversationsTab.tsx
 msgid "Mark all as read"

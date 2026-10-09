@@ -60,37 +60,37 @@ msgstr "Dust sélectionne un modèle et passe automatiquement à un autre si le 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "None"
-msgstr "Aucun"
+msgstr "aucun"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "Min"
-msgstr "Min"
+msgstr "minimal"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "Low"
-msgstr "Faible"
+msgstr "faible"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "Medium"
-msgstr "Moyen"
+msgstr "moyen"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "High"
-msgstr "Élevé"
+msgstr "élevé"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "xHigh"
-msgstr "Très élevé"
+msgstr "très élevé"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort"
 msgid "Max"
-msgstr "Max"
+msgstr "maximal"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort, lowercase"
@@ -100,7 +100,7 @@ msgstr "aucun"
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort, lowercase"
 msgid "min"
-msgstr "min"
+msgstr "minimal"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort, lowercase"
@@ -125,7 +125,7 @@ msgstr "très élevé"
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "reasoning effort, lowercase"
 msgid "max"
-msgstr "max"
+msgstr "maximal"
 
 #: front/components/model_picker/modelPickerUtils.ts
 msgctxt "model tier"

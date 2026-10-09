@@ -41,7 +41,7 @@ msgstr "Les modèles d’embedding servent à créer des représentations numér
 
 #: front/components/pages/workspace/model_providers/EmbeddingModelSelect.tsx
 msgid "Please contact us if you want to change this setting."
-msgstr "Veuillez nous contacter si vous souhaitez modifier ce paramètre."
+msgstr "Contactez-nous si vous souhaitez modifier ce paramètre."
 
 #: front/components/pages/workspace/model_providers/KeyConfigurationSheet.tsx
 msgid "Provider"

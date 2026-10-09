@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Please enter a promotion code"
-msgstr "Veuillez saisir un code promo"
+msgstr "Saisissez un code promo."
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Pro seat"
@@ -104,7 +104,7 @@ msgstr "Impossible de charger les informations de paiement"
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Your payment was not processed and you have not been charged. Please try again."
-msgstr "Votre paiement n’a pas été traité et vous n’avez pas été débité. Veuillez réessayer."
+msgstr "Votre paiement n’a pas été traité et vous n’avez pas été débité. Réessayez."
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "If the issue persists, contact us at <0>support@dust.tt</0>."
@@ -128,15 +128,15 @@ msgstr "Un problème est survenu avec votre abonnement"
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Your subscription could not be activated. You have not been charged. Please try again."
-msgstr "Votre abonnement n’a pas pu être activé. Vous n’avez pas été débité. Veuillez réessayer."
+msgstr "Votre abonnement n’a pas pu être activé. Vous n’avez pas été débité. Réessayez."
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Coupon no longer valid"
-msgstr "Coupon non valide"
+msgstr "Coupon expiré"
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "This coupon is no longer valid. You have not been charged. Please try again with a different code."
-msgstr "Ce coupon n’est plus valide. Vous n’avez pas été débité. Veuillez réessayer avec un autre code."
+msgstr "Ce coupon n’est plus valide. Vous n’avez pas été débité. Réessayez avec un autre code."
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Payment failed"
@@ -144,7 +144,7 @@ msgstr "Échec du paiement"
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Your payment could not be processed and you have not been charged. Please try again."
-msgstr "Votre paiement n’a pas pu être traité et vous n’avez pas été débité. Veuillez réessayer."
+msgstr "Votre paiement n’a pas pu être traité et vous n’avez pas été débité. Réessayez."
 
 #: front/components/pages/onboarding/CheckoutPage.tsx
 msgid "Setting up your subscription"
@@ -190,11 +190,11 @@ msgstr "Bonjour {firstName} !"
 
 #: front/components/pages/onboarding/InviteChoosePage.tsx
 msgid "We couldn't find any pending invitations for {email}. Please contact your workspace admin or try another email address."
-msgstr "Nous n’avons trouvé aucune invitation en attente pour {email}. Veuillez contacter l’administrateur de votre workspace ou essayer une autre adresse e-mail."
+msgstr "Nous n’avons trouvé aucune invitation en attente pour {email}. Contactez l’administrateur de votre workspace ou essayez une autre adresse e-mail."
 
 #: front/components/pages/onboarding/InviteChoosePage.tsx
 msgid "We couldn't find any pending invitations for your account. Please contact your workspace admin or try another email address."
-msgstr "Nous n’avons trouvé aucune invitation en attente pour votre compte. Veuillez contacter l’administrateur de votre workspace ou essayer une autre adresse e-mail."
+msgstr "Nous n’avons trouvé aucune invitation en attente pour votre compte. Contactez l’administrateur de votre workspace ou essayez une autre adresse e-mail."
 
 #: front/components/pages/onboarding/InviteChoosePage.tsx
 msgid "Choose the workspace you would like to join:"
@@ -214,7 +214,7 @@ msgstr "Une erreur s’est produite"
 
 #: front/components/pages/onboarding/JoinPage.tsx
 msgid "We couldn't load the invitation. Please try again."
-msgstr "Impossible de charger l’invitation. Veuillez réessayer."
+msgstr "Impossible de charger l’invitation. Réessayez."
 
 #: front/components/pages/onboarding/JoinPage.tsx
 msgid "Retry"
@@ -230,7 +230,7 @@ msgstr "Bienvenue à bord !"
 
 #: front/components/pages/onboarding/JoinPage.tsx
 msgid "Please log in or sign up with your company email to access this conversation."
-msgstr "Veuillez vous connecter ou vous inscrire avec votre e-mail professionnel pour accéder à cette conversation."
+msgstr "Connectez-vous ou inscrivez-vous avec votre e-mail professionnel pour accéder à cette conversation."
 
 #: front/components/pages/onboarding/JoinPage.tsx
 msgid "You've been invited to join <0>{workspaceName}'s workspace on Dust</0>."
@@ -238,7 +238,7 @@ msgstr "Vous avez été invité à rejoindre <0>le workspace {workspaceName} sur
 
 #: front/components/pages/onboarding/JoinPage.tsx
 msgid "Dust is a platform giving you access to the best AI agents. It's easy to use and it's a great place for teams to collaborate. Learn more about Dust on <0>our website</0>."
-msgstr "Dust est une plateforme qui vous donne accès aux meilleurs agents IA. Elle est simple à utiliser et idéale pour collaborer en équipe. Découvrez-en plus sur Dust sur <0>notre site web</0>."
+msgstr "Dust est une plateforme qui vous donne accès aux meilleurs agents IA. Elle est simple à utiliser et idéale pour collaborer en équipe. Pour en savoir plus sur Dust, consultez <0>notre site web</0>."
 
 #: front/components/pages/onboarding/JoinPage.tsx
 #: front/components/pages/onboarding/LoginErrorPage.tsx
@@ -267,7 +267,7 @@ msgstr "Le domaine associé à votre adresse e-mail n’est pas autorisé à rej
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Please contact your workspace admin to get access or contact us at support@dust.tt for assistance."
-msgstr "Veuillez contacter l’administrateur de votre workspace pour obtenir l’accès, ou contactez-nous à support@dust.tt pour obtenir de l’aide."
+msgstr "Contactez l’administrateur de votre workspace pour obtenir l’accès, ou contactez-nous à support@dust.tt pour obtenir de l’aide."
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Oops! Looks like you're not authorized to access this application yet."
@@ -323,7 +323,7 @@ msgstr "L’invitation ne correspond pas à l’adresse e-mail fournie."
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Please verify your email or contact your workspace administrator for assistance."
-msgstr "Veuillez vérifier votre e-mail ou contacter l’administrateur de votre workspace pour obtenir de l’aide."
+msgstr "Vérifiez votre e-mail ou contactez l’administrateur de votre workspace pour obtenir de l’aide."
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Your access to the workspace has expired!"
@@ -335,7 +335,7 @@ msgstr "Contactez l’administrateur de votre workspace pour mettre à jour votr
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Please contact us at support@dust.tt for assistance."
-msgstr "Veuillez nous contacter à support@dust.tt pour obtenir de l’aide."
+msgstr "Contactez-nous à support@dust.tt pour obtenir de l’aide."
 
 #: front/components/pages/onboarding/LoginErrorPage.tsx
 msgid "Back to homepage"
@@ -363,7 +363,7 @@ msgstr "Vous avez peut-être été retiré du workspace, ou le workspace a attei
 
 #: front/components/pages/onboarding/NoWorkspacePage.tsx
 msgid "Please <0>contact the administrator in {workspaceName}</0> for more information or to add you again."
-msgstr "Veuillez <0>contacter l’administrateur de {workspaceName}</0> pour en savoir plus ou pour être ajouté à nouveau."
+msgstr "<0>Contactez l’administrateur de {workspaceName}</0> pour en savoir plus ou pour être ajouté à nouveau."
 
 #: front/components/pages/onboarding/PaymentProcessingPage.tsx
 msgid "Payment processing timed out."
@@ -420,7 +420,7 @@ msgstr "Vous pouvez le modifier à tout moment depuis la page d’administration
 
 #: front/components/pages/onboarding/SubscribePage.tsx
 msgid "Subscribe to a paid plan"
-msgstr "Souscrire un forfait payant"
+msgstr "S’abonner à un forfait payant"
 
 #: front/components/pages/onboarding/SubscribePage.tsx
 msgid "Start your subscription"
@@ -460,7 +460,7 @@ msgstr "Vous bénéficiez actuellement d’un essai gratuit."
 
 #: front/components/pages/onboarding/SubscribePage.tsx
 msgid "To continue using Dust after your trial ends, subscribe to a paid plan. Select your preferred billing option to get started."
-msgstr "Pour continuer à utiliser Dust après la fin de votre essai, souscrivez un forfait payant. Sélectionnez votre option de facturation pour commencer."
+msgstr "Pour continuer à utiliser Dust après la fin de votre essai, abonnez-vous à un forfait payant. Sélectionnez votre option de facturation pour commencer."
 
 #: front/components/pages/onboarding/SubscribePage.tsx
 msgid "Welcome back! You can reactivate your subscription anytime."
@@ -504,7 +504,7 @@ msgstr "Annuel"
 
 #: front/components/pages/onboarding/SubscriptionPlans.tsx
 msgid "Save 20%"
-msgstr "20 % d’économie"
+msgstr "Économisez 20 %"
 
 #: front/components/pages/onboarding/SubscriptionPlans.tsx
 msgid "credits"
@@ -628,23 +628,23 @@ msgstr "Démarrer l’essai gratuit"
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Please enter your phone number."
-msgstr "Veuillez saisir votre numéro de téléphone."
+msgstr "Saisissez votre numéro de téléphone."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Please enter a valid phone number."
-msgstr "Veuillez saisir un numéro de téléphone valide."
+msgstr "Saisissez un numéro de téléphone valide."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Unexpected error. Please try again."
-msgstr "Erreur inattendue. Veuillez réessayer."
+msgstr "Erreur inattendue. Réessayez."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Captcha verification failed. Please try again."
-msgstr "La vérification captcha a échoué. Veuillez réessayer."
+msgstr "La vérification captcha a échoué. Réessayez."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Too many verification attempts. Please try again in {waitMinutes, plural, one {# minute} other {# minutes}}."
-msgstr "Trop de tentatives de vérification. Veuillez réessayer dans {waitMinutes, plural, one {# minute} other {# minutes}}."
+msgstr "Trop de tentatives de vérification. Réessayez dans {waitMinutes, plural, one {# minute} other {# minutes}}."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Failed to send code"
@@ -652,19 +652,19 @@ msgstr "Impossible d’envoyer le code"
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Please enter the full 6-digit code."
-msgstr "Veuillez saisir le code complet à 6 chiffres."
+msgstr "Saisissez le code complet à 6 chiffres."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Invalid code"
-msgstr "Code invalide"
+msgstr "Code non valide"
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Network error. Please try again."
-msgstr "Erreur réseau. Veuillez réessayer."
+msgstr "Erreur réseau. Réessayez."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Captcha could not load. Please refresh and try again."
-msgstr "Le captcha n’a pas pu se charger. Veuillez actualiser la page et réessayer."
+msgstr "Le captcha n’a pas pu se charger. Actualisez la page et réessayez."
 
 #: front/components/pages/onboarding/VerifyPage.tsx
 msgid "Verify your phone"

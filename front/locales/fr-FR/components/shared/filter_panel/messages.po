@@ -98,7 +98,7 @@ msgstr "Pas assez de données d’utilisation pour filtrer."
 
 #: front/components/shared/filter_panel/UsageRangeFilter.tsx
 msgid "{high, plural, one {{usageRange} active user} other {{usageRange} active users}}"
-msgstr "{high, plural, one {{usageRange} utilisateur actif} other {{usageRange} utilisateurs actifs}}"
+msgstr "{high, plural, one {{usageRange} membre actif} other {{usageRange} membres actifs}}"
 
 #: front/components/shared/filter_panel/UsageRangeFilter.tsx
 msgid "Minimum active users"
@@ -233,4 +233,4 @@ msgstr "{fullName} (vous)"
 
 #: front/components/shared/filter_panel/searchFilter.ts
 msgid "{max, plural, one {{usageRange} active user} other {{usageRange} active users}}"
-msgstr "{max, plural, one {{usageRange} utilisateur actif} other {{usageRange} utilisateurs actifs}}"
+msgstr "{max, plural, one {{usageRange} membre actif} other {{usageRange} membres actifs}}"

@@ -139,11 +139,11 @@ msgstr "Données et accès"
 
 #: front/components/shared/SpaceSelectionSheet.tsx
 msgid "Adding spaces or pods will make the data from each of them available to the agent."
-msgstr "Ajouter des espaces ou des Pods rendra leurs données accessibles à l’agent."
+msgstr "L’ajout d’espaces ou de Pods rend leurs données accessibles à l’agent."
 
 #: front/components/shared/SpaceSelectionSheet.tsx
 msgid "Adding spaces or pods will make the data from each of them available to the skill."
-msgstr "Ajouter des espaces ou des Pods rendra leurs données accessibles à la compétence."
+msgstr "L’ajout d’espaces ou de Pods rend leurs données accessibles à la compétence."
 
 #: front/components/shared/SpaceSelectionSheet.tsx
 msgid "Search spaces and Pods"

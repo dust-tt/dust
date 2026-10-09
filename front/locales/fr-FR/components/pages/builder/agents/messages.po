@@ -31,7 +31,7 @@ msgstr "Rechercher des modèles"
 
 #: front/components/pages/builder/agents/ManageAgentsPage.tsx
 msgid "Could not load agents. Please try again."
-msgstr "Impossible de charger les agents. Veuillez réessayer."
+msgstr "Impossible de charger les agents. Réessayez."
 
 #: front/components/pages/builder/agents/ManageAgentsPage.tsx
 msgid "Retry"

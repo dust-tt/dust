@@ -323,9 +323,8 @@ msgid "Space settings - {spaceName}"
 msgstr "Space settings - {spaceName}"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
-#: front/components/spaces/SpaceCategoriesList.tsx
-msgid "Space settings"
-msgstr "Space settings"
+msgid "Create a space"
+msgstr "Create a space"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
@@ -606,6 +605,10 @@ msgstr "Triggers"
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Used by"
 msgstr "Used by"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Space settings"
+msgstr "Space settings"
 
 #: front/components/spaces/SpaceCategoriesList.tsx
 #: front/components/spaces/spaceCategoryLabels.ts

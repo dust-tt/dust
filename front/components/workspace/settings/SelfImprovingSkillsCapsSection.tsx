@@ -2,6 +2,7 @@ import {
   normalizeCapInput,
   useCapUnitLabel,
 } from "@app/components/workspace/settings/selfImprovingSkillsCapUtils";
+import { formatNumber } from "@app/lib/i18n/format";
 import {
   DEFAULT_REINFORCEMENT_CAP_AWU_CREDITS,
   DEFAULT_REINFORCEMENT_CAP_MICRO_USD,
@@ -78,7 +79,7 @@ function SelfImprovementCapPerSkillItem({ owner }: CapItemProps) {
           <InputWithSave
             name="selfImprovementCapPerSkill"
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
-            placeholder={String(defaultCap)}
+            placeholder={formatNumber(defaultCap)}
             value={savedValue}
             unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}
@@ -138,7 +139,7 @@ function SelfImprovingCapItem({ owner }: CapItemProps) {
           <InputWithSave
             name="reinforcementCap"
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
-            placeholder={String(defaultCap)}
+            placeholder={formatNumber(defaultCap)}
             value={savedValue}
             unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}

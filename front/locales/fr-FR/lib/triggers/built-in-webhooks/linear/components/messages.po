@@ -36,7 +36,7 @@ msgstr "Aucune équipe trouvée"
 
 #: front/lib/triggers/built-in-webhooks/linear/components/CreateWebhookLinearConnection.tsx
 msgid "Please select at least one team to create the webhook"
-msgstr "Sélectionnez au moins une équipe pour créer le webhook"
+msgstr "Sélectionnez au moins une équipe pour créer le webhook."
 
 #: front/lib/triggers/built-in-webhooks/linear/components/WebhookSourceLinearDetails.tsx
 msgid "Webhook configuration"

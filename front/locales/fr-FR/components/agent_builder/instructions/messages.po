@@ -62,8 +62,8 @@ msgid "Command or guideline you provide to your agent to direct its responses."
 msgstr "Consignes que vous donnez à votre agent pour orienter ses réponses."
 
 #: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
-msgid "Comparing current version with {compareVersionDate}"
-msgstr "Comparaison de la version actuelle avec celle du {compareVersionDate}"
+msgid "Comparing current version with {compareVersionDate} at {compareVersionTime}"
+msgstr "Comparaison de la version actuelle avec celle du {compareVersionDate} à {compareVersionTime}"
 
 #: front/components/agent_builder/instructions/AgentBuilderInstructionsBlock.tsx
 msgid "Leave comparison mode"

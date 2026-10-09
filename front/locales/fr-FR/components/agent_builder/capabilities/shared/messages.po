@@ -63,7 +63,7 @@ msgstr "Erreur lors du chargement des agents"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "Failed to load available agents. Please try again later."
-msgstr "Impossible de charger les agents disponibles. Veuillez réessayer plus tard."
+msgstr "Impossible de charger les agents disponibles. Réessayez plus tard."
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "No agents available"
@@ -71,7 +71,7 @@ msgstr "Aucun agent disponible"
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "There are no agents available to select. Please create an agent first."
-msgstr "Aucun agent n’est disponible. Veuillez d’abord créer un agent."
+msgstr "Aucun agent n’est disponible. Créez d’abord un agent."
 
 #: front/components/agent_builder/capabilities/shared/ChildAgentSection.tsx
 msgid "The agent selected is not available to you"
@@ -159,7 +159,7 @@ msgstr "Instructions requises"
 
 #: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
 msgid "Please add agent instructions first."
-msgstr "Veuillez d’abord ajouter les instructions de l’agent."
+msgstr "Ajoutez d’abord les instructions de l’agent."
 
 #: front/components/agent_builder/capabilities/shared/JsonSchemaSection.tsx
 msgid "Failed to generate schema."

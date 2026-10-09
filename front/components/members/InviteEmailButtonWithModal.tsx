@@ -499,7 +499,7 @@ export function InviteEmailButtonWithModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: t`Validate`,
+            label: t`Invite`,
             variant: "primary",
             disabled: !!shouldDisableButton || isSubmitting,
             isLoading: isSubmitting,

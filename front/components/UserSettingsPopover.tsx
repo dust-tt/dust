@@ -710,7 +710,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
         )}
 
         <SettingsList.Row
-          title={t`Send message`}
+          title={t({ message: "Send message", context: "setting title" })}
           description={t`Keyboard shortcut to send a message`}
           action={
             <DropdownMenu>

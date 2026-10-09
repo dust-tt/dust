@@ -238,4 +238,4 @@ msgstr "Voir le déclencheur"
 
 #: front/components/assistant/details/useTriggerSheetState.ts
 msgid "Please select an event"
-msgstr "Veuillez sélectionner un événement"
+msgstr "Sélectionnez un événement."

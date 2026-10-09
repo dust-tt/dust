@@ -5,10 +5,7 @@ import { AgentBuilderSimilarAgentsSection } from "@app/components/agent_builder/
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
-import {
-  formatDateTime,
-  NUMERIC_DATE_TIME_OPTIONS,
-} from "@app/lib/i18n/format";
+import { formatDate, formatTime } from "@app/lib/i18n/format";
 import { useAgentConfigurationHistory } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -81,11 +78,21 @@ export function AgentBuilderInstructionsBlock({
 
   const headerActions = <>{!isInstructionDiffMode && <AdvancedSettings />}</>;
 
-  const compareVersionDate = compareVersion?.versionCreatedAt
-    ? formatDateTime(
-        new Date(compareVersion.versionCreatedAt),
-        NUMERIC_DATE_TIME_OPTIONS
-      )
+  const compareVersionCreatedAt = compareVersion?.versionCreatedAt
+    ? new Date(compareVersion.versionCreatedAt)
+    : null;
+  const compareVersionDate = compareVersionCreatedAt
+    ? formatDate(compareVersionCreatedAt, {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      })
+    : null;
+  const compareVersionTime = compareVersionCreatedAt
+    ? formatTime(compareVersionCreatedAt, {
+        hour: "numeric",
+        minute: "2-digit",
+      })
     : null;
 
   return (
@@ -99,7 +106,10 @@ export function AgentBuilderInstructionsBlock({
           <Separator />
           {compareVersionDate && (
             <Label>
-              <Trans>Comparing current version with {compareVersionDate}</Trans>
+              <Trans>
+                Comparing current version with {compareVersionDate} at{" "}
+                {compareVersionTime}
+              </Trans>
             </Label>
           )}
           <div className="flex gap-2">

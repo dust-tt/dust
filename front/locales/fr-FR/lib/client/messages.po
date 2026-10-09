@@ -79,7 +79,7 @@ msgstr "Par quoi commençons-nous, {name} ?"
 
 #: front/lib/client/greetings.ts
 msgid "What’s cooking, {name}?"
-msgstr "Qu’est-ce qui se prépare, {name} ?"
+msgstr "Quoi de neuf, {name} ?"
 
 #: front/lib/client/greetings.ts
 msgid "Ready when you are, {name}."

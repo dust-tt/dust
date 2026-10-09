@@ -283,7 +283,7 @@ export function CreateOrEditSpaceModal({
             {space ? (
               <Trans>Space settings - {spaceName}</Trans>
             ) : (
-              <Trans>Space settings</Trans>
+              <Trans>Create a space</Trans>
             )}
           </SheetTitle>
         </SheetHeader>

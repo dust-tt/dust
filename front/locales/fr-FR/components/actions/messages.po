@@ -15,8 +15,8 @@ msgstr ""
 
 #: front/components/actions/ActionDetailsWrapper.tsx
 msgid "running for {duration}"
-msgstr "en cours depuis {duration}"
+msgstr "En cours depuis {duration}"
 
 #: front/components/actions/ActionDetailsWrapper.tsx
 msgid "executed in {duration}"
-msgstr "exécuté en {duration}"
+msgstr "Exécuté en {duration}"

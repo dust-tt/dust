@@ -32,4 +32,4 @@ msgstr "Une erreur s’est produite"
 
 #: front/components/error_boundary/GlobalErrorFallback.tsx
 msgid "An unexpected error occurred. Please try again."
-msgstr "Une erreur inattendue s’est produite. Veuillez réessayer."
+msgstr "Une erreur inattendue s’est produite. Réessayez."

@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
 msgid "Company"
-msgstr "Entreprise"
+msgstr "Toute l’entreprise"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
 msgid "Shared"
@@ -32,7 +32,7 @@ msgstr "Tous"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterAgentScopeControls.tsx
 msgid "Scopes"
-msgstr "Périmètres"
+msgstr "Visibilité"
 
 #: front/components/workspace/analytics/usageFilterPanel/UsageFilterMemberGroupsControls.tsx
 msgid "Groups"

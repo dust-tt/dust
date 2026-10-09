@@ -148,8 +148,8 @@ msgid "Cancel"
 msgstr "Cancel"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "Validate"
-msgstr "Validate"
+msgid "Invite"
+msgstr "Invite"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "Note"

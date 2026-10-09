@@ -48,7 +48,7 @@ msgstr "Retirer"
 
 #: src/components/ComposerInput.tsx
 msgid "Get work done"
-msgstr "Que souhaitez-vous accomplir ?"
+msgstr "Que souhaitez-vous accomplir ?"
 
 #: src/components/ConversationListItem.tsx
 msgid "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
@@ -267,7 +267,7 @@ msgstr "Arrêter l’enregistrement"
 
 #: src/components/VoicePicker.tsx
 msgid "Click, or press and hold to record"
-msgstr "Cliquez, ou maintenez appuyé pour enregistrer"
+msgstr "Cliquez ou maintenez appuyé pour enregistrer"
 
 #: src/components/markdown/ActionCardBlock.tsx
 msgid "Apply"
@@ -394,4 +394,4 @@ msgstr "{hiddenPropertyCount, plural, one {{hiddenProperties} propriété de plu
 
 #: src/lib/SafeSuspense.tsx
 msgid "Failed to load. Please reload the page."
-msgstr "Échec du chargement. Veuillez recharger la page."
+msgstr "Échec du chargement. Rechargez la page."

@@ -34,7 +34,7 @@ msgstr "Impossible d’envoyer les identifiants"
 #: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
 #: front/components/actions/mcp/create/CreateMCPServerDialog.tsx
 msgid "The credentials form is not ready. Please retry."
-msgstr "Le formulaire d’identifiants n’est pas prêt. Veuillez réessayer."
+msgstr "Le formulaire d’identifiants n’est pas prêt. Réessayez."
 
 #: front/components/actions/mcp/create/ConnectMCPServerDialog.tsx
 msgid "Failed to connect the tool"

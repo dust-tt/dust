@@ -329,7 +329,7 @@ msgstr "Votre forfait restera actif jusqu’à la fin de la période de facturat
 
 #: front/components/workspace/billing/SubscriptionActionButtons.tsx
 msgid "This ends your subscription right away and cannot be undone."
-msgstr "Cela met fin à votre abonnement immédiatement et de façon irréversible."
+msgstr "Cette action est irréversible."
 
 #: front/components/workspace/billing/SubscriptionActionButtons.tsx
 msgid "You can resume your subscription any time before {periodEndLabel} with no interruption to your plan."

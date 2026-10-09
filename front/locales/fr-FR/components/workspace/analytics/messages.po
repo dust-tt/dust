@@ -39,7 +39,7 @@ msgstr "Indicateurs d’utilisation"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Active users"
-msgstr "Utilisateurs actifs"
+msgstr "Membres actifs"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Message source"
@@ -53,7 +53,7 @@ msgstr "Agents"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 msgid "Users"
-msgstr "Utilisateurs"
+msgstr "Membres"
 
 #: front/components/workspace/analytics/AnalyticsExportPanel.tsx
 #: front/components/workspace/analytics/UsageFilterPanel.tsx

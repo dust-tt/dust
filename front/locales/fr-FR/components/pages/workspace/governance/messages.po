@@ -36,7 +36,7 @@ msgstr "Les groupes attribués ici se gèrent dans <0>Membres → Groupes</0>"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Agents & Skills"
-msgstr "Agents & Compétences"
+msgstr "Agents et compétences"
 
 #: front/components/pages/workspace/governance/GovernancePage.tsx
 msgid "Pods & Frames"
@@ -84,7 +84,7 @@ msgstr "Configuration non valide"
 
 #: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
 msgid "This setting references groups that have not been found. Please reload the page."
-msgstr "Ce paramètre fait référence à des groupes introuvables. Veuillez recharger la page."
+msgstr "Ce paramètre fait référence à des groupes introuvables. Rechargez la page."
 
 #: front/components/pages/workspace/governance/GroupSelector.tsx
 msgid "Add a group"
