@@ -47,9 +47,10 @@ const neighbourId = (list: DfmComment[], id: string): string | null => {
  * hands it to its onCancel (see `document-comment-input`), the field MUST be cleared and focus
  * MUST return to its thread. After resolving, reopening or deleting a thread, focus MUST move to a
  * neighbouring thread or to the list heading; a refused one MUST show the reason on its thread
- * instead, until the thread changes. While a thread's resolve, reopen, delete or suggestion is
- * pending, its controls MUST show it and further clicks on them MUST be ignored. Opening or
- * closing the list MUST NOT change the document.
+ * instead, until the thread changes (see `document-thread-actions`). While a thread's resolve,
+ * reopen, delete or suggestion is pending, its controls MUST show it and further clicks on them
+ * MUST be ignored, also after the list closes and reopens. Opening or closing the list MUST NOT
+ * change the document.
  */
 /**
  * @cc [owner:tdraier,label:react;performance] document-comment-avatars
@@ -82,6 +83,9 @@ export const DocumentCommentsList = ({
     suggestable,
     suggestionTemplate,
     applySuggestion,
+    busyThreadIds,
+    threadError,
+    runThreadAction,
   } = comments;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const threadElements = useRef(new Map<string, HTMLElement>());
@@ -133,13 +137,21 @@ export const DocumentCommentsList = ({
         quote={quotes.get(comment.id)}
         active={comment.id === activeId}
         canWrite={canWrite}
+        busy={busyThreadIds.has(comment.id)}
+        error={threadError(comment)}
         isVerified={(index) => isVerified(comment.id, index)}
         onSelect={() => jumpTo(comment.id)}
         onReply={(body) => reply(comment.id, body)}
         onSetResolved={(value) =>
-          setResolved(comment.id, value, neighbourId(siblings, comment.id))
+          void runThreadAction(comment.id, () =>
+            setResolved(comment.id, value, neighbourId(siblings, comment.id))
+          )
         }
-        onDelete={() => remove(comment.id, neighbourId(siblings, comment.id))}
+        onDelete={() =>
+          void runThreadAction(comment.id, () =>
+            remove(comment.id, neighbourId(siblings, comment.id))
+          )
+        }
         onElement={(element) => {
           if (element) {
             threadElements.current.set(comment.id, element);
@@ -156,10 +168,12 @@ export const DocumentCommentsList = ({
         onApplySuggestion={
           canSuggest
             ? (suggestion) =>
-                applySuggestion(
-                  comment.id,
-                  suggestion,
-                  neighbourId(siblings, comment.id)
+                runThreadAction(comment.id, () =>
+                  applySuggestion(
+                    comment.id,
+                    suggestion,
+                    neighbourId(siblings, comment.id)
+                  )
                 )
             : undefined
         }

@@ -158,6 +158,12 @@ const previewDocument = (
   return applied ? next : null;
 };
 
+interface ThreadFailure {
+  /** The thread as it was when refused; the refusal no longer applies once it changes. */
+  comment: DfmComment;
+  message: string;
+}
+
 /** Where the comments card or list should move focus once it has rendered. */
 export interface CommentsFocusRequest {
   /** Thread to focus, or null for the list heading. */
@@ -179,7 +185,15 @@ export interface CommentsFocusRequest {
  * comment from a highlight or marker MUST close the comments list, make the comment active so its
  * card floats under its text, and request focus on that thread. Opening the list from its toggle
  * MUST cancel a pending draft and request focus on the list. Starting a draft MUST close the list.
- * Closing the list while focus is inside it MUST return focus to the toggle.
+ * Closing the list while focus is inside it MUST return focus to the toggle. While a draft is
+ * pending, revealing MUST NOT change the active comment, so the draft's card and its typed text
+ * stay.
+ */
+/**
+ * @cc [owner:tdraier,label:react] document-thread-actions
+ * While a thread's resolve, reopen, delete or suggestion is pending, another of them on that
+ * thread MUST be ignored, wherever it starts and even after the list or card that started it
+ * closed. A refused one MUST read on the thread, with its reason, until the thread changes.
  */
 /**
  * @cc [owner:tdraier,label:security] document-comment-verification
@@ -260,6 +274,14 @@ export const useDocumentComments = ({
     null
   );
   const [verification, setVerification] = useState<Verification | null>(null);
+  const pendingThreadIds = useRef(new Set<string>());
+  const [busyThreadIds, setBusyThreadIds] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [threadFailures, setThreadFailures] = useState<
+    ReadonlyMap<string, ThreadFailure>
+  >(() => new Map());
+  const latestComments = useRef(comments);
   const latestVerification = useRef<Verification | null>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLElement>(null);
@@ -322,6 +344,10 @@ export const useDocumentComments = ({
   }, [comments, verify]);
 
   useEffect(() => {
+    latestComments.current = comments;
+  }, [comments]);
+
+  useEffect(() => {
     if (!canWrite && state.draft && editor) {
       editor.commands.cancelCommentDraft();
     }
@@ -338,6 +364,9 @@ export const useDocumentComments = ({
   };
 
   const reveal = (id: string) => {
+    if (state.draft) {
+      return;
+    }
     select(id);
     setListOpen(false);
     requestFocus(id);
@@ -588,6 +617,19 @@ export const useDocumentComments = ({
       : new Err(t`This text is too long or complex to suggest a change to.`);
   };
 
+  const recordThreadResult = (id: string, done: Result<void, string>) =>
+    setThreadFailures((current) => {
+      const next = new Map(current);
+      // Keyed to the thread as it is now: a suggestion changes the document before it is refused.
+      const comment = latestComments.current.find((thread) => thread.id === id);
+      if (done.isErr() && comment) {
+        next.set(id, { comment, message: done.error });
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+
   return {
     /** Whether a message's signature checked out, or null while unknown. */
     isVerified: (commentId: string, index: number): boolean | null =>
@@ -602,6 +644,35 @@ export const useDocumentComments = ({
     canWrite,
     author,
     listOpen,
+    /** Threads with a resolve, reopen, delete or suggestion pending. */
+    busyThreadIds,
+    /** The reason the thread's last action was refused, until the thread changes. */
+    threadError: (comment: DfmComment): string | null => {
+      const failure = threadFailures.get(comment.id);
+      return failure?.comment === comment ? failure.message : null;
+    },
+    /**
+     * Runs a resolve, reopen, delete or suggestion on a thread, unless one is pending on it.
+     * Resolves to null for an ignored action.
+     */
+    runThreadAction: async (
+      id: string,
+      action: () => Promise<Result<void, string>>
+    ): Promise<Result<void, string> | null> => {
+      if (pendingThreadIds.current.has(id)) {
+        return null;
+      }
+      pendingThreadIds.current.add(id);
+      setBusyThreadIds(new Set(pendingThreadIds.current));
+      try {
+        const done = await action();
+        recordThreadResult(id, done);
+        return done;
+      } finally {
+        pendingThreadIds.current.delete(id);
+        setBusyThreadIds(new Set(pendingThreadIds.current));
+      }
+    },
     focusRequest,
     toggleRef,
     listRef,

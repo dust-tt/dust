@@ -164,7 +164,7 @@ interface SuggestionCardProps {
   quote: string | undefined;
   suggestion: string;
   renderBody: (body: string) => ReactNode;
-  onApply?: () => Promise<Result<void, string> | null>;
+  onApply?: () => Promise<unknown>;
   busy: boolean;
 }
 
@@ -174,7 +174,7 @@ interface SuggestionCardProps {
  * suggested text, or that it deletes the text when the suggestion is blank. Apply MUST render
  * only when the user can write, the thread is open, its commented text lies in one textblock and
  * the suggestion reads as one paragraph of inline Markdown. A refused Apply, such as one another
- * comment blocks, MUST show the reason.
+ * comment blocks, MUST show the reason on its thread.
  */
 const SuggestionCard = ({
   quote,
@@ -184,7 +184,6 @@ const SuggestionCard = ({
   busy,
 }: SuggestionCardProps) => {
   const { t } = useLingui();
-  const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
 
   return (
@@ -204,12 +203,7 @@ const SuggestionCard = ({
             onClick={(event) => {
               event.stopPropagation();
               setApplying(true);
-              void onApply().then((applied) => {
-                setApplying(false);
-                if (applied) {
-                  setError(applied.isErr() ? applied.error : null);
-                }
-              });
+              void onApply().finally(() => setApplying(false));
             }}
           />
         )}
@@ -228,11 +222,6 @@ const SuggestionCard = ({
           </span>
         )}
       </div>
-      {error && (
-        <p role="alert" className="px-2 py-1 text-xs text-warning-500">
-          {error}
-        </p>
-      )}
     </div>
   );
 };
@@ -241,9 +230,7 @@ interface MessageBodyProps {
   body: string;
   quote: string | undefined;
   renderBody: (body: string) => ReactNode;
-  onApplySuggestion?: (
-    suggestion: string
-  ) => Promise<Result<void, string> | null>;
+  onApplySuggestion?: (suggestion: string) => Promise<unknown>;
   busy: boolean;
 }
 
@@ -341,6 +328,106 @@ export const DocumentCommentDraftCard = ({
   );
 };
 
+interface ThreadActionsProps {
+  resolved: boolean;
+  canWrite: boolean;
+  /** Folded in the list, the actions show on hover; the space stays reserved. */
+  folded: boolean;
+  busy: boolean;
+  onSetResolved: (resolved: boolean) => void;
+  onDelete: () => void;
+  onClose?: () => void;
+  mountPortalContainer?: HTMLElement;
+}
+
+const ThreadActions = ({
+  resolved,
+  canWrite,
+  folded,
+  busy,
+  onSetResolved,
+  onDelete,
+  onClose,
+  mountPortalContainer,
+}: ThreadActionsProps) => {
+  const { t } = useLingui();
+  return (
+    <div
+      className={cn(
+        "-mr-1 -mt-1 -mb-2 flex justify-end",
+        folded &&
+          "opacity-0 transition-opacity group-focus-within/thread:opacity-100 group-hover/thread:opacity-100"
+      )}
+    >
+      {canWrite && (
+        <>
+          <ThreadIconButton
+            label={resolved ? t`Reopen` : t`Resolve`}
+            icon={resolved ? ReverseLeft : Check}
+            onClick={() => onSetResolved(!resolved)}
+            busy={busy}
+            mountPortalContainer={mountPortalContainer}
+          />
+          <ThreadIconButton
+            label={t`Delete comment`}
+            icon={Trash01}
+            onClick={onDelete}
+            busy={busy}
+            mountPortalContainer={mountPortalContainer}
+          />
+        </>
+      )}
+      {onClose && (
+        <ThreadIconButton
+          label={t`Close`}
+          icon={XClose}
+          onClick={onClose}
+          mountPortalContainer={mountPortalContainer}
+        />
+      )}
+    </div>
+  );
+};
+
+interface ThreadRepliesProps {
+  replies: DfmMessage[];
+  folded: boolean;
+  isVerified: (index: number) => boolean | null;
+  renderAuthorAvatar: RenderAuthorAvatar;
+  renderMessageBody: (body: string) => ReactNode;
+  mountPortalContainer?: HTMLElement;
+}
+
+/** Every reply, or only how many there are while the thread is folded. */
+const ThreadReplies = ({
+  replies,
+  folded,
+  isVerified,
+  renderAuthorAvatar,
+  renderMessageBody,
+  mountPortalContainer,
+}: ThreadRepliesProps) => {
+  const { t } = useLingui();
+  if (folded) {
+    return replies.length > 0 ? (
+      <p className="pl-7 text-xs text-muted-foreground">
+        {t`${plural(replies.length, { one: "# reply", other: "# replies" })}`}
+      </p>
+    ) : null;
+  }
+  return replies.map((reply, index) => (
+    <ThreadMessage
+      key={`${reply.createdAt}:${index}`}
+      message={reply}
+      verified={isVerified(index + 1)}
+      renderAuthorAvatar={renderAuthorAvatar}
+      mountPortalContainer={mountPortalContainer}
+    >
+      {renderMessageBody(reply.body)}
+    </ThreadMessage>
+  ));
+};
+
 interface DocumentCommentThreadProps {
   comment: DfmComment;
   quote: string | undefined;
@@ -351,17 +438,21 @@ interface DocumentCommentThreadProps {
   variant: "card" | "list";
   active: boolean;
   canWrite: boolean;
+  /** Whether a resolve, reopen, delete or suggestion is pending on the thread. */
+  busy: boolean;
+  /** The reason the thread's last action was refused. */
+  error: string | null;
   isVerified: (index: number) => boolean | null;
   onSelect?: () => void;
   onReply: (body: string) => Promise<Result<void, string>>;
-  onSetResolved: (resolved: boolean) => Promise<Result<void, string>>;
-  onDelete: () => Promise<Result<void, string>>;
+  onSetResolved: (resolved: boolean) => void;
+  onDelete: () => void;
   /** Shows a Close action, for the floating card. */
   onClose?: () => void;
   onElement: (element: HTMLElement | null) => void;
   renderBody: (body: string) => ReactNode;
   onSuggest?: () => Result<string, string>;
-  onApplySuggestion?: (suggestion: string) => Promise<Result<void, string>>;
+  onApplySuggestion?: (suggestion: string) => Promise<unknown>;
   inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
   renderAuthorAvatar: RenderAuthorAvatar;
@@ -373,6 +464,8 @@ export const DocumentCommentThread = ({
   variant,
   active,
   canWrite,
+  busy,
+  error,
   isVerified,
   onSelect,
   onReply,
@@ -389,50 +482,16 @@ export const DocumentCommentThread = ({
 }: DocumentCommentThreadProps) => {
   const { t } = useLingui();
   const ref = useRef<HTMLElement | null>(null);
-  const [failure, setFailure] = useState<{
-    comment: DfmComment;
-    message: string;
-  } | null>(null);
-  // A refusal is about the thread as it was; once the thread changes, it no longer applies.
-  const error = failure?.comment === comment ? failure.message : null;
-  const pending = useRef(false);
-  const [busy, setBusy] = useState(false);
   const [first, ...replies] = comment.messages;
-  // Each action waits for the session; a second click would repeat it on a thread not yet updated.
-  // Resolves to null for an action ignored because another one on this thread is still pending.
-  const runAlone = async (
-    action: () => Promise<Result<void, string>>
-  ): Promise<Result<void, string> | null> => {
-    if (pending.current) {
-      return null;
-    }
-    pending.current = true;
-    setBusy(true);
-    try {
-      return await action();
-    } finally {
-      pending.current = false;
-      setBusy(false);
-    }
-  };
-  const showResult = (action: () => Promise<Result<void, string>>) =>
-    void runAlone(action).then((done) => {
-      if (done) {
-        setFailure(done.isErr() ? { comment, message: done.error } : null);
-      }
-    });
-  const applySuggestion =
-    onApplySuggestion &&
-    ((suggestion: string) => runAlone(() => onApplySuggestion(suggestion)));
   const resolved = comment.status === "resolved";
   const authorName = first.author.name;
-  const unfolded = variant === "card" || active;
+  const folded = variant === "list" && !active;
   const renderMessageBody = (body: string) => (
     <MessageBody
       body={body}
       quote={quote}
       renderBody={renderBody}
-      onApplySuggestion={applySuggestion}
+      onApplySuggestion={onApplySuggestion}
       busy={busy}
     />
   );
@@ -463,41 +522,16 @@ export const DocumentCommentThread = ({
         )}
       >
         {(canWrite || onClose) && (
-          <div
-            className={cn(
-              "-mr-1 -mt-1 -mb-2 flex justify-end",
-              // Folded in the list, the actions show on hover; the space stays reserved.
-              !unfolded &&
-                "opacity-0 transition-opacity group-focus-within/thread:opacity-100 group-hover/thread:opacity-100"
-            )}
-          >
-            {canWrite && (
-              <>
-                <ThreadIconButton
-                  label={resolved ? t`Reopen` : t`Resolve`}
-                  icon={resolved ? ReverseLeft : Check}
-                  onClick={() => showResult(() => onSetResolved(!resolved))}
-                  busy={busy}
-                  mountPortalContainer={mountPortalContainer}
-                />
-                <ThreadIconButton
-                  label={t`Delete comment`}
-                  icon={Trash01}
-                  onClick={() => showResult(onDelete)}
-                  busy={busy}
-                  mountPortalContainer={mountPortalContainer}
-                />
-              </>
-            )}
-            {onClose && (
-              <ThreadIconButton
-                label={t`Close`}
-                icon={XClose}
-                onClick={onClose}
-                mountPortalContainer={mountPortalContainer}
-              />
-            )}
-          </div>
+          <ThreadActions
+            resolved={resolved}
+            canWrite={canWrite}
+            folded={folded}
+            busy={busy}
+            onSetResolved={onSetResolved}
+            onDelete={onDelete}
+            onClose={onClose}
+            mountPortalContainer={mountPortalContainer}
+          />
         )}
         {error && (
           <p role="alert" className="text-xs text-warning-500">
@@ -525,29 +559,20 @@ export const DocumentCommentThread = ({
           message={first}
           verified={isVerified(0)}
           renderAuthorAvatar={renderAuthorAvatar}
-          clamped={!unfolded}
+          clamped={folded}
           mountPortalContainer={mountPortalContainer}
         >
           {renderMessageBody(first.body)}
         </ThreadMessage>
-        {unfolded
-          ? replies.map((reply, index) => (
-              <ThreadMessage
-                key={`${reply.createdAt}:${index}`}
-                message={reply}
-                verified={isVerified(index + 1)}
-                renderAuthorAvatar={renderAuthorAvatar}
-                mountPortalContainer={mountPortalContainer}
-              >
-                {renderMessageBody(reply.body)}
-              </ThreadMessage>
-            ))
-          : replies.length > 0 && (
-              <p className="pl-7 text-xs text-muted-foreground">
-                {t`${plural(replies.length, { one: "# reply", other: "# replies" })}`}
-              </p>
-            )}
-        {canWrite && unfolded && !resolved && (
+        <ThreadReplies
+          replies={replies}
+          folded={folded}
+          isVerified={isVerified}
+          renderAuthorAvatar={renderAuthorAvatar}
+          renderMessageBody={renderMessageBody}
+          mountPortalContainer={mountPortalContainer}
+        />
+        {canWrite && !folded && !resolved && (
           <DocumentCommentInput
             label={t`Reply`}
             placeholder={t`Reply or @mention…`}

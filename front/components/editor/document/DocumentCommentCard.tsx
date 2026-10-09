@@ -1,3 +1,4 @@
+import type { DocumentCommentDraft } from "@app/components/editor/document/DocumentComments";
 import type { RenderAuthorAvatar } from "@app/components/editor/document/DocumentCommentThread";
 import {
   DocumentCommentDraftCard,
@@ -10,6 +11,7 @@ import {
   usePresence,
 } from "@app/components/editor/document/usePresence";
 import type { DfmComment } from "@app/lib/markdown/dfm";
+import type { Result } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
 import type { Editor, Extensions } from "@tiptap/core";
 import type { ReactNode, RefObject } from "react";
@@ -64,6 +66,114 @@ const measurePosition = (
   };
 };
 
+/**
+ * Where the card floats under its anchor, re-measured as the layout changes. While `holding`, a
+ * card whose anchor is gone stays where it last floated.
+ */
+const useCardPosition = (
+  editor: Editor,
+  containerRef: RefObject<HTMLElement | null>,
+  anchorId: string | null | undefined,
+  draft: DocumentCommentDraft | null,
+  holding: boolean
+) => {
+  const layoutVersion = useEditorLayoutVersion(editor, containerRef);
+  const [position, setPosition] = useState<CardPosition | null>(null);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measured =
+      container && anchorId !== undefined
+        ? measurePosition(editor, anchorId, container)
+        : null;
+    setPosition((last) => measured ?? (holding ? last : null));
+  }, [editor, containerRef, anchorId, draft, holding, layoutVersion]);
+
+  return position;
+};
+
+interface FloatingThreadProps {
+  thread: DfmComment;
+  comments: DocumentCommentsController;
+  renderCommentBody: (body: string) => ReactNode;
+  commentInputExtensions?: Extensions;
+  mountPortalContainer?: HTMLElement;
+  renderAuthorAvatar: RenderAuthorAvatar;
+  onElement: (element: HTMLElement | null) => void;
+}
+
+/** The active thread in the card; resolving, deleting or applying a suggestion closes it. */
+const FloatingThread = ({
+  thread,
+  comments,
+  renderCommentBody,
+  commentInputExtensions,
+  mountPortalContainer,
+  renderAuthorAvatar,
+  onElement,
+}: FloatingThreadProps) => {
+  const {
+    quotes,
+    canWrite,
+    suggestable,
+    suggestionTemplate,
+    busyThreadIds,
+    threadError,
+    runThreadAction,
+    closeThread,
+    reply,
+    setResolved,
+    remove,
+    applySuggestion,
+    isVerified,
+  } = comments;
+  const canSuggest =
+    canWrite && thread.status === "open" && suggestable.has(thread.id);
+  const run = async (action: () => Promise<Result<void, string>>) => {
+    const done = await runThreadAction(thread.id, action);
+    if (done?.isOk()) {
+      closeThread();
+    }
+  };
+
+  return (
+    <DocumentCommentThread
+      variant="card"
+      comment={thread}
+      quote={quotes.get(thread.id)}
+      active
+      canWrite={canWrite}
+      busy={busyThreadIds.has(thread.id)}
+      error={threadError(thread)}
+      isVerified={(index) => isVerified(thread.id, index)}
+      onReply={(body) => reply(thread.id, body)}
+      onSetResolved={(value) =>
+        void runThreadAction(thread.id, () =>
+          setResolved(thread.id, value, null)
+        ).then((done) => {
+          if (done?.isOk() && value) {
+            closeThread();
+          }
+        })
+      }
+      onDelete={() => void run(() => remove(thread.id, null))}
+      onClose={closeThread}
+      onElement={onElement}
+      renderAuthorAvatar={renderAuthorAvatar}
+      renderBody={renderCommentBody}
+      inputExtensions={commentInputExtensions}
+      onSuggest={canSuggest ? () => suggestionTemplate(thread.id) : undefined}
+      onApplySuggestion={
+        canSuggest
+          ? (suggestion) =>
+              run(() => applySuggestion(thread.id, suggestion, null))
+          : undefined
+      }
+      mountPortalContainer={mountPortalContainer}
+    />
+  );
+};
+
 interface DocumentCommentCardProps {
   editor: Editor;
   comments: DocumentCommentsController;
@@ -87,11 +197,12 @@ interface DocumentCommentCardProps {
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-card
  * While the comments list is closed and no draft is pending, the active thread MUST float in a
  * card under its highlighted text, with every message, and nothing MUST float for a thread
- * without highlighted text. Reply and moderation controls MUST render only when canWrite. Close,
- * or Escape outside a field, MUST clear the active thread and return focus to the editor; so MUST
- * resolving or deleting it from the card. Escape inside a reply field MUST NOT close the card;
- * when the field hands it to its onCancel, the field MUST be cleared and focus MUST return to the
- * thread. A refused action MUST show the reason on the thread until it changes.
+ * without highlighted text, unless an action on it is pending or its refusal shows: the card MUST
+ * then stay where it last floated. Reply and moderation controls MUST render only when canWrite.
+ * Close, or Escape outside a field, MUST clear the active thread and return focus to the editor;
+ * so MUST resolving or deleting it from the card. Escape inside a reply field MUST NOT close the
+ * card; when the field hands it to its onCancel, the field MUST be cleared and focus MUST return
+ * to the thread. A refused action MUST show the reason on the thread until it changes.
  */
 export const DocumentCommentCard = ({
   editor,
@@ -104,43 +215,35 @@ export const DocumentCommentCard = ({
 }: DocumentCommentCardProps) => {
   const {
     comments: threads,
-    quotes,
     activeId,
-    canWrite,
     listOpen,
     focusRequest,
     draft,
     draftSuggestable,
     draftSuggestionTemplate,
-    suggestable,
-    suggestionTemplate,
     submitDraft,
     cancelDraft,
     closeThread,
-    reply,
-    setResolved,
-    remove,
-    applySuggestion,
-    isVerified,
+    busyThreadIds,
+    threadError,
   } = comments;
+  const showsDraft = draft !== null && !listOpen;
   const thread =
     draft || listOpen
       ? undefined
       : threads.find((comment) => comment.id === activeId);
-  const showsDraft = draft !== null && !listOpen;
-  const anchorId = showsDraft ? null : (thread?.id ?? undefined);
-  const layoutVersion = useEditorLayoutVersion(editor, containerRef);
-  const [position, setPosition] = useState<CardPosition | null>(null);
+  const anchorId = showsDraft ? null : thread?.id;
+  const holding =
+    thread !== undefined &&
+    (busyThreadIds.has(thread.id) || threadError(thread) !== null);
+  const position = useCardPosition(
+    editor,
+    containerRef,
+    anchorId,
+    draft,
+    holding
+  );
   const threadRef = useRef<HTMLElement | null>(null);
-
-  useLayoutEffect(() => {
-    const container = containerRef.current;
-    setPosition(
-      container && anchorId !== undefined
-        ? measurePosition(editor, anchorId, container)
-        : null
-    );
-  }, [editor, containerRef, anchorId, draft, layoutVersion]);
 
   const target: typeof DRAFT | DfmComment | undefined = showsDraft
     ? DRAFT
@@ -162,13 +265,6 @@ export const DocumentCommentCard = ({
   if (!shown) {
     return null;
   }
-
-  const shownThread = shown.target === DRAFT ? undefined : shown.target;
-  const canSuggest =
-    shownThread !== undefined &&
-    canWrite &&
-    shownThread.status === "open" &&
-    suggestable.has(shownThread.id);
 
   return (
     <div
@@ -201,58 +297,18 @@ export const DocumentCommentCard = ({
           mountPortalContainer={mountPortalContainer}
         />
       ) : (
-        shownThread && (
-          <DocumentCommentThread
-            key={shownThread.id}
-            variant="card"
-            comment={shownThread}
-            quote={quotes.get(shownThread.id)}
-            active
-            canWrite={canWrite}
-            isVerified={(index) => isVerified(shownThread.id, index)}
-            onReply={(body) => reply(shownThread.id, body)}
-            onSetResolved={async (value) => {
-              const done = await setResolved(shownThread.id, value, null);
-              if (done.isOk() && value) {
-                closeThread();
-              }
-              return done;
-            }}
-            onDelete={async () => {
-              const done = await remove(shownThread.id, null);
-              if (done.isOk()) {
-                closeThread();
-              }
-              return done;
-            }}
-            onClose={closeThread}
-            onElement={(element) => {
-              threadRef.current = element;
-            }}
-            renderAuthorAvatar={renderAuthorAvatar}
-            renderBody={renderCommentBody}
-            inputExtensions={commentInputExtensions}
-            onSuggest={
-              canSuggest ? () => suggestionTemplate(shownThread.id) : undefined
-            }
-            onApplySuggestion={
-              canSuggest
-                ? async (suggestion) => {
-                    const done = await applySuggestion(
-                      shownThread.id,
-                      suggestion,
-                      null
-                    );
-                    if (done.isOk()) {
-                      closeThread();
-                    }
-                    return done;
-                  }
-                : undefined
-            }
-            mountPortalContainer={mountPortalContainer}
-          />
-        )
+        <FloatingThread
+          key={shown.target.id}
+          thread={shown.target}
+          comments={comments}
+          renderCommentBody={renderCommentBody}
+          commentInputExtensions={commentInputExtensions}
+          mountPortalContainer={mountPortalContainer}
+          renderAuthorAvatar={renderAuthorAvatar}
+          onElement={(element) => {
+            threadRef.current = element;
+          }}
+        />
       )}
     </div>
   );

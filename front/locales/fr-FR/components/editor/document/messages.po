@@ -130,14 +130,14 @@ msgstr "Résoudre"
 msgid "Delete comment"
 msgstr "Supprimer le commentaire"
 
-#: front/components/editor/document/DocumentCommentThread.tsx
-msgid "Commented text:"
-msgstr "Texte commenté :"
-
 #. placeholder {0}: replies.length
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "{0, plural, one {# reply} other {# replies}}"
 msgstr "{0, plural, one {# réponse} other {# réponses}}"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Commented text:"
+msgstr "Texte commenté :"
 
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reply"
