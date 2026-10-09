@@ -1,9 +1,16 @@
 use anyhow::{Context, Result};
 use foundationdb::{Database, options::TransactionOption};
 
-/// Opens the database named by `cluster_file`. The caller must have booted the network first.
-pub fn open(cluster_file: &str) -> Result<Database> {
-    Database::from_path(cluster_file)
+/// dust-hive envs export their own cluster file through `env.sh`.
+const CLUSTER_FILE_ENV: &str = "FDB_CLUSTER_FILE";
+const DEFAULT_CLUSTER_FILE: &str = "fdb.cluster";
+
+/// Opens the database named by `FDB_CLUSTER_FILE`. The caller must have booted the network first.
+pub fn open() -> Result<Database> {
+    let cluster_file =
+        std::env::var(CLUSTER_FILE_ENV).unwrap_or_else(|_| DEFAULT_CLUSTER_FILE.to_owned());
+    tracing::info!(cluster_file = %cluster_file, "opening FoundationDB");
+    Database::from_path(&cluster_file)
         .with_context(|| format!("opening cluster file {cluster_file}"))
 }
 

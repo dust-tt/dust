@@ -15,8 +15,6 @@ use tokio::{
 struct Config {
     #[arg(long, env = "DFS_LISTEN", default_value = "127.0.0.1:50051")]
     listen: SocketAddr,
-    #[arg(long, env = "FDB_CLUSTER_FILE", default_value = "fdb.cluster")]
-    fdb_cluster_file: String,
 }
 
 #[tokio::main]
@@ -34,9 +32,9 @@ async fn main() -> anyhow::Result<()> {
     // See https://docs.rs/foundationdb/0.11.0/foundationdb/fn.boot.html
     #[allow(unsafe_code)]
     let _network = unsafe { foundationdb::boot() };
-    let database = fdb::open(&config.fdb_cluster_file)?;
+    let database = fdb::open()?;
     fdb::ping(&database).await?;
-    tracing::info!(cluster_file = %config.fdb_cluster_file, "connected to FoundationDB");
+    tracing::info!("connected to FoundationDB");
 
     let mut interrupt = signal(SignalKind::interrupt())?;
     let mut terminate = signal(SignalKind::terminate())?;

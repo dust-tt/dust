@@ -8,11 +8,6 @@ use dfs_api::{
 use dfs_protocol::ObjectId;
 use foundationdb::{Database, options::TransactionOption};
 
-/// Same lookup as the server: dust-hive envs export their own cluster file through `env.sh`.
-fn cluster_file() -> String {
-    std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| "fdb.cluster".to_owned())
-}
-
 const PING_DEADLINE_HEADROOM_MS: i32 = 5_000;
 const UNREACHABLE_PING_DEADLINE: Duration =
     Duration::from_millis((fdb::PING_TIMEOUT_MS + PING_DEADLINE_HEADROOM_MS) as u64);
@@ -30,7 +25,7 @@ fn fdb_client() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
-        let database = fdb::open(&cluster_file())?;
+        let database = fdb::open()?;
         fdb::ping(&database).await?;
         writes_are_read_back_then_cleared(&database).await?;
         tenants_are_fetched_after_create(&database).await?;
@@ -105,7 +100,7 @@ async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
     let cluster_file =
         std::env::temp_dir().join(format!("dfs-unreachable-{}.cluster", std::process::id()));
     std::fs::write(&cluster_file, "test:test@127.0.0.1:1\n")?;
-    let database = fdb::open(&cluster_file.to_string_lossy())?;
+    let database = Database::from_path(&cluster_file.to_string_lossy())?;
     let started = Instant::now();
 
     let result = fdb::ping(&database).await;
