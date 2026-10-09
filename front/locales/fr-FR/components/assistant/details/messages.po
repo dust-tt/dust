@@ -169,6 +169,10 @@ msgid "User avatar"
 msgstr "Avatar de l’utilisateur"
 
 #: front/components/assistant/details/MemberDetails.tsx
+msgid "Edit"
+msgstr "Modifier"
+
+#: front/components/assistant/details/MemberDetails.tsx
 msgid "This user is not available."
 msgstr "Cet utilisateur n’est pas disponible."
 
