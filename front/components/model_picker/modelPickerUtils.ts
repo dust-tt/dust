@@ -104,7 +104,7 @@ export function getTierFallbackMessage(
   replacementModelName: string
 ): string {
   return t(
-    msg`Preferred model for ${tierName} is unstable. Using ${replacementModelName} temporarily.`
+    msg`The usual model for ${tierName} is having issues. You're on ${replacementModelName} until it's back.`
   );
 }
 

@@ -18,6 +18,7 @@ import {
   AUTO_MODELS_HINT,
   buildModelSelection,
   buildTierSelection,
+  formatModelEffortLabel,
   getDegradedModelTooltip,
   getInitialEffort,
   getModelTier,
@@ -299,7 +300,11 @@ export function ModelPicker({
       ? getTierFallbackMessage(
           t,
           t(shownTier.name),
-          fallbackResolution.displayName
+          formatModelEffortLabel(
+            t,
+            fallbackResolution.displayName,
+            fallbackResolution.reasoningEffort
+          )
         )
       : null;
   const degradationTooltip = degradedModelTooltip ?? tierFallbackMessage;

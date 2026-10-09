@@ -1,3 +1,4 @@
+import { DegradedInfoIcon } from "@app/components/model_picker/DegradedModelIcon";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import { ModelPickerMakersView } from "@app/components/model_picker/ModelPickerMakersView";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
@@ -9,7 +10,9 @@ import type {
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   AUTO_MODELS_DOC_URL,
+  formatModelEffortLabel,
   getModelLockTooltip,
+  getTierFallbackMessage,
   getTierLockReason,
   getTierResolvedModelLabel,
   isTierResolvedModelHostedInRegion,
@@ -51,6 +54,7 @@ interface ModelPickerContentProps {
   ignoreTierRestrictions: boolean;
   tiers: ModelTierDefinition[];
   degradedModelIds: ReadonlySet<string>;
+  fallbackStreamIds: ReadonlySet<string>;
   hostingRegion: RegionType | null;
   makerGroups: MakerGroup[];
   streamModels: EnabledModelConfigurationType[];
@@ -82,6 +86,7 @@ export function ModelPickerContent({
   ignoreTierRestrictions,
   tiers,
   degradedModelIds,
+  fallbackStreamIds,
   hostingRegion,
   makerGroups,
   streamModels,
@@ -173,18 +178,34 @@ export function ModelPickerContent({
           isTierResolvedModelHostedInRegion(tier, streams, hostingRegion) ? (
             <RegionalFlag region={hostingRegion} />
           ) : null;
+        const isFallback = fallbackStreamIds.has(tier.metaModelId);
+        const fallbackResolution = streams?.[tier.metaModelId];
+        const fallbackTooltip =
+          isFallback && fallbackResolution
+            ? getTierFallbackMessage(
+                t,
+                t(tier.name),
+                formatModelEffortLabel(
+                  t,
+                  fallbackResolution.displayName,
+                  fallbackResolution.reasoningEffort
+                )
+              )
+            : undefined;
         return (
           <DropdownMenuItem
             key={tier.id}
             icon={MODEL_TIER_ICON[tier.id]}
             label={t(tier.name)}
             className="text-foreground"
+            tooltip={fallbackTooltip}
             endComponent={
               <div className="flex items-center gap-3">
                 <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
                   {getTierResolvedModelLabel(t, tier.id, streams)}
                   {regionalFlag}
                 </span>
+                {isFallback && <DegradedInfoIcon />}
                 {isSelected && (
                   <ModelPickerSelectionIndicator
                     onRevert={selection.onRevert}
