@@ -86,6 +86,10 @@ export function getDockerComposePath(): string {
   return join(DUST_HIVE_ROOT, "docker-compose.yml");
 }
 
+export function getFdbClusterFilePath(name: string): string {
+  return join(getEnvDir(name), "fdb.cluster");
+}
+
 export function getMetadataPath(name: string): string {
   return join(getEnvDir(name), "metadata.json");
 }

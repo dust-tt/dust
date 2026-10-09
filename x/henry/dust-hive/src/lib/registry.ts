@@ -195,6 +195,14 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     },
     portKey: "sqliteWorker",
   },
+  dfs: {
+    cwd: "dfs/server",
+    needsNvm: false,
+    needsEnvSh: true,
+    // Started on demand: only dfs work needs it. Binds IPv4 only, like the other services.
+    buildCommand: (env) => `DFS_LISTEN=127.0.0.1:${env.ports.dfs} cargo run`,
+    portKey: "dfs",
+  },
   collab: {
     cwd: "front-api",
     needsNvm: true,

@@ -47,6 +47,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     cmake \
     pkg-config \
     libssl-dev \
+    libclang-dev \
     procps \
     lsof \
     netcat-openbsd \

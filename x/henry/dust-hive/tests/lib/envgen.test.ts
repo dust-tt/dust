@@ -52,9 +52,11 @@ describe("envgen", () => {
       expect(content).toContain("export ELASTICSEARCH_INIT_URL=http://localhost:10200");
     });
 
-    it("exports the fdb port", () => {
+    it("exports the fdb and dfs ports", () => {
       const content = generateEnvSh("test", ports);
       expect(content).toContain("export FDB_PORT=10500");
+      expect(content).toContain("export DFS_PORT=10501");
+      expect(content).toContain("fdb.cluster");
     });
 
     it("exports inter-service URLs", () => {

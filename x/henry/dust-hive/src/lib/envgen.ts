@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { userInfo } from "node:os";
-import { CONFIG_ENV_PATH, getEnvFilePath } from "./paths";
+import { CONFIG_ENV_PATH, getEnvFilePath, getFdbClusterFilePath } from "./paths";
 import type { PortAllocation } from "./ports";
 import { getTemporalEnvExports } from "./temporal";
 import { getTestDatabaseUri } from "./test-postgres";
@@ -84,6 +84,8 @@ export QDRANT_CLUSTER_0_URL=http://127.0.0.1:${ports.qdrantGrpc}
 export QDRANT_USE_SHARDING=false
 export ELASTICSEARCH_URL=http://localhost:${ports.elasticsearch}
 export FDB_PORT=${ports.fdb}
+export FDB_CLUSTER_FILE=${getFdbClusterFilePath(name)}
+export DFS_PORT=${ports.dfs}
 export TEXT_EXTRACTION_URL=http://localhost:${ports.apacheTika}
 
 # === Viz service ===
@@ -113,4 +115,5 @@ export async function writeEnvSh(
   const content = generateEnvSh(name, ports, opts);
   const path = getEnvFilePath(name);
   await Bun.write(path, content);
+  await Bun.write(getFdbClusterFilePath(name), `docker:docker@127.0.0.1:${ports.fdb}\n`);
 }

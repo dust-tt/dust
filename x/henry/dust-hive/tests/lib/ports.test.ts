@@ -24,6 +24,7 @@ describe("ports", () => {
       expect(ports.elasticsearch).toBe(10200);
       expect(ports.kibana).toBe(10601);
       expect(ports.fdb).toBe(10500);
+      expect(ports.dfs).toBe(10501);
       expect(ports.apacheTika).toBe(10998);
     });
 
@@ -40,6 +41,7 @@ describe("ports", () => {
       expect(ports.postgres).toBe(11432);
       expect(ports.redis).toBe(11379);
       expect(ports.fdb).toBe(11500);
+      expect(ports.dfs).toBe(11501);
     });
 
     it("applies all offsets correctly", () => {
@@ -63,6 +65,7 @@ describe("ports", () => {
       expect(ports.elasticsearch).toBe(base + PORT_OFFSETS.elasticsearch);
       expect(ports.kibana).toBe(base + PORT_OFFSETS.kibana);
       expect(ports.fdb).toBe(base + PORT_OFFSETS.fdb);
+      expect(ports.dfs).toBe(base + PORT_OFFSETS.dfs);
       expect(ports.apacheTika).toBe(base + PORT_OFFSETS.apacheTika);
     });
   });

@@ -11,7 +11,8 @@ import { isProcessRunning, killProcess } from "./process";
 // Offsets chosen so base_port + offset resembles standard ports:
 // postgres: 432 -> 10432 (resembles 5432), redis: 379 -> 10379 (resembles 6379),
 // qdrant: 333 -> 10333 (resembles 6333 HTTP), elasticsearch: 200 -> 10200 (resembles 9200),
-// kibana: 601 -> 10601 (resembles 5601), fdb: 500 -> 10500 (resembles 4500)
+// kibana: 601 -> 10601 (resembles 5601), fdb: 500 -> 10500 (resembles 4500),
+// dfs: 501 -> 10501 (next to fdb)
 // `front` (offset 0) is the public/main port; it now hosts the in-hive HTTP
 // proxy that routes /api/* to front-api and everything else to marketing.
 export const PORT_OFFSETS = {
@@ -34,6 +35,7 @@ export const PORT_OFFSETS = {
   elasticsearch: 200,
   kibana: 601,
   fdb: 500,
+  dfs: 501,
   apacheTika: 998,
 } as const;
 
@@ -65,6 +67,7 @@ const PortAllocationSchema = z
     elasticsearch: z.number(),
     kibana: z.number().optional(),
     fdb: z.number().optional(),
+    dfs: z.number().optional(),
     apacheTika: z.number(),
   })
   .transform((data) => ({
@@ -79,6 +82,7 @@ const PortAllocationSchema = z
     collab: data.collab ?? data.base + PORT_OFFSETS.collab,
     kibana: data.kibana ?? data.base + PORT_OFFSETS.kibana,
     fdb: data.fdb ?? data.base + PORT_OFFSETS.fdb,
+    dfs: data.dfs ?? data.base + PORT_OFFSETS.dfs,
   }));
 
 export type PortAllocation = z.output<typeof PortAllocationSchema>;
@@ -106,6 +110,7 @@ export function calculatePorts(base: number): PortAllocation {
     elasticsearch: base + PORT_OFFSETS.elasticsearch,
     kibana: base + PORT_OFFSETS.kibana,
     fdb: base + PORT_OFFSETS.fdb,
+    dfs: base + PORT_OFFSETS.dfs,
     apacheTika: base + PORT_OFFSETS.apacheTika,
   };
   for (const port of Object.values(ports)) {

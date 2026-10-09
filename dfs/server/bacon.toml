@@ -1,0 +1,9 @@
+# Bacon config: https://dystroy.org/bacon/config/
+
+default_job = "dfs-api"
+env.CARGO_TERM_COLOR = "always"
+
+[jobs.dfs-api]
+command = ["cargo", "run"]
+need_stdout = true
+allow_warnings = true
