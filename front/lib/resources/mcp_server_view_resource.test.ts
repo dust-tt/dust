@@ -109,7 +109,9 @@ describe("MCPServerViewResource", () => {
       );
 
       // List views for workspace1
-      const views1 = await MCPServerViewResource.listByWorkspace(auth);
+      const views1 = await MCPServerViewResource.listByWorkspace(auth, {
+        mode: "metadata",
+      });
 
       // Verify we only get views for workspace1
       expect(views1).toHaveLength(2);
@@ -117,7 +119,9 @@ describe("MCPServerViewResource", () => {
       expect(views1[1].workspaceId).toBe(workspace1.id);
 
       // List views for workspace2
-      const views2 = await MCPServerViewResource.listByWorkspace(auth2);
+      const views2 = await MCPServerViewResource.listByWorkspace(auth2, {
+        mode: "metadata",
+      });
 
       // Verify we only get views for workspace2
       expect(views2).toHaveLength(2);
@@ -211,10 +215,11 @@ describe("MCPServerViewResource", () => {
       );
 
       // Test: User calls listBySpaces with both spaces
-      const results = await MCPServerViewResource.listBySpaces(userAuth, [
-        accessibleSpace,
-        restrictedSpace,
-      ]);
+      const results = await MCPServerViewResource.listBySpaces(
+        userAuth,
+        [accessibleSpace, restrictedSpace],
+        { mode: "metadata" }
+      );
 
       // Should only return the view from the accessible space
       expect(results).toHaveLength(1);
@@ -283,10 +288,11 @@ describe("MCPServerViewResource", () => {
       );
 
       // Test: User calls listBySpaces with spaces they don't have access to
-      const results = await MCPServerViewResource.listBySpaces(userAuth, [
-        space1,
-        space2,
-      ]);
+      const results = await MCPServerViewResource.listBySpaces(
+        userAuth,
+        [space1, space2],
+        { mode: "metadata" }
+      );
 
       // Should return empty list since user has no access to any space
       expect(results).toHaveLength(0);
@@ -372,10 +378,11 @@ describe("MCPServerViewResource", () => {
       );
 
       // Test: User calls listBySpaces with spaces they have access to
-      const results = await MCPServerViewResource.listBySpaces(userAuth, [
-        space1,
-        space2,
-      ]);
+      const results = await MCPServerViewResource.listBySpaces(
+        userAuth,
+        [space1, space2],
+        { mode: "metadata" }
+      );
 
       // Should return all views since user has access to all spaces
       expect(results).toHaveLength(2);
@@ -420,9 +427,11 @@ describe("MCPServerViewResource", () => {
       );
       expect(restrictionResult.isOk()).toBe(true);
 
-      const allViews = await MCPServerViewResource.listBySpaceIds(adminAuth, [
-        globalSpace.sId,
-      ]);
+      const allViews = await MCPServerViewResource.listBySpaceIds(
+        adminAuth,
+        [globalSpace.sId],
+        { mode: "metadata" }
+      );
       expect(allViews.map((view) => view.sId).sort()).toEqual(
         [availableView.sId, restrictedView.sId].sort()
       );
@@ -430,7 +439,7 @@ describe("MCPServerViewResource", () => {
       const directlyAvailableViews = await MCPServerViewResource.listBySpaceIds(
         adminAuth,
         [globalSpace.sId],
-        { isRestrictedToSkills: false }
+        { mode: "metadata", isRestrictedToSkills: false }
       );
       expect(directlyAvailableViews.map((view) => view.sId)).toEqual([
         availableView.sId,
@@ -473,7 +482,7 @@ describe("MCPServerViewResource", () => {
         const views = await MCPServerViewResource.listBySpaceIds(
           adminAuth,
           [regularSpace.sId],
-          { includeGlobalSpace: true }
+          { mode: "metadata", includeGlobalSpace: true }
         );
 
         expect(views.map((v) => v.sId).sort()).toEqual(
@@ -517,11 +526,13 @@ describe("MCPServerViewResource", () => {
       const globalOnly = await MCPServerViewResource.listBySpaceIds(
         adminAuth,
         [],
-        { includeGlobalSpace: true }
+        { mode: "metadata", includeGlobalSpace: true }
       );
       expect(globalOnly.map((v) => v.sId)).toEqual([globalView.sId]);
 
-      const none = await MCPServerViewResource.listBySpaceIds(adminAuth, []);
+      const none = await MCPServerViewResource.listBySpaceIds(adminAuth, [], {
+        mode: "metadata",
+      });
       expect(none).toHaveLength(0);
     });
 
@@ -561,7 +572,7 @@ describe("MCPServerViewResource", () => {
       const views = await MCPServerViewResource.listBySpaceIds(
         userAuth,
         [restrictedSpace.sId],
-        { includeGlobalSpace: true }
+        { mode: "metadata", includeGlobalSpace: true }
       );
 
       expect(views.map((v) => v.sId)).toEqual([globalView.sId]);
@@ -594,9 +605,11 @@ describe("MCPServerViewResource", () => {
         foreignSpace
       );
 
-      const views = await MCPServerViewResource.listBySpaceIds(adminAuth1, [
-        foreignSpace.sId,
-      ]);
+      const views = await MCPServerViewResource.listBySpaceIds(
+        adminAuth1,
+        [foreignSpace.sId],
+        { mode: "metadata" }
+      );
       expect(views).toHaveLength(0);
     });
   });
@@ -626,7 +639,8 @@ describe("MCPServerViewResource", () => {
       try {
         const fetchedView = await MCPServerViewResource.fetchById(
           auth,
-          globalView.sId
+          globalView.sId,
+          { mode: "metadata" }
         );
 
         expect(fetchedView?.sId).toBe(globalView.sId);
@@ -655,19 +669,24 @@ describe("MCPServerViewResource", () => {
       );
 
       expect(
-        await MCPServerViewResource.fetchById(auth, regularView.sId)
+        await MCPServerViewResource.fetchById(auth, regularView.sId, {
+          mode: "metadata",
+        })
       ).not.toBeNull();
 
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          internalServer.id
+          internalServer.id,
+          { mode: "metadata" }
         );
       expect(systemView).not.toBeNull();
       await systemView?.hardDelete(auth);
 
       expect(
-        await MCPServerViewResource.fetchById(auth, regularView.sId)
+        await MCPServerViewResource.fetchById(auth, regularView.sId, {
+          mode: "metadata",
+        })
       ).toBeNull();
     });
   });
@@ -700,12 +719,14 @@ describe("MCPServerViewResource", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           adminAuth,
-          mcpServerId
+          mcpServerId,
+          { mode: "metadata" }
         );
       const globalView =
         await MCPServerViewResource.getMCPServerViewForGlobalSpace(
           adminAuth,
-          mcpServerId
+          mcpServerId,
+          { mode: "metadata" }
         );
 
       expect(systemView).not.toBeNull();
@@ -732,7 +753,8 @@ describe("MCPServerViewResource", () => {
       });
       const views = await MCPServerViewResource.listByMCPServer(
         freshAdminAuth,
-        freshMCPServerId
+        freshMCPServerId,
+        { mode: "metadata" }
       );
       expect(views).toHaveLength(2);
       expect(views.map((v) => v.space.kind).sort()).toEqual([
@@ -780,7 +802,8 @@ describe("MCPServerViewResource", () => {
       const view =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           memberAuth,
-          "common_utilities"
+          "common_utilities",
+          { mode: "metadata" }
         );
 
       expect(view).not.toBeNull();
@@ -864,7 +887,9 @@ describe("MCPServerViewResource", () => {
       });
 
       // Fetch the system view through baseFetch (via listForSystemSpace).
-      const views = await MCPServerViewResource.listForSystemSpace(adminAuth);
+      const views = await MCPServerViewResource.listForSystemSpace(adminAuth, {
+        mode: "configuration",
+      });
       const view = views.find(
         (v) => v.internalMCPServerId === internalServer.id
       );
@@ -896,15 +921,7 @@ describe("MCPServerViewResource", () => {
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
         remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 
@@ -923,15 +940,7 @@ describe("MCPServerViewResource", () => {
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
         remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 
@@ -992,17 +1001,21 @@ describe("MCPServerViewResource", () => {
 
       // Default: the restricted view is not resolved into a runnable tool.
       expect(
-        await MCPServerViewResource.fetchById(adminAuth, view.sId)
+        await MCPServerViewResource.fetchById(adminAuth, view.sId, {
+          mode: "metadata",
+        })
       ).toBeNull();
       expect(
-        await MCPServerViewResource.fetchByIds(adminAuth, [view.sId])
+        await MCPServerViewResource.fetchByIds(adminAuth, [view.sId], {
+          mode: "metadata",
+        })
       ).toEqual([]);
 
       // Opt-in: admin surfaces can still surface it for management.
       const surfaced = await MCPServerViewResource.fetchById(
         adminAuth,
         view.sId,
-        { includeRestricted: true }
+        { mode: "metadata", includeRestricted: true }
       );
       expect(surfaced).not.toBeNull();
       expect(surfaced!.sId).toBe(view.sId);

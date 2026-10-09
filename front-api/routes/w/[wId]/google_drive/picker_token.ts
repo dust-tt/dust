@@ -76,7 +76,9 @@ async function postPickerToken(
     });
   }
 
-  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId);
+  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId, {
+    mode: "metadata",
+  });
   // listByMCPServer is only workspace-scoped. Drop views in spaces the caller
   // cannot read (including the system-space view) so an inaccessible
   // platform_actions configuration cannot select the admin connection.

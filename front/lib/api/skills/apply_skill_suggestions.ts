@@ -239,7 +239,9 @@ async function resolveInstructionAttachments(
   const toolReferences = extractToolTags(instructions);
   const mcpServerViewIds = uniq(toolReferences.map((t) => t.id));
   const mcpServerViews = mcpServerViewIds.length
-    ? await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
+    ? await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
+        mode: "configuration",
+      })
     : [];
   const resolvedToolIds = new Set(
     mcpServerViews.filter((v) => auth.can("read", v)).map((v) => v.sId)

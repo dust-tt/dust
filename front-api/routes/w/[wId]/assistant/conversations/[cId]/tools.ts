@@ -51,13 +51,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     auth,
     mcpServerViewIds,
     {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
     }
   );
 
@@ -89,7 +83,8 @@ app.post(
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
-      mcp_server_view_id
+      mcp_server_view_id,
+      { mode: "metadata" }
     );
 
     if (!mcpServerView) {

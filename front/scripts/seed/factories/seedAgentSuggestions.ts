@@ -43,7 +43,8 @@ async function resolveToolSuggestion(
   const mcpServerViews =
     await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
       auth,
-      serverNamesToResolve
+      serverNamesToResolve,
+      { mode: "configuration" }
     );
 
   // Create a map from server name to MCPServerView sId
@@ -101,7 +102,8 @@ async function resolveSubAgentSuggestion(
     const mcpServerViews =
       await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
         auth,
-        serverNamesToResolve
+        serverNamesToResolve,
+        { mode: "configuration" }
       );
 
     const serverNameToViewId = new Map<string, string>();

@@ -469,7 +469,8 @@ describe("POST /api/w/:wId/skills/search", () => {
     for (const { sId } of [server, hiddenServer]) {
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        sId
+        sId,
+        { mode: "metadata" }
       );
     }
     const view = await MCPServerViewFactory.create(

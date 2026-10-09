@@ -22,13 +22,7 @@ export async function fetchSuggestableTools(
   }
 
   const views = await MCPServerViewResource.fetchByIds(auth, toolIds, {
-    includeHeavyAttributes: [
-      "authorization",
-      "cachedTools",
-      "customHeaders",
-      "lastError",
-      "sharedSecret",
-    ],
+    mode: "configuration",
     isRestrictedToSkills: false,
   });
 

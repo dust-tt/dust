@@ -373,7 +373,8 @@ async function searchPokeResourcesBySId(
     case "mcp_server_view": {
       const mcpServerView = await MCPServerViewResource.fetchById(
         workspaceAuth,
-        sId
+        sId,
+        { mode: "configuration" }
       );
       if (!mcpServerView) {
         return [];

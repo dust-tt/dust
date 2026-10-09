@@ -295,7 +295,7 @@ async function fetchViewsByInternalMCPServerId(
   return MCPServerViewResource.fetchByModelIds(
     auth,
     viewRows.map((view) => view.id),
-    { includeMetadata: false }
+    { mode: "metadata" }
   );
 }
 
@@ -333,7 +333,7 @@ async function findLegacyViewsForTool(
   }
 
   return MCPServerViewResource.fetchByModelIds(auth, legacyViewIds, {
-    includeMetadata: false,
+    mode: "metadata",
   });
 }
 

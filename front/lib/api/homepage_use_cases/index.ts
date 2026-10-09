@@ -92,7 +92,9 @@ function getViewToolKey(view: MCPServerViewResource): string | null {
 async function getToolsByKey(
   auth: Authenticator
 ): Promise<Map<string, ToolReference>> {
-  const views = await MCPServerViewResource.listByWorkspace(auth);
+  const views = await MCPServerViewResource.listByWorkspace(auth, {
+    mode: "metadata",
+  });
 
   const tools = new Map<string, ToolReference>();
   for (const view of views) {

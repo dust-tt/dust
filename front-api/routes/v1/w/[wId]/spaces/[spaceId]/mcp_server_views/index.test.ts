@@ -45,7 +45,8 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/mcp_server_views", () => {
     // Create system view
     await MCPServerViewResource.getMCPServerViewForSystemSpace(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
 
     // Create additional views in global space for the same server

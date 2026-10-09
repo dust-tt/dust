@@ -38,7 +38,8 @@ describe("POST /api/w/:wId/mcp/request_access", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.id
+        server.id,
+        { mode: "metadata" }
       );
     assert(systemView, "System view should exist after server creation");
     const { view } = await MCPServerViewResource.create(auth, {

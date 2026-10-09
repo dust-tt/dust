@@ -63,7 +63,9 @@ export async function fetchPluginResource<T extends SupportedResourceType>(
       result = await FileResource.fetchById(auth, resourceId);
       break;
     case "mcp_server_views":
-      result = await MCPServerViewResource.fetchById(auth, resourceId);
+      result = await MCPServerViewResource.fetchById(auth, resourceId, {
+        mode: "metadata",
+      });
       break;
     case "skills":
       result = await SkillResource.fetchById(auth, resourceId);

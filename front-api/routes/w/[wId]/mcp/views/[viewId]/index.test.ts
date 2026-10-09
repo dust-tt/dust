@@ -77,7 +77,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -118,7 +119,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -134,7 +136,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const updatedViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     expect(updatedViews.length).toBeGreaterThan(1);
     for (const view of updatedViews) {
@@ -152,7 +155,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const viewsAfterUseCaseOnly = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     for (const view of viewsAfterUseCaseOnly) {
       expect(view.oauthScope).toBe(oauthScope);
@@ -166,7 +170,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -188,7 +193,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const initialViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     for (const view of initialViews) {
       expect(view.oAuthUseCase).toBeNull();
@@ -205,7 +211,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const updatedViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     for (const view of updatedViews) {
       expect(view.oAuthUseCase).toBe("platform_actions");
@@ -223,7 +230,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const restrictedViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     for (const view of restrictedViews) {
       expect(view.isRestrictedToSkills).toBe(true);
@@ -252,7 +260,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -271,7 +280,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const updatedViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     for (const view of updatedViews) {
       expect(view.name).toBe("Updated View Name");
@@ -286,7 +296,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -311,7 +322,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.id
+        server.id,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -319,7 +331,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const initialViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.id
+      server.id,
+      { mode: "metadata" }
     );
     for (const view of initialViews) {
       expect(view.oAuthUseCase).toBeNull();
@@ -336,7 +349,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
 
     const updatedViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      server.id
+      server.id,
+      { mode: "metadata" }
     );
     for (const view of updatedViews) {
       expect(view.oAuthUseCase).toBe("personal_actions");
@@ -356,12 +370,14 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView1 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server1.sId
+        server1.sId,
+        { mode: "metadata" }
       );
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server2.sId
+        server2.sId,
+        { mode: "metadata" }
       );
     expect(systemView1).toBeDefined();
     expect(systemView2).toBeDefined();
@@ -393,7 +409,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView1 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server1.sId
+        server1.sId,
+        { mode: "metadata" }
       );
     expect(systemView1).toBeDefined();
 
@@ -418,7 +435,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -440,7 +458,8 @@ describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        server.sId
+        server.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 

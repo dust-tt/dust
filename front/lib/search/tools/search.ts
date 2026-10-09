@@ -170,7 +170,8 @@ export async function* streamToolFiles({
   const spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
   const serverViews = await MCPServerViewResource.listBySpacesEnsuringAutoViews(
     auth,
-    spaces
+    spaces,
+    { mode: "configuration" }
   );
 
   // Build the set of connectors that the user has access to
@@ -259,7 +260,9 @@ export async function getToolAccessToken({
     Error
   >
 > {
-  const serverView = await MCPServerViewResource.fetchById(auth, serverViewId);
+  const serverView = await MCPServerViewResource.fetchById(auth, serverViewId, {
+    mode: "metadata",
+  });
   if (!serverView) {
     return new Err(new Error("MCP server view not found."));
   }

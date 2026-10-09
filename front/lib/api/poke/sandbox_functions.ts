@@ -99,7 +99,8 @@ async function renderMCPActions(
 ): Promise<PokeSandboxFunctionMCPAction[]> {
   const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    actions.map((action) => action.mcpServerViewId)
+    actions.map((action) => action.mcpServerViewId),
+    { mode: "metadata" }
   );
   const mcpServerViewsByModelId = new Map(
     mcpServerViews.map((mcpServerView) => [mcpServerView.id, mcpServerView])

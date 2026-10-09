@@ -129,7 +129,8 @@ async function copyConversationMCPServerViews(
 
   const readableMCPServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    parentMCPServerViews.map((view) => view.mcpServerViewId)
+    parentMCPServerViews.map((view) => view.mcpServerViewId),
+    { mode: "metadata" }
   );
 
   if (readableMCPServerViews.length === 0) {

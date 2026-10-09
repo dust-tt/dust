@@ -36,7 +36,8 @@ async function deleteSlideshowServerFromWorkspace(
 
   const mcpServerViews = await MCPServerViewResource.listByMCPServer(
     auth,
-    slideshowServerId
+    slideshowServerId,
+    { mode: "metadata" }
   );
 
   const foundToolMetadataCount = await RemoteMCPServerToolMetadataModel.count({

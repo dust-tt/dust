@@ -107,7 +107,8 @@ async function migrateWorkspaceExtractActions(
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "extract_data"
+      "extract_data",
+      { mode: "metadata" }
     );
   if (!mcpServerView) {
     throw new Error("extract_data MCP server view not found.");

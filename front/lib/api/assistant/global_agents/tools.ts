@@ -46,12 +46,13 @@ export async function getMCPServerViewsForGlobalAgents(
     variant === "full"
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
-          MCP_SERVERS_FOR_GLOBAL_AGENTS
+          MCP_SERVERS_FOR_GLOBAL_AGENTS,
+          { mode: "configuration" }
         )
       : await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
           ["agent_memory"] as const,
-          { ensureAutoViews: false }
+          { mode: "metadata", ensureAutoViews: false }
         );
 
   return Object.fromEntries(

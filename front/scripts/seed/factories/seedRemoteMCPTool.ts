@@ -49,7 +49,8 @@ export async function seedRemoteMCPTool(
 
   const globalView = await MCPServerViewResource.getMCPServerViewForGlobalSpace(
     auth,
-    server.sId
+    server.sId,
+    { mode: "metadata" }
   );
   if (globalView) {
     return globalView;
@@ -61,7 +62,8 @@ export async function seedRemoteMCPTool(
 
   const systemView = await MCPServerViewResource.getMCPServerViewForSystemSpace(
     auth,
-    server.sId
+    server.sId,
+    { mode: "metadata" }
   );
   if (!systemView) {
     throw new Error(`No system view found for remote MCP server ${server.sId}`);

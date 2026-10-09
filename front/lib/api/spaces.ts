@@ -71,7 +71,7 @@ export async function getSpaceCategoriesWithUsage(
   // These three listings are mutually independent — fetch together rather than one at a time.
   const [dataSourceViewsList, actions, webhookViews] = await Promise.all([
     DataSourceViewResource.listBySpace(auth, space),
-    MCPServerViewResource.listBySpace(auth, space),
+    MCPServerViewResource.listBySpace(auth, space, { mode: "metadata" }),
     WebhookSourcesViewResource.listBySpace(auth, space),
   ]);
   // "auto" tools (e.g. Pods, Computer) get a view auto-provisioned into every space —
@@ -326,7 +326,8 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       // Get MCP server views and data source views from the space being deleted.
       const mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
-        space
+        space,
+        { mode: "metadata" }
       );
       const mcpServerViewIds = mcpServerViews.map((v) => v.id);
       const dataSourceViewIds = dataSourceViews.map((v) => v.id);

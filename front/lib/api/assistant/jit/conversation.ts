@@ -29,7 +29,8 @@ export async function getConversationMCPServers(
   );
   const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    mcpServerViewIds
+    mcpServerViewIds,
+    { mode: "metadata" }
   );
 
   return mcpServerViews.map((mcpServerView) => {

@@ -159,7 +159,8 @@ export async function seedReinforcement(
       const [webSearchView] =
         await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
           ctx.auth,
-          [WEB_SEARCH_BROWSE_SERVER_NAME]
+          [WEB_SEARCH_BROWSE_SERVER_NAME],
+          { mode: "configuration" }
         );
       const webSearchViewJson = webSearchView?.toJSON();
       if (webSearchViewJson) {

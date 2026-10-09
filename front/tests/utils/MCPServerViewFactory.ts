@@ -15,7 +15,8 @@ export class MCPServerViewFactory {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        mcpServerId
+        mcpServerId,
+        { mode: "metadata" }
       );
 
     if (!systemView) {

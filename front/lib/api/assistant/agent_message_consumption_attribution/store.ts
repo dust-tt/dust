@@ -647,9 +647,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
             actions: actionsToEnrich,
             ignoreContent: false,
           }),
-          SkillResource.listByAgentMessageId(auth, agentMessageModelId, {
-            withToolMetadata: true,
-          }),
+          SkillResource.listByAgentMessageId(auth, agentMessageModelId),
         ])
       : [[], []];
   const enrichedActionByModelId = new Map(

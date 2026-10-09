@@ -88,7 +88,8 @@ makeScript(
     const originView =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        originRemoteServerId
+        originRemoteServerId,
+        { mode: "configuration" }
       );
     assert(
       originView,
@@ -98,7 +99,8 @@ makeScript(
     const destinationView =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        destinationInternalServerId
+        destinationInternalServerId,
+        { mode: "configuration" }
       );
     assert(
       destinationView,

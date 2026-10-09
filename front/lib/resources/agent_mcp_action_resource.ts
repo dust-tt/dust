@@ -415,7 +415,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         dangerouslySkipFetchCheck: true,
       }),
       MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
-        includeHeavyAttributes: ["authorization"],
+        mode: "metadata",
       }),
     ]);
 

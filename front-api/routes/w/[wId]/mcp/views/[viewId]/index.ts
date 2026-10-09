@@ -35,13 +35,7 @@ app.get(
     const { viewId } = ctx.req.valid("param");
 
     const serverView = await MCPServerViewResource.fetchById(auth, viewId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
     });
 
     if (!serverView) {
@@ -74,7 +68,9 @@ app.patch(
     const body = ctx.req.valid("json");
 
     // Get the system view to validate that viewId refers to a system view.
-    const systemView = await MCPServerViewResource.fetchById(auth, viewId);
+    const systemView = await MCPServerViewResource.fetchById(auth, viewId, {
+      mode: "metadata",
+    });
 
     if (!systemView) {
       return apiError(ctx, {
@@ -144,13 +140,7 @@ app.patch(
       auth,
       viewId,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
 

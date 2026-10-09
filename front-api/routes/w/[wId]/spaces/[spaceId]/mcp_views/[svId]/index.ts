@@ -33,7 +33,8 @@ app.delete(
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
-      serverViewId
+      serverViewId,
+      { mode: "metadata" }
     );
     if (!mcpServerView || mcpServerView.space.id !== space.id) {
       return apiError(ctx, {

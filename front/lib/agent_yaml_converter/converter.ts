@@ -265,7 +265,8 @@ export class AgentYAMLConverter {
     try {
       const mcpServerView = await MCPServerViewResource.fetchById(
         auth,
-        configuration.mcpServerViewId
+        configuration.mcpServerViewId,
+        { mode: "metadata" }
       );
       if (!mcpServerView) {
         return null;
@@ -319,7 +320,8 @@ export class AgentYAMLConverter {
     const mcpServerView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        name
+        name,
+        { mode: "metadata" }
       );
     if (!mcpServerView) {
       return new Err(new Error(`MCP server view not found for: ${name}`));
@@ -418,7 +420,9 @@ export class AgentYAMLConverter {
   > {
     try {
       // Fetch once to avoid an N+1 across toolset entries.
-      const workspaceViews = await MCPServerViewResource.listByWorkspace(auth);
+      const workspaceViews = await MCPServerViewResource.listByWorkspace(auth, {
+        mode: "metadata",
+      });
       const results = await concurrentExecutor(
         yamlActions,
         (action) =>

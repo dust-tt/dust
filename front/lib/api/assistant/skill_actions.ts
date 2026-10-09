@@ -129,7 +129,8 @@ export async function getSkillServers(
     namesToFetch.length > 0
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
-          namesToFetch
+          namesToFetch,
+          { mode: "configuration" }
         )
       : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
 

@@ -41,13 +41,17 @@ describe("interactive_content", () => {
       workspaceId: workspace.id,
     });
     expect(
-      await InternalMCPServerInMemoryResource.fetchById(auth, serverId)
+      await InternalMCPServerInMemoryResource.fetchById(auth, serverId, {
+        includeCredentials: false,
+      })
     ).not.toBeNull();
 
     await FeatureFlagResource.enable(workspace, "frames_v2");
 
     expect(
-      await InternalMCPServerInMemoryResource.fetchById(auth, serverId)
+      await InternalMCPServerInMemoryResource.fetchById(auth, serverId, {
+        includeCredentials: false,
+      })
     ).not.toBeNull();
   });
 

@@ -1396,7 +1396,8 @@ describe("agent_sidekick_context tools", () => {
       const searchView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           authenticator,
-          "search"
+          "search",
+          { mode: "metadata" }
         );
       expect(searchView).not.toBeNull();
 
@@ -1437,7 +1438,8 @@ describe("agent_sidekick_context tools", () => {
       const runAgentView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           authenticator,
-          "run_agent"
+          "run_agent",
+          { mode: "metadata" }
         );
       expect(runAgentView).not.toBeNull();
 

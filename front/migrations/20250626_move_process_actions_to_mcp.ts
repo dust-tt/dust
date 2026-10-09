@@ -278,7 +278,8 @@ async function migrateWorkspaceProcessActions(
   const mcpServerViewForExtract =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      "extract_data"
+      "extract_data",
+      { mode: "metadata" }
     );
 
   assert(mcpServerViewForExtract, "Extract data MCP server view must exist");

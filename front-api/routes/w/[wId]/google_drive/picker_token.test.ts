@@ -192,7 +192,8 @@ describe("POST /api/w/:wId/google_drive/picker_token", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        server.id
+        server.id,
+        { mode: "metadata" }
       );
     expect(systemView).not.toBeNull();
     const updated = await systemView!.updateOAuthUseCase(

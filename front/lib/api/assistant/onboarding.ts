@@ -561,7 +561,13 @@ export async function createOnboardingConversationIfNeeded(
   // Check for tools with views in the global space (matches what UI considers "configured")
   const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
   const globalSpaceViews =
-    await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, globalSpace);
+    await MCPServerViewResource.listBySpaceEnsuringAutoViews(
+      auth,
+      globalSpace,
+      {
+        mode: "metadata",
+      }
+    );
   const configuredTools = globalSpaceViews
     .map((v) => getInternalMCPServerNameFromSId(v.internalMCPServerId))
     .filter((name): name is InternalMCPServerNameType => name !== null);

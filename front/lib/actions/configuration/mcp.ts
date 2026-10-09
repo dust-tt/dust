@@ -121,7 +121,9 @@ export async function fetchMCPServerActionConfigurations(
         },
       ],
     }),
-    MCPServerViewResource.fetchByModelIds(auth, uniqueMcpServerViewIds),
+    MCPServerViewResource.fetchByModelIds(auth, uniqueMcpServerViewIds, {
+      mode: "metadata",
+    }),
   ]);
 
   const mcpServerViewsById = new Map(

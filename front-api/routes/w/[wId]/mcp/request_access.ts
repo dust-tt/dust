@@ -26,7 +26,8 @@ app.post(
 
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
-      mcpServerViewId
+      mcpServerViewId,
+      { mode: "metadata" }
     );
 
     if (!mcpServerView) {

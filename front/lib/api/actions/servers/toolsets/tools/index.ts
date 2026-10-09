@@ -37,13 +37,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         auth,
         globalSpace,
         {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
+          mode: "configuration",
         }
       )
     )
@@ -87,7 +81,8 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
     );
     const mcpServerView = await MCPServerViewResource.fetchById(
       auth,
-      toolsetId
+      toolsetId,
+      { mode: "metadata" }
     );
 
     if (!conversation || !mcpServerView || mcpServerView.isRestrictedToSkills) {

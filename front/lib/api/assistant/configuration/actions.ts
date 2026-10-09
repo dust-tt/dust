@@ -53,7 +53,8 @@ export async function createAgentActionConfiguration(
 
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
-    action.mcpServerViewId
+    action.mcpServerViewId,
+    { mode: "metadata" }
   );
   if (!mcpServerView) {
     return new Err(new Error("MCP server view not found"));

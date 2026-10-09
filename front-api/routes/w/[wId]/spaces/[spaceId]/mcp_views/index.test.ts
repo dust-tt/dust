@@ -81,7 +81,11 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ deleted: true });
 
-    const deleted = await MCPServerViewResource.fetchById(auth, serverView.sId);
+    const deleted = await MCPServerViewResource.fetchById(
+      auth,
+      serverView.sId,
+      { mode: "metadata" }
+    );
     expect(deleted).toBe(null);
   });
 

@@ -260,11 +260,13 @@ export async function buildSidekickContext(
   const [context, templates] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_SIDEKICK_CONTEXT_TOOL_NAME
+      AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+      { mode: "configuration" }
     ),
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_TEMPLATES_SERVER_NAME
+      AGENT_TEMPLATES_SERVER_NAME,
+      { mode: "configuration" }
     ),
   ]);
   return {

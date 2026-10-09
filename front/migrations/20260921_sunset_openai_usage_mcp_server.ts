@@ -39,7 +39,8 @@ async function deleteOpenAIUsageServerFromWorkspace(
 
   const mcpServerViews = await MCPServerViewResource.listByMCPServer(
     auth,
-    openaiUsageServerId
+    openaiUsageServerId,
+    { mode: "metadata" }
   );
 
   const foundConnectionCount = await MCPServerConnectionModel.count({
