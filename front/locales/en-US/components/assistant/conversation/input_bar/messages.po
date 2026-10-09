@@ -96,6 +96,10 @@ msgid "Type @ to call an agent"
 msgstr "Type @ to call an agent"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Type @ to list your favorite agents"
+msgstr "Type @ to list your favorite agents"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Type @ to loop in a teammate"
 msgstr "Type @ to loop in a teammate"
 
