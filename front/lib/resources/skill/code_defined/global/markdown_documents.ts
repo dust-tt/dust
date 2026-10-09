@@ -108,7 +108,9 @@ export const markdownDocumentsSkill = {
     "image or a comment: explains the document tools to use, the Markdown the document editor " +
     "opens and how to embed generated or attached images.",
   fetchInstructions: async (_auth, { agentLoopData }) =>
-    getMarkdownDocumentsInstructions(agentLoopData?.userMessage.content ?? null),
+    getMarkdownDocumentsInstructions(
+      agentLoopData?.userMessage.content ?? null
+    ),
   mcpServers: [{ name: USER_MENTIONS_SERVER_NAME }],
   exposeInstructions: true,
   version: 1,

@@ -49,8 +49,7 @@ describe("markdownDocumentsSkill", () => {
       markdownDocumentsSkill.getAutoEnabledOrEquippedForAgentLoop({
         agentConfiguration,
         conversation,
-        userMessage:
-          content === null ? undefined : { ...userMessage, content },
+        userMessage: content === null ? undefined : { ...userMessage, content },
       });
 
     expect(stateFor(`${HEADING}\n\nThoughts?`)).toBe("enabled");
@@ -71,10 +70,16 @@ describe("markdownDocumentsSkill", () => {
         getPrefixedToolName(FILES_SERVER_NAME, FILES_RESOLVE_ACTION_NAME)
       );
       expect(instructions).toContain(
-        getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)
+        getPrefixedToolName(
+          DOCUMENTS_SERVER_NAME,
+          DOCUMENTS_READ_DOCUMENT_ACTION_NAME
+        )
       );
       expect(instructions).toContain(
-        getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME)
+        getPrefixedToolName(
+          DOCUMENTS_SERVER_NAME,
+          DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME
+        )
       );
     }
     expect(comment).toContain(REPLY_TOOL);
