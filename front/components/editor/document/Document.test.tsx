@@ -489,6 +489,7 @@ describe("Document comments", () => {
       <Document
         initialContent={SOURCE}
         headerControlsContainer={container}
+        resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
       />
@@ -505,7 +506,7 @@ describe("Document comments", () => {
     container.remove();
   });
 
-  it("shows the save status in the host's container when given one, not above the document", async () => {
+  it("keeps the save status above the document when the comments button shows in the host's container", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const { container: documentRoot } = render(
@@ -513,15 +514,19 @@ describe("Document comments", () => {
         initialContent={SOURCE}
         onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
         headerControlsContainer={container}
+        resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
       />
     );
 
     expect(
-      (await within(container).findByRole("status")).textContent
+      (await within(documentRoot).findByRole("status")).textContent
     ).toContain("Saved");
-    expect(within(documentRoot).queryByRole("status")).toBeNull();
+    expect(within(container).queryByRole("status")).toBeNull();
+    expect(
+      within(documentRoot).queryByRole("button", { name: /^Comments/ })
+    ).toBeNull();
     container.remove();
   });
 

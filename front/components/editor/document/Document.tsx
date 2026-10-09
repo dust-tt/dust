@@ -27,6 +27,7 @@ import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
 import { lazy, Suspense, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
 const LiveDocument = lazy(
@@ -60,6 +61,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
  * first, then cycle outward on repeated clicks.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-comments-button-placement
+ * With headerControlsContainer, the comments button MUST show in it and not above the document;
+ * the save and live statuses MUST stay above the document. Without one, the comments button MUST
+ * show with them.
  */
 export const Document = (props: DocumentProps) =>
   props.live ? (
@@ -235,22 +242,30 @@ export const DocumentView = ({
     );
   }
 
+  const commentsToggle = (
+    <DocumentCommentsToggle
+      listId={listId}
+      comments={comments}
+      size={headerControlsContainer ? "sm" : "xs"}
+    />
+  );
+
   return (
     <article
       className={cn("@container relative", className)}
       onKeyDownCapture={handleKeyDown}
     >
+      {showCommentsToggle &&
+        headerControlsContainer &&
+        createPortal(commentsToggle, headerControlsContainer)}
       <div
         ref={contentRef}
         className={cn(
           "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-          (editable || showCommentsToggle) && !headerControlsContainer
-            ? "pt-5 @sm:pt-8"
-            : "pt-8 @sm:pt-18"
+          editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
         )}
       >
         <DocumentStatus
-          controlsContainer={headerControlsContainer}
           editable={canEditFile}
           dirty={dirty}
           saving={saving}
@@ -259,13 +274,7 @@ export const DocumentView = ({
           onRetry={save}
         >
           {liveView && <DocumentLiveStatus status={liveView.status} />}
-          {showCommentsToggle && (
-            <DocumentCommentsToggle
-              listId={listId}
-              comments={comments}
-              size={headerControlsContainer ? "sm" : "xs"}
-            />
-          )}
+          {showCommentsToggle && !headerControlsContainer && commentsToggle}
         </DocumentStatus>
         {editor && showCommentsToggle && (
           <DocumentCommentsList
