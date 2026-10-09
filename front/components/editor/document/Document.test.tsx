@@ -526,6 +526,7 @@ describe("Document comments", () => {
     const status = await within(container).findByRole("status");
     expect(status.dataset.state).toBe("saved");
     expect(status.textContent).toBe("Saved");
+    expect(container.querySelectorAll("svg")).toHaveLength(1);
     expect(
       screen.queryAllByRole("status").filter((element) => element !== status)
     ).toHaveLength(0);

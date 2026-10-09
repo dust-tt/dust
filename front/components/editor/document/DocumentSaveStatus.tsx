@@ -1,7 +1,7 @@
 import type { LiveStatus } from "@app/components/editor/document/types";
 import type { LiveAgentEvent } from "@app/lib/client/live_agents";
 import type { LiveAgentActivity } from "@app/types/collab";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   AlertCircle,
   Check,
@@ -246,8 +246,7 @@ const statusIcon = ({
           ? { state: "saving", label: msg`Saving…` }
           : { state: "saved", label: msg`Saved` };
       default:
-        assertNeverAndIgnore(live.status);
-        return { state: "disconnected", label: msg`Live editing unavailable` };
+        return assertNever(live.status);
     }
   }
   const { label } = SAVE_STATES[saveState({ dirty, saving, error })];
@@ -272,8 +271,8 @@ interface DocumentStatusIconProps {
  * one icon with its state as label and tooltip: a green check once saved, or once live with every
  * change synced; an orange spinning arrow circle while saving, while changes wait to save or sync,
  * or while connecting; a red disconnected icon when the live session is lost or refused; a warning
- * icon with Retry when a save failed. A file document that is neither editable nor holding unsaved changes
- * MUST show no icon.
+ * icon when a save failed, with Retry only while the document is editable. A file document that is
+ * neither editable nor holding unsaved changes MUST show no icon.
  */
 export const DocumentStatusIcon = ({
   live,
