@@ -8,6 +8,7 @@ import {
   Button,
   ContentMessage,
   Icon,
+  LoadingBlock,
   Lock01,
   MagicWand02,
   Mail01,
@@ -18,7 +19,6 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  Spinner,
   Users01,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -53,6 +53,31 @@ function MemberDetailsRow({
   );
 }
 
+function MemberDetailsHeaderSkeleton({ isSelf }: { isSelf: boolean }) {
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <LoadingBlock className="h-20 w-20 rounded-full" />
+      <div className="flex flex-col items-center gap-1">
+        <LoadingBlock className="h-7 w-32" />
+        <LoadingBlock className="h-5 w-24" />
+      </div>
+      {isSelf && <LoadingBlock className="h-8 w-20 rounded-xl" />}
+    </div>
+  );
+}
+
+function MemberDetailsRowSkeleton() {
+  return (
+    <div className="flex items-center gap-4">
+      <LoadingBlock className="h-6 w-6" />
+      <div className="flex flex-col gap-2">
+        <LoadingBlock className="h-4 w-16" />
+        <LoadingBlock className="h-4 w-40" />
+      </div>
+    </div>
+  );
+}
+
 export function MemberDetails({
   userId,
   onClose,
@@ -75,6 +100,9 @@ export function MemberDetails({
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>
+            {isMembersLoading && (
+              <MemberDetailsHeaderSkeleton isSelf={isSelf} />
+            )}
             {userDetails && (
               <div className="flex flex-col items-center gap-4">
                 <Avatar
@@ -118,9 +146,11 @@ export function MemberDetails({
           </SheetHeader>
           <SheetContainer className="gap-6 pt-5">
             {isMembersLoading ? (
-              <div className="flex flex-1 items-center justify-center">
-                <Spinner size="lg" />
-              </div>
+              <>
+                <MemberDetailsRowSkeleton />
+                <MemberDetailsRowSkeleton />
+                <MemberDetailsRowSkeleton />
+              </>
             ) : isMembersError ? (
               <ContentMessage title={t`Not available`} icon={Lock01} size="md">
                 <Trans>This user is not available.</Trans>
