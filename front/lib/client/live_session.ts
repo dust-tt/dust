@@ -3,13 +3,15 @@ import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { z } from "zod";
 
+// Sparkle's `-500` colors (`sparkle/src/styles/tokens.css`) in six-digit hex, the only format
+// y-tiptap's carets accept: they reach other people's editors through awareness.
 const CARET_COLORS = [
-  "#0ea5e9",
-  "#f97316",
-  "#22c55e",
-  "#a855f7",
-  "#ec4899",
-  "#eab308",
+  "#1c91ff", // blue
+  "#ff6900", // orange
+  "#54b47d", // emerald
+  "#8e51ff", // violet
+  "#ec4987", // pink
+  "#ffaa0d", // golden
 ];
 
 /** A stable caret color per user, so others recognize them across sessions. */
