@@ -16,9 +16,9 @@ import type { ServiceError } from "@grpc/grpc-js";
 import { Client, credentials, Metadata, status } from "@grpc/grpc-js";
 
 const DEFAULT_DFS_TIMEOUT_MS = 30_000;
-// Server replies are budgeted to 4 MiB of payload; allow framing headroom like the Rust client
-// instead of grpc-js's exact 4 MiB default, which would reject replies near the budget.
-const MAX_RECEIVE_MESSAGE_BYTES = 4 * 1024 * 1024 + 64 * 1024;
+// The `dfs-response-size` budget: 4 MiB of protobuf payload, framing excluded, which is what
+// grpc-js measures.
+const MAX_RECEIVE_MESSAGE_BYTES = 4 * 1024 * 1024;
 const ERROR_DETAILS_METADATA_KEY = "grpc-status-details-bin";
 
 function identity(buffer: Buffer): Buffer {

@@ -13,8 +13,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const ROOT_ID = "0190c3a0b1c27d4e8f0a1b2c3d4e5f60";
 const FILE_ID = "0190c3a0b1c37aaa9bbbccccddddeeee";
-// Just over grpc-js's default 4 MiB receive limit, within the server's reply budget plus framing.
-const LARGE_REPLY_BYTES = 4 * 1024 * 1024 + 16 * 1024;
+// The `dfs-response-size` budget, in encoded protobuf payload bytes.
+const RESPONSE_BUDGET_BYTES = 4 * 1024 * 1024;
 const SESSION_KEY = "k".repeat(64);
 const WIRE_VIEW = { storeVersion: "1", authVersion: "1" };
 
@@ -36,6 +36,33 @@ function firstTargetName(request: DfsWireMessage): unknown {
   return typeof first === "object" && first !== null && "name" in first
     ? first.name
     : undefined;
+}
+
+const LARGE_FILE_ATTR = {
+  id: { id: { value: Buffer.from(FILE_ID, "hex") } },
+  name: "large.bin",
+  directory: false,
+  size: "8388608",
+  mode: 0o600,
+  attrVersion: "1",
+  contentVersion: "1",
+  view: WIRE_VIEW,
+};
+
+// A `ReadData` reply whose encoded payload is exactly `encodedBytes` long.
+function readDataOfEncodedSize(encodedBytes: number): DfsWireMessage {
+  // Measure the overhead with data of the same order of magnitude, so its length varint has the
+  // same width as the final one.
+  const probe = {
+    data: Buffer.alloc(RESPONSE_BUDGET_BYTES),
+    object: LARGE_FILE_ATTR,
+  };
+  const overhead =
+    encodeDfsMessage("ReadData", probe).length - RESPONSE_BUDGET_BYTES;
+  return {
+    data: Buffer.alloc(encodedBytes - overhead, 1),
+    object: LARGE_FILE_ATTR,
+  };
 }
 
 function isAuthorized(call: UnaryCall): boolean {
@@ -90,20 +117,10 @@ const implementation: UntypedServiceImplementation = {
   CloseSession: (_call: UnaryCall, callback: Callback) => {
     callback(null, {});
   },
-  Read: (_call: UnaryCall, callback: Callback) => {
-    callback(null, {
-      data: Buffer.alloc(LARGE_REPLY_BYTES, 1),
-      object: {
-        id: { id: { value: Buffer.from(FILE_ID, "hex") } },
-        name: "large.bin",
-        directory: false,
-        size: String(LARGE_REPLY_BYTES),
-        mode: 0o600,
-        attrVersion: "1",
-        contentVersion: "1",
-        view: WIRE_VIEW,
-      },
-    });
+  // Replies with a payload of the response budget plus `offset` bytes.
+  Read: (call: UnaryCall, callback: Callback) => {
+    const excess = Number(call.request.offset);
+    callback(null, readDataOfEncodedSize(RESPONSE_BUDGET_BYTES + excess));
   },
 };
 
@@ -192,14 +209,29 @@ describe("DfsGrpcTransport", () => {
     expect(closed.isOk()).toBe(true);
   });
 
-  it("accepts replies slightly above 4 MiB", async () => {
+  it("accepts replies of exactly the response budget", async () => {
+    const expected = readDataOfEncodedSize(RESPONSE_BUDGET_BYTES);
+    expect(encodeDfsMessage("ReadData", expected).length).toBe(
+      RESPONSE_BUDGET_BYTES
+    );
+
     const res = await new DfsClient(transport, SESSION_KEY).read({
       objectId: FILE_ID,
       offset: 0,
       length: 1024 * 1024,
     });
 
-    expect(res.isOk() && res.value.data.length).toBe(LARGE_REPLY_BYTES);
+    expect(res.isOk() && res.value.data).toEqual(expected.data);
+  });
+
+  it("rejects replies above the response budget", async () => {
+    const res = await new DfsClient(transport, SESSION_KEY).read({
+      objectId: FILE_ID,
+      offset: 1,
+      length: 1024 * 1024,
+    });
+
+    expect(res.isErr() && res.error.code).toBe("capacity");
   });
 
   it("returns unimplemented methods as errors instead of throwing", async () => {
