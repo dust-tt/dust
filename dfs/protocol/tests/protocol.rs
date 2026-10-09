@@ -129,7 +129,7 @@ fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
     let mut object = rpc::Attr {
         id: ObjectRef::Object(ID.parse()?),
         name: "reports".into(),
-        directory: true,
+        kind: rpc::ObjectKind::Directory.into(),
         size: 0,
         mode: 0o500,
         atime: Some(0),
@@ -184,7 +184,7 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
                 object: Some(rpc::Attr {
                     id: ObjectRef::Shared,
                     name: "shared".into(),
-                    directory: true,
+                    kind: rpc::ObjectKind::Directory.into(),
                     mode: 0o500,
                     attr_version: 1,
                     content_version: 1,
@@ -236,7 +236,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
             rpc::Operation {
                 operation: Some(rpc::operation::Operation::Remove(rpc::RemoveOperation {
                     object_id,
-                    directory: false,
+                    kind: rpc::ObjectKind::File.into(),
                 })),
             },
         ],
@@ -264,7 +264,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                     related: vec![rpc::Attr {
                         id: ObjectRef::Object(parent_id),
                         name: "project".into(),
-                        directory: true,
+                        kind: rpc::ObjectKind::Directory.into(),
                         mode: 0o700,
                         attr_version: 2,
                         content_version: 2,
@@ -339,7 +339,7 @@ fn search_preserves_defaults_filters_and_optional_hit_metadata() -> Result<()> {
                 object: rpc::SearchAttr {
                     id: ID.parse()?,
                     name: "report.txt".into(),
-                    directory: false,
+                    kind: rpc::ObjectKind::File.into(),
                     size: 42,
                     atime: None,
                     mtime: Some(0),
