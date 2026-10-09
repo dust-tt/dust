@@ -28,7 +28,6 @@ import {
   Edit04,
   Eye,
   File02,
-  Folder,
   Heart,
   Icon,
   Inbox01,
@@ -91,6 +90,7 @@ import {
 import {
   ConversationActions,
   conversationFilesFor,
+  fileSidePanelContent,
   fileSidePanelView,
   isFileView,
   type SelectedCitation,
@@ -144,14 +144,17 @@ import {
   getMembersBySpaceId,
   getRandomUsers,
   getUserById,
+  hasFileDrag,
   hasPodDrag,
   indexFilesById,
   indexFilesByParentId,
   isDropTargetFolder,
+  isPinnableToSidebar,
   isPodFolder,
   isTriggeredConversation,
   mockAgents,
   moveDataSource,
+  readFileDragId,
   readPodDragId,
   mockUsers,
   MY_POD_SPACE,
@@ -173,6 +176,7 @@ import {
   getIconForFileType,
   getItemLocations,
   isDataSourceFolder,
+  ROOT_FOLDER_ICON,
   ROOT_FOLDER_LABEL,
 } from "../data/dataSources";
 import { getRandomGreetingForName } from "../data/greetings";
@@ -274,6 +278,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     | { kind: "welcome"; attachment?: InputBarAttachment }
     | { kind: "inboxAlt" }
     | { kind: "files" }
+    /** A file the sidebar keeps, opened in place of the main content rather
+     *  than beside the Hub. */
+    | { kind: "file"; dataSource: DataSource }
     | { kind: "requests" }
     | { kind: "conversations" }
     | { kind: "automations" }
@@ -419,6 +426,20 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   const [detailedToolId, setDetailedToolId] = useState<string | null>(null);
   /** A Pod is being dragged over the sidebar's Pod list. */
   const [isPodDropHovered, setIsPodDropHovered] = useState(false);
+  // What the sidebar's Files section keeps, in the order it was dropped there.
+  const [pinnedFileIds, setPinnedFileIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [isFileDropHovered, setIsFileDropHovered] = useState(false);
+  // Where the Hub is. Held here so a kept folder can open the Hub on itself
+  // and stay lit while the Hub is in it. It starts in the company drive: the
+  // top level holds only the two drives, which is nothing to read.
+  const [hubFolderId, setHubFolderId] = useState<string | null>(
+    () =>
+      model.files.find(
+        (file) => file.folderType === "drive" && file.source === "company"
+      )?.id ?? null
+  );
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
   const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
@@ -1244,6 +1265,73 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     });
   };
 
+  const togglePinnedFile = (fileId: string) => {
+    setPinnedFileIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileId)) {
+        next.delete(fileId);
+      } else {
+        next.add(fileId);
+      }
+      return next;
+    });
+  };
+
+  // Read through the live index, so a kept item follows a rename or a move and
+  // simply stops being listed once it is deleted.
+  const pinnedFiles = [...pinnedFileIds]
+    .map((id) => filesById.get(id))
+    .filter((item): item is DataSource => item !== undefined);
+
+  /** A kept folder opens the Hub on itself; a kept file takes the main panel.
+   *  A tool is the exception: what there is of one is its settings sheet. */
+  const openPinnedItem = (item: DataSource) => {
+    setP3View(null);
+    setP4View(null);
+    if (isDataSourceFolder(item)) {
+      setHubFolderId(item.id);
+      setP2View({ kind: "files" });
+      return;
+    }
+    if (item.fileType === "tool" && item.refId) {
+      setDetailedToolId(item.refId);
+      return;
+    }
+    setP2View({ kind: "file", dataSource: item });
+  };
+
+  const renderSidebarFileNavItem = (item: DataSource) => (
+    <NavigationListItem
+      key={item.id}
+      label={item.fileName}
+      icon={getDataSourceIcon(item) ?? File02}
+      selected={
+        isDataSourceFolder(item)
+          ? p2View.kind === "files" && hubFolderId === item.id
+          : p2View.kind === "file" && p2View.dataSource.id === item.id
+      }
+      onClick={() => openPinnedItem(item)}
+      moreMenu={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <NavigationListItemAction />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem
+              label="Remove from sidebar"
+              icon={Star01}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePinnedFile(item.id);
+              }}
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    />
+  );
+
   const handleUpdateSpacePublic = (spaceId: string, isPublic: boolean) => {
     setSpacePublicSettings((prev) => new Map(prev).set(spaceId, isPublic));
     setSpaces((prev) =>
@@ -1408,7 +1496,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     if (p2View.kind === "build")
       return BUILD_SECTION_DISPLAY[p2View.section].label;
     if (p2View.kind === "inboxAlt") return "Inbox";
-    if (p2View.kind === "files") return "Files";
+    if (p2View.kind === "files") return ROOT_FOLDER_LABEL;
+    if (p2View.kind === "file") return p2View.dataSource.fileName;
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Free conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1500,8 +1589,14 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
           onStartConversation={startConversationOn}
           onOpenPod={handleOpenPod}
           onEditBuildItem={handleEditBuildItem}
+          currentFolderId={hubFolderId}
+          onCurrentFolderIdChange={setHubFolderId}
+          isPinnedToSidebar={(item) => pinnedFileIds.has(item.id)}
+          onTogglePinnedToSidebar={(item) => togglePinnedFile(item.id)}
         />
       );
+    if (p2View.kind === "file")
+      return fileSidePanelContent(fileSidePanelView(p2View.dataSource));
     if (p2View.kind === "requests")
       return (
         <RequestsView
@@ -1990,7 +2085,7 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
       return (
         <>
           <Breadcrumbs
-            items={[{ label: "Files", icon: Folder }]}
+            items={[{ label: ROOT_FOLDER_LABEL, icon: ROOT_FOLDER_ICON }]}
             size="sm"
             hasLighterFont
             className="shrink-0"
@@ -2003,6 +2098,19 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
             className="ml-1 w-full min-w-0 max-w-80"
           />
         </>
+      );
+    if (p2View.kind === "file")
+      return (
+        <Breadcrumbs
+          items={[
+            {
+              label: p2View.dataSource.fileName,
+              icon: getDataSourceIcon(p2View.dataSource) ?? File02,
+            },
+          ]}
+          size="sm"
+          hasLighterFont
+        />
       );
     if (p2View.kind === "requests")
       return (
@@ -2144,8 +2252,8 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                 }}
               />
               <NavigationListItem
-                label="Files"
-                icon={Folder}
+                label={ROOT_FOLDER_LABEL}
+                icon={ROOT_FOLDER_ICON}
                 selected={p2View.kind === "files"}
                 onClick={() => {
                   setP2View({ kind: "files" });
@@ -2195,6 +2303,61 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                   setP4View(null);
                 }}
               />
+            </NavigationList>
+
+            {/* Above Pods rather than below: with twenty Pods kept, a section
+                under them sits off the bottom of the sidebar, and nothing
+                scrolls it into reach during a drag. */}
+            <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">
+              <NavigationListCollapsibleSection
+                label="Files"
+                type="collapse"
+                defaultOpen={true}
+                className={cn(
+                  "rounded-xl",
+                  isFileDropHovered && "bg-selected ring-1 ring-highlight"
+                )}
+                onDragOver={(event) => {
+                  if (!hasFileDrag(event.dataTransfer)) {
+                    return;
+                  }
+                  event.preventDefault();
+                  setIsFileDropHovered(true);
+                }}
+                onDragLeave={(event) => {
+                  if (
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  ) {
+                    return;
+                  }
+                  setIsFileDropHovered(false);
+                }}
+                onDrop={(event) => {
+                  setIsFileDropHovered(false);
+                  const fileId = readFileDragId(event.dataTransfer);
+                  const item = fileId ? filesById.get(fileId) : undefined;
+                  if (!item || !isPinnableToSidebar(item)) {
+                    return;
+                  }
+                  event.preventDefault();
+                  setPinnedFileIds((prev) => new Set(prev).add(item.id));
+                }}
+              >
+                {pinnedFiles.length > 0 ? (
+                  pinnedFiles.map(renderSidebarFileNavItem)
+                ) : (
+                  <NavigationListItem
+                    label="Add files from the Hub"
+                    icon={Plus}
+                    onClick={() => {
+                      setP2View({ kind: "files" });
+                      setP3View(null);
+                      setP4View(null);
+                    }}
+                  />
+                )}
+              </NavigationListCollapsibleSection>
             </NavigationList>
 
             <NavigationList className="mx-sidebar-side-spacing mt-2 flex-shrink-0">

@@ -17,6 +17,7 @@ import {
   getDataSourceIcon,
   getFolderPath,
   isDataSourceFolder,
+  ROOT_FOLDER_ICON,
   ROOT_FOLDER_LABEL,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
@@ -50,6 +51,16 @@ const COMPACT_BELOW = 720;
 /** The breadcrumbs name the workspace root this way; the model calls it null. */
 const ROOT_TARGET_ID = "root";
 
+/** The folders above this one, which the tree has to open to show it. */
+function ancestorIdsOf(
+  filesById: Map<string, DataSource>,
+  folderId: string | null
+): string[] {
+  return getFolderPath(filesById, folderId)
+    .slice(0, -1)
+    .map((folder) => folder.id);
+}
+
 interface WorkspaceFileSystemProps {
   files: DataSource[];
   /** The tree's children index, so a branch never scans the whole workspace. */
@@ -69,6 +80,12 @@ interface WorkspaceFileSystemProps {
   /** Controlled: the search input lives in the screen's header, not here. */
   searchText: string;
   onSearchTextChange: (text: string) => void;
+  /** Controlled too: the sidebar opens the Hub on a kept folder, and lights
+   *  that row while the Hub is in it. */
+  currentFolderId: string | null;
+  onCurrentFolderIdChange: (folderId: string | null) => void;
+  isPinnedToSidebar: (dataSource: DataSource) => boolean;
+  onTogglePinnedToSidebar: (dataSource: DataSource) => void;
 }
 
 export function WorkspaceFileSystem({
@@ -84,20 +101,34 @@ export function WorkspaceFileSystem({
   onCreateFile,
   searchText,
   onSearchTextChange,
+  currentFolderId,
+  onCurrentFolderIdChange,
+  isPinnedToSidebar,
+  onTogglePinnedToSidebar,
 }: WorkspaceFileSystemProps) {
-  const [currentFolderId, setCurrentFolderIdState] = useState<string | null>(
-    null
-  );
   // The top level opens itself: it holds only the two drives, which say nothing
   // about what the workspace keeps until you look inside one.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
     () =>
-      new Set(
-        (filesByParentId.get(null) ?? [])
+      new Set([
+        ...(filesByParentId.get(null) ?? [])
           .filter(isDataSourceFolder)
-          .map((folder) => folder.id)
-      )
+          .map((folder) => folder.id),
+        ...ancestorIdsOf(filesById, currentFolderId),
+      ])
   );
+
+  // Opening a folder from anywhere — the tree, the table, the sidebar —
+  // reveals it in the tree. Adjusted during render rather than in an effect so
+  // the tree never paints once with the folder hidden.
+  const [revealedFolderId, setRevealedFolderId] = useState(currentFolderId);
+  if (currentFolderId !== revealedFolderId) {
+    setRevealedFolderId(currentFolderId);
+    const ancestors = ancestorIdsOf(filesById, currentFolderId);
+    if (ancestors.length > 0) {
+      setExpandedIds((prev) => new Set([...prev, ...ancestors]));
+    }
+  }
   const [isTreeMenuOpen, setIsTreeMenuOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
@@ -131,20 +162,6 @@ export function WorkspaceFileSystem({
     return index;
   }, [filesByParentId]);
 
-  /** Opening a folder from anywhere reveals it in the tree. */
-  const setCurrentFolderId = (folderId: string | null) => {
-    setCurrentFolderIdState(folderId);
-    if (!folderId) {
-      return;
-    }
-    const ancestors = getFolderPath(filesById, folderId)
-      .slice(0, -1)
-      .map((folder) => folder.id);
-    if (ancestors.length > 0) {
-      setExpandedIds((prev) => new Set([...prev, ...ancestors]));
-    }
-  };
-
   const toggleExpanded = (folderId: string) =>
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -157,7 +174,7 @@ export function WorkspaceFileSystem({
     });
 
   const selectFolder = (folderId: string | null) => {
-    setCurrentFolderId(folderId);
+    onCurrentFolderIdChange(folderId);
     setIsTreeMenuOpen(false);
   };
 
@@ -259,7 +276,7 @@ export function WorkspaceFileSystem({
     );
   };
 
-  // The top level is reached, and dropped onto, through the "Files" breadcrumb.
+  // The top level is reached, and dropped onto, through the "Hub" breadcrumb.
   const tree = (
     <TreeDnd variant="navigator">
       {sortDataSourcesForDisplay(getSubfolders(null)).map(renderFolder)}
@@ -297,7 +314,7 @@ export function WorkspaceFileSystem({
   return (
     <div ref={containerRef} className="flex h-full min-h-0 w-full">
       {!isCompact && (
-        <aside className="flex w-64 flex-none flex-col overflow-y-auto border-r border-separator p-2 pt-4">
+        <aside className="flex w-64 flex-none flex-col overflow-y-auto p-2 pt-3">
           {tree}
         </aside>
       )}
@@ -323,8 +340,9 @@ export function WorkspaceFileSystem({
                     isSelect
                     hasLighterFont
                     icon={
-                      (currentFolder && getDataSourceIcon(currentFolder)) ||
-                      Folder
+                      currentFolder
+                        ? (getDataSourceIcon(currentFolder) ?? Folder)
+                        : ROOT_FOLDER_ICON
                     }
                     label={currentFolder?.fileName ?? ROOT_FOLDER_LABEL}
                   />
@@ -339,7 +357,9 @@ export function WorkspaceFileSystem({
             ) : undefined
           }
           currentFolderId={currentFolderId}
-          onCurrentFolderIdChange={setCurrentFolderId}
+          onCurrentFolderIdChange={onCurrentFolderIdChange}
+          isPinnedToSidebar={isPinnedToSidebar}
+          onTogglePinnedToSidebar={onTogglePinnedToSidebar}
           onFileOpen={onFileOpen}
           onStartConversation={onStartConversation}
           onOpenPod={onOpenPod}

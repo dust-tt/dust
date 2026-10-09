@@ -17,6 +17,7 @@ import {
 import type { ComponentType } from "react";
 import { useMemo, useState } from "react";
 
+import { ROOT_FOLDER_ICON, ROOT_FOLDER_LABEL } from "../data/dataSources";
 import { canContainItems } from "../data/fileMoves";
 import { TreeDnd } from "./TreeDnd";
 
@@ -32,9 +33,6 @@ export interface PodDestination {
   path: string;
   icon?: ComponentType<{ className?: string }>;
 }
-
-/** What the top of the picker stands for: the file system itself. */
-const ROOT_DESTINATION_LABEL = "Files";
 
 interface CreateRoomDialogProps {
   isOpen: boolean;
@@ -160,8 +158,8 @@ function DestinationTree({
     <TreeDnd variant="navigator">
       <TreeDnd.Item
         type="node"
-        label={ROOT_DESTINATION_LABEL}
-        visual={Folder}
+        label={ROOT_FOLDER_LABEL}
+        visual={ROOT_FOLDER_ICON}
         isSelected={isRootPickable && selectedId === null}
         onItemClick={isRootPickable ? () => onSelect(null) : undefined}
         className={
@@ -261,7 +259,7 @@ export function CreateRoomDialog({
                     isSelect
                     icon={destination?.icon ?? Folder}
                     className="self-start"
-                    label={destination?.path ?? ROOT_DESTINATION_LABEL}
+                    label={destination?.path ?? ROOT_FOLDER_LABEL}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent

@@ -33,6 +33,7 @@ import {
   MessagePlusCircle,
   Plus,
   SearchInput,
+  Star01,
   Table,
   Trash01,
   UploadCloud02,
@@ -56,9 +57,15 @@ import {
   getIconForFileType,
   getItemTypeLabel,
   isDataSourceFolder,
+  ROOT_FOLDER_ICON,
+  ROOT_FOLDER_LABEL,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
-import { indexFilesById, isPodFolder } from "../data/fileMoves";
+import {
+  indexFilesById,
+  isPinnableToSidebar,
+  isPodFolder,
+} from "../data/fileMoves";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";
@@ -106,6 +113,10 @@ interface FilesBrowserProps {
   /** Opens what an agent or skill file stands for, where it can be edited. */
   onEditBuildItem?: (dataSource: DataSource) => void;
   onAddFileToTopbar?: (fileId: string) => void;
+  /** Keeps a row in the sidebar's Files section, or takes it out again. The
+   *  same rows dragging can put there, so the two never disagree. */
+  isPinnedToSidebar?: (dataSource: DataSource) => boolean;
+  onTogglePinnedToSidebar?: (dataSource: DataSource) => void;
   /** Adds a "Pod" entry to the create menu, creating it in the open folder. */
   onCreatePod?: () => void;
   /** Adds the entries that make a file of their own, in the open folder. */
@@ -117,9 +128,8 @@ interface FilesBrowserProps {
   /** Off when the parent renders the search input itself; the folder trail
    *  then takes its place on the toolbar row instead of sitting below it. */
   hasSearchInput?: boolean;
-  /** What the top of this browser is: the workspace, or the Pod that owns it.
-   *  Naming it shows the trail at the top level too, since the root is a
-   *  place of its own rather than "all files". */
+  /** What the top of this browser is, and so what the trail starts with: a
+   *  Pod names itself here; left out, it is the workspace's Hub. */
   root?: { label: string; icon: ComponentType<{ className?: string }> };
   /** Stands in for the folder trail where the parent has a better way of
    *  showing where you are — the workspace screen hands over its folder tree
@@ -237,6 +247,8 @@ export function FilesBrowser({
   onOpenPod,
   onEditBuildItem,
   onAddFileToTopbar,
+  isPinnedToSidebar,
+  onTogglePinnedToSidebar,
   onCreatePod,
   onCreateFile,
   dnd,
@@ -307,8 +319,8 @@ export function FilesBrowser({
           }
         : {};
 
-    const rootLabel = root?.label ?? "Files";
-    const rootIcon = root?.icon ?? Folder;
+    const rootLabel = root?.label ?? ROOT_FOLDER_LABEL;
+    const rootIcon = root?.icon ?? ROOT_FOLDER_ICON;
     const items: BreadcrumbsItem[] = [
       currentFolderId === null
         ? { label: rootLabel, icon: rootIcon }
@@ -406,6 +418,18 @@ export function FilesBrowser({
               },
             ]
           : []),
+        ...(onTogglePinnedToSidebar && isPinnableToSidebar(dataSource)
+          ? [
+              {
+                kind: "item" as const,
+                label: isPinnedToSidebar?.(dataSource)
+                  ? "Remove from sidebar"
+                  : "Keep in the sidebar",
+                icon: Star01,
+                onClick: () => onTogglePinnedToSidebar(dataSource),
+              },
+            ]
+          : []),
         {
           kind: "item" as const,
           label: "Delete",
@@ -415,7 +439,14 @@ export function FilesBrowser({
         },
       ];
     },
-    [onAddFileToTopbar, onEditBuildItem, onOpenPod, onStartConversation]
+    [
+      isPinnedToSidebar,
+      onAddFileToTopbar,
+      onEditBuildItem,
+      onOpenPod,
+      onStartConversation,
+      onTogglePinnedToSidebar,
+    ]
   );
 
   const visibleItems = useMemo(
@@ -662,7 +693,7 @@ export function FilesBrowser({
 
   const isDragging = dnd !== undefined && dnd.draggingFileId !== null;
 
-  const breadcrumbTrail = (currentFolderId !== null || root !== undefined) && (
+  const breadcrumbTrail = (
     <div className="flex w-full min-w-0 items-center gap-2">
       {isDragging && (
         <AnimatedText variant="muted" className="shrink-0 text-sm italic">

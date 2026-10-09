@@ -137,7 +137,12 @@ export function isFileView(view: { kind: string } | null | undefined): boolean {
  * the file system, but what there is to read about one is what Build shows,
  * not a document preview.
  */
-export function fileSidePanelView(dataSource: DataSource): SidePanelView {
+export type FileSidePanelView = Extract<
+  SidePanelView,
+  { kind: "file" | "agent" | "skill" }
+>;
+
+export function fileSidePanelView(dataSource: DataSource): FileSidePanelView {
   if (dataSource.refId) {
     if (dataSource.fileType === "agent") {
       return { kind: "agent", agentId: dataSource.refId };
@@ -263,6 +268,23 @@ function citationPreview(citation: SelectedCitation) {
 }
 
 /**
+ * A file as a panel shows it, whichever panel that is: the sidebar opens one
+ * in place of the main content, the Hub beside it, and both read the same.
+ */
+export function fileSidePanelContent(view: FileSidePanelView) {
+  switch (view.kind) {
+    case "file":
+      return (
+        <FilePreviewPanel dataSource={view.dataSource} variant="document" />
+      );
+    case "agent":
+      return <AgentDetailsPanel agentId={view.agentId} />;
+    case "skill":
+      return <SkillDetailsPanel skillId={view.skillId} />;
+  }
+}
+
+/**
  * Renders one side-panel kind. `filesSource` is the conversation whose files
  * the "files" kind lists; opening one replaces the panel's content with the
  * file preview in place (same slot, so the panel never closes and reopens).
@@ -284,13 +306,9 @@ export function sidePanelContent({
     case "citation":
       return citationPreview(view.citation);
     case "file":
-      return (
-        <FilePreviewPanel dataSource={view.dataSource} variant="document" />
-      );
     case "agent":
-      return <AgentDetailsPanel agentId={view.agentId} />;
     case "skill":
-      return <SkillDetailsPanel skillId={view.skillId} />;
+      return fileSidePanelContent(view);
     case "files":
       return (
         <ConversationFilesPanel

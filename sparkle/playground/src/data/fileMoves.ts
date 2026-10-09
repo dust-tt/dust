@@ -72,6 +72,23 @@ export function hasPodDrag(dataTransfer: DataTransfer): boolean {
   return Array.from(dataTransfer.types).includes(WORKSPACE_POD_DRAG_MIME);
 }
 
+export function readFileDragId(dataTransfer: DataTransfer): string | null {
+  return dataTransfer.getData(WORKSPACE_FILE_DRAG_MIME) || null;
+}
+
+export function hasFileDrag(dataTransfer: DataTransfer): boolean {
+  return Array.from(dataTransfer.types).includes(WORKSPACE_FILE_DRAG_MIME);
+}
+
+/**
+ * What the sidebar's Files section keeps. Anything that can be picked up can
+ * be kept there, a Pod aside: it has a list of its own, which is where its
+ * drag lands.
+ */
+export function isPinnableToSidebar(item: DataSource): boolean {
+  return isDraggableItem(item) && !isPodFolder(item);
+}
+
 function ancestorsOf(
   byId: Map<string, DataSource>,
   folderId: string | null

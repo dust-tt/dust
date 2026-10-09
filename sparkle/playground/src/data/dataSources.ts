@@ -1,5 +1,6 @@
 import {
   ActionFrame,
+  BookOpen01,
   Cube01,
   Database01,
   File06,
@@ -564,7 +565,8 @@ export interface ItemLocation {
 }
 
 /** What the top of the workspace file system is called in the product. */
-export const ROOT_FOLDER_LABEL = "Files";
+export const ROOT_FOLDER_LABEL = "Hub";
+export const ROOT_FOLDER_ICON = BookOpen01;
 
 /**
  * Every agent's and skill's location, keyed by the `refId` of its file — the
