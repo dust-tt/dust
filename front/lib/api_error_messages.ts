@@ -165,6 +165,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   agent_suggestion_not_found: msg`Suggestion not found.`,
   batch_suggestion_not_found: msg`Suggestions not found.`,
   wakeup_not_found: msg`Wake-up not found.`,
+  conversation_locked: msg`Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled.`,
 };
 
 export type FormatErrorOptions = {

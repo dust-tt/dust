@@ -21,6 +21,7 @@ import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/eve
 import * as attachmentsModule from "@app/lib/api/files/attachments";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
+import { isDustErrorWithCode } from "@app/lib/error";
 import { serializeMention } from "@app/lib/mentions/format";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -33,6 +34,7 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
+import * as wakeUpClient from "@app/temporal/triggers/wakeup_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -42,13 +44,17 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
 } from "@app/types/api/assistant";
 import { isContentFragmentInputWithContentNode } from "@app/types/api/assistant";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AgentMessageType,
@@ -4132,7 +4138,7 @@ describe("postNewContentFragment", () => {
   let auth: Authenticator;
   let workspace: Awaited<ReturnType<typeof createResourceTest>>["workspace"];
   let conversation: ConversationType;
-  let agentConfig: LightAgentConfigurationType;
+  let agentConfig: AgentConfigurationType;
   let globalSpace: Awaited<
     ReturnType<typeof createResourceTest>
   >["globalSpace"];
@@ -4739,6 +4745,90 @@ describe("postNewContentFragment", () => {
           first.value.contentFragmentId
         );
       }
+    });
+  });
+
+  describe("active wake-up owner lock", () => {
+    let contentFragment: ContentFragmentInputWithContentNode;
+
+    beforeEach(async () => {
+      vi.spyOn(
+        wakeUpClient,
+        "launchOrScheduleWakeUpTemporalWorkflow"
+      ).mockResolvedValue(new Ok(undefined));
+      vi.mocked(getContentFragmentBlob).mockImplementation(
+        async (_auth, cf) =>
+          new Ok({
+            contentType: "text/plain",
+            fileId: null,
+            nodeId: "test-node-id",
+            nodeDataSourceViewId: dsViewInGlobalSpace.id,
+            nodeType: "document",
+            sourceUrl: null,
+            textBytes: null,
+            title: cf.title,
+          })
+      );
+
+      const conversationWithoutContent = await ConversationFactory.create(
+        auth,
+        {
+          agentConfigurationId: agentConfig.sId,
+          messagesCreatedAt: [],
+        }
+      );
+      const fetchedConversationResult = await getConversation(
+        auth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      conversation = fetchedConversationResult.value;
+      contentFragment = {
+        title: "Test Content Fragment",
+        nodeId: "test-node-id",
+        nodeDataSourceViewId: dsViewInGlobalSpace.sId,
+      };
+
+      await WakeUpFactory.cron(auth, conversation, agentConfig);
+    });
+
+    it("rejects a content fragment from a user other than the wake-up owner", async () => {
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const result = await postNewContentFragment(
+        otherAuth,
+        conversation,
+        contentFragment,
+        null
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(isDustErrorWithCode(result.error, "conversation_locked")).toBe(
+          true
+        );
+      }
+      expect(getContentFragmentBlob).not.toHaveBeenCalled();
+    });
+
+    it("allows the wake-up owner to post a content fragment", async () => {
+      const result = await postNewContentFragment(
+        auth,
+        conversation,
+        contentFragment,
+        null
+      );
+
+      expect(result.isOk()).toBe(true);
     });
   });
 });

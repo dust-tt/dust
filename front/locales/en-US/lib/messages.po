@@ -606,6 +606,10 @@ msgid "Wake-up not found."
 msgstr "Wake-up not found."
 
 #: front/lib/api_error_messages.ts
+msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
+msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code: {code}"
 

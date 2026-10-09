@@ -606,6 +606,10 @@ msgid "Wake-up not found."
 msgstr "Réveil introuvable."
 
 #: front/lib/api_error_messages.ts
+msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
+msgstr "Un autre utilisateur a un réveil actif dans cette conversation. Seul cet utilisateur peut publier jusqu'au déclenchement ou à l'annulation du réveil."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code : {code}"
 

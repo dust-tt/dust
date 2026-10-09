@@ -1,6 +1,8 @@
 import { postNewContentFragment } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { isDustErrorWithCode } from "@app/lib/error";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import {
   isContentFragmentInput,
   isContentFragmentInputWithInlinedContent,
@@ -117,6 +119,15 @@ app.post(
     // If we receive a content fragment that is not file based, we transform it to a file-based
     // one.
     if (isContentFragmentInputWithInlinedContent(contentFragment)) {
+      // The conversion stores the file in the conversation, so the lock must be checked first.
+      const canInteractRes = await WakeUpResource.canUserInteract(
+        auth,
+        conversation
+      );
+      if (canInteractRes.isErr()) {
+        return apiError(ctx, canInteractRes.error);
+      }
+
       const contentFragmentRes = await toFileContentFragment(auth, {
         conversation,
         contentFragment,
@@ -148,11 +159,13 @@ app.post(
     );
 
     if (contentFragmentRes.isErr()) {
+      const { error } = contentFragmentRes;
+      const isLocked = isDustErrorWithCode(error, "conversation_locked");
       return apiError(ctx, {
-        status_code: 400,
+        status_code: isLocked ? 409 : 400,
         api_error: {
-          type: "invalid_request_error",
-          message: contentFragmentRes.error.message,
+          type: isLocked ? "conversation_locked" : "invalid_request_error",
+          message: error.message,
         },
       });
     }

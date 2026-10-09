@@ -400,10 +400,15 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
   }
 
   /**
-   * Checks whether the caller can post or edit user messages in a conversation that has active
+   * Checks whether the caller can add or edit user content in a conversation that has active
    * wake-ups. Rejects when any active (scheduled) wake-up is owned by a user other than the current
-   * one (his keeps the agent running under the owner's auth from being steered by another user
+   * one (this keeps the agent running under the owner's auth from being steered by another user
    * before the wake-up fires).
+   */
+  /**
+   * @cc [owner:avervaet,label:security] guards-messages-and-content-fragments
+   * Posting or editing a user message, and posting a content fragment, in a conversation MUST
+   * pass this check before the message or fragment is created.
    */
   static async canUserInteract(
     auth: Authenticator,
@@ -423,11 +428,11 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_locked",
         message:
           "This conversation has an active wake-up owned by another user. " +
-          "Only the wake-up owner can post or edit messages until the " +
-          "wake-up fires or is cancelled.",
+          "Only the wake-up owner can post messages, edit them or attach " +
+          "content until the wake-up fires or is cancelled.",
       },
     });
   }

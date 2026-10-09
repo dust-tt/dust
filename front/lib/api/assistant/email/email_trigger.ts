@@ -22,6 +22,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -832,6 +833,19 @@ export async function triggerFromEmail(
   }
 
   const conversation = conversationResource.toJSON();
+
+  // The thread and attachments are stored before any message is posted, so the lock must be
+  // checked upfront.
+  const canInteractRes = await WakeUpResource.canUserInteract(
+    auth,
+    conversation
+  );
+  if (canInteractRes.isErr()) {
+    return new Err({
+      type: "message_creation_error",
+      message: canInteractRes.error.api_error.message,
+    });
+  }
 
   // Map this email's Message-ID to the conversation (on create and on continue) so any later
   // reply in the thread keeps routing to it.

@@ -68,6 +68,7 @@ export type DustErrorCode =
   | "generation_failed"
   | "invalid_conversation"
   | "conversation_agent_running"
+  | "conversation_locked"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"
@@ -82,4 +83,11 @@ export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   ) {
     super(message);
   }
+}
+
+export function isDustErrorWithCode<T extends DustErrorCode>(
+  error: unknown,
+  code: T
+): error is DustError<T> {
+  return error instanceof DustError && error.code === code;
 }
