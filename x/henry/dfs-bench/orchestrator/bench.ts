@@ -25,6 +25,10 @@ const RENEW_EVERY_MS = 5 * 60_000;
 const MAX_ROUND_MS = 3 * 3600_000;
 const MOUNT_POINT = "/mnt/dfs";
 const BINARY = "/usr/local/bin/dfs-client";
+// Memory the mount client gets, page cache it charges included: a cgroup v2 limit, so going over it
+// gets the client OOM-killed and the round invalid.
+const MOUNT_MEMORY_MB = 512;
+const MOUNT_CGROUP = "/sys/fs/cgroup/dfs-mount";
 const WORKLOAD = "/opt/fsbench.py";
 const JD_GENERATE = "/opt/jd_generate.py";
 const CORPUS = process.env.BENCH_CORPUS ?? "jd";
@@ -139,12 +143,17 @@ interface Mounted {
   sandbox: Sandbox;
 }
 
-// The client's pid and exit status go to files: the background command's stream can drop during a
-// long round, which would lose the exit code.
+// The client runs alone in a cgroup capped at MOUNT_MEMORY_MB. Its pid and exit status go to files:
+// the background command's stream can drop during a long round, which would lose the exit code.
 async function mount(sandbox: Sandbox, spec: MountSpec): Promise<Mounted> {
-  await root(sandbox, `mkdir -p ${MOUNT_POINT} && rm -f /tmp/mount.pid /tmp/mount.exit`);
+  await root(
+    sandbox,
+    `mkdir -p ${MOUNT_POINT} ${MOUNT_CGROUP} && rm -f /tmp/mount.pid /tmp/mount.exit && ` +
+      `echo ${MOUNT_MEMORY_MB}M >${MOUNT_CGROUP}/memory.max && echo 0 >${MOUNT_CGROUP}/memory.swap.max`
+  );
   const handle = await sandbox.commands.run(
-    `${spec.command(BINARY, MOUNT_POINT)} >/tmp/mount.out 2>/tmp/mount.log & echo $! >/tmp/mount.pid; wait $!; echo $? >/tmp/mount.exit`,
+    `{ echo $BASHPID >${MOUNT_CGROUP}/cgroup.procs && ${spec.command(BINARY, MOUNT_POINT)}; } >/tmp/mount.out 2>/tmp/mount.log & ` +
+      `echo $! >/tmp/mount.pid; wait $!; echo $? >/tmp/mount.exit`,
     { user: "root", background: true, envs: spec.envs, timeoutMs: 0 }
   );
   handle.wait().catch(() => undefined);
@@ -161,6 +170,13 @@ async function unmount(mounted: Mounted, spec: MountSpec): Promise<Record<string
     `kill -TERM "$(cat /tmp/mount.pid)"; for i in $(seq 300); do [ -s /tmp/mount.exit ] && cat /tmp/mount.exit && exit 0; sleep 0.2; done; echo none`
   );
   const exitCode = /^\d+$/.test(status.trim()) ? Number(status.trim()) : null;
+  const [peakBytes, oomKills] = (
+    await root(mounted.sandbox, `cat ${MOUNT_CGROUP}/memory.peak; awk '$1 == "oom_kill" {print $2}' ${MOUNT_CGROUP}/memory.events`)
+  )
+    .trim()
+    .split("\n")
+    .map(Number);
+  const memory = { limit_mb: MOUNT_MEMORY_MB, peak_mb: Math.round(peakBytes / 2 ** 20), oom_kills: oomKills };
   const logLines = (await root(mounted.sandbox, "cat /tmp/mount.log")).split("\n");
   const totals = logLines
     .map((line) => {
@@ -172,7 +188,7 @@ async function unmount(mounted: Mounted, spec: MountSpec): Promise<Record<string
     })
     .filter((row) => row && (row.message === spec.totalsMessage || row.fields?.message === spec.totalsMessage))
     .pop();
-  return { sandbox: mounted.sandbox.sandboxId, exitCode, totals: totals ?? null };
+  return { sandbox: mounted.sandbox.sandboxId, exitCode, memory, totals: totals ?? null };
 }
 
 function cleanCommit(result: Record<string, unknown>): boolean {
@@ -324,12 +340,13 @@ async function main(): Promise<void> {
     );
 
     const mounts = await Promise.all(sandboxes.map((s) => mount(s, impl.mount)));
-    log("mounted on both sandboxes");
+    log(`mounted on both sandboxes, clients capped at ${MOUNT_MEMORY_MB} MB`);
 
     const outcome = await run({ a, b, roundDir });
 
     const clients = await Promise.all(mounts.map((m) => unmount(m, impl.mount)));
     const valid = outcome.passed && clients.every(cleanCommit);
+    log(`mount memory peak ${clients.map((c) => JSON.stringify(c.memory)).join(" / ")}`);
 
     const result = {
       run_id: runId,
@@ -343,6 +360,7 @@ async function main(): Promise<void> {
       finished_at: new Date().toISOString(),
       valid,
       budget: (clients[0]?.totals as { budget?: unknown } | null)?.budget ?? null,
+      mount_memory_mb: MOUNT_MEMORY_MB,
       network,
       ...outcome.data,
       clients,

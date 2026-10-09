@@ -35,7 +35,9 @@ checked by manifest hash) into its mount, sandbox B reads it all back through it
 checks digests, then B measures how long A's new files take to show up (the 1 s freshness bound).
 `BENCH_CORPUS=scatter` swaps in a metadata stress instead: ~1.8 files per directory over ~5.5k
 directories in random order, not comparable with other numbers. It only counts as valid if both mounts exit with no dropped ops and no
-missed commit windows. `bin/clear` wipes the deployment too: re-run `deploy` after it.
+missed commit windows. Each mount client runs in a cgroup capped at 512 MB (`MOUNT_MEMORY_MB` in
+`orchestrator/bench.ts`): going over it gets the client OOM-killed and the round invalid.
+`bin/clear` wipes the deployment too: re-run `deploy` after it.
 
 `bin/bench henry git` runs the `git` round instead: A clones dust from GitHub natively and into its
 mount and times `git status`; B runs `git status` on A's clone through its own mount and checks every
