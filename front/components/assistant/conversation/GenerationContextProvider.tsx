@@ -11,6 +11,7 @@ type GeneratingMessage = {
   messageId: string;
   conversationId: string;
   agentId?: string;
+  stopRequested?: boolean;
 };
 
 type GenerationContextType = {
@@ -21,6 +22,7 @@ type GenerationContextType = {
     agentId?: string;
   }) => void;
   removeGeneratingMessage: (params: { messageId: string }) => void;
+  setStopRequested: (messageIds: string[], stopRequested: boolean) => void;
   getConversationGeneratingMessages: (
     conversationId: string
   ) => GeneratingMessage[];
@@ -103,6 +105,16 @@ export const GenerationContextProvider = ({
     []
   );
 
+  const setStopRequested = useCallback(
+    (messageIds: string[], stopRequested: boolean) => {
+      const ids = new Set(messageIds);
+      setGeneratingMessages((prev) =>
+        prev.map((m) => (ids.has(m.messageId) ? { ...m, stopRequested } : m))
+      );
+    },
+    []
+  );
+
   const incrementPendingSteeringCount = useCallback(
     (conversationId: string) => {
       setPendingSteeringByConversation((counts) => ({
@@ -138,6 +150,7 @@ export const GenerationContextProvider = ({
       generatingMessages,
       addGeneratingMessage,
       removeGeneratingMessage,
+      setStopRequested,
       getConversationGeneratingMessages,
       pendingSteeringByConversation,
       incrementPendingSteeringCount,
@@ -147,6 +160,7 @@ export const GenerationContextProvider = ({
       generatingMessages,
       addGeneratingMessage,
       removeGeneratingMessage,
+      setStopRequested,
       getConversationGeneratingMessages,
       pendingSteeringByConversation,
       incrementPendingSteeringCount,

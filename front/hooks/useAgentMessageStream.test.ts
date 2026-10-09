@@ -618,6 +618,85 @@ describe("useAgentMessageStream", () => {
     expect(currentMessage.content).toBe("");
   });
 
+  it("ignores generated text once a stop is requested", () => {
+    let currentMessage = makeInitialMessageStreamState(
+      makeLightAgentMessage({ content: null, chainOfThought: null })
+    );
+    let onEventCallback: ((event: string) => void) | null = null;
+
+    mockUseVirtuosoMethods.mockReturnValue(
+      makeVirtuosoMethodsMock(
+        (
+          updater: (message: typeof currentMessage) => typeof currentMessage
+        ) => {
+          currentMessage = updater(currentMessage);
+          return [currentMessage];
+        }
+      )
+    );
+
+    mockUseEventSource.mockImplementation(
+      (
+        _buildURL: unknown,
+        callback: (event: string) => void
+      ): { isError: null } => {
+        onEventCallback = callback;
+        return { isError: null };
+      }
+    );
+
+    const { rerender } = renderHook(
+      ({ isStopRequested }: { isStopRequested: boolean }) =>
+        useAgentMessageStream({
+          agentMessage: currentMessage,
+          conversationId: "conv_123",
+          isStopRequested,
+          owner: mockOwner,
+          streamId: "stream_123",
+        }),
+      { initialProps: { isStopRequested: false } }
+    );
+
+    const sendTokens = (eventId: string, text: string) =>
+      onEventCallback!(
+        JSON.stringify({
+          eventId,
+          data: {
+            type: "generation_tokens",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            text,
+            classification: "tokens",
+          },
+        })
+      );
+
+    act(() => {
+      sendTokens("1-0", "Before stop.");
+    });
+    rerender({ isStopRequested: true });
+    act(() => {
+      sendTokens("2-0", " After stop.");
+      onEventCallback!(
+        JSON.stringify({
+          eventId: "3-0",
+          data: {
+            type: "agent_generation_cancelled",
+            created: Date.now(),
+            configurationId: "agent_123",
+            messageId: currentMessage.sId,
+            status: "cancelled",
+          },
+        })
+      );
+    });
+
+    expect(currentMessage.status).toBe("cancelled");
+    expect(JSON.stringify(currentMessage)).toContain("Before stop.");
+    expect(JSON.stringify(currentMessage)).not.toContain("After stop.");
+  });
+
   it("applies the server-rendered content view at success", () => {
     let currentMessage = makeInitialMessageStreamState(
       makeLightAgentMessage({ content: null, chainOfThought: null })

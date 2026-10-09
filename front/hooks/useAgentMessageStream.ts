@@ -279,6 +279,7 @@ function flushPendingSegment({
 interface UseAgentMessageStreamParams {
   agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
+  isStopRequested?: boolean;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
     eventId: string;
@@ -290,11 +291,14 @@ interface UseAgentMessageStreamParams {
 export function useAgentMessageStream({
   agentMessage,
   conversationId,
+  isStopRequested = false,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
 }: UseAgentMessageStreamParams) {
   const sId = agentMessage.sId;
+  const isStopRequestedRef = useRef(isStopRequested);
+  isStopRequestedRef.current = isStopRequested;
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
@@ -425,6 +429,9 @@ export function useAgentMessageStream({
           break;
 
         case "generation_tokens":
+          if (isStopRequestedRef.current) {
+            break;
+          }
           if (
             isFreshMountWithContent.current &&
             (eventPayload.data.classification === "tokens" ||
