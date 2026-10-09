@@ -29,6 +29,7 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComponentType } from "react";
+import { useRef } from "react";
 
 const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   gmail: GmailLogo,
@@ -124,6 +125,7 @@ export function UserProfileStep({
   onNext,
 }: UserProfileStepProps) {
   const { t } = useLingui();
+  const pronounsInputRef = useRef<HTMLInputElement>(null);
   const firstName = formData.firstName;
   const workspaceName = owner.name;
 
@@ -191,6 +193,7 @@ export function UserProfileStep({
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <div className="sm:w-64">
             <Input
+              ref={pronounsInputRef}
               name="pronouns"
               placeholder={t`Type your own`}
               value={formData.pronouns}
@@ -204,6 +207,7 @@ export function UserProfileStep({
               <Trans>Suggestions:</Trans>
             </span>
             <PronounPresetChips
+              inputRef={pronounsInputRef}
               value={formData.pronouns}
               onSelect={(pronouns) =>
                 setFormData((prev) => ({ ...prev, pronouns }))
