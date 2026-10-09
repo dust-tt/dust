@@ -90,7 +90,7 @@ export const DiscoverContainer = forwardRef<
             ))}
           </TabsList>
         </div>
-        <TabsContent value="Featured" className="flex flex-col gap-12 pt-12">
+        <TabsContent value="Featured" className="flex flex-col gap-8 pt-8">
           <DiscoverHome
             owner={owner}
             onAgentClick={onAgentConfigurationClick}
