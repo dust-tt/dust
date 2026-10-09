@@ -22,10 +22,6 @@ type MentionSuggestionsResponseBody = {
   suggestions: RichMention[];
 };
 
-/**
- * @cc [owner:philipperolet,label:performance] mention-suggestions-no-error-retries
- * Failed mention suggestion requests MUST NOT trigger automatic error retries.
- */
 export function useMentionSuggestions({
   workspaceId,
   conversationId,
@@ -93,6 +89,7 @@ export function useMentionSuggestions({
     revalidateOnFocus: false,
     // Don't revalidate on reconnect for better performance
     revalidateOnReconnect: false,
+    // Avoid adding search load when suggestions fail.
     shouldRetryOnError: false,
     // Cache suggestions for 5 minutes
     dedupingInterval: 5 * 60 * 1000,
