@@ -144,7 +144,6 @@ interface ItemWithLabelIconAndDescriptionProps {
   children?: React.ReactNode;
   truncate?: boolean;
   endComponent?: React.ReactNode;
-  labelEndComponent?: React.ReactNode;
   variant?: ItemVariantType;
 }
 
@@ -182,7 +181,6 @@ const ItemWithLabelIconAndDescription = <
   truncate,
   children,
   endComponent,
-  labelEndComponent,
   variant,
 }: T) => {
   return (
@@ -202,18 +200,9 @@ const ItemWithLabelIconAndDescription = <
         >
           {renderIcon(icon, "sm", variant)}
           <div className={cn("flex flex-col", truncate && "truncate")}>
-            {labelEndComponent ? (
-              <span className="flex min-w-0 items-center gap-1">
-                <span className={cn(truncate ? "truncate" : "line-clamp-3")}>
-                  {label}
-                </span>
-                {labelEndComponent}
-              </span>
-            ) : (
-              <span className={cn(truncate ? "truncate" : "line-clamp-3")}>
-                {label}
-              </span>
-            )}
+            <span className={cn(truncate ? "truncate" : "line-clamp-3")}>
+              {label}
+            </span>
             {description && (
               <span
                 className={cn(
@@ -575,8 +564,6 @@ export type DropdownMenuItemProps = MutuallyExclusiveProps<
     truncateText?: boolean;
     /** Trailing node on the right of the label (e.g. a shortcut or chip). */
     endComponent?: React.ReactNode;
-    /** Node shown right after the label text (e.g. a status icon). */
-    labelEndComponent?: React.ReactNode;
   }
 >;
 
@@ -604,7 +591,6 @@ const DropdownMenuItem = React.forwardRef<
       shallow,
       prefetch,
       endComponent,
-      labelEndComponent,
       tooltip,
       ...props
     },
@@ -653,7 +639,6 @@ const DropdownMenuItem = React.forwardRef<
               description={description}
               truncate={truncateText}
               endComponent={endComponent}
-              labelEndComponent={labelEndComponent}
               variant={variant}
             >
               {children}

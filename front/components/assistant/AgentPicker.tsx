@@ -241,30 +241,30 @@ export function AgentPicker({
                   className={`group p-1 notranslate ${
                     isSelected ? "bg-primary-100" : ""
                   }`}
-                  labelEndComponent={
-                    favoriteIds.has(agent.sId) ? (
-                      <Icon
-                        visual={StarFilled}
-                        size="xs"
-                        className="shrink-0 text-muted-foreground"
-                      />
-                    ) : undefined
-                  }
                   endComponent={
-                    onAgentDetailsClick && clientType !== "extension" ? (
-                      <Button
-                        icon={DotsHorizontal}
-                        variant="outline"
-                        size="xmini"
-                        className="z-10 opacity-0 group-hover:opacity-100"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          e.preventDefault();
-                          onAgentDetailsClick(agent.sId);
-                          setIsOpen(false);
-                        }}
-                      />
-                    ) : undefined
+                    <div className="z-10 flex items-center gap-1">
+                      {favoriteIds.has(agent.sId) && (
+                        <Icon
+                          visual={StarFilled}
+                          size="xs"
+                          className="text-muted-foreground"
+                        />
+                      )}
+                      {onAgentDetailsClick && clientType !== "extension" ? (
+                        <Button
+                          icon={DotsHorizontal}
+                          variant="outline"
+                          size="xmini"
+                          className="opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            onAgentDetailsClick(agent.sId);
+                            setIsOpen(false);
+                          }}
+                        />
+                      ) : undefined}
+                    </div>
                   }
                   onClick={() => {
                     // Clicking the selected agent deselects it; keep the picker
