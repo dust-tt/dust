@@ -1017,6 +1017,7 @@ describe("Document Escape inside a host dialog", () => {
         commentInputExtensions={[OpenSuggestionList]}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
       />
     );
     const dom = await waitFor(() => {

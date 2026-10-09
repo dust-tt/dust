@@ -225,7 +225,6 @@ export const DocumentCommentCard = ({
     submitDraft,
     cancelDraft,
     dismissDraft,
-    closeThread,
     busyThreadIds,
     threadError,
   } = comments;
