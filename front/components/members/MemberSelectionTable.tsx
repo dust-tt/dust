@@ -9,6 +9,7 @@ import {
   Avatar,
   createSelectionColumn,
   DataTable,
+  EmptyCTA,
   SearchInput,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -199,6 +200,14 @@ export function MemberSelectionTable({
               <Trans>Loading users...</Trans>
             </span>
           </div>
+        ) : initialMembers?.length === 0 &&
+          selectedMemberIds.size === 0 &&
+          searchText === "" ? (
+          <EmptyCTA
+            title={t`This group has no members`}
+            message={t`Add members to the group by searching for them above.`}
+            action={null}
+          />
         ) : (
           <DataTable
             data={rows}
