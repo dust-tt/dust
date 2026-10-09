@@ -20,7 +20,8 @@ import * as Y from "yjs";
  * When an agent edits a live document, the text its change inserted glows in the agent's color,
  * then fades. The session names that text by its Yjs item ids (`agent_edit`), so only the agent's
  * own text glows, never text someone typed at the same time. Presentation only: decorations, never
- * a change of the document.
+ * a change of the document. Reads Yjs v13 internals and the y-tiptap mapping: to replace with Yjs
+ * v14 attribution (`x/daph/co-edition/LIVE_SESSION.md`).
  */
 
 // The duration of `animate-agent-edit-settle` (theme-extras.css): the browser runs the fade, the
