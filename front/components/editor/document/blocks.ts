@@ -7,10 +7,12 @@ import {
   Minus,
   Type01,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import type { ChainedCommands } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
+import type { ComponentType } from "react";
 
 export const getBlockQuery = (state: EditorState) => {
   const { selection } = state;
@@ -26,12 +28,22 @@ export const getBlockQuery = (state: EditorState) => {
   return match ? { from: $from.start(), to: $from.pos, query: match[1] } : null;
 };
 
-export const BLOCKS = [
+interface DocumentBlock {
+  name: MessageDescriptor;
+  description: MessageDescriptor;
+  icon: ComponentType<{ className?: string }>;
+  keywords: string;
+  apply: (chain: ChainedCommands) => boolean;
+  selectionToolbarMenu?: "textStyle" | "list";
+}
+
+export const BLOCKS: DocumentBlock[] = [
   {
-    name: msg({ message: "Text", context: "document block type" }),
+    name: msg({ message: "Text", context: "document paragraph style" }),
     description: msg`Start writing with plain text`,
     icon: Type01,
     keywords: "paragraph",
+    selectionToolbarMenu: "textStyle",
     apply: (chain: ChainedCommands) => chain.setParagraph().run(),
   },
   {
@@ -39,6 +51,7 @@ export const BLOCKS = [
     description: msg`A big section heading`,
     icon: Heading01,
     keywords: "h1 title",
+    selectionToolbarMenu: "textStyle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 1 }).run(),
   },
   {
@@ -46,6 +59,7 @@ export const BLOCKS = [
     description: msg`A medium section heading`,
     icon: Heading01,
     keywords: "h2 subtitle",
+    selectionToolbarMenu: "textStyle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 2 }).run(),
   },
   {
@@ -53,6 +67,7 @@ export const BLOCKS = [
     description: msg`A small section heading`,
     icon: Heading01,
     keywords: "h3 subtitle",
+    selectionToolbarMenu: "textStyle",
     apply: (chain: ChainedCommands) => chain.setHeading({ level: 3 }).run(),
   },
   {
@@ -60,6 +75,7 @@ export const BLOCKS = [
     description: msg`A simple list of ideas`,
     icon: List,
     keywords: "bullet unordered",
+    selectionToolbarMenu: "list",
     apply: (chain: ChainedCommands) => chain.toggleBulletList().run(),
   },
   {
@@ -67,18 +83,19 @@ export const BLOCKS = [
     description: msg`Keep things in order`,
     icon: Hash01,
     keywords: "ordered",
+    selectionToolbarMenu: "list",
     apply: (chain: ChainedCommands) => chain.toggleOrderedList().run(),
   },
   {
-    name: msg({ message: "Quote", context: "document block type" }),
+    name: msg({ message: "Quote", context: "document paragraph style" }),
     description: msg`Make a passage stand out`,
     icon: DoubleQuotes,
     keywords: "blockquote",
     apply: (chain: ChainedCommands) => chain.toggleBlockquote().run(),
   },
   {
-    name: msg({ message: "Code", context: "document block type" }),
-    description: msg`A block of code`,
+    name: msg({ message: "Code", context: "document paragraph style" }),
+    description: msg`A code snippet`,
     icon: Code01,
     keywords: "codeblock",
     apply: (chain: ChainedCommands) => chain.toggleCodeBlock().run(),

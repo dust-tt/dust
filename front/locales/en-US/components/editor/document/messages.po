@@ -14,12 +14,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
-msgid "Add a block"
-msgstr "Add a block"
+msgid "Add a paragraph"
+msgstr "Add a paragraph"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
-msgid "No matching blocks"
-msgstr "No matching blocks"
+msgid "No matching paragraphs"
+msgstr "No matching paragraphs"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Navigate"
@@ -84,6 +84,7 @@ msgid "Unverified"
 msgstr "Unverified"
 
 #: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Apply"
 msgstr "Apply"
 
@@ -209,8 +210,16 @@ msgid "Saving is unavailable. Your unsaved changes are still here. Copy them bef
 msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
-msgid "Format selection"
-msgstr "Format selection"
+msgid "Link"
+msgstr "Link"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Paste or type a link"
+msgstr "Paste or type a link"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Remove link"
+msgstr "Remove link"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Bold"
@@ -221,6 +230,10 @@ msgid "Italic"
 msgstr "Italic"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Underline"
+msgstr "Underline"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Strikethrough"
 msgstr "Strikethrough"
 
@@ -228,12 +241,28 @@ msgstr "Strikethrough"
 msgid "Inline code"
 msgstr "Inline code"
 
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Format selection"
+msgstr "Format selection"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Text style"
+msgstr "Text style"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Lists"
+msgstr "Lists"
+
+#: front/components/editor/document/DocumentSelectionToolbar.tsx
+msgid "Edit link"
+msgstr "Edit link"
+
 #: front/components/editor/document/DocumentSourcePreview.tsx
 msgid "{reason} The original Markdown is shown below and editing is disabled to preserve it."
 msgstr "{reason} The original Markdown is shown below and editing is disabled to preserve it."
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Text"
 msgstr "Text"
 
@@ -282,7 +311,7 @@ msgid "Keep things in order"
 msgstr "Keep things in order"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Quote"
 msgstr "Quote"
 
@@ -291,13 +320,13 @@ msgid "Make a passage stand out"
 msgstr "Make a passage stand out"
 
 #: front/components/editor/document/blocks.ts
-msgctxt "document block type"
+msgctxt "document paragraph style"
 msgid "Code"
 msgstr "Code"
 
 #: front/components/editor/document/blocks.ts
-msgid "A block of code"
-msgstr "A block of code"
+msgid "A code snippet"
+msgstr "A code snippet"
 
 #: front/components/editor/document/blocks.ts
 msgid "Divider"

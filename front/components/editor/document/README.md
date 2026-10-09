@@ -112,7 +112,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
-| `DocumentSelectionToolbar.tsx` | Formatting controls on a text selection. |
+| `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |
 | `DocumentSourcePreview.tsx` | Read-only source for a file that cannot open. |
 | `DocumentAnchors.ts` | In-document heading links. |

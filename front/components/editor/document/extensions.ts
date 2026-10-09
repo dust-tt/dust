@@ -15,6 +15,11 @@ import { StarterKit } from "@tiptap/starter-kit";
 
 export type Translate = (descriptor: MessageDescriptor) => string;
 
+/**
+ * @cc [owner:tdraier,label:product] document-link-click
+ * In an editable document, clicking a link MUST NOT open it, so its text can be clicked and
+ * selected like any other text.
+ */
 const starterKitOptions: Partial<StarterKitOptions> = {
   heading: {
     HTMLAttributes: {
@@ -55,6 +60,7 @@ const starterKitOptions: Partial<StarterKitOptions> = {
     },
   },
   link: {
+    openOnClick: false,
     HTMLAttributes: {
       rel: "noopener noreferrer",
       class:

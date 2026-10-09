@@ -224,6 +224,17 @@ describe("saveDfm", () => {
     expect(parseDfm(saved).isOk()).toBe(true);
   });
 
+  it("saves underlined text and opens it underlined again", () => {
+    const source = "Hello ++brave++ world.\n";
+
+    expect(roundTrip(source)).toBe(source);
+    expect(load(source).content.content?.[0].content?.[1]).toEqual({
+      type: "text",
+      text: "brave",
+      marks: [{ type: "underline" }],
+    });
+  });
+
   it("round-trips the codec fixture, anchors and threads included", () => {
     expect(roundTrip(FIXTURE)).toBe(FIXTURE);
   });
