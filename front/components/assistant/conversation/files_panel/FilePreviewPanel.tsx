@@ -219,7 +219,9 @@ export function FilePreviewPanel({
       </ConversationSidePanelHeader>
       <div
         className={cn(
-          "min-h-0 flex-1 bg-muted-background p-4",
+          "min-h-0 flex-1 p-4",
+          // The Document editor sits on the panel's background, like the rest of the app.
+          !markdown.richEditor && "bg-muted-background",
           filePreviewLayoutClassName(preview.category)
         )}
       >
