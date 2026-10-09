@@ -28,43 +28,43 @@
   opacity: 0.45;
 }
 
-.streamingOutline {
+@property --glint-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.streaming::after {
   position: absolute;
   inset: -1px;
-  width: calc(100% + 2px);
-  height: calc(100% + 2px);
-  overflow: visible;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(
+      from var(--glint-angle),
+      transparent 0deg 280deg,
+      color-mix(in srgb, var(--color-highlight-300) 15%, transparent) 310deg,
+      color-mix(in srgb, var(--color-highlight-300) 75%, transparent) 340deg,
+      transparent 360deg
+    )
+    border-box;
+  mask:
+    linear-gradient(#fff 0 0) padding-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
   pointer-events: none;
-}
-
-.glintTail,
-.glintHead {
-  fill: none;
-  stroke: var(--color-highlight-300);
-  stroke-width: 1px;
-  stroke-linecap: round;
-  animation: glint 4.5s linear infinite;
-}
-
-.glintTail {
-  opacity: 0.25;
-  stroke-dasharray: 9 91;
-}
-
-.glintHead {
-  opacity: 0.85;
-  stroke-dasharray: 3 97;
+  content: "";
+  animation: glint 3.2s linear infinite;
 }
 
 @keyframes glint {
   to {
-    stroke-dashoffset: -100;
+    --glint-angle: 360deg;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glintTail,
-  .glintHead {
+  .streaming::after {
     animation: none;
+    --glint-angle: 335deg;
   }
 }

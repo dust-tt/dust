@@ -29,11 +29,6 @@ interface ConversationNavigationPillProps {
  * identity across idle, streaming, and ready states, and MUST scroll to the
  * active or unseen answer instead of the next user message when not idle.
  */
-/**
- * @cc [owner:id13,label:react;product] constant-speed-streaming-border
- * While streaming, the border highlight MUST travel at a constant speed around
- * the pill's perimeter. It MUST remain still when reduced motion is preferred.
- */
 export function ConversationNavigationPill({
   variant,
   showStopButton,
@@ -65,27 +60,10 @@ export function ConversationNavigationPill({
         "relative flex items-center",
         compact
           ? INPUT_BAR_COMPACT_PILL_CLASSES
-          : `absolute -top-8 gap-1 rounded-xl p-1 ${INPUT_BAR_SURFACE_CLASSES}`
+          : `absolute -top-8 gap-1 rounded-xl p-1 ${INPUT_BAR_SURFACE_CLASSES}`,
+        responseNavigation === "streaming" && styles.streaming
       )}
     >
-      {responseNavigation === "streaming" && (
-        <svg className={styles.streamingOutline} aria-hidden="true">
-          <rect
-            className={styles.glintTail}
-            width="100%"
-            height="100%"
-            rx={compact ? 20 : 12}
-            pathLength="100"
-          />
-          <rect
-            className={styles.glintHead}
-            width="100%"
-            height="100%"
-            rx={compact ? 20 : 12}
-            pathLength="100"
-          />
-        </svg>
-      )}
       <div
         className={classNames(
           "relative flex items-center",
