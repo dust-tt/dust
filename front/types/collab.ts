@@ -187,3 +187,27 @@ export const liveAgentServerMessageSchema = z.object({
 export type LiveAgentServerMessage = z.infer<
   typeof liveAgentServerMessageSchema
 >;
+
+/** Yjs items by id: `length` consecutive clocks of `client`, from `clock`. */
+const liveIdRangeSchema = z.object({
+  client: z.number().int().nonnegative(),
+  clock: z.number().int().nonnegative(),
+  length: z.number().int().positive(),
+});
+
+export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
+
+/** One range per client a change advances: an agent's change holds one, other ranges are noise. */
+const LIVE_AGENT_EDIT_MAX_RANGES = 16;
+
+/**
+ * The text an agent's change inserted in a live document, by Yjs item ids, so editors highlight
+ * exactly that text and no one else's. Sent right after the change's update.
+ */
+export const liveAgentEditMessageSchema = z.object({
+  type: z.literal("agent_edit"),
+  agent: liveAgentSchema,
+  inserted: z.array(liveIdRangeSchema).max(LIVE_AGENT_EDIT_MAX_RANGES),
+});
+
+export type LiveAgentEditMessage = z.infer<typeof liveAgentEditMessageSchema>;
