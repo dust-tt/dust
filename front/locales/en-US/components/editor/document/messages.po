@@ -210,37 +210,6 @@ msgid "Saving is unavailable. Your unsaved changes are still here. Copy them bef
 msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgctxt "document paragraph style"
-msgid "Text"
-msgstr "Text"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgid "Heading 1"
-msgstr "Heading 1"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgid "Heading 2"
-msgstr "Heading 2"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgid "Heading 3"
-msgstr "Heading 3"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgid "Bulleted list"
-msgstr "Bulleted list"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
-#: front/components/editor/document/blocks.ts
-msgid "Numbered list"
-msgstr "Numbered list"
-
-#: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Link"
 msgstr "Link"
 
@@ -293,24 +262,49 @@ msgid "{reason} The original Markdown is shown below and editing is disabled to 
 msgstr "{reason} The original Markdown is shown below and editing is disabled to preserve it."
 
 #: front/components/editor/document/blocks.ts
+msgctxt "document paragraph style"
+msgid "Text"
+msgstr "Text"
+
+#: front/components/editor/document/blocks.ts
 msgid "Start writing with plain text"
 msgstr "Start writing with plain text"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 1"
+msgstr "Heading 1"
 
 #: front/components/editor/document/blocks.ts
 msgid "A big section heading"
 msgstr "A big section heading"
 
 #: front/components/editor/document/blocks.ts
+msgid "Heading 2"
+msgstr "Heading 2"
+
+#: front/components/editor/document/blocks.ts
 msgid "A medium section heading"
 msgstr "A medium section heading"
+
+#: front/components/editor/document/blocks.ts
+msgid "Heading 3"
+msgstr "Heading 3"
 
 #: front/components/editor/document/blocks.ts
 msgid "A small section heading"
 msgstr "A small section heading"
 
 #: front/components/editor/document/blocks.ts
+msgid "Bulleted list"
+msgstr "Bulleted list"
+
+#: front/components/editor/document/blocks.ts
 msgid "A simple list of ideas"
 msgstr "A simple list of ideas"
+
+#: front/components/editor/document/blocks.ts
+msgid "Numbered list"
+msgstr "Numbered list"
 
 #: front/components/editor/document/blocks.ts
 msgid "Keep things in order"

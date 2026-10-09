@@ -15,7 +15,7 @@ export interface DocumentProps {
   initialContent: string;
   /** Classes for the outer container. */
   className?: string;
-  /** Optional container for formatting tooltips. Defaults to the enclosing sheet or body. */
+  /** Optional container for the comments' tooltips. Defaults to the enclosing sheet or body. */
   mountPortalContainer?: HTMLElement;
   readOnly?: boolean;
   /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */

@@ -1,3 +1,4 @@
+import { BLOCKS } from "@app/components/editor/document/blocks";
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import {
@@ -17,10 +18,8 @@ import {
   Trash01,
   Underline01,
 } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
-import type { ChainedCommands, Editor } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -33,26 +32,12 @@ interface DocumentSelectionToolbarProps {
   onComment?: () => void;
 }
 
-const TEXT_STYLES: {
-  label: MessageDescriptor;
-  apply: (chain: ChainedCommands) => ChainedCommands;
-}[] = [
-  {
-    label: msg({ message: "Text", context: "document paragraph style" }),
-    apply: (chain) => chain.setParagraph(),
-  },
-  { label: msg`Heading 1`, apply: (chain) => chain.setHeading({ level: 1 }) },
-  { label: msg`Heading 2`, apply: (chain) => chain.setHeading({ level: 2 }) },
-  { label: msg`Heading 3`, apply: (chain) => chain.setHeading({ level: 3 }) },
-];
-
-const LIST_STYLES: {
-  label: MessageDescriptor;
-  apply: (chain: ChainedCommands) => ChainedCommands;
-}[] = [
-  { label: msg`Bulleted list`, apply: (chain) => chain.toggleBulletList() },
-  { label: msg`Numbered list`, apply: (chain) => chain.toggleOrderedList() },
-];
+const TEXT_STYLES = BLOCKS.filter(
+  ({ selectionToolbarMenu }) => selectionToolbarMenu === "textStyle"
+);
+const LIST_STYLES = BLOCKS.filter(
+  ({ selectionToolbarMenu }) => selectionToolbarMenu === "list"
+);
 
 /** Keeps the editor's selection, and so the toolbar, while a control is pressed. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
@@ -306,11 +291,11 @@ export const DocumentSelectionToolbar = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" mountPortal={false}>
-                  {TEXT_STYLES.map(({ label, apply }) => (
+                  {TEXT_STYLES.map(({ name, apply }) => (
                     <DropdownMenuItem
-                      key={t(label)}
-                      label={t(label)}
-                      onClick={() => apply(chain()).run()}
+                      key={name.id}
+                      label={t(name)}
+                      onClick={() => apply(chain())}
                     />
                   ))}
                 </DropdownMenuContent>
@@ -342,11 +327,11 @@ export const DocumentSelectionToolbar = ({
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" mountPortal={false}>
-                  {LIST_STYLES.map(({ label, apply }) => (
+                  {LIST_STYLES.map(({ name, apply }) => (
                     <DropdownMenuItem
-                      key={t(label)}
-                      label={t(label)}
-                      onClick={() => apply(chain()).run()}
+                      key={name.id}
+                      label={t(name)}
+                      onClick={() => apply(chain())}
                     />
                   ))}
                 </DropdownMenuContent>
