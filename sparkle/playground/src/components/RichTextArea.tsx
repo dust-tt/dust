@@ -14,7 +14,9 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import tippy, { type Instance as TippyInstance } from "tippy.js";
@@ -425,6 +427,15 @@ const getMentionItems = (query: string): MentionItem[] => {
     .slice(0, 8);
 };
 
+// True while the @-mention list is showing, so Enter picks a mention instead
+// of submitting. Tiptap's suggestion plugin state exposes `active`.
+const isSuggestionPopupOpen = (state: EditorState): boolean =>
+  state.plugins.some(
+    (plugin) =>
+      (plugin.getState(state) as { active?: boolean } | undefined)?.active ===
+      true
+  );
+
 const mentionExtension = Mention.extend({
   draggable: true,
 }).configure({
@@ -576,6 +587,8 @@ type RichTextAreaProps = {
   }) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
   onTextChange?: (value: string) => void;
+  /** When set, Enter (without Shift) calls this instead of inserting a newline. */
+  onSubmit?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
   scrollContainer?: HTMLElement | null;
@@ -598,6 +611,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       onAskSidekick,
       onSuggestionsChange,
       onTextChange,
+      onSubmit,
       onFocus,
       onBlur,
       scrollContainer,
@@ -610,6 +624,11 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
     },
     ref
   ) => {
+    // useEditor captures editorProps once, so read the latest callback via a ref.
+    const onSubmitRef = useRef(onSubmit);
+    useLayoutEffect(() => {
+      onSubmitRef.current = onSubmit;
+    });
     const hasTopBar = Boolean(topBar);
     const editorVariant =
       hasTopBar && variant === "default" ? "embedded" : variant;
@@ -651,6 +670,16 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         handleKeyDown: (view, event) => {
           if (event.key === "Escape") {
             view.dom.blur();
+            return true;
+          }
+          if (
+            event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.isComposing &&
+            onSubmitRef.current &&
+            !isSuggestionPopupOpen(view.state)
+          ) {
+            onSubmitRef.current();
             return true;
           }
           return false;

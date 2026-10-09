@@ -34,11 +34,11 @@ import {
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 import { TaskItem } from "./TaskItem";
 
-const INPUT_BAR_PILL_SURFACE_CLASSNAME =
+export const INPUT_BAR_PILL_SURFACE_CLASSNAME =
   "border-[0.5px] border-border-dark bg-background dark:bg-stone-725 " +
   "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]";
 
-const INPUT_BAR_PILL_HOVER_CLASSNAME =
+export const INPUT_BAR_PILL_HOVER_CLASSNAME =
   "hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]";
 
 type DroppedFile = { id: string; file: File; objectUrl?: string };
@@ -63,9 +63,13 @@ interface InputBarProps {
   isFloating?: boolean;
   autoFocus?: boolean;
   beforeSendButton?: React.ReactNode;
+  /** Replaces the "Agent" mention button (e.g. with an agent picker). */
+  agentPicker?: React.ReactNode;
   onInstructionInserted?: () => void;
   onClose?: () => void;
   onSend?: () => void;
+  /** When set, Enter and the send button submit the typed text and clear the input. */
+  onSubmitText?: (text: string) => void;
 }
 
 export function InputBar({
@@ -77,9 +81,11 @@ export function InputBar({
   isFloating = true,
   autoFocus = false,
   beforeSendButton,
+  agentPicker,
   onInstructionInserted,
   onClose,
   onSend,
+  onSubmitText,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -92,6 +98,7 @@ export function InputBar({
   const [isCitationSheetOpen, setIsCitationSheetOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
+  const textRef = useRef("");
   const dragCounterRef = useRef(0);
   const objectUrlsRef = useRef<Set<string>>(new Set());
   const selectedDroppedFileRef = useRef<DroppedFile | null>(null);
@@ -112,6 +119,16 @@ export function InputBar({
       document.removeEventListener("click", handleClickOutside);
     };
   }, []);
+
+  const submitText = () => {
+    const text = textRef.current.trim();
+    if (!onSubmitText || !text) {
+      return;
+    }
+    onSubmitText(text);
+    textRef.current = "";
+    richTextAreaRef.current?.setContent("");
+  };
 
   const handleFocus = () => {
     setIsFocused(true);
@@ -317,6 +334,10 @@ export function InputBar({
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={handleFocus}
+          onTextChange={(text) => {
+            textRef.current = text;
+          }}
+          onSubmit={onSubmitText ? submitText : undefined}
           defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
           topBar={
@@ -348,18 +369,20 @@ export function InputBar({
         />
         <div className="flex min-h-7 w-full items-center px-3 pt-2 pb-3">
           <div className="flex items-center gap-1.5">
-            <Button
-              variant="ghost-secondary"
-              icon={Robot}
-              size="xs"
-              label="Agent"
-              tooltip="Mention an Agent"
-              isRounded
-              className={cn(
-                INPUT_BAR_PILL_SURFACE_CLASSNAME,
-                INPUT_BAR_PILL_HOVER_CLASSNAME
-              )}
-            />
+            {agentPicker ?? (
+              <Button
+                variant="ghost-secondary"
+                icon={Robot}
+                size="xs"
+                label="Agent"
+                tooltip="Mention an Agent"
+                isRounded
+                className={cn(
+                  INPUT_BAR_PILL_SURFACE_CLASSNAME,
+                  INPUT_BAR_PILL_HOVER_CLASSNAME
+                )}
+              />
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -406,7 +429,7 @@ export function InputBar({
               size="xs"
               tooltip="Send message"
               isRounded
-              onClick={onSend}
+              onClick={onSubmitText ? submitText : onSend}
             />
           </div>
         </div>

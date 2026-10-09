@@ -13,6 +13,11 @@
    base/components/utilities layers, and the sparkle/src source scan. */
 @import "../../src/styles/tailwind.css";
 
+/* Geist, as in production. tailwind.css doesn't declare the font faces, so
+   without this every story fell back to a system font (where Sparkle's 550
+   weight renders as regular). The files are in public/static/fonts. */
+@import "../../src/styles/fonts.css";
+
 /* Container query variants must be inlined — @tailwindcss/postcss does not
    resolve @custom-variant from @import'ed files. Keep in sync with sparkle's
    tailwind.css (canonical copy). */
@@ -81,4 +86,74 @@
 
 .tippy-box[data-theme~="sparkle"] > .tippy-arrow {
   display: none;
+}
+
+/* GlintOutline (components/doc): the highlight travelling around a busy
+   control, as in front's ConversationNavigationPill. */
+/*
+ * A pending suggestion in the text: the passage struck through, the
+ * suggested text right after it. The new text is an inline-block so the
+ * strike-through doesn't carry over to it.
+ */
+.doc-editor .doc-comment-mark[data-suggestion] {
+  background-color: transparent;
+  border-bottom: 0;
+  color: var(--color-rose-700);
+  text-decoration: line-through;
+  text-decoration-color: var(--color-rose-500);
+}
+.doc-editor .doc-comment-mark[data-suggestion]::after {
+  content: attr(data-suggestion);
+  display: inline-block;
+  margin-left: 0.2em;
+  padding: 0 0.2em;
+  border-radius: 0.2em;
+  background-color: var(--color-emerald-100);
+  color: var(--color-emerald-800);
+  text-decoration: none;
+}
+.doc-editor .doc-comment-mark[data-suggestion=""]::after {
+  display: none;
+}
+/* An insertion: the passage stays as is, the new text follows it. */
+.doc-editor .doc-comment-mark[data-suggestion][data-suggestion-insert] {
+  color: inherit;
+  text-decoration: none;
+}
+/* Nothing struck to escape from, so the new text can wrap with the line. */
+.doc-editor .doc-comment-mark[data-suggestion][data-suggestion-insert]::after {
+  display: inline;
+  margin-left: 0;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Text an agent just wrote, appearing in place. */
+@keyframes doc-fade-in {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+.doc-fade-in {
+  animation: doc-fade-in 600ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-fade-in {
+    animation: none;
+  }
+}
+
+@keyframes doc-glint {
+  to {
+    stroke-dashoffset: -100;
+  }
+}
+.doc-glint {
+  animation: doc-glint 3.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-glint {
+    animation: none;
+  }
 }

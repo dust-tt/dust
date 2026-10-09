@@ -10,10 +10,13 @@ import {
 import { customColors } from "@dust-tt/sparkle/lib/colors";
 import {
   cloneElement,
+  createContext,
   Fragment,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactElement,
@@ -83,6 +86,14 @@ const FOUR_PANELS_FROM = 2100;
 const NAV_WITH_FOUR_PANELS_FROM = 2400;
 const NAV_CARD_GAP = 6;
 const SPLIT_HANDLE = 1;
+
+/** A splitter between two visible panels: P2–P3, P3–P4, or P2–P4 when P3 is closed. */
+type SplitHandle = "p2-p3" | "p3-p4" | "p2-p4";
+const SPLIT_HANDLE_PANELS: Record<SplitHandle, [number, number]> = {
+  "p2-p3": [0, 1],
+  "p3-p4": [1, 2],
+  "p2-p4": [0, 2],
+};
 /** How far the hover sidebar slides in from the left edge, in px. Deliberately
  *  short: over the same 220ms as the fade, a full-width travel spends most of
  *  its distance while the card is still transparent, so only the opacity
@@ -188,6 +199,8 @@ interface PanelSectionProps {
   resetKey: string;
   /** When false, width and opacity changes apply instantly. */
   animate: boolean;
+  /** Grey column: top bar and content both sit on the muted background. */
+  isMuted?: boolean;
 }
 
 function PanelSection({
@@ -197,9 +210,20 @@ function PanelSection({
   content,
   resetKey,
   animate,
+  isMuted = false,
 }: PanelSectionProps) {
   const hidden = width === 0;
   const contentRef = useRef<HTMLDivElement>(null);
+  // The content is laid out at the panel's final width right away, while the
+  // panel's edge animates to it: text wraps once at the end width instead of
+  // reflowing at every frame (e.g. leaving full screen). A closing panel
+  // keeps its last width while it fades out.
+  const [lastWidth, setLastWidth] = useState(width);
+  if (width > 0 && width !== lastWidth) {
+    // Derived from the previous render's props (React's documented pattern).
+    setLastWidth(width);
+  }
+  const layoutWidth = width > 0 ? width : lastWidth;
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -239,6 +263,7 @@ function PanelSection({
       className={[
         "relative flex h-full min-w-0 flex-none flex-col overflow-x-clip overflow-y-hidden",
         isNav ? "bg-app-background" : "",
+        isMuted ? "bg-muted-background" : "",
         hidden ? "opacity-0" : "opacity-100",
         animate
           ? "transition-[width,opacity] duration-[260ms] ease-[cubic-bezier(.4,0,.2,1)]"
@@ -247,8 +272,13 @@ function PanelSection({
       style={{ width }}
       {...(hidden ? { inert: "" } : {})} // inert not in React's HTMLAttributes yet
     >
-      {cloneElement(topBar, { hasBorder: isScrolled })}
-      {contentArea}
+      <div
+        className="flex h-full min-h-0 flex-none flex-col"
+        style={{ width: layoutWidth }}
+      >
+        {cloneElement(topBar, { hasBorder: isScrolled })}
+        {contentArea}
+      </div>
     </section>
   );
 }
@@ -277,8 +307,10 @@ function ResizeHandle({
       >
         {visible ? (
           <>
-            <div className="absolute inset-y-0 -left-[3px] -right-[3px]" />
-            <div className="relative z-[1] w-px bg-separator transition-all duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
+            <div className="absolute inset-y-0 -left-[5px] -right-[5px]" />
+            <div className="relative z-[1] w-px bg-primary-100 transition-[width,background] duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
+            {/* Grip copied from production (Sparkle's ResizableHandle withHandle). */}
+            <div className="absolute left-1/2 top-1/2 z-[2] flex h-6 w-2 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-border bg-background" />
           </>
         ) : null}
       </div>
@@ -299,6 +331,50 @@ function ResizeHandle({
         <div className="mx-auto w-px bg-transparent transition-all duration-[120ms] group-hover:w-[2px] group-hover:[background:var(--panel-resize-focus-border)] group-active:w-[2px] group-active:[background:var(--panel-resize-focus-border)]" />
       ) : null}
     </div>
+  );
+}
+
+// ── Panel fullscreen context ──────────────────────────────────────────────────
+// Lets a panel's content know whether it is fullscreen, and leave it (e.g. a
+// button inside the content that brings the other panels back).
+
+interface PanelFullscreenValue {
+  isFullscreen: boolean;
+  setFullscreen: (fullscreen: boolean) => void;
+}
+
+const PanelFullscreenContext = createContext<PanelFullscreenValue>({
+  isFullscreen: false,
+  setFullscreen: () => {},
+});
+
+export function usePanelFullscreen(): PanelFullscreenValue {
+  return useContext(PanelFullscreenContext);
+}
+
+function PanelFullscreenProvider({
+  index,
+  isFullscreen,
+  setFullscreenIdx,
+  children,
+}: {
+  index: number;
+  isFullscreen: boolean;
+  setFullscreenIdx: (index: number | null) => void;
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => ({
+      isFullscreen,
+      setFullscreen: (fullscreen: boolean) =>
+        setFullscreenIdx(fullscreen ? index : null),
+    }),
+    [index, isFullscreen, setFullscreenIdx]
+  );
+  return (
+    <PanelFullscreenContext.Provider value={value}>
+      {children}
+    </PanelFullscreenContext.Provider>
   );
 }
 
@@ -344,6 +420,11 @@ export interface PanelLayoutPanelProps {
    * or when any panel enters or leaves.
    */
   fullscreenEnabled?: boolean;
+  /**
+   * "muted" turns the whole column grey (the user messages' background): the
+   * top bar's title and buttons sit on it directly, with no white band.
+   */
+  tone?: "default" | "muted";
   topBarLeft?: ReactNode;
   topBarRight?: ReactNode;
   children?: ReactNode;
@@ -397,7 +478,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   const [navW, setNavW] = useState(DEFAULT_NAV);
   /** Live left-panel width while a split handle is being dragged. */
   const [dragLeftW, setDragLeftW] = useState(0);
-  const [dragHandle, setDragHandle] = useState<"p2-p3" | "p3-p4" | null>(null);
+  const [dragHandle, setDragHandle] = useState<SplitHandle | null>(null);
   const [dragFreeze, setDragFreeze] = useState<{
     p2: number;
     p3: number;
@@ -737,6 +818,15 @@ export function PanelLayout({ children }: PanelLayoutProps) {
         });
         return { nav, p2: frozenP2, p3: split.left, p4: split.neighbor };
       }
+      if (dragHandle === "p2-p4" && has(0) && has(2) && !has(1)) {
+        const split = applySplitDrag({
+          available,
+          mouse: dragLeftW,
+          leftMin: minimalWidths[0],
+          neighborMin: minimalWidths[2],
+        });
+        return { nav, p2: split.left, p3: 0, p4: split.neighbor };
+      }
     }
 
     const specs = visible.map((i) => ({
@@ -776,7 +866,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
       set: (v: number) => void;
       min: number;
       max: number;
-      handle?: "p2-p3" | "p3-p4";
+      handle?: SplitHandle;
     }) =>
       makeDragResize({
         getCurrent: opts.getCurrent,
@@ -795,7 +885,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
             p4: current.p4,
           });
           setDragLeftW(
-            Math.round(opts.handle === "p2-p3" ? current.p2 : current.p3)
+            Math.round(opts.handle === "p3-p4" ? current.p3 : current.p2)
           );
           setDragHandle(opts.handle);
         },
@@ -803,7 +893,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
           if (opts.handle) {
             const current = layoutRef.current;
             const widths = [current.p2, current.p3, current.p4];
-            const adjacent = opts.handle === "p2-p3" ? [0, 1] : [1, 2];
+            const adjacent = SPLIT_HANDLE_PANELS[opts.handle];
             // The manual width sticks on the non-focus side(s); the focus
             // panel keeps flexing with the window.
             setManualWidths((prev) =>
@@ -986,28 +1076,46 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                 panel.props.topBarRight
               );
 
+              // The visible panel this one's left splitter resizes against:
+              // usually the previous slot, or P2 when P3 is closed in between.
+              const left =
+                i > 0 && panelWidths[i - 1] > 0
+                  ? i - 1
+                  : i === 2 && panelWidths[0] > 0
+                    ? 0
+                    : null;
+
               return (
                 <Fragment key={i}>
                   {i > 0 && (
                     <ResizeHandle
                       variant="split"
-                      visible={panelWidths[i - 1] > 0 && width > 0}
-                      onPointerDown={drag({
-                        getCurrent: () => panelWidths[i - 1],
-                        set: setDragLeftW,
-                        min: minimalWidths[i - 1],
-                        max: Math.max(
-                          minimalWidths[i - 1],
-                          cardInner(layout.nav) -
-                            minimalWidths[i] -
-                            panelWidths.reduce(
-                              (sum, w, j) =>
-                                j === i - 1 || j === i ? sum : sum + w,
-                              0
-                            )
-                        ),
-                        handle: i === 1 ? "p2-p3" : "p3-p4",
-                      })}
+                      visible={left !== null && width > 0}
+                      onPointerDown={
+                        left === null
+                          ? () => {}
+                          : drag({
+                              getCurrent: () => panelWidths[left],
+                              set: setDragLeftW,
+                              min: minimalWidths[left],
+                              max: Math.max(
+                                minimalWidths[left],
+                                cardInner(layout.nav) -
+                                  minimalWidths[i] -
+                                  panelWidths.reduce(
+                                    (sum, w, j) =>
+                                      j === left || j === i ? sum : sum + w,
+                                    0
+                                  )
+                              ),
+                              handle:
+                                left === 1
+                                  ? "p3-p4"
+                                  : i === 1
+                                    ? "p2-p3"
+                                    : "p2-p4",
+                            })
+                      }
                     />
                   )}
                   <PanelSection
@@ -1015,10 +1123,19 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                     isNav={false}
                     resetKey={panel.props.label}
                     animate={hasPainted && !dragging}
+                    isMuted={panel.props.tone === "muted"}
                     topBar={
                       <PanelTopBar left={topBarLeft} right={topBarRight} />
                     }
-                    content={panel.props.children}
+                    content={
+                      <PanelFullscreenProvider
+                        index={i}
+                        isFullscreen={effectiveFullscreen === i}
+                        setFullscreenIdx={setFullscreenIdx}
+                      >
+                        {panel.props.children}
+                      </PanelFullscreenProvider>
+                    }
                   />
                 </Fragment>
               );
