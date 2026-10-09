@@ -1,3 +1,4 @@
+import { SharedUsageLimitCell } from "@app/components/workspace/SharedUsageLimitCell";
 import { formatCreditValue } from "@app/lib/client/credits";
 import {
   ArrowDown,
@@ -18,6 +19,7 @@ export interface GroupBudgetOrderRow {
   name: string;
   position: number;
   limitAwuCredits: number | null;
+  usedAwuCredits: number;
   poolCapAwuCredits: number | null;
   sharedMemberCount: number | null;
   isCurrentGroup: boolean;
@@ -103,15 +105,28 @@ export function GroupBudgetOrderTab({
     {
       id: "budget",
       header: t`Group budget`,
-      cell: (info: GroupBudgetOrderInfo) => (
-        <DataTable.BasicCellContent
-          label={formatAmount(info.row.original.limitAwuCredits)}
-        />
-      ),
+      meta: { className: "w-40" },
+      cell: (info: GroupBudgetOrderInfo) => {
+        const { groupId, limitAwuCredits, usedAwuCredits } = info.row.original;
+        return (
+          <SharedUsageLimitCell
+            usage={
+              limitAwuCredits === null
+                ? undefined
+                : { groupId, limitAwuCredits, usedAwuCredits }
+            }
+          />
+        );
+      },
     },
     {
       id: "limitPerMember",
-      header: t`Limit per member`,
+      header: () => (
+        <span className="whitespace-normal leading-tight">
+          {t`Limit per member`}
+        </span>
+      ),
+      meta: { className: "w-32" },
       cell: (info: GroupBudgetOrderInfo) => (
         <DataTable.BasicCellContent
           label={formatAmount(info.row.original.poolCapAwuCredits)}
@@ -120,7 +135,12 @@ export function GroupBudgetOrderTab({
     },
     {
       id: "sharedMembers",
-      header: t`Shared members`,
+      header: () => (
+        <span className="whitespace-normal leading-tight">
+          {t`Shared members`}
+        </span>
+      ),
+      meta: { className: "w-28" },
       cell: (info: GroupBudgetOrderInfo) => (
         <DataTable.BasicCellContent
           label={
@@ -134,7 +154,7 @@ export function GroupBudgetOrderTab({
     {
       id: "move",
       header: "",
-      meta: { className: "w-24" },
+      meta: { className: "w-20" },
       cell: (info: GroupBudgetOrderInfo) => {
         const { groupId, isFirst, isLast } = info.row.original;
         return (

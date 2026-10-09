@@ -16,6 +16,7 @@ import {
   parseSharedUsageLimitInput,
   toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
+import { useGroupsUsage } from "@app/hooks/useGroupsUsage";
 import { useSharedUsageLimitOverlaps } from "@app/hooks/useSharedUsageLimitOverlaps";
 import { useUpdateGroupSharedUsageLimit } from "@app/hooks/useUpdateGroupSharedUsageLimit";
 import { useUpdateSharedUsageLimitPriorities } from "@app/hooks/useUpdateSharedUsageLimitPriorities";
@@ -181,6 +182,7 @@ function useGroupBudgetOrderDraft(
       groupId: group.groupId,
       disabled: !isEnabled,
     });
+  const { usageByGroupId } = useGroupsUsage({ owner, disabled: !isEnabled });
   const [movedOrder, setMovedOrder] = useState<string[] | null>(null);
 
   const budgetAwuCredits = draft.sharedLimitResult.ok
@@ -208,10 +210,16 @@ function useGroupBudgetOrderDraft(
           position: index + 1,
           limitAwuCredits: budgetAwuCredits,
           poolCapAwuCredits,
+          usedAwuCredits: usageByGroupId.get(groupId)?.usedAwuCredits ?? 0,
           sharedMemberCount: null,
           isCurrentGroup: true,
         }
-      : { ...overlap, position: index + 1, isCurrentGroup: false };
+      : {
+          ...overlap,
+          position: index + 1,
+          usedAwuCredits: usageByGroupId.get(groupId)?.usedAwuCredits ?? 0,
+          isCurrentGroup: false,
+        };
   });
 
   return {
