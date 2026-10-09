@@ -10,3 +10,11 @@ user-visible string it renders by default, including `aria-label`, `placeholder`
 tooltip text. A text prop the consumer may override MUST be rendered as given when defined, and fall
 back to the translated default only when `undefined` (``{label ?? t`Load more`}``), not through a
 hardcoded English default value.
+
+@cc [owner:ykmsd,label:product] sparkle-formats-through-format-module
+Code under `src/` (excluding `src/stories/`, `src/lib/i18n/` and the deprecated
+`src/components/Document/`) MUST format user-visible numbers, dates and relative times with the
+functions of `src/lib/i18n/format.ts` (adding the missing one there), passing the locale of
+`useFormatLocale` unless the consumer provided one. It MUST NOT call `Intl` formatters or
+`toLocaleString`, `toLocaleDateString` and `toLocaleTimeString` directly: those ignore the format
+locale of `SparkleI18nProvider` (e.g. `en-GB`, which renders the `en-US` catalog).

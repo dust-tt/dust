@@ -5,6 +5,7 @@ import {
   TooltipRoot,
   TooltipTrigger,
 } from "@sparkle/components/Tooltip";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React from "react";
@@ -106,7 +107,7 @@ export type SliderProps = React.ComponentPropsWithoutRef<
    * click there would select, or the dragged thumb's value during a drag.
    */
   showValueTooltip?: boolean;
-  /** Formats the value shown in the tooltip; defaults to the raw number. */
+  /** Formats the value shown in the tooltip; defaults to the number formatted in `useFormatLocale()`. */
   formatValue?: (value: number) => React.ReactNode;
 };
 
@@ -157,7 +158,7 @@ export const Slider = React.forwardRef<
       ariaLabel,
       thumbAriaLabels,
       showValueTooltip = false,
-      formatValue = (v) => v,
+      formatValue,
       onValueChange,
       onPointerDown,
       onPointerMove,
@@ -169,6 +170,7 @@ export const Slider = React.forwardRef<
     },
     ref
   ) => {
+    const formatLocale = useFormatLocale();
     // Mirror the values so the tooltip can read them in uncontrolled usage.
     const [internalValues, setInternalValues] = React.useState<number[]>(
       value ?? defaultValue ?? [min]
@@ -327,7 +329,9 @@ export const Slider = React.forwardRef<
               side={isVertical ? "right" : "top"}
               updatePositionStrategy="always"
             >
-              {formatValue(tooltipValue)}
+              {formatValue
+                ? formatValue(tooltipValue)
+                : formatNumber(tooltipValue, undefined, formatLocale)}
             </TooltipContent>
           </TooltipRoot>
         )}

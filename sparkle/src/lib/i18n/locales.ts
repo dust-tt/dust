@@ -14,3 +14,13 @@ export const SPARKLE_CATALOG_LOCALES = [
 ] as const;
 
 export type SparkleCatalogLocale = (typeof SPARKLE_CATALOG_LOCALES)[number];
+
+/**
+ * @cc [owner:ykmsd,label:product] sparkle-format-locales-match-front
+ * `SPARKLE_FORMAT_LOCALES` MUST contain every `SUPPORTED_LOCALES` entry of `front/types/locale.ts`,
+ * so that front can format sparkle components in each of its locales. Front's `SparkleLocaleProvider`
+ * fails to typecheck when one is missing.
+ */
+export const SPARKLE_FORMAT_LOCALES = ["en-US", "en-GB", "fr-FR"] as const;
+
+export type SparkleFormatLocale = (typeof SPARKLE_FORMAT_LOCALES)[number];

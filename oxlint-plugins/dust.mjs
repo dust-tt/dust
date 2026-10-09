@@ -282,6 +282,29 @@ const noLocaleLessToLocaleString = {
   },
 };
 
+const TO_LOCALE_METHODS = new Set([
+  "toLocaleString",
+  "toLocaleDateString",
+  "toLocaleTimeString",
+]);
+
+const noSparkleToLocaleFormat = {
+  create(context) {
+    return {
+      CallExpression(node) {
+        if (!TO_LOCALE_METHODS.has(memberName(node.callee))) {
+          return;
+        }
+        report(
+          context,
+          node,
+          "`toLocale*` calls ignore the format locale of `SparkleI18nProvider`. Use the functions of `@sparkle/lib/i18n/format` with `useFormatLocale()` instead (see sparkle/src/CONTRACTS)."
+        );
+      },
+    };
+  },
+};
+
 const noBareLocaleCompare = {
   create(context) {
     return {
@@ -586,6 +609,7 @@ export default {
     noClientDeepImports,
     noLocaleLessDateTimeFormat,
     noLocaleLessToLocaleString,
+    noSparkleToLocaleFormat,
     noBareLocaleCompare,
     noHardcodedEnUsLocale,
     noClientImportsInServer,

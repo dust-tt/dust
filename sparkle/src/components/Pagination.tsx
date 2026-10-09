@@ -1,5 +1,7 @@
 import { Plural, Trans } from "@lingui/react/macro";
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
+import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
 import { cn } from "@sparkle/lib/utils";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useCallback } from "react";
@@ -74,11 +76,13 @@ export function Pagination({
     [pageSize, setPagination]
   );
 
+  const formatLocale = useFormatLocale();
   const pageButtons: React.ReactNode[] = getPageButtons(
     pageIndex,
     numPages,
     pagesShownInControls,
     size,
+    formatLocale,
     !disablePaginationNumbers ? onPaginationButtonClick : undefined
   );
 
@@ -157,23 +161,43 @@ function PaginationDetails({
   firstItemOnPageIndex,
   lastItemOnPageIndex,
 }: PaginationDetailsProps) {
+  const formatLocale = useFormatLocale();
+  // Plural forms are picked with `rowCount`, but `#` would format it in the catalog's locale.
+  const formattedRowCount = formatNumber(rowCount, undefined, formatLocale);
+  const firstItem = formatNumber(firstItemOnPageIndex, undefined, formatLocale);
+  const lastItem = formatNumber(lastItemOnPageIndex, undefined, formatLocale);
+
   if (controlsAreHidden) {
-    return <Plural value={rowCount} one="# item" other="# items" />;
+    return (
+      <Plural
+        value={rowCount}
+        one={`${formattedRowCount} item`}
+        other={`${formattedRowCount} items`}
+      />
+    );
   }
 
   if (rowCountIsCapped) {
     return (
       <Trans>
-        Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of{" "}
-        <Plural value={rowCount} one="#+ item" other="#+ items" />
+        Showing {firstItem}-{lastItem} of{" "}
+        <Plural
+          value={rowCount}
+          one={`${formattedRowCount}+ item`}
+          other={`${formattedRowCount}+ items`}
+        />
       </Trans>
     );
   }
 
   return (
     <Trans>
-      Showing {firstItemOnPageIndex}-{lastItemOnPageIndex} of{" "}
-      <Plural value={rowCount} one="# item" other="# items" />
+      Showing {firstItem}-{lastItem} of{" "}
+      <Plural
+        value={rowCount}
+        one={`${formattedRowCount} item`}
+        other={`${formattedRowCount} items`}
+      />
     </Trans>
   );
 }
@@ -182,6 +206,7 @@ function renderPageNumber(
   pageNumber: number,
   currentPage: number,
   size: Size,
+  formatLocale: SparkleFormatLocale | undefined,
   onPageClick?: (currentPage: number) => void
 ) {
   return (
@@ -195,7 +220,7 @@ function renderPageNumber(
       onClick={() => onPageClick && onPageClick(pageNumber)}
       disabled={!onPageClick}
     >
-      {pageNumber + 1}
+      {formatNumber(pageNumber + 1, undefined, formatLocale)}
     </button>
   );
 }
@@ -219,6 +244,7 @@ function getPageButtons(
   totalPages: number,
   slots: number,
   size: Size,
+  formatLocale: SparkleFormatLocale | undefined,
   onPageClick?: (currentPage: number) => void
 ) {
   const pagination: React.ReactNode[] = [];
@@ -226,7 +252,9 @@ function getPageButtons(
   // If total pages are less than or equal to slots, show all pages
   if (totalPages <= slots) {
     for (let i = 0; i < totalPages; i++) {
-      pagination.push(renderPageNumber(i, currentPage, size, onPageClick));
+      pagination.push(
+        renderPageNumber(i, currentPage, size, formatLocale, onPageClick)
+      );
     }
     return pagination;
   }
@@ -237,7 +265,9 @@ function getPageButtons(
   // Ensure current page is within bounds
   currentPage = Math.max(0, Math.min(currentPage, totalPages - 1));
 
-  pagination.push(renderPageNumber(0, currentPage, size, onPageClick)); // Always show the first page
+  pagination.push(
+    renderPageNumber(0, currentPage, size, formatLocale, onPageClick)
+  ); // Always show the first page
   // Determine the range of pages to display
   let start, end;
   if (currentPage <= halfSlots + 1) {
@@ -257,7 +287,9 @@ function getPageButtons(
 
   // Add the range of pages
   for (let i = start; i <= end; i++) {
-    pagination.push(renderPageNumber(i, currentPage, size, onPageClick));
+    pagination.push(
+      renderPageNumber(i, currentPage, size, formatLocale, onPageClick)
+    );
   }
 
   // Add ellipsis if there is a gap between the end of the range and the last page
@@ -266,7 +298,13 @@ function getPageButtons(
   }
 
   pagination.push(
-    renderPageNumber(totalPages - 1, currentPage, size, onPageClick)
+    renderPageNumber(
+      totalPages - 1,
+      currentPage,
+      size,
+      formatLocale,
+      onPageClick
+    )
   ); // Always show the last page
 
   return pagination;

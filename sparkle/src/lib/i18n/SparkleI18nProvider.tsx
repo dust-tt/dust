@@ -3,13 +3,18 @@ import {
   loadSparkleI18n,
   sourceLocaleI18n,
 } from "@sparkle/lib/i18n/catalogs";
-import type { SparkleCatalogLocale } from "@sparkle/lib/i18n/locales";
+import type {
+  SparkleCatalogLocale,
+  SparkleFormatLocale,
+} from "@sparkle/lib/i18n/locales";
 import { SparkleI18nContext } from "@sparkle/lib/i18n/useLingui";
 import { reportToDatadog } from "@sparkle/lib/reportToDatadog";
 import React, { useEffect, useMemo, useState } from "react";
 
 interface SparkleI18nProviderProps {
   locale: SparkleCatalogLocale;
+  /** Locale to format numbers and dates in, the browser's when `undefined`. */
+  formatLocale?: SparkleFormatLocale;
   children: React.ReactNode;
 }
 
@@ -21,8 +26,15 @@ interface SparkleI18nProviderProps {
  * rendered locale, and a catalog that finishes loading after `locale` changed again MUST NOT be
  * rendered.
  */
+/**
+ * @cc [owner:ykmsd,label:product] sparkle-i18n-provider-follows-format-locale
+ * `useFormatLocale` below a `SparkleI18nProvider` MUST return its `formatLocale` from the render
+ * where it changes, independently of the catalog of `locale` (which may still be loading). The
+ * format locale MUST NOT affect the messages, so that plural forms follow the catalog's language.
+ */
 export function SparkleI18nProvider({
   locale,
+  formatLocale,
   children,
 }: SparkleI18nProviderProps) {
   const loadedI18n = getLoadedSparkleI18n(locale);
@@ -59,8 +71,8 @@ export function SparkleI18nProvider({
   }, [locale, loadedI18n]);
 
   const context = useMemo(
-    () => ({ i18n: renderedI18n, _: renderedI18n.t }),
-    [renderedI18n]
+    () => ({ i18n: renderedI18n, _: renderedI18n.t, formatLocale }),
+    [renderedI18n, formatLocale]
   );
 
   return (

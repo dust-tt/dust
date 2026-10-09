@@ -1,7 +1,8 @@
 import { setupI18n } from "@lingui/core";
 import { I18nProvider } from "@lingui/react";
+import { NumericCellContent } from "@sparkle/components/DataTable/cells";
 import { Pagination } from "@sparkle/components/Pagination";
-import { loadSparkleI18n } from "@sparkle/lib/i18n/catalogs";
+import { preloadSparkleLocale } from "@sparkle/lib/i18n/catalogs";
 import { SparkleI18nProvider } from "@sparkle/lib/i18n/SparkleI18nProvider";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -22,8 +23,16 @@ describe("SparkleI18nProvider", () => {
     expect(html).toContain("2 items");
   });
 
+  it("formats numbers in en-US without a provider", () => {
+    const html = renderToStaticMarkup(
+      <NumericCellContent value={1234.5} precision={1} />
+    );
+
+    expect(html).toContain("1,234.5");
+  });
+
   it("renders a preloaded locale from the first render", async () => {
-    await loadSparkleI18n("fr-FR");
+    await preloadSparkleLocale("fr-FR");
 
     // `renderToStaticMarkup` renders once, without running effects.
     const html = renderToStaticMarkup(
@@ -42,5 +51,51 @@ describe("SparkleI18nProvider", () => {
     );
 
     expect(html).toContain("2 items");
+  });
+
+  it("formats numbers in the format locale with the catalog of the locale", async () => {
+    await preloadSparkleLocale("fr-FR");
+
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        {pagination}
+        <NumericCellContent value={1234.5} precision={1} />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("2 items");
+    // `fr-FR` groups with a narrow no-break space and uses a decimal comma.
+    expect(html).toContain("1\u202f234,5");
+  });
+
+  it("picks plural forms with the catalog's language, not the format locale's", () => {
+    // `fr-FR` treats 0 as singular, English as plural.
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        <Pagination
+          rowCount={0}
+          pagination={{ pageIndex: 0, pageSize: 10 }}
+          setPagination={() => undefined}
+        />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("0 items");
+  });
+
+  it("formats plural counts and page numbers in the format locale", () => {
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-US" formatLocale="fr-FR">
+        <Pagination
+          rowCount={12340}
+          pagination={{ pageIndex: 0, pageSize: 10 }}
+          setPagination={() => undefined}
+        />
+      </SparkleI18nProvider>
+    );
+
+    expect(html).toContain("Showing 1-10 of 12 340 items");
+    // The last page button.
+    expect(html).toContain("1 234<");
   });
 });

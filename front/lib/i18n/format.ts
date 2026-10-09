@@ -14,6 +14,10 @@ export function setFormatLocale(locale: SupportedLocale | undefined): void {
   activeFormatLocale = locale;
 }
 
+export function getFormatLocale(): SupportedLocale | undefined {
+  return activeFormatLocale;
+}
+
 /**
  * @cc [owner:sfriquet,label:product] numeric-date-time-matches-date-fns-pp
  * In `en-US`, `formatDateTime` with these options MUST render dates of years 1000 to 9999 as the

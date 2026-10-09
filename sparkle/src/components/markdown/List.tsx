@@ -8,6 +8,7 @@ import {
 } from "@sparkle/components/markdown/utils";
 import { Check } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { assertNever } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import React, { createContext, memo, useContext } from "react";
@@ -142,10 +143,15 @@ interface TaskStepBadgeProps {
 
 function TaskStepBadge({ checked, number }: TaskStepBadgeProps) {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
+  const formattedNumber =
+    number === undefined
+      ? undefined
+      : formatNumber(number, undefined, formatLocale);
   const label = checked
     ? t`Done`
-    : number !== undefined
-      ? t`Step ${number}`
+    : formattedNumber !== undefined
+      ? t`Step ${formattedNumber}`
       : t`To do`;
 
   return (
@@ -161,8 +167,10 @@ function TaskStepBadge({ checked, number }: TaskStepBadgeProps) {
           className="animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
         />
       ) : (
-        number !== undefined && (
-          <span className="text-xs font-medium leading-none">{number}</span>
+        formattedNumber !== undefined && (
+          <span className="text-xs font-medium leading-none">
+            {formattedNumber}
+          </span>
         )
       )}
     </div>

@@ -3,6 +3,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Avatar } from "@sparkle/components/Avatar";
 import { ListItem } from "@sparkle/components/ListItem";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
 
@@ -31,6 +32,11 @@ export function ReplySection({
   lastMessageBy,
 }: ReplySectionProps) {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
+  // Plural forms are picked with the counts, but `#` would format them in the catalog's locale.
+  const replies = formatNumber(replyCount, undefined, formatLocale);
+  const unreads = formatNumber(unreadCount, undefined, formatLocale);
+  const mentions = formatNumber(mentionCount, undefined, formatLocale);
   return (
     <div className="flex items-center gap-2 pt-2">
       {replyCount > 0 && (
@@ -45,15 +51,15 @@ export function ReplySection({
         {mentionCount > 0 ? (
           <>
             <span className="heading-xs text-highlight">
-              {t`${plural(mentionCount, { one: "# Mention", other: "# Mentions" })}`}
+              {t`${plural(mentionCount, { one: `${mentions} Mention`, other: `${mentions} Mentions` })}`}
             </span>
             {unreadCount !== mentionCount && (
               <span className="heading-xs  text-highlight">
                 {" "}
                 {t({
                   message: plural(unreadCount, {
-                    one: "in # unread",
-                    other: "in # unreads",
+                    one: `in ${unreads} unread`,
+                    other: `in ${unreads} unreads`,
                   }),
                   context:
                     "follows the mention count, e.g. 2 Mentions in 5 unreads",
@@ -63,27 +69,27 @@ export function ReplySection({
             {replyCount !== unreadCount && (
               <span className="heading-xs">
                 {" "}
-                {t`(${plural(replyCount, { one: "# reply", other: "# replies" })})`}
+                {t`(${plural(replyCount, { one: `${replies} reply`, other: `${replies} replies` })})`}
               </span>
             )}
           </>
         ) : unreadCount === 0 ? (
           <span className="heading-xs">
-            {t`${plural(replyCount, { one: "# Reply", other: "# Replies" })}`}
+            {t`${plural(replyCount, { one: `${replies} Reply`, other: `${replies} Replies` })}`}
           </span>
         ) : unreadCount === replyCount ? (
           <span className="heading-xs text-highlight">
-            {t`${plural(unreadCount, { one: "# Unread", other: "# Unread" })}`}
+            {t`${plural(unreadCount, { one: `${unreads} Unread`, other: `${unreads} Unread` })}`}
           </span>
         ) : (
           <>
             <span className="heading-xs text-highlight">
-              {t`${plural(unreadCount, { one: "# Unread", other: "# Unread" })}`}
+              {t`${plural(unreadCount, { one: `${unreads} Unread`, other: `${unreads} Unread` })}`}
             </span>
             {replyCount > 0 && (
               <span className="heading-xs">
                 {" "}
-                {t`(${plural(replyCount, { one: "# reply", other: "# replies" })}).`}
+                {t`(${plural(replyCount, { one: `${replies} reply`, other: `${replies} replies` })}).`}
               </span>
             )}
           </>

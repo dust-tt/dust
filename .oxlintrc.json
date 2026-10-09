@@ -386,6 +386,14 @@
         "sparkle/src/stories/**"
       ],
       "rules": {
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "Intl",
+            "message": "Format with the functions of @sparkle/lib/i18n/format and useFormatLocale() instead of Intl (see sparkle/src/CONTRACTS)."
+          }
+        ],
+        "dust/noSparkleToLocaleFormat": "error",
         "no-restricted-imports": [
           "error",
           {
@@ -408,6 +416,15 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "files": [
+        "sparkle/src/components/Document/**"
+      ],
+      "rules": {
+        "no-restricted-globals": "off",
+        "dust/noSparkleToLocaleFormat": "off"
       }
     },
     {

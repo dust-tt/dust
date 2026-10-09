@@ -1,4 +1,5 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -43,6 +44,13 @@ export function LoadMore({
   showLessLabel,
 }: LoadMoreProps) {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
+  // Plural forms are picked with the counts, but `#` would format them in the catalog's locale.
+  const formattedRowCount = formatNumber(rowCount, undefined, formatLocale);
+  const formattedTotalRowCount =
+    totalRowCount === undefined
+      ? undefined
+      : formatNumber(totalRowCount, undefined, formatLocale);
   // When the total is known and everything is loaded, there is nothing left to
   // fetch: keep the details, hide the control (same behavior as Pagination).
   const loadMoreIsHidden =
@@ -98,16 +106,28 @@ export function LoadMore({
         )}
       >
         {totalRowCount === undefined ? (
-          <Plural value={rowCount} one="# item" other="# items" />
+          <Plural
+            value={rowCount}
+            one={`${formattedRowCount} item`}
+            other={`${formattedRowCount} items`}
+          />
         ) : totalRowCountIsCapped ? (
           <Trans>
-            Showing {rowCount} of{" "}
-            <Plural value={totalRowCount} one="#+ item" other="#+ items" />
+            Showing {formattedRowCount} of{" "}
+            <Plural
+              value={totalRowCount}
+              one={`${formattedTotalRowCount}+ item`}
+              other={`${formattedTotalRowCount}+ items`}
+            />
           </Trans>
         ) : (
           <Trans>
-            Showing {rowCount} of{" "}
-            <Plural value={totalRowCount} one="# item" other="# items" />
+            Showing {formattedRowCount} of{" "}
+            <Plural
+              value={totalRowCount}
+              one={`${formattedTotalRowCount} item`}
+              other={`${formattedTotalRowCount} items`}
+            />
           </Trans>
         )}
       </span>

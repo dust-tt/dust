@@ -1,6 +1,7 @@
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { Chip } from "@sparkle/components/Chip";
+import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import { cn } from "@sparkle/lib/utils";
 import React, { useState } from "react";
 
@@ -122,6 +123,7 @@ function JsonValue({
   currentPath?: string;
 }) {
   const { t } = useLingui();
+  const formatLocale = useFormatLocale();
   const expandLabel = t({
     message: "expand",
     context: "verb, show hidden JSON content",
@@ -194,6 +196,12 @@ function JsonValue({
       const longStringPath = `${currentPath}:longstring`;
       const isExpanded = expandedPaths?.has(longStringPath) ?? false;
       const hiddenCharCount = value.length - MAX_STRING_LENGTH;
+      // Plural forms are picked with the count, but `#` would format it in the catalog's locale.
+      const hiddenChars = formatNumber(
+        hiddenCharCount,
+        undefined,
+        formatLocale
+      );
 
       return (
         <span className={cn(VALUE_CLASSES, "whitespace-pre-wrap break-normal")}>
@@ -205,7 +213,7 @@ function JsonValue({
           >
             {isExpanded
               ? t({ message: "collapse", context: "verb, hide JSON content" })
-              : t`expand (${plural(hiddenCharCount, { one: "# more character", other: "# more characters" })})`}
+              : t`expand (${plural(hiddenCharCount, { one: `${hiddenChars} more character`, other: `${hiddenChars} more characters` })})`}
           </button>
         </span>
       );
@@ -255,11 +263,12 @@ function JsonValue({
       : Math.min(value.length, MAX_ARRAY_ITEMS);
     const hasMore = value.length > MAX_ARRAY_ITEMS && !isExpanded;
     const hiddenItemCount = value.length - itemsToShow;
+    const hiddenItems = formatNumber(hiddenItemCount, undefined, formatLocale);
 
     return (
       <div className="mt-2">
         {value.slice(0, itemsToShow).map((item, index) => {
-          const itemNumber = index + 1;
+          const itemNumber = formatNumber(index + 1, undefined, formatLocale);
           return (
             <div key={index} className={cn(INDENT_CLASSES)}>
               <div className="flex flex-col gap-2">
@@ -280,7 +289,7 @@ function JsonValue({
         {hasMore && (
           <div className={cn(INDENT_CLASSES)}>
             <InlineExpandButton
-              label={t`${plural(hiddenItemCount, { one: "# more item", other: "# more items" })}`}
+              label={t`${plural(hiddenItemCount, { one: `${hiddenItems} more item`, other: `${hiddenItems} more items` })}`}
               buttonText={expandLabel}
               onClick={() => handleToggleExpanded(arrayPath)}
             />
@@ -309,7 +318,12 @@ function JsonValue({
     const hasMore = entries.length > MAX_OBJECT_KEYS && !isExpanded;
     const visibleEntries = entries.slice(0, keysToShow);
     const hiddenPropertyCount = entries.length - keysToShow;
-    const hiddenPropertiesLabel = t`${plural(hiddenPropertyCount, { one: "# more property", other: "# more properties" })}`;
+    const hiddenProperties = formatNumber(
+      hiddenPropertyCount,
+      undefined,
+      formatLocale
+    );
+    const hiddenPropertiesLabel = t`${plural(hiddenPropertyCount, { one: `${hiddenProperties} more property`, other: `${hiddenProperties} more properties` })}`;
 
     // For nested objects, use a card-like layout with vertical bars.
     if (depth > 0) {
