@@ -33,7 +33,7 @@ interface StatusRowProps {
 /** The row above the document, its controls at the right, kept in view while the document scrolls. */
 const StatusRow = ({ children }: StatusRowProps) => (
   // Only its controls take clicks, so the text scrolling under the row stays clickable.
-  <div className="pointer-events-none sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs print:hidden [&>*]:pointer-events-auto">
+  <div className="pointer-events-none sticky top-0 z-30 p-1 mb-5 flex min-h-6 items-center justify-end gap-2.5 text-muted-foreground copy-xs print:hidden [&>*]:pointer-events-auto">
     {children}
   </div>
 );

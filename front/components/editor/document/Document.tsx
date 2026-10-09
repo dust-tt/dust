@@ -340,8 +340,7 @@ export const DocumentView = ({
     <article
       ref={articleRef}
       className={cn(
-        "@container relative px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:p-0",
-        editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18",
+        "@container relative px-2 font-sans text-foreground antialiased print:p-0",
         className
       )}
       onKeyDownCapture={handleKeyDown}
@@ -383,9 +382,9 @@ export const DocumentView = ({
       <div
         ref={contentRef}
         className={cn(
-          "relative mx-auto max-w-[50rem] print:max-w-none",
-          // The comment bubbles sit in the article's right padding, so narrow documents widen it.
-          comments.unresolved.length > 0 && "pr-7 @sm:pr-0"
+          "relative mx-auto max-w-[50rem] px-5 @sm:px-12 print:max-w-none print:p-0",
+          // The comment bubbles sit in the right gutter, so narrow documents widen it for them.
+          comments.unresolved.length > 0 && "pr-10"
         )}
       >
         <DocumentSaveError
