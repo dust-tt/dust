@@ -1,7 +1,6 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   USER_MEMORY_EDIT_TOOL_NAME,
-  USER_MEMORY_READ_TOOL_NAME,
   USER_MEMORY_SERVER_NAME,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
 import {
@@ -15,10 +14,6 @@ import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
-const READ_TOOL_NAME = getPrefixedToolName(
-  USER_MEMORY_SERVER_NAME,
-  USER_MEMORY_READ_TOOL_NAME
-);
 const EDIT_TOOL_NAME = getPrefixedToolName(
   USER_MEMORY_SERVER_NAME,
   USER_MEMORY_EDIT_TOOL_NAME
@@ -29,50 +24,32 @@ You have a persistent, user-scoped memory kept in a single \`MEMORY.md\`
 file, shared across all of this user's conversations and agents.
 
 <critical_behavior>
-Call the \`${READ_TOOL_NAME}\` tool directly with no arguments to recall the
-user's memory before handling any non-trivial request. Treat a request as
-non-trivial if it requires reasoning, judgment, planning, recommendations,
-drafting, analysis, or multiple steps, even when it does not explicitly mention
-the user.
+The memory is loaded in a message at the start of the conversation, inside the
+\`<user_memory>\` block. It is a snapshot taken when this conversation started
+and is not refreshed when the memory changes during the conversation.
 
-Always read memory for anything that could depend on who the user is: their
-work, projects, team, location, timezone, preferences, or past decisions;
-anything you write on their behalf or in their voice (emails, messages,
-documents); and any advice, recommendation, or plan for them. This tool is
-always available, so you do not need to search for or enable it. You cannot tell
-whether memory is relevant until you read it, so when unsure, read.
-
-Watch for requests about the user themselves ("me", "my", "I"). If you are
-about to give a generic "it depends" answer because you lack a personal detail
-(where they live, their role, their team), read memory first: it may already be
-there. For example, "how long would it take me to fly to New York" depends on
-where the user lives, which may be in memory.
-
-Skip reading only for simple requests that do not depend on user-specific
-context. These include questions with direct answers, quick lookups, and
-calculations, such as "what is the capital of Spain", "what is the weather in
-Paris", or "what is 15% of 240".
-
-Run quick, independent calls to other tools in parallel with the memory read.
-
-You do not need to provide a query or specify what to retrieve: a single read
-returns the whole memory. Read it once per conversation. Read again only if the
-memory may have changed since.
+Rely on it for anything that could depend on who the user is: their work,
+projects, team, location, timezone, preferences, or past decisions; anything you
+write on their behalf or in their voice (emails, messages, documents); and any
+advice, recommendation, or plan for them. Before giving a generic "it depends"
+answer because you lack a personal detail (where they live, their role, their
+team), check the memory: it may already be there. For example, "how long would
+it take me to fly to New York" depends on where the user lives, which may be in
+memory.
 
 Add, edit, or remove memories with the \`${EDIT_TOOL_NAME}\` tool, which replaces
-an exact snippet of \`MEMORY.md\`:
+an exact snippet of the current \`MEMORY.md\`:
 - To change existing memory, pass the exact current text as \`oldStr\` and the
   replacement as \`newStr\`.
 - To add the first memory when it is empty, pass an empty \`oldStr\` and the new
   content as \`newStr\`.
 - To delete a memory, pass an empty \`newStr\`.
-</critical_behavior>
 
-<skill_enablement>
-Before enabling any skill, read the memory first if you have not already done so
-in this conversation. The memory may contain useful insights to help you decide
-which skills to enable.
-</skill_enablement>
+The tool returns the full updated memory: after an edit, treat its latest output
+as the current memory instead of the snapshot. If \`oldStr\` is not found, the
+memory changed since the snapshot and the tool returns its current content: retry
+with an exact snippet of it.
+</critical_behavior>
 
 <memory_strategy>
 Think of memory as building a "user manual" for this person:
@@ -121,7 +98,7 @@ export const userMemorySkill = {
     "user's preferences, facts, and context across conversations.",
   instructions: USER_MEMORY_INSTRUCTIONS,
   mcpServers: [{ name: USER_MEMORY_SERVER_NAME }],
-  version: 3,
+  version: 4,
   icon: "ActionLightbulbIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
