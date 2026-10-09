@@ -2,7 +2,8 @@
 import { DfsClient } from "@app/lib/dfs/client";
 import { DfsGrpcTransport } from "@app/lib/dfs/grpc_transport";
 import type { DfsWireMessage } from "@app/lib/dfs/proto";
-import { encodeDfsMessage, getDfsServiceDefinition } from "@app/lib/dfs/proto";
+import { encodeDfsMessage } from "@app/lib/dfs/proto";
+import { getDfsServiceDefinition } from "@app/tests/utils/dfsServiceDefinition";
 import { DfsWireFactory } from "@app/tests/utils/DfsWireFactory";
 import type {
   sendUnaryData,
@@ -232,6 +233,18 @@ describe("DfsGrpcTransport", () => {
     });
 
     expect(res.isErr() && res.error.code).toBe("internal");
+  });
+
+  it("returns unavailable after the transport is closed", async () => {
+    const closed = new DfsGrpcTransport({
+      endpoint: "127.0.0.1:1",
+      useTls: false,
+    });
+    closed.close();
+
+    const res = await new DfsClient(closed, SESSION_KEY).closeSession();
+
+    expect(res.isErr() && res.error.code).toBe("unavailable");
   });
 
   it("returns unavailable when the server cannot be reached", async () => {

@@ -109,23 +109,32 @@ export class DfsGrpcTransport implements DfsTransport {
     // Responses are decoded here rather than by grpc-js so that malformed messages surface as
     // `invalid_response` instead of a generic gRPC internal error.
     const response = await new Promise<Result<Buffer, DfsError>>((resolve) => {
-      this.client.makeUnaryRequest(
-        dfsMethodPath(method),
-        identity,
-        identity,
-        encoded,
-        metadata,
-        { deadline: Date.now() + this.timeoutMs },
-        (error, value) => {
-          if (error) {
-            resolve(new Err(dfsErrorFromServiceError(error)));
-          } else if (!value) {
-            resolve(new Err(new DfsError("invalid_response", "No response.")));
-          } else {
-            resolve(new Ok(value));
+      try {
+        this.client.makeUnaryRequest(
+          dfsMethodPath(method),
+          identity,
+          identity,
+          encoded,
+          metadata,
+          { deadline: Date.now() + this.timeoutMs },
+          (error, value) => {
+            if (error) {
+              resolve(new Err(dfsErrorFromServiceError(error)));
+            } else if (!value) {
+              resolve(
+                new Err(new DfsError("invalid_response", "No response."))
+              );
+            } else {
+              resolve(new Ok(value));
+            }
           }
-        }
-      );
+        );
+      } catch (err) {
+        // grpc-js throws synchronously when the channel has been closed.
+        resolve(
+          new Err(new DfsError("unavailable", normalizeError(err).message))
+        );
+      }
     });
     if (response.isErr()) {
       return response;

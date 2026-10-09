@@ -1,4 +1,3 @@
-import type { ServiceDefinition } from "@grpc/grpc-js";
 import { readFileSync } from "fs";
 import path from "path";
 import protobuf from "protobufjs";
@@ -78,26 +77,4 @@ export function decodeDfsMessage(
 
 export function dfsMethodPath(method: DfsMethod): string {
   return `/${DFS_PROTO_PACKAGE}.Dfs/${method}`;
-}
-
-/** gRPC service definition of `Dfs`, usable to build a client or a (test) server. */
-export function getDfsServiceDefinition(): ServiceDefinition {
-  return Object.fromEntries(
-    Object.entries(DFS_METHODS).map(([method, { request, response }]) => [
-      method,
-      {
-        path: `/${DFS_PROTO_PACKAGE}.Dfs/${method}`,
-        requestStream: false,
-        responseStream: false,
-        requestSerialize: (message: DfsWireMessage) =>
-          encodeDfsMessage(request, message),
-        requestDeserialize: (buffer: Buffer) =>
-          decodeDfsMessage(request, buffer),
-        responseSerialize: (message: DfsWireMessage) =>
-          encodeDfsMessage(response, message),
-        responseDeserialize: (buffer: Buffer) =>
-          decodeDfsMessage(response, buffer),
-      },
-    ])
-  );
 }
