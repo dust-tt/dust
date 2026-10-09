@@ -80,8 +80,9 @@ function attrMatchesTarget(
 
 /**
  * Typed client for the dfs:// API (`dfs/design-docs/API.md`). Each instance authenticates every call
- * with a single bearer key: the server key (`createTenant`), a tenant key (`createSession` and
- * grant management) or a session key (filesystem and search calls). Several clients can share one
+ * with a single bearer key: the server key (`createTenant`), a tenant key (`createSession`,
+ * `revokeSession` and grant management) or a session key (session refresh, filesystem and search
+ * calls). Several clients can share one
  * transport.
  */
 /**
@@ -193,14 +194,32 @@ export class DfsClient {
     return this.call("CreateSession", () => ({ subjects }), WireSessionSchema);
   }
 
+  /**
+   * Requires the tenant key. Invalidates the session `sessionId` (the `id` returned by
+   * `createSession`, not its key) once its admitted mutations finish.
+   */
+  async revokeSession({
+    sessionId,
+  }: {
+    sessionId: string;
+  }): Promise<Result<void, DfsError>> {
+    if (sessionId === "") {
+      return new Err(new DfsError("invalid_input", "Empty session id."));
+    }
+    return this.call("RevokeSession", () => ({ sessionId }), WireEmptySchema);
+  }
+
   /** Requires the session key. The returned `sessionKey` is empty. */
   async currentSession(): Promise<Result<DfsSession, DfsError>> {
     return this.call("CurrentSession", () => ({}), WireSessionSchema);
   }
 
-  /** Requires the session key. */
-  async closeSession(): Promise<Result<void, DfsError>> {
-    return this.call("CloseSession", () => ({}), WireEmptySchema);
+  /**
+   * Requires the session key. Extends the session to at least one hour from now; expired or revoked
+   * sessions fail with `unauthenticated`. The returned `sessionKey` is empty.
+   */
+  async refreshSession(): Promise<Result<DfsSession, DfsError>> {
+    return this.call("RefreshSession", () => ({}), WireSessionSchema);
   }
 
   // Grants. Require the tenant key, which also determines the tenant.

@@ -281,7 +281,6 @@ export const WireSessionSchema = z
     subjects: z.array(z.string()),
     sessionKey: z.string(),
     expiresAt: WireNumberUint64Schema,
-    rootId: WireObjectIdSchema,
   })
   .transform((s): DfsSession => ({
     id: s.id,
@@ -289,7 +288,6 @@ export const WireSessionSchema = z
     subjects: s.subjects,
     sessionKey: s.sessionKey,
     expiresAtMs: s.expiresAt,
-    rootId: s.rootId,
   }));
 
 export const WireEmptySchema = z.object({}).transform(() => undefined);

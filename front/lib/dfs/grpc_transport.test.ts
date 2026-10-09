@@ -80,7 +80,7 @@ const implementation: UntypedServiceImplementation = {
       callback(dfsStatusError(status.UNAUTHENTICATED, "UNAUTHENTICATED"));
       return;
     }
-    callback(null, DfsWireFactory.session(ROOT_ID));
+    callback(null, DfsWireFactory.session());
   },
   Lookup: (call: UnaryCall, callback: Callback) => {
     const name = firstTargetName(call.request);
@@ -108,7 +108,7 @@ const implementation: UntypedServiceImplementation = {
       ],
     });
   },
-  CloseSession: (_call: UnaryCall, callback: Callback) => {
+  RevokeSession: (_call: UnaryCall, callback: Callback) => {
     callback(null, {});
   },
   // Replies with a payload of the response budget plus `offset` bytes.
@@ -155,7 +155,6 @@ describe("DfsGrpcTransport", () => {
       subjects: ["g:eng"],
       sessionKey: "",
       expiresAtMs: 1700003600000,
-      rootId: ROOT_ID,
     });
   });
 
@@ -199,8 +198,8 @@ describe("DfsGrpcTransport", () => {
       },
     });
 
-    const closed = await client.closeSession();
-    expect(closed.isOk()).toBe(true);
+    const revoked = await client.revokeSession({ sessionId: "session-1" });
+    expect(revoked.isOk()).toBe(true);
   });
 
   it("accepts replies of exactly the response budget", async () => {
@@ -222,7 +221,9 @@ describe("DfsGrpcTransport", () => {
   });
 
   it("returns invalid_input for a key that is not a valid metadata value", async () => {
-    const res = await new DfsClient(transport, "bad\nkey").closeSession();
+    const res = await new DfsClient(transport, "bad\nkey").revokeSession({
+      sessionId: "session-1",
+    });
 
     expect(res.isErr() && res.error.code).toBe("invalid_input");
   });
@@ -242,7 +243,9 @@ describe("DfsGrpcTransport", () => {
     });
     closed.close();
 
-    const res = await new DfsClient(closed, SESSION_KEY).closeSession();
+    const res = await new DfsClient(closed, SESSION_KEY).revokeSession({
+      sessionId: "session-1",
+    });
 
     expect(res.isErr() && res.error.code).toBe("unavailable");
   });
@@ -254,7 +257,9 @@ describe("DfsGrpcTransport", () => {
       timeoutMs: 500,
     });
 
-    const res = await new DfsClient(unreachable, SESSION_KEY).closeSession();
+    const res = await new DfsClient(unreachable, SESSION_KEY).revokeSession({
+      sessionId: "session-1",
+    });
     unreachable.close();
 
     expect(res.isErr() && res.error.code).toBe("unavailable");

@@ -83,13 +83,13 @@ export interface DfsTenant {
 }
 
 export interface DfsSession {
+  // Identifies the session for `revokeSession`; not a credential.
   id: string;
   tenantId: string;
   subjects: string[];
-  // Empty string when returned by `currentSession`.
+  // Empty string when returned by `currentSession` or `refreshSession`.
   sessionKey: string;
   expiresAtMs: number;
-  rootId: DfsObjectId;
 }
 
 // Grants. Modes use r=4 and w=2 only (at most 0o6); directory traversal follows read access.

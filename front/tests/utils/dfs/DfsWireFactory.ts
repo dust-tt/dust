@@ -31,17 +31,13 @@ export class DfsWireFactory {
     };
   }
 
-  static session(
-    rootId: string,
-    overrides: DfsWireMessage = {}
-  ): DfsWireMessage {
+  static session(overrides: DfsWireMessage = {}): DfsWireMessage {
     return {
       id: "session-1",
       tenantId: "tenant-1",
       subjects: ["g:eng"],
       sessionKey: "",
       expiresAt: "1700003600000",
-      rootId: DfsWireFactory.objectId(rootId),
       ...overrides,
     };
   }

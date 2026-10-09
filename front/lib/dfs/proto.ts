@@ -6,8 +6,9 @@ import protobuf from "protobufjs";
 export const DFS_METHODS = {
   CreateTenant: { request: "CreateTenantRequest", response: "Tenant" },
   CreateSession: { request: "CreateSessionRequest", response: "Session" },
+  RevokeSession: { request: "RevokeSessionRequest", response: "Empty" },
   CurrentSession: { request: "Empty", response: "Session" },
-  CloseSession: { request: "Empty", response: "Empty" },
+  RefreshSession: { request: "Empty", response: "Session" },
   ListGrants: { request: "ListGrantsRequest", response: "GrantPage" },
   UpdateGrants: { request: "UpdateGrantsRequest", response: "Empty" },
   Stat: { request: "StatRequest", response: "AttrBatch" },

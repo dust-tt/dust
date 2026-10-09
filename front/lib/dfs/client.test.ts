@@ -25,7 +25,7 @@ describe("DfsClient", () => {
   it("creates a session and decodes ids and timestamps", async () => {
     const { client, transport } = setup({
       CreateSession: new Ok(
-        DfsWireFactory.session(ROOT_ID, {
+        DfsWireFactory.session({
           subjects: ["u:a@dust.tt", "g:eng"],
           sessionKey: SESSION_KEY,
         })
@@ -42,7 +42,6 @@ describe("DfsClient", () => {
       subjects: ["u:a@dust.tt", "g:eng"],
       sessionKey: SESSION_KEY,
       expiresAtMs: 1700003600000,
-      rootId: ROOT_ID,
     });
     expect(transport.calls).toEqual([
       {
@@ -53,16 +52,34 @@ describe("DfsClient", () => {
     ]);
   });
 
-  it("rejects a session whose root is not a UUIDv7", async () => {
-    const { client } = setup({
-      CurrentSession: new Ok(
-        DfsWireFactory.session(ROOT_ID, { rootId: { value: Buffer.alloc(16) } })
+  it("refreshes a session and revokes one by id", async () => {
+    const { client, transport } = setup({
+      RefreshSession: new Ok(
+        DfsWireFactory.session({ expiresAt: "1700007200000" })
       ),
+      RevokeSession: new Ok({}),
     });
 
-    const res = await client.currentSession();
+    const refreshed = await client.refreshSession();
+    const revoked = await client.revokeSession({ sessionId: "session-1" });
 
-    expect(res.isErr() && res.error.code).toBe("invalid_response");
+    expect(refreshed.isOk() && refreshed.value.expiresAtMs).toBe(1700007200000);
+    expect(revoked.isOk()).toBe(true);
+    expect(
+      transport.calls.map(({ method, request }) => [method, request])
+    ).toEqual([
+      ["RefreshSession", {}],
+      ["RevokeSession", { sessionId: "session-1" }],
+    ]);
+  });
+
+  it("returns invalid_input for an empty session id without calling the server", async () => {
+    const { client, transport } = setup({});
+
+    const res = await client.revokeSession({ sessionId: "" });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+    expect(transport.calls).toHaveLength(0);
   });
 
   it("stats virtual and real objects with per-item errors and exact versions", async () => {
