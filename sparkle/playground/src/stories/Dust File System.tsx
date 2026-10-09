@@ -1304,7 +1304,9 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     <NavigationListItem
       key={item.id}
       label={item.fileName}
-      icon={getDataSourceIcon(item) ?? File02}
+      // An agent or a skill reads by its avatar, as it does in the Hub.
+      icon={item.avatar ? undefined : (getDataSourceIcon(item) ?? File02)}
+      avatar={item.avatar ? <Avatar size="xxs" {...item.avatar} /> : undefined}
       selected={
         isDataSourceFolder(item)
           ? p2View.kind === "files" && hubFolderId === item.id
