@@ -1,5 +1,6 @@
 import type { PassthroughLab } from "@app/lib/model_constructors/types/output/events";
 import type { Phase } from "@app/lib/model_constructors/types/phases";
+import type { ReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 
 const CACHE_OPTIONS = ["short", "long"] as const;
 export type CacheOption = (typeof CACHE_OPTIONS)[number];
@@ -90,7 +91,19 @@ export type BaseAssistantMessage =
   | BaseAssistantToolCallRequestMessage
   | BaseAssistantProviderPassthroughMessage;
 
-export type BaseMessage = BaseUserMessage | BaseAssistantMessage;
+// Switches the reasoning effort from the next user message on, without a top-level config change
+// (which would restart the prompt cache). Callers only send it to models that accept it; providers
+// without per-message effort skip it.
+export type BaseEffortChangeMessage = {
+  role: "system";
+  type: "effort_change";
+  content: { effort: ReasoningEffort };
+};
+
+export type BaseMessage =
+  | BaseUserMessage
+  | BaseAssistantMessage
+  | BaseEffortChangeMessage;
 
 export type SystemTextMessage = {
   role: "system";

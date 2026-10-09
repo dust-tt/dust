@@ -8,6 +8,10 @@ import type {
 import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
+import {
+  MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER,
+  requiresMidConversationOutputConfigBeta,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
 import { batchResultToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
@@ -67,6 +71,11 @@ export abstract class AnthropicBatch extends WithAnthropicAIInputConverter(
 
     const batch = await this.client.beta.messages.batches.create({
       requests: batchRequests,
+      ...(batchRequests.some(({ params }) =>
+        requiresMidConversationOutputConfigBeta(params.messages)
+      )
+        ? { betas: [MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER] }
+        : {}),
     });
     return batch.id;
   }

@@ -228,6 +228,9 @@ export function conversationToOpenAICompletionsMessages(
           return userMessageToMessage(message, converters);
         case "assistant":
           return assistantMessageToMessage(message, converters);
+        case "system":
+          // Per-message reasoning effort is Anthropic-only.
+          return null;
         default:
           assertNever(message);
       }

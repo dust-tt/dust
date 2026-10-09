@@ -3,10 +3,15 @@
 import assert from "node:assert";
 
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
+import { MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { THINKING_BINDING_CONTROLS_BETA_HEADER } from "@app/lib/model_constructors/stream/clients/anthropic";
+import { AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_dot_five_eu_agent_platform";
+import { AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_dot_five_global_anthropic";
 import { AnthropicClaudeSonnetFiveDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_dot_five_global_anthropic";
 import { AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
+import type { BaseMessage } from "@app/lib/model_constructors/types/input/messages";
+import type { ReasoningEffort } from "@app/lib/model_constructors/types/reasoning_efforts";
 import { describe, expect, it, vi } from "vitest";
 
 // The real Vertex constructor starts Google credential discovery even without an API call.
@@ -153,5 +158,117 @@ describe("AnthropicStream thinking-binding observability", () => {
 
     assert(event, "expected a response_id event");
     expect(event.metadata.content?.inputTransformations).toBeUndefined();
+  });
+});
+
+const OPUS_FIVE_DOT_FIVE_CONFIG =
+  AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream.configSchema.parse({
+    reasoning: { effort: "medium" },
+  });
+
+function userText(value: string): BaseMessage {
+  return { role: "user", type: "text", content: { value } };
+}
+
+function effortChange(effort: ReasoningEffort): BaseMessage {
+  return { role: "system", type: "effort_change", content: { effort } };
+}
+
+const TURN: BaseMessage[] = [
+  userText("Plan a migration in three steps."),
+  {
+    role: "assistant",
+    type: "text",
+    content: { value: "Export, create, import." },
+  },
+];
+
+function payloadWith(messages: BaseMessage[]) {
+  return { conversation: { system: [], messages } };
+}
+
+describe("AnthropicStream per-message reasoning effort", () => {
+  it("leaves the payload and betas unchanged without effort changes", async () => {
+    const payload =
+      await new AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream({
+        ANTHROPIC_API_KEY: "test-key",
+      }).buildRequestPayload(
+        payloadWith([...TURN, userText("Summarize it.")]),
+        OPUS_FIVE_DOT_FIVE_CONFIG
+      );
+
+    expect(payload.betas).toEqual([THINKING_BINDING_CONTROLS_BETA_HEADER]);
+    expect(payload.messages.map((m) => m.role)).toEqual([
+      "user",
+      "assistant",
+      "user",
+    ]);
+    expect(payload.messages.some((m) => m.output_config)).toBe(false);
+  });
+
+  it("only adds the effort-only message and its beta for an effort change", async () => {
+    const endpoint = new AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream({
+      ANTHROPIC_API_KEY: "test-key",
+    });
+    const withoutChange = await endpoint.buildRequestPayload(
+      payloadWith([...TURN, userText("Summarize it.")]),
+      OPUS_FIVE_DOT_FIVE_CONFIG
+    );
+    const withChange = await endpoint.buildRequestPayload(
+      payloadWith([...TURN, effortChange("high"), userText("Summarize it.")]),
+      OPUS_FIVE_DOT_FIVE_CONFIG
+    );
+
+    expect(withChange.messages[2]).toEqual({
+      role: "system",
+      content: [],
+      output_config: { effort: "high" },
+    });
+    expect(withChange.betas).toEqual([
+      THINKING_BINDING_CONTROLS_BETA_HEADER,
+      MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER,
+    ]);
+    // Everything else, including the top-level effort, is untouched.
+    expect({
+      ...withChange,
+      betas: withoutChange.betas,
+      messages: withChange.messages.filter((m) => m.role !== "system"),
+    }).toEqual(withoutChange);
+  });
+
+  it("rejects an effort change the API cannot apply per message", async () => {
+    await expect(
+      new AnthropicClaudeOpusFiveDotFiveGlobalAnthropicStream({
+        ANTHROPIC_API_KEY: "test-key",
+      }).buildRequestPayload(
+        payloadWith([...TURN, effortChange("none"), userText("Summarize it.")]),
+        OPUS_FIVE_DOT_FIVE_CONFIG
+      )
+    ).rejects.toThrow("Unsupported per-message reasoning effort: none");
+  });
+
+  it("sends the beta on the agent platform only with an effort change", async () => {
+    const endpoint =
+      new AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream({
+        AGENT_PLATFORM_PROJECT_ID: "test-project",
+      });
+    const config =
+      AnthropicClaudeOpusFiveDotFiveEuropeAgentPlatformStream.configSchema.parse(
+        { reasoning: { effort: "medium" } }
+      );
+
+    const withoutChange = await endpoint.buildRequestPayload(
+      payloadWith([...TURN, userText("Summarize it.")]),
+      config
+    );
+    const withChange = await endpoint.buildRequestPayload(
+      payloadWith([...TURN, effortChange("high"), userText("Summarize it.")]),
+      config
+    );
+
+    expect(withoutChange).not.toHaveProperty("betas");
+    expect(withChange.betas).toEqual([
+      MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER,
+    ]);
   });
 });
