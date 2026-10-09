@@ -16,6 +16,7 @@ import {
 import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
+import { attributeTransaction } from "@app/lib/live_attribution";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import {
   concurrentExecutor,
@@ -32,6 +33,7 @@ import type {
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
+  BODY_FRAGMENT_NAME,
   LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
@@ -43,6 +45,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import type * as Y from "yjs";
 import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
@@ -548,8 +551,11 @@ export function showLiveAgentActivity(
  * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
- * editing right before it is applied; it MUST be announced as reading again if the change is then
- * refused or leaves the document unchanged.
+ * editing right before it is applied, after the document updates already waiting are sent, and
+ * MUST reach the connections as an update of its own, announced right before as that agent's edit
+ * with every Yjs item it inserted and deleted and the text it removed (`attributeTransaction`),
+ * sent while the change is applied so it precedes the update however large; it MUST be announced as
+ * reading again if the change is then refused or leaves the document's body unchanged.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -596,19 +602,34 @@ export async function writeLiveSource(
       return new Ok("changed");
     }
 
-    // Before the change: Hocuspocus may batch the update, never a stateless message.
+    // Before the change: Hocuspocus may batch the update, never a stateless message. Flushed on
+    // both sides, so editors receive the agent's change alone, right after its announcement.
     const announced = agent !== undefined && source !== current.value;
     if (announced) {
+      document.flush();
       document.broadcastStateless(agentActivityMessage(agent, "editing"));
     }
-    // Another spelling of the same document changes nothing, and Yjs then emits no update. The
-    // state vector would miss a deletion, which emits one without advancing it.
+    // Another spelling of the same document changes nothing, and a change of front matter alone
+    // leaves the body as it was: either way editors have no change to play back.
+    const body = document.getXmlFragment(BODY_FRAGMENT_NAME);
     let changed = false;
-    const onUpdate = () => {
+    // While the change is applied: Hocuspocus sends the update after the observers, at once when it
+    // is large, and the deleted text is still readable.
+    const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
       changed = true;
+      const attribution =
+        agent &&
+        attributeTransaction(
+          transaction,
+          { kind: "agent", ...agent },
+          Date.now()
+        );
+      if (attribution) {
+        document.broadcastStateless(JSON.stringify(attribution));
+      }
     };
     if (announced) {
-      document.on("update", onUpdate);
+      body.observeDeep(onBodyChange);
     }
     let comments: Result<DfmComment[], string> = new Err(
       "The change could not be applied."
@@ -621,7 +642,8 @@ export async function writeLiveSource(
       });
     } finally {
       if (announced) {
-        document.off("update", onUpdate);
+        body.unobserveDeep(onBodyChange);
+        document.flush();
         if (comments.isErr() || !changed) {
           document.broadcastStateless(agentActivityMessage(agent, "reading"));
         }

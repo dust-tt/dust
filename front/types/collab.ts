@@ -187,3 +187,59 @@ export const liveAgentServerMessageSchema = z.object({
 export type LiveAgentServerMessage = z.infer<
   typeof liveAgentServerMessageSchema
 >;
+
+/** A Yjs item, by id. */
+const liveIdSchema = z.object({
+  client: z.number().int().nonnegative(),
+  clock: z.number().int().nonnegative(),
+});
+
+/** Yjs items by id: `length` consecutive clocks of `client`, from `clock`. */
+const liveIdRangeSchema = liveIdSchema.extend({
+  length: z.number().int().positive(),
+});
+
+export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
+
+/** Past this many id ranges or removed texts, a change is not attributed: editors just show it. */
+export const LIVE_ATTRIBUTION_MAX_RANGES = 2_000;
+
+/** How much of a removed text an attribution carries, editors only showing its start. */
+export const LIVE_REMOVED_TEXT_MAX_CHARS = 240;
+
+/** Who made a change, as editors show it. */
+const liveAuthorSchema = z.object({
+  kind: z.literal("agent"),
+  agentId: z.string().min(1),
+  name: z.string().min(1),
+});
+
+export type LiveAuthor = z.infer<typeof liveAuthorSchema>;
+
+/**
+ * A change of a live document attributed to its author, in the shape of Yjs v14 attributions: the
+ * Yjs items it inserted and deleted, so editors show exactly that change and no one else's text,
+ * and the text it removed, which editors no longer hold, anchored at the item it starts with. Sent
+ * while the change is applied, before its update.
+ */
+export const liveAttributionMessageSchema = z.object({
+  type: z.literal("attribution"),
+  author: liveAuthorSchema,
+  /** When the change was applied, in milliseconds since the epoch. */
+  at: z.number().int().nonnegative(),
+  inserted: z.array(liveIdRangeSchema).max(LIVE_ATTRIBUTION_MAX_RANGES),
+  deleted: z.array(liveIdRangeSchema).max(LIVE_ATTRIBUTION_MAX_RANGES),
+  removed: z
+    .array(
+      z.object({
+        // One more character than shown, so editors know to mark it cut.
+        text: z.string().max(LIVE_REMOVED_TEXT_MAX_CHARS + 1),
+        anchor: liveIdSchema,
+      })
+    )
+    .max(LIVE_ATTRIBUTION_MAX_RANGES),
+});
+
+export type LiveAttributionMessage = z.infer<
+  typeof liveAttributionMessageSchema
+>;

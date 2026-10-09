@@ -1,5 +1,12 @@
-import type { LiveAgent, LiveAgentActivity } from "@app/types/collab";
-import { liveAgentServerMessageSchema } from "@app/types/collab";
+import type {
+  LiveAgent,
+  LiveAgentActivity,
+  LiveAttributionMessage,
+} from "@app/types/collab";
+import {
+  liveAttributionMessageSchema,
+  liveAgentServerMessageSchema,
+} from "@app/types/collab";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 
@@ -25,6 +32,31 @@ export function onLiveAgentActivity(
       : null;
     if (message?.success) {
       listener({ agent: message.data.agent, activity: message.data.activity });
+    }
+  };
+  provider.on("stateless", onStateless);
+  return () => {
+    provider.off("stateless", onStateless);
+  };
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] live-attribution-listener
+ * `listener` MUST be called with every attribution the server sends on `provider`, in the order
+ * received, and never after the returned function is called. Any other stateless message MUST be
+ * ignored.
+ */
+export function onLiveAttribution(
+  provider: HocuspocusProvider,
+  listener: (attribution: LiveAttributionMessage) => void
+): () => void {
+  const onStateless = ({ payload }: { payload: string }) => {
+    const json = safeParseJSON(payload);
+    const message = json.isOk()
+      ? liveAttributionMessageSchema.safeParse(json.value)
+      : null;
+    if (message?.success) {
+      listener(message.data);
     }
   };
   provider.on("stateless", onStateless);
