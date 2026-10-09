@@ -101,25 +101,6 @@ export function toGlobalResponse(r: Response): globalThis.Response {
   });
 }
 
-// Fetch helper for providers that whitelist our egress IPs. Routes outbound requests through the
-// static-IP proxy when PROXY_* env vars are set (always the case in deployed environments), and
-// falls back to a direct fetch otherwise (local development).
-export function staticIpFetch(
-  input: RequestInfo,
-  init?: RequestInit
-): Promise<Response> {
-  const user = EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_NAME");
-  const pass = EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_PASSWORD");
-  const host = EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST");
-  const port = EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT");
-
-  const dispatcher =
-    user && pass && host && port
-      ? createProxyAgent(`http://${user}:${pass}@${host}:${port}`)
-      : http1Agent;
-  return undiciFetch(input, { ...init, dispatcher });
-}
-
 // Fetch helper for trusted, first‑party egress or intra‑VPC calls.
 // This is just the regular fetch without any proxy injection.
 export function trustedFetch(
