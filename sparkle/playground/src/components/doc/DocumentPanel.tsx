@@ -23,6 +23,7 @@ import {
   RefreshCw05,
   Spinner,
   Tooltip,
+  Users01,
 } from "@dust-tt/sparkle";
 import {
   useCallback,
@@ -362,8 +363,9 @@ function CoEditionBadge() {
   );
 }
 
-// Prototype: how long saving a change takes.
+// Prototype: how long saving a change takes, and a slow save.
 const SAVE_MS = 800;
+const SLOW_SAVE_MS = 3000;
 
 export function DocumentPanel({
   title,
@@ -480,13 +482,19 @@ export function DocumentPanel({
 
   // Text blocks of the document, for spotting what changed and where.
   const textBlocks = (doc = editorRef.current?.getView()?.state.doc) => {
-    const blocks: Array<{ from: number; to: number; text: string }> = [];
+    const blocks: Array<{
+      from: number;
+      to: number;
+      text: string;
+      type: string;
+    }> = [];
     doc?.descendants((node, pos) => {
       if (node.isTextblock) {
         blocks.push({
           from: pos + 1,
           to: pos + node.nodeSize - 1,
           text: node.textContent,
+          type: node.type.name,
         });
         return false;
       }
@@ -602,9 +610,9 @@ export function DocumentPanel({
       }
     } catch {
       // The document changed under the replay: show the final version.
-    }
-    if (!view.state.doc.eq(finalDoc)) {
-      show((tr) => tr.replaceWith(0, tr.doc.content.size, finalDoc.content));
+      if (!view.state.doc.eq(finalDoc)) {
+        show((tr) => tr.replaceWith(0, tr.doc.content.size, finalDoc.content));
+      }
     }
     if (isAgent) {
       setTypingAgent(null);
@@ -943,11 +951,14 @@ export function DocumentPanel({
   // A paragraph on screen (scrolled to if none is), so an edit is visible.
   const visibleParagraph = async (
     view: EditorView,
-    fits: (text: string) => boolean = () => true
+    fits: (text: string) => boolean = () => true,
+    // Which one: 0 for the first, 1 for the next…
+    nth = 0
   ) => {
     const area = scrollAreaRef.current?.getBoundingClientRect();
     const paragraphs = textBlocks().filter(
       (b) =>
+        b.type === "paragraph" &&
         b.text.length > 40 &&
         fits(view.state.doc.textBetween(b.from, b.to, "", "\n"))
     );
@@ -958,83 +969,132 @@ export function DocumentPanel({
       const { top } = view.coordsAtPos(b.to);
       return top > area.top + 60 && top < area.bottom - 80;
     });
-    const target = (onScreen.length > 0 ? onScreen : paragraphs)[0];
+    const pool = onScreen.length > nth ? onScreen : paragraphs;
+    const target = pool[nth] ?? pool[0];
     if (target && revealBlock(view, target.from, scrollAreaRef.current)) {
       await sleep(450);
     }
     return target ?? null;
   };
 
-  // Prototype: the agent rewrites a paragraph on screen (a sentence added),
+  // Prototype: the agent rewrites `target` on screen (a sentence added),
   // shown with the same replay as an agent edit from a comment.
-  const simulateAgentEdit = async () => {
+  const agentEditsParagraph = async (
+    view: EditorView,
+    target: { from: number; to: number }
+  ) => {
+    const oldSlice = view.state.doc.slice(target.from, target.to);
+    const phrase =
+      SIMULATED_AGENT_EDITS[
+        Math.floor(Math.random() * SIMULATED_AGENT_EDITS.length)
+      ];
+    view.dispatch(view.state.tr.insertText(phrase, target.to));
+    await replayEdit({
+      view,
+      by: { name: agentName },
+      block: { from: target.from, to: target.to + phrase.length },
+      oldSlice,
+    });
+  };
+
+  // Prototype: a human collaborator types a sentence at the end of the text
+  // block number `index`, so presence (caret, name tag, highlight) can be
+  // seen. The end is read again before each keystroke: edits elsewhere move
+  // it.
+  const collaboratorTypesIn = async (view: EditorView, index: number) => {
+    const people = mentionCandidates.inThisFile.filter(
+      (c) => c.kind === "person"
+    );
+    const pool = people.length > 0 ? people : WORKSPACE_PEOPLE;
+    const person = pool[Math.floor(Math.random() * pool.length)];
+    const endOf = () => textBlocks()[index]?.to ?? null;
+    const phrase =
+      SIMULATED_EDITS[Math.floor(Math.random() * SIMULATED_EDITS.length)];
+    const id = `person-${Date.now()}`;
+    const start = endOf();
+    if (start === null) {
+      return;
+    }
+    upsertPresence({
+      id,
+      name: person.name,
+      color: presenceColor(person.name, false),
+      pos: start,
+    });
+    await sleep(700);
+    let typed = 0;
+    for (const ch of phrase) {
+      const pos = endOf();
+      if (pos === null) {
+        break;
+      }
+      view.dispatch(view.state.tr.insertText(ch, pos));
+      typed += 1;
+      patchPresence(id, {
+        pos: pos + 1,
+        range: { from: pos + 1 - typed, to: pos + 1 },
+      });
+      await sleep(30 + Math.random() * 60);
+    }
+    await retirePresence(id, 1800);
+  };
+
+  const indexOfBlock = (block: { from: number }) =>
+    textBlocks().findIndex((b) => b.from === block.from);
+
+  /** Runs one simulation at a time. */
+  const simulate = async (run: (view: EditorView) => Promise<void>) => {
     const view = editorRef.current?.getView();
     if (!view || isSimulating) {
       return;
     }
     setIsSimulating(true);
     try {
-      const target = await visibleParagraph(view);
-      if (!target) {
-        return;
-      }
-      const oldSlice = view.state.doc.slice(target.from, target.to);
-      const phrase =
-        SIMULATED_AGENT_EDITS[
-          Math.floor(Math.random() * SIMULATED_AGENT_EDITS.length)
-        ];
-      view.dispatch(view.state.tr.insertText(phrase, target.to));
-      await replayEdit({
-        view,
-        by: { name: agentName },
-        block: { from: target.from, to: target.to + phrase.length },
-        oldSlice,
-      });
+      await run(view);
     } finally {
       setIsSimulating(false);
     }
   };
 
-  // Prototype: a human collaborator types a sentence at the end of a visible
-  // paragraph, so presence (caret, name tag, highlight) can be seen.
-  const simulateCollaborator = async () => {
-    const view = editorRef.current?.getView();
-    if (!view || isSimulating) {
-      return;
-    }
-    setIsSimulating(true);
-    try {
-      const people = mentionCandidates.inThisFile.filter(
-        (c) => c.kind === "person"
-      );
-      const pool = people.length > 0 ? people : WORKSPACE_PEOPLE;
-      const person = pool[Math.floor(Math.random() * pool.length)];
+  const simulateAgentEdit = () =>
+    simulate(async (view) => {
       const target = await visibleParagraph(view);
-      if (!target) {
+      if (target) {
+        await agentEditsParagraph(view, target);
+      }
+    });
+
+  const simulateCollaborator = () =>
+    simulate(async (view) => {
+      const target = await visibleParagraph(view);
+      if (target) {
+        await collaboratorTypesIn(view, indexOfBlock(target));
+      }
+    });
+
+  // Prototype: the agent and a collaborator write at the same time, in two
+  // paragraphs on screen. The collaborator's comes after the agent's, so the
+  // agent's replay positions stay valid.
+  const simulateAgentAndCollaborator = () =>
+    simulate(async (view) => {
+      const agentTarget = await visibleParagraph(view, undefined, 0);
+      const personTarget = await visibleParagraph(view, undefined, 1);
+      if (!agentTarget) {
         return;
       }
-      const phrase =
-        SIMULATED_EDITS[Math.floor(Math.random() * SIMULATED_EDITS.length)];
-      const id = `person-${Date.now()}`;
-      const start = target.to;
-      upsertPresence({
-        id,
-        name: person.name,
-        color: presenceColor(person.name, false),
-        pos: start,
-      });
-      await sleep(700);
-      let pos = start;
-      for (const ch of phrase) {
-        view.dispatch(view.state.tr.insertText(ch, pos));
-        pos += 1;
-        patchPresence(id, { pos, range: { from: start, to: pos } });
-        await sleep(30 + Math.random() * 60);
-      }
-      await retirePresence(id, 1800);
-    } finally {
-      setIsSimulating(false);
-    }
+      const personIndex = personTarget ? indexOfBlock(personTarget) : -1;
+      await Promise.all([
+        agentEditsParagraph(view, agentTarget),
+        personIndex > indexOfBlock(agentTarget)
+          ? collaboratorTypesIn(view, personIndex)
+          : Promise.resolve(),
+      ]);
+    });
+
+  // Prototype: a slow save, to see the save status load then settle.
+  const simulateSlowSave = () => {
+    setIsSaving(true);
+    setTimeout(() => setIsSaving(false), SLOW_SAVE_MS);
   };
 
   // The first @mention of a workspace agent in `text`, if any: "@dust …".
@@ -1308,6 +1368,12 @@ export function DocumentPanel({
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel label="Simulate" />
                     <DropdownMenuItem
+                      icon={Users01}
+                      label="The agent and a collaborator type at once"
+                      disabled={isSimulating}
+                      onClick={() => void simulateAgentAndCollaborator()}
+                    />
+                    <DropdownMenuItem
                       icon={Pencil01}
                       label="A collaborator edits the text"
                       disabled={isSimulating}
@@ -1324,6 +1390,12 @@ export function DocumentPanel({
                       label="The agent rewrites a paragraph"
                       disabled={isSimulating}
                       onClick={() => void simulateAgentEdit()}
+                    />
+                    <DropdownMenuItem
+                      icon={RefreshCw05}
+                      label="The document saves slowly"
+                      disabled={isSaving}
+                      onClick={simulateSlowSave}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
