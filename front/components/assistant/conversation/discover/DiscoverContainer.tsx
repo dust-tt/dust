@@ -24,7 +24,7 @@ const DISCOVER_TAB_LABELS: Record<DiscoverTab, MessageDescriptor> = {
   Catalog: msg({ message: "Catalog", context: "discover tab" }),
 };
 
-// Lets the Catalog stack its sticky search and filters below the sticky header.
+// Lets the Catalog stack its sticky search below the sticky header.
 interface DiscoverContainerStyle extends CSSProperties {
   "--discover-header-height": string;
 }

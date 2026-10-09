@@ -17,7 +17,6 @@ import {
 } from "@app/components/assistant/conversation/discover/discoveryTracking";
 import type { PendingSkill } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useDebounce } from "@app/hooks/useDebounce";
-import { useElementHeight } from "@app/hooks/useElementHeight";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -43,7 +42,6 @@ import {
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { CSSProperties } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
@@ -262,11 +260,6 @@ export function DiscoverCatalog({
   );
 }
 
-// Where the filters stick on desktop: below the sticky Discover header and search.
-interface CatalogLayoutStyle extends CSSProperties {
-  "--catalog-filters-top": string;
-}
-
 interface CatalogLayoutProps {
   filters: CatalogFilters;
   tags: { sId: string; name: string }[];
@@ -287,18 +280,11 @@ function CatalogLayout({
   children,
 }: CatalogLayoutProps) {
   const { t } = useLingui();
-  const { height: searchHeight, ref: searchRef } = useElementHeight();
-  const style: CatalogLayoutStyle = {
-    "--catalog-filters-top": `calc(var(--discover-header-height) + ${searchHeight}px)`,
-  };
   return (
-    <div className="flex flex-col" style={style}>
+    <div className="flex flex-col">
       {/* On desktop, the search sticks below the Discover header. The negative margin stretches
           its background over the gap above it so scrolled results never show through. */}
-      <div
-        ref={searchRef}
-        className="bg-(--color-panel-background) pb-8 md:sticky md:top-(--discover-header-height) md:z-20 md:-mt-8 md:pt-8"
-      >
+      <div className="bg-(--color-panel-background) pb-8 md:sticky md:top-(--discover-header-height) md:z-20 md:-mt-8 md:pt-8">
         <SearchInput
           name="discover-search"
           placeholder={t`Search for agents or skills`}
@@ -336,12 +322,7 @@ function CatalogFiltersNav({
   return (
     <nav
       aria-label={t({ message: "Filter", context: "noun, navigation label" })}
-      className={cn(
-        "flex flex-col gap-6 self-start",
-        // On desktop, filters stay in view and scroll on their own when they overflow. Lists must
-        // not shrink to fit, or they clip their items instead of letting the nav scroll.
-        "md:sticky md:top-(--catalog-filters-top) md:max-h-[calc(var(--panel-height)-var(--catalog-filters-top))] md:overflow-y-auto md:pb-8 md:[&>*]:shrink-0"
-      )}
+      className="flex flex-col gap-6 self-start"
     >
       <NavigationList>
         {CATALOG_VIEWS.map((v) => (
