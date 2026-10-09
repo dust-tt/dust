@@ -67,6 +67,9 @@ export function FilePreviewPanel({
   const clientType = useClientType();
   const [documentControls, setDocumentControls] =
     useState<HTMLDivElement | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<HTMLSpanElement | null>(
+    null
+  );
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
 
@@ -253,6 +256,7 @@ export function FilePreviewPanel({
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
+          <span ref={setDocumentStatus} className="flex empty:hidden" />
         </div>
       </ConversationSidePanelHeader>
       <div
@@ -273,6 +277,7 @@ export function FilePreviewPanel({
           isFullWidth
           markdown={markdown}
           markdownHeaderControlsContainer={documentControls}
+          markdownStatusContainer={documentStatus}
           owner={owner}
           preview={preview}
         />

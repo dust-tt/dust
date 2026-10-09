@@ -61,6 +61,9 @@ export function FilePreviewDialog({
   const [documentControls, setDocumentControls] =
     useState<HTMLDivElement | null>(null);
   const [documentArea, setDocumentArea] = useState<HTMLDivElement | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<HTMLSpanElement | null>(
+    null
+  );
 
   const handleDownload = async () => {
     if (!entry) {
@@ -164,6 +167,10 @@ export function FilePreviewDialog({
                 <span className="min-w-16 truncate leading-5 text-foreground">
                   {entry?.fileName ?? t`Preview data`}
                 </span>
+                <span
+                  ref={setDocumentStatus}
+                  className="flex font-normal empty:hidden"
+                />
               </div>
             </DialogTitle>
             {/* Level with the title, where the built-in close button sat. */}
@@ -217,6 +224,7 @@ export function FilePreviewDialog({
             fileUrl={fileUrl}
             markdown={markdown}
             markdownHeaderControlsContainer={documentControls}
+            markdownStatusContainer={documentStatus}
             onMarkdownViewModeChange={
               markdown.canEdit ? markdown.setViewMode : undefined
             }

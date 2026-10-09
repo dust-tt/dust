@@ -18,7 +18,7 @@ interface LiveDocumentProps extends DocumentProps {
 /** A Document in a live session: the file read-only until the shared document has synced. */
 export default function LiveDocument(props: LiveDocumentProps) {
   const { t } = useLingui();
-  const { connection, status } = useLiveSession(props.live);
+  const { connection, status, syncing } = useLiveSession(props.live);
   const agent = useLiveAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
   const participants = useLiveParticipants(
@@ -48,6 +48,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
       {...props}
       liveView={{
         status,
+        syncing,
         agent,
         participants,
         binding: {
