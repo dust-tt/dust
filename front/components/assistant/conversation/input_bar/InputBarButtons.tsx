@@ -61,8 +61,8 @@ interface InputBarButtonsProps {
   // current member (unpublished/deleted), so @dust is shown instead. Surfaces
   // a notice on the agent pill.
   isDefaultAgentUnavailable: boolean;
-  // When true, `selectedAgent` is not resolved yet and the @dust pill stands in for it.
-  isSelectedAgentLoading: boolean;
+  // When true, `selectedAgent` is still being resolved and the @dust pill stands in for it.
+  isSelectedAgentPending: boolean;
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
@@ -164,7 +164,7 @@ function InputBarAgentButton({
   disableAgentSelector,
   handleSingleAgentSelect,
   isDefaultAgentUnavailable,
-  isSelectedAgentLoading,
+  isSelectedAgentPending,
   onAgentPickerOpenChange,
   onAgentRemove,
   owner,
@@ -179,7 +179,7 @@ function InputBarAgentButton({
   | "disableAgentSelector"
   | "handleSingleAgentSelect"
   | "isDefaultAgentUnavailable"
-  | "isSelectedAgentLoading"
+  | "isSelectedAgentPending"
   | "onAgentPickerOpenChange"
   | "onAgentRemove"
   | "owner"
@@ -191,7 +191,7 @@ function InputBarAgentButton({
   const isWidthConstrained = useIsWidthConstrained();
   const displayedAgent =
     selectedAgent ??
-    (isSelectedAgentLoading ? LOADING_AGENT_PLACEHOLDER : null);
+    (isSelectedAgentPending ? LOADING_AGENT_PLACEHOLDER : null);
 
   return (
     <AgentPicker
@@ -325,7 +325,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   handleSingleAgentSelect,
   hideCapabilities,
   isDefaultAgentUnavailable,
-  isSelectedAgentLoading,
+  isSelectedAgentPending,
   lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
@@ -353,7 +353,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       disableAgentSelector={disableAgentSelector}
       handleSingleAgentSelect={handleSingleAgentSelect}
       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-      isSelectedAgentLoading={isSelectedAgentLoading}
+      isSelectedAgentPending={isSelectedAgentPending}
       onAgentPickerOpenChange={onAgentPickerOpenChange}
       onAgentRemove={onAgentRemove}
       owner={owner}

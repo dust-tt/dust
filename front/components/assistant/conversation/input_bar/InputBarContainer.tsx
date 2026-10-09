@@ -1501,8 +1501,9 @@ const InputBarContainer = ({
     disableAutoFocus,
   ]);
 
-  useHandleMentions({
+  const { isSelectedAgentPending } = useHandleMentions({
     allAgents,
+    isAgentsLoading,
     conversation,
     disableAutoFocus,
     editorService,
@@ -1594,13 +1595,11 @@ const InputBarContainer = ({
     actions.includes("voice") &&
     !isCompact;
 
-  // The selected agent is resolved against the agents list and the personal default.
-  const isSelectedAgentLoading = isAgentsLoading || !!isDefaultAgentLoading;
-
   const isDefaultAgentUnavailable =
     !conversation &&
     !isAgentBuilder &&
-    !isSelectedAgentLoading &&
+    !isDefaultAgentLoading &&
+    !isAgentsLoading &&
     !!defaultAgentId &&
     defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
     !agentsById.has(defaultAgentId);
@@ -1831,7 +1830,7 @@ const InputBarContainer = ({
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-                      isSelectedAgentLoading={isSelectedAgentLoading}
+                      isSelectedAgentPending={isSelectedAgentPending}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={handleToolSelect}
