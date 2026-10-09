@@ -1,4 +1,4 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -8,15 +8,20 @@ import {
   getWorkspaceDefaultSelfImprovementCapPerSkillMicroUsd,
 } from "@app/lib/reinforcement/consumption";
 import type { ReinforcementBillingUnit } from "@app/lib/reinforcement/enforcement";
-import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  getErrorFromResponse,
+  useFetcher,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   GetReinforcementDailySpendResponseBody,
   GetSkillsReinforcementSettingsResponseBody,
   GetSkillsSpendResponseBody,
 } from "@app/types/api/skills";
 import { isCreditPricedPlan } from "@app/types/plan";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -43,7 +48,8 @@ interface UseSelfImprovingToggleProps {
 
 export function useSelfImprovingToggle({ owner }: UseSelfImprovingToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isEnabled, setIsEnabled] = useState(
     owner.metadata?.allowReinforcement === true
   );
@@ -62,15 +68,18 @@ export function useSelfImprovingToggle({ owner }: UseSelfImprovingToggleProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update agent reinforcement setting");
+        sendApiErrorNotification({
+          title: t`Failed to update agent reinforcement setting`,
+          error: await getErrorFromResponse(res),
+        });
+        return false;
       }
       setIsEnabled(!isEnabled);
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update agent reinforcement setting",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update agent reinforcement setting`,
+        error,
       });
       return false;
     } finally {
@@ -93,7 +102,8 @@ export function useSelfImprovingBatchModeToggle({
   owner,
 }: UseSelfImprovingBatchModeToggleProps) {
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isEnabled, setIsEnabled] = useState(
     owner.metadata?.allowReinforcementBatchMode !== false
   );
@@ -112,15 +122,18 @@ export function useSelfImprovingBatchModeToggle({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update reinforcement batch mode setting");
+        sendApiErrorNotification({
+          title: t`Failed to update reinforcement batch mode setting`,
+          error: await getErrorFromResponse(res),
+        });
+        return false;
       }
       setIsEnabled(!isEnabled);
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update reinforcement batch mode setting",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update reinforcement batch mode setting`,
+        error,
       });
       return false;
     } finally {
@@ -143,7 +156,8 @@ export function useSelfImprovingCapSetting({
   owner,
 }: UseSelfImprovingCapSettingProps) {
   const unit = useReinforcementBillingUnit({ owner });
-  const sendNotification = useSendNotification();
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
 
   // Cap in the display unit: AWU credits, or dollars for micro-USD.
@@ -168,14 +182,17 @@ export function useSelfImprovingCapSetting({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update reinforcement spending cap");
+        sendApiErrorNotification({
+          title: t`Failed to update reinforcement spending cap`,
+          error: await getErrorFromResponse(res),
+        });
+        return false;
       }
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update reinforcement spending cap",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update reinforcement spending cap`,
+        error,
       });
       return false;
     } finally {
@@ -274,7 +291,8 @@ export function useSelfImprovementCapPerSkillSetting({
   owner,
 }: UseSelfImprovementCapPerSkillSettingProps) {
   const unit = useReinforcementBillingUnit({ owner });
-  const sendNotification = useSendNotification();
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isSaving, setIsSaving] = useState(false);
 
   // Cap in the display unit: AWU credits, or dollars for micro-USD.
@@ -304,14 +322,17 @@ export function useSelfImprovementCapPerSkillSetting({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update self-improvement cost cap per skill");
+        sendApiErrorNotification({
+          title: t`Failed to update self-improvement cost cap per skill`,
+          error: await getErrorFromResponse(res),
+        });
+        return false;
       }
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update self-improvement cost cap per skill",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update self-improvement cost cap per skill`,
+        error,
       });
       return false;
     } finally {

@@ -28,6 +28,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SharingGrantsResponse } from "@app/types/sharing_grants";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { Fetcher, SWRConfiguration } from "swr";
 import { useSWRConfig } from "swr";
 
@@ -319,6 +320,7 @@ export async function writeFileContentByPath({
 
 /** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
 export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -336,7 +338,7 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to delete file",
+          title: t`Failed to delete file`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -344,16 +346,15 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: "File deleted",
+        title: t`File deleted`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to delete file",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to delete file`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -361,6 +362,7 @@ export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -385,7 +387,7 @@ export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to rename",
+          title: t`Failed to rename`,
           error: errorData,
         });
         return new Err(new Error(errorData.message));
@@ -393,16 +395,15 @@ export function useRenameFileByPath({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: `Renamed to "${newFileName}"`,
+        title: t`Renamed to "${newFileName}"`,
       });
 
       return new Ok(undefined);
     } catch (e) {
       const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to rename",
-        description: errorMessage,
+      sendApiErrorNotification({
+        title: t`Failed to rename`,
+        error: e,
       });
       return new Err(new Error(errorMessage));
     }
@@ -414,6 +415,7 @@ export function useWriteFileContentByPath({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
@@ -439,7 +441,7 @@ export function useWriteFileContentByPath({
     });
     if (result.isErr()) {
       sendApiErrorNotification({
-        title: "Failed to save file",
+        title: t`Failed to save file`,
         error: result.error,
       });
       return result;
@@ -454,7 +456,7 @@ export function useWriteFileContentByPath({
     if (showSuccessNotification) {
       sendNotification({
         type: "success",
-        title: "File saved",
+        title: t`File saved`,
       });
     }
 
@@ -565,6 +567,7 @@ export function useUpsertFileAsDatasourceEntry(
       disabled: true,
     });
 
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
@@ -581,7 +584,7 @@ export function useUpsertFileAsDatasourceEntry(
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Failed to upload the file.",
+        title: t`Failed to upload the file`,
         error: errorData,
       });
       return null;
@@ -591,8 +594,8 @@ export function useUpsertFileAsDatasourceEntry(
 
       sendNotification({
         type: "success",
-        title: "File processing",
-        description: "Your file is processing and will appear shortly.",
+        title: t`File processing`,
+        description: t`Your file is processing and will appear shortly.`,
       });
 
       const response: UpsertFileToDataSourceResponseBody = await res.json();
@@ -691,6 +694,7 @@ export function useShareInteractiveContentFile({
   owner: LightWorkspaceType;
   cacheKey?: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
 
@@ -725,7 +729,7 @@ export function useShareInteractiveContentFile({
           : undefined;
 
       sendApiErrorNotification({
-        title: "Failed to update frame sharing",
+        title: t`Failed to update frame sharing`,
         error: errorData,
       });
 
@@ -760,6 +764,7 @@ export function useSharingGrants({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const grantsFetcher: Fetcher<SharingGrantsResponse> = fetcher;
@@ -785,7 +790,7 @@ export function useSharingGrants({
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Failed to add access.",
+        title: t`Failed to add access`,
         error: errorData,
       });
       return false;
@@ -805,7 +810,7 @@ export function useSharingGrants({
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Failed to revoke access.",
+        title: t`Failed to revoke access`,
         error: errorData,
       });
       return false;

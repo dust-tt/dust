@@ -23,6 +23,7 @@ import type {
   WebhookSourceViewType,
 } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -130,6 +131,7 @@ export function useCreateWebhookSource({
     owner,
   });
 
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const createWebhookSource = async (
@@ -147,7 +149,7 @@ export function useCreateWebhookSource({
       const errorData = await getErrorFromResponse(response);
 
       sendApiErrorNotification({
-        title: `Failed to create webhook source`,
+        title: t`Failed to create webhook source`,
         error: errorData,
       });
       return null;
@@ -155,7 +157,7 @@ export function useCreateWebhookSource({
 
     sendNotification({
       type: "success",
-      title: "Successfully created webhook source",
+      title: t`Successfully created webhook source`,
     });
 
     void mutateWebhookSourcesWithViews();
@@ -178,6 +180,7 @@ export function useDeleteWebhookSource({
     owner,
   });
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const deleteWebhookSource = useCallback(
@@ -208,7 +211,7 @@ export function useDeleteWebhookSource({
         if (result.success) {
           sendNotification({
             type: "success",
-            title: "Successfully deleted webhook source",
+            title: t`Successfully deleted webhook source`,
           });
 
           void mutateWebhookSourcesWithViews();
@@ -219,14 +222,14 @@ export function useDeleteWebhookSource({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to delete webhook source",
+          title: t`Failed to delete webhook source`,
         });
         return false;
       } finally {
         setIsDeleting(false);
       }
     },
-    [owner.sId, isDeleting, mutateWebhookSourcesWithViews, sendNotification]
+    [owner.sId, isDeleting, mutateWebhookSourcesWithViews, sendNotification, t]
   );
 
   return {

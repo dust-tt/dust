@@ -260,8 +260,7 @@
     },
     {
       "files": [
-        "front/components/pages/onboarding/VerifyPage.tsx",
-        "front/lib/swr/notifications.ts"
+        "front/components/pages/onboarding/VerifyPage.tsx"
       ],
       "rules": {
         "dust/noRawErrorMessageInUi": "off"

@@ -42,8 +42,9 @@ import type {
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -524,6 +525,7 @@ export function useDeleteAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration?: LightAgentConfigurationType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -543,6 +545,7 @@ export function useDeleteAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
+    const agentName = agentConfiguration.name;
     const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {
@@ -556,14 +559,14 @@ export function useDeleteAgentConfiguration({
 
       sendNotification({
         type: "success",
-        title: `Successfully deleted ${agentConfiguration.name}`,
-        description: `${agentConfiguration.name} was successfully archived.`,
+        title: t`Successfully deleted ${agentName}`,
+        description: t`${agentName} was successfully archived.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Error archiving ${agentConfiguration.name}`,
+        title: t`Error archiving ${agentName}`,
         error: errorData,
       });
     }
@@ -580,6 +583,7 @@ export function useBatchDeleteAgentConfigurations({
   owner: LightWorkspaceType;
   agentConfigurationIds: string[];
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -593,6 +597,7 @@ export function useBatchDeleteAgentConfigurations({
     if (agentConfigurationIds.length === 0) {
       return;
     }
+    const agentCount = agentConfigurationIds.length;
     const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
       {
@@ -611,14 +616,17 @@ export function useBatchDeleteAgentConfigurations({
 
       sendNotification({
         type: "success",
-        title: `Successfully archived agents`,
-        description: `${agentConfigurationIds.length} agents were successfully archived.`,
+        title: t`Successfully archived agents`,
+        description: t`${plural(agentCount, {
+          one: "# agent was successfully archived.",
+          other: "# agents were successfully archived.",
+        })}`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Error archiving agents`,
+        title: t`Error archiving agents`,
         error: errorData,
       });
     }
@@ -635,6 +643,7 @@ export function useUpdateUserFavorite({
   owner: LightWorkspaceType;
   agentConfigurationId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateAgentConfiguration: mutateCurrentAgentConfiguration } =
@@ -672,9 +681,9 @@ export function useUpdateUserFavorite({
 
         if (res.ok) {
           sendNotification({
-            title: `Agent ${
-              userFavorite ? "added to favorites" : "removed from favorites"
-            }`,
+            title: userFavorite
+              ? t`Agent added to favorites`
+              : t`Agent removed from favorites`,
             type: "success",
           });
           await mutateCurrentAgentConfiguration();
@@ -683,17 +692,17 @@ export function useUpdateUserFavorite({
         } else {
           const data = await res.json();
           sendApiErrorNotification({
-            title: `Error ${userFavorite ? "adding" : "removing"} Agent`,
+            title: userFavorite
+              ? t`Error adding agent to favorites`
+              : t`Error removing agent from favorites`,
             error: data,
           });
           return false;
         }
       } catch (error) {
-        sendNotification({
-          title: `Error updating agent list.`,
-          description:
-            normalizeError(error).message || "An unknown error occurred",
-          type: "error",
+        sendApiErrorNotification({
+          title: t`Error updating agent list`,
+          error,
         });
         return false;
       } finally {
@@ -707,6 +716,7 @@ export function useUpdateUserFavorite({
       owner.sId,
       sendApiErrorNotification,
       sendNotification,
+      t,
     ]
   );
   return { updateUserFavorite: doUpdate, isUpdatingFavorite };
@@ -719,6 +729,7 @@ export function useRestoreAgentConfiguration({
   owner: LightWorkspaceType;
   agentConfiguration?: LightAgentConfigurationType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
@@ -738,6 +749,7 @@ export function useRestoreAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
+    const agentName = agentConfiguration.name;
     const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
       {
@@ -751,14 +763,14 @@ export function useRestoreAgentConfiguration({
 
       sendNotification({
         type: "success",
-        title: `Successfully restored ${agentConfiguration.name}`,
-        description: `${agentConfiguration.name} was successfully restored.`,
+        title: t`Successfully restored ${agentName}`,
+        description: t`${agentName} was successfully restored.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Error restoring ${agentConfiguration.name}`,
+        title: t`Error restoring ${agentName}`,
         error: errorData,
       });
     }
@@ -803,6 +815,7 @@ export function useBatchUpdateAgentModel({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -833,7 +846,7 @@ export function useBatchUpdateAgentModel({
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error updating model",
+          title: t`Error updating model`,
           error: errorData,
         });
         return false;
@@ -845,26 +858,36 @@ export function useBatchUpdateAgentModel({
       if (!parsed.success) {
         sendNotification({
           type: "error",
-          title: "Error updating model",
-          description: "An unknown error occurred.",
+          title: t`Error updating model`,
+          description: t`An unknown error occurred.`,
         });
         return true;
       }
 
       const { updatedAgentIds, skippedAgentIds } = parsed.data;
+      const updatedCount = updatedAgentIds.length;
+      const skippedCount = skippedAgentIds.length;
 
       sendNotification({
-        type: skippedAgentIds.length > 0 ? "info" : "success",
-        title: "Model updated",
+        type: skippedCount > 0 ? "info" : "success",
+        title: t`Model updated`,
         description:
-          skippedAgentIds.length > 0
-            ? `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}, ` +
-              `${skippedAgentIds.length} could not be updated.`
-            : `Model updated on ${updatedAgentIds.length} agent${pluralize(updatedAgentIds.length)}.`,
+          skippedCount > 0
+            ? t`${plural(updatedCount, {
+                one: "Model updated on # agent,",
+                other: "Model updated on # agents,",
+              })} ${plural(skippedCount, {
+                one: "# could not be updated.",
+                other: "# could not be updated.",
+              })}`
+            : t`${plural(updatedCount, {
+                one: "Model updated on # agent.",
+                other: "Model updated on # agents.",
+              })}`,
       });
       return true;
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return batchUpdateAgentModel;
@@ -902,6 +925,7 @@ export function useUpdateInactiveAgentArchival({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -922,7 +946,7 @@ export function useUpdateInactiveAgentArchival({
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error updating automatic archival",
+          title: t`Error updating automatic archival`,
           error: errorData,
         });
         return false;
@@ -931,15 +955,18 @@ export function useUpdateInactiveAgentArchival({
       sendNotification({
         type: "success",
         title: thresholdDays
-          ? "Automatic archival enabled"
-          : "Automatic archival disabled",
+          ? t`Automatic archival enabled`
+          : t`Automatic archival disabled`,
         description: thresholdDays
-          ? `Agents unmentioned for ${thresholdDays} days will be archived.`
-          : "No agent will be archived automatically.",
+          ? t`${plural(thresholdDays, {
+              one: "Agents unmentioned for # day will be archived.",
+              other: "Agents unmentioned for # days will be archived.",
+            })}`
+          : t`No agent will be archived automatically.`,
       });
       return true;
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return updateInactiveAgentArchival;
@@ -950,6 +977,7 @@ export function usePreviewInactiveAgents({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -970,7 +998,7 @@ export function usePreviewInactiveAgents({
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error previewing inactive agents",
+          title: t`Error previewing inactive agents`,
           error: errorData,
         });
         return null;
@@ -982,15 +1010,15 @@ export function usePreviewInactiveAgents({
       if (!parsed.success) {
         sendNotification({
           type: "error",
-          title: "Error previewing inactive agents",
-          description: "An unknown error occurred.",
+          title: t`Error previewing inactive agents`,
+          description: t`An unknown error occurred.`,
         });
         return null;
       }
 
       return parsed.data.preview;
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return previewInactiveAgents;
@@ -1001,6 +1029,7 @@ export function useArchiveInactiveAgents({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -1021,7 +1050,7 @@ export function useArchiveInactiveAgents({
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error archiving inactive agents",
+          title: t`Error archiving inactive agents`,
           error: errorData,
         });
         return null;
@@ -1033,8 +1062,8 @@ export function useArchiveInactiveAgents({
       if (!parsed.success) {
         sendNotification({
           type: "error",
-          title: "Error archiving inactive agents",
-          description: "An unknown error occurred.",
+          title: t`Error archiving inactive agents`,
+          description: t`An unknown error occurred.`,
         });
         return null;
       }
@@ -1042,13 +1071,16 @@ export function useArchiveInactiveAgents({
       const { archivedCount } = parsed.data.archival;
       sendNotification({
         type: "success",
-        title: "Inactive agents archived",
-        description: `Archived ${archivedCount} agent${pluralize(archivedCount)}.`,
+        title: t`Inactive agents archived`,
+        description: t`${plural(archivedCount, {
+          one: "Archived # agent.",
+          other: "Archived # agents.",
+        })}`,
       });
 
       return { archivedCount };
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return archiveInactiveAgents;

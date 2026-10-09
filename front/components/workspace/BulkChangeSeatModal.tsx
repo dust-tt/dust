@@ -56,7 +56,6 @@ interface BulkChangeSeatModalProps {
   ) => Promise<BulkSeatChangePreviewBody | null>;
   onValidate: (args: {
     seatType: PaidSeatType;
-    seatName: string;
     hasDeferredChanges: boolean;
   }) => Promise<boolean>;
   // When set, the seat is fixed by the caller: the pick step is skipped and the
@@ -111,7 +110,6 @@ interface BulkChangeSeatFormProps {
   ) => Promise<BulkSeatChangePreviewBody | null>;
   onValidate: (args: {
     seatType: PaidSeatType;
-    seatName: string;
     hasDeferredChanges: boolean;
   }) => Promise<boolean>;
   presetSeatType?: PaidSeatType;
@@ -584,7 +582,6 @@ function BulkChangeSeatForm({
     try {
       const ok = await onValidate({
         seatType: selectedSeat,
-        seatName: stripYearlySuffix(preview.targetSeatName),
         hasDeferredChanges: preview.moves.some((m) => m.kind === "deferred"),
       });
       if (ok) {

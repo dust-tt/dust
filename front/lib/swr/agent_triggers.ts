@@ -32,11 +32,12 @@ import type {
   TriggerExecutionMode,
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -119,6 +120,7 @@ export function useCreateTrigger({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTriggers } = useAgentTriggers({
@@ -142,17 +144,18 @@ export function useCreateTrigger({
         );
 
         if (response.ok) {
+          const triggerName = triggerData.name;
           sendNotification({
             type: "success",
-            title: "Trigger created",
-            description: `The trigger "${triggerData.name}" has been created.`,
+            title: t`Trigger created`,
+            description: t`The trigger "${triggerName}" has been created.`,
           });
           void mutateTriggers();
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to create trigger",
+            title: t`Failed to create trigger`,
             error: errorData,
           });
           return false;
@@ -160,8 +163,8 @@ export function useCreateTrigger({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to create trigger",
-          description: "An unexpected error occurred. Please try again.",
+          title: t`Failed to create trigger`,
+          description: t`An unexpected error occurred. Please try again.`,
         });
         return false;
       }
@@ -172,6 +175,7 @@ export function useCreateTrigger({
       sendNotification,
       mutateTriggers,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -185,6 +189,7 @@ export function useUpdateTrigger({
   workspaceId: string;
   agentConfigurationId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTriggers } = useAgentTriggers({
@@ -208,17 +213,18 @@ export function useUpdateTrigger({
         );
 
         if (response.ok) {
+          const triggerName = triggerData.name;
           sendNotification({
             type: "success",
-            title: "Trigger updated",
-            description: `The trigger "${triggerData.name}" has been updated.`,
+            title: t`Trigger updated`,
+            description: t`The trigger "${triggerName}" has been updated.`,
           });
           void mutateTriggers();
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to update trigger",
+            title: t`Failed to update trigger`,
             error: errorData,
           });
           return false;
@@ -226,8 +232,8 @@ export function useUpdateTrigger({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update trigger",
-          description: "An unexpected error occurred. Please try again.",
+          title: t`Failed to update trigger`,
+          description: t`An unexpected error occurred. Please try again.`,
         });
         return false;
       }
@@ -238,6 +244,7 @@ export function useUpdateTrigger({
       sendNotification,
       mutateTriggers,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -249,6 +256,7 @@ export function useUpdateTriggerStatus({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -276,17 +284,17 @@ export function useUpdateTriggerStatus({
           sendNotification({
             type: "success",
             title:
-              status === "enabled" ? "Trigger enabled" : "Trigger disabled",
+              status === "enabled" ? t`Trigger enabled` : t`Trigger disabled`,
             description:
               status === "enabled"
-                ? "The trigger is now running."
-                : "The trigger is no longer running.",
+                ? t`The trigger is now running.`
+                : t`The trigger is no longer running.`,
           });
           return true;
         } else {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Failed to update trigger",
+            title: t`Failed to update trigger`,
             error: errorData,
           });
           return false;
@@ -294,13 +302,13 @@ export function useUpdateTriggerStatus({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update trigger",
-          description: "An unexpected error occurred. Please try again.",
+          title: t`Failed to update trigger`,
+          description: t`An unexpected error occurred. Please try again.`,
         });
         return false;
       }
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return updateTriggerStatus;
@@ -311,6 +319,7 @@ export function useUpdateTriggerExecutionMode({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -338,7 +347,7 @@ export function useUpdateTriggerExecutionMode({
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to update the trigger pool",
+          title: t`Failed to update the trigger pool`,
           error: errorData,
         });
         return false;
@@ -346,15 +355,15 @@ export function useUpdateTriggerExecutionMode({
 
       sendNotification({
         type: "success",
-        title: "Trigger pool updated",
+        title: t`Trigger pool updated`,
         description:
           executionMode === "workspace_pool"
-            ? "This trigger now runs on the workspace's credits."
-            : "This trigger now runs on its editor's credits.",
+            ? t`This trigger now runs on the workspace's credits.`
+            : t`This trigger now runs on its editor's credits.`,
       });
       return true;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return updateTriggerExecutionMode;
@@ -513,24 +522,12 @@ export function useTriggerEstimation({
   };
 }
 
-function executionModeOutcomeSentence(
-  executionMode: TriggerExecutionMode
-): string {
-  switch (executionMode) {
-    case "workspace_pool":
-      return "now run on the workspace's credits";
-    case "user_pool":
-      return "now run on their editor's credits";
-    default:
-      return assertNever(executionMode);
-  }
-}
-
 export function useBulkUpdateTriggerExecutionMode({
   workspaceId,
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -553,28 +550,52 @@ export function useBulkUpdateTriggerExecutionMode({
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Failed to update the trigger pool",
+          title: t`Failed to update the trigger pool`,
           error: errorData,
         });
         return null;
       }
 
       const outcome: BulkTriggerUpdateOutcome = await response.json();
-      const parts = [
-        `${outcome.updatedCount} automation${pluralize(outcome.updatedCount)} ${executionModeOutcomeSentence(executionMode)}.`,
-      ];
-      if (outcome.skippedCount > 0) {
-        parts.push(`${outcome.skippedCount} could not be changed.`);
+      const { updatedCount, skippedCount } = outcome;
+      const parts: string[] = [];
+      switch (executionMode) {
+        case "workspace_pool":
+          parts.push(
+            t`${plural(updatedCount, {
+              one: "# automation now runs on the workspace's credits.",
+              other: "# automations now run on the workspace's credits.",
+            })}`
+          );
+          break;
+        case "user_pool":
+          parts.push(
+            t`${plural(updatedCount, {
+              one: "# automation now runs on its editor's credits.",
+              other: "# automations now run on their editor's credits.",
+            })}`
+          );
+          break;
+        default:
+          assertNeverAndIgnore(executionMode);
+      }
+      if (skippedCount > 0) {
+        parts.push(
+          t`${plural(skippedCount, {
+            one: "# could not be changed.",
+            other: "# could not be changed.",
+          })}`
+        );
       }
 
       sendNotification({
         type: outcome.updatedCount > 0 ? "success" : "info",
-        title: "Trigger pool updated",
+        title: t`Trigger pool updated`,
         description: parts.join(" "),
       });
       return outcome;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return doBulkUpdateTriggerExecutionMode;

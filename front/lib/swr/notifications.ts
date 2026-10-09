@@ -58,7 +58,7 @@ export function useConversationNotificationPreferences({
           },
           "Failed to load notification preferences from Novu (session error)."
         );
-        throw new Error(preferences.error.message);
+        throw preferences.error;
       }
 
       const preferenceList = preferences.data ?? [];
@@ -108,7 +108,7 @@ export function useConversationNotificationPreferences({
         channels: preference.channels,
       });
       if (result.error) {
-        throw new Error(result.error.message);
+        throw result.error;
       }
       await mutate(preference, { revalidate: false });
     },

@@ -14,6 +14,7 @@ import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_util
 import type { LightWorkspaceType } from "@app/types/user";
 // oxlint-disable-next-line dust/enforceClientTypesInPublicApi -- existing usage
 import type { PublicFrameResponseBodyType } from "@dust-tt/client";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -102,8 +103,8 @@ export function useBatchEditFrameText({
 }): (
   edits: FrameTextEditParams[]
 ) => Promise<{ success: boolean; error?: string }> {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
-  const sendNotification = useSendNotification();
 
   return useCallback(
     async (edits) => {
@@ -125,7 +126,7 @@ export function useBatchEditFrameText({
         if (!response.ok) {
           const errorData = await getErrorFromResponse(response);
           sendApiErrorNotification({
-            title: "Couldn't save edits",
+            title: t`Couldn't save edits`,
             error: errorData,
           });
           return { success: false, error: errorData.message };
@@ -133,25 +134,17 @@ export function useBatchEditFrameText({
 
         return { success: true };
       } catch (error) {
-        const message = normalizeAsInternalDustError(error).message;
-        sendNotification({
-          type: "error",
-          title: "Couldn't save edits",
-          description: message,
+        sendApiErrorNotification({
+          title: t`Couldn't save edits`,
+          error,
         });
         return {
           success: false,
-          error: message,
+          error: normalizeAsInternalDustError(error).message,
         };
       }
     },
-    [
-      conversationId,
-      fileId,
-      owner.sId,
-      sendNotification,
-      sendApiErrorNotification,
-    ]
+    [conversationId, fileId, owner.sId, sendApiErrorNotification, t]
   );
 }
 
@@ -192,6 +185,7 @@ export function usePublicFrame({ shareToken }: { shareToken: string | null }) {
 }
 
 export function useExportFrameAsPdf({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -216,7 +210,7 @@ export function useExportFrameAsPdf({ owner }: { owner: LightWorkspaceType }) {
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "PDF Export Failed",
+        title: t`PDF export failed`,
         error: errorData,
       });
       return false;
@@ -232,8 +226,8 @@ export function useExportFrameAsPdf({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: "PDF exported",
-      description: "Your PDF has been downloaded.",
+      title: t`PDF exported`,
+      description: t`Your PDF has been downloaded.`,
     });
     return true;
   };

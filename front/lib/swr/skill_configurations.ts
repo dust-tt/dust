@@ -45,8 +45,10 @@ import type {
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -373,6 +375,7 @@ export function useUpdateSkillsAvailability({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -391,14 +394,18 @@ export function useUpdateSkillsAvailability({
 
       void invalidateSkills();
 
+      const skillCount = skillIds.length;
       sendNotification({
         type: "success",
-        title: "Skills updated",
-        description: `Successfully updated ${skillIds.length} skill${pluralize(skillIds.length)}.`,
+        title: t`Skills updated`,
+        description: t`${plural(skillCount, {
+          one: "Successfully updated # skill.",
+          other: "Successfully updated # skills.",
+        })}`,
       });
       return true;
     } catch (err) {
-      sendApiErrorNotification({ title: "Error updating skills", error: err });
+      sendApiErrorNotification({ title: t`Error updating skills`, error: err });
       return false;
     }
   };
@@ -448,6 +455,7 @@ export function useArchiveSkill({
   owner: LightWorkspaceType;
   skill: SkillWithoutInstructionsAndToolsType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -457,6 +465,7 @@ export function useArchiveSkill({
     if (!skill.sId) {
       return false;
     }
+    const skillName = skill.name;
     try {
       await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}`, {
         method: "DELETE",
@@ -466,13 +475,13 @@ export function useArchiveSkill({
 
       sendNotification({
         type: "success",
-        title: `Successfully archived ${skill.name}`,
-        description: `${skill.name} was successfully archived.`,
+        title: t`Successfully archived ${skillName}`,
+        description: t`${skillName} was successfully archived.`,
       });
       return true;
     } catch (err) {
       sendApiErrorNotification({
-        title: `Error archiving ${skill.name}`,
+        title: t`Error archiving ${skillName}`,
         error: err,
       });
       return false;
@@ -489,6 +498,7 @@ export function useBatchArchiveSkills({
   owner: LightWorkspaceType;
   skillIds: string[];
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -498,6 +508,7 @@ export function useBatchArchiveSkills({
     if (skillIds.length === 0) {
       return false;
     }
+    const skillCount = skillIds.length;
 
     try {
       await fetcher(`/api/w/${owner.sId}/skills/archive`, {
@@ -510,12 +521,18 @@ export function useBatchArchiveSkills({
 
       sendNotification({
         type: "success",
-        title: "Successfully archived skills",
-        description: `${skillIds.length} skill${pluralize(skillIds.length)} ${skillIds.length === 1 ? "was" : "were"} successfully archived.`,
+        title: t`Successfully archived skills`,
+        description: t`${plural(skillCount, {
+          one: "# skill was successfully archived.",
+          other: "# skills were successfully archived.",
+        })}`,
       });
       return true;
     } catch (err) {
-      sendApiErrorNotification({ title: "Error archiving skills", error: err });
+      sendApiErrorNotification({
+        title: t`Error archiving skills`,
+        error: err,
+      });
       return false;
     }
   };
@@ -528,6 +545,7 @@ export function useUpdateSkillFavorite({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -549,10 +567,10 @@ export function useUpdateSkillFavorite({
         if (isFavorite) {
           sendNotification({
             type: "success",
-            title: "Added to favorites",
+            title: t`Added to favorites`,
             description: skill.name,
             action: {
-              label: "View",
+              label: t`View`,
               onClick: () => {
                 void router
                   .push(
@@ -567,8 +585,11 @@ export function useUpdateSkillFavorite({
         }
         return true;
       } catch (err) {
+        const skillName = skill.name;
         sendApiErrorNotification({
-          title: `Failed to ${isFavorite ? "favorite" : "unfavorite"} ${skill.name}`,
+          title: isFavorite
+            ? t`Failed to add ${skillName} to favorites`
+            : t`Failed to remove ${skillName} from favorites`,
           error: err,
         });
         return false;
@@ -581,6 +602,7 @@ export function useUpdateSkillFavorite({
       router,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -604,6 +626,7 @@ export function useUpdateSkillReinforcement({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const { mutate } = useSWRConfig();
@@ -620,13 +643,13 @@ export function useUpdateSkillReinforcement({
         return true;
       } catch (err) {
         sendApiErrorNotification({
-          title: "Failed to update reinforcement settings",
+          title: t`Failed to update reinforcement settings`,
           error: err,
         });
         return false;
       }
     },
-    [owner.sId, fetcher, mutate, sendApiErrorNotification]
+    [owner.sId, fetcher, mutate, sendApiErrorNotification, t]
   );
 
   return { updateSkillReinforcement };
@@ -639,6 +662,7 @@ export function useRestoreSkill({
   owner: LightWorkspaceType;
   skill: SkillWithoutInstructionsAndToolsType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -648,6 +672,7 @@ export function useRestoreSkill({
     if (!skill.sId) {
       return false;
     }
+    const skillName = skill.name;
     try {
       await fetcher(`/api/w/${owner.sId}/skills/${skill.sId}/restore`, {
         method: "POST",
@@ -657,13 +682,13 @@ export function useRestoreSkill({
 
       sendNotification({
         type: "success",
-        title: `Successfully restored ${skill.name}`,
-        description: `${skill.name} was successfully restored.`,
+        title: t`Successfully restored ${skillName}`,
+        description: t`${skillName} was successfully restored.`,
       });
       return true;
     } catch (err) {
       sendApiErrorNotification({
-        title: `Error restoring ${skill.name}`,
+        title: t`Error restoring ${skillName}`,
         error: err,
       });
       return false;
@@ -781,7 +806,8 @@ export function useDetectSkillsFromRepo({
 
 function notifyImportResult(
   data: ImportSkillsResponseBody,
-  sendNotification: ReturnType<typeof useSendNotification>
+  sendNotification: ReturnType<typeof useSendNotification>,
+  t: (descriptor: MessageDescriptor) => string
 ): {
   successCount: number;
   skipped: string[];
@@ -792,26 +818,49 @@ function notifyImportResult(
   const skipped = data.skipped.map((e) => e.message);
 
   if (successCount > 0) {
-    const parts: string[] = [];
+    const skippedCount = skipped.length;
+    const sentences: string[] = [];
     if (importedCount > 0) {
-      parts.push(`${importedCount} skill${pluralize(importedCount)} imported`);
+      sentences.push(
+        t(
+          msg`${plural(importedCount, {
+            one: "# skill imported.",
+            other: "# skills imported.",
+          })}`
+        )
+      );
     }
     if (updatedCount > 0) {
-      parts.push(`${updatedCount} skill${pluralize(updatedCount)} updated`);
+      sentences.push(
+        t(
+          msg`${plural(updatedCount, {
+            one: "# skill updated.",
+            other: "# skills updated.",
+          })}`
+        )
+      );
     }
-    if (skipped.length > 0) {
-      parts.push(`${skipped.length} skill${pluralize(skipped.length)} skipped`);
+    if (skippedCount > 0) {
+      sentences.push(
+        t(
+          msg`${plural(skippedCount, {
+            one: "# skill skipped.",
+            other: "# skills skipped.",
+          })}`
+        )
+      );
     }
     sendNotification({
       type: "success",
-      title: "Import successful",
-      description: parts.join(", ") + ".",
+      title: t(msg`Import successful`),
+      description: sentences.join(" "),
     });
   } else {
     sendNotification({
       type: "error",
-      title: "Import failed",
-      description: skipped[0] ?? "Failed to import skills.",
+      title: t(msg`Import failed`),
+      description: t(msg`Failed to import skills.`),
+      details: skipped.length > 0 ? skipped.join("\n") : undefined,
     });
   }
 
@@ -819,6 +868,7 @@ function notifyImportResult(
 }
 
 export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
@@ -861,9 +911,9 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
 
         void invalidateSkills();
 
-        return notifyImportResult(data, sendNotification);
+        return notifyImportResult(data, sendNotification, t);
       } catch (err) {
-        sendApiErrorNotification({ title: "Import failed", error: err });
+        sendApiErrorNotification({ title: t`Import failed`, error: err });
         return { successCount: 0, skipped: [] };
       } finally {
         setIsImporting(false);
@@ -875,6 +925,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
       fetcher,
       invalidateSkills,
       sendApiErrorNotification,
+      t,
     ]
   );
 

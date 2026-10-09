@@ -1,3 +1,4 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -22,12 +23,14 @@ import type { UserVisibleGroupKind } from "@app/types/groups";
 import type { MembershipSeatType, PaidSeatType } from "@app/types/memberships";
 import { MEMBERSHIP_SEAT_TYPES, PAID_SEAT_TYPES } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
   LightUserTypeWithWorkspace,
   LightWorkspaceType,
 } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg, plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -276,6 +279,7 @@ export function useBulkSetUserSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -296,26 +300,45 @@ export function useBulkSetUserSpendLimit({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to update spend limit",
+          title: t`Failed to update spend limit`,
           error,
         });
         return null;
       }
 
       const body = BulkSetUserSpendLimitResponseSchema.parse(await res.json());
+      const { memberCount } = body;
+      const formattedMemberCount = formatNumber(memberCount);
+      let description: string;
+      switch (limit.kind) {
+        case "limited": {
+          const awuCredits = formatNumber(limit.awuCredits);
+          description = t`${plural(memberCount, {
+            one: `Applied a ${awuCredits} credit limit to ${formattedMemberCount} member.`,
+            other: `Applied a ${awuCredits} credit limit to ${formattedMemberCount} members.`,
+          })}`;
+          break;
+        }
+        case "unlimited":
+          description = t`${plural(memberCount, {
+            one: `Removed the personal limit for ${formattedMemberCount} member.`,
+            other: `Removed the personal limit for ${formattedMemberCount} members.`,
+          })}`;
+          break;
+        default:
+          assertNeverAndIgnore(limit);
+          description = "";
+      }
       sendNotification({
         type: "success",
-        title: "Spend limit updated",
-        description:
-          limit.kind === "limited"
-            ? `Applied a ${formatNumber(limit.awuCredits)} credit limit to ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`
-            : `Removed the personal limit for ${formatNumber(body.memberCount)} member${pluralize(body.memberCount)}.`,
+        title: t`Spend limit updated`,
+        description,
       });
 
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doBulkSetSpendLimit };
@@ -362,6 +385,7 @@ export function useBulkSeatChangePreview({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const doFetchSeatChangePreview = useCallback(
@@ -381,7 +405,7 @@ export function useBulkSeatChangePreview({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to prepare seat change",
+          title: t`Failed to prepare seat change`,
           error,
         });
         return null;
@@ -390,7 +414,7 @@ export function useBulkSeatChangePreview({
       return BulkSeatChangePreviewResponseSchema.parse(await res.json())
         .preview;
     },
-    [workspaceId, sendApiErrorNotification]
+    [workspaceId, sendApiErrorNotification, t]
   );
 
   return { doFetchSeatChangePreview };
@@ -406,6 +430,7 @@ export function useBulkChangeSeatType({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -413,12 +438,10 @@ export function useBulkChangeSeatType({
     async ({
       selection,
       seatType,
-      seatName,
       hasDeferredChanges,
     }: {
       selection: BulkMemberSelectionBody;
       seatType: PaidSeatType;
-      seatName: string;
       // Whether some selected members are being downgraded — their change
       // applies at the next credit refresh, so the notification says so.
       hasDeferredChanges: boolean;
@@ -432,25 +455,34 @@ export function useBulkChangeSeatType({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to update seats",
+          title: t`Failed to update seats`,
           error,
         });
         return null;
       }
 
       const body = BulkChangeSeatTypeResponseSchema.parse(await res.json());
+      const { memberCount } = body;
+      const formattedMemberCount = formatNumber(memberCount);
+      const seatName = seatTypeDisplayName(seatType, t);
       sendNotification({
         type: "success",
-        title: "Seats updated",
+        title: t`Seats updated`,
         description: hasDeferredChanges
-          ? `Changed ${formatNumber(body.memberCount)} members to ${seatName}. Downgrades take effect at the next credit refresh.`
-          : `Changed ${formatNumber(body.memberCount)} members to ${seatName}.`,
+          ? t`${plural(memberCount, {
+              one: `Changed ${formattedMemberCount} member to ${seatName}. Downgrades take effect at the next credit refresh.`,
+              other: `Changed ${formattedMemberCount} members to ${seatName}. Downgrades take effect at the next credit refresh.`,
+            })}`
+          : t`${plural(memberCount, {
+              one: `Changed ${formattedMemberCount} member to ${seatName}.`,
+              other: `Changed ${formattedMemberCount} members to ${seatName}.`,
+            })}`,
       });
 
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doBulkChangeSeatType };
@@ -548,6 +580,7 @@ export function useUpdateMemberSeatType({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -577,7 +610,7 @@ export function useUpdateMemberSeatType({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to update seat",
+          title: t`Failed to update seat`,
           error,
         });
         return false;
@@ -591,13 +624,18 @@ export function useUpdateMemberSeatType({
         isCancellingScheduledChange,
         hasSeatPool,
         memberName,
+        seatName: seatTypeDisplayName(seatType, t),
       });
-      sendNotification({ type: "success", ...notification });
+      sendNotification({
+        type: "success",
+        title: t(notification.title),
+        description: t(notification.description),
+      });
 
       await invalidateMembersUsage(workspaceId);
       return true;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateSeatType };
@@ -609,30 +647,32 @@ function getSeatUpdateNotification({
   isCancellingScheduledChange,
   hasSeatPool,
   memberName,
+  seatName,
 }: {
   seatType: MembershipSeatType;
   isDeferred: boolean;
   isCancellingScheduledChange: boolean;
   hasSeatPool: boolean;
   memberName: string;
-}): { title: string; description: string } {
+  seatName: string;
+}): { title: MessageDescriptor; description: MessageDescriptor } {
   if (seatType === "none") {
     return {
-      title: isDeferred ? "Seat removal scheduled" : "Seat removed",
+      title: isDeferred ? msg`Seat removal scheduled` : msg`Seat removed`,
       description: isDeferred
-        ? `${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
-        : `${memberName}'s seat has been removed.`,
+        ? msg`${memberName}'s seat will be removed at the next billing period. They keep full access until then.`
+        : msg`${memberName}'s seat has been removed.`,
     };
   }
   return {
-    title: isDeferred ? "Seat change scheduled" : "Seat updated",
+    title: isDeferred ? msg`Seat change scheduled` : msg`Seat updated`,
     description: isDeferred
-      ? `${memberName}'s seat will change to ${seatType} at the next credit refresh.`
+      ? msg`${memberName}'s seat will change to ${seatName} at the next credit refresh.`
       : isCancellingScheduledChange
-        ? `${memberName}'s scheduled seat change has been cancelled.`
+        ? msg`${memberName}'s scheduled seat change has been cancelled.`
         : hasSeatPool
-          ? `${memberName}'s seat has been updated to ${seatType}. The seat pool will be provisioned shortly.`
-          : `${memberName}'s seat has been updated to ${seatType}.`,
+          ? msg`${memberName}'s seat has been updated to ${seatName}. The seat pool will be provisioned shortly.`
+          : msg`${memberName}'s seat has been updated to ${seatName}.`,
   };
 }
 
@@ -645,6 +685,7 @@ export function useUpdateUserSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -678,7 +719,7 @@ export function useUpdateUserSpendLimit({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to update spend limit",
+          title: t`Failed to update spend limit`,
           error,
         });
         return null;
@@ -688,20 +729,22 @@ export function useUpdateUserSpendLimit({
       let description: string;
       switch (limit.kind) {
         case "unlimited":
-          description = `${memberName}'s spend limit has been removed.`;
+          description = t`${memberName}'s spend limit has been removed.`;
           break;
-        case "limited":
+        case "limited": {
+          const awuCredits = formatNumber(limit.awuCredits);
           description = resetAtNextBillingCycle
-            ? `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits until the next billing cycle.`
-            : `${memberName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits.`;
+            ? t`${memberName}'s spend limit has been set to ${awuCredits} credits until the next billing cycle.`
+            : t`${memberName}'s spend limit has been set to ${awuCredits} credits.`;
           break;
+        }
         default:
           assertNeverAndIgnore(limit);
           description = "";
       }
       sendNotification({
         type: "success",
-        title: "Spend limit updated",
+        title: t`Spend limit updated`,
         description,
       });
 
@@ -709,7 +752,7 @@ export function useUpdateUserSpendLimit({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateSpendLimit };

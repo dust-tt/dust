@@ -23,6 +23,7 @@ import type {
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
@@ -96,6 +97,7 @@ export function useEmailAgentFooter({ disabled }: { disabled: boolean }) {
   const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
     useUserMetadata(key, { disabled });
   const [isDismissing, setIsDismissing] = useState(false);
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const dismissFooter = async () => {
@@ -110,8 +112,8 @@ export function useEmailAgentFooter({ disabled }: { disabled: boolean }) {
       if (!response?.ok) {
         sendNotification({
           type: "error",
-          title: "Could not dismiss the email tip",
-          description: "Please try again.",
+          title: t`Could not dismiss the email tip`,
+          description: t`Please try again.`,
         });
         return;
       }
@@ -179,6 +181,7 @@ export function useDeleteToolApproval() {
 
 export function usePatchUser() {
   const { mutateUser } = useUser();
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -224,8 +227,8 @@ export function usePatchUser() {
       if (notifySuccess) {
         sendNotification({
           type: "success",
-          title: "Updated User",
-          description: `Successfully updated your profile.`,
+          title: t`Profile updated`,
+          description: t`Successfully updated your profile.`,
         });
       }
 
@@ -235,7 +238,7 @@ export function usePatchUser() {
     } else {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Error Updating User",
+        title: t`Error updating profile`,
         error: errorData,
       });
 
@@ -279,6 +282,7 @@ export function useUserMemory({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const memoryFetcher: Fetcher<GetUserMemoryResponseBody> = fetcher;
@@ -301,19 +305,19 @@ export function useUserMemory({
       });
 
       if (res.ok) {
-        sendNotification({ type: "success", title: "Memory saved." });
+        sendNotification({ type: "success", title: t`Memory saved` });
         await mutate();
         return true;
       }
 
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Error saving memory",
+        title: t`Error saving memory`,
         error: errorData,
       });
       return false;
     },
-    [owner.sId, sendNotification, mutate, sendApiErrorNotification]
+    [owner.sId, sendNotification, mutate, sendApiErrorNotification, t]
   );
 
   return {

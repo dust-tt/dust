@@ -7,6 +7,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetAgentMemoriesResponseBody } from "@app/types/api/assistant/configuration/memories";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -45,6 +46,7 @@ export function useDeleteAgentMemory({
   owner: LightWorkspaceType;
   agentConfiguration: AgentConfigurationType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateMemories } = useAgentMemoriesForUser({
@@ -68,7 +70,7 @@ export function useDeleteAgentMemory({
       if (!res.ok) {
         const json = await res.json();
         sendApiErrorNotification({
-          title: "Failed to delete memory",
+          title: t`Failed to delete memory`,
           error: json,
         });
         return false;
@@ -76,7 +78,7 @@ export function useDeleteAgentMemory({
 
       sendNotification({
         type: "success",
-        title: "Memory deleted",
+        title: t`Memory deleted`,
       });
 
       void mutateMemories();
@@ -88,6 +90,7 @@ export function useDeleteAgentMemory({
       sendNotification,
       sendApiErrorNotification,
       mutateMemories,
+      t,
     ]
   );
 

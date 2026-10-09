@@ -10,6 +10,7 @@ import type { GetSuggestionsResponseBody } from "@app/types/api/assistant/tag_ma
 import type { GetTagsResponseBody } from "@app/types/api/tags";
 import type { TagKind, TagType } from "@app/types/tag";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -94,6 +95,7 @@ export function useTagsSuggestions({
 }
 
 export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
   const { mutateTagsUsage } = useTagsUsage({ owner, disabled: true });
@@ -113,7 +115,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
     if (!res.ok) {
       const json = await res.json();
       sendApiErrorNotification({
-        title: "Failed to create tag",
+        title: t`Failed to create tag`,
         error: json,
       });
 
@@ -132,6 +134,7 @@ export function useCreateTag({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
@@ -149,7 +152,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
       const json = await res.json();
 
       sendApiErrorNotification({
-        title: "Failed to delete tag",
+        title: t`Failed to delete tag`,
         error: json,
       });
 
@@ -158,7 +161,7 @@ export function useDeleteTag({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: "Tag deleted",
+      title: t`Tag deleted`,
     });
 
     void mutateTags();
@@ -177,6 +180,7 @@ export function useUpdateTag({
   owner: LightWorkspaceType;
   tagId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateTags } = useTags({ owner, disabled: true });
@@ -198,7 +202,7 @@ export function useUpdateTag({
       const json = await res.json();
 
       sendApiErrorNotification({
-        title: "Failed to delete tag",
+        title: t`Failed to update tag`,
         error: json,
       });
       return;
@@ -206,7 +210,7 @@ export function useUpdateTag({
 
     sendNotification({
       type: "success",
-      title: "Tag updated",
+      title: t`Tag updated`,
     });
 
     void mutateTags();

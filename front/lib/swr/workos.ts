@@ -16,6 +16,7 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 
 /**
  * Workspace domains
@@ -51,6 +52,7 @@ export function useRemoveWorkspaceDomain({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkspaceDomains({ owner, disabled: true });
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -66,7 +68,7 @@ export function useRemoveWorkspaceDomain({
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
       sendApiErrorNotification({
-        title: "Failed to remove domain",
+        title: t`Failed to remove domain`,
         error: errorData,
       });
 
@@ -76,8 +78,8 @@ export function useRemoveWorkspaceDomain({
 
       sendNotification({
         type: "success",
-        title: "Domain removed",
-        description: "The domain has been removed from the workspace.",
+        title: t`Domain removed`,
+        description: t`The domain has been removed from the workspace.`,
       });
     }
   };
@@ -118,6 +120,7 @@ export function useDisableWorkOSSSOConnection({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkOSSSOStatus({ owner, disabled: true });
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -132,7 +135,7 @@ export function useDisableWorkOSSSOConnection({
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
       sendApiErrorNotification({
-        title: "Failed to disable WorkOS SSO",
+        title: t`Failed to disable WorkOS SSO`,
         error: errorData,
       });
 
@@ -142,8 +145,8 @@ export function useDisableWorkOSSSOConnection({
 
       sendNotification({
         type: "success",
-        title: "WorkOS SSO disabled",
-        description: "WorkOS SSO has been disabled for the workspace.",
+        title: t`WorkOS SSO disabled`,
+        description: t`WorkOS SSO has been disabled for the workspace.`,
       });
     }
   };
@@ -184,6 +187,7 @@ export function useDisableWorkOSDirectorySyncConnection({
   owner: LightWorkspaceType;
 }) {
   const { mutate } = useWorkOSDSyncStatus({ owner, disabled: true });
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -198,7 +202,7 @@ export function useDisableWorkOSDirectorySyncConnection({
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
       sendApiErrorNotification({
-        title: "Failed to disable WorkOS Directory Sync",
+        title: t`Failed to disable WorkOS Directory Sync`,
         error: errorData,
       });
 
@@ -208,9 +212,8 @@ export function useDisableWorkOSDirectorySyncConnection({
 
       sendNotification({
         type: "success",
-        title: "WorkOS Directory Sync disabled",
-        description:
-          "WorkOS Directory Sync has been disabled for the workspace.",
+        title: t`WorkOS Directory Sync disabled`,
+        description: t`WorkOS Directory Sync has been disabled for the workspace.`,
       });
     }
   };
@@ -229,6 +232,7 @@ export function useOpenAuditLogsPortal({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const openPortal = async (portal: AuditLogsPortal) => {
@@ -245,7 +249,7 @@ export function useOpenAuditLogsPortal({
       newWindow?.close();
       const errorData = await getErrorFromResponse(response);
       sendApiErrorNotification({
-        title: "Failed to open audit logs portal",
+        title: t`Failed to open audit logs portal`,
         error: errorData,
       });
       return;

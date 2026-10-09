@@ -50,6 +50,7 @@ import { isAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -108,6 +109,7 @@ export function useUpdateWorkspaceRegionalModelsOnly({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
   const { mutateWorkspace } = useWorkspace({ owner, disabled: true });
@@ -125,9 +127,8 @@ export function useUpdateWorkspaceRegionalModelsOnly({
         if (!res.ok) {
           sendNotification({
             type: "error",
-            title: "Update failed",
-            description:
-              "Some active agents may not be eligible for regional models.",
+            title: t`Update failed`,
+            description: t`Some active agents may not be eligible for regional models.`,
           });
           return false;
         }
@@ -135,17 +136,17 @@ export function useUpdateWorkspaceRegionalModelsOnly({
         await mutateWorkspace();
         sendNotification({
           type: "success",
-          title: "Regional models setting updated",
+          title: t`Regional models setting updated`,
           description: regionalModelsOnly
-            ? "Only regional models are now available in this workspace."
-            : "All models are now available in this workspace.",
+            ? t`Only regional models are now available in this workspace.`
+            : t`All models are now available in this workspace.`,
         });
         return true;
       } finally {
         setIsUpdating(false);
       }
     },
-    [owner.sId, mutateWorkspace, sendNotification]
+    [owner.sId, mutateWorkspace, sendNotification, t]
   );
 
   return {
@@ -759,6 +760,7 @@ export function useCreateCheckoutSession({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [isCreating, setIsCreating] = useState(false);
 
@@ -789,9 +791,8 @@ export function useCreateCheckoutSession({
         if (!res.ok) {
           sendNotification({
             type: "error",
-            title: "Checkout failed",
-            description:
-              "Could not initialise the payment form. Please try again.",
+            title: t`Checkout failed`,
+            description: t`Could not initialise the payment form. Please try again.`,
           });
           return null;
         }
@@ -800,7 +801,7 @@ export function useCreateCheckoutSession({
         setIsCreating(false);
       }
     },
-    [workspaceId, sendNotification]
+    [workspaceId, sendNotification, t]
   );
 
   return { createSession, isCreating };

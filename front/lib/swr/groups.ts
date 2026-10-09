@@ -1,3 +1,4 @@
+import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import {
   useSendApiErrorNotification,
   useSendNotification,
@@ -33,6 +34,7 @@ import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightUserType, LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { mutate } from "swr";
@@ -214,6 +216,7 @@ export function useAddMemberToGroup({
   owner: LightWorkspaceType;
   userId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isAdding, setIsAdding] = useState(false);
@@ -245,7 +248,7 @@ export function useAddMemberToGroup({
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to add member to group",
+            title: t`Failed to add member to group`,
             error,
           });
           return false;
@@ -255,8 +258,8 @@ export function useAddMemberToGroup({
 
         sendNotification({
           type: "success",
-          title: "Member added to group",
-          description: `The member has been added to ${groupName}.`,
+          title: t`Member added to group`,
+          description: t`The member has been added to ${groupName}.`,
         });
 
         await mutateMemberGroups(
@@ -281,6 +284,7 @@ export function useAddMemberToGroup({
       mutateMemberGroups,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -294,6 +298,7 @@ export function useRemoveMemberFromGroup({
   owner: LightWorkspaceType;
   userId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isRemoving, setIsRemoving] = useState(false);
@@ -324,7 +329,7 @@ export function useRemoveMemberFromGroup({
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to remove member from group",
+            title: t`Failed to remove member from group`,
             error,
           });
           return false;
@@ -332,8 +337,8 @@ export function useRemoveMemberFromGroup({
 
         sendNotification({
           type: "success",
-          title: "Member removed from group",
-          description: `The member has been removed from ${groupName}.`,
+          title: t`Member removed from group`,
+          description: t`The member has been removed from ${groupName}.`,
         });
 
         await mutateMemberGroups(
@@ -361,6 +366,7 @@ export function useRemoveMemberFromGroup({
       mutateMemberGroups,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -397,6 +403,7 @@ async function invalidatePeople(workspaceId: string): Promise<void> {
 }
 
 export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isCreating, setIsCreating] = useState(false);
@@ -427,7 +434,7 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to create group",
+            title: t`Failed to create group`,
             error,
           });
           return null;
@@ -437,8 +444,8 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
 
         sendNotification({
           type: "success",
-          title: "Group created",
-          description: `${name} has been created.`,
+          title: t`Group created`,
+          description: t`${name} has been created.`,
         });
 
         await mutateGroups(
@@ -456,7 +463,7 @@ export function useCreateGroup({ owner }: { owner: LightWorkspaceType }) {
         setIsCreating(false);
       }
     },
-    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification]
+    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doCreateGroup, isCreating };
@@ -469,6 +476,7 @@ export function useUpdateGroup({
   owner: LightWorkspaceType;
   groupId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -495,7 +503,7 @@ export function useUpdateGroup({
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to update group",
+            title: t`Failed to update group`,
             error,
           });
           return null;
@@ -503,10 +511,11 @@ export function useUpdateGroup({
 
         const body: PatchGroupResponseBody = await res.json();
 
+        const updatedGroupName = body.group.name;
         sendNotification({
           type: "success",
-          title: "Group updated",
-          description: `${body.group.name} has been updated.`,
+          title: t`Group updated`,
+          description: t`${updatedGroupName} has been updated.`,
         });
 
         await mutateGroup(body, { revalidate: false });
@@ -540,6 +549,7 @@ export function useUpdateGroup({
       mutateGroups,
       sendNotification,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -547,6 +557,7 @@ export function useUpdateGroup({
 }
 
 export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -573,7 +584,7 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to delete group",
+            title: t`Failed to delete group`,
             error,
           });
           return false;
@@ -581,8 +592,8 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
 
         sendNotification({
           type: "success",
-          title: "Group deleted",
-          description: `${groupName} has been deleted.`,
+          title: t`Group deleted`,
+          description: t`${groupName} has been deleted.`,
         });
 
         await mutateGroups(
@@ -603,7 +614,7 @@ export function useDeleteGroup({ owner }: { owner: LightWorkspaceType }) {
         setIsDeleting(false);
       }
     },
-    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification]
+    [owner.sId, mutateGroups, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doDeleteGroup, isDeleting };
@@ -614,6 +625,7 @@ export function useUpdateGroupSpendLimit({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -636,7 +648,7 @@ export function useUpdateGroupSpendLimit({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to update group spend limit",
+          title: t`Failed to update group spend limit`,
           error,
         });
         return null;
@@ -650,9 +662,8 @@ export function useUpdateGroupSpendLimit({
         await invalidateMembersUsage(workspaceId);
         sendNotification({
           type: "error",
-          title: "Group spend limit status unknown",
-          description:
-            "The update was submitted but the server response could not be read. The table has been refreshed with the current state.",
+          title: t`Group spend limit status unknown`,
+          description: t`The update was submitted but the server response could not be read. The table has been refreshed with the current state.`,
         });
         return null;
       }
@@ -660,18 +671,20 @@ export function useUpdateGroupSpendLimit({
       let description: string;
       switch (limit.kind) {
         case "unlimited":
-          description = `${groupName}'s spend limit has been removed.`;
+          description = t`${groupName}'s spend limit has been removed.`;
           break;
-        case "limited":
-          description = `${groupName}'s spend limit has been set to ${formatNumber(limit.awuCredits)} credits.`;
+        case "limited": {
+          const awuCredits = formatNumber(limit.awuCredits);
+          description = t`${groupName}'s spend limit has been set to ${awuCredits} credits.`;
           break;
+        }
         default:
           assertNeverAndIgnore(limit);
           description = "";
       }
       sendNotification({
         type: "success",
-        title: "Group spend limit updated",
+        title: t`Group spend limit updated`,
         description,
       });
 
@@ -680,7 +693,7 @@ export function useUpdateGroupSpendLimit({
       await invalidateMembersUsage(workspaceId);
       return body;
     },
-    [workspaceId, sendNotification, sendApiErrorNotification]
+    [workspaceId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateGroupSpendLimit };
@@ -691,6 +704,7 @@ export function useUpdateGroupGrantedRole({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -719,7 +733,7 @@ export function useUpdateGroupGrantedRole({
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to update group role",
+            title: t`Failed to update group role`,
             error,
           });
           return null;
@@ -727,12 +741,25 @@ export function useUpdateGroupGrantedRole({
 
         const body: PutGroupGrantedRoleResponseBody = await res.json();
 
+        let description: string;
+        switch (grantedRole) {
+          case "admin":
+            description = t`Members of ${groupName} are now admins.`;
+            break;
+          case "manager":
+            description = t`Members of ${groupName} are now managers.`;
+            break;
+          case null:
+            description = t`${groupName} no longer grants a role.`;
+            break;
+          default:
+            assertNeverAndIgnore(grantedRole);
+            description = "";
+        }
         sendNotification({
           type: "success",
-          title: "Group role updated",
-          description: grantedRole
-            ? `Members of ${groupName} are now ${grantedRole}s.`
-            : `${groupName} no longer grants a role.`,
+          title: t`Group role updated`,
+          description,
         });
 
         // Changing the mapping re-syncs member roles, so refresh the groups
@@ -745,7 +772,7 @@ export function useUpdateGroupGrantedRole({
         setIsUpdating(false);
       }
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateGroupGrantedRole, isUpdating };
@@ -756,6 +783,7 @@ export function useUpdateGroupGrantedSeatType({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const [isUpdating, setIsUpdating] = useState(false);
@@ -784,7 +812,7 @@ export function useUpdateGroupGrantedSeatType({
         if (!res.ok) {
           const error = await res.json();
           sendApiErrorNotification({
-            title: "Failed to update group seat",
+            title: t`Failed to update group seat`,
             error,
           });
           return null;
@@ -792,12 +820,15 @@ export function useUpdateGroupGrantedSeatType({
 
         const body: PutGroupGrantedSeatTypeResponseBody = await res.json();
 
+        const seatName = grantedSeatType
+          ? seatTypeDisplayName(grantedSeatType, t)
+          : null;
         sendNotification({
           type: "success",
-          title: "Group seat updated",
-          description: grantedSeatType
-            ? `Members of ${groupName} now get a ${grantedSeatType} seat.`
-            : `${groupName} no longer grants a seat.`,
+          title: t`Group seat updated`,
+          description: seatName
+            ? t`Members of ${groupName} now get a ${seatName} seat.`
+            : t`${groupName} no longer grants a seat.`,
         });
 
         // Changing the mapping re-syncs member seats, so refresh the groups
@@ -811,20 +842,16 @@ export function useUpdateGroupGrantedSeatType({
       } catch (err) {
         // Report request failures (e.g. a rejected `clientFetch`) too, not just
         // non-success HTTP responses.
-        sendNotification({
-          type: "error",
-          title: "Failed to update group seat",
-          description:
-            err instanceof Error
-              ? err.message
-              : "An unexpected error occurred.",
+        sendApiErrorNotification({
+          title: t`Failed to update group seat`,
+          error: err,
         });
         return null;
       } finally {
         setIsUpdating(false);
       }
     },
-    [owner.sId, sendNotification, sendApiErrorNotification]
+    [owner.sId, sendNotification, sendApiErrorNotification, t]
   );
 
   return { doUpdateGroupGrantedSeatType, isUpdating };
@@ -838,6 +865,7 @@ export function useGroupSeatMappingPreview({
 }: {
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const doFetchGroupSeatMappingPreview = useCallback(
@@ -860,7 +888,7 @@ export function useGroupSeatMappingPreview({
       if (!res.ok) {
         const error = await res.json();
         sendApiErrorNotification({
-          title: "Failed to prepare seat change",
+          title: t`Failed to prepare seat change`,
           error,
         });
         return null;
@@ -869,7 +897,7 @@ export function useGroupSeatMappingPreview({
       return BulkSeatChangePreviewResponseSchema.parse(await res.json())
         .preview;
     },
-    [owner.sId, sendApiErrorNotification]
+    [owner.sId, sendApiErrorNotification, t]
   );
 
   return { doFetchGroupSeatMappingPreview };

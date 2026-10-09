@@ -10,8 +10,9 @@ import type {
   AgentEditorsResponseBody,
   PatchAgentEditorsRequestBody,
 } from "@app/types/api/assistant/configuration/editors";
-import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -56,6 +57,7 @@ export function useUpdateEditors({
   owner: LightWorkspaceType;
   agentConfigurationId: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateEditors } = useEditors({
     owner,
@@ -106,16 +108,24 @@ export function useUpdateEditors({
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = "Successfully update editors";
-          description = "Successfully added and removed editors";
+          title = t`Successfully updated editors`;
+          description = t`Successfully added and removed editors`;
         } else if (
           (body.addEditorIds == null || body.addEditorIds.length <= 0) &&
           body.removeEditorIds != null &&
           body.removeEditorIds.length > 0
         ) {
-          title = `Successfully removed editor${pluralize(body.removeEditorIds.length)}`;
+          const removedCount = body.removeEditorIds.length;
+          title = t`${plural(removedCount, {
+            one: "Successfully removed editor",
+            other: "Successfully removed editors",
+          })}`;
         } else {
-          title = `Successfully added editor${pluralize(body.addEditorIds?.length ?? 0)}`;
+          const addedCount = body.addEditorIds?.length ?? 0;
+          title = t`${plural(addedCount, {
+            one: "Successfully added editor",
+            other: "Successfully added editors",
+          })}`;
         }
 
         sendNotification({
@@ -128,7 +138,7 @@ export function useUpdateEditors({
 
       sendNotification({
         type: "error",
-        title: "Failed to update editors",
+        title: t`Failed to update editors`,
       });
       return false;
     },
@@ -139,6 +149,7 @@ export function useUpdateEditors({
       mutateAgentConfiguration,
       mutateAgentConfigurations,
       sendNotification,
+      t,
     ]
   );
 

@@ -21,6 +21,7 @@ import type {
 } from "@app/types/api/tables";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import type { Fetcher } from "swr";
 
 export function useDataSourceViewTable({
@@ -127,6 +128,7 @@ export function useUpdateDataSourceViewTable(
     disabled: true, // Needed just to mutate
   });
 
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -142,7 +144,7 @@ export function useUpdateDataSourceViewTable(
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: "Error creating table",
+        title: t`Error updating table`,
         error: errorData,
       });
       console.error("Error updating table", errorData);
@@ -153,8 +155,8 @@ export function useUpdateDataSourceViewTable(
 
       sendNotification({
         type: "success",
-        title: "Table updated",
-        description: "Table has been updated",
+        title: t`Table updated`,
+        description: t`Table has been updated.`,
       });
 
       const response: PatchTableResponseBody = await res.json();

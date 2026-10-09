@@ -51,6 +51,8 @@ import type {
   SpaceType,
 } from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
+import { select } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
 
@@ -416,6 +418,7 @@ export function useCreateFolder({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
@@ -450,15 +453,15 @@ export function useCreateFolder({
       const { dataSourceView } = response;
       sendNotification({
         type: "success",
-        title: "Successfully created folder",
-        description: "Folder was successfully created.",
+        title: t`Successfully created folder`,
+        description: t`Folder was successfully created.`,
       });
       return dataSourceView;
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: "Error creating Folder",
+        title: t`Error creating folder`,
         error: errorData,
       });
       return null;
@@ -475,6 +478,7 @@ export function useUpdateFolder({
   owner: LightWorkspaceType;
   spaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const doUpdate = async (
@@ -499,14 +503,14 @@ export function useUpdateFolder({
     if (res.ok) {
       sendNotification({
         type: "success",
-        title: "Successfully updated folder",
-        description: "Folder was successfully updated.",
+        title: t`Successfully updated folder`,
+        description: t`Folder was successfully updated.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: "Error updating Folder",
+        title: t`Error updating folder`,
         error: errorData,
       });
     }
@@ -525,6 +529,7 @@ export function useDeleteFolderOrWebsite({
   spaceId: string;
   category: DataSourceViewCategoryWithoutApps;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutateRegardlessOfQueryParams: mutateSpaceDataSourceViews } =
@@ -547,16 +552,27 @@ export function useDeleteFolderOrWebsite({
     if (res.ok) {
       await mutateSpaceDataSourceViews();
 
+      const dataSourceName = getDisplayNameForDataSource(
+        dataSourceView.dataSource
+      );
       sendNotification({
         type: "success",
-        title: `Successfully deleted ${category}`,
-        description: `${getDisplayNameForDataSource(dataSourceView.dataSource)} was successfully deleted.`,
+        title: t`${select(category, {
+          folder: "Successfully deleted folder",
+          website: "Successfully deleted website",
+          other: "Successfully deleted data source",
+        })}`,
+        description: t`${dataSourceName} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Error deleting ${category}`,
+        title: t`${select(category, {
+          folder: "Error deleting folder",
+          website: "Error deleting website",
+          other: "Error deleting data source",
+        })}`,
         error: errorData,
       });
     }
@@ -567,6 +583,7 @@ export function useDeleteFolderOrWebsite({
 }
 
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -613,7 +630,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: "Error creating space",
+        title: t`Error creating space`,
         error: errorData,
       });
       return null;
@@ -623,9 +640,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
       sendNotification({
         type: "success",
-        title: notification?.title ?? "Successfully created space",
+        title: notification?.title ?? t`Successfully created space`,
         description:
-          notification?.description ?? "Space was successfully created.",
+          notification?.description ?? t`Space was successfully created.`,
       });
 
       const response: PostSpacesResponseBody = await res.json();
@@ -637,6 +654,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 }
 
 export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -700,7 +718,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error updating space",
+          title: t`Error updating space`,
           error: errorData,
         });
         return null;
@@ -711,9 +729,9 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: notification?.title ?? "Successfully updated space",
+      title: notification?.title ?? t`Successfully updated space`,
       description:
-        notification?.description ?? "Space was successfully updated.",
+        notification?.description ?? t`Space was successfully updated.`,
     });
 
     const spaceResponse: PatchSpaceResponseBody = await results[0].json();
@@ -724,6 +742,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
 // Adds members to a manually managed space without replacing its member list.
 export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -754,10 +773,11 @@ export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
       }
     );
 
+    const spaceName = getSpaceName(space);
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
       sendApiErrorNotification({
-        title: `Failed to add members to ${getSpaceName(space)}`,
+        title: t`Failed to add members to ${spaceName}`,
         error: errorData,
       });
       return false;
@@ -768,10 +788,9 @@ export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
 
     sendNotification({
       type: "success",
-      title: notification?.title ?? "Successfully added members",
+      title: notification?.title ?? t`Successfully added members`,
       description:
-        notification?.description ??
-        `Members were added to ${getSpaceName(space)}.`,
+        notification?.description ?? t`Members were added to ${spaceName}.`,
     });
     return true;
   };
@@ -785,6 +804,7 @@ export function useDeleteSpace({
   owner: LightWorkspaceType;
   force?: boolean;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -806,20 +826,21 @@ export function useDeleteSpace({
       method: "DELETE",
     });
 
+    const spaceName = getSpaceName(space);
     if (res.ok) {
       void mutateSpaces();
       void mutateSpacesAsAdmin();
 
       sendNotification({
         type: "success",
-        title: `Successfully deleted ${getSpaceName(space)}`,
-        description: `${getSpaceName(space)} was successfully deleted.`,
+        title: t`Successfully deleted ${spaceName}`,
+        description: t`${spaceName} was successfully deleted.`,
       });
     } else {
       const errorData = await getErrorFromResponse(res);
 
       sendApiErrorNotification({
-        title: `Error deleting ${getSpaceName(space)}`,
+        title: t`Error deleting ${spaceName}`,
         error: errorData,
       });
     }

@@ -85,6 +85,38 @@ msgstr "What’s cooking, {name}?"
 msgid "Ready when you are, {name}."
 msgstr "Ready when you are, {name}."
 
+#: front/lib/client/members.ts
+msgid "Update failed"
+msgstr "Update failed"
+
+#: front/lib/client/members.ts
+msgid "{failedCount, plural, one {Failed to update the role of # member ({succeededCount} succeeded).} other {Failed to update the role of # members ({succeededCount} succeeded).}}"
+msgstr "{failedCount, plural, one {Failed to update the role of # member ({succeededCount} succeeded).} other {Failed to update the role of # members ({succeededCount} succeeded).}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to admin for # member.} other {Role updated to admin for # members.}}"
+msgstr "{memberCount, plural, one {Role updated to admin for # member.} other {Role updated to admin for # members.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to manager for # member.} other {Role updated to manager for # members.}}"
+msgstr "{memberCount, plural, one {Role updated to manager for # member.} other {Role updated to manager for # members.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Role updated to member for # member.} other {Role updated to member for # members.}}"
+msgstr "{memberCount, plural, one {Role updated to member for # member.} other {Role updated to member for # members.}}"
+
+#: front/lib/client/members.ts
+msgid "{memberCount, plural, one {Membership revoked for # member.} other {Membership revoked for # members.}}"
+msgstr "{memberCount, plural, one {Membership revoked for # member.} other {Membership revoked for # members.}}"
+
+#: front/lib/client/members.ts
+msgid "Membership revoked"
+msgstr "Membership revoked"
+
+#: front/lib/client/members.ts
+msgid "Role updated"
+msgstr "Role updated"
+
 #: front/lib/client/model_tier_options.ts
 msgid "Includes {tierNames}"
 msgstr "Includes {tierNames}"

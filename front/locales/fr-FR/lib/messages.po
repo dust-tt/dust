@@ -774,3 +774,76 @@ msgstr "Vous ne pouvez pas modifier le compte Gong. Ajoutez plutôt une nouvelle
 #: front/lib/connector_providers_ui.ts
 msgid "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
 msgstr "Vous ne pouvez pas modifier le Pod Dust. Ajoutez plutôt une nouvelle connexion Pod Dust."
+
+#: front/lib/invitations.ts
+msgid "Revoke invitation"
+msgstr "Révoquer l’invitation"
+
+#: front/lib/invitations.ts
+msgid "Are you sure you want to revoke the invitation for {inviteEmail}?"
+msgstr "Voulez-vous vraiment révoquer l’invitation de {inviteEmail} ?"
+
+#: front/lib/invitations.ts
+msgid "Yes, revoke"
+msgstr "Oui, révoquer"
+
+#: front/lib/invitations.ts
+msgid "Role update failed"
+msgstr "Échec de la mise à jour du rôle"
+
+#: front/lib/invitations.ts
+msgid "Revoke failed"
+msgstr "Échec de la révocation"
+
+#: front/lib/invitations.ts
+msgid "Role updated"
+msgstr "Rôle mis à jour"
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked"
+msgstr "Invitation révoquée"
+
+#: front/lib/invitations.ts
+msgid "{newRole, select, admin {Invitation updated to admin for {inviteEmail}.} manager {Invitation updated to manager for {inviteEmail}.} user {Invitation updated to member for {inviteEmail}.} other {Invitation updated for {inviteEmail}.}}"
+msgstr "{newRole, select, admin {L’invitation de {inviteEmail} attribue désormais le rôle administrateur.} manager {L’invitation de {inviteEmail} attribue désormais le rôle manager.} user {L’invitation de {inviteEmail} attribue désormais le rôle membre.} other {L’invitation de {inviteEmail} a été mise à jour.}}"
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked for {inviteEmail}."
+msgstr "L’invitation de {inviteEmail} a été révoquée."
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Invite failed} other {Invites failed}}"
+msgstr "{emailCount, plural, one {Échec de l’invitation} other {Échec des invitations}}"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {This user has already been invited in the last 24 hours. Please wait before sending another invite.} other {These users have already been invited in the last 24 hours. Please wait before sending another invite.}}"
+msgstr "{emailCount, plural, one {Cet utilisateur a déjà été invité au cours des dernières 24 heures. Veuillez patienter avant d’envoyer une nouvelle invitation.} other {Ces utilisateurs ont déjà été invités au cours des dernières 24 heures. Veuillez patienter avant d’envoyer une nouvelle invitation.}}"
+
+#: front/lib/invitations.ts
+msgid "Invite failed"
+msgstr "Échec de l’invitation"
+
+#: front/lib/invitations.ts
+msgid "{email}: {error_message}"
+msgstr "{email} : {error_message}"
+
+#: front/lib/invitations.ts
+msgid "Some invites failed"
+msgstr "Certaines invitations ont échoué"
+
+#. placeholder {0}: failures.length
+#: front/lib/invitations.ts
+msgid "{0, plural, one {# invite could not be sent.} other {# invites could not be sent.}}"
+msgstr "{0, plural, one {# invitation n’a pas pu être envoyée.} other {# invitations n’ont pas pu être envoyées.}}"
+
+#: front/lib/invitations.ts
+msgid "Invites sent"
+msgstr "Invitations envoyées"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {# new invite sent.} other {# new invites sent.}}"
+msgstr "{emailCount, plural, one {# nouvelle invitation envoyée.} other {# nouvelles invitations envoyées.}}"
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Sent # invite again.} other {Sent # invites again.}}"
+msgstr "{emailCount, plural, one {# invitation renvoyée.} other {# invitations renvoyées.}}"

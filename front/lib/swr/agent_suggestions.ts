@@ -19,6 +19,7 @@ import type {
 } from "@app/types/api/assistant/agent_suggestion";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -103,6 +104,7 @@ export function usePatchAgentSuggestions({
   agentConfigurationId: string | null;
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -133,7 +135,7 @@ export function usePatchAgentSuggestions({
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
           sendApiErrorNotification({
-            title: "Failed to update suggestion",
+            title: t`Failed to update suggestion`,
             error: errorData,
           });
           return null;
@@ -144,7 +146,7 @@ export function usePatchAgentSuggestions({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update suggestion",
+          title: t`Failed to update suggestion`,
         });
         return null;
       }
@@ -154,6 +156,7 @@ export function usePatchAgentSuggestions({
       sendNotification,
       workspaceId,
       sendApiErrorNotification,
+      t,
     ]
   );
 

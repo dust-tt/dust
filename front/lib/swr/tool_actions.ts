@@ -9,6 +9,9 @@ import { useFetcher } from "@app/lib/swr/swr";
 import { isAPIErrorResponse } from "@app/types/error";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 const ROUTE_FOR_KIND: Record<ResolveAuthenticationKind, string> = {
@@ -16,9 +19,18 @@ const ROUTE_FOR_KIND: Record<ResolveAuthenticationKind, string> = {
   file_authorization: "resolve-file-authorization",
 };
 
-const LABEL_FOR_KIND: Record<ResolveAuthenticationKind, string> = {
-  authentication: "authentication",
-  file_authorization: "file authorization",
+const RESOLVE_FAILURE_FOR_KIND: Record<
+  ResolveAuthenticationKind,
+  { title: MessageDescriptor; description: MessageDescriptor }
+> = {
+  authentication: {
+    title: msg`Failed to complete authentication`,
+    description: msg`The tool could not resume after authentication. Please try again.`,
+  },
+  file_authorization: {
+    title: msg`Failed to complete file authorization`,
+    description: msg`The tool could not resume after file authorization. Please try again.`,
+  },
 };
 
 function isAlreadyResolvedError(error: unknown): boolean {
@@ -88,17 +100,17 @@ function getResolveAuthenticationRequest(
   }
 }
 
-function getAuthenticationKindLabel(
+function getAuthenticationKind(
   request: ResolveAuthenticationRequest
-): string {
+): ResolveAuthenticationKind {
   switch (request.contextType) {
     case "agent_loop":
-      return LABEL_FOR_KIND[request.kind];
+      return request.kind;
     case "sandbox_function":
-      return LABEL_FOR_KIND.authentication;
+      return "authentication";
     default:
       assertNeverAndIgnore(request);
-      return LABEL_FOR_KIND.authentication;
+      return "authentication";
   }
 }
 
@@ -133,6 +145,7 @@ interface UseResolveAuthenticationParams {
 export function useResolveAuthentication({
   owner,
 }: UseResolveAuthenticationParams) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { fetcher } = useFetcher();
   const [isResolving, setIsResolving] = useState(false);
@@ -158,18 +171,19 @@ export function useResolveAuthentication({
           return { success: true };
         }
 
-        const label = getAuthenticationKindLabel(resolution);
+        const failure =
+          RESOLVE_FAILURE_FOR_KIND[getAuthenticationKind(resolution)];
         sendNotification({
           type: "error",
-          title: `Failed to complete ${label}`,
-          description: `The tool could not resume after ${label}. Please try again.`,
+          title: t(failure.title),
+          description: t(failure.description),
         });
         return { success: false };
       } finally {
         setIsResolving(false);
       }
     },
-    [owner.sId, sendNotification, fetcher]
+    [owner.sId, sendNotification, fetcher, t]
   );
 
   return { resolveAuthentication, isResolving };
@@ -229,6 +243,7 @@ export function useResolveCreditSpendCheckpoint({
   owner,
   onError,
 }: UseResolveCreditSpendCheckpointParams) {
+  const { t } = useLingui();
   const { fetcher } = useFetcher();
   const [isResolving, setIsResolving] = useState(false);
 
@@ -256,13 +271,13 @@ export function useResolveCreditSpendCheckpoint({
 
         return { success: true };
       } catch {
-        onError("Failed to record your decision. Please try again.");
+        onError(t`Failed to record your decision. Please try again.`);
         return { success: false };
       } finally {
         setIsResolving(false);
       }
     },
-    [owner.sId, onError, fetcher]
+    [owner.sId, onError, fetcher, t]
   );
 
   return { resolveCreditSpendCheckpoint, isResolving };

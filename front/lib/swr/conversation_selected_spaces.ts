@@ -12,6 +12,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { SPACE_KINDS } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 import { z } from "zod";
@@ -84,6 +85,7 @@ export function useAddConversationSelectedSpaces({
   conversationId: string | null;
   owner: LightWorkspaceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   return useCallback(
@@ -108,7 +110,7 @@ export function useAddConversationSelectedSpaces({
       if (!response.ok) {
         const errorData = await getErrorFromResponse(response);
         sendApiErrorNotification({
-          title: "Could not select Spaces",
+          title: t`Could not select spaces`,
           error: errorData,
         });
         return null;
@@ -118,6 +120,6 @@ export function useAddConversationSelectedSpaces({
         await response.json()
       );
     },
-    [conversationId, owner.sId, sendApiErrorNotification]
+    [conversationId, owner.sId, sendApiErrorNotification, t]
   );
 }
