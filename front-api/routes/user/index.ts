@@ -12,8 +12,7 @@ import type {
 import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 import { sendUserOperationMessage } from "@app/types/shared/user_operation";
-import { isAdmin } from "@app/types/user";
-import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
+import { isAdmin, MAX_USER_PRONOUNS_LENGTH } from "@app/types/user";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import { sessionAuth } from "@front-api/middlewares/session_auth";
 import type { HandlerResult } from "@front-api/middlewares/utils";

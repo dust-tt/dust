@@ -78,7 +78,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const { pronouns, jobType } = await user.getProfile();
+  const jobType = await user.getJobType();
   const groupNamesByUserId =
     await GroupResource.listGroupNamesByUserModelIdInWorkspace({
       auth,
@@ -95,7 +95,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       lastName: user.lastName,
       fullName: user.fullName(),
       image: user.imageUrl,
-      pronouns,
+      pronouns: user.pronouns,
       jobType,
       groups: groupNamesByUserId.get(user.id) ?? [],
       revoked: membership.isRevoked(),
