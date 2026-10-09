@@ -29,13 +29,12 @@ import type {
   LiveAgentServerMessage,
   LiveCommentErrorCode,
   LiveCommentServerMessage,
-  LiveSourceReadResponse,
   LiveIdRange,
+  LiveSourceReadResponse,
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
   BODY_FRAGMENT_NAME,
-  LIVE_AGENT_EDIT_MAX_RANGES,
   LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
@@ -575,7 +574,7 @@ export function showLiveAgentActivity(
  * editing right before it is applied; it MUST be announced as reading again if the change is then
  * refused or leaves the document's body unchanged. Once a change of the body is applied, its update
  * MUST be sent, then the text it inserted announced as that agent's edit (`agent_edit`, the ids of
- * the items the change's own transaction inserted), unless more than `LIVE_AGENT_EDIT_MAX_RANGES`.
+ * the items the change's own transaction inserted); failing to read them MUST only skip it.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -634,7 +633,15 @@ export async function writeLiveSource(
     let inserted: LiveIdRange[] = [];
     const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
       bodyChanged = true;
-      inserted = insertedRanges(transaction);
+      // Presentation only: a failure must not fail the write, which Yjs has applied.
+      try {
+        inserted = insertedRanges(transaction);
+      } catch (err) {
+        logger.warn(
+          { err: normalizeError(err), documentName },
+          "Could not read the text an agent's change inserted"
+        );
+      }
     };
     if (announced) {
       body.observeDeep(onBodyChange);
@@ -659,11 +666,7 @@ export async function writeLiveSource(
     if (comments.isErr()) {
       return comments;
     }
-    if (
-      announced &&
-      inserted.length > 0 &&
-      inserted.length <= LIVE_AGENT_EDIT_MAX_RANGES
-    ) {
+    if (announced && inserted.length > 0) {
       // The update first, so editors already hold the text the message names.
       document.flush();
       document.broadcastStateless(agentEditMessage(agent, inserted));

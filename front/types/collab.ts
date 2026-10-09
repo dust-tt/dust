@@ -197,8 +197,8 @@ const liveIdRangeSchema = z.object({
 
 export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
 
-/** Past this many id ranges, an agent's change is not announced: editors just show it. */
-export const LIVE_AGENT_EDIT_MAX_RANGES = 2_000;
+/** One range per client a change advances: an agent's change holds one, other ranges are noise. */
+const LIVE_AGENT_EDIT_MAX_RANGES = 16;
 
 /**
  * The text an agent's change inserted in a live document, by Yjs item ids, so editors highlight
