@@ -50,6 +50,11 @@ type RateLimiterArgs = {
  * When the Redis store fails, returns `1` (allow, nothing recorded) by default, or `0` (deny) when
  * `onStoreError` is `"deny"`.
  */
+/**
+ * @cc [owner:philipperolet,label:performance;security] blocked-returns-zero
+ * When the request would exceed `maxPerTimeframe`, MUST return exactly `0` (never a negative
+ * number); otherwise returns a positive number. Callers MUST treat `<= 0` as blocked.
+ */
 export async function rateLimiter({
   key,
   maxPerTimeframe,
