@@ -20,7 +20,7 @@ pub fn open(cluster_file: &str) -> Result<Database> {
 }
 
 /// FDB clients retry forever by default; give up instead so an unreachable cluster is reported.
-const PING_TIMEOUT_MS: i32 = 5_000;
+pub const PING_TIMEOUT_MS: i32 = 5_000;
 
 /// Fails unless the cluster answers a transaction within `PING_TIMEOUT_MS`.
 pub async fn ping(database: &Database) -> Result<()> {

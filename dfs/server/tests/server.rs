@@ -22,6 +22,10 @@ fn cluster_file() -> String {
     std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| "fdb.cluster".to_owned())
 }
 
+const PING_DEADLINE_HEADROOM_MS: i32 = 5_000;
+const UNREACHABLE_PING_DEADLINE: Duration =
+    Duration::from_millis((fdb::PING_TIMEOUT_MS + PING_DEADLINE_HEADROOM_MS) as u64);
+
 #[tokio::test]
 async fn fdb_answers_a_transaction() -> Result<()> {
     let database = fdb::open(&cluster_file())?;
@@ -42,7 +46,7 @@ async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
 
     std::fs::remove_file(&cluster_file)?;
     assert!(result.is_err());
-    assert!(started.elapsed() < Duration::from_secs(10));
+    assert!(started.elapsed() < UNREACHABLE_PING_DEADLINE);
     Ok(())
 }
 
@@ -69,6 +73,8 @@ fn with_authorization<T>(message: T, authorization: &str) -> Result<Request<T>> 
 
 const WELL_FORMED_AUTHORIZATION: &str =
     "Bearer 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+const SHUTDOWN_TEST_DEADLINE: Duration = Duration::from_secs(5);
 
 #[tokio::test]
 async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
@@ -106,7 +112,7 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
         .map_err(|_| anyhow::anyhow!("server stopped"))?;
     for watch in &mut watches {
         assert_eq!(
-            timeout(Duration::from_secs(5), watch.message())
+            timeout(SHUTDOWN_TEST_DEADLINE, watch.message())
                 .await??
                 .context("health stream ended before shutdown notification")?
                 .status(),
@@ -115,7 +121,7 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     }
     drop(watches);
     drop(client);
-    timeout(Duration::from_secs(5), server).await???;
+    timeout(SHUTDOWN_TEST_DEADLINE, server).await???;
 
     Ok(())
 }
@@ -126,7 +132,7 @@ async fn dfs_rejects_oversized_requests() -> Result<()> {
     let error = client
         .create_tenant(with_authorization(
             CreateTenantRequest {
-                tenant_id: "x".repeat(4 * 1024 * 1024),
+                tenant_id: "x".repeat(dfs_api::MAX_MESSAGE_SIZE + 1),
                 ..Default::default()
             },
             WELL_FORMED_AUTHORIZATION,
