@@ -9,6 +9,7 @@ import {
   useSendApiErrorNotification,
   useSendNotification,
 } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
@@ -18,6 +19,7 @@ import { hasHealthyProviders } from "@app/lib/utils/providersHealth";
 import {
   getAgentBuilderRoute,
   getConversationRoute,
+  getManageAgentsRoute,
 } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -29,6 +31,7 @@ import {
   Brackets,
   Button,
   Clipboard,
+  ClipboardCheck,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +44,7 @@ import {
   Star01,
   StarFilled,
   Trash01,
+  useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
@@ -61,6 +65,7 @@ export function AgentDetailsButtonBar({
   const { user, providersHealth } = useAuth();
   const router = useAppRouter();
   const previewBatchId = useAgentSuggestionPreviewBatchId();
+  const [isAgentLinkCopied, copyAgentLink] = useCopyToClipboard();
 
   const { updateUserFavorite, isUpdatingFavorite } = useUpdateUserFavorite({
     owner,
@@ -144,6 +149,19 @@ export function AgentDetailsButtonBar({
           icon={Edit04}
         />
       )}
+
+      <Button
+        size="sm"
+        tooltip={isAgentLinkCopied ? t`Copied!` : t`Copy link`}
+        variant="outline"
+        icon={isAgentLinkCopied ? ClipboardCheck : Clipboard}
+        onClick={(e) => {
+          e.stopPropagation();
+          void copyAgentLink(
+            `${config.getAppUrl()}${getManageAgentsRoute(owner.sId, agentConfiguration.sId)}`
+          );
+        }}
+      />
 
       {agentConfiguration.scope !== "global" && (
         <AgentDetailsDropdownMenu

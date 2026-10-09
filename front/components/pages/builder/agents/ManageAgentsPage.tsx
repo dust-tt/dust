@@ -321,7 +321,7 @@ export function ManageAgentsPage({
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
-  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
+  const [detailedAgentId, setDetailedAgentId] = useHashParam("agentId");
   const [searchTerm, setSearchTerm] = useState("");
   const [hiddenAgentsParam, setHiddenAgentsParam] =
     useHashParam("hiddenAgents");
@@ -562,8 +562,8 @@ export function ManageAgentsPage({
         <AgentDetailsSheet
           owner={owner}
           user={user}
-          agentId={detailedAgentId}
-          onClose={() => setDetailedAgentId(null)}
+          agentId={detailedAgentId ?? null}
+          onClose={() => setDetailedAgentId(undefined)}
         />
       )}
     </ManageTrackingContext.Provider>

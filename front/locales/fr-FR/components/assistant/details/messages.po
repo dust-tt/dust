@@ -124,6 +124,14 @@ msgid "Edit agent"
 msgstr "Modifier l’agent"
 
 #: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Copied!"
+msgstr "Copié !"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "Copy link"
+msgstr "Copier le lien"
+
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
 msgid "Export failed"
 msgstr "Échec de l’exportation"
 
