@@ -91,7 +91,7 @@ msgstr "{intervalDays, plural, one {Chaque jour à {time}} other {Tous les # jou
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Name is required"
-msgstr "Le nom est obligatoire"
+msgstr "Le nom est obligatoire."
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Name should be less than 255 characters"
@@ -99,11 +99,11 @@ msgstr "Le nom doit faire moins de 255 caractères"
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Timezone is required"
-msgstr "Le fuseau horaire est obligatoire"
+msgstr "Le fuseau horaire est obligatoire."
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Cron expression is required"
-msgstr "L’expression cron est obligatoire"
+msgstr "L’expression cron est obligatoire."
 
 #: front/components/agent_builder/triggers/schedule/scheduleEditionFormSchema.ts
 msgid "Schedule"

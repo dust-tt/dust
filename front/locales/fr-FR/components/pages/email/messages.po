@@ -75,7 +75,7 @@ msgstr "Une erreur s’est produite"
 
 #: front/components/pages/email/ValidationPage.tsx
 msgid "An error occurred while processing your request. Please try again or contact support."
-msgstr "Une erreur s’est produite lors du traitement de votre demande. Veuillez réessayer ou contacter le support."
+msgstr "Une erreur s’est produite lors du traitement de votre demande. Réessayez ou contactez le support."
 
 #: front/components/pages/email/ValidationPage.tsx
 msgid "Tool approved"

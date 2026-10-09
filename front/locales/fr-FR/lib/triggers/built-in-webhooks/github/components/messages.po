@@ -59,7 +59,7 @@ msgstr "Aucune organisation trouvée"
 
 #: front/lib/triggers/built-in-webhooks/github/components/CreateWebhookGithubConnection.tsx
 msgid "Please select at least one repository or organization to create the webhook"
-msgstr "Sélectionnez au moins un dépôt ou une organisation pour créer le webhook"
+msgstr "Sélectionnez au moins un dépôt ou une organisation pour créer le webhook."
 
 #: front/lib/triggers/built-in-webhooks/github/components/WebhookSourceGithubDetails.tsx
 msgid "Connected sources"

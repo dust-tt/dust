@@ -51,7 +51,7 @@ msgstr "Que souhaitez-vous accomplir ?"
 
 #: front/components/editor/input_bar/useCustomEditor.tsx
 msgid "Ask anything"
-msgstr "Posez n'importe quelle question"
+msgstr "Posez n’importe quelle question"
 
 #: front/components/editor/input_bar/useCustomEditor.tsx
 msgid "Start with a question"
@@ -63,7 +63,7 @@ msgstr "Utilisez @ pour solliciter un agent ou une personne"
 
 #: front/components/editor/input_bar/useCustomEditor.tsx
 msgid "Ask an agent for help"
-msgstr "Demandez de l'aide à un agent"
+msgstr "Demandez de l’aide à un agent"
 
 #: front/components/editor/input_bar/useCustomEditor.tsx
 msgid "Use / to call a skill"

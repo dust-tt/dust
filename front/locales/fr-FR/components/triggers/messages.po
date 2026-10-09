@@ -84,7 +84,7 @@ msgstr "Vous n’avez encore aucun déclencheur."
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Name is required"
-msgstr "Le nom est obligatoire"
+msgstr "Le nom est obligatoire."
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Subscribed events must not be empty."
@@ -92,7 +92,7 @@ msgstr "La liste des événements suivis ne peut pas être vide."
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Secret is required"
-msgstr "Le secret est obligatoire"
+msgstr "Le secret est obligatoire."
 
 #: front/components/triggers/CreateWebhookSourceForm.tsx
 msgid "Name..."
@@ -200,7 +200,7 @@ msgstr "Connexion {presetName}"
 
 #: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
 msgid "{presetName} connection is required"
-msgstr "La connexion {presetName} est obligatoire"
+msgstr "La connexion {presetName} est obligatoire."
 
 #: front/components/triggers/TriggerStatusChip.tsx
 msgctxt "trigger status"

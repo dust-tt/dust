@@ -817,7 +817,7 @@ msgstr "{emailCount, plural, one {Échec de l’invitation} other {Échec des in
 
 #: front/lib/invitations.ts
 msgid "{emailCount, plural, one {This user has already been invited in the last 24 hours. Please wait before sending another invite.} other {These users have already been invited in the last 24 hours. Please wait before sending another invite.}}"
-msgstr "{emailCount, plural, one {Cet utilisateur a déjà été invité au cours des dernières 24 heures. Veuillez patienter avant d’envoyer une nouvelle invitation.} other {Ces utilisateurs ont déjà été invités au cours des dernières 24 heures. Veuillez patienter avant d’envoyer une nouvelle invitation.}}"
+msgstr "{emailCount, plural, one {Cet utilisateur a déjà été invité au cours des dernières 24 heures. Patientez avant d’envoyer une nouvelle invitation.} other {Ces utilisateurs ont déjà été invités au cours des dernières 24 heures. Patientez avant d’envoyer une nouvelle invitation.}}"
 
 #: front/lib/invitations.ts
 msgid "Invite failed"

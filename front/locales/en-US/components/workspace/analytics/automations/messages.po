@@ -234,6 +234,12 @@ msgstr "Disable"
 msgid "Search…"
 msgstr "Search…"
 
+#. placeholder {0}: selection.selectedCount
+#: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
+msgctxt "selected automations"
+msgid "{0, plural, one {# selected} other {# selected}}"
+msgstr "{0, plural, one {# selected} other {# selected}}"
+
 #: front/components/workspace/analytics/automations/AutomationsTriggersTable.tsx
 msgid "Select all {totalCount, plural, one {# automation} other {# automations}}"
 msgstr "Select all {totalCount, plural, one {# automation} other {# automations}}"

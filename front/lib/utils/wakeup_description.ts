@@ -62,3 +62,15 @@ export function rewordEnglishCronDescription(description: string): string {
     n === "2" ? ", every other day" : `, every ${n} days`
   );
 }
+
+const FRENCH_WEEKDAYS = "lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche";
+
+export function rewordFrenchCronDescription(description: string): string {
+  return description
+    .replace(/'/g, "’")
+    .replace(/\b(le|du) 1\b/g, "$1 1er")
+    .replace(
+      new RegExp(`\\bde (${FRENCH_WEEKDAYS}) à (${FRENCH_WEEKDAYS})\\b`, "g"),
+      "du $1 au $2"
+    );
+}

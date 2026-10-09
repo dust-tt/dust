@@ -176,7 +176,7 @@ msgstr "Remplissez les champs OAuth avec les valeurs ci-dessous. Remplacez <0>{T
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "Your Application (client) ID from step 1"
-msgstr "Votre Application (client) ID de l’étape 1"
+msgstr "L’ID d’application (client) obtenu à l’étape 1"
 
 #: front/components/actions/mcp/provider_setup_instructions/PowerBiSetupInstructions.tsx
 msgid "The secret Value from step 3"

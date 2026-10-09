@@ -423,7 +423,9 @@ export function SelfImprovingSkillsListSection({
     [t, unit, capUnit]
   );
 
-  const defaultCapValue = capInputValueFromSaved(defaultCapPerSkill, unit);
+  const defaultCapValue = formatNumber(defaultCapPerSkill, {
+    maximumFractionDigits: 2,
+  });
   const defaultCapPlaceholder = t`${defaultCapValue} (default)`;
 
   const rows: RowData[] = useMemo(

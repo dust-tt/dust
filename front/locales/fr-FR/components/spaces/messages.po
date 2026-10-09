@@ -66,7 +66,7 @@ msgstr "Vous devez saisir au moins une URL"
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
 msgid "Invalid Notion URL format: {invalidUrl}"
-msgstr "Format d’URL Notion invalide : {invalidUrl}"
+msgstr "Format d’URL Notion non valide : {invalidUrl}"
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
 msgid "One or more URLs were synced less than 20 minutes ago"
@@ -90,7 +90,7 @@ msgstr "Erreur"
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
 msgid "Invalid URL"
-msgstr "URL invalide"
+msgstr "URL non valide"
 
 #: front/components/spaces/AdvancedNotionManagement.tsx
 msgid "Please enter a URL to check"
@@ -222,7 +222,7 @@ msgstr "Supprimer l’espace"
 
 #: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
 msgid "Deleting {spaceName}"
-msgstr "Suppression de {spaceName}"
+msgstr "Supprimer {spaceName} ?"
 
 #: front/components/spaces/ConfirmDeleteSpaceDialog.tsx
 msgid "{agentCount, plural, one {# agent uses tools that depend on this space and will be impacted by its deletion} other {# agents use tools that depend on this space and will be impacted by its deletion}}"
@@ -323,9 +323,8 @@ msgid "Space settings - {spaceName}"
 msgstr "Paramètres de l’espace – {spaceName}"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
-#: front/components/spaces/SpaceCategoriesList.tsx
-msgid "Space settings"
-msgstr "Paramètres de l’espace"
+msgid "Create a space"
+msgstr "Créer un espace"
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
@@ -335,7 +334,7 @@ msgstr "Paramètres d’accès indisponibles"
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
 msgid "Failed to load group members, please reload the page."
-msgstr "Impossible de charger les membres du groupe, veuillez recharger la page."
+msgstr "Impossible de charger les membres du groupe, rechargez la page."
 
 #: front/components/spaces/CreateOrEditSpaceModal.tsx
 msgid "Restricted access is active."
@@ -547,7 +546,7 @@ msgstr "Seuls les administrateurs, les managers et les personnes et groupes sél
 
 #: front/components/spaces/GlobalSpaceSettingsModal.tsx
 msgid "They are the people picked below, plus everyone in the groups given access to the space."
-msgstr "Il s’agit des personnes sélectionnées ci-dessous, ainsi que de toutes les personnes des groupes ayant accès à l’espace."
+msgstr "Les personnes autorisées sont celles sélectionnées ci-dessous, ainsi que tous les membres des groupes ayant accès à l’espace."
 
 #: front/components/spaces/RequestedSpacesSection.tsx
 msgid "Spaces and pods"
@@ -606,6 +605,10 @@ msgstr "Déclencheurs"
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Used by"
 msgstr "Utilisé par"
+
+#: front/components/spaces/SpaceCategoriesList.tsx
+msgid "Space settings"
+msgstr "Paramètres de l’espace"
 
 #: front/components/spaces/SpaceCategoriesList.tsx
 #: front/components/spaces/spaceCategoryLabels.ts
@@ -733,7 +736,7 @@ msgstr "Le nom est obligatoire."
 
 #: front/components/spaces/SpaceFolderModal.tsx
 msgid "Name is invalid, must be multiple characters with no space."
-msgstr "Nom invalide : il doit comporter plusieurs caractères, sans espace."
+msgstr "Nom non valide : il doit comporter plusieurs caractères, sans espace."
 
 #: front/components/spaces/SpaceFolderModal.tsx
 msgid "Create folder"
@@ -801,7 +804,7 @@ msgstr "Géré par"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgid "Last sync"
-msgstr "Dernière synchro"
+msgstr "Dernière synchronisation"
 
 #: front/components/spaces/SpaceResourcesList.tsx
 msgctxt "last sync status"

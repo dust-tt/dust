@@ -45,7 +45,7 @@ msgstr "Description"
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Description needed to use in Agent Builder - helps agents understand when to use your app."
-msgstr "Description nécessaire pour l’utiliser dans l’éditeur d’agent - elle aide les agents à comprendre quand utiliser votre app."
+msgstr "Description nécessaire pour l’utiliser dans l’éditeur d’agent : elle aide les agents à comprendre quand utiliser votre app."
 
 #: front/components/pages/spaces/apps/AppSettingsPage.tsx
 msgid "Updating..."

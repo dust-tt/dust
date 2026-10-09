@@ -252,7 +252,7 @@ msgstr "Plafond mensuel de crédits"
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "API key name is required"
-msgstr "Le nom de la clé API est obligatoire"
+msgstr "Le nom de la clé API est obligatoire."
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
 msgid "Create API Key"

@@ -394,11 +394,11 @@ msgstr "Pronoms"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "e.g. She/Her"
-msgstr "ex. : Elle/Elle"
+msgstr "ex. : Elle/Elle"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Job title"
-msgstr "Intitulé de poste"
+msgstr "Fonction"
 
 #: front/components/UserSettingsPopover.tsx
 msgctxt "dropdown placeholder"
@@ -497,8 +497,9 @@ msgid "Font used for agent answers in conversations"
 msgstr "Police utilisée pour les réponses des agents dans les conversations"
 
 #: front/components/UserSettingsPopover.tsx
+msgctxt "setting title"
 msgid "Send message"
-msgstr "Envoyer le message"
+msgstr "Envoi des messages"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Keyboard shortcut to send a message"
@@ -543,7 +544,7 @@ msgstr "Alertes sonores pour les éléments qui demandent votre attention"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "We couldn't load your notification settings. Please try again later."
-msgstr "Impossible de charger vos paramètres de notification. Veuillez réessayer plus tard."
+msgstr "Impossible de charger vos paramètres de notification. Réessayez plus tard."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Other channels"
@@ -575,7 +576,7 @@ msgstr "Dust constitue une mémoire personnelle à partir de vos conversations e
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Agents use your memory when answering, so their responses, including in Slack, can reflect what it contains."
-msgstr "Les agents utilisent votre mémoire pour répondre : leurs réponses, y compris dans Slack, peuvent donc en refléter le contenu."
+msgstr "Les agents utilisent votre mémoire pour répondre : leurs réponses, y compris dans Slack, peuvent donc en refléter le contenu."
 
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"

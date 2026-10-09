@@ -55,7 +55,7 @@ msgstr "Modifier le filtre n’affecte que les synchronisations futures."
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Invalid retention period"
-msgstr "Durée de conservation invalide"
+msgstr "Durée de conservation non valide"
 
 #: front/components/data_source/gong/GongOptionComponent.tsx
 msgid "Retention period must be a positive integer or empty for no limit."

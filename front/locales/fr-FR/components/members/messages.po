@@ -148,8 +148,8 @@ msgid "Cancel"
 msgstr "Annuler"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
-msgid "Validate"
-msgstr "Valider"
+msgid "Invite"
+msgstr "Inviter"
 
 #: front/components/members/InviteEmailButtonWithModal.tsx
 msgid "Note"
@@ -174,7 +174,7 @@ msgstr "Nom"
 
 #: front/components/members/MemberSelectionTable.tsx
 msgid "Search users..."
-msgstr "Rechercher des utilisateurs…"
+msgstr "Rechercher des membres…"
 
 #: front/components/members/MemberSelectionTable.tsx
 msgid "Loading users..."

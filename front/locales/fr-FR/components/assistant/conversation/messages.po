@@ -35,7 +35,7 @@ msgstr "Vous ne pouvez pas envoyer de message à un agent en attente d’un rév
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Skipping…"
-msgstr "Interruption…"
+msgstr "Passage au message suivant…"
 
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Stopping…"
@@ -290,7 +290,7 @@ msgstr "Une erreur s’est produite lors du chargement de la conversation."
 
 #: front/components/assistant/conversation/ConversationError.tsx
 msgid "Please try again later."
-msgstr "Veuillez réessayer plus tard."
+msgstr "Réessayez plus tard."
 
 #: front/components/assistant/conversation/ConversationError.tsx
 msgid "Back to homepage"
@@ -609,7 +609,7 @@ msgstr "Voulez-vous vraiment supprimer TOUTES les conversations ?"
 
 #: front/components/assistant/conversation/DeleteConversationsDialog.tsx
 msgid "{count, plural, one {Are you sure you want to delete # conversation?} other {Are you sure you want to delete # conversations?}}"
-msgstr "{count, plural, one {Voulez-vous vraiment supprimer # conversation ?} other {Voulez-vous vraiment supprimer # conversations ?}}"
+msgstr "{count, plural, one {Voulez-vous vraiment supprimer cette conversation ?} other {Voulez-vous vraiment supprimer # conversations ?}}"
 
 #: front/components/assistant/conversation/DeleteConversationsDialog.tsx
 msgid "This action cannot be undone."
@@ -621,7 +621,7 @@ msgstr "Le message a été supprimé"
 
 #: front/components/assistant/conversation/EditConversationTitleDialog.tsx
 msgid "Edit conversation title"
-msgstr "Modifier le titre de la conversation"
+msgstr "Renommer la conversation"
 
 #: front/components/assistant/conversation/EditConversationTitleDialog.tsx
 msgid "Enter new title..."
@@ -675,11 +675,11 @@ msgstr "Trop long"
 
 #: front/components/assistant/conversation/FeedbackSelector.tsx
 msgid "Please select a reason or describe the issue."
-msgstr "Veuillez sélectionner une raison ou décrire le problème."
+msgstr "Sélectionnez une raison ou décrivez le problème."
 
 #: front/components/assistant/conversation/FeedbackSelector.tsx
 msgid "Please describe the issue."
-msgstr "Veuillez décrire le problème."
+msgstr "Décrivez le problème."
 
 #: front/components/assistant/conversation/FeedbackSelector.tsx
 msgid "I found this helpful"
@@ -711,7 +711,7 @@ msgstr "Quel était le problème ?"
 
 #: front/components/assistant/conversation/FeedbackSelector.tsx
 msgid "Glad you liked it! Tell us more?"
-msgstr "Ravis que cela vous plaise ! Vous nous en dites plus ?"
+msgstr "Ravis que cette réponse vous plaise ! Pouvez-vous nous en dire plus ?"
 
 #: front/components/assistant/conversation/FeedbackSelector.tsx
 msgid "Describe what went wrong"
@@ -771,11 +771,11 @@ msgstr "Votre fichier est maintenant accessible. Reprise en cours…"
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "File authorization is not available in the extension. Please open this conversation in the web app to authorize the file."
-msgstr "L’autorisation de fichiers n’est pas disponible dans l’extension. Veuillez ouvrir cette conversation dans l’application web pour autoriser le fichier."
+msgstr "L’autorisation de fichiers n’est pas disponible dans l’extension. Ouvrez cette conversation dans l’application web pour autoriser le fichier."
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "To access your file, please authorize it once."
-msgstr "Pour accéder à votre fichier, veuillez l’autoriser une fois."
+msgstr "Pour accéder à votre fichier, autorisez-le une fois."
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "Open in web app"
@@ -791,7 +791,7 @@ msgstr "Ouvrir le sélecteur de fichiers"
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "Failed to load file picker. Please try again."
-msgstr "Impossible de charger le sélecteur de fichiers. Veuillez réessayer."
+msgstr "Impossible de charger le sélecteur de fichiers. Réessayez."
 
 #: front/components/assistant/conversation/GoogleDriveFileAuthorizationRequired.tsx
 msgid "{triggeringUserName} needs to authorize a file."
@@ -912,11 +912,11 @@ msgstr "Hier"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Last week"
-msgstr "La semaine dernière"
+msgstr "Les 7 derniers jours"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Last month"
-msgstr "Le mois dernier"
+msgstr "Les 30 derniers jours"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Last 12 months"
@@ -1026,11 +1026,11 @@ msgstr "Options des conversations"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Show triggered"
-msgstr "Afficher les déclenchées"
+msgstr "Afficher les conversations déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Hide triggered"
-msgstr "Masquer les déclenchées"
+msgstr "Masquer les conversations déclenchées"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Edit history"

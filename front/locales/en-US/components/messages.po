@@ -497,6 +497,7 @@ msgid "Font used for agent answers in conversations"
 msgstr "Font used for agent answers in conversations"
 
 #: front/components/UserSettingsPopover.tsx
+msgctxt "setting title"
 msgid "Send message"
 msgstr "Send message"
 

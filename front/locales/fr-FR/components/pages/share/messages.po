@@ -15,7 +15,7 @@ msgstr ""
 
 #: front/components/pages/share/EmailVerificationFlow.tsx
 msgid "Please enter a valid email address"
-msgstr "Veuillez saisir une adresse e-mail valide"
+msgstr "Saisissez une adresse e-mail valide."
 
 #: front/components/pages/share/EmailVerificationFlow.tsx
 msgid "Code must be 6 digits"

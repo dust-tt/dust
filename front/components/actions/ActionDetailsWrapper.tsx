@@ -86,7 +86,7 @@ function formatDurationMs(
     return formatNumber(Math.round(durationMs), {
       style: "unit",
       unit: "millisecond",
-      unitDisplay: "narrow",
+      unitDisplay: "short",
     });
   }
   if (durationMs < 60_000) {
@@ -94,12 +94,12 @@ function formatDurationMs(
       ? formatNumber(Math.floor(durationMs / 1000), {
           style: "unit",
           unit: "second",
-          unitDisplay: "narrow",
+          unitDisplay: "short",
         })
       : formatNumber(durationMs / 1000, {
           style: "unit",
           unit: "second",
-          unitDisplay: "narrow",
+          unitDisplay: "short",
           minimumFractionDigits: 1,
           maximumFractionDigits: 1,
         });
@@ -114,12 +114,12 @@ function formatDurationMs(
       formatNumber(minutes, {
         style: "unit",
         unit: "minute",
-        unitDisplay: "narrow",
+        unitDisplay: "short",
       }),
       formatNumber(remainderSeconds, {
         style: "unit",
         unit: "second",
-        unitDisplay: "narrow",
+        unitDisplay: "short",
       }),
     ],
     { type: "unit", style: "narrow" }

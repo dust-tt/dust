@@ -573,10 +573,6 @@ msgid "This user is managed by your identity provider."
 msgstr "This user is managed by your identity provider."
 
 #: front/components/workspace/ChangeMemberModal.tsx
-msgid "Confirm deletion"
-msgstr "Confirm deletion"
-
-#: front/components/workspace/ChangeMemberModal.tsx
 msgid "Revoke access for user <0>{memberFullName}</0>?"
 msgstr "Revoke access for user <0>{memberFullName}</0>?"
 
@@ -585,8 +581,8 @@ msgid "Yes, revoke"
 msgstr "Yes, revoke"
 
 #: front/components/workspace/ChangeMemberModal.tsx
-msgid "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
-msgstr "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
+msgid "Revoking access will remove the member from the workspace. They will be able to rejoin if they have an invitation link."
+msgstr "Revoking access will remove the member from the workspace. They will be able to rejoin if they have an invitation link."
 
 #: front/components/workspace/ChangeMemberModal.tsx
 msgid "Update role"

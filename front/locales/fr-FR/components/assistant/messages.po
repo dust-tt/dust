@@ -96,7 +96,7 @@ msgstr "Import en cours…"
 
 #: front/components/assistant/CreateAgentDropdown.tsx
 msgid "From YAML"
-msgstr "À partir d’un YAML"
+msgstr "À partir d’un fichier YAML"
 
 #: front/components/assistant/CreateAgentDropdown.tsx
 msgid "Create agent"
@@ -104,7 +104,7 @@ msgstr "Créer un agent"
 
 #: front/components/assistant/DeleteAgentDialog.tsx
 msgid "Archiving the agent"
-msgstr "Archivage de l’agent"
+msgstr "Archiver l’agent ?"
 
 #: front/components/assistant/DeleteAgentDialog.tsx
 msgid "This will archive the agent for everyone."
@@ -140,7 +140,7 @@ msgstr "Archiver"
 
 #: front/components/assistant/DeleteAssistantsDialog.tsx
 msgid "{agentCount, plural, one {Archiving # agent} other {Archiving # agents}}"
-msgstr "{agentCount, plural, one {Archivage de # agent} other {Archivage de # agents}}"
+msgstr "{agentCount, plural, one {Archiver # agent ?} other {Archiver # agents ?}}"
 
 #: front/components/assistant/DeleteAssistantsDialog.tsx
 #: front/components/assistant/UnpublishAssistantsDialog.tsx
@@ -195,7 +195,7 @@ msgstr "Compétences"
 
 #: front/components/assistant/RestoreAgentDialog.tsx
 msgid "Restoring the agent"
-msgstr "Restauration de l’agent"
+msgstr "Restaurer l’agent ?"
 
 #: front/components/assistant/RestoreAgentDialog.tsx
 msgid "This will restore the agent for everyone."
@@ -295,7 +295,7 @@ msgstr "Erreur lors de la récupération des suggestions"
 
 #: front/components/assistant/TagsSuggestDialog.tsx
 msgid "Please try again. If the problem persists, please contact support."
-msgstr "Veuillez réessayer. Si le problème persiste, contactez le support."
+msgstr "Réessayez. Si le problème persiste, contactez le support."
 
 #: front/components/assistant/TagsSuggestDialog.tsx
 msgid "Agent tag suggestions"
@@ -319,7 +319,7 @@ msgstr "Dépublier"
 
 #: front/components/assistant/UnpublishAssistantsDialog.tsx
 msgid "{agentCount, plural, one {Unpublishing # agent} other {Unpublishing # agents}}"
-msgstr "{agentCount, plural, one {Dépublication de # agent} other {Dépublication de # agents}}"
+msgstr "{agentCount, plural, one {Dépublier # agent ?} other {Dépublier # agents ?}}"
 
 #: front/components/assistant/UnpublishAssistantsDialog.tsx
 msgid "Unpublished agents will no longer be accessible to everyone in the workspace."

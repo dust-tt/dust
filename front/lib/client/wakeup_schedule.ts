@@ -3,6 +3,7 @@ import { prefersTwentyFourHourTime } from "@app/lib/i18n/format";
 import {
   formatWakeUpTimeOfDay,
   rewordEnglishCronDescription,
+  rewordFrenchCronDescription,
 } from "@app/lib/utils/wakeup_description";
 import type { WakeUpType } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -26,7 +27,8 @@ type Translate = (descriptor: MessageDescriptor) => string;
  * Cron schedules MUST be described by cronstrue in the language of the UI locale
  * (`getActiveLocale`), and the one-shot "at …" phrase MUST come from the `t` passed by the caller,
  * so the phrase matches the language of the surrounding UI text. The English rewording of
- * cronstrue's output MUST only apply when that language is English.
+ * cronstrue's output MUST only apply when that language is English, and the French rewording only
+ * when it is French.
  */
 export function describeWakeUpSchedule(
   wakeUp: Pick<WakeUpType, "scheduleConfig">,
@@ -47,6 +49,9 @@ export function describeWakeUpSchedule(
       });
       if (language === "en") {
         description = rewordEnglishCronDescription(description);
+      }
+      if (language === "fr") {
+        description = rewordFrenchCronDescription(description);
       }
       // Lowercase the first character so the phrase reads naturally after
       // the wake-up reason ("{reason} at 09:00, only on Monday").

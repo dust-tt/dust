@@ -1,6 +1,7 @@
 import {
   formatWakeUpSidebarLabel,
   getNextWakeUpFireAtFromScheduleConfig,
+  rewordFrenchCronDescription,
 } from "@app/lib/utils/wakeup_description";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -51,5 +52,34 @@ describe("getNextWakeUpFireAtFromScheduleConfig", () => {
     });
     expect(nextFire).toBeGreaterThan(Date.now());
     vi.useRealTimers();
+  });
+});
+
+describe("rewordFrenchCronDescription", () => {
+  it("uses typographic apostrophes", () => {
+    expect(rewordFrenchCronDescription("À l'heure pile")).toBe(
+      "À l’heure pile"
+    );
+  });
+
+  it("writes the first day of the month as an ordinal", () => {
+    expect(rewordFrenchCronDescription("À 09:00, le 1 et 15 du mois")).toBe(
+      "À 09:00, le 1er et 15 du mois"
+    );
+    expect(rewordFrenchCronDescription("À 09:00, du 1 au 15 du mois")).toBe(
+      "À 09:00, du 1er au 15 du mois"
+    );
+    expect(rewordFrenchCronDescription("À 09:00, le 15 du mois")).toBe(
+      "À 09:00, le 15 du mois"
+    );
+  });
+
+  it("rewords weekday ranges", () => {
+    expect(rewordFrenchCronDescription("À 17:30, de lundi à vendredi")).toBe(
+      "À 17:30, du lundi au vendredi"
+    );
+    expect(rewordFrenchCronDescription("À 09:00, de janvier à mars")).toBe(
+      "À 09:00, de janvier à mars"
+    );
   });
 });

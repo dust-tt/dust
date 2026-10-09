@@ -16,7 +16,7 @@ msgstr ""
 #: front/components/plans/PlansTables.tsx
 #: front/components/plans/SubscriptionPlanCards.tsx
 msgid "From 1 user"
-msgstr "À partir d’1 utilisateur"
+msgstr "À partir d’un utilisateur"
 
 #: front/components/plans/PlansTables.tsx
 msgid "Multiple private spaces"

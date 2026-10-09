@@ -26,6 +26,11 @@ msgid "No files found"
 msgstr "Aucun fichier trouvé"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
+msgctxt "keyword the user types to confirm a deletion"
+msgid "delete"
+msgstr "supprimer"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
 msgid "Delete Pod"
 msgstr "Supprimer le Pod"
 
@@ -34,12 +39,12 @@ msgid "Delete {podName}?"
 msgstr "Supprimer {podName} ?"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
-msgid "Type <0>delete</0> below to confirm. This permanently removes all Pod content and cannot be undone."
-msgstr "Saisissez <0>delete</0> ci-dessous pour confirmer. Tout le contenu du Pod sera définitivement supprimé, sans retour possible."
+msgid "Type <0>{confirmKeyword}</0> below to confirm. This permanently removes all Pod content and cannot be undone."
+msgstr "Saisissez <0>{confirmKeyword}</0> ci-dessous pour confirmer. Tout le contenu du Pod sera définitivement supprimé, sans retour possible."
 
 #: front/components/pod/settings/DeletePodDialog.tsx
-msgid "Type delete to confirm"
-msgstr "Saisissez delete pour confirmer"
+msgid "Type {confirmKeyword} to confirm"
+msgstr "Saisissez {confirmKeyword} pour confirmer"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
 #: front/components/pod/settings/ManagePodGroupsPanel.tsx
@@ -390,7 +395,7 @@ msgstr "Désarchiver"
 
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
 msgid "This Pod is removed from your sidebar. Its content stays intact and agents can still use it as a data source. You can restore it at any time."
-msgstr "Ce Pod est retiré de votre barre latérale. Son contenu reste intact et les agents peuvent toujours l’utiliser comme source de données. Vous pouvez le restaurer à tout moment."
+msgstr "Ce Pod sera retiré de votre barre latérale. Son contenu restera intact et les agents pourront toujours l’utiliser comme source de données. Vous pourrez le restaurer à tout moment."
 
 #: front/components/pod/settings/PodSettingsGeneralTab.tsx
 msgctxt "button label"

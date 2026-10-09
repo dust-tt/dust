@@ -55,4 +55,4 @@ msgstr "Cette visualisation a rencontré une erreur et ne peut pas être affich�
 
 #: front/components/assistant/conversation/actions/VisualizationActionIframe.tsx
 msgid "Please contact the creator of this visualization for assistance."
-msgstr "Veuillez contacter le créateur de cette visualisation pour obtenir de l’aide."
+msgstr "Contactez le créateur de cette visualisation pour obtenir de l’aide."

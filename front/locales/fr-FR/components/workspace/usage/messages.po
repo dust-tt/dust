@@ -116,15 +116,15 @@ msgstr "Règles de dépenses"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Default per-user workspace credit pool monthly limit"
-msgstr "Limite mensuelle par défaut de la réserve de crédits du workspace par utilisateur"
+msgstr "Limite mensuelle par défaut de la réserve de crédits du workspace par membre"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Define the workspace credit pool credit limit for users per month in your workspace. This limit is added on top of each seat's built-in allowance. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
-msgstr "Définissez la limite mensuelle de crédits de la réserve du workspace pour chaque utilisateur de votre workspace. Cette limite s’ajoute aux crédits inclus dans chaque siège. Elle peut être modifiée par utilisateur dans le tableau des membres. <0>Indiquez 0 pour supprimer l’accès à la réserve.</0>"
+msgstr "Définissez la limite mensuelle de crédits de la réserve du workspace pour chaque membre de votre workspace. Cette limite s’ajoute aux crédits inclus dans chaque siège. Elle peut être modifiée par membre dans le tableau des membres. <0>Indiquez 0 pour supprimer l’accès à la réserve.</0>"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "Define the total amount of credits each user can consume from the workspace credit pool per month. Can be overridden per user in the members table. <0>Set to 0 to remove pool access.</0>"
-msgstr "Définissez le nombre total de crédits que chaque utilisateur peut consommer chaque mois dans la réserve de crédits du workspace. Il peut être modifié par utilisateur dans le tableau des membres. <0>Indiquez 0 pour supprimer l’accès à la réserve.</0>"
+msgstr "Définissez le nombre total de crédits que chaque membre peut consommer chaque mois dans la réserve de crédits du workspace. Il peut être modifié par membre dans le tableau des membres. <0>Indiquez 0 pour supprimer l’accès à la réserve.</0>"
 
 #: front/components/workspace/usage/UsageSettingsCard.tsx
 msgid "credits/month"

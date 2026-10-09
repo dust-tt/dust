@@ -23,7 +23,7 @@ msgstr "Dust - Compétence"
 
 #: front/components/pages/builder/skills/ManageSkillsPage.tsx
 msgid "Could not load skills. Please try again."
-msgstr "Impossible de charger les compétences. Veuillez réessayer."
+msgstr "Impossible de charger les compétences. Réessayez."
 
 #: front/components/pages/builder/skills/ManageSkillsPage.tsx
 msgid "Retry"

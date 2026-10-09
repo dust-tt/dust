@@ -26,6 +26,11 @@ msgid "No files found"
 msgstr "No files found"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
+msgctxt "keyword the user types to confirm a deletion"
+msgid "delete"
+msgstr "delete"
+
+#: front/components/pod/settings/DeletePodDialog.tsx
 msgid "Delete Pod"
 msgstr "Delete Pod"
 
@@ -34,12 +39,12 @@ msgid "Delete {podName}?"
 msgstr "Delete {podName}?"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
-msgid "Type <0>delete</0> below to confirm. This permanently removes all Pod content and cannot be undone."
-msgstr "Type <0>delete</0> below to confirm. This permanently removes all Pod content and cannot be undone."
+msgid "Type <0>{confirmKeyword}</0> below to confirm. This permanently removes all Pod content and cannot be undone."
+msgstr "Type <0>{confirmKeyword}</0> below to confirm. This permanently removes all Pod content and cannot be undone."
 
 #: front/components/pod/settings/DeletePodDialog.tsx
-msgid "Type delete to confirm"
-msgstr "Type delete to confirm"
+msgid "Type {confirmKeyword} to confirm"
+msgstr "Type {confirmKeyword} to confirm"
 
 #: front/components/pod/settings/DeletePodDialog.tsx
 #: front/components/pod/settings/ManagePodGroupsPanel.tsx

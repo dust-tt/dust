@@ -35,7 +35,7 @@ msgstr "Remplacer la compétence existante"
 
 #: front/components/skills/import/DetectedSkillsList.tsx
 msgid "Invalid skill format"
-msgstr "Format de compétence invalide"
+msgstr "Format de compétence non valide"
 
 #: front/components/skills/import/DetectedSkillsList.tsx
 msgid "Skill name"
@@ -168,8 +168,8 @@ msgstr "Import des compétences"
 
 #: front/components/skills/import/formSchema.ts
 msgid "Select at least one skill to import"
-msgstr "Sélectionnez au moins une compétence à importer"
+msgstr "Sélectionnez au moins une compétence à importer."
 
 #: front/components/skills/import/formSchema.ts
 msgid "A repository URL is required"
-msgstr "L’URL du dépôt est obligatoire"
+msgstr "L’URL du dépôt est obligatoire."

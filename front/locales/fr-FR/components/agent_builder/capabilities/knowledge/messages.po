@@ -211,7 +211,7 @@ msgstr "Ces données contiennent…"
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Configure Include Data"
-msgstr "Configurer Include Data"
+msgstr "Configurer l’inclusion des données"
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Set time range and describe what data to include."
@@ -227,7 +227,7 @@ msgstr "Décrivez les données à inclure depuis les sources de données sélect
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Configure Extract Data"
-msgstr "Configurer Extract Data"
+msgstr "Configurer le traitement avancé"
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Set extraction parameters and describe what data to extract."
@@ -239,7 +239,7 @@ msgstr "Fournissez une brève description (800 caractères maximum) du contenu e
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Configure Query Tables"
-msgstr "Configurer Query Tables"
+msgstr "Configurer l’analyse des tables"
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Describe how you want to query the selected tables."
@@ -259,4 +259,4 @@ msgstr "Décrivez ce que vous voulez interroger dans vos tables…"
 
 #: front/components/agent_builder/capabilities/knowledge/utils.ts
 msgid "Configure Data Warehouse"
-msgstr "Configurer Data Warehouse"
+msgstr "Configurer l’entrepôt de données"

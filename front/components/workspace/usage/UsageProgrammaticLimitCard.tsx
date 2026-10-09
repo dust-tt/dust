@@ -86,7 +86,7 @@ function SelfImprovementCapPerSkillItem({ owner }: CapItemProps) {
           <InputWithSave
             name="selfImprovementCapPerSkill"
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
-            placeholder={String(defaultCap)}
+            placeholder={formatNumber(defaultCap)}
             value={savedValue}
             unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}
@@ -141,7 +141,7 @@ function SelfImprovingCapItem({ owner }: CapItemProps) {
           <InputWithSave
             name="reinforcementCap"
             inputMode={unit === "awu_credits" ? "numeric" : "decimal"}
-            placeholder={String(defaultCap)}
+            placeholder={formatNumber(defaultCap)}
             value={savedValue}
             unit={capUnit}
             normalizeValue={(value) => normalizeCapInput(value, unit)}

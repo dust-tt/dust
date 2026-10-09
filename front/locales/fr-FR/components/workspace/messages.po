@@ -332,7 +332,7 @@ msgstr "Une erreur s’est produite"
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Please contact support if the issue persists."
-msgstr "Veuillez contacter le support si le problème persiste."
+msgstr "Contactez le support si le problème persiste."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount"
@@ -340,7 +340,7 @@ msgstr "Montant"
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Amount exceeds the {maxAmountFormatted} limit. Please <0>contact support</0>."
-msgstr "Le montant dépasse la limite de {maxAmountFormatted}. Veuillez <0>contacter le support</0>."
+msgstr "Le montant dépasse la limite de {maxAmountFormatted}. <0>Contactez le support</0>."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Added Credits"
@@ -397,7 +397,7 @@ msgstr "Impossible de charger vos informations d’achat."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Something went wrong while loading your top-up options. Please try again in a moment, or <0>contact support</0> if the issue persists."
-msgstr "Une erreur s’est produite lors du chargement de vos options de recharge. Veuillez réessayer dans un instant, ou <0>contacter le support</0> si le problème persiste."
+msgstr "Une erreur s’est produite lors du chargement de vos options de recharge. Réessayez dans un instant, ou <0>contactez le support</0> si le problème persiste."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Credit purchases are not available for your current plan."
@@ -405,7 +405,7 @@ msgstr "L’achat de crédits n’est pas disponible avec votre forfait actuel."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Please <0>contact support</0> for assistance."
-msgstr "Veuillez <0>contacter le support</0> pour obtenir de l’aide."
+msgstr "<0>Contactez le support</0> pour obtenir de l’aide."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "No billing configuration found for this workspace."
@@ -413,15 +413,15 @@ msgstr "Aucune configuration de facturation trouvée pour ce workspace."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Please <0>contact support</0> to set up billing for your workspace."
-msgstr "Veuillez <0>contacter le support</0> pour configurer la facturation de votre workspace."
+msgstr "<0>Contactez le support</0> pour configurer la facturation de votre workspace."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "You have pending credit purchases awaiting payment. Please complete your pending payment before making a new purchase or <0>contact support</0> to cancel your pending payments."
-msgstr "Vous avez des achats de crédits en attente de paiement. Veuillez effectuer votre paiement en attente avant tout nouvel achat, ou <0>contacter le support</0> pour annuler vos paiements en attente."
+msgstr "Vous avez des achats de crédits en attente de paiement. Effectuez votre paiement en attente avant tout nouvel achat, ou <0>contactez le support</0> pour annuler vos paiements en attente."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "You've reached your credit limit for this billing cycle. It resets at the start of your next billing cycle. If you need additional credits before then, please <0>contact support</0>."
-msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation. Elle sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, veuillez <0>contacter le support</0>."
+msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation. Elle sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, <0>contactez le support</0>."
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 msgid "Buy credits"
@@ -441,7 +441,7 @@ msgstr "Confirmation de paiement requise"
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Please complete the payment to finalize your credit purchase or contact support to cancel pending invoices."
-msgstr "Veuillez effectuer le paiement pour finaliser votre achat de crédits, ou contactez le support pour annuler les factures en attente."
+msgstr "Effectuez le paiement pour finaliser votre achat de crédits, ou contactez le support pour annuler les factures en attente."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "You still have pay-as-you-go capacity"
@@ -514,7 +514,7 @@ msgstr "L’achat de crédits n’est pas disponible pendant votre période d’
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Credit purchases become available once you upgrade to a paid plan. If you need credits during your trial, please contact our support team."
-msgstr "L’achat de crédits sera disponible une fois que vous serez passé à un forfait payant. Si vous avez besoin de crédits pendant votre essai, veuillez contacter notre équipe support."
+msgstr "L’achat de crédits sera disponible une fois que vous serez passé à un forfait payant. Si vous avez besoin de crédits pendant votre essai, contactez notre équipe support."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Contact {SUPPORT_EMAIL}"
@@ -526,7 +526,7 @@ msgstr "L’achat de crédits nécessite un abonnement actif."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Please ensure your subscription is active and your payment method is up to date. If you need assistance, please contact our support team."
-msgstr "Vérifiez que votre abonnement est actif et que votre moyen de paiement est à jour. Si vous avez besoin d’aide, veuillez contacter notre équipe support."
+msgstr "Vérifiez que votre abonnement est actif et que votre moyen de paiement est à jour. Si vous avez besoin d’aide, contactez notre équipe support."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "You have pending credit purchases awaiting payment."
@@ -534,7 +534,7 @@ msgstr "Vous avez des achats de crédits en attente de paiement."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Please complete your pending payment before making a new purchase or contact support to cancel your pending payments."
-msgstr "Veuillez effectuer votre paiement en attente avant tout nouvel achat, ou contactez le support pour annuler vos paiements en attente."
+msgstr "Effectuez votre paiement en attente avant tout nouvel achat, ou contactez le support pour annuler vos paiements en attente."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Learn more"
@@ -546,7 +546,7 @@ msgstr "Vous avez atteint votre limite de crédits pour ce cycle de facturation.
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Your credit purchase limit resets at the start of your next billing cycle. If you need additional credits before then, please contact our support team."
-msgstr "Votre limite d’achat de crédits sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, veuillez contacter notre équipe support."
+msgstr "Votre limite d’achat de crédits sera réinitialisée au début de votre prochain cycle de facturation. Si vous avez besoin de crédits supplémentaires d’ici là, contactez notre équipe support."
 
 #: front/components/workspace/BuyCreditDialog.tsx
 msgid "Purchase credits for programmatic API usage."
@@ -573,20 +573,16 @@ msgid "This user is managed by your identity provider."
 msgstr "Cet utilisateur est géré par votre fournisseur d’identité."
 
 #: front/components/workspace/ChangeMemberModal.tsx
-msgid "Confirm deletion"
-msgstr "Confirmer la suppression"
-
-#: front/components/workspace/ChangeMemberModal.tsx
 msgid "Revoke access for user <0>{memberFullName}</0>?"
-msgstr "Révoquer l’accès de l’utilisateur <0>{memberFullName}</0> ?"
+msgstr "Révoquer l’accès de <0>{memberFullName}</0> ?"
 
 #: front/components/workspace/ChangeMemberModal.tsx
 msgid "Yes, revoke"
 msgstr "Oui, révoquer"
 
 #: front/components/workspace/ChangeMemberModal.tsx
-msgid "Deleting a member will remove them from the workspace. They will be able to rejoin if they have an invitation link."
-msgstr "Supprimer un membre le retire du workspace. Il pourra le rejoindre à nouveau s’il dispose d’un lien d’invitation."
+msgid "Revoking access will remove the member from the workspace. They will be able to rejoin if they have an invitation link."
+msgstr "Révoquer l’accès d’un membre le retire du workspace. Il pourra le rejoindre à nouveau s’il dispose d’un lien d’invitation."
 
 #: front/components/workspace/ChangeMemberModal.tsx
 msgid "Update role"
@@ -623,7 +619,7 @@ msgstr "Changer de siège"
 
 #: front/components/workspace/ChangeSeatModal.tsx
 msgid "Choose a new plan to continue"
-msgstr "Choisissez un nouveau forfait pour continuer"
+msgstr "Choisissez un nouveau type de siège pour continuer"
 
 #: front/components/workspace/ChangeSeatModal.tsx
 msgid "No seat plans available"
@@ -1559,7 +1555,7 @@ msgstr "Impossible de charger l’historique des recharges"
 
 #: front/components/workspace/TopUpsHistoryTable.tsx
 msgid "An error occurred while loading the top-ups history. Please refresh the page or contact support if the issue persists."
-msgstr "Une erreur s’est produite lors du chargement de l’historique des recharges. Veuillez actualiser la page ou contacter le support si le problème persiste."
+msgstr "Une erreur s’est produite lors du chargement de l’historique des recharges. Actualisez la page ou contactez le support si le problème persiste."
 
 #: front/components/workspace/TopUpsHistoryTable.tsx
 msgid "No top-ups yet: credits you buy, free credits and coupon credits will appear here."

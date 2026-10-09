@@ -144,7 +144,7 @@ msgstr "Articles"
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Please provide a name."
-msgstr "Veuillez indiquer un nom."
+msgstr "Indiquez un nom."
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "The name cannot be blank or start with \"managed-\"."
@@ -156,7 +156,7 @@ msgstr "Un site web portant ce nom existe déjà"
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)."
-msgstr "Veuillez indiquer une URL valide (par ex. https://example.com ou https://example.com/a/b/c)."
+msgstr "Indiquez une URL valide (par ex. https://example.com ou https://example.com/a/b/c)."
 
 #: front/components/spaces/websites/SpaceWebsiteModal.tsx
 msgid "Website updated"

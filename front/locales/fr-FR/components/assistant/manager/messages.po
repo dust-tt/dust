@@ -138,7 +138,7 @@ msgstr "Chargement des agents"
 
 #: front/components/assistant/manager/DefaultAgentToggle.tsx
 msgid "Could not update agent. Please try again."
-msgstr "Impossible de mettre à jour l’agent. Veuillez réessayer."
+msgstr "Impossible de mettre à jour l’agent. Réessayez."
 
 #: front/components/assistant/manager/GlobalAgentAction.tsx
 msgid "Free plan"

@@ -35,7 +35,7 @@ msgstr "Réinitialisation des crédits dans {resetInDays, plural, one {# jour} o
 
 #: front/components/app/CreditUsage.tsx
 msgid "{usedCredits} of {limitCredits} used on your current plan"
-msgstr "{usedCredits} sur {limitCredits} utilisés avec votre forfait actuel"
+msgstr "{usedCredits} sur {limitCredits} crédits utilisés avec votre forfait actuel"
 
 #: front/components/app/CreditUsage.tsx
 msgid "{resetDayKind, select, relative {Resets {resetDay}} weekday {Resets on {resetDay}} other {Resets on {resetDay}}}"
@@ -92,7 +92,7 @@ msgstr "Cette clé existe déjà"
 
 #: front/components/app/DatasetView.tsx
 msgid "Please choose a different key"
-msgstr "Veuillez choisir une autre clé"
+msgstr "Choisissez une autre clé."
 
 #: front/components/app/DatasetView.tsx
 msgid "Error reading JSONL file."
@@ -379,7 +379,7 @@ msgstr "OK"
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "You have reached the message limit under the trial. You can subscribe to a paid plan to continue using Dust."
-msgstr "Vous avez atteint la limite de messages de l’essai. Vous pouvez souscrire un forfait payant pour continuer à utiliser Dust."
+msgstr "Vous avez atteint la limite de messages de l’essai. Vous pouvez vous abonner à un forfait payant pour continuer à utiliser Dust."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Credit quota exceeded"
@@ -415,11 +415,11 @@ msgstr "Gérer les crédits"
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Your workspace has run out of credits. Please purchase more credits to continue using Dust."
-msgstr "Votre workspace n’a plus de crédits. Veuillez acheter des crédits pour continuer à utiliser Dust."
+msgstr "Votre workspace n’a plus de crédits. Achetez des crédits pour continuer à utiliser Dust."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Your workspace has run out of credits. Please contact your administrator to purchase more credits."
-msgstr "Votre workspace n’a plus de crédits. Veuillez contacter votre administrateur pour acheter des crédits."
+msgstr "Votre workspace n’a plus de crédits. Contactez votre administrateur pour acheter des crédits."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "No seat assigned"
@@ -435,7 +435,7 @@ msgstr "Aucun siège ne vous est attribué dans ce workspace. Rendez-vous sur la
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "You don't have a seat assigned in this workspace. Please contact your administrator to assign you one."
-msgstr "Aucun siège ne vous est attribué dans ce workspace. Veuillez contacter votre administrateur pour qu’il vous en attribue un."
+msgstr "Aucun siège ne vous est attribué dans ce workspace. Contactez votre administrateur pour qu’il vous en attribue un."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Usage cap reached"
@@ -451,11 +451,11 @@ msgstr "Vous avez atteint votre plafond d’utilisation personnel. Sur la page d
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "You have reached your personal usage cap. Please contact your Dust representative to adjust it."
-msgstr "Vous avez atteint votre plafond d’utilisation personnel. Veuillez contacter votre représentant Dust pour l’ajuster."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Contactez votre représentant Dust pour l’ajuster."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "You have reached your personal usage cap. Please contact your administrator to increase it."
-msgstr "Vous avez atteint votre plafond d’utilisation personnel. Veuillez contacter votre administrateur pour l’augmenter."
+msgstr "Vous avez atteint votre plafond d’utilisation personnel. Contactez votre administrateur pour l’augmenter."
 
 #: front/components/app/ReachedLimitPopup.tsx
 msgid "Group budget reached"

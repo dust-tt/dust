@@ -31,7 +31,7 @@ msgstr "La compétence <0>{skillName}</0> sera archivée pour tout le monde."
 
 #: front/components/skills/ArchiveSkillDialog.tsx
 msgid "Archiving the skill"
-msgstr "Archivage de la compétence"
+msgstr "Archiver la compétence ?"
 
 #: front/components/skills/ArchiveSkillDialog.tsx
 #: front/components/skills/ArchiveSkillsDialog.tsx
@@ -58,7 +58,7 @@ msgstr "Archiver"
 
 #: front/components/skills/ArchiveSkillsDialog.tsx
 msgid "{skillCount, plural, one {Archiving # skill} other {Archiving # skills}}"
-msgstr "{skillCount, plural, one {Archivage de # compétence} other {Archivage de # compétences}}"
+msgstr "{skillCount, plural, one {Archiver # compétence ?} other {Archiver # compétences ?}}"
 
 #: front/components/skills/ArchiveSkillsDialog.tsx
 msgid "{totalUsage, plural, one {This skill has been used # time.} other {This skill has been used # times.}}"
@@ -148,7 +148,7 @@ msgstr "Rejoindre tous les espaces requis"
 
 #: front/components/skills/RestoreSkillDialog.tsx
 msgid "Restoring the skill"
-msgstr "Restauration de la compétence"
+msgstr "Restaurer la compétence ?"
 
 #: front/components/skills/RestoreSkillDialog.tsx
 msgid "This will restore the skill <0>{skillName}</0> for everyone."
@@ -180,7 +180,7 @@ msgstr "Impossible de charger la compétence"
 
 #: front/components/skills/SkillDetailsBody.tsx
 msgid "The skill could not be loaded. Please try again."
-msgstr "Impossible de charger la compétence. Veuillez réessayer."
+msgstr "Impossible de charger la compétence. Réessayez."
 
 #: front/components/skills/SkillDetailsBody.tsx
 msgid "Retry"
@@ -273,8 +273,8 @@ msgid "When to use this skill"
 msgstr "Quand utiliser cette compétence"
 
 #: front/components/skills/SkillInfoTab.tsx
-msgid "Guidelines"
-msgstr "Consignes"
+msgid "Instructions"
+msgstr "Instructions"
 
 #: front/components/skills/SkillInfoTab.tsx
 msgid "Knowledge"
@@ -383,6 +383,11 @@ msgstr "Cela concerne l’ensemble de votre workspace"
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "{count, plural, one {All members can find it via the composer and agent builder. Agents with Discover Skills, including Dust, can use it automatically.} other {All members can find them via the composer and agent builder. Agents with Discover Skills, including Dust, can use them automatically.}}"
 msgstr "{count, plural, one {Tous les membres peuvent la trouver via la zone de saisie et l’éditeur d’agent. Les agents dotés de Discover Skills, y compris Dust, peuvent l’utiliser automatiquement.} other {Tous les membres peuvent les trouver via la zone de saisie et l’éditeur d’agent. Les agents dotés de Discover Skills, y compris Dust, peuvent les utiliser automatiquement.}}"
+
+#: front/components/skills/SkillsBatchEdit.tsx
+msgctxt "selected skills"
+msgid "{selectedCount, plural, one {# selected} other {# selected}}"
+msgstr "{selectedCount, plural, one {# sélectionnée} other {# sélectionnées}}"
 
 #: front/components/skills/SkillsBatchEdit.tsx
 msgid "Select all {totalCount, plural, one {# skill} other {# skills}}"

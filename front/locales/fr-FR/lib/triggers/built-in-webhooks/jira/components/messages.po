@@ -39,7 +39,7 @@ msgstr "Aucun projet trouvé"
 
 #: front/lib/triggers/built-in-webhooks/jira/components/CreateWebhookJiraConnection.tsx
 msgid "Please select at least one project to create the webhook"
-msgstr "Sélectionnez au moins un projet pour créer le webhook"
+msgstr "Sélectionnez au moins un projet pour créer le webhook."
 
 #: front/lib/triggers/built-in-webhooks/jira/components/WebhookSourceJiraDetails.tsx
 msgid "Connected sources"

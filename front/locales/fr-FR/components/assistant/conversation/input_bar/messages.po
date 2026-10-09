@@ -153,7 +153,7 @@ msgstr "Rechercher des modèles"
 
 #: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
 msgid "Search commands, skills, or tools"
-msgstr "Commandes, compétences ou outils"
+msgstr "Rechercher des commandes, compétences ou outils"
 
 #: front/components/assistant/conversation/input_bar/InputBarSpacesPicker.tsx
 msgid "Spaces"

@@ -549,6 +549,13 @@ export function AutomationsTriggersTable({
       {canBulkSetPool && (
         <BulkSelectionBar
           selectedCount={selection.selectedCount}
+          selectedLabel={t({
+            message: plural(selection.selectedCount, {
+              one: "# selected",
+              other: "# selected",
+            }),
+            context: "selected automations",
+          })}
           selectAllLabel={t`Select all ${plural(totalCount, { one: "# automation", other: "# automations" })}`}
           canSelectAll={selection.hasMorePagesToSelect}
           onSelectAll={selection.selectAllAcrossPages}

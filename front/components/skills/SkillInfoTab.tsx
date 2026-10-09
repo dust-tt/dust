@@ -123,7 +123,7 @@ export function SkillInfoTab({
       {hasInstructions && (
         <div className="dd-privacy-mask flex flex-col gap-4">
           <DetailsSectionHeading
-            label={t`Guidelines`}
+            label={t`Instructions`}
             isEdited={editedSections.has("guidelines")}
           />
           {/* Remounts the instructions editor on preview change, since it only reads its content once. */}

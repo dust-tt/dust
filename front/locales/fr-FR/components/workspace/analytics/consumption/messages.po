@@ -27,7 +27,7 @@ msgstr "Par outil"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "By users"
-msgstr "Par utilisateur"
+msgstr "Par membre"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionBreakdown.tsx
 msgid "View all models for {selectedRowName}"
@@ -83,7 +83,7 @@ msgstr "Total des crédits"
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Vs prev"
-msgstr "Vs préc."
+msgstr "vs période préc."
 
 #: front/components/workspace/analytics/consumption/ConsumptionAttributionTable.tsx
 msgid "Add to filters"
@@ -184,7 +184,7 @@ msgstr "{creditCount, plural, one {{total} crédit jusqu’ici ce mois-ci} other
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "Active users"
-msgstr "Utilisateurs actifs"
+msgstr "Membres actifs"
 
 #: front/components/workspace/analytics/consumption/ConsumptionChart.tsx
 msgid "{creditCount, plural, one {{total} credit total} other {{total} credits total}}"
@@ -312,11 +312,11 @@ msgstr "{topAgentShare} % de la consommation totale"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Active Users"
-msgstr "Utilisateurs actifs"
+msgstr "Membres actifs"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Messages / active user"
-msgstr "Messages / utilisateur actif"
+msgstr "Messages / membre actif"
 
 #: front/components/workspace/analytics/consumption/ConsumptionSummary.tsx
 msgid "Total cost"

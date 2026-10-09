@@ -129,7 +129,7 @@ msgstr "Expression trop imbriquée (profondeur > 4)"
 
 #: front/components/agent_builder/triggers/TriggerFilterRenderer.tsx
 msgid "Error parsing filter expression: {errorMessage}. Please check the filter syntax."
-msgstr "Erreur lors de l’analyse de l’expression de filtre : {errorMessage}. Veuillez vérifier la syntaxe du filtre."
+msgstr "Erreur lors de l’analyse de l’expression de filtre : {errorMessage}. Vérifiez la syntaxe du filtre."
 
 #: front/components/agent_builder/triggers/TriggerPodSelector.tsx
 msgid "My conversations (default)"
@@ -230,7 +230,7 @@ msgstr "Seul un manager ou un administrateur peut réactiver ce déclencheur."
 
 #: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 msgid "Please select an event"
-msgstr "Veuillez sélectionner un événement"
+msgstr "Sélectionnez un événement."
 
 #: front/components/agent_builder/triggers/TriggerViewsSheet.tsx
 msgid "Edit schedule"

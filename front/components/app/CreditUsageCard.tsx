@@ -1,6 +1,6 @@
 import { formatCredits } from "@app/lib/client/credits";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
-import { formatDate } from "@app/lib/i18n/format";
+import { formatDate, formatNumber } from "@app/lib/i18n/format";
 import { CoinsStacked01, cn, ProgressBar, Tooltip } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ReactNode } from "react";
@@ -65,7 +65,9 @@ export function CreditUsageCard({
             <CoinsStacked01 className="h-4 w-4 text-muted-foreground" />
             <span>{label}</span>
           </div>
-          <span className={TONE_TEXT_CLASSES[tone]}>{usedPercentage}%</span>
+          <span className={TONE_TEXT_CLASSES[tone]}>
+            {formatNumber(usedPercentage / 100, { style: "percent" })}
+          </span>
         </div>
         {refillSchedule && refillSchedule.length > 0 ? (
           <Tooltip

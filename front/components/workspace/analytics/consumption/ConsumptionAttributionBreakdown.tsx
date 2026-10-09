@@ -3,6 +3,7 @@ import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
+import { formatNumber } from "@app/lib/i18n/format";
 import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import { CONSUMPTION_DIMENSION_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 import { Button, cn, LoadingBlock, ProgressBar } from "@dust-tt/sparkle";
@@ -143,7 +144,7 @@ export function ConsumptionAttributionBreakdownColumnView({
                     {row.name}
                   </span>
                   <span className="shrink-0 text-muted-foreground tabular-nums">
-                    {percentage}%
+                    {formatNumber(percentage / 100, { style: "percent" })}
                   </span>
                 </div>
                 <ProgressBar className="w-full" percentage={percentage} />
