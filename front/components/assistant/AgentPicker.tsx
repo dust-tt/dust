@@ -35,7 +35,7 @@ function AgentPickerLoadingRows({ count }: { count: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={`agent-picker-loading-${i}`}
-          className="flex items-center gap-2.5 px-2 py-1"
+          className="flex items-center gap-2.5 p-1"
         >
           <LoadingBlock className="h-7 w-7 shrink-0 rounded-md" />
           <LoadingBlock className={i % 2 === 0 ? "h-4 w-2/3" : "h-4 w-1/2"} />
@@ -239,7 +239,7 @@ export function AgentPicker({
                   )}
                   label={agent.name}
                   truncateText
-                  className={`group py-1 notranslate ${
+                  className={`group p-1 notranslate ${
                     isSelected ? "bg-primary-100" : ""
                   }`}
                   endComponent={
