@@ -2,12 +2,12 @@ import { onChannelCreation } from "@connectors/api/webhooks/slack/created_channe
 import { handleDeprecatedChatBot } from "@connectors/api/webhooks/slack/deprecated_bot";
 import { getBotUserIdResponse } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import { updateSlackChannelInConnectorsDb } from "@connectors/connectors/slack/lib/channels";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import {
   getSlackClient,
   reportSlackUsage,
   withSlackErrorHandling,
 } from "@connectors/connectors/slack/lib/slack_client";
+import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
@@ -31,7 +31,6 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES, normalizeError } from "@connectors/types";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { assertNever, removeNulls } from "@dust-tt/client";
 import { Op } from "sequelize";
 import { fromError } from "zod-validation-error";
@@ -392,7 +391,8 @@ async function announceBotJoinedPrivateChannel(
   );
 
   if (channelInfo?.channel?.is_private) {
-    const i18n = await getSlackI18n(DEFAULT_LOCALE);
+    // Posted to the whole channel: written in the workspace locale.
+    const i18n = await getSlackI18nForUser(connector, slackClient, null);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",

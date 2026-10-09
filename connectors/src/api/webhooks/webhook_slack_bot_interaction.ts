@@ -14,14 +14,13 @@ import {
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { submitFeedbackToAPI } from "@connectors/connectors/slack/feedback_api";
 import {
-  getSlackClientForTeam,
+  getSlackConnectorForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { redisClient } from "@connectors/types/shared/redis_client";
 import type { Request, Response } from "express";
 import { isLeft } from "fp-ts/lib/Either";
@@ -463,32 +462,50 @@ const _webhookSlackBotInteractionsAPIHandler = async (
           buttonData;
 
         if (payload.trigger_id) {
-          try {
-            // Open the feedback modal
-            await openFeedbackModal({
-              i18n: await getSlackI18n(DEFAULT_LOCALE),
-              slackClient: await getSlackClientForTeam(payload.team.id),
-              triggerId: payload.trigger_id,
-              conversationId,
-              messageId,
-              workspaceId,
-              slackUserId: payload.user.id,
-              preselectedThumb,
-              slackChannelId: payload.container.channel_id,
-              slackMessageTs: payload.container.message_ts,
-              slackThreadTs: payload.container.thread_ts,
-              responseUrl,
-            });
-          } catch (error) {
+          const connectorRes = await getSlackConnectorForTeam(payload.team.id);
+          if (connectorRes.isErr()) {
             logger.error(
               {
-                error,
+                error: connectorRes.error,
                 conversationId,
                 messageId,
                 workspaceId,
               },
-              "Failed to open feedback modal"
+              "Failed to find the Slack connector to open the feedback modal"
             );
+          } else {
+            const { connector, slackClient } = connectorRes.value;
+            try {
+              // Open the feedback modal
+              await openFeedbackModal({
+                i18n: await getSlackI18nForUser(
+                  connector,
+                  slackClient,
+                  payload.user.id
+                ),
+                slackClient,
+                triggerId: payload.trigger_id,
+                conversationId,
+                messageId,
+                workspaceId,
+                slackUserId: payload.user.id,
+                preselectedThumb,
+                slackChannelId: payload.container.channel_id,
+                slackMessageTs: payload.container.message_ts,
+                slackThreadTs: payload.container.thread_ts,
+                responseUrl,
+              });
+            } catch (error) {
+              logger.error(
+                {
+                  error,
+                  conversationId,
+                  messageId,
+                  workspaceId,
+                },
+                "Failed to open feedback modal"
+              );
+            }
           }
         } else {
           logger.warn("No trigger_id available for feedback modal");

@@ -22,7 +22,6 @@ import {
   SlackExternalUserError,
   SlackMessageError,
 } from "@connectors/connectors/slack/lib/errors";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import { formatMessagesForUpsert } from "@connectors/connectors/slack/lib/messages";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import {
@@ -31,6 +30,7 @@ import {
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
+import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import {
   isBotAllowed,
   makeSlackBotNotIdentifiedMessage,
@@ -62,7 +62,6 @@ import {
   getHeaderFromUserEmail,
   getHeadersFromRequestedGroupIds,
 } from "@connectors/types";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import type {
   AgentMessageSuccessEvent,
   AnswerUserQuestionResponseType,
@@ -252,8 +251,12 @@ export async function botAnswerMessage(
     );
 
     const slackClient = await getSlackClient(connector.id);
-    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     try {
+      const i18n = await getSlackI18nForUser(
+        connector,
+        slackClient,
+        params.slackUserId
+      );
       reportSlackUsage({
         connectorId: connector.id,
         method: "chat.postMessage",
@@ -344,7 +347,6 @@ export async function botReplaceMention(
       "Unexpected exception updating mention on Chat Bot message"
     );
     const slackClient = await getSlackClient(connector.id);
-    const i18n = await getSlackI18n(DEFAULT_LOCALE);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",
@@ -352,6 +354,11 @@ export async function botReplaceMention(
       useCase: "bot",
     });
     try {
+      const i18n = await getSlackI18nForUser(
+        connector,
+        slackClient,
+        params.slackUserId
+      );
       if (e instanceof ProviderRateLimitError) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
@@ -522,7 +529,11 @@ export async function botValidateToolExecution(
     return connectorRes;
   }
   const { connector, slackConfig } = connectorRes.value;
-  const i18n = await getSlackI18n(DEFAULT_LOCALE);
+  const i18n = await getSlackI18nForUser(
+    connector,
+    await getSlackClient(connector.id),
+    slackUserId
+  );
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
@@ -763,7 +774,7 @@ export async function botAnswerUserQuestion({
       : undefined;
 
   const slackClient = await getSlackClient(connector.id);
-  const i18n = await getSlackI18n(DEFAULT_LOCALE);
+  const i18n = await getSlackI18nForUser(connector, slackClient, slackUserId);
 
   const requestedGroupsRes = await getInteractingSlackUserGroups(
     i18n,
@@ -860,7 +871,12 @@ async function processErrorResult(
       "Failed answering to Slack Chat Bot message"
     );
 
-    const i18n = await getSlackI18n(DEFAULT_LOCALE);
+    const slackClient = await getSlackClient(connector.id);
+    const i18n = await getSlackI18nForUser(
+      connector,
+      slackClient,
+      params.slackUserId
+    );
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
@@ -881,8 +897,6 @@ async function processErrorResult(
       connector.workspaceId,
       slackChatBotMessage?.conversationId
     );
-
-    const slackClient = await getSlackClient(connector.id);
 
     const errorPost = makeErrorBlock(
       i18n,
@@ -974,7 +988,6 @@ async function answerMessage(
 
   // We start by retrieving the slack user info.
   const slackClient = await getSlackClient(connector.id);
-  const i18n = await getSlackI18n(DEFAULT_LOCALE);
 
   let slackUserInfo: SlackUserInfo | null = null;
 
@@ -1019,8 +1032,15 @@ async function answerMessage(
         },
         "Could not identify the bot posting a Slack message"
       );
+      const workspaceI18n = await getSlackI18nForUser(
+        connector,
+        slackClient,
+        null
+      );
       return new Err(
-        new SlackExternalUserError(makeSlackBotNotIdentifiedMessage(i18n))
+        new SlackExternalUserError(
+          makeSlackBotNotIdentifiedMessage(workspaceI18n)
+        )
       );
     }
   }
@@ -1028,6 +1048,8 @@ async function answerMessage(
   if (!slackUserInfo) {
     throw new Error("Failed to get slack user info");
   }
+
+  const i18n = await getSlackI18nForUser(connector, slackClient, slackUserId);
 
   let requestedGroups: string[] | undefined = undefined;
   let skipToolsValidation = false;

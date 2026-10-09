@@ -161,6 +161,9 @@ export type SlackUserInfo = {
   tz: string | null;
   image_512: string | null;
   name: string | null;
+  // IETF language tag of the user's Slack language, e.g. `fr-FR`. Optional: entries cached before
+  // it was fetched lack it.
+  locale?: string | null;
 };
 
 export const getSlackUserInfoMemoized = cacheWithRedis(
@@ -186,7 +189,7 @@ async function _getSlackUserInfo(
       RATE_LIMITS["users.info"],
       `${connectorId}-users-info`,
       { canBeIgnored: false },
-      () => slackClient.users.info({ user: userId }),
+      () => slackClient.users.info({ user: userId, include_locale: true }),
       { source: "getSlackUserInfo" }
     );
 
@@ -217,6 +220,7 @@ async function _getSlackUserInfo(
       tz: res.user?.tz || null,
       image_512: res.user?.profile?.image_512 || null,
       name: res.user?.name || null,
+      locale: res.user?.locale || null,
     };
   } catch (err) {
     if (isSlackWebAPIPlatformError(err)) {
