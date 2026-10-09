@@ -158,6 +158,49 @@ def untar(args):
             'native_digest': tree_digest(native)['digest']}
 
 
+DUST_REPO = 'https://github.com/dust-tt/dust'
+
+
+def run_git(repo, *command):
+    """`git` as root on a tree another uid may own, timed."""
+    started = time.monotonic()
+    out = subprocess.run(['git', '-c', 'safe.directory=*', *command], cwd=repo, check=True, capture_output=True,
+                         text=True).stdout
+    return time.monotonic() - started, out
+
+
+def git_status(repo):
+    first, out = run_git(repo, 'status', '--porcelain')
+    repeated, _ = run_git(repo, 'status', '--porcelain')
+    head = run_git(repo, 'rev-parse', 'HEAD')[1].strip()
+    return {'status_first_seconds': first, 'status_repeated_seconds': repeated, 'clean': out == '', 'head': head,
+            'dirty_paths': len(out.splitlines())}
+
+
+def git_clone(args):
+    """x/henry/dfs/bench/git.py: clone from GitHub (network included), drain, `git status` twice."""
+    target = Path(args.target)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    clone_seconds, _ = run_git(target.parent, 'clone', '-q', args.url, target.name)
+    return {'clone_seconds': clone_seconds, 'drain_seconds': drain(target), **git_status(target),
+            'files': len(run_git(target, 'ls-files', '-z')[1].split('\0')) - 1}
+
+
+def git_validate(args):
+    """`git status` twice on a clone made through another mount, then every tracked regular file,
+    read back and hashed, must match the blob its index entry names."""
+    repo = Path(args.repo)
+    result = git_status(repo)
+    started = time.monotonic()
+    staged = [line.split(None, 3) for line in run_git(repo, 'ls-files', '-s', '-z')[1].split('\0') if line]
+    files = [(path, blob) for mode, blob, _, path in staged if mode in ('100644', '100755')]
+    hashed = subprocess.run(['git', '-c', 'safe.directory=*', 'hash-object', '--no-filters', '--stdin-paths'],
+                            cwd=repo, check=True, capture_output=True, text=True,
+                            input='\n'.join(path for path, _ in files)).stdout.split()
+    return {**result, 'blobs_checked': len(files), 'validate_seconds': time.monotonic() - started,
+            'blobs_match': len(files) > 0 and hashed == [blob for _, blob in files]}
+
+
 def digest(args):
     return tree_digest(Path(args.root))
 
@@ -222,6 +265,11 @@ def main():
     command.add_argument('--addr', required=True)
     command.add_argument('--count', type=int, default=200)
     command.add_argument('--bulk-mb', type=int, default=64)
+    command = commands.add_parser('git-clone')
+    command.add_argument('--target', required=True)
+    command.add_argument('--url', default=DUST_REPO)
+    command = commands.add_parser('git-validate')
+    command.add_argument('--repo', required=True)
     command = commands.add_parser('digest')
     command.add_argument('--root', required=True)
     command = commands.add_parser('fresh-write')
@@ -235,7 +283,8 @@ def main():
     command.add_argument('--timeout-seconds', type=float, default=60)
     args = parser.parse_args()
     handlers = {'corpus': corpus, 'untar': untar, 'digest': digest, 'fresh-write': fresh_write,
-                'fresh-read': fresh_read, 'rtt': rtt}
+                'fresh-read': fresh_read, 'rtt': rtt,
+                'git-clone': git_clone, 'git-validate': git_validate}
     print(json.dumps(handlers[args.command](args)))
 
 

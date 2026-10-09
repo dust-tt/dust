@@ -37,6 +37,10 @@ checks digests, then B measures how long A's new files take to show up (the 1 s 
 directories in random order, not comparable with other numbers. It only counts as valid if both mounts exit with no dropped ops and no
 missed commit windows. `bin/clear` wipes the deployment too: re-run `deploy` after it.
 
+`bin/bench henry git` runs the `git` round instead: A clones dust from GitHub natively and into its
+mount and times `git status`; B runs `git status` on A's clone through its own mount and checks every
+tracked file against its blob.
+
 The load balancer is open to all: plain TCP with a tenant token, fine for synthetic data. Sandboxes
 reach it through E2B's egress proxy (a TCP connect from a sandbox succeeds to any address, so only
 a real request proves reachability).
@@ -51,8 +55,10 @@ a real request proves reachability).
 - `bin/`: up, down, clear, status, bench, leak-check, sweep, bootstrap.
 - `impls/<impl>/`: how to build and deploy an implementation. `orchestrator/impls.ts`: how to
   mount it in a sandbox.
-- `orchestrator/`: the E2B side (Node 24 runs the TypeScript directly). `workloads/`: what runs
-  inside sandboxes.
+- `orchestrator/`: the E2B side (Node 24 runs the TypeScript directly). `orchestrator/template.ts`
+  builds the `dfs-bench` sandbox template, modeled on prod's `dust-base` (Ubuntu noble, Python
+  3.14, Node 24, the same search tools, 2 vCPU / 2 GB, no sudo) plus fuse3. `workloads/`: what
+  runs inside sandboxes.
 
 ## Cost
 

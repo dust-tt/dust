@@ -1,12 +1,14 @@
 // Runs one benchmark round against an implementation deployed on a bench cluster. Invoked by
-// bin/bench, which sets DFS_BENCH_STATE, RUN_ID, IMPL and the E2B / kubectl environment.
+// bin/bench, which sets DFS_BENCH_STATE, RUN_ID, IMPL, SCENARIO and the E2B / kubectl environment.
 //
-// Scenario `basic` (2 sandboxes, A and B, same tenant, in a new directory per round):
-//   0. Both time round trips to the in-cluster echo service: the network floor of an RPC.
-//   1. A untars a corpus into the mount (jd's by default), then drains its writeback.
-//   2. B reads the whole tree back through its own mount and compares digests with A's native copy.
-//   3. Freshness: A creates files, B polls for them; latency vs the 1 s bound.
-// A round is valid only if every mount exits cleanly with no dropped ops and no missed windows.
+// Every round: 2 sandboxes, A and B, mount the same tenant and work in a new directory. Both first
+// time round trips to the in-cluster echo service (the network floor of an RPC). Then:
+//   basic: A untars a corpus (jd's by default) and drains; B reads it all back through its own mount
+//          and compares digests with A's native copy; B measures how long A's new files take to show
+//          up (the 1 s freshness bound).
+//   git:   see `git` below.
+// A round is valid only if the scenario's checks pass and every mount exits cleanly with no dropped
+// ops and no missed windows.
 
 import { execFile } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -15,7 +17,8 @@ import { Sandbox } from "e2b";
 
 import { henryImpl, type MountSpec } from "./impls.ts";
 
-const TEMPLATE = "base";
+// Built by bin/bootstrap (orchestrator/template.ts): 2 vCPU, 2 GB, like prod agent sandboxes.
+const TEMPLATE = "dfs-bench";
 // Sandboxes are not reaped by our infra: short timeout, renewed while this process lives, hard cap.
 const SANDBOX_TIMEOUT_MS = 15 * 60_000;
 const RENEW_EVERY_MS = 5 * 60_000;
@@ -134,29 +137,30 @@ function sampleFdb(): () => Promise<Record<string, unknown>> {
 
 interface Mounted {
   sandbox: Sandbox;
-  pid: number;
-  done: Promise<unknown>;
 }
 
+// The client's pid and exit status go to files: the background command's stream can drop during a
+// long round, which would lose the exit code.
 async function mount(sandbox: Sandbox, spec: MountSpec): Promise<Mounted> {
-  await root(sandbox, `mkdir -p ${MOUNT_POINT}`);
+  await root(sandbox, `mkdir -p ${MOUNT_POINT} && rm -f /tmp/mount.pid /tmp/mount.exit`);
   const handle = await sandbox.commands.run(
-    `${spec.command(BINARY, MOUNT_POINT)} >/tmp/mount.out 2>/tmp/mount.log`,
+    `${spec.command(BINARY, MOUNT_POINT)} >/tmp/mount.out 2>/tmp/mount.log & echo $! >/tmp/mount.pid; wait $!; echo $? >/tmp/mount.exit`,
     { user: "root", background: true, envs: spec.envs, timeoutMs: 0 }
   );
-  const done = handle.wait().catch((error: unknown) => error);
+  handle.wait().catch(() => undefined);
   await root(
     sandbox,
     `for i in $(seq 300); do grep -q '${spec.readyMarker}' /tmp/mount.out && exit 0; sleep 0.2; done; tail -20 /tmp/mount.log; exit 1`
   );
-  return { sandbox, pid: handle.pid, done };
+  return { sandbox };
 }
 
 async function unmount(mounted: Mounted, spec: MountSpec): Promise<Record<string, unknown>> {
-  await root(mounted.sandbox, `kill -TERM ${mounted.pid}`);
-  const outcome = await mounted.done;
-  const exitCode =
-    outcome && typeof outcome === "object" && "exitCode" in outcome ? Number(outcome.exitCode) : null;
+  const status = await root(
+    mounted.sandbox,
+    `kill -TERM "$(cat /tmp/mount.pid)"; for i in $(seq 300); do [ -s /tmp/mount.exit ] && cat /tmp/mount.exit && exit 0; sleep 0.2; done; echo none`
+  );
+  const exitCode = /^\d+$/.test(status.trim()) ? Number(status.trim()) : null;
   const logLines = (await root(mounted.sandbox, "cat /tmp/mount.log")).split("\n");
   const totals = logLines
     .map((line) => {
@@ -177,9 +181,95 @@ function cleanCommit(result: Record<string, unknown>): boolean {
   return result.exitCode === 0 && commit?.dropped_ops === 0 && commit?.missed_windows === 0;
 }
 
+interface Round {
+  a: Sandbox;
+  b: Sandbox;
+  roundDir: string;
+}
+
+interface Outcome {
+  // False when the scenario's own checks failed; mount health is checked separately.
+  passed: boolean;
+  data: Record<string, unknown>;
+}
+
+async function basic({ a, b, roundDir }: Round): Promise<Outcome> {
+  const corpus = await workload(a, `corpus --kind ${CORPUS} --out /tmp/corpus.tar --files ${FILES}`);
+  log(`corpus ${corpus.kind}: ${corpus.files} files, ${(Number(corpus.bytes) / 1e6).toFixed(0)} MB`);
+  const idleFdb = await fdbStatus();
+  const stopSampling = sampleFdb();
+  const untar = await workload(a, `untar --archive /tmp/corpus.tar --target ${roundDir}/untar`);
+  const untarFdb = await stopSampling();
+  log(`fdb during untar: ${JSON.stringify(untarFdb)}`);
+  log(`untar ${Number(untar.untar_seconds).toFixed(2)}s (+${Number(untar.drain_seconds).toFixed(2)}s drain)`);
+
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const readBack = await workload(b, `digest --root ${roundDir}/untar`);
+  const validated = readBack.digest === untar.native_digest;
+  log(`read back on B ${Number(readBack.seconds).toFixed(2)}s, ${validated ? "matches" : "DIFFERS"}`);
+
+  const freshDir = `${roundDir}/fresh`;
+  let readerReady: () => void = () => {};
+  const ready = new Promise<void>((resolve) => {
+    readerReady = resolve;
+  });
+  const reader = await b.commands.run(`python3 ${WORKLOAD} fresh-read --dir ${freshDir} --count ${FRESH_COUNT}`, {
+    user: "root",
+    background: true,
+    timeoutMs: 5 * 60_000,
+    onStderr: (data) => {
+      if (data.includes("ready")) {
+        readerReady();
+      }
+    },
+  });
+  await ready;
+  await workload(a, `fresh-write --dir ${freshDir} --count ${FRESH_COUNT}`);
+  const freshness = JSON.parse((await reader.wait()).stdout.trim());
+  log(`freshness p50 ${freshness.p50_seconds?.toFixed(3)}s p95 ${freshness.p95_seconds?.toFixed(3)}s max ${freshness.max_seconds?.toFixed(3)}s`);
+
+  return {
+    passed: validated && freshness.seen === FRESH_COUNT,
+    data: {
+      corpus,
+      fdb: { idle_latency_probe: idleFdb.latency_probe ?? null, during_untar: untarFdb },
+      untar,
+      read_back: { ...readBack, validated },
+      freshness,
+    },
+  };
+}
+
+// Henry's x/henry/dfs/bench/git.py procedure: A clones dust natively and into its mount, then runs
+// `git status` twice in each; B runs `git status` on A's clone through its own mount and checks
+// every tracked file against its blob.
+async function git({ a, b, roundDir }: Round): Promise<Outcome> {
+  const repo = `${roundDir}/dust`;
+  const native = await workload(a, `git-clone --target /tmp/native-dust`);
+  log(`native clone ${Number(native.clone_seconds).toFixed(1)}s, status ${Number(native.status_first_seconds).toFixed(2)}s / ${Number(native.status_repeated_seconds).toFixed(2)}s`);
+  const stopSampling = sampleFdb();
+  const mounted = await workload(a, `git-clone --target ${repo}`);
+  const cloneFdb = await stopSampling();
+  log(`fdb during clone: ${JSON.stringify(cloneFdb)}`);
+  log(`mount clone ${Number(mounted.clone_seconds).toFixed(1)}s (+${Number(mounted.drain_seconds).toFixed(2)}s drain), status ${Number(mounted.status_first_seconds).toFixed(2)}s / ${Number(mounted.status_repeated_seconds).toFixed(2)}s`);
+
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+  const other = await workload(b, `git-validate --repo ${repo}`);
+  log(`B: status ${Number(other.status_first_seconds).toFixed(2)}s / ${Number(other.status_repeated_seconds).toFixed(2)}s, ${other.clean ? "clean" : "DIRTY"}, blobs ${other.blobs_match ? "match" : "DIFFER"} (${Number(other.validate_seconds).toFixed(1)}s)`);
+
+  const sameHead = native.head === mounted.head && mounted.head === other.head;
+  return {
+    passed: Boolean(mounted.clean && other.clean && other.blobs_match) && mounted.head === other.head,
+    data: { native, mounted, other, same_head: sameHead, fdb: { during_clone: cloneFdb } },
+  };
+}
+
+const SCENARIOS: Record<string, (round: Round) => Promise<Outcome>> = { basic, git };
+
 async function main(): Promise<void> {
-  if (scenario !== "basic") {
-    throw new Error(`unknown scenario ${scenario}`);
+  const run = SCENARIOS[scenario];
+  if (!run) {
+    throw new Error(`unknown scenario ${scenario}; known: ${Object.keys(SCENARIOS).join(", ")}`);
   }
   if (CORPUS !== "jd" && CORPUS !== "scatter") {
     throw new Error(`unknown corpus ${CORPUS}`);
@@ -187,7 +277,7 @@ async function main(): Promise<void> {
   const impl = loadImpl();
   const startedAt = new Date();
   const roundDir = `${MOUNT_POINT}/rounds/${startedAt.toISOString().replace(/[:.]/g, "-")}`;
-  log(`run ${runId}: ${implName} at ${impl.endpoint}, scenario ${scenario}, ${CORPUS} corpus`);
+  log(`run ${runId}: ${implName} at ${impl.endpoint}, scenario ${scenario}, template ${TEMPLATE}`);
 
   const sandboxes = await Promise.all(
     ["a", "b"].map(() =>
@@ -236,42 +326,10 @@ async function main(): Promise<void> {
     const mounts = await Promise.all(sandboxes.map((s) => mount(s, impl.mount)));
     log("mounted on both sandboxes");
 
-    const corpus = await workload(a, `corpus --kind ${CORPUS} --out /tmp/corpus.tar --files ${FILES}`);
-    log(`corpus ${corpus.kind}: ${corpus.files} files, ${(Number(corpus.bytes) / 1e6).toFixed(0)} MB`);
-    const idleFdb = await fdbStatus();
-    const stopSampling = sampleFdb();
-    const untar = await workload(a, `untar --archive /tmp/corpus.tar --target ${roundDir}/untar`);
-    const untarFdb = await stopSampling();
-    log(`fdb during untar: ${JSON.stringify(untarFdb)}`);
-    log(`untar ${Number(untar.untar_seconds).toFixed(2)}s (+${Number(untar.drain_seconds).toFixed(2)}s drain)`);
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    const readBack = await workload(b, `digest --root ${roundDir}/untar`);
-    const validated = readBack.digest === untar.native_digest;
-    log(`read back on B ${Number(readBack.seconds).toFixed(2)}s, ${validated ? "matches" : "DIFFERS"}`);
-
-    const freshDir = `${roundDir}/fresh`;
-    let readerReady: () => void = () => {};
-    const ready = new Promise<void>((resolve) => {
-      readerReady = resolve;
-    });
-    const reader = await b.commands.run(`python3 ${WORKLOAD} fresh-read --dir ${freshDir} --count ${FRESH_COUNT}`, {
-      user: "root",
-      background: true,
-      timeoutMs: 5 * 60_000,
-      onStderr: (data) => {
-        if (data.includes("ready")) {
-          readerReady();
-        }
-      },
-    });
-    await ready;
-    await workload(a, `fresh-write --dir ${freshDir} --count ${FRESH_COUNT}`);
-    const freshness = JSON.parse((await reader.wait()).stdout.trim());
-    log(`freshness p50 ${freshness.p50_seconds?.toFixed(3)}s p95 ${freshness.p95_seconds?.toFixed(3)}s max ${freshness.max_seconds?.toFixed(3)}s`);
+    const outcome = await run({ a, b, roundDir });
 
     const clients = await Promise.all(mounts.map((m) => unmount(m, impl.mount)));
-    const valid = validated && freshness.seen === FRESH_COUNT && clients.every(cleanCommit);
+    const valid = outcome.passed && clients.every(cleanCommit);
 
     const result = {
       run_id: runId,
@@ -286,16 +344,12 @@ async function main(): Promise<void> {
       valid,
       budget: (clients[0]?.totals as { budget?: unknown } | null)?.budget ?? null,
       network,
-      corpus,
-      fdb: { idle_latency_probe: idleFdb.latency_probe ?? null, during_untar: untarFdb },
-      untar,
-      read_back: { ...readBack, validated },
-      freshness,
+      ...outcome.data,
       clients,
     };
     const outDir = `${stateDir}/results/${runId}`;
     mkdirSync(outDir, { recursive: true });
-    const outPath = `${outDir}/${startedAt.toISOString().replace(/[:.]/g, "-")}-${implName}.json`;
+    const outPath = `${outDir}/${startedAt.toISOString().replace(/[:.]/g, "-")}-${implName}-${scenario}.json`;
     writeFileSync(outPath, JSON.stringify(result, null, 2) + "\n");
     log(`${valid ? "valid" : "INVALID"} round, results in ${outPath}`);
     process.stdout.write(`${outPath}\n`);
