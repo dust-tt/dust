@@ -10,11 +10,9 @@ permissions:
 
 jobs:
   test-summary:
-    # Fork PRs get a read-only token and cannot comment. Opt-in via label during rollout; other
-    # labels being added must not trigger a run.
+    # Opt-in via label during rollout; other labels being added must not trigger a run.
     if: >-
-      github.event.pull_request.head.repo.full_name == github.repository
-      && contains(github.event.pull_request.labels.*.name, 'test-summary')
+      contains(github.event.pull_request.labels.*.name, 'test-summary')
       && (github.event.action != 'labeled' || github.event.label.name == 'test-summary')
     # Set on the job so skipped runs do not cancel an in-progress one.
     concurrency:
