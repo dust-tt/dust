@@ -12,6 +12,7 @@ import { DocumentMarkdownPreview } from "@app/components/editor/document/Documen
 import {
   DocumentLiveAgent,
   DocumentLiveStatus,
+  DocumentStatusIcon,
   DocumentSaveError,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
@@ -68,9 +69,10 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 /**
  * @cc [owner:tdraier,label:product] document-comments-button-placement
- * With headerControlsContainer, the comments button MUST show in it and not above the document;
- * the save and live statuses MUST stay above the document. Without one, the comments button MUST
- * show with them.
+ * With headerControlsContainer, the comments button MUST show in it and not above the document.
+ * The save and live statuses MUST show as one icon in statusContainer when given (see
+ * `document-status-icon`), and above the document otherwise. Without headerControlsContainer, the
+ * comments button MUST show above the document.
  */
 /**
  * @cc [owner:tdraier,label:product] document-chrome-spans-article
@@ -109,6 +111,8 @@ export const Document = (props: DocumentProps) =>
 interface DocumentViewProps extends DocumentProps {
   liveView?: {
     status: LiveStatus;
+    /** Changes not yet confirmed by the server. */
+    syncing?: boolean;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: LiveAgentEvent | null;
     participants?: DocumentLiveParticipant[];
@@ -239,6 +243,7 @@ export const DocumentView = ({
   className,
   mountPortalContainer,
   headerControlsContainer,
+  statusContainer,
   readOnly = false,
   autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
   onSave,
@@ -349,17 +354,37 @@ export const DocumentView = ({
       {showControls &&
         headerControlsContainer &&
         createPortal(controls, headerControlsContainer)}
+      {statusContainer &&
+        createPortal(
+          <DocumentStatusIcon
+            live={
+              liveView && {
+                status: liveView.status,
+                syncing: liveView.syncing ?? false,
+              }
+            }
+            editable={canEditFile}
+            dirty={dirty}
+            saving={saving}
+            error={error}
+            onRetry={save}
+          />,
+          statusContainer
+        )}
       <DocumentStatus
         editable={canEditFile}
         dirty={dirty}
         saving={saving}
         error={error}
+        withSaveStatus={!statusContainer}
         autosaveDebounceMs={autosaveDebounceMs}
         onRetry={save}
         controls={showControls && !headerControlsContainer && controls}
         badge={badge}
       >
-        {liveView && <DocumentLiveStatus status={liveView.status} />}
+        {liveView && !statusContainer && (
+          <DocumentLiveStatus status={liveView.status} />
+        )}
       </DocumentStatus>
       {editor && showCommentsToggle && (
         <DocumentCommentsList

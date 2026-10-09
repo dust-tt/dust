@@ -2,7 +2,7 @@ import { useLiveSession } from "@app/hooks/useLiveSession";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import type { Configuration } from "@hocuspocus/server";
 import { Server } from "@hocuspocus/server";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const DOCUMENT_NAME = "w_1:notes.md";
@@ -37,6 +37,36 @@ describe("useLiveSession", () => {
       })
     );
   }
+
+  it("reports local changes as syncing until the server has them", async () => {
+    await server.destroy();
+    let hold = false;
+    let release = () => undefined as unknown;
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    server = newServer({
+      beforeHandleMessage: async () => {
+        if (hold) {
+          await held;
+        }
+      },
+    });
+    await server.listen();
+    const { result, unmount } = renderSession();
+    await waitFor(() => expect(result.current.status).toBe("live"));
+    expect(result.current.syncing).toBe(false);
+
+    hold = true;
+    act(() => {
+      result.current.connection?.document.getText("body").insert(0, "Hi");
+    });
+
+    await waitFor(() => expect(result.current.syncing).toBe(true));
+    release();
+    await waitFor(() => expect(result.current.syncing).toBe(false));
+    unmount();
+  });
 
   it("takes a fresh connection, with a fresh ticket, when the server closes the document", async () => {
     const tickets = vi.fn(async () => "ticket");

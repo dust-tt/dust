@@ -22,6 +22,11 @@ export interface DocumentProps {
    * document with the save and live statuses.
    */
   headerControlsContainer?: HTMLElement | null;
+  /**
+   * Where the save or live status shows as one icon, such as next to the host's file name. Without
+   * it the statuses show in the badge above the document.
+   */
+  statusContainer?: HTMLElement | null;
   readOnly?: boolean;
   /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */
   autosaveDebounceMs?: number;

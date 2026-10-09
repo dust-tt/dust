@@ -355,6 +355,8 @@ interface FilePreviewContentProps {
   markdownContent?: string;
   /** Where the rich editor shows its comments button and live status, such as a header bar. */
   markdownHeaderControlsContainer?: HTMLElement | null;
+  /** Where the rich editor shows its save or live status icon, such as next to the file name. */
+  markdownStatusContainer?: HTMLElement | null;
   /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
   markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
@@ -368,12 +370,14 @@ interface RichMarkdownDocumentProps {
   editor: MarkdownRichEditor;
   owner: LightWorkspaceType;
   headerControlsContainer?: HTMLElement | null;
+  statusContainer?: HTMLElement | null;
 }
 
 function RichMarkdownDocument({
   editor,
   owner,
   headerControlsContainer,
+  statusContainer,
 }: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
   const signCommentMessage = useSignDfmCommentMessage({
@@ -424,6 +428,7 @@ function RichMarkdownDocument({
     <Document
       initialContent={editor.initialContent}
       headerControlsContainer={headerControlsContainer}
+      statusContainer={statusContainer}
       onSave={live ? undefined : editor.onSave}
       onStateChange={live ? undefined : editor.onStateChange}
       live={live}
@@ -458,6 +463,7 @@ export function FilePreviewContent({
   markdownCanEdit,
   markdownContent,
   markdownHeaderControlsContainer,
+  markdownStatusContainer,
   markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
@@ -534,6 +540,7 @@ export function FilePreviewContent({
               editor={markdownRichEditor}
               owner={owner}
               headerControlsContainer={markdownHeaderControlsContainer}
+              statusContainer={markdownStatusContainer}
             />
           </div>
         );

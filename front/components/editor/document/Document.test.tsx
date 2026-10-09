@@ -509,6 +509,28 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 
+  it("shows the save status as one icon in the host's status container", async () => {
+    const container = document.createElement("span");
+    document.body.appendChild(container);
+    render(
+      <Document
+        initialContent={SOURCE}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        statusContainer={container}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+      />
+    );
+
+    const status = await within(container).findByRole("status");
+    expect(status.dataset.state).toBe("saved");
+    expect(status.textContent).toBe("Saved");
+    expect(
+      screen.queryAllByRole("status").filter((element) => element !== status)
+    ).toHaveLength(0);
+    container.remove();
+  });
+
   it("shows the comments button in the host's container when given one", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
