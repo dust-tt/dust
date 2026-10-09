@@ -7,9 +7,3 @@ is fixed in `next.config.mjs` and must not depend on the variable.
 @cc [owner:flvndvd,label:product] sparkle-owned-by-viz
 Sparkle MUST remain an implementation dependency of Viz's own UI. The Frame runtime import map
 MUST NOT expose Sparkle, and Frame authoring instructions MUST NOT tell models to import it.
-
-@cc [owner:ykmsd,label:architecture] lingui-macros-compiled
-Every Viz source file under `app`, `components`, `hooks` and `lib` MUST go through
-`LINGUI_MACRO_BABEL_OPTIONS` (`lingui-macro.mjs`) before it is compiled: in the Next webpack config
-(`next.config.mjs`) and in Vitest (`vitest.config.ts`). The Next build output MUST NOT contain a
-`@lingui/*/macro` module.
