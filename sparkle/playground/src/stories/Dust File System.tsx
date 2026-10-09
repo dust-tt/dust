@@ -11,7 +11,11 @@ import {
   CubeOutline,
   Counter,
   Dialog,
+  DialogContainer,
   DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +32,7 @@ import {
   Edit04,
   Eye,
   File02,
+  FilterLines,
   Heart,
   Icon,
   Inbox01,
@@ -49,9 +54,6 @@ import {
   NavTabPillList,
   NavTabPillTrigger,
   Plus,
-  PopoverContent,
-  PopoverRoot,
-  PopoverTrigger,
   PuzzlePiece01,
   Robot,
   ScrollArea,
@@ -61,6 +63,7 @@ import {
   ShapesPlus,
   SlackLogo,
   Star01,
+  Type01,
   User01,
   Users01,
   UserSquare,
@@ -227,6 +230,9 @@ type KeptItem = { key: string; entry: SidebarEntry } & (
   | { kind: "agent"; agent: Agent }
 );
 
+/** The two ways the sidebar can be put back in order. */
+type KeptSort = "type" | "name";
+
 type PodTabsState = {
   mainTabOrder: string[];
   dynamicFileTabs: DynamicFileTab[];
@@ -257,6 +263,29 @@ function compareSpacesByActivity(a: Space, b: Space): number {
     return hA ? -1 : 1;
   }
   return a.name.localeCompare(b.name);
+}
+
+/** Pods, then the folders, then the loose files, then the agents. */
+function keptTypeRank(kept: KeptItem): number {
+  switch (kept.kind) {
+    case "pod":
+      return 0;
+    case "file":
+      return isDataSourceFolder(kept.item) ? 1 : 2;
+    case "agent":
+      return 3;
+  }
+}
+
+function keptLabel(kept: KeptItem): string {
+  switch (kept.kind) {
+    case "pod":
+      return kept.space.name;
+    case "file":
+      return kept.item.fileName;
+    case "agent":
+      return kept.agent.name;
+  }
 }
 
 /** Where the drop will land: a line drawn between two kept rows. */
@@ -604,11 +633,6 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     }).length;
   }, [allConversations, otherPodIds]);
 
-  const sortedSpaces = useMemo(
-    () => [...spaces].sort(compareSpacesByActivity),
-    [spaces]
-  );
-
   const spacesById = useMemo(
     () => new Map(spaces.map((space) => [space.id, space])),
     [spaces]
@@ -697,19 +721,6 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
     }
     return spacesById.get(p2View.spaceId) ?? null;
   }, [isEntryKept, p2View, spacesById]);
-
-  const [podBrowseSearch, setPodBrowseSearch] = useState("");
-  const browsableSpaces = useMemo(() => {
-    if (!podBrowseSearch.trim()) {
-      return sortedSpaces;
-    }
-    const lower = podBrowseSearch.toLowerCase();
-    return sortedSpaces.filter(
-      (s) =>
-        s.name.toLowerCase().includes(lower) ||
-        s.description.toLowerCase().includes(lower)
-    );
-  }, [podBrowseSearch, sortedSpaces]);
 
   const selectedConversationId =
     p2View.kind === "conversation" ? p2View.conversationId : null;
@@ -1220,6 +1231,31 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
   const addPodToSidebar = useCallback(
     (spaceId: string) => keepEntry({ kind: "pod", spaceId }),
     [keepEntry]
+  );
+
+  /**
+   * Sorting is the one thing in this list that cannot be undone: the order you
+   * arranged by hand is nowhere else, so it is asked for before it is done.
+   */
+  const [pendingSort, setPendingSort] = useState<KeptSort | null>(null);
+
+  const applySort = useCallback(
+    (sort: KeptSort) => {
+      const ordered = [...keptItems].sort((a, b) => {
+        if (sort === "type" && keptTypeRank(a) !== keptTypeRank(b)) {
+          return keptTypeRank(a) - keptTypeRank(b);
+        }
+        return keptLabel(a).localeCompare(keptLabel(b));
+      });
+      const sorted = new Set(ordered.map((kept) => kept.key));
+      setSidebarEntries((prev) => [
+        ...ordered.map((kept) => kept.entry),
+        // An entry whose item has gone missing has no name to sort on, so it
+        // waits at the end rather than being dropped.
+        ...prev.filter((entry) => !sorted.has(entryKey(entry))),
+      ]);
+    },
+    [keptItems]
   );
 
   /** Opens the create dialog with a folder already chosen. */
@@ -2711,98 +2747,35 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
                         }}
                       />
                     )}
-                    <PopoverRoot>
-                      <PopoverTrigger asChild>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
                         <Button
                           size="xs"
                           icon={DotsHorizontal}
                           variant="ghost"
                         />
-                      </PopoverTrigger>
-                      <PopoverContent
-                        className="flex w-80 flex-col p-0"
-                        align="start"
-                        collisionPadding={16}
-                      >
-                        <div className="shrink-0 p-3 pb-2">
-                          <SearchInput
-                            name="browse-pods-search"
-                            placeholder="Search Pods..."
-                            value={podBrowseSearch}
-                            onChange={setPodBrowseSearch}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuSub>
+                          <DropdownMenuSubTrigger
+                            label="Sort"
+                            icon={FilterLines}
                           />
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-                          {browsableSpaces.length === 0 ? (
-                            <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                              No Pods found
-                            </div>
-                          ) : (
-                            browsableSpaces.map((space) => {
-                              const isRestricted =
-                                space.id.charCodeAt(space.id.length - 1) % 2 ===
-                                0;
-                              const isFavorite = isEntryKept({
-                                kind: "pod",
-                                spaceId: space.id,
-                              });
-                              return (
-                                <div
-                                  key={space.id}
-                                  className="group/browse flex cursor-pointer items-start gap-2 rounded-lg p-2 hover:bg-muted-background"
-                                  onClick={() => {
-                                    setP2View({
-                                      kind: "space",
-                                      spaceId: space.id,
-                                    });
-                                    setP3View(null);
-                                    setP4View(null);
-                                    setPodBrowseSearch("");
-                                  }}
-                                >
-                                  <Icon
-                                    visual={isRestricted ? CubeOutline : Cube01}
-                                    size="sm"
-                                    className="mt-0.5 shrink-0"
-                                  />
-                                  <div className="min-w-0 flex-1">
-                                    <div className="truncate text-sm">
-                                      {space.name}
-                                    </div>
-                                    <div className="truncate text-xs text-muted-foreground">
-                                      {space.description || "No description"}
-                                    </div>
-                                  </div>
-                                  <Button
-                                    size="xs"
-                                    variant={isFavorite ? "primary" : "ghost"}
-                                    icon={Star01}
-                                    tooltip={
-                                      isFavorite
-                                        ? "Remove from sidebar"
-                                        : "Keep in the sidebar"
-                                    }
-                                    className={
-                                      isFavorite
-                                        ? undefined
-                                        : "opacity-0 group-hover/browse:opacity-100"
-                                    }
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      toggleEntry({
-                                        kind: "pod",
-                                        spaceId: space.id,
-                                      });
-                                    }}
-                                  />
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      </PopoverContent>
-                    </PopoverRoot>
+                          <DropdownMenuSubContent>
+                            <DropdownMenuItem
+                              label="By type"
+                              icon={LayersThree01}
+                              onClick={() => setPendingSort("type")}
+                            />
+                            <DropdownMenuItem
+                              label="By name"
+                              icon={Type01}
+                              onClick={() => setPendingSort("name")}
+                            />
+                          </DropdownMenuSubContent>
+                        </DropdownMenuSub>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </>
                 }
               >
@@ -3056,6 +3029,38 @@ function WorkspaceView({ model, user, onProfileChange }: WorkspaceViewProps) {
         toolId={detailedToolId}
         onClose={() => setDetailedToolId(null)}
       />
+      <Dialog
+        open={pendingSort !== null}
+        onOpenChange={(open) => !open && setPendingSort(null)}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>
+              Sort the sidebar {pendingSort === "name" ? "by name" : "by type"}?
+            </DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            The order you arranged by hand will be lost.
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setPendingSort(null),
+            }}
+            rightButtonProps={{
+              label: "Sort",
+              variant: "primary",
+              onClick: () => {
+                if (pendingSort) {
+                  applySort(pendingSort);
+                }
+                setPendingSort(null);
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
       <CommandPalette
         isOpen={isPaletteOpen}
         onClose={() => setIsPaletteOpen(false)}
