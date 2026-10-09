@@ -556,6 +556,52 @@ describe("Document comments", () => {
     );
   });
 
+  it("shows a marker with its thread's message count beside a comment", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace(
+        "Note.\n",
+        `Note.\n\n::message{author=user:usr_tom name="Tom" at=${AT}}\n\nAgreed.\n`
+      )
+    );
+
+    const marker = screen.getByRole("button", {
+      name: "Show comment by Daph, 2 messages",
+    });
+    expect(marker.textContent).toBe("2");
+
+    fireEvent.click(marker);
+
+    expect(highlight(dom, "c1")).toBeDefined();
+    expect(
+      within(floatingCard()!).getByRole("article", { name: "Comment by Daph" })
+    ).toBeDefined();
+    expect(marker.getAttribute("aria-current")).toBe("true");
+  });
+
+  it("gives each comment of a line its own marker, stacked in the order the comments start", async () => {
+    const thread = (id: string, name: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n`;
+    const { editor } = await renderDocument(
+      `:comment-start{id=a}One:comment-end{id=a} two :comment-start{id=b}three:comment-end{id=b}\n\n:::annotations\n${thread("b", "Bea")}\n${thread("a", "Al")}:::\n`
+    );
+
+    const al = screen.getByRole("button", {
+      name: "Show comment by Al, 1 message",
+    });
+    const bea = screen.getByRole("button", {
+      name: "Show comment by Bea, 1 message",
+    });
+    expect(Number.parseFloat(bea.style.top)).toBeGreaterThan(
+      Number.parseFloat(al.style.top)
+    );
+
+    fireEvent.click(bea);
+
+    expect(documentCommentsPluginKey.getState(editor.state)?.activeId).toBe(
+      "b"
+    );
+  });
+
   it.each([
     [false, 1],
     [true, 0],
