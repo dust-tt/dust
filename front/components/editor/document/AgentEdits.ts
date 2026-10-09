@@ -23,8 +23,8 @@ import * as Y from "yjs";
 // plugin only removes the decorations once it is done.
 const GLOW_MS = 1_200;
 const GLOW_PERCENT = 25;
-/** Id ranges past which an edit just shows: positioning them would hold the editor up. */
-const MAX_GLOWED_RANGES = 200;
+/** Inserted characters past which an edit just shows, without a glow. */
+const MAX_GLOWED_CHARS = 20_000;
 
 interface TextRange {
   from: number;
@@ -64,74 +64,76 @@ const blockSize = (
   return node && !Array.isArray(node) ? node.nodeSize : null;
 };
 
-/** The size of the first `count` blocks of `type` the editor shows, or null if it shows one not. */
-const blocksSize = (
+/** Each type's child items at their offset inside it, computed once per resolution. */
+type Offsets = Map<BoundType, Map<Y.Item, number>>;
+
+/**
+ * Where each child item of `type` starts inside it, in the editor's positions: text by its length,
+ * blocks by the size of their node. Stops at a block the editor shows nowhere.
+ */
+const childOffsets = (
   binding: ProsemirrorBinding,
   type: BoundType,
-  count: number,
-  until?: BoundType
-): number | null => {
-  let size = 0;
-  let seen = 0;
-  for (let item = type._start; item && seen < count; item = item.right) {
-    if (!(item.content instanceof Y.ContentType)) {
+  cache: Offsets
+): Map<Y.Item, number> => {
+  const cached = cache.get(type);
+  if (cached) {
+    return cached;
+  }
+  const offsets = new Map<Y.Item, number>();
+  let offset = 0;
+  for (let item = type._start; item; item = item.right) {
+    offsets.set(item, offset);
+    if (item.deleted) {
       continue;
     }
-    if (item.content.type === until) {
-      break;
-    }
-    if (!item.deleted) {
-      const block = blockSize(binding, item.content.type);
-      if (block === null) {
-        return null;
+    if (item.content instanceof Y.ContentType) {
+      const size = blockSize(binding, item.content.type);
+      if (size === null) {
+        break;
       }
-      size += block;
-      seen++;
+      offset += size;
+    } else if (item.countable) {
+      offset += item.length;
     }
   }
-  return size;
+  cache.set(type, offsets);
+  return offsets;
 };
 
 /**
- * The editor's position of a Yjs item, or null when the editor shows it nowhere. A deleted item
- * resolves to where it stood. As y-tiptap's `relativePositionToAbsolutePosition`, without its guard
- * against cursors misresolving to the document's start, which item ids never do.
+ * The editor's position of the character at `clock` in the text item `item`, or null when the
+ * editor shows it nowhere, such as inside a deleted block. As y-tiptap's
+ * `relativePositionToAbsolutePosition`, without its guard against cursors misresolving to the
+ * document's start, which item ids never do, and with each type's offsets computed once.
  */
-function itemPosition(
+function textItemPosition(
   binding: ProsemirrorBinding,
-  client: number,
-  clock: number
+  item: Y.Item,
+  clock: number,
+  cache: Offsets
 ): number | null {
-  const resolved = Y.createAbsolutePositionFromRelativePosition(
-    Y.createRelativePositionFromJSON({ item: { client, clock }, assoc: 0 }),
-    binding.doc
-  );
-  if (!resolved) {
+  if (!(item.parent instanceof Y.XmlText)) {
     return null;
   }
-  let type: BoundType = resolved.type;
-  let position: number;
-  if (type instanceof Y.XmlText) {
-    position = resolved.index;
-  } else {
-    // Between blocks: past the ones before, inside `type`.
-    const before = blocksSize(binding, type, resolved.index);
-    if (before === null) {
-      return null;
-    }
-    position = before + 1;
+  let type: BoundType = item.parent;
+  const inText = childOffsets(binding, type, cache).get(item);
+  if (inText === undefined) {
+    return null;
   }
+  let position = inText + clock - item.id.clock;
   while (type !== binding.type) {
-    const parent = type._item?.parent;
-    if (!(parent instanceof Y.AbstractType) || parent._item?.deleted) {
+    const typeItem = type._item;
+    const parent = typeItem?.parent;
+    if (!typeItem || typeItem.deleted || !(parent instanceof Y.AbstractType)) {
       return null;
     }
     // Into `parent`, past the blocks before `type`.
-    const before = blocksSize(binding, parent, Infinity, type);
-    if (before === null) {
+    const offset = childOffsets(binding, parent, cache).get(typeItem);
+    if (offset === undefined) {
       return null;
     }
-    position += 1 + before;
+    position += 1 + offset;
     type = parent;
   }
   // The fragment is the document itself, not a block in it.
@@ -150,6 +152,7 @@ export function insertedTextRanges(
   inserted: LiveIdRange[]
 ): TextRange[] {
   const { store } = binding.doc;
+  const cache: Offsets = new Map();
   const ranges: TextRange[] = [];
   for (const { client, clock, length } of inserted) {
     const structs = store.clients.get(client);
@@ -172,7 +175,7 @@ export function insertedTextRanges(
       }
       const from = Math.max(clock, item.id.clock);
       const to = Math.min(end, item.id.clock + item.length);
-      const position = itemPosition(binding, client, from);
+      const position = textItemPosition(binding, item, from, cache);
       if (position !== null) {
         ranges.push({ from: position, to: position + to - from });
       }
@@ -285,8 +288,8 @@ export const agentEditsPlugin = () =>
 /**
  * @cc [owner:PopDaph,label:product] live-agent-edit-shown
  * Each agent edit the session announces on `provider` MUST glow the text it inserted
- * (`insertedTextRanges`) in the document as it is when the announcement arrives, unless it holds
- * more than `MAX_GLOWED_RANGES` ranges. A failure resolving it MUST only skip the glow, logged.
+ * (`insertedTextRanges`) in the document as it is when the announcement arrives, unless it inserted
+ * more than `MAX_GLOWED_CHARS` characters. A failure resolving it MUST only skip the glow, logged.
  */
 export const agentEdits = (provider: HocuspocusProvider) =>
   Extension.create<Record<string, never>, { unsubscribe: (() => void) | null }>(
@@ -295,10 +298,11 @@ export const agentEdits = (provider: HocuspocusProvider) =>
       addStorage: () => ({ unsubscribe: null }),
       onCreate() {
         this.storage.unsubscribe = onLiveAgentEdit(provider, (edit) => {
-          if (
-            this.editor.isDestroyed ||
-            edit.inserted.length > MAX_GLOWED_RANGES
-          ) {
+          const length = edit.inserted.reduce(
+            (total, range) => total + range.length,
+            0
+          );
+          if (this.editor.isDestroyed || length > MAX_GLOWED_CHARS) {
             return;
           }
           try {
