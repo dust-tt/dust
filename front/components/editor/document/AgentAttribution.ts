@@ -1,15 +1,19 @@
 import type {
   EditHunk,
   PlayedEdit,
+  RemappedHunks,
 } from "@app/components/editor/document/AgentEdits";
 import {
   agentEditsPlugin,
+  isPlayingAgentEdit,
   withPlayedEdit,
+  withRemappedHunks,
 } from "@app/components/editor/document/AgentEdits";
 import { containsAttribution } from "@app/lib/live_attribution";
 import type { LiveAttributionMessage } from "@app/types/collab";
 import { Extension } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import { ProsemirrorBinding, ySyncPluginKey } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
 
@@ -121,16 +125,28 @@ function itemPosition(
  */
 export function attributionHunks(
   binding: ProsemirrorBinding,
-  { inserted, removed }: LiveAttributionMessage
+  { inserted, removed }: LiveAttributionMessage,
+  applied?: Y.Transaction
 ): EditHunk[] {
   const { store } = binding.doc;
   const hunks: EditHunk[] = [];
-  for (const { client, clock, length } of inserted) {
+  for (const range of inserted) {
+    const { client } = range;
     const structs = store.clients.get(client);
-    if (!structs || Y.getState(store, client) <= clock) {
+    // Only what `applied` integrated: the rest of a change may arrive in a later transaction.
+    const clock = Math.max(
+      range.clock,
+      applied ? (applied.beforeState.get(client) ?? 0) : 0
+    );
+    const end = Math.min(
+      range.clock + range.length,
+      applied
+        ? (applied.afterState.get(client) ?? 0)
+        : Y.getState(store, client)
+    );
+    if (!structs || clock >= end) {
       continue;
     }
-    const end = clock + length;
     for (
       let index = Y.findIndexSS(structs, clock);
       index < structs.length && structs[index].id.clock < end;
@@ -157,6 +173,9 @@ export function attributionHunks(
     }
   }
   for (const { text, anchor } of removed) {
+    if (applied && !deletedIn(applied, anchor)) {
+      continue;
+    }
     const position = itemPosition(binding, anchor.client, anchor.clock);
     if (position !== null) {
       hunks.push({ inserted: [], at: position, removed: text });
@@ -167,6 +186,22 @@ export function attributionHunks(
     (a, b) => a.at - b.at || Number(a.removed === "") - Number(b.removed === "")
   );
 }
+
+/** Whether `transaction` deleted the item `id`. */
+const deletedIn = (
+  transaction: Y.Transaction,
+  { client, clock }: { client: number; clock: number }
+) =>
+  (transaction.deleteSet.clients.get(client) ?? []).some(
+    (item) => item.clock <= clock && clock < item.clock + item.len
+  );
+
+/** Whether every item of `attribution` reached `document`, so no later transaction brings more. */
+const isApplied = (document: Y.Doc, attribution: LiveAttributionMessage) =>
+  [...attribution.inserted, ...attribution.deleted].every(
+    ({ client, clock, length }) =>
+      Y.getState(document.store, client) >= clock + length
+  );
 
 /** The shared document and the attributions the session sends on it. */
 export interface AttributionSource {
@@ -179,58 +214,85 @@ export interface AttributionSource {
   ) => () => void;
 }
 
-/** The editor following the shared document: its document now, and an attribution's hunks in it. */
+/** The editor following the shared document. */
 export interface AttributedEditor {
   doc: () => Node;
-  hunks: (attribution: LiveAttributionMessage) => EditHunk[];
+  /** The hunks of `attribution` in the editor's document: those `applied` brought, or all. */
+  hunks: (
+    attribution: LiveAttributionMessage,
+    applied?: Y.Transaction
+  ) => EditHunk[];
+  /** Whether an agent's edit is playing back. */
+  isPlaying: () => boolean;
+  play: (edit: PlayedEdit) => void;
+  remap: (remapped: RemappedHunks) => void;
 }
 
 /**
  * @cc [owner:PopDaph,label:product] live-agent-edit-attribution
- * `play` MUST be called for a transaction of `source.document` that applies what the session sent
- * and holds attributed items (`containsAttribution`), with the attribution's author and its hunks
- * in the editor's document right after the transaction, and for no other transaction: a change is
- * played back as an agent's only for the items it holds, never because of when it arrived. A
- * transaction that leaves the editor's document unchanged, or whose attributed text the editor
- * shows nowhere, MUST NOT be played back. Each attribution MUST be dropped once matched, or after
- * `ATTRIBUTION_WAIT_MS`.
+ * A transaction of `source.document` applying what the session sent and holding attributed items
+ * (`containsAttribution`) MUST be played back, with the attribution's author and the hunks of the
+ * items that transaction applied, in the editor's document right after it; no other transaction
+ * MUST be: a change is played back as an agent's only for the items it holds, never because of
+ * when it arrived. A transaction that leaves the editor's document unchanged, or whose attributed
+ * text the editor shows nowhere, MUST NOT be played back. An attribution MUST be kept until all its
+ * items reached the document, a change arriving in parts playing each part, or until
+ * `ATTRIBUTION_WAIT_MS`. While an edit plays, every later transaction MUST recompute its hunks from
+ * its items, so the playback follows the agent's text exactly.
  */
 export function followAttributions(
   source: AttributionSource,
-  editor: AttributedEditor,
-  play: (edit: PlayedEdit) => void
+  editor: AttributedEditor
 ): () => void {
   let pending: { attribution: LiveAttributionMessage; receivedAt: number }[] =
     [];
+  let playing: LiveAttributionMessage | null = null;
   let before: Node | null = null;
-  const onBeforeTransaction = (transaction: Y.Transaction) => {
-    before = source.isSessionOrigin(transaction.origin) ? editor.doc() : null;
+  const onBeforeTransaction = () => {
+    before = editor.doc();
   };
   // The editor's binding applies the session's change while the transaction runs: the editor's
-  // document and the binding's mapping are already the new ones here.
+  // document and the binding's mapping are already the new ones here. The editor changes once the
+  // transaction is over, so the binding never sees it change inside one.
   const onAfterTransaction = (transaction: Y.Transaction) => {
     const docBefore = before;
     before = null;
-    if (!docBefore || !source.isSessionOrigin(transaction.origin)) {
-      return;
-    }
+    const doc = editor.doc();
     const now = Date.now();
     pending = pending.filter(
-      ({ receivedAt }) => now - receivedAt <= ATTRIBUTION_WAIT_MS
+      ({ attribution, receivedAt }) =>
+        now - receivedAt <= ATTRIBUTION_WAIT_MS &&
+        !(
+          isApplied(source.document, attribution) &&
+          !containsAttribution(transaction, attribution)
+        )
     );
-    const match = pending.find(({ attribution }) =>
-      containsAttribution(transaction, attribution)
-    );
-    if (!match) {
-      return;
+    const match = source.isSessionOrigin(transaction.origin)
+      ? pending.find(({ attribution }) =>
+          containsAttribution(transaction, attribution)
+        )
+      : undefined;
+    if (match) {
+      const { attribution } = match;
+      if (isApplied(source.document, attribution)) {
+        pending = pending.filter((entry) => entry !== match);
+      }
+      const hunks =
+        doc === docBefore ? [] : editor.hunks(attribution, transaction);
+      if (hunks.length > 0) {
+        playing = attribution;
+        const { agentId, name } = attribution.author;
+        queueMicrotask(() =>
+          editor.play({ agent: { agentId, name }, hunks, doc })
+        );
+        return;
+      }
     }
-    pending = pending.filter((entry) => entry !== match);
-    const doc = editor.doc();
-    const hunks = doc === docBefore ? [] : editor.hunks(match.attribution);
-    if (hunks.length > 0) {
-      const { agentId, name } = match.attribution.author;
-      // Once the transaction is over: the binding must not see the editor change inside it.
-      queueMicrotask(() => play({ agent: { agentId, name }, hunks, doc }));
+    if (playing && editor.isPlaying()) {
+      const hunks = editor.hunks(playing);
+      queueMicrotask(() => editor.remap({ hunks, doc }));
+    } else {
+      playing = null;
     }
   };
   source.document.on("beforeTransaction", onBeforeTransaction);
@@ -251,27 +313,24 @@ export const agentEdits = (source: AttributionSource) =>
       name: "agentEdits",
       addStorage: () => ({ unsubscribe: null }),
       onCreate() {
-        this.storage.unsubscribe = followAttributions(
-          source,
-          {
-            doc: () => this.editor.state.doc,
-            hunks: (attribution) => {
-              const binding = ySyncPluginKey.getState(
-                this.editor.state
-              )?.binding;
-              return binding instanceof ProsemirrorBinding
-                ? attributionHunks(binding, attribution)
-                : [];
-            },
-          },
-          (edit) => {
-            if (!this.editor.isDestroyed) {
-              this.editor.view.dispatch(
-                withPlayedEdit(this.editor.state, edit)
-              );
-            }
+        const dispatch = (transaction: Transaction) => {
+          if (!this.editor.isDestroyed) {
+            this.editor.view.dispatch(transaction);
           }
-        );
+        };
+        this.storage.unsubscribe = followAttributions(source, {
+          doc: () => this.editor.state.doc,
+          hunks: (attribution, applied) => {
+            const binding = ySyncPluginKey.getState(this.editor.state)?.binding;
+            return binding instanceof ProsemirrorBinding
+              ? attributionHunks(binding, attribution, applied)
+              : [];
+          },
+          isPlaying: () => isPlayingAgentEdit(this.editor.state),
+          play: (edit) => dispatch(withPlayedEdit(this.editor.state, edit)),
+          remap: (remapped) =>
+            dispatch(withRemappedHunks(this.editor.state, remapped)),
+        });
       },
       onDestroy() {
         this.storage.unsubscribe?.();

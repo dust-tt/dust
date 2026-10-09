@@ -2,7 +2,10 @@ import {
   attributionHunks,
   followAttributions,
 } from "@app/components/editor/document/AgentAttribution";
-import type { PlayedEdit } from "@app/components/editor/document/AgentEdits";
+import type {
+  PlayedEdit,
+  RemappedHunks,
+} from "@app/components/editor/document/AgentEdits";
 import { documentSchema } from "@app/components/editor/document/content";
 import { attributeTransaction } from "@app/lib/live_attribution";
 import type { LiveAttributionMessage } from "@app/types/collab";
@@ -79,6 +82,7 @@ async function session(paragraphs: string[]) {
 
   let send: (attribution: LiveAttributionMessage) => void = () => {};
   const played: PlayedEdit[] = [];
+  const remaps: RemappedHunks[] = [];
   followAttributions(
     {
       document: browser,
@@ -90,9 +94,12 @@ async function session(paragraphs: string[]) {
     },
     {
       doc: () => view.state.doc,
-      hunks: (attribution) => attributionHunks(binding, attribution),
-    },
-    (edit) => played.push(edit)
+      hunks: (attribution, applied) =>
+        attributionHunks(binding, attribution, applied),
+      isPlaying: () => played.length > 0,
+      play: (edit) => played.push(edit),
+      remap: (remapped) => remaps.push(remapped),
+    }
   );
 
   /** The agent's `change` on the server, attributed as the server does; delivering it is left. */
@@ -112,6 +119,14 @@ async function session(paragraphs: string[]) {
       Y.applyUpdate(browser, Y.encodeStateAsUpdate(server, before), SESSION);
   };
 
+  /** A change of the server's own, not attributed, such as front matter; delivering it is left. */
+  const fromServer = (change: () => void) => {
+    const before = Y.encodeStateVector(server);
+    server.transact(change);
+    return () =>
+      Y.applyUpdate(browser, Y.encodeStateAsUpdate(server, before), SESSION);
+  };
+
   /** Another editor's `change`, relayed by the session; delivering it is left. */
   const fromCollaborator = (change: (document: Y.Doc) => void) => {
     const before = Y.encodeStateVector(collaborator);
@@ -127,7 +142,17 @@ async function session(paragraphs: string[]) {
   /** Lets queued playbacks run. */
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  return { server, browser, view, played, fromAgent, fromCollaborator, settle };
+  return {
+    server,
+    browser,
+    view,
+    played,
+    remaps,
+    fromAgent,
+    fromServer,
+    fromCollaborator,
+    settle,
+  };
 }
 
 describe("attributed agent edits", () => {
@@ -231,6 +256,68 @@ describe("attributed agent edits", () => {
     await settle();
 
     expect(played).toEqual([]);
+  });
+
+  it("plays back each part of a change Yjs applies in two transactions", async () => {
+    const { server, played, fromAgent, fromServer, settle } = await session([
+      "cat",
+    ]);
+    // Withheld: the agent's new text depends on it, so Yjs holds that text until it arrives.
+    const metadata = fromServer(() =>
+      server.getMap("envelope").set("title", "Pets")
+    );
+
+    fromAgent(() => {
+      paragraphText(server, 0).delete(0, 3);
+      paragraphText(server, 0).insert(0, "dog");
+    })();
+    await settle();
+    metadata();
+    await settle();
+
+    expect(played.map(shownText)).toEqual([
+      { inserted: "", removed: ["cat"] },
+      { inserted: "dog", removed: [] },
+    ]);
+  });
+
+  it("follows the agent's text exactly while it plays, even next to the same text", async () => {
+    const {
+      server,
+      browser,
+      played,
+      remaps,
+      fromAgent,
+      fromCollaborator,
+      settle,
+    } = await session(["a"]);
+    const agentItem = {
+      client: server.clientID,
+      clock: Y.getState(server.store, server.clientID),
+    };
+
+    fromAgent(() => paragraphText(server, 0).insert(0, "a"))();
+    await settle();
+    // Another editor types the same letter at the same place while it plays: which "a" comes first
+    // depends on the two clients' ids, and only the agent's item tells them apart.
+    fromCollaborator((document) => paragraphText(document, 0).insert(0, "a"))();
+    await settle();
+
+    const agentIndex = Y.createAbsolutePositionFromRelativePosition(
+      Y.createRelativePositionFromJSON({ item: agentItem }),
+      browser
+    )?.index;
+    expect(played).toHaveLength(1);
+    expect(remaps.at(-1)?.doc.textContent).toBe("aaa");
+    expect(remaps.at(-1)?.hunks).toEqual([
+      {
+        inserted: [
+          { from: 1 + (agentIndex ?? -1), to: 2 + (agentIndex ?? -1) },
+        ],
+        at: 1 + (agentIndex ?? -1),
+        removed: "",
+      },
+    ]);
   });
 
   it("plays back nothing for formatting alone, nor for the browser's own changes", async () => {
