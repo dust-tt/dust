@@ -90,6 +90,8 @@ export function useMentionSuggestions({
     revalidateOnFocus: false,
     // Don't revalidate on reconnect for better performance
     revalidateOnReconnect: false,
+    // Avoid adding search load when suggestions fail.
+    shouldRetryOnError: false,
     // Cache suggestions for 5 minutes
     dedupingInterval: 5 * 60 * 1000,
     disabled: disabled || nothingSelectable,
