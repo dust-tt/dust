@@ -12,6 +12,8 @@ use tonic::{Request, Response, Status};
 
 use crate::storage::{fdb, resources::tenant::TenantResource};
 
+mod errors;
+
 /// RPCs without an implementation answer UNSUPPORTED.
 #[allow(clippy::upper_case_acronyms)]
 pub struct API;
@@ -27,14 +29,14 @@ impl Dfs for API {
             root_grants,
         } = request.into_inner();
         if !root_grants.is_empty() {
-            return Err(status(ErrorCode::Unsupported));
+            return Err(status(ErrorCode::InvalidInput));
         }
         // Unlike front's `makeNew`, the tenant is built before the transaction: FDB re-runs the body
         // on retry, and a fresh key and root per attempt would hide our own earlier commit.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
-        let created = fdb::with_transaction(|transaction| {
+        let created = fdb::with_transaction(|tx| {
             let tenant = &tenant;
-            async move { tenant.create(&transaction).await }
+            async move { tenant.create(&tx).await }
         })
         .await?;
         if !created {

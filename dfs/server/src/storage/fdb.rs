@@ -1,12 +1,12 @@
 use std::sync::OnceLock;
 
 use anyhow::{Context, Result};
-use dfs_protocol::{error::status, rpc::ErrorCode};
 use foundationdb::{
     Database, FdbBindingError, RetryableTransaction,
     options::{DatabaseOption, TransactionOption},
 };
-use tonic::Status;
+
+use super::Error;
 
 /// dust-hive envs export their own cluster file through `env.sh`.
 const CLUSTER_FILE_ENV: &str = "FDB_CLUSTER_FILE";
@@ -26,20 +26,19 @@ pub fn database() -> Result<&'static Database> {
     Ok(DATABASE.get_or_init(|| database))
 }
 
-/// Runs `body` in a retried transaction on the process-wide database, answering INTERNAL on failure.
-pub async fn with_transaction<F, Fut, T>(body: F) -> Result<T, Status>
+/// @cc [owner:spolu,label:backend;error-handling] preserve-fdb-retry-errors
+/// Transaction failures MUST reach Database::run as FdbBindingError so it can decide whether to
+/// retry. Only the final failure returned by the runner MUST be wrapped in the storage error.
+pub async fn with_transaction<F, Fut, T>(body: F) -> Result<T, Error>
 where
     F: Fn(RetryableTransaction) -> Fut,
     Fut: Future<Output = Result<T, FdbBindingError>>,
 {
-    let database = database().map_err(|error| {
-        tracing::error!(error = format!("{error:#}"), "fdb database unavailable");
-        status(ErrorCode::Internal)
-    })?;
+    let database = database().map_err(Error::Open)?;
     database
-        .run(|transaction, _maybe_committed| body(transaction))
+        .run(|tx, _maybe_committed| body(tx))
         .await
-        .map_err(internal_status)
+        .map_err(Error::Transaction)
 }
 
 fn open() -> Result<Database> {
@@ -52,20 +51,14 @@ fn open() -> Result<Database> {
     Ok(database)
 }
 
-/// Logs a failed transaction and answers INTERNAL, so FDB details never reach the client.
-fn internal_status(error: FdbBindingError) -> Status {
-    tracing::error!(%error, "fdb transaction failed");
-    status(ErrorCode::Internal)
-}
-
 /// FDB clients retry forever by default; give up instead so an unreachable cluster is reported.
 pub const PING_TIMEOUT_MS: i32 = 5_000;
 
 /// Fails unless the cluster answers a transaction within `PING_TIMEOUT_MS`.
 pub async fn ping(database: &Database) -> Result<()> {
-    let transaction = database.create_trx()?;
-    transaction.set_option(TransactionOption::Timeout(PING_TIMEOUT_MS))?;
-    transaction.get_read_version().await.with_context(|| {
+    let tx = database.create_trx()?;
+    tx.set_option(TransactionOption::Timeout(PING_TIMEOUT_MS))?;
+    tx.get_read_version().await.with_context(|| {
         format!("FoundationDB did not answer within {PING_TIMEOUT_MS} ms; is it running?")
     })?;
     Ok(())

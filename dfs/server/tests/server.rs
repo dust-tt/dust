@@ -9,6 +9,8 @@ use tonic_health::pb::{
     HealthCheckRequest, health_check_response::ServingStatus, health_client::HealthClient,
 };
 
+mod api;
+
 async fn serve() -> Result<Channel> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
@@ -45,7 +47,8 @@ fn server() -> Result<()> {
 
     runtime.block_on(async {
         health_checks_and_shutdown_work_without_authorization().await?;
-        dfs_rejects_a_missing_or_malformed_authorization_as_unauthenticated().await
+        dfs_rejects_a_missing_or_malformed_authorization_as_unauthenticated().await?;
+        api::create_tenant::dfs_rejects_invalid_tenant_creation().await
     })
 }
 

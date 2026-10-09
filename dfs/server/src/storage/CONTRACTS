@@ -1,0 +1,3 @@
+@cc [owner:spolu,label:architecture;error-handling] storage-transport-independence
+Storage and resource modules MUST return transport-independent errors and MUST NOT import tonic or
+construct gRPC statuses. Conversions to API statuses MUST live in the API layer.

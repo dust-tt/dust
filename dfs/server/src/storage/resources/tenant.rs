@@ -1,17 +1,35 @@
-use dfs_protocol::{ObjectId, error::status, rpc::ErrorCode};
+use std::fmt;
+
+use dfs_protocol::ObjectId;
 use foundationdb::{
     FdbBindingError, Transaction,
     tuple::{pack, unpack},
 };
-use tonic::Status;
 
 use crate::{
     auth::{self, KeyHash},
-    storage::resources::layout::tenant_subspace,
+    storage::resources::keys::tenant_subspace,
 };
 
 const FAMILY: &str = "tenant";
 const TENANT_ID_MAX_BYTES: usize = 256;
+
+#[derive(Debug)]
+pub enum Error {
+    InvalidId,
+    KeyGeneration,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidId => f.write_str("invalid tenant ID"),
+            Self::KeyGeneration => f.write_str("tenant key generation failed"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub struct TenantResource {
     pub tenant_id: String,
@@ -22,11 +40,11 @@ pub struct TenantResource {
 impl TenantResource {
     /// A new tenant with its bearer key, the only time the key is visible. Build it before the
     /// transaction, so retries store the same key and root.
-    pub fn new(tenant_id: String) -> Result<(Self, String), Status> {
+    pub fn new(tenant_id: String) -> Result<(Self, String), Error> {
         if !Self::is_valid_id(&tenant_id) {
-            return Err(status(ErrorCode::InvalidInput));
+            return Err(Error::InvalidId);
         }
-        let tenant_key = auth::new_key().map_err(|_| status(ErrorCode::Internal))?;
+        let tenant_key = auth::new_key().map_err(|_| Error::KeyGeneration)?;
         let tenant = Self {
             tenant_id,
             root_id: ObjectId::new_v7(),
@@ -36,26 +54,25 @@ impl TenantResource {
     }
 
     /// Stores this tenant; `false` when another tenant already holds its ID.
-    pub async fn create(&self, transaction: &Transaction) -> Result<bool, FdbBindingError> {
-        match Self::fetch(transaction, &self.tenant_id).await? {
+    pub async fn create(&self, tx: &Transaction) -> Result<bool, FdbBindingError> {
+        match Self::fetch(tx, &self.tenant_id).await? {
             // A retry after an unknown commit result finds our own record.
             Some(existing) => Ok(existing.root_id == self.root_id),
             None => {
-                self.insert(transaction);
+                self.insert(tx);
                 Ok(true)
             }
         }
     }
 
+    /// @cc [owner:spolu,label:api;security] tenant-id-validation
+    /// Tenant IDs MUST contain 1-256 UTF-8 bytes and MUST NOT contain NUL.
     fn is_valid_id(tenant_id: &str) -> bool {
-        !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES
+        !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES && !tenant_id.contains('\0')
     }
 
-    async fn fetch(
-        transaction: &Transaction,
-        tenant_id: &str,
-    ) -> Result<Option<Self>, FdbBindingError> {
-        let Some(value) = transaction.get(&key(tenant_id), false).await? else {
+    async fn fetch(tx: &Transaction, tenant_id: &str) -> Result<Option<Self>, FdbBindingError> {
+        let Some(value) = tx.get(&Self::tenant_key(tenant_id), false).await? else {
             return Ok(None);
         };
         let (root_id, key_hash): (Vec<u8>, Vec<u8>) =
@@ -70,12 +87,12 @@ impl TenantResource {
         }))
     }
 
-    fn insert(&self, transaction: &Transaction) {
+    fn insert(&self, tx: &Transaction) {
         let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
-        transaction.set(&key(&self.tenant_id), &value);
+        tx.set(&Self::tenant_key(&self.tenant_id), &value);
     }
-}
 
-fn key(tenant_id: &str) -> Vec<u8> {
-    tenant_subspace(tenant_id).pack(&FAMILY)
+    fn tenant_key(tenant_id: &str) -> Vec<u8> {
+        tenant_subspace(tenant_id).pack(&FAMILY)
+    }
 }
