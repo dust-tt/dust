@@ -177,14 +177,6 @@ async function allocateMessage({
     createdRuns[callIndex].runUsageModelId;
 
   return {
-    billingGroups: result.isOk()
-      ? result.value.billingGroups.map((group) => ({
-          runKey: group.runKey,
-          costCredits: group.costCreditMicro / 1_000_000,
-          billedCredits: group.billedCreditMicro / 1_000_000,
-          roundingCredits: group.roundingCreditMicro / 1_000_000,
-        }))
-      : [],
     failure: result.isErr() ? result.error.code : null,
     totalCredits:
       [...byItem.values()].reduce((total, amount) => total + amount, 0) /
@@ -270,18 +262,6 @@ describe("buildLatestMessageConsumptionAllocation", () => {
     expect(allocation.callItemCredits(0, "output")).toBeCloseTo(0.5, 5);
     expect(allocation.callItemCredits(1, "input")).toBeCloseTo(3, 5);
     expect(allocation.callItemCredits(1, "output")).toBeCloseTo(2, 5);
-    expect(allocation.billingGroups).toEqual([
-      expect.objectContaining({
-        runKey: "execution-1",
-        billedCredits: 1,
-        roundingCredits: expect.closeTo(0.8, 5),
-      }),
-      expect.objectContaining({
-        runKey: "execution-2",
-        billedCredits: 5,
-        roundingCredits: expect.closeTo(0, 5),
-      }),
-    ]);
   });
 
   it("rounds each call's credits to the micro-credit within its own bill", async () => {
