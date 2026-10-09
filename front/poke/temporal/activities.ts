@@ -757,6 +757,7 @@ export async function deleteWorkspaceActivity({
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
   await ProviderCredentialResource.deleteAllForWorkspace(auth);
   // dfs has no tenant deletion RPC: the tenant's data stays in dfs, unreachable without its key.
+  // TODO(dfs): scrub the tenant's data in dfs when the workspace is deleted, before dropping its key.
   await DfsTenantResource.deleteAllForWorkspace(auth);
   await DustAppSecretModel.destroy({
     where: {
