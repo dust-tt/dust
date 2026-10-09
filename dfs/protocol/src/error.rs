@@ -3,7 +3,7 @@ use prost::Message;
 use tonic::{Code, Status};
 
 /// @cc [owner:spolu,label:api;error-handling] dfs-status-details
-/// Protocol failures MUST encode their `ErrorCode` as protobuf `ErrorDetails` in gRPC status
+/// Application failures MUST encode their `ErrorCode` as protobuf `ErrorDetails` in gRPC status
 /// details. Public messages MUST describe the error class without including object data or bearer
 /// credentials.
 pub fn status(error: ErrorCode) -> Status {

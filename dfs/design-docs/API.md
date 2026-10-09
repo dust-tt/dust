@@ -382,9 +382,8 @@ GrantUpdate {
 }
 ```
 
-**Returns:** `Empty {}` on success. Failures use gRPC status errors with `ErrorDetails` and commit no
-partial grant changes. The tenant key provides no session context, so this operation does not return
-`Attr`.
+**Returns:** `Empty {}` on success. Failures follow the [error rules](#errors) and commit no partial
+grant changes. The tenant key provides no session context, so this operation does not return `Attr`.
 
 A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
@@ -919,7 +918,14 @@ not successful empty results.
 
 ## Errors
 
-RPC failures carry a gRPC status with protobuf `ErrorDetails { code }` in its details. Batch calls
-also use `ErrorDetails` for individual failures. Stable codes are `INTERNAL`, `INVALID_INPUT`,
-`NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`, `IS_DIRECTORY`,
-`NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
+RPC failures carry a gRPC status with protobuf `ErrorDetails { code }` in its details, with two
+exceptions for requests rejected by the transport before a handler runs:
+
+- Protobuf decoding failures, including invalid object IDs, may return gRPC `INTERNAL` without
+  `ErrorDetails`.
+- Requests exceeding the 4 MiB transport limit may return gRPC `OUT_OF_RANGE` without `ErrorDetails`.
+
+Clients handle these two cases using the gRPC status when details are absent. All other RPC failures
+and individual batch failures carry `ErrorDetails`. Stable protocol codes are `INTERNAL`,
+`INVALID_INPUT`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`,
+`IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
