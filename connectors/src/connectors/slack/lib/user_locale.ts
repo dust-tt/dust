@@ -1,3 +1,4 @@
+import { isSlackWebAPIError } from "@connectors/connectors/slack/lib/errors";
 import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackUserInfoMemoized } from "@connectors/connectors/slack/lib/slack_client";
@@ -7,17 +8,42 @@ import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { cacheWithRedisResult } from "@connectors/types";
 import type { SupportedLocale } from "@connectors/types/locale";
-import { DEFAULT_LOCALE, isSupportedLocale } from "@connectors/types/locale";
+import {
+  DEFAULT_LOCALE,
+  isSupportedLocale,
+  SUPPORTED_LOCALES,
+} from "@connectors/types/locale";
 import type { APIError, GetMemberLocaleResponseType } from "@dust-tt/client";
 import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
+// Slack has regional variants Dust does not support (e.g. `fr-CA`): fall back to the first supported
+// locale of the same language rather than to another language.
+function toSupportedLocale(
+  locale: string | null | undefined
+): SupportedLocale | null {
+  if (!locale) {
+    return null;
+  }
+  if (isSupportedLocale(locale)) {
+    return locale;
+  }
+  const [language] = locale.split("-");
+  return (
+    SUPPORTED_LOCALES.find(
+      (supportedLocale) => supportedLocale.split("-")[0] === language
+    ) ?? null
+  );
+}
+
 /**
  * @cc [owner:Nils-Fedrigo,label:product] slack-locale-resolution
  * MUST return `DEFAULT_LOCALE` when `dustLocales` is `null` or its `localisationEnabled` is false.
- * Otherwise it MUST return the first of these that is a `SUPPORTED_LOCALES` entry: the locale the
- * user chose in Dust (`userLocale`), the user's Slack locale (`slackLocale`), the workspace locale
- * (`workspaceLocale`), and `DEFAULT_LOCALE` when none is.
+ * Otherwise it MUST return the first of these that is set: the locale the user chose in Dust
+ * (`userLocale`) if it is a `SUPPORTED_LOCALES` entry, the user's Slack locale (`slackLocale`) if
+ * it is a `SUPPORTED_LOCALES` entry or else the first `SUPPORTED_LOCALES` entry of the same
+ * language, the workspace locale (`workspaceLocale`) if it is a `SUPPORTED_LOCALES` entry, and
+ * `DEFAULT_LOCALE`.
  */
 export function resolveSlackLocale({
   dustLocales,
@@ -30,9 +56,11 @@ export function resolveSlackLocale({
     return DEFAULT_LOCALE;
   }
   return (
-    [dustLocales.userLocale, slackLocale, dustLocales.workspaceLocale].find(
-      isSupportedLocale
-    ) ?? DEFAULT_LOCALE
+    [
+      dustLocales.userLocale,
+      toSupportedLocale(slackLocale),
+      dustLocales.workspaceLocale,
+    ].find(isSupportedLocale) ?? DEFAULT_LOCALE
   );
 }
 
@@ -75,7 +103,10 @@ async function getSlackUserInfoOrNull(
       slackUserId
     );
   } catch (error) {
-    // Slack Web API errors: write in the workspace locale rather than not at all.
+    if (!isSlackWebAPIError(error)) {
+      throw error;
+    }
+    // Write in the workspace locale rather than not at all.
     logger.warn(
       { connectorId: connector.id, slackUserId, error },
       "Failed to get Slack user info to pick their locale"

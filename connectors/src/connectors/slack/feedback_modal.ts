@@ -2,6 +2,8 @@ import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
+import type { Result } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
@@ -173,18 +175,22 @@ export async function openFeedbackModal({
 
 export async function getSlackConnectorForTeam(
   slackTeamId: string
-): Promise<{ connector: ConnectorResource; slackClient: WebClient }> {
+): Promise<
+  Result<{ connector: ConnectorResource; slackClient: WebClient }, Error>
+> {
   const slackConfig =
     await SlackConfigurationResource.fetchByActiveBot(slackTeamId);
   if (!slackConfig) {
-    throw new Error(
-      `Failed to find Slack configuration for team ${slackTeamId}`
+    return new Err(
+      new Error(`Failed to find Slack configuration for team ${slackTeamId}`)
     );
   }
 
   const connector = await ConnectorResource.fetchById(slackConfig.connectorId);
   if (!connector) {
-    throw new Error(`Failed to find Slack connector for team ${slackTeamId}`);
+    return new Err(
+      new Error(`Failed to find Slack connector for team ${slackTeamId}`)
+    );
   }
-  return { connector, slackClient: await getSlackClient(connector.id) };
+  return new Ok({ connector, slackClient: await getSlackClient(connector.id) });
 }

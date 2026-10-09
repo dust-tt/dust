@@ -78,6 +78,12 @@ export function isSlackUnknownUserGroupError(
 
 // Type guards for Slack errors
 // See https://github.com/slackapi/node-slack-sdk/blob/main/packages/web-api/src/errors.ts.
+export function isSlackWebAPIError(error: unknown): error is CodedError {
+  return (
+    isCodedError(error) && Object.values<string>(ErrorCode).includes(error.code)
+  );
+}
+
 export function isWebAPIRateLimitedError(
   error: unknown
 ): error is WebAPIRateLimitedError {

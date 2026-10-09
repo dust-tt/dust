@@ -23,9 +23,9 @@ describe("resolveSlackLocale", () => {
     );
   });
 
-  it("skips locales that are not supported locales", () => {
+  it("matches an unsupported Slack locale on its language", () => {
     expect(resolveSlackLocale({ dustLocales, slackLocale: "fr-CA" })).toBe(
-      "en-US"
+      "fr-FR"
     );
   });
 
