@@ -666,7 +666,6 @@ export function CatalogRow({
         </p>
       </div>
       <div className="relative flex shrink-0 items-center gap-1 self-start">
-        {favoriteToggle}
         {onPin && (
           <Button
             variant="ghost"
@@ -678,6 +677,7 @@ export function CatalogRow({
             className={REVEAL_ON_ROW_HOVER_CLASSES}
           />
         )}
+        {favoriteToggle}
         <Button
           variant="outline"
           size="sm"
