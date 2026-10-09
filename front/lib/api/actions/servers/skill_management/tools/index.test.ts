@@ -515,6 +515,16 @@ describe("skill_management enable_skill tool", () => {
     expect(mockEnableForAgent).toHaveBeenCalled();
   });
 
+  it("looks up a skill name copied escaped from its skill tag by its raw name", async () => {
+    await getTool().handler({ skillName: "On-Call &amp; Runner" }, makeExtra());
+
+    expect(mockFetchByName).toHaveBeenCalledWith(
+      auth,
+      "On-Call & Runner",
+      expect.anything()
+    );
+  });
+
   it("enables skills explicitly referenced by earlier user messages", async () => {
     const earlierUserMessage = {
       ...userMessage,

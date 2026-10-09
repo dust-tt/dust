@@ -17,6 +17,7 @@ import { isUserMessageType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
+import unescape from "lodash/unescape";
 
 function extractSkillIdsFromConversationMessages(
   agentLoopData: AgentLoopExecutionData
@@ -144,10 +145,12 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       userMessage,
     };
 
+    // Skill tags escape the name attribute (`&` -> `&amp;`), and the model copies the tag's name
+    // verbatim.
     const skill = await findAvailableSkillForAgentLoop({
       auth,
       agentLoopData,
-      skillName,
+      skillName: unescape(skillName),
     });
 
     if (!skill) {
