@@ -64,50 +64,59 @@ function typeText(type: Y.AbstractType<unknown>): string {
 const capped = (text: string) => text.slice(0, LIVE_REMOVED_TEXT_MAX_CHARS + 1);
 
 /**
- * The text `transaction` deleted, read before Yjs collects it: each deleted block whole, anchored
- * at the block, and each run of text deleted inside a block that stays, anchored at its first
- * item. Only callable while the transaction runs, in an observer.
+ * The text `transaction` deleted, read before Yjs collects it, in document order: each run of
+ * deleted text and deleted blocks inside a block that stays, anchored at its first item. Formatting
+ * and text deleted earlier neither join nor split a run. Only callable while the transaction runs,
+ * in an observer.
  */
 export function removedTexts(transaction: Y.Transaction): RemovedText[] {
-  const blocks = new Set<Y.Item>();
-  const inline = new Set<Y.Item>();
+  // The outermost items the transaction deleted, and the blocks that stay holding them.
+  const deleted = new Set<Y.Item>();
+  const parents = new Set<Y.AbstractType<unknown>>();
   Y.iterateDeletedStructs(transaction, transaction.deleteSet, (struct) => {
     if (!(struct instanceof Y.Item)) {
       return;
     }
-    const block = deletedBlock(struct);
-    if (block) {
-      blocks.add(block);
-    } else if (struct.content instanceof Y.ContentString) {
-      inline.add(struct);
+    const item =
+      deletedBlock(struct) ??
+      (struct.content instanceof Y.ContentString ? struct : null);
+    if (item && item.parent instanceof Y.AbstractType) {
+      deleted.add(item);
+      parents.add(item.parent);
     }
   });
 
   const removed: RemovedText[] = [];
-  for (const block of blocks) {
-    const text =
-      block.content instanceof Y.ContentType
-        ? typeText(block.content.type)
-        : "";
-    if (text !== "") {
-      removed.push({ text: capped(text), anchor: { ...block.id } });
-    }
-  }
-  for (const start of inline) {
-    if (start.left instanceof Y.Item && inline.has(start.left)) {
-      continue;
-    }
-    let text = "";
-    for (
-      let item: Y.Item | null = start;
-      item && inline.has(item);
-      item = item.right
-    ) {
-      if (item.content instanceof Y.ContentString) {
-        text += item.content.str;
+  for (const parent of parents) {
+    let run: { text: string; anchor: Y.Item; afterBlock: boolean } | null =
+      null;
+    const endRun = () => {
+      if (run && run.text !== "") {
+        removed.push({ text: capped(run.text), anchor: { ...run.anchor.id } });
+      }
+      run = null;
+    };
+    for (let item = parent._start; item; item = item.right) {
+      if (deleted.has(item)) {
+        const isBlock = item.content instanceof Y.ContentType;
+        const part =
+          item.content instanceof Y.ContentString
+            ? item.content.str
+            : item.content instanceof Y.ContentType
+              ? typeText(item.content.type)
+              : "";
+        if (!run) {
+          run = { text: part, anchor: item, afterBlock: isBlock };
+        } else {
+          // Blocks stay apart by a space, text runs on.
+          run.text += isBlock || run.afterBlock ? ` ${part}` : part;
+          run.afterBlock = isBlock;
+        }
+      } else if (!item.deleted && item.countable) {
+        endRun();
       }
     }
-    removed.push({ text: capped(text), anchor: { ...start.id } });
+    endRun();
   }
   return removed;
 }
