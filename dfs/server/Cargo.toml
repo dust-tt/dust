@@ -9,7 +9,8 @@ anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 dfs-protocol = { path = "../protocol" }
 foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
-tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-stream = { version = "0.1", features = ["net"] }
 tonic = "0.14"
 tonic-health = "0.14"
 tracing = "0.1"
@@ -17,7 +18,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 [dev-dependencies]
 prost = "0.14"
-tokio-stream = { version = "0.1", features = ["net"] }
 
 [lints.rust]
 unsafe_code = "deny"

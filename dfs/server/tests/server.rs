@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
-use dfs_api::{fdb, router};
+use anyhow::{Context, Result};
+use dfs_api::fdb;
 use dfs_protocol::{
     ObjectId,
     rpc::{
@@ -11,8 +11,7 @@ use dfs_protocol::{
     },
 };
 use prost::Message;
-use tokio::net::TcpListener;
-use tokio_stream::wrappers::TcpListenerStream;
+use tokio::{net::TcpListener, sync::oneshot, time::timeout};
 use tonic::{Code, Request, Status, transport::Channel};
 use tonic_health::pb::{
     HealthCheckRequest, health_check_response::ServingStatus, health_client::HealthClient,
@@ -50,11 +49,7 @@ async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
 async fn serve() -> Result<Channel> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
-    tokio::spawn(async move {
-        let _ = router()
-            .serve_with_incoming(TcpListenerStream::new(listener))
-            .await;
-    });
+    tokio::spawn(dfs_api::serve(listener, std::future::pending()));
     Ok(Channel::from_shared(format!("http://{address}"))?
         .connect()
         .await?)
@@ -76,17 +71,71 @@ const WELL_FORMED_AUTHORIZATION: &str =
     "Bearer 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 #[tokio::test]
-async fn health_service_reports_serving() -> Result<()> {
-    let mut client = HealthClient::new(serve().await?);
+async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
+    let listener = TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let (stop, stopped) = oneshot::channel();
+    let server = tokio::spawn(dfs_api::serve(listener, async {
+        let _ = stopped.await;
+    }));
+    let channel = Channel::from_shared(format!("http://{address}"))?
+        .connect()
+        .await?;
+    let mut client = HealthClient::new(channel);
+    let mut watches = Vec::new();
 
-    let response = client
-        .check(HealthCheckRequest {
-            service: String::new(),
-        })
-        .await?
-        .into_inner();
+    for service in ["", "dfs.v1.Dfs"] {
+        let request = HealthCheckRequest {
+            service: service.to_owned(),
+        };
+        let response = client.check(request.clone()).await?.into_inner();
+        assert_eq!(response.status(), ServingStatus::Serving);
+        let mut watch = client.watch(request).await?.into_inner();
+        assert_eq!(
+            watch
+                .message()
+                .await?
+                .context("health stream ended")?
+                .status(),
+            ServingStatus::Serving
+        );
+        watches.push(watch);
+    }
 
-    assert_eq!(response.status(), ServingStatus::Serving);
+    stop.send(())
+        .map_err(|_| anyhow::anyhow!("server stopped"))?;
+    for watch in &mut watches {
+        assert_eq!(
+            timeout(Duration::from_secs(5), watch.message())
+                .await??
+                .context("health stream ended before shutdown notification")?
+                .status(),
+            ServingStatus::NotServing
+        );
+    }
+    drop(watches);
+    drop(client);
+    timeout(Duration::from_secs(5), server).await???;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn dfs_rejects_oversized_requests() -> Result<()> {
+    let mut client = DfsClient::new(serve().await?);
+    let error = client
+        .create_tenant(with_authorization(
+            CreateTenantRequest {
+                tenant_id: "x".repeat(4 * 1024 * 1024),
+                ..Default::default()
+            },
+            WELL_FORMED_AUTHORIZATION,
+        )?)
+        .await
+        .err()
+        .context("oversized request unexpectedly succeeded")?;
+
+    assert_eq!(error.code(), Code::OutOfRange);
     Ok(())
 }
 
