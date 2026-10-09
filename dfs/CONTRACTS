@@ -1,3 +1,8 @@
 @cc [owner:spolu,notify:spolu,label:security] dfs-tenant-isolation
 Tenant data and metadata MUST be isolated. A tenant MUST NOT be allowed to read or modify another
 tenant state.
+
+@cc [owner:pmilliotte,label:coding] no-magic-numbers
+Meaningful numbers (limits, sizes, timeouts, deadlines) MUST be named module-level `const`s with
+their unit in the name or type, derived from any constant they depend on. Exempt: `0`/`1` as
+indexes or offsets, and test fixture data.
