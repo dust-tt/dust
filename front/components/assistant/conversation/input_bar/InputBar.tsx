@@ -163,10 +163,9 @@ export const InputBar = React.memo(function InputBar({
   } = useContext(InputBarContext);
 
   // We use this specific hook because this component is involved in the new conversation page.
-  const { agentConfigurations, isLoading: isAgentConfigurationsLoading } =
-    useUnifiedAgentConfigurations({
-      workspaceId: owner.sId,
-    });
+  const { agentConfigurations } = useUnifiedAgentConfigurations({
+    workspaceId: owner.sId,
+  });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 
@@ -677,7 +676,6 @@ export const InputBar = React.memo(function InputBar({
             disableUserMentions={disableUserMentions}
             disableAgentMentions={disableAgentMentions}
             allAgents={activeAgents}
-            isAllAgentsLoading={isAgentConfigurationsLoading}
             owner={owner}
             conversation={conversation}
             space={space}

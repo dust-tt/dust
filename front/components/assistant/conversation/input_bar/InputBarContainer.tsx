@@ -173,23 +173,20 @@ const acceptSelectedSpaceIds = async (spaceIds: string[]) => spaceIds;
 
 // Placeholder hints, only advertising the @ and / menus when the composer has them.
 function getPlaceholderHints({
-  allAgents,
   disableAgentMentions,
   disableUserMentions,
   slashMenuMode,
 }: {
-  allAgents: LightAgentConfigurationType[];
   disableAgentMentions?: boolean;
   disableUserMentions?: boolean;
   slashMenuMode: InputBarSlashMenuMode | null;
 }): MessageDescriptor[] {
   const hints = [INPUT_BAR_DEFAULT_PLACEHOLDER, msg`Ask anything`];
   if (!disableAgentMentions) {
-    hints.push(msg`Type @ to call an agent`);
-    // A blank @ query only lists favorites when the user has some.
-    if (allAgents.some((agent) => agent.userFavorite)) {
-      hints.push(msg`Type @ to list your favorite agents`);
-    }
+    hints.push(
+      msg`Type @ to call an agent`,
+      msg`Type @ to list your favorite agents`
+    );
   }
   if (!disableUserMentions) {
     hints.push(msg`Type @ to loop in a teammate`);
@@ -238,7 +235,6 @@ function sameSkillIds(a: string[], b: string[]): boolean {
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
-  isAllAgentsLoading: boolean;
   disableAgentSelector: boolean;
   // When true, the editor is made non-editable and every picker (agent,
   // tools, attachment, voice) is disabled. Reserved for states where the user
@@ -310,7 +306,6 @@ function hasActiveSelectionInEditor(
 
 const InputBarContainer = ({
   allAgents,
-  isAllAgentsLoading,
   onEnterKeyDown,
   owner,
   conversation,
@@ -837,24 +832,20 @@ const InputBarContainer = ({
   spaceIdRef.current = spaceId;
 
   // Picked once per mount so the hint doesn't change while the input bar is shown.
-  // Empty until agents load, since the favorites hint depends on them.
   const [placeholderHintSeed] = useState(Math.random);
   const placeholderHints = getPlaceholderHints({
-    allAgents,
     disableAgentMentions,
     disableUserMentions,
     slashMenuMode,
   });
-  const placeholderHint = isAllAgentsLoading
-    ? ""
-    : t(
+  const editorPlaceholder = disableInput
+    ? submitBlockMessage
+    : (placeholder ??
+      t(
         placeholderHints[
           Math.floor(placeholderHintSeed * placeholderHints.length)
         ]
-      );
-  const editorPlaceholder = disableInput
-    ? submitBlockMessage
-    : (placeholder ?? placeholderHint);
+      ));
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
