@@ -1,1 +1,0 @@
-export const MAX_USER_PRONOUNS_LENGTH = 32;
