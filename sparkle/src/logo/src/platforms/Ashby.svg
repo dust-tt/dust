@@ -1,11 +1,22 @@
-<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g clip-path="url(#clip0_1978_150)">
-<rect width="24" height="24" rx="6" fill="#473BCE"/>
-<path fill-rule="evenodd" clip-rule="evenodd" d="M8.39274 19.5528V20.1721H3.27295V19.5528C4.59929 19.5528 5.12982 19.2566 5.60727 17.9642L10.5943 3.82788H12.9552L18.4463 17.9642C18.9769 19.2835 19.2421 19.5528 20.3828 19.5528V20.1721H12.3339V19.5528C14.2433 19.5528 14.4044 19.3783 13.8307 17.9642L12.3717 14.0868H7.94173L6.64188 17.8834C6.26233 19.1677 6.34535 19.5528 8.39274 19.5528ZM10.0374 7.94761L8.23352 13.2521H12.0534L10.0374 7.94761Z" fill="white"/>
-</g>
-<defs>
-<clipPath id="clip0_1978_150">
-<rect width="24" height="24" fill="white"/>
-</clipPath>
-</defs>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  width="24"
+  height="24"
+  fill="none"
+  viewBox="0 0 24 24"
+>
+  <g clip-path="url(#Ashby_svg__a)">
+    <rect width="24" height="24" fill="#473BCE" rx="6" />
+    <path
+      fill="#fff"
+      fill-rule="evenodd"
+      d="M8.393 19.553v.62h-5.12v-.62c1.326 0 1.857-.296 2.334-1.589l4.987-14.136h2.361l5.491 14.136c.53 1.32.796 1.589 1.937 1.589v.62h-8.05v-.62c1.91 0 2.071-.175 1.498-1.589l-1.46-3.877h-4.43l-1.3 3.796c-.379 1.285-.296 1.67 1.752 1.67m1.644-11.605-1.803 5.304h3.82z"
+      clip-rule="evenodd"
+    />
+  </g>
+  <defs>
+    <clipPath id="Ashby_svg__a">
+      <path fill="#fff" d="M0 0h24v24H0z" />
+    </clipPath>
+  </defs>
 </svg>

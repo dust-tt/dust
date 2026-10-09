@@ -3,10 +3,10 @@ import type { SVGProps } from "react";
 const SvgAirbyte = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    fill="none"
-    viewBox="0 0 95.7 99"
     width="1em"
     height="1em"
+    fill="none"
+    viewBox="0 0 95.7 99"
     {...props}
   >
     <path

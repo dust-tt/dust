@@ -3,9 +3,10 @@ import type { SVGProps } from "react";
 const SvgClickUp = (props: SVGProps<SVGSVGElement>) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 54.8 65.8"
     width="1em"
     height="1em"
+    fill="none"
+    viewBox="0 0 54.8 65.8"
     {...props}
   >
     <defs>
@@ -35,13 +36,13 @@ const SvgClickUp = (props: SVGProps<SVGSVGElement>) => (
     <path
       fill="url(#ClickUp_svg__a)"
       fillRule="evenodd"
-      d="m0 50.6 10.1-7.8c5.4 7 11.1 10.3 17.4 10.3s11.9-3.2 17-10.2l10.3 7.6c-7.4 10-16.6 15.3-27.3 15.3-10.6 0-19.9-5.3-27.5-15.2"
+      d="M0 50.6l10.1-7.8c5.4 7 11.1 10.3 17.4 10.3 6.3 0 11.9-3.2 17-10.2l10.3 7.6c-7.4 10-16.6 15.3-27.3 15.3C16.9 65.8 7.6 60.5 0 50.6z"
       clipRule="evenodd"
     />
     <path
       fill="url(#ClickUp_svg__b)"
       fillRule="evenodd"
-      d="m27.5 16.9-18 15.5-8.3-9.7L27.6 0l26.2 22.7-8.4 9.6z"
+      d="M27.5 16.9l-18 15.5-8.3-9.7L27.6 0l26.2 22.7-8.4 9.6L27.5 16.9z"
       clipRule="evenodd"
     />
   </svg>

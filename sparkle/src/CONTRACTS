@@ -19,9 +19,14 @@ functions of `src/lib/i18n/format.ts` (adding the missing one there), passing th
 `toLocaleString`, `toLocaleDateString` and `toLocaleTimeString` directly: those ignore the format
 locale of `SparkleI18nProvider` (e.g. `en-GB`, which renders the `en-US` catalog).
 
-@cc [owner:tdraier,label:coding] generated-icon-modules-never-hand-edited
+@cc [owner:tdraier,notify:tdraier,label:coding] generated-icon-modules-never-hand-edited
 The TSX modules and `index.ts` files under `src/icons/v2-stroke/`, `src/logo/dust/` and
 `src/logo/platforms/` (except `registry.ts`) MUST be exactly what `./build_icons.sh` generates from
 the SVG sources in `src/icons/src/` and `src/logo/src/`: running it on a clean tree MUST leave no
 diff. A change to an icon or logo (colour, `viewBox`, path, transform) MUST be made in its SVG source
 and regenerated, never by editing the generated TSX.
+
+@cc [owner:tdraier,notify:tdraier,label:coding] generated-icon-modules-keep-svg-paths
+Each generated icon or logo module MUST carry the `d` of every path exactly as written in its SVG
+source. `./build_icons.sh` MUST NOT optimize or rewrite the artwork (svgo is limited to
+`prefixIds`); an optimized path belongs in the SVG source itself.
