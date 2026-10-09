@@ -116,7 +116,7 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |
-| `DocumentSourcePreview.tsx` | Read-only source for a file that cannot open. |
+| `DocumentMarkdownPreview.tsx` | A file that cannot open, rendered read-only under the reason. |
 | `DocumentAnchors.ts` | In-document heading links. |
 | `DocumentComments.ts` | The `comment` mark, the thread commands and the highlights. |
 | `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |

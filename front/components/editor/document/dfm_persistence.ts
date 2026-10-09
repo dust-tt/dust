@@ -48,7 +48,7 @@ const sameIds = (a: Set<string>, b: Set<string>) =>
  * A file MUST open for editing only when it is valid DFM, its body is Markdown the editor can
  * reproduce, and every comment anchor the codec reads becomes a comment mark in the editor and
  * no other. The threads MUST open as they are in the file. Any other file MUST be refused with
- * a reason, so the editor shows it read-only with that reason instead of risking the content.
+ * a reason, so the editor shows it read-only instead of risking the content.
  */
 export function loadDfm(source: string): Result<LoadedDfm, string> {
   const parsed = parseDfm(source);

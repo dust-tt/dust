@@ -8,12 +8,12 @@ import {
   DocumentCommentsList,
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
+import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
   DocumentLiveStatus,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
-import { DocumentSourcePreview } from "@app/components/editor/document/DocumentSourcePreview";
 import type {
   DocumentProps,
   LiveStatus,
@@ -55,7 +55,8 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
  * Commenting MUST require an editable document and commentAuthor. Existing comments MUST
  * remain visible and browsable, through highlights, markers, their card and the list, in read-only
- * documents and without an author. Clicking a highlight without selecting text MUST reveal its
+ * documents the editor opens and without an author; a file it cannot open shows without its
+ * threads (`document-markdown-preview`). Clicking a highlight without selecting text MUST reveal its
  * comment; a click that ends a text selection MUST NOT, so the selection keeps the editor's
  * focus and its controls. Overlapping comments MUST reveal the one covering the least text
  * first, then cycle outward on repeated clicks.
@@ -224,10 +225,9 @@ export const DocumentView = ({
 
   if (unsupported !== null) {
     return (
-      <DocumentSourcePreview
+      <DocumentMarkdownPreview
         className={className}
         source={unsupported.source}
-        reason={unsupported.reason}
       />
     );
   }
