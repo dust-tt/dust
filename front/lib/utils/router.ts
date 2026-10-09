@@ -53,6 +53,12 @@ export const getSkillBuilderRoute = (
   return queryParams ? `${fullPath}?${queryParams}` : fullPath;
 };
 
+export const getManageAgentsRoute = (workspaceId: string, agentId?: string) => {
+  return (
+    `/w/${workspaceId}/builder/agents` + (agentId ? `#?agentId=${agentId}` : "")
+  );
+};
+
 export const getManageSkillsRoute = (workspaceId: string, skillId?: string) => {
   return (
     `/w/${workspaceId}/builder/skills` + (skillId ? `#?skillId=${skillId}` : "")
