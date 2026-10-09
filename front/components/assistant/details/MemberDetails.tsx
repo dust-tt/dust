@@ -71,7 +71,7 @@ export function MemberDetails({
     <>
       <Sheet open={!!userId} onOpenChange={onClose}>
         <SheetContent>
-          <SheetHeader className="pb-4">
+          <SheetHeader>
             <VisuallyHidden>
               <SheetTitle />
             </VisuallyHidden>
@@ -116,7 +116,7 @@ export function MemberDetails({
               </div>
             )}
           </SheetHeader>
-          <SheetContainer className="gap-6 pt-4">
+          <SheetContainer className="gap-6 pt-5">
             {isMembersLoading ? (
               <div className="flex flex-1 items-center justify-center">
                 <Spinner size="lg" />
