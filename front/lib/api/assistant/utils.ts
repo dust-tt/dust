@@ -4,6 +4,10 @@ import { isImageContent, isTextContent } from "@app/types/assistant/generation";
 export function getTextContentFromMessage(
   message: ModelMessageTypeMultiActions
 ): string {
+  if (message.role === "effort_change") {
+    return "";
+  }
+
   const { content } = message;
 
   if (!content) {

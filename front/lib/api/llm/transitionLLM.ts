@@ -292,6 +292,17 @@ export function toBaseMessages(
           content: { value: message.content },
         },
       ];
+    case "effort_change":
+      // Unresolved changes are not sent (see `EffortChangeMessageTypeModel`).
+      return message.effort === null
+        ? []
+        : [
+            {
+              role: "system",
+              type: "effort_change",
+              content: { effort: message.effort },
+            },
+          ];
     default:
       assertNever(message);
   }

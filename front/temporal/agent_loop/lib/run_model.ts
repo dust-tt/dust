@@ -9,9 +9,14 @@ import {
   isServerSideMCPServerConfiguration,
   isServerSideMCPServerConfigurationWithName,
   isServerSideMCPToolConfiguration,
+  isServerSideMCPToolConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import {
+  getNextRaisedReasoningEffort,
+  resolveEffortChanges,
+} from "@app/lib/api/actions/servers/self_configuration/helpers";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   constructPromptMultiActions,
@@ -237,6 +242,7 @@ function getReplayedToolNames(
       case "function":
       case "compaction":
       case "user":
+      case "effort_change":
         break;
       default:
         assertNever(message);
@@ -533,9 +539,18 @@ export async function runModel(
     !ASK_USER_QUESTION_BLOCKED_ORIGINS.includes(userMessage.context.origin) &&
     conversation.depth === 0;
 
-  const filteredMcpActions = supportsInteractiveQuestions
-    ? mcpActions
-    : mcpActions.filter((s) => s.serverName !== "ask_user_question");
+  // The self_configuration tool is only listed when this run has an effort it can raise to.
+  const canRaiseReasoningEffort =
+    getNextRaisedReasoningEffort(modelInfo, modelInfo.reasoningEffort) !== null;
+
+  const filteredMcpActions = mcpActions.filter(
+    (s) =>
+      (supportsInteractiveQuestions || s.serverName !== "ask_user_question") &&
+      (canRaiseReasoningEffort ||
+        !s.tools.some((t) =>
+          isServerSideMCPToolConfigurationWithName(t, "self_configuration")
+        ))
+  );
 
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
@@ -675,6 +690,12 @@ export async function runModel(
 
     return null;
   }
+
+  // Resolve the effort changes against this run's effort (raise-keeps-model-tier).
+  modelConversationRes.value.modelConversation.messages = resolveEffortChanges(
+    modelInfo,
+    modelConversationRes.value.modelConversation.messages
+  );
 
   if (disableToolUse) {
     // Tool choice "none" alone leaves the model with nothing to do; spell it out

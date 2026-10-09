@@ -2,6 +2,8 @@ import type {
   AgentContentItemType,
   AgentErrorContentType,
 } from "@app/types/assistant/agent_message_content";
+import type { ReasoningEffortDirection } from "@app/types/assistant/models/reasoning";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 
 /**
  * Model rendering of conversations.
@@ -82,12 +84,23 @@ export interface CompactionMessageTypeModel {
   content: string;
 }
 
+// Reasoning effort change the agent requested, rendered after the step that requested it. Applies
+// from the next user message on, on models that support per-message effort. Rendered with a null
+// `effort`: the agent loop resolves it against the run's effort, and unresolved changes are not
+// sent to the model.
+export interface EffortChangeMessageTypeModel {
+  role: "effort_change";
+  direction: ReasoningEffortDirection;
+  effort: ReasoningEffort | null;
+}
+
 export type ModelMessageTypeMultiActionsWithoutContentFragment =
   | UserMessageTypeModel
   | AssistantFunctionCallMessageTypeModel
   | AssistantContentMessageTypeModel
   | FunctionMessageTypeModel
-  | CompactionMessageTypeModel;
+  | CompactionMessageTypeModel
+  | EffortChangeMessageTypeModel;
 
 export type ModelMessageTypeMultiActions =
   | ModelMessageTypeMultiActionsWithoutContentFragment
