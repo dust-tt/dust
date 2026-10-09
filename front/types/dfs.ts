@@ -33,7 +33,9 @@ export type DfsErrorCode =
   | "unsupported"
   | "name_too_long"
   // Client-side only: the server answered with a message the client cannot decode.
-  | "invalid_response";
+  | "invalid_response"
+  // Client-side only: a file changed between the chunks of a multi-chunk read (`DfsPathFileSystem`).
+  | "content_changed";
 
 export class DfsError extends Error {
   constructor(
