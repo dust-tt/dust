@@ -85,6 +85,23 @@ export function isAgentLoopDataModelNotFoundError(
   return error instanceof AgentLoopDataModelNotFoundError;
 }
 
+// The agent version pinned by the message is missing or no longer readable by the user, e.g. the
+// user lost access to the agent while the loop was paused.
+class AgentLoopDataAgentNotFoundError extends Error {
+  readonly type = "agent_not_found" as const;
+
+  constructor(agentId: string) {
+    super(`Agent configuration not found ${agentId}`);
+    this.name = "AgentLoopDataAgentNotFoundError";
+  }
+}
+
+export function isAgentLoopDataAgentNotFoundError(
+  error: Error
+): error is AgentLoopDataAgentNotFoundError {
+  return error instanceof AgentLoopDataAgentNotFoundError;
+}
+
 export type ConversationCaching =
   | { useCachedGetConversation: false }
   | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
@@ -474,7 +491,7 @@ async function buildAgentLoopRuntimeData(
   });
 
   if (!agentConfiguration) {
-    return new Err(new Error(`Agent configuration not found ${agentId}`));
+    return new Err(new AgentLoopDataAgentNotFoundError(agentId));
   }
 
   const { model: _model, ...agentConfigurationWithoutModel } =
