@@ -37,6 +37,7 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
@@ -86,6 +87,10 @@ export async function updateAgentMessageDBAndMemory(
           | {
               type: "prunedContext";
               prunedContext: true;
+            }
+          | {
+              type: "appliedReasoningEffort";
+              appliedReasoningEffort: ReasoningEffort;
             };
       }
 ): Promise<boolean> {
@@ -186,6 +191,14 @@ export async function updateAgentMessageDBAndMemory(
         );
         agentMessage.prunedContext = update.prunedContext;
       }
+      break;
+
+    case "appliedReasoningEffort":
+      // Only read by analytics, so not carried on `AgentMessageType`.
+      await AgentMessageModel.update(
+        { appliedReasoningEffort: update.appliedReasoningEffort },
+        { where }
+      );
       break;
 
     default:

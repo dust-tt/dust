@@ -521,7 +521,14 @@ async function collectAgentTagIds(
 function collectResolvedModel(
   agentAgentMessageRow: AgentMessageModel
 ): AgentMessageAnalyticsModel | null {
-  const resolvedModel = resolvedModelFromAgentMessageRow(agentAgentMessageRow);
+  const resolvedModel = resolvedModelFromAgentMessageRow({
+    resolvedProviderId: agentAgentMessageRow.resolvedProviderId,
+    resolvedModelId: agentAgentMessageRow.resolvedModelId,
+    // The effort the message actually reasoned at, after a raise by the agent.
+    resolvedReasoningEffort:
+      agentAgentMessageRow.appliedReasoningEffort ??
+      agentAgentMessageRow.resolvedReasoningEffort,
+  });
 
   if (!resolvedModel) {
     return null;

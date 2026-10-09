@@ -14,6 +14,7 @@ import {
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import {
+  getAppliedReasoningEffort,
   getNextRaisedReasoningEffort,
   resolveEffortChanges,
 } from "@app/lib/api/actions/servers/self_configuration/helpers";
@@ -696,6 +697,24 @@ export async function runModel(
     modelInfo,
     modelConversationRes.value.modelConversation.messages
   );
+
+  // Record the effort this message reasons at for analytics when an earlier raise changed it. It
+  // holds for every step: a raise only applies from the next user message.
+  if (step === 0) {
+    const appliedReasoningEffort = getAppliedReasoningEffort(
+      modelInfo,
+      modelConversationRes.value.modelConversation.messages
+    );
+    if (
+      appliedReasoningEffort !== undefined &&
+      appliedReasoningEffort !== modelInfo.reasoningEffort
+    ) {
+      await updateAgentMessageDBAndMemory(auth, {
+        agentMessage,
+        update: { type: "appliedReasoningEffort", appliedReasoningEffort },
+      });
+    }
+  }
 
   if (disableToolUse) {
     // Tool choice "none" alone leaves the model with nothing to do; spell it out
