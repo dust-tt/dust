@@ -6,6 +6,13 @@ package dfs.v1;
 
 // All calls are unary and authenticate with authorization: Bearer <key> metadata.
 
+// @cc [owner:fabiencelier,label:api] dfs-front-client-sync
+// The front TypeScript client (`front/lib/dfs/`) MUST be updated in the same change as this file:
+// it loads this file at runtime and maps every RPC, message and field by name (`proto.ts` method
+// table, `codec.ts` wire schemas and encoders, `client.ts`). Adding, renaming or removing an RPC,
+// message, field or enum value, or changing a limit or result contract the client enforces, MUST
+// come with the matching client change.
+
 // @cc [owner:spolu,label:api;performance] dfs-request-size
 // Every RPC request MUST fit in 4 MiB (4,194,304 bytes) of uncompressed protobuf payload, including
 // encoding overhead. Servers MUST reject oversized requests before executing them. Tighter limits
