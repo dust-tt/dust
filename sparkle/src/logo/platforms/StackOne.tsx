@@ -10,24 +10,20 @@ const SvgStackOne = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <g transform="translate(0 5)scale(.12)">
-      <path
-        fill="url(#StackOne_svg__a)"
-        d="M66.666 38.889h66.667V0h-31.845C82.256 0 66.666 0 66.666 20.392z"
-      />
-      <path
-        fill="url(#StackOne_svg__b)"
-        d="M133.333 77.777H66.666v38.889h31.845c19.231 0 34.822 0 34.822-20.392z"
-      />
-      <path
-        fill="#00AF66"
-        d="M133.333 0H66.889 0L0 77.778h66.889V38.896l-.01-1.647C66.762 16.711 83.378 0 103.916 0z"
-      />
-      <path
-        fill="#00AF66"
-        d="M66.666 116.666H133.11 199.999V38.889H133.11v38.882l.01 1.647c.117 20.538-16.499 37.248-37.037 37.248z"
-      />
-    </g>
+    <path
+      fill="url(#StackOne_svg__a)"
+      d="M66.666 38.889h66.667V0h-31.845C82.256 0 66.666 0 66.666 20.392z"
+      transform="matrix(.12 0 0 .12 0 5)"
+    />
+    <path
+      fill="url(#StackOne_svg__b)"
+      d="M133.333 77.777H66.666v38.889H98.51c19.232 0 34.823 0 34.823-20.392z"
+      transform="matrix(.12 0 0 .12 0 5)"
+    />
+    <path
+      fill="#00AF66"
+      d="M16 5H0v9.333h8.027V9.668l-.001-.198A4.444 4.444 0 0 1 12.47 5zM8 19h16V9.667h-8.027v4.665l.001.198A4.444 4.444 0 0 1 11.53 19z"
+    />
     <defs>
       <linearGradient
         id="StackOne_svg__a"
