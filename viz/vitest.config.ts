@@ -13,7 +13,12 @@ export default defineConfig({
       name: "lingui-macro",
       enforce: "pre",
       async transform(code, id) {
-        if (!/\.tsx?$/.test(id) || id.includes("/node_modules/")) {
+        // Macros are only imported from `@lingui/*/macro`, so other files have nothing to expand.
+        if (
+          !/\.tsx?$/.test(id) ||
+          id.includes("/node_modules/") ||
+          !code.includes("@lingui/")
+        ) {
           return null;
         }
         const result = await transformAsync(code, {
