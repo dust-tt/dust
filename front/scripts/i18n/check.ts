@@ -86,9 +86,11 @@ async function listUntranslatedMessages(locale: string): Promise<string[]> {
 }
 
 async function listConflictingTranslations(locale: string) {
-  const translationsById = new Map<
+  // Keyed by PO `msgid` and `msgctxt`, not by Lingui id: front ids are hashes of the message while
+  // the connectors catalog uses the English text as id, so the same message has different ids.
+  const translationsByMessage = new Map<
     string,
-    { message?: string; context?: string; translations: Record<string, string> }
+    { message: string; context?: string; translations: Record<string, string> }
   >();
   for (const catalog of await getCatalogs(getConfig({ cwd: FRONT_DIR }))) {
     const filename = path.relative(FRONT_DIR, catalog.getFilename(locale));
@@ -98,16 +100,19 @@ async function listConflictingTranslations(locale: string) {
       if (entry.obsolete || !entry.translation) {
         continue;
       }
-      const translations = translationsById.get(id) ?? {
-        message: entry.message,
+      // Messages with an explicit id have no `message`: their `msgid` is the id.
+      const message = entry.message ?? id;
+      const key = `${message}\u0004${entry.context ?? ""}`;
+      const translations = translationsByMessage.get(key) ?? {
+        message,
         context: entry.context,
         translations: {},
       };
       translations.translations[filename] = entry.translation;
-      translationsById.set(id, translations);
+      translationsByMessage.set(key, translations);
     }
   }
-  return [...translationsById.values()].filter(
+  return [...translationsByMessage.values()].filter(
     ({ translations }) => new Set(Object.values(translations)).size > 1
   );
 }
