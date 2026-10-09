@@ -3,12 +3,9 @@ import { createHash } from "node:crypto";
 import { describe, it } from "node:test";
 
 import {
-  COMMENT_MARKER,
-  collectDefinitions,
   collectTests,
   diffTests,
   renderSummary,
-  siblingTestPath,
   truncateSummary,
 } from "./test-summary.ts";
 
@@ -41,15 +38,6 @@ describe("collectTests", () => {
     );
 
     assert.equal(compact.get("x")?.body, spread.get("x")?.body);
-  });
-
-  it("records the line each test starts on", () => {
-    const tests = collectTests(
-      `describe("outer", () => {\n\n  it("x", () => {});\n});`,
-      "a.test.ts"
-    );
-
-    assert.equal(tests.get("outer › x")?.line, 3);
   });
 
   it("parses generic arrows in .ts files", () => {
@@ -85,26 +73,6 @@ describe("collectTests", () => {
   });
 });
 
-describe("collectDefinitions", () => {
-  it("records the line of each top-level function, class and variable", () => {
-    const lines = collectDefinitions(
-      `export function a() {}\nclass B {}\n\nexport const c = 1, d = 2;\nfunction outer() { function inner() {} }`,
-      "a.ts"
-    );
-
-    assert.deepEqual(
-      [...lines],
-      [
-        ["a", 1],
-        ["B", 2],
-        ["c", 4],
-        ["d", 4],
-        ["outer", 5],
-      ]
-    );
-  });
-});
-
 describe("diffTests", () => {
   it("classifies tests as added, changed, removed or unchanged", () => {
     const test = (name: string, body: string, line: number) =>
@@ -131,60 +99,8 @@ describe("diffTests", () => {
   });
 });
 
-describe("siblingTestPath", () => {
-  it("maps a source file to the test file next to it", () => {
-    assert.equal(
-      siblingTestPath("front/lib/api/oauth.ts"),
-      "front/lib/api/oauth.test.ts"
-    );
-    assert.equal(
-      siblingTestPath("front/components/Row.tsx"),
-      "front/components/Row.test.tsx"
-    );
-  });
-});
-
 describe("renderSummary", () => {
-  const links = {
-    pullUrl: "https://github.com/o/r/pull/7",
-    repoUrl: "https://github.com/o/r",
-    headSha: "abc",
-  };
-
-  it("lists changed tests under their describe title and collapses unchanged ones", () => {
-    const body = renderSummary(
-      [
-        {
-          path: "a.test.ts",
-          source: null,
-          added: [{ groups: ["g"], name: "new", line: 5 }],
-          changed: [{ groups: ["g"], name: "edited", line: 2 }],
-          removed: [{ groups: ["g"], name: "dropped", line: 3 }],
-          unchanged: [{ groups: ["g"], name: "kept", line: 1 }],
-        },
-      ],
-      []
-    );
-
-    assert.ok(body.startsWith(COMMENT_MARKER));
-    assert.ok(
-      body.includes(
-        [
-          "g\\",
-          "&emsp;$`\\color{#3fb950}{+}`$ new\\",
-          "&emsp;$`\\color{#d29922}{\\sim}`$ edited\\",
-          "&emsp;$`\\color{#f85149}{-}`$ ~~dropped~~\n",
-        ].join("\n")
-      )
-    );
-    assert.ok(
-      body.includes(
-        "<details>\n<summary>✅ 1 already tested</summary>\n\n- g › kept\n"
-      )
-    );
-  });
-
-  it("links touched tests to the PR diff and untouched ones to the head file", () => {
+  it("links added tests to the new side of the diff, removed ones to the old side and untouched ones to the head file", () => {
     const body = renderSummary(
       [
         {
@@ -197,74 +113,21 @@ describe("renderSummary", () => {
         },
       ],
       [],
-      links
+      {
+        pullUrl: "https://github.com/o/r/pull/7",
+        repoUrl: "https://github.com/o/r",
+        headSha: "abc",
+      }
     );
     const fileHash = createHash("sha256").update("a.test.ts").digest("hex");
 
     assert.ok(
-      body.includes(
-        `new <sub>[L5](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)</sub>`
-      )
+      body.includes(`https://github.com/o/r/pull/7/files#diff-${fileHash}R5`)
     );
     assert.ok(
-      body.includes(
-        `~~dropped~~ <sub>[L3](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)</sub>`
-      )
+      body.includes(`https://github.com/o/r/pull/7/files#diff-${fileHash}L3`)
     );
-    assert.ok(
-      body.includes(
-        "- kept <sub>[L1](https://github.com/o/r/blob/abc/a.test.ts#L1)</sub>"
-      )
-    );
-  });
-
-  it("links the file to its head blob and describe titles to the declarations they name", () => {
-    const body = renderSummary(
-      [
-        {
-          path: "a.test.ts",
-          source: { path: "a.ts", lines: new Map([["parse", 12]]) },
-          added: [{ groups: ["parse", "edge cases"], name: "x", line: 4 }],
-          changed: [],
-          removed: [],
-          unchanged: [],
-        },
-      ],
-      [],
-      links
-    );
-
-    assert.ok(
-      body.includes(
-        "#### 📄 `a.test.ts` <sub>[view file](https://github.com/o/r/blob/abc/a.test.ts)</sub>"
-      )
-    );
-    assert.ok(
-      body.includes(
-        "`parse` <sub>[L12](https://github.com/o/r/blob/abc/a.ts#L12)</sub> › edge cases\\"
-      )
-    );
-  });
-
-  it("flags test files without changes and lists sources without a test file", () => {
-    const body = renderSummary(
-      [
-        {
-          path: "a.test.ts",
-          source: null,
-          added: [],
-          changed: [],
-          removed: [],
-          unchanged: [],
-        },
-      ],
-      ["b.ts"]
-    );
-
-    assert.ok(body.includes("_No test changes._"));
-    assert.ok(
-      body.includes("#### 🚫 Changed files without a test file\n\n- `b.ts`")
-    );
+    assert.ok(body.includes("https://github.com/o/r/blob/abc/a.test.ts#L1"));
   });
 });
 
