@@ -552,10 +552,10 @@ export function showLiveAgentActivity(
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
  * editing right before it is applied, after the document updates already waiting are sent, and
- * MUST reach the connections as an update of its own, announced right before as that agent's edit
- * with every Yjs item it inserted and deleted and the text it removed (`attributeTransaction`),
- * sent while the change is applied so it precedes the update however large; it MUST be announced as
- * reading again if the change is then refused or leaves the document's body unchanged.
+ * MUST reach the connections as an update of its own, preceded by its attribution
+ * (`attributeTransaction`), sent while the change is applied so it arrives first however large the
+ * update; it MUST be announced as reading again if the change is then refused or leaves the
+ * document's body unchanged.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,

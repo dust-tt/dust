@@ -204,6 +204,9 @@ export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
 /** Past this many id ranges or removed texts, a change is not attributed: editors just show it. */
 export const LIVE_ATTRIBUTION_MAX_RANGES = 2_000;
 
+/** How many removed texts an attribution carries, the first ones: editors only preview them. */
+export const LIVE_ATTRIBUTION_MAX_REMOVED = 200;
+
 /** How much of a removed text an attribution carries, editors only showing its start. */
 export const LIVE_REMOVED_TEXT_MAX_CHARS = 240;
 
@@ -237,7 +240,7 @@ export const liveAttributionMessageSchema = z.object({
         anchor: liveIdSchema,
       })
     )
-    .max(LIVE_ATTRIBUTION_MAX_RANGES),
+    .max(LIVE_ATTRIBUTION_MAX_REMOVED),
 });
 
 export type LiveAttributionMessage = z.infer<

@@ -5,9 +5,16 @@ import type {
 } from "@app/types/collab";
 import {
   LIVE_ATTRIBUTION_MAX_RANGES,
+  LIVE_ATTRIBUTION_MAX_REMOVED,
   LIVE_REMOVED_TEXT_MAX_CHARS,
 } from "@app/types/collab";
 import * as Y from "yjs";
+
+/*
+ * Attributes a change of a shared document by its Yjs items, for the collab server, and matches
+ * transactions to attributions, for editors. Reads Yjs v13 internals (`_item`, `_start`): what Yjs
+ * v14's attribution manager replaces.
+ */
 
 /** The Yjs items a change inserted and deleted. */
 export type AttributedItems = Pick<
@@ -123,9 +130,9 @@ export function removedTexts(transaction: Y.Transaction): RemovedText[] {
 
 /**
  * @cc [owner:PopDaph,label:product] live-attribution
- * `attributeTransaction` MUST name every item `transaction` inserted and deleted and the text it
- * removed (`removedTexts`), or return null past `LIVE_ATTRIBUTION_MAX_RANGES`, so editors never
- * show a part of a change as the whole. `containsAttribution` MUST be true exactly when
+ * `attributeTransaction` MUST name every item `transaction` inserted and deleted, or return null
+ * past `LIVE_ATTRIBUTION_MAX_RANGES`, so editors never show a part of a change as the whole, and the
+ * first `LIVE_ATTRIBUTION_MAX_REMOVED` texts it removed (`removedTexts`), a preview. `containsAttribution` MUST be true exactly when
  * `transaction` inserted or deleted one of the attributed items: a change is attributed by the items
  * it holds, never by when it arrives.
  */
@@ -135,14 +142,16 @@ export function attributeTransaction(
   at: number
 ): LiveAttributionMessage | null {
   const { inserted, deleted } = transactionItems(transaction);
-  const removed = removedTexts(transaction);
   if (
     inserted.length > LIVE_ATTRIBUTION_MAX_RANGES ||
-    deleted.length > LIVE_ATTRIBUTION_MAX_RANGES ||
-    removed.length > LIVE_ATTRIBUTION_MAX_RANGES
+    deleted.length > LIVE_ATTRIBUTION_MAX_RANGES
   ) {
     return null;
   }
+  const removed = removedTexts(transaction).slice(
+    0,
+    LIVE_ATTRIBUTION_MAX_REMOVED
+  );
   return { type: "attribution", author, at, inserted, deleted, removed };
 }
 
