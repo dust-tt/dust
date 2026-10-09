@@ -205,6 +205,11 @@ interface DocumentPanelProps {
   /** True while the agent is working in the conversation. */
   isConversationBusy: boolean;
   /**
+   * What the conversation's agent is doing to this document: thinking, or
+   * typing while it edits it. Null when it isn't working.
+   */
+  conversationAgent: AgentActivity | null;
+  /**
    * Bumps each time an agent reply finishes in the conversation: it may have
    * edited the document, so the panel reloads it.
    */
@@ -237,6 +242,35 @@ function LiveStatusChip({ status }: { status: LiveStatus }) {
   );
 }
 
+/** An agent working on the document, shown next to the live status. */
+export interface AgentActivity {
+  name: string;
+  status: "thinking" | "typing";
+}
+
+function AgentActivityChip({ activity }: { activity: AgentActivity }) {
+  return (
+    <Chip
+      size="xs"
+      className="gap-1.5 border border-border bg-background text-muted-foreground"
+    >
+      <span role="status" className="inline-flex items-center gap-1.5">
+        {/* Three dots, as a typing indicator. */}
+        <span aria-hidden className="inline-flex items-center gap-0.5">
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="size-1 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+              style={{ animationDelay: `${delay}ms` }}
+            />
+          ))}
+        </span>
+        {activity.name} is {activity.status}
+      </span>
+    </Chip>
+  );
+}
+
 // Prototype: how long joining the live session takes.
 const CONNECT_MS = 1200;
 
@@ -253,6 +287,7 @@ export function DocumentPanel({
   fileAgents,
   toolbarSlot,
   isConversationBusy,
+  conversationAgent,
   agentRunCount,
 }: DocumentPanelProps) {
   const { isFullscreen, setFullscreen } = usePanelFullscreen();
@@ -262,6 +297,10 @@ export function DocumentPanel({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [agentError, setAgentError] = useState<string | null>(null);
   const [isAgentRunning, setIsAgentRunning] = useState(false);
+  // The agent answering a comment thread (thinking until its edit lands).
+  const [threadAgent, setThreadAgent] = useState<string | null>(null);
+  // The agent whose edit is being written on screen.
+  const [typingAgent, setTypingAgent] = useState<string | null>(null);
   const [liveStatus, setLiveStatus] = useState<LiveStatus>("connecting");
   const [isCommentsListOpen, setIsCommentsListOpen] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
@@ -387,6 +426,9 @@ export function DocumentPanel({
           .setMeta("addToHistory", false)
       );
     const id = `agent-${Date.now()}`;
+    if (isAgent) {
+      setTypingAgent(by.name);
+    }
     try {
       // Before the first paint: the passage shows its old text (or nothing).
       show((tr) =>
@@ -468,6 +510,9 @@ export function DocumentPanel({
     }
     if (!view.state.doc.eq(finalDoc)) {
       show((tr) => tr.replaceWith(0, tr.doc.content.size, finalDoc.content));
+    }
+    if (isAgent) {
+      setTypingAgent(null);
     }
     await retirePresence(id, 2200);
   };
@@ -927,6 +972,7 @@ export function DocumentPanel({
       },
     ]);
     setIsAgentRunning(true);
+    setThreadAgent(agent.name);
     setAgentError(null);
 
     const finish = (body: string) =>
@@ -961,6 +1007,7 @@ export function DocumentPanel({
       finish(`Something went wrong: ${(err as Error).message}`);
     } finally {
       setIsAgentRunning(false);
+      setThreadAgent(null);
     }
   };
 
@@ -1046,6 +1093,13 @@ export function DocumentPanel({
       )
     );
   };
+
+  // Typing wins: the edit on screen is the most visible thing going on.
+  const agentActivity: AgentActivity | null = typingAgent
+    ? { name: typingAgent, status: "typing" }
+    : threadAgent
+      ? { name: threadAgent, status: "thinking" }
+      : conversationAgent;
 
   const threadHandlers: ThreadHandlers = {
     agentName,
@@ -1219,9 +1273,17 @@ export function DocumentPanel({
                 badge that stays in view while the document scrolls. Only the
                 badge takes clicks, so the text under the row stays clickable. */}
                 <div className="pointer-events-none sticky top-0 z-30 mb-5 flex min-h-6 items-center justify-end text-xs text-muted-foreground [&>*]:pointer-events-auto">
-                  <Chip size="xs" className="gap-2.5 border border-border bg-background">
-                    <LiveStatusChip status={liveStatus} />
-                  </Chip>
+                  <div className="flex items-center gap-1.5">
+                    {agentActivity && (
+                      <AgentActivityChip activity={agentActivity} />
+                    )}
+                    <Chip
+                      size="xs"
+                      className="gap-2.5 border border-border bg-background"
+                    >
+                      <LiveStatusChip status={liveStatus} />
+                    </Chip>
+                  </div>
                 </div>
                 <DocEditor
                   ref={editorRef}

@@ -36,7 +36,7 @@ import type {
   Conversations,
 } from "../lib/coEdition";
 import { ConversationFilesPanel } from "./ConversationSidePanels";
-import { DocumentPanel } from "./doc/DocumentPanel";
+import { type AgentActivity, DocumentPanel } from "./doc/DocumentPanel";
 import type { DocSession } from "./doc/docTypes";
 import {
   INPUT_BAR_PILL_HOVER_CLASSNAME,
@@ -56,6 +56,22 @@ import { PanelLayout, PanelLayoutNav, PanelLayoutPanel } from "./PanelLayout";
 // panel) with a document co-edition panel next to the conversation.
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * What the conversation's agent is doing, for the document panel: thinking,
+ * then typing from its first document tool until its reply ends (the panel
+ * then shows the edit being written).
+ */
+function conversationAgentActivity(
+  conversation: Conversation
+): AgentActivity | null {
+  const last = conversation.messages[conversation.messages.length - 1];
+  if (last?.role !== "agent" || last.status !== "streaming") {
+    return null;
+  }
+  const isEditing = last.tools.some((t) => t.name.startsWith("documents__"));
+  return { name: last.agent.name, status: isEditing ? "typing" : "thinking" };
+}
 
 /** Production's CoEditionBadge, next to the file name. */
 function CoEditionBadge() {
@@ -577,6 +593,7 @@ export function AgentConversations({
               )
             }
             isConversationBusy={active.isRunning}
+            conversationAgent={conversationAgentActivity(active)}
             agentRunCount={
               active.messages.filter(
                 (m) => m.role === "agent" && m.status !== "streaming"
