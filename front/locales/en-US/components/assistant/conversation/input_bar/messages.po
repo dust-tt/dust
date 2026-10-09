@@ -104,8 +104,8 @@ msgid "Type @ to loop in a teammate"
 msgstr "Type @ to loop in a teammate"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
-msgid "Type / to add a skill"
-msgstr "Type / to add a skill"
+msgid "Type / to use a skill"
+msgstr "Type / to use a skill"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Type / to add tools and more"

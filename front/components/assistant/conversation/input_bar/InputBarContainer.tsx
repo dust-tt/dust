@@ -192,7 +192,7 @@ function getPlaceholderHints({
     hints.push(msg`Type @ to loop in a teammate`);
   }
   if (slashMenuMode === "commands") {
-    hints.push(msg`Type / to add a skill`, msg`Type / to add tools and more`);
+    hints.push(msg`Type / to use a skill`, msg`Type / to add tools and more`);
   }
   return hints;
 }
