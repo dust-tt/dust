@@ -140,6 +140,7 @@ export async function sendInvitations({
             "These users have already been invited in the last 24 hours. Please wait before sending another invite.",
         })}`,
       });
+      return;
     }
 
     sendApiErrorNotification({ title: t`Invite failed`, error: data });
