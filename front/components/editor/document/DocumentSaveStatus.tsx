@@ -212,12 +212,12 @@ const STATUS_ICONS: Record<
   StatusIconState,
   { icon: ComponentType<{ className?: string }>; className?: string }
 > = {
-  saved: { icon: CheckCircle },
+  saved: { icon: CheckCircle, className: "text-success-500" },
   saving: {
     icon: RefreshCw05,
-    className: "animate-spin motion-reduce:animate-none",
+    className: "animate-spin text-orange-500 motion-reduce:animate-none",
   },
-  disconnected: { icon: ZapOff },
+  disconnected: { icon: ZapOff, className: "text-warning-500" },
   error: { icon: AlertCircle, className: "text-warning-500" },
 };
 
@@ -269,10 +269,10 @@ interface DocumentStatusIconProps {
 /**
  * @cc [owner:tdraier,label:product] document-status-icon
  * Shown next to the host's file name instead of the status badge, the document's status MUST be
- * one icon with its state as label and tooltip: a check once saved, or once live with every change
- * synced; a spinning arrow circle while saving, while changes wait to save or sync, or while
- * connecting; a disconnected icon when the live session is lost or refused; a warning icon with
- * Retry when a save failed. A file document that is neither editable nor holding unsaved changes
+ * one icon with its state as label and tooltip: a green check once saved, or once live with every
+ * change synced; an orange spinning arrow circle while saving, while changes wait to save or sync,
+ * or while connecting; a red disconnected icon when the live session is lost or refused; a warning
+ * icon with Retry when a save failed. A file document that is neither editable nor holding unsaved changes
  * MUST show no icon.
  */
 export const DocumentStatusIcon = ({
