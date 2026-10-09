@@ -15,25 +15,29 @@ export function useCancelMessage({
   const sendNotification = useSendNotification();
 
   return useCallback(
-    async (messageIds: string[], action: "cancel" | "interrupt" = "cancel") => {
+    async (
+      messageIds: string[],
+      action: "cancel" | "interrupt" = "cancel"
+    ): Promise<boolean> => {
       if (!conversationId || messageIds.length === 0) {
-        return;
+        return false;
       }
-      try {
-        await clientFetch(
-          `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action,
-              messageIds,
-            }),
-          }
-        );
-      } catch {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/cancel`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action,
+            messageIds,
+          }),
+        }
+      ).catch(() => null);
+      if (!res?.ok) {
         sendNotification({ type: "error", title: t`Failed to cancel message` });
+        return false;
       }
+      return true;
     },
     [owner.sId, conversationId, sendNotification, t]
   );
