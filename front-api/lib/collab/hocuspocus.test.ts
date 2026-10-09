@@ -1088,28 +1088,6 @@ describe("comment threads in a live session", () => {
       expect(seen[0]).toBe("Writer editing");
     }, 15_000);
 
-    it("sends someone else's pending change before announcing the agent's", async () => {
-      const { writer, hocuspocus, name, seen, base } = await watch();
-      const document = hocuspocus.documents.get(name);
-      if (!document) {
-        throw new Error("The document is not open.");
-      }
-
-      // Still in Hocuspocus's flush window when the agent writes, and invisible in the source.
-      document.getMap("elsewhere").set("touched", true);
-      const written = await writeLiveSource(hocuspocus, {
-        file: writer,
-        base,
-        source: base.replace("Hello.", "Hello, edited."),
-        agent: AGENT,
-      });
-
-      expect(written).toEqual(new Ok("written"));
-      await vi.waitFor(() =>
-        expect(seen).toEqual(["update", "Writer editing", "update"])
-      );
-    }, 15_000);
-
     it("takes the announcement back when the agent's source changes nothing in the document", async () => {
       const { writer, hocuspocus, seen, base } = await watch();
       const bold = base.replace("Hello.", "**Hello.**");

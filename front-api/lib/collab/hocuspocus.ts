@@ -548,9 +548,8 @@ export function showLiveAgentActivity(
  * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
- * editing right before it is applied, after the document updates already waiting are sent, and
- * MUST reach the connections as an update of its own; it MUST be announced as reading again if the
- * change is then refused or leaves the document unchanged.
+ * editing right before it is applied; it MUST be announced as reading again if the change is then
+ * refused or leaves the document unchanged.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -597,11 +596,9 @@ export async function writeLiveSource(
       return new Ok("changed");
     }
 
-    // Before the change: Hocuspocus may batch the update, never a stateless message. Flushed on
-    // both sides, so editors receive the agent's change alone, right after its announcement.
+    // Before the change: Hocuspocus may batch the update, never a stateless message.
     const announced = agent !== undefined && source !== current.value;
     if (announced) {
-      document.flush();
       document.broadcastStateless(agentActivityMessage(agent, "editing"));
     }
     // Another spelling of the same document changes nothing, and Yjs then emits no update. The
@@ -625,7 +622,6 @@ export async function writeLiveSource(
     } finally {
       if (announced) {
         document.off("update", onUpdate);
-        document.flush();
         if (comments.isErr() || !changed) {
           document.broadcastStateless(agentActivityMessage(agent, "reading"));
         }
