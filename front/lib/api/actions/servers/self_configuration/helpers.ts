@@ -1,11 +1,13 @@
 import { canRaiseReasoningEffortPerMessage } from "@app/lib/api/llm/per_message_reasoning_effort";
 import type { StreamModelInfo } from "@app/types/assistant/agent_run";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 import { getTierForModelConfiguration } from "@app/types/assistant/models/model_tiers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
   ModelConfigurationType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import { removeNulls } from "@app/types/shared/utils/general";
 
 /**
  * @cc [owner:aubin-tchoi,label:product;security] raise-keeps-model-tier
@@ -37,5 +39,31 @@ export function getNextRaisedReasoningEffort(
         canRaiseReasoningEffortPerMessage(modelConfig, { from, to }) &&
         keepsModelTier(modelConfig, { from: reasoningEffort, to })
     ) ?? null
+  );
+}
+
+// Resolves the rendered effort changes against this run's effort: each raise goes one step up from
+// the effort in effect (getNextRaisedReasoningEffort), and changes that cannot apply are dropped.
+export function resolveEffortChanges<M extends ModelMessageTypeMultiActions>(
+  modelInfo: StreamModelInfo,
+  messages: M[]
+): M[] {
+  let effortInEffect = modelInfo.reasoningEffort;
+  return removeNulls(
+    messages.map((m) => {
+      if (m.role !== "effort_change") {
+        return m;
+      }
+      // Lowering is refused by the tool for now.
+      if (m.direction !== "raise") {
+        return null;
+      }
+      const effort = getNextRaisedReasoningEffort(modelInfo, effortInEffect);
+      if (effort === null) {
+        return null;
+      }
+      effortInEffect = effort;
+      return { ...m, effort };
+    })
   );
 }

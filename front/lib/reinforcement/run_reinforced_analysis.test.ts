@@ -24,7 +24,9 @@ describe("buildReinforcedSkillsLLMParams", () => {
     expect(params.conversation.messages).toHaveLength(1);
     const msg = params.conversation.messages[0];
     expect(msg.role).toBe("user");
-    expect(msg.content).toEqual([{ type: "text", text: "User content here." }]);
+    expect(msg).toMatchObject({
+      content: [{ type: "text", text: "User content here." }],
+    });
   });
 
   it("includes tool specifications for the skill suggestion tools", () => {

@@ -483,7 +483,8 @@ function finalizeConversationWindow(
       }
       case "assistant":
       case "compaction":
-      case "function": {
+      case "function":
+      case "effort_change": {
         const { tokenCount: _tokenCount, ...messageWithoutTokens } = message;
         finalMessages.push(messageWithoutTokens);
         break;
@@ -675,6 +676,8 @@ async function countTokensForMessages(
       text += textContents.join("\n");
     } else if (message.role === "compaction") {
       text += message.content;
+    } else if (message.role === "effort_change") {
+      // Effort-only marker, no content to count.
     } else {
       assertNever(message);
     }

@@ -300,7 +300,11 @@ export async function prepareParamsWithHistory(
       });
 
       if (convoRes.isOk()) {
-        const messages = convoRes.value.modelConversation.messages;
+        // The reasoning effort marker only drives Dust's own model calls, and core's chat block
+        // rejects unknown roles in the messages apps commonly forward to it.
+        const messages = convoRes.value.modelConversation.messages.filter(
+          (m) => m.role !== "effort_change"
+        );
         params[DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY] =
           JSON.stringify(messages);
       }

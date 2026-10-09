@@ -8,6 +8,7 @@ import {
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
+import { getEffortChange } from "@app/lib/api/actions/servers/self_configuration/rendering";
 import { getEnableSkillIdFromOutputBlock } from "@app/lib/api/actions/servers/skill_management/rendering";
 import type { EnabledSkill } from "@app/lib/api/assistant/skills_rendering";
 import { renderEnabledSkillUserMessageFromInstructions } from "@app/lib/api/assistant/skills_rendering";
@@ -44,6 +45,7 @@ import type {
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
+import type { ReasoningEffortDirection } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -144,6 +146,7 @@ export type Step = {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
     enabledSkillMessages: UserMessageTypeModel[];
+    effortChange: ReasoningEffortDirection | null;
   }[];
 };
 
@@ -361,6 +364,7 @@ export async function getSteps(
       },
       result,
       enabledSkillMessages,
+      effortChange: getEffortChange(action),
     });
   }
 
@@ -432,6 +436,7 @@ export async function getSteps(
                   content: "Error: tool execution failed",
                 },
                 enabledSkillMessages: [],
+                effortChange: null,
               });
             }
           }
