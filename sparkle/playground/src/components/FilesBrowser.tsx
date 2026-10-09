@@ -30,6 +30,7 @@ import {
   Globe01,
   Icon,
   List,
+  MessageChatSquare,
   MessagePlusCircle,
   Plus,
   SearchInput,
@@ -106,6 +107,8 @@ interface FilesBrowserProps {
   /** Folder navigation + breadcrumbs; off for flat lists (conversations). */
   foldersEnabled?: boolean;
   emptyMessage?: string;
+  /** Opens the conversation a conversation folder stands for. */
+  onOpenConversation?: (dataSource: DataSource) => void;
   /** Opens a conversation with the row in hand. Offered on every row. */
   onStartConversation?: (dataSource: DataSource) => void;
   /** Opens the Pod a Pod folder stands for. */
@@ -243,6 +246,7 @@ export function FilesBrowser({
   onDeleteFile,
   foldersEnabled = true,
   emptyMessage = "No files yet.",
+  onOpenConversation,
   onStartConversation,
   onOpenPod,
   onEditBuildItem,
@@ -372,12 +376,26 @@ export function FilesBrowser({
   const rowMenuItems = useCallback(
     (dataSource: DataSource) => {
       // What the row stands for elsewhere in the workspace, and so what there
-      // is to open: a Pod, or an agent or skill that Build owns.
+      // is to open: a conversation, a Pod, or an agent or skill Build owns.
       const buildItemLabel = dataSource.refId
         ? BUILD_ITEM_LABELS[dataSource.fileType ?? ""]
         : undefined;
+      const isConversation =
+        dataSource.kind === "folder" &&
+        dataSource.folderType === "conversation" &&
+        !!dataSource.refId;
 
       return [
+        ...(onOpenConversation && isConversation
+          ? [
+              {
+                kind: "item" as const,
+                label: "Open the conversation",
+                icon: MessageChatSquare,
+                onClick: () => onOpenConversation(dataSource),
+              },
+            ]
+          : []),
         ...(onStartConversation
           ? [
               {
@@ -443,6 +461,7 @@ export function FilesBrowser({
       isPinnedToSidebar,
       onAddFileToTopbar,
       onEditBuildItem,
+      onOpenConversation,
       onOpenPod,
       onStartConversation,
       onTogglePinnedToSidebar,

@@ -69,6 +69,7 @@ interface WorkspaceFileSystemProps {
   filesById: Map<string, DataSource>;
   onFileOpen: (dataSource: DataSource) => void;
   /** Row menu: what each item leads to away from the Hub. */
+  onOpenConversation: (dataSource: DataSource) => void;
   onStartConversation: (dataSource: DataSource) => void;
   onOpenPod: (dataSource: DataSource) => void;
   onEditBuildItem: (dataSource: DataSource) => void;
@@ -86,6 +87,9 @@ interface WorkspaceFileSystemProps {
   onCurrentFolderIdChange: (folderId: string | null) => void;
   isPinnedToSidebar: (dataSource: DataSource) => boolean;
   onTogglePinnedToSidebar: (dataSource: DataSource) => void;
+  /** The row the sidebar's "Show in the Hub" points at. */
+  revealedFileId?: string | null;
+  onClearRevealedFile?: () => void;
 }
 
 export function WorkspaceFileSystem({
@@ -93,6 +97,7 @@ export function WorkspaceFileSystem({
   filesByParentId,
   filesById,
   onFileOpen,
+  onOpenConversation,
   onStartConversation,
   onOpenPod,
   onEditBuildItem,
@@ -105,6 +110,8 @@ export function WorkspaceFileSystem({
   onCurrentFolderIdChange,
   isPinnedToSidebar,
   onTogglePinnedToSidebar,
+  revealedFileId,
+  onClearRevealedFile,
 }: WorkspaceFileSystemProps) {
   // The top level opens itself: it holds only the two drives, which say nothing
   // about what the workspace keeps until you look inside one.
@@ -360,7 +367,10 @@ export function WorkspaceFileSystem({
           onCurrentFolderIdChange={onCurrentFolderIdChange}
           isPinnedToSidebar={isPinnedToSidebar}
           onTogglePinnedToSidebar={onTogglePinnedToSidebar}
+          revealedFileId={revealedFileId}
+          onClearRevealedFile={onClearRevealedFile}
           onFileOpen={onFileOpen}
+          onOpenConversation={onOpenConversation}
           onStartConversation={onStartConversation}
           onOpenPod={onOpenPod}
           onEditBuildItem={onEditBuildItem}
