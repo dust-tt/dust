@@ -1,7 +1,11 @@
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
-use dfs_api::storage::fdb;
+use anyhow::{Context, Result};
+use dfs_api::{
+    auth,
+    storage::{fdb, resources::tenant::TenantResource},
+};
+use dfs_protocol::ObjectId;
 use foundationdb::{Database, options::TransactionOption};
 
 /// Same lookup as the server: dust-hive envs export their own cluster file through `env.sh`.
@@ -29,6 +33,7 @@ fn fdb_client() -> Result<()> {
         let database = fdb::open(&cluster_file())?;
         fdb::ping(&database).await?;
         writes_are_read_back_then_cleared(&database).await?;
+        tenants_are_fetched_after_create(&database).await?;
         ping_fails_instead_of_hanging_when_fdb_is_unreachable().await
     })
 }
@@ -61,6 +66,38 @@ async fn writes_are_read_back_then_cleared(database: &Database) -> Result<()> {
 
     assert_eq!(written.as_deref(), Some(b"hello".as_slice()));
     assert!(cleared.is_none());
+    Ok(())
+}
+
+async fn tenants_are_fetched_after_create(database: &Database) -> Result<()> {
+    let created = TenantResource {
+        tenant_id: format!("test-{}", ObjectId::new_v7()),
+        root_id: ObjectId::new_v7(),
+        key_hash: auth::hash_key("key"),
+    };
+    let tenant_id = created.tenant_id.as_str();
+
+    let missing = database
+        .run(|transaction, _maybe_committed| async move {
+            TenantResource::fetch(&transaction, tenant_id).await
+        })
+        .await?;
+    database
+        .run(|transaction, _maybe_committed| {
+            created.create(&transaction);
+            async { Ok(()) }
+        })
+        .await?;
+    let fetched = database
+        .run(|transaction, _maybe_committed| async move {
+            TenantResource::fetch(&transaction, tenant_id).await
+        })
+        .await?
+        .context("tenant missing after create")?;
+
+    assert!(missing.is_none());
+    assert_eq!(fetched.root_id, created.root_id);
+    assert_eq!(fetched.key_hash, created.key_hash);
     Ok(())
 }
 
