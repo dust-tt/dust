@@ -248,8 +248,8 @@ msgid "{name} is editing"
 msgstr "{name} modifie le document"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "{name} is working…"
-msgstr "{name} travaille…"
+msgid "{name} is working"
+msgstr "{name} travaille"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."

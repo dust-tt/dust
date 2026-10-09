@@ -167,7 +167,7 @@ export const DocumentLiveAgent = ({ activity }: DocumentLiveAgentProps) => {
       <span className="max-w-48 truncate whitespace-nowrap">
         {activity.activity === "editing"
           ? t`${name} is editing`
-          : t`${name} is working…`}
+          : t`${name} is working`}
       </span>
     </span>
   );
