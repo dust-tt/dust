@@ -23,6 +23,8 @@ interface DocumentCommentInputProps {
    * Escape bubbles to the parent.
    */
   onCancel?: () => void;
+  /** Told whether the field holds content, each time that changes. */
+  onFilledChange?: (filled: boolean) => void;
   author?: DfmAuthor;
   renderAuthorAvatar: DocumentProps["renderCommentAuthorAvatar"];
   /** Focuses the field while true, once it is visible. */
@@ -87,11 +89,17 @@ const selectLastSuggestion = (editor: Editor) => {
  * reach the parent and MUST clear the field then call onCancel, unless a submission is pending,
  * when it MUST do neither.
  */
+/**
+ * @cc [owner:PopDaph,label:react] document-comment-input-filled
+ * onFilledChange MUST receive, whenever the content changes, whether it would submit: text, a
+ * mention or a code block, as for Send.
+ */
 export const DocumentCommentInput = ({
   label,
   placeholder,
   onSubmit,
   onCancel,
+  onFilledChange,
   author,
   renderAuthorAvatar,
   autoFocus = false,
@@ -107,6 +115,7 @@ export const DocumentCommentInput = ({
   const pendingRef = useRef(false);
   const refocusRef = useRef(false);
   const submitRef = useRef<() => void>(() => undefined);
+  const onFilledChangeRef = useRef(onFilledChange);
 
   // Captured at mount: a changed extension list or props object would reconfigure the editor.
   const [options] = useState(() => ({
@@ -133,7 +142,9 @@ export const DocumentCommentInput = ({
     immediatelyRender: false,
     onUpdate: ({ editor }) => {
       setError(null);
-      setFilled(hasContent(editor));
+      const nowFilled = hasContent(editor);
+      setFilled(nowFilled);
+      onFilledChangeRef.current?.(nowFilled);
     },
   });
 
@@ -181,6 +192,7 @@ export const DocumentCommentInput = ({
     }
   };
   useLayoutEffect(() => {
+    onFilledChangeRef.current = onFilledChange;
     submitRef.current = () => {
       void submit();
     };

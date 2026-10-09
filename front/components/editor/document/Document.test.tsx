@@ -220,6 +220,50 @@ describe("Document comments", () => {
     await waitFor(() => expect(document.activeElement).toBe(field));
   });
 
+  it("cancels an empty new comment on a pointer press outside the card", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+    const before = JSON.stringify(editor.getJSON());
+
+    startComment(dom, editor, "brave");
+    await findCommentField("Comment");
+    fireEvent.pointerDown(dom);
+
+    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+    expect(JSON.stringify(editor.getJSON())).toBe(before);
+  });
+
+  it("leaves focus on the field pressed outside an empty new comment", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+    const other = document.createElement("input");
+    document.body.appendChild(other);
+
+    try {
+      startComment(dom, editor, "brave");
+      const field = await findCommentField("Comment");
+      await waitFor(() => expect(document.activeElement).toBe(field));
+      fireEvent.pointerDown(other);
+      other.focus();
+      await act(
+        () =>
+          new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
+      );
+
+      expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
+      expect(document.activeElement).toBe(other);
+    } finally {
+      other.remove();
+    }
+  });
+
+  it("keeps an empty new comment on a pointer press inside the card", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    fireEvent.pointerDown(await findCommentField("Comment"));
+
+    expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
+  });
+
   it("keeps the draft and its text on a pointer press outside the card", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
