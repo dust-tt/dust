@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 import {
   COMMENT_MARKER,
+  collectDefinitions,
   collectTests,
   diffTests,
   renderSummary,
@@ -51,26 +52,48 @@ describe("collectTests", () => {
   });
 });
 
+describe("collectDefinitions", () => {
+  it("records the line of each top-level function, class and variable", () => {
+    const lines = collectDefinitions(
+      `export function a() {}\nclass B {}\n\nexport const c = 1, d = 2;\nfunction outer() { function inner() {} }`,
+      "a.ts"
+    );
+
+    assert.deepEqual(
+      [...lines],
+      [
+        ["a", 1],
+        ["B", 2],
+        ["c", 4],
+        ["d", 4],
+        ["outer", 5],
+      ]
+    );
+  });
+});
+
 describe("diffTests", () => {
   it("classifies tests as added, changed, removed or unchanged", () => {
+    const test = (name: string, body: string, line: number) =>
+      [name, { groups: [], name, body, line }] as const;
     const before = new Map([
-      ["kept", { body: "a", line: 1 }],
-      ["edited", { body: "b", line: 2 }],
-      ["dropped", { body: "c", line: 3 }],
+      test("kept", "a", 1),
+      test("edited", "b", 2),
+      test("dropped", "c", 3),
     ]);
     const after = new Map([
-      ["kept", { body: "a", line: 1 }],
-      ["edited", { body: "b2", line: 2 }],
-      ["new", { body: "d", line: 5 }],
+      test("kept", "a", 1),
+      test("edited", "b2", 2),
+      test("new", "d", 5),
     ]);
 
-    assert.deepEqual(diffTests("a.test.ts", [], before, after), {
+    assert.deepEqual(diffTests("a.test.ts", null, before, after), {
       path: "a.test.ts",
-      sources: [],
-      added: [{ title: "new", line: 5 }],
-      changed: [{ title: "edited", line: 2 }],
-      removed: [{ title: "dropped", line: 3 }],
-      unchanged: [{ title: "kept", line: 1 }],
+      source: null,
+      added: [{ groups: [], name: "new", line: 5 }],
+      changed: [{ groups: [], name: "edited", line: 2 }],
+      removed: [{ groups: [], name: "dropped", line: 3 }],
+      unchanged: [{ groups: [], name: "kept", line: 1 }],
     });
   });
 });
@@ -94,11 +117,11 @@ describe("renderSummary", () => {
       [
         {
           path: "a.test.ts",
-          sources: ["a.ts"],
-          added: [{ title: "new", line: 5 }],
+          source: null,
+          added: [{ groups: [], name: "new", line: 5 }],
           changed: [],
-          removed: [{ title: "dropped", line: 3 }],
-          unchanged: [{ title: "kept", line: 1 }],
+          removed: [{ groups: [], name: "dropped", line: 3 }],
+          unchanged: [{ groups: [], name: "kept", line: 1 }],
         },
       ],
       []
@@ -106,10 +129,7 @@ describe("renderSummary", () => {
 
     assert.ok(body.startsWith(COMMENT_MARKER));
     assert.ok(body.indexOf("**removed**: dropped") < body.indexOf("➕ new"));
-    assert.match(
-      body,
-      /<details><summary>1 already tested<\/summary>\n\n- kept/
-    );
+    assert.match(body, /<details><summary>1 already tested<\/summary>\n\nkept/);
   });
 
   it("links touched tests to the PR diff and untouched ones to the head file", () => {
@@ -117,11 +137,11 @@ describe("renderSummary", () => {
       [
         {
           path: "a.test.ts",
-          sources: [],
-          added: [{ title: "new", line: 5 }],
+          source: null,
+          added: [{ groups: [], name: "new", line: 5 }],
           changed: [],
-          removed: [{ title: "dropped", line: 3 }],
-          unchanged: [{ title: "kept", line: 1 }],
+          removed: [{ groups: [], name: "dropped", line: 3 }],
+          unchanged: [{ groups: [], name: "kept", line: 1 }],
         },
       ],
       [],
@@ -144,7 +164,39 @@ describe("renderSummary", () => {
       )
     );
     assert.ok(
-      body.includes("- [kept](https://github.com/o/r/blob/abc/a.test.ts#L1)")
+      body.includes("\n[kept](https://github.com/o/r/blob/abc/a.test.ts#L1)")
+    );
+  });
+
+  it("links the file to its head blob and describe titles to the declarations they name", () => {
+    const body = renderSummary(
+      [
+        {
+          path: "a.test.ts",
+          source: { path: "a.ts", lines: new Map([["parse", 12]]) },
+          added: [],
+          changed: [],
+          removed: [],
+          unchanged: [{ groups: ["parse", "edge cases"], name: "x", line: 4 }],
+        },
+      ],
+      [],
+      {
+        pullUrl: "https://github.com/o/r/pull/7",
+        repoUrl: "https://github.com/o/r",
+        headSha: "abc",
+      }
+    );
+
+    assert.ok(
+      body.includes(
+        "**[`a.test.ts`](https://github.com/o/r/blob/abc/a.test.ts)**"
+      )
+    );
+    assert.ok(
+      body.includes(
+        "[parse](https://github.com/o/r/blob/abc/a.ts#L12) › edge cases › [x](https://github.com/o/r/blob/abc/a.test.ts#L4)"
+      )
     );
   });
 });
