@@ -111,7 +111,8 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
       if (occurrences === 0) {
         return new Err(
           new MCPError(
-            "`oldStr` was not found in the user's personal memory. Read the memory first and copy an exact snippet.",
+            "`oldStr` was not found in the user's personal memory. Copy an exact snippet " +
+              `of its current content:\n\n${currentContent}`,
             { tracked: false }
           )
         );
