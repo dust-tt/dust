@@ -1,46 +1,9 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { extractGoogleDriveFileId } from "@app/lib/providers/google_drive/file_id";
 import logger from "@app/logger/logger";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
-
-function extractGoogleDriveFileId(input: string): string | null {
-  const trimmedInput = input.trim();
-
-  // If it's already a file ID (alphanumeric, hyphens, underscores), return it
-  if (/^[a-zA-Z0-9_-]+$/.test(trimmedInput)) {
-    return trimmedInput;
-  }
-
-  try {
-    const url = new URL(trimmedInput);
-
-    // Handle docs.google.com URLs: /document/d/FILE_ID/, /spreadsheets/d/FILE_ID/, /presentation/d/FILE_ID/
-    const docsMatch = url.pathname.match(
-      /^\/(document|spreadsheets|presentation|forms)\/d\/([a-zA-Z0-9_-]+)/
-    );
-    if (docsMatch) {
-      return docsMatch[2];
-    }
-
-    // Handle drive.google.com URLs: /file/d/FILE_ID/, /open?id=FILE_ID
-    const driveMatch = url.pathname.match(/^\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (driveMatch) {
-      return driveMatch[1];
-    }
-
-    // Handle drive.google.com/open?id=FILE_ID
-    const idParam = url.searchParams.get("id");
-    if (idParam) {
-      return idParam;
-    }
-
-    return null;
-  } catch {
-    // If URL parsing fails, it's not a valid URL
-    return null;
-  }
-}
 
 export const googleDriveSyncFilePlugin = createPlugin({
   manifest: {

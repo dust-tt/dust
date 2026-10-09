@@ -8,7 +8,12 @@ import { Common } from "googleapis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { BinaryFileResourceBlock } from "./index";
-import { buildBinaryFileResource, handleFileAccessError, TOOLS } from "./index";
+import {
+  buildBinaryFileResource,
+  handleFileAccessError,
+  resolveDriveIdParams,
+  TOOLS,
+} from "./index";
 
 vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
   getDriveClient: vi.fn(),
@@ -353,7 +358,10 @@ describe("handleFileAccessError", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       // Since we can't fetch metadata without auth, we get the original error
-      expect(result.error.message).toBe("Not Found");
+      // plus the hint to re-check the ID.
+      expect(result.error.message).toBe(
+        "Not Found. Double-check that the ID or URL was copied exactly, character for character."
+      );
     }
   });
 
@@ -847,5 +855,40 @@ describe("get_file_content", () => {
     const { payload, resourceBlock } = getBlocks(result);
     expect(payload.fileId).toBe("target-id");
     expect(resourceBlock?.resource.uri).toBe("data.xlsx");
+  });
+});
+
+describe("resolveDriveIdParams", () => {
+  const ID = "1aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdefg";
+  const URL = `https://docs.google.com/document/d/${ID}/edit`;
+
+  it("replaces Drive ID params given as URLs with the extracted ID", () => {
+    expect(
+      resolveDriveIdParams("copy_file", {
+        fileId: URL,
+        parentId: URL,
+        name: "x",
+      })
+    ).toEqual({ fileId: ID, parentId: ID, name: "x" });
+  });
+
+  it("leaves bare IDs and non-Google inputs unchanged", () => {
+    expect(
+      resolveDriveIdParams("get_file_content", { fileId: ID, offset: 0 })
+    ).toEqual({ fileId: ID, offset: 0 });
+    expect(
+      resolveDriveIdParams("get_file_content", { fileId: "nope!" })
+    ).toEqual({
+      fileId: "nope!",
+    });
+  });
+
+  it("does not touch the conversation file reference of upload_file", () => {
+    expect(
+      resolveDriveIdParams("upload_file", {
+        fileId: "conversation/report.pdf",
+        parentId: URL,
+      })
+    ).toEqual({ fileId: "conversation/report.pdf", parentId: ID });
   });
 });
