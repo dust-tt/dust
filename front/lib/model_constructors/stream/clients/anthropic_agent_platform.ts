@@ -2,22 +2,25 @@ import type {
   BetaMessageStreamParams,
   BetaRawMessageStreamEvent,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
-import type {
-  Model as HostModel,
-  MessageCreateParamsNonStreaming,
-} from "@anthropic-ai/sdk/resources/messages/messages";
+import type { Model as HostModel } from "@anthropic-ai/sdk/resources/messages/messages";
 import AnthropicVertex from "@anthropic-ai/vertex-sdk";
 import type { BaseEndpointConfiguration } from "@app/lib/model_constructors/configuration";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import type { AnthropicRequestPayload } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
 import { WithAnthropicAIInputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input";
-import { imageUrlToBase64ImageBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import {
+  imageUrlToBase64ImageBlock,
+  MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER,
+  requiresMidConversationOutputConfigBeta,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { WithAnthropicAIOutputConverter } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output";
 import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { AGENT_PLATFORM_HOST } from "@app/lib/model_constructors/types/hosts";
 import { inputConfigSchema } from "@app/lib/model_constructors/types/input/configuration";
+import type { Payload } from "@app/lib/model_constructors/types/input/messages";
 import { ANTHROPIC_LAB } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import { CLAUDE_HAIKU_4_5 } from "@app/lib/model_constructors/types/models";
@@ -39,6 +42,10 @@ export const anthropicAgentPlatformConfigSchema = inputConfigSchema.extend({
     .optional(),
 });
 
+// The Vertex SDK forwards `betas` as the `anthropic-beta` header.
+type AnthropicAgentPlatformStreamRequest = AnthropicRequestPayload &
+  Pick<BetaMessageStreamParams, "betas">;
+
 const MODEL_MAPPING: Partial<Record<Model, HostModel>> = {
   [CLAUDE_HAIKU_4_5]: "claude-haiku-4-5@20251001",
 };
@@ -46,7 +53,7 @@ const MODEL_MAPPING: Partial<Record<Model, HostModel>> = {
 export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputConverter(
   WithAnthropicAIOutputConverter(
     StreamEndpoint<
-      MessageCreateParamsNonStreaming,
+      AnthropicAgentPlatformStreamRequest,
       BetaRawMessageStreamEvent,
       AnthropicInputConfig
     >
@@ -85,8 +92,18 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
   // Vertex AI rejects URL image sources, so inline images as base64.
   imageUrlToImageBlock = imageUrlToBase64ImageBlock;
 
+  async buildRequestPayload(
+    payload: Payload,
+    config: AnthropicInputConfig
+  ): Promise<AnthropicAgentPlatformStreamRequest> {
+    const request = await super.buildRequestPayload(payload, config);
+    return requiresMidConversationOutputConfigBeta(request.messages)
+      ? { ...request, betas: [MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER] }
+      : request;
+  }
+
   async *streamRaw(
-    input: MessageCreateParamsNonStreaming
+    input: AnthropicAgentPlatformStreamRequest
   ): AsyncGenerator<BetaRawMessageStreamEvent> {
     const streamingInput: BetaMessageStreamParams = { ...input };
     const stream = this.client.beta.messages.stream(streamingInput);

@@ -1,3 +1,4 @@
+import type { BetaMessageParam } from "@anthropic-ai/sdk/resources/beta/messages/messages";
 import type {
   CacheControlEphemeral,
   ContentBlockParam,
@@ -18,6 +19,7 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { isAnthropicSupportedNonNullReasoningEffort } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { parseAnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type {
@@ -32,6 +34,7 @@ import type {
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
   BaseConversation,
+  BaseEffortChangeMessage,
   BaseToolCallResultMessage,
   BaseUserImageMessage,
   BaseUserMessage,
@@ -50,6 +53,16 @@ import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
+
+// Per-message `output_config` on effort-only system messages is a beta of the Messages API.
+// https://platform.claude.com/docs/en/build-with-claude/effort#change-effort-mid-conversation-beta
+export const MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER =
+  "mid-conversation-output-config-2026-07-01";
+
+// A message param that may carry the beta per-message `output_config` (effort-only system
+// messages). It stays assignable to both the non-beta and the beta message params.
+export type AnthropicMessageParam = MessageParam &
+  Pick<BetaMessageParam, "output_config">;
 
 const SUPPORTED_IMAGE_MEDIA_TYPES = [
   "image/jpeg",
@@ -342,13 +355,35 @@ function contentToBlocks(
     : content;
 }
 
+// Effort-only system message: switches the effort from the next user turn on, keeping the cached
+// prefix intact. Requires `MID_CONVERSATION_OUTPUT_CONFIG_BETA_HEADER`.
+export function effortChangeMessageToSystemMessage(
+  message: BaseEffortChangeMessage
+): AnthropicMessageParam {
+  const { effort } = message.content;
+  if (!isAnthropicSupportedNonNullReasoningEffort(effort)) {
+    throw new Error(`Unsupported per-message reasoning effort: ${effort}`);
+  }
+  return {
+    role: "system",
+    content: [],
+    output_config: { effort: effortToAnthropicEffort(effort) },
+  };
+}
+
+export function requiresMidConversationOutputConfigBeta(
+  messages: AnthropicMessageParam[]
+): boolean {
+  return messages.some((message) => !!message.output_config);
+}
+
 export async function conversationToMessages(
   conversation: BaseConversation,
   converters: MessageBlockConverters
-): Promise<MessageParam[]> {
+): Promise<AnthropicMessageParam[]> {
   const messages = await concurrentExecutor(
     conversation.messages,
-    async (message): Promise<MessageParam> => {
+    async (message): Promise<AnthropicMessageParam> => {
       switch (message.role) {
         case "user":
           return {
@@ -360,6 +395,8 @@ export async function conversationToMessages(
             role: "assistant",
             content: assistantMessageToContentBlocks(message, converters),
           };
+        case "system":
+          return effortChangeMessageToSystemMessage(message);
         default:
           assertNever(message);
       }
@@ -369,10 +406,15 @@ export async function conversationToMessages(
 
   // Anthropic rejects consecutive same-role messages, so merge them: one
   // logical turn arrives split into a message per content block (e.g. text +
-  // image).
-  return messages.reduce<MessageParam[]>((merged, message) => {
+  // image). System messages each carry their own `output_config`, so they are
+  // never merged.
+  return messages.reduce<AnthropicMessageParam[]>((merged, message) => {
     const previous = merged[merged.length - 1];
-    if (previous && previous.role === message.role) {
+    if (
+      previous &&
+      previous.role === message.role &&
+      message.role !== "system"
+    ) {
       return [
         ...merged.slice(0, -1),
         {
