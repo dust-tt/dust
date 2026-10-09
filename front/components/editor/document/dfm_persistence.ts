@@ -9,12 +9,7 @@ import {
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import type { DfmComment, DfmError } from "@app/lib/markdown/dfm";
-import {
-  extractAnchors,
-  FRONT_MATTER_FENCE,
-  parseDfm,
-  serializeDfm,
-} from "@app/lib/markdown/dfm";
+import { extractAnchors, parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
@@ -32,40 +27,21 @@ export interface DfmEnvelope {
 const CODEC_SAVE_ERROR_MESSAGE =
   "This document cannot be saved as written. Your changes are still here. Undo the last edit to try again.";
 
-/** A codec error as shown in the read-only view, with its line in the file when it has one. */
-function describe(error: DfmError, firstLine = 1): string {
+/** A codec error as shown in the read-only view, with its line when it has one. */
+function describe(error: DfmError): string {
   return error.line === undefined
     ? error.message
-    : `${error.message} (line ${error.line + firstLine - 1})`;
+    : `${error.message} (line ${error.line})`;
 }
 
-/**
- * The file line the body starts on: after the front matter's closing fence and the one blank line
- * the codec drops after it (`dfm-body-opaque`), found the way the codec finds them.
- */
-function bodyFirstLine(source: string, frontMatter: string | null): number {
-  if (frontMatter === null) {
-    return 1;
-  }
-  const lines = source
-    .replace(/^\uFEFF/, "")
-    .replace(/\r\n/g, "\n")
-    .split("\n");
-  const close = lines.findIndex(
-    (line, index) => index > 0 && line.trimEnd() === FRONT_MATTER_FENCE
-  );
-  const bodyStart = lines[close + 1] === "" ? close + 2 : close + 1;
-  return bodyStart + 1;
-}
-
-// The refusals the editor writes, which name only elements, lines and comment ids. A codec error
-// can quote the file, such as a malformed attribute.
+// The refusals the editor writes, which name only elements and comment ids. A codec error can
+// quote the file, such as a malformed attribute.
 const EDITOR_REFUSALS = [
-  /^The Markdown uses formatting the editor cannot keep: [^\n]+ at line \d+\.$/,
+  /^The Markdown uses formatting the editor cannot keep: [^\n]+\.$/,
   /^The Markdown could not be parsed\.$/,
   /^The Markdown does not fit the editor's document structure\.$/,
-  /^The Markdown would not read back the same after editing(, from line \d+)?\.$/,
-  /^A comment is anchored where the editor cannot show it: "[\w-]+"(, "[\w-]+")*\.$/,
+  /^The Markdown would not read back the same after editing\.$/,
+  /^A comment is anchored where the editor cannot show it\.$/,
   /^Comment "[\w-]+" (starts or ends on text the editor cannot highlight|covers no text the editor can highlight)\.$/,
   /^Comment anchor "[\w-]+" is (not paired|never closed) where the editor reads it\.$/,
 ];
@@ -73,16 +49,12 @@ const EDITOR_REFUSALS = [
 /**
  * @cc [owner:PopDaph,label:security;product] document-refusal-loggable
  * A refusal reason MUST reach logs only when it is one the editor writes, which never quotes the
- * file; any other reason MUST be logged as not valid DFM, with at most its line.
+ * file; any other reason MUST be logged as not valid DFM.
  */
 export function loggableRefusal(reason: string): string {
-  if (EDITOR_REFUSALS.some((pattern) => pattern.test(reason))) {
-    return reason;
-  }
-  const line = /\(line (\d+)\)$/.exec(reason)?.[1];
-  return line === undefined
-    ? "The file is not valid DFM."
-    : `The file is not valid DFM (line ${line}).`;
+  return EDITOR_REFUSALS.some((pattern) => pattern.test(reason))
+    ? reason
+    : "The file is not valid DFM.";
 }
 
 export interface LoadedDfm {
@@ -107,14 +79,13 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
     return new Err(describe(parsed.error));
   }
   const { frontMatter, body, comments } = parsed.value;
-  const firstLine = bodyFirstLine(source, frontMatter);
 
   const anchors = extractAnchors(body);
   if (anchors.isErr()) {
-    return new Err(describe(anchors.error, firstLine));
+    return new Err(describe(anchors.error));
   }
 
-  const content = parseDocumentContent(body, firstLine);
+  const content = parseDocumentContent(body);
   if (content.isErr()) {
     return content;
   }
@@ -122,18 +93,13 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
 
   // An anchor the codec reads but the Markdown parser does not, such as one inside a link
   // destination, would be dropped on save.
-  const anchored = new Set(anchors.value.anchors.map((anchor) => anchor.id));
-  const marked = getMarkedCommentIds(document);
-  if (!sameIds(anchored, marked)) {
-    const differing = [
-      ...[...anchored].filter((id) => !marked.has(id)),
-      ...[...marked].filter((id) => !anchored.has(id)),
-    ];
-    return new Err(
-      `A comment is anchored where the editor cannot show it: ${differing
-        .map((id) => `"${id}"`)
-        .join(", ")}.`
-    );
+  if (
+    !sameIds(
+      new Set(anchors.value.anchors.map((anchor) => anchor.id)),
+      getMarkedCommentIds(document)
+    )
+  ) {
+    return new Err("A comment is anchored where the editor cannot show it.");
   }
 
   return new Ok({

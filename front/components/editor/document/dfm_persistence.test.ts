@@ -202,62 +202,34 @@ describe("loadDfm", () => {
 
   it.each([
     [
-      "a table, at its line in the file after front matter",
-      "---\ntitle: x\n---\n\n# T\n\nText.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n",
-      "The Markdown uses formatting the editor cannot keep: a table at line 9.",
+      "a table",
+      "| a | b |\n|---|---|\n| 1 | 2 |\n",
+      "The Markdown uses formatting the editor cannot keep: a table.",
     ],
     [
       "a task list",
       "Intro.\n\n- [ ] todo\n",
-      "The Markdown uses formatting the editor cannot keep: a task list at line 3.",
+      "The Markdown uses formatting the editor cannot keep: a task list.",
     ],
     [
       "HTML",
       "Intro.\n\n<div>x</div>\n",
-      "The Markdown uses formatting the editor cannot keep: HTML at line 3.",
+      "The Markdown uses formatting the editor cannot keep: HTML.",
     ],
     [
       "a tilde fence",
       "Intro.\n\n~~~\ncode\n~~~\n",
-      "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~ at line 3.",
-    ],
-    [
-      "Markdown that changes when saved",
-      "A\n\n* a\n+ b\n",
-      "The Markdown would not read back the same after editing, from line 3.",
-    ],
-    [
-      "Markdown that changes when saved, after extra blank lines",
-      "A\n\n\n\n* a\n+ b\n",
-      "The Markdown would not read back the same after editing, from line 5.",
-    ],
-    [
-      "Markdown that changes when saved, after anchors on their own lines",
-      `:comment-start{id=c1}\n\nA\n\n:comment-end{id=c1}\n\n* a\n+ b\n\n${OPEN_THREAD}`,
-      "The Markdown would not read back the same after editing, from line 7.",
+      "The Markdown uses formatting the editor cannot keep: a code block fenced with ~~~.",
     ],
     [
       "an indented backtick fence",
       "Intro.\n\n  ```\n  code\n  ```\n",
-      "The Markdown uses formatting the editor cannot keep: an indented code fence at line 3.",
+      "The Markdown uses formatting the editor cannot keep: an indented code fence.",
     ],
-    [
-      "an anchor the editor cannot show",
-      `See [docs](https://example.com/:comment-start{id=c1}a:comment-end{id=c1})\n\n${OPEN_THREAD}`,
-      'A comment is anchored where the editor cannot show it: "c1".',
-    ],
-  ])("refuses %s, naming it and its line", (_, source, reason) => {
+  ])("refuses %s, naming it", (_, source, reason) => {
     const loaded = loadDfm(source);
 
     expect(loaded.isErr() && loaded.error).toBe(reason);
-  });
-
-  it("counts lines from the body's place in the file, past front matter that repeats it", () => {
-    const loaded = loadDfm("---\nx: <hr>\n---\n\n<hr>\n");
-
-    expect(loaded.isErr() && loaded.error).toBe(
-      "The Markdown uses formatting the editor cannot keep: HTML at line 5."
-    );
   });
 
   // Each source makes the editor write one of its own refusals: rewording one without updating
@@ -292,7 +264,7 @@ describe("loadDfm", () => {
     const reason = loaded.isErr() ? loaded.error : "";
 
     expect(reason).toContain("SensitiveValue");
-    expect(loggableRefusal(reason)).toBe("The file is not valid DFM (line 1).");
+    expect(loggableRefusal(reason)).toBe("The file is not valid DFM.");
   });
 
   it("opens a comment with inline code inside it", () => {

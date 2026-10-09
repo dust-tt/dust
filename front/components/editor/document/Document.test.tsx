@@ -598,8 +598,7 @@ describe("Document for a file the editor cannot open", () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn).toHaveBeenCalledWith(
       {
-        reason:
-          "The Markdown uses formatting the editor cannot keep: a table at line 3.",
+        reason: "The Markdown uses formatting the editor cannot keep: a table.",
       },
       "Document opened read-only"
     );
