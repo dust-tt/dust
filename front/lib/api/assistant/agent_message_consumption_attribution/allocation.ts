@@ -91,6 +91,36 @@ function splitByWeight(
   }));
 }
 
+function roundToMicroCredits(
+  shares: ItemCreditShare[],
+  totalCreditMicro: number
+): ItemCreditShare[] {
+  const floorsMicro = shares.map(({ creditMicro }) => Math.floor(creditMicro));
+  const remainderMicro =
+    totalCreditMicro - floorsMicro.reduce((total, floor) => total + floor, 0);
+  // Largest remainders and then source order keep allocation stable.
+  const sharesReceivingRemainder = new Set(
+    shares
+      .map((share, index) => ({
+        index,
+        fractionalMicro: share.creditMicro - floorsMicro[index],
+      }))
+      .sort(
+        (left, right) =>
+          right.fractionalMicro - left.fractionalMicro ||
+          left.index - right.index
+      )
+      .slice(0, remainderMicro)
+      .map(({ index }) => index)
+  );
+
+  return shares.map(({ item }, index) => ({
+    item,
+    creditMicro:
+      floorsMicro[index] + (sharesReceivingRemainder.has(index) ? 1 : 0),
+  }));
+}
+
 function ownCallCostPart(
   itemType: AgentMessageConsumptionItemType
 ): "output" | "input" | null {
@@ -308,12 +338,14 @@ function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
         )
       ),
     ];
+    const usageCreditShares: ItemCreditShare[] = [];
     for (const usageShare of usageShares) {
       if (!usageShare) {
         return new Err("cost_without_item");
       }
-      shares.push(...usageShare);
+      usageCreditShares.push(...usageShare);
     }
+    shares.push(...roundToMicroCredits(usageCreditShares, billedCreditMicro));
   }
 
   const creditMicroByItem = new Map<
@@ -431,40 +463,14 @@ function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   }
   const creditMicroByItem = creditMicroByItemResult.value;
 
-  const allocations = items.map((item, index) => {
-    const exactMicro = creditMicroByItem.get(item) ?? 0;
-    const floorMicro = Math.floor(exactMicro);
-    return {
-      item,
-      index,
-      floorMicro,
-      fractionalMicro: exactMicro - floorMicro,
-    };
-  });
-  const remainderMicro =
-    llmCreditAmountMicro -
-    allocations.reduce((total, { floorMicro }) => total + floorMicro, 0);
-  // Largest remainders and then source order keep allocation stable.
-  const allocationsReceivingRemainder = new Set(
-    [...allocations]
-      .sort(
-        (left, right) =>
-          right.fractionalMicro - left.fractionalMicro ||
-          left.index - right.index
-      )
-      .slice(0, remainderMicro)
-      .map(({ item }) => item)
-  );
-
   return new Ok({
     billingGroups,
     reconciledCreditAmounts: {
       byItem: new Map(
-        allocations.map(({ item, floorMicro }) => [
+        items.map((item) => [
           item,
           (directCreditAmountByItem.get(item) ?? 0) +
-            floorMicro +
-            (allocationsReceivingRemainder.has(item) ? 1 : 0),
+            (creditMicroByItem.get(item) ?? 0),
         ])
       ),
     },

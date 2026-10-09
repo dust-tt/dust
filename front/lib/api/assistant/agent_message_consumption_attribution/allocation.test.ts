@@ -284,6 +284,53 @@ describe("buildLatestMessageConsumptionAllocation", () => {
     ]);
   });
 
+  it("rounds each call's credits to the micro-credit within its own bill", async () => {
+    const allocation = await allocateMessage({
+      billedCredits: 3,
+      calls: [
+        {
+          promptTokens: 0,
+          completionTokens: 3_000,
+          reasoningTokens: 1_000,
+          runKey: "execution-1",
+        },
+        {
+          promptTokens: 0,
+          completionTokens: 6_000,
+          reasoningTokens: 2_000,
+          runKey: "execution-2",
+        },
+      ],
+      tools: [
+        {
+          emittedByCall: 0,
+          resultTokens: 0,
+          callOutputTokens: 1_000,
+          directCreditAmountMicro: 0,
+        },
+        {
+          emittedByCall: 1,
+          resultTokens: 0,
+          callOutputTokens: 2_000,
+          directCreditAmountMicro: 0,
+        },
+      ],
+    });
+
+    // Each call splits its bill in thirds: 1/3 credit for the first call's rows, 2/3 for the
+    // second call's, so both leave micro-credits to round.
+    expect(
+      allocation.callItemCredits(0, "output") +
+        allocation.callItemCredits(0, "reasoning") +
+        allocation.toolCredits(0)
+    ).toBeCloseTo(1, 6);
+    expect(
+      allocation.callItemCredits(1, "output") +
+        allocation.callItemCredits(1, "reasoning") +
+        allocation.toolCredits(1)
+    ).toBeCloseTo(2, 6);
+  });
+
   it("gives a tool its direct credits and its call output, but no input when no call reads its result", async () => {
     const allocation = await allocateMessage({
       billedCredits: 5,
