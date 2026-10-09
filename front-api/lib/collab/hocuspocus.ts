@@ -25,13 +25,17 @@ import logger from "@app/logger/logger";
 import type {
   LiveAgent,
   LiveAgentActivity,
+  LiveAgentEditMessage,
   LiveAgentServerMessage,
   LiveCommentErrorCode,
   LiveCommentServerMessage,
   LiveSourceReadResponse,
+  LiveIdRange,
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
+  BODY_FRAGMENT_NAME,
+  LIVE_AGENT_EDIT_MAX_RANGES,
   LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
@@ -43,6 +47,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import type * as Y from "yjs";
 import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
@@ -70,6 +75,25 @@ const agentActivityMessage = (
     agent,
     activity,
   } satisfies LiveAgentServerMessage);
+
+/** The Yjs items `transaction` inserted, by id. */
+const insertedRanges = (transaction: Y.Transaction): LiveIdRange[] => {
+  const ranges: LiveIdRange[] = [];
+  transaction.afterState.forEach((after, client) => {
+    const before = transaction.beforeState.get(client) ?? 0;
+    if (after > before) {
+      ranges.push({ client, clock: before, length: after - before });
+    }
+  });
+  return ranges;
+};
+
+const agentEditMessage = (agent: LiveAgent, inserted: LiveIdRange[]): string =>
+  JSON.stringify({
+    type: "agent_edit",
+    agent,
+    inserted,
+  } satisfies LiveAgentEditMessage);
 
 const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
@@ -549,7 +573,9 @@ export function showLiveAgentActivity(
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
  * editing right before it is applied; it MUST be announced as reading again if the change is then
- * refused or leaves the document unchanged.
+ * refused or leaves the document's body unchanged. Once a change of the body is applied, its update
+ * MUST be sent, then the text it inserted announced as that agent's edit (`agent_edit`, the ids of
+ * the items the change's own transaction inserted), unless more than `LIVE_AGENT_EDIT_MAX_RANGES`.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
@@ -601,14 +627,17 @@ export async function writeLiveSource(
     if (announced) {
       document.broadcastStateless(agentActivityMessage(agent, "editing"));
     }
-    // Another spelling of the same document changes nothing, and Yjs then emits no update. The
-    // state vector would miss a deletion, which emits one without advancing it.
-    let changed = false;
-    const onUpdate = () => {
-      changed = true;
+    // Observed on the body: another spelling of the same document, or a change of front matter
+    // alone, leaves it as it was and gives editors nothing to show.
+    const body = document.getXmlFragment(BODY_FRAGMENT_NAME);
+    let bodyChanged = false;
+    let inserted: LiveIdRange[] = [];
+    const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
+      bodyChanged = true;
+      inserted = insertedRanges(transaction);
     };
     if (announced) {
-      document.on("update", onUpdate);
+      body.observeDeep(onBodyChange);
     }
     let comments: Result<DfmComment[], string> = new Err(
       "The change could not be applied."
@@ -621,14 +650,23 @@ export async function writeLiveSource(
       });
     } finally {
       if (announced) {
-        document.off("update", onUpdate);
-        if (comments.isErr() || !changed) {
+        body.unobserveDeep(onBodyChange);
+        if (comments.isErr() || !bodyChanged) {
           document.broadcastStateless(agentActivityMessage(agent, "reading"));
         }
       }
     }
     if (comments.isErr()) {
       return comments;
+    }
+    if (
+      announced &&
+      inserted.length > 0 &&
+      inserted.length <= LIVE_AGENT_EDIT_MAX_RANGES
+    ) {
+      // The update first, so editors already hold the text the message names.
+      document.flush();
+      document.broadcastStateless(agentEditMessage(agent, inserted));
     }
     const threadsChanged =
       JSON.stringify(comments.value) !== JSON.stringify(session.comments);
