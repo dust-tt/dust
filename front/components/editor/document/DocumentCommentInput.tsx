@@ -51,9 +51,16 @@ const hasContent = (editor: Editor | null) => {
   return found;
 };
 
-/** Whether a suggestion list opened from the field, such as mentions, is showing. */
+/**
+ * Whether a suggestion list opened from the field, such as mentions, is showing: a suggestion is
+ * active and the host's list for it is on the page. An active suggestion with nothing to list
+ * shows nothing.
+ */
 const hasOpenSuggestionList = (editor: Editor | null) =>
-  !!editor?.state.plugins.some((plugin) => {
+  !!editor &&
+  editor.view.dom.ownerDocument.querySelector("[data-suggestion-list]") !==
+    null &&
+  editor.state.plugins.some((plugin) => {
     const state: unknown = plugin.getState(editor.state);
     return (
       typeof state === "object" &&
@@ -99,7 +106,8 @@ const selectLastSuggestion = (editor: Editor): boolean => {
  * the content MUST NOT change or submit again, and Send MUST show progress. An accepted submission
  * MUST clear the field; a refused one MUST keep the content and show the reason. Once a submission
  * sent while the field had focus is no longer pending, focus MUST return to the field if it is
- * still mounted. Escape that closes a mention list or arrives while an input method is composing
+ * still mounted. Escape that closes a shown mention list (the host's list carries
+ * `data-suggestion-list`) or arrives while an input method is composing
  * text MUST NOT reach the parent nor clear the field. Otherwise, Escape with onCancel MUST NOT
  * reach the parent and MUST clear the field then call onCancel, unless a submission is pending,
  * when it MUST do neither.

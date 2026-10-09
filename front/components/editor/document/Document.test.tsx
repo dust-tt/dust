@@ -1000,21 +1000,23 @@ describe("Document Escape inside a host dialog", () => {
     expect(hasOpenDocumentLayer(document)).toBe(false);
   });
 
-  it("keeps the draft when Escape closes the field's suggestion list", async () => {
-    const OpenSuggestionList = Extension.create({
-      name: "openSuggestionList",
-      addProseMirrorPlugins: () => [
-        new Plugin({
-          state: { init: () => ({ active: true }), apply: (_, value) => value },
-        }),
-      ],
-    });
+  // A suggestion, such as a mention, that stays active in the comment field.
+  const ActiveSuggestion = Extension.create({
+    name: "activeSuggestion",
+    addProseMirrorPlugins: () => [
+      new Plugin({
+        state: { init: () => ({ active: true }), apply: (_, value) => value },
+      }),
+    ],
+  });
+
+  async function startCommentWithSuggestion() {
     const { container } = render(
       <Document
         initialContent={"Hello brave world.\n"}
         onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
         commentAuthor={AUTHOR}
-        commentInputExtensions={[OpenSuggestionList]}
+        commentInputExtensions={[ActiveSuggestion]}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -1027,13 +1029,30 @@ describe("Document Escape inside a host dialog", () => {
       }
       return element;
     });
-
     startComment(dom, dom.editor, "brave");
     const field = await findCommentField("Comment");
     typeComment(field, "Too bold?");
+    return field;
+  }
+
+  it("leaves Escape to a mention list shown from the field", async () => {
+    const list = document.createElement("div");
+    list.setAttribute("data-suggestion-list", "");
+    document.body.appendChild(list);
+    const field = await startCommentWithSuggestion();
+
     fireEvent.keyDown(field, { key: "Escape" });
 
     expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
     expect(field.editor.getText()).toBe("Too bold?");
+    list.remove();
+  });
+
+  it("cancels the draft on Escape when the field's suggestion shows no list", async () => {
+    const field = await startCommentWithSuggestion();
+
+    fireEvent.keyDown(field, { key: "Escape" });
+
+    expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
   });
 });
