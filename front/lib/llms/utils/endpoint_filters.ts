@@ -28,8 +28,8 @@ export const EU_AGENT_PLATFORM_ENDPOINT_FILTER = {
  * things — the config gates the picker via `isModelAvailable`, routing via
  * `isEndpointAvailable` — and they are consulted at different moments, so
  * drift does not degrade gracefully: model resolution picks on availability
- * and only then fails endpoint selection with `AgentLoopDataModelNotFoundError`
- * rather than falling back.
+ * and only then fails endpoint selection with a `model_not_found`
+ * `AgentLoopDataError` rather than falling back.
  */
 export const PREMIUM_MODEL_ENDPOINT_FILTER = {
   or: [

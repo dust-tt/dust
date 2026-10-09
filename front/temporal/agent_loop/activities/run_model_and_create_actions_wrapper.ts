@@ -36,6 +36,7 @@ import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_action
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
+import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgs,
@@ -43,7 +44,7 @@ import type {
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import {
-  isAgentLoopDataAgentNotFoundError,
+  isAgentLoopConfigNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -65,6 +66,20 @@ const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
 const AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE = "agent_loop_subagent_cap_exceeded";
 const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
   "This message used too many resources to continue. Start a new message with a narrower request.";
+const AGENT_NOT_AVAILABLE_ERROR: GenericErrorContent = {
+  code: "agent_not_available",
+  message:
+    "This agent is no longer available to you. Contact your workspace administrator or " +
+    "use another agent.",
+  metadata: { errorTitle: "Agent not available" },
+};
+const MODEL_NOT_AVAILABLE_ERROR: GenericErrorContent = {
+  code: "model_not_available",
+  message:
+    "The model this agent uses isn't available. Edit the agent to use another model " +
+    "(advanced settings in the Instructions panel).",
+  metadata: null,
+};
 
 function getActivityTimeoutDeadlineMs(): number {
   const { startToCloseTimeoutMs } = Context.current().info;
@@ -175,16 +190,13 @@ async function _runModelAndCreateActionsActivity({
       );
       return new Ok(null);
     }
-    if (isAgentLoopDataAgentNotFoundError(contextProviderRes.error)) {
-      // Retrying cannot make the agent loadable again: fail the message now.
+    if (isAgentLoopConfigNotFoundError(contextProviderRes.error)) {
+      // Retrying cannot make the agent or its model loadable again: fail the message now.
       await notifyAgentMessageError(authType, runAgentArgs, {
-        error: {
-          code: "agent_not_available",
-          message:
-            "This agent is no longer available to you. Contact your workspace administrator or " +
-            "use another agent.",
-          metadata: { errorTitle: "Agent not available" },
-        },
+        error:
+          contextProviderRes.error.type === "agent_not_found"
+            ? AGENT_NOT_AVAILABLE_ERROR
+            : MODEL_NOT_AVAILABLE_ERROR,
         step,
       });
       return new Ok(null);

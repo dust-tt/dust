@@ -31,8 +31,7 @@ import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/types/assistant/agent_m
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
-  isAgentLoopDataAgentNotFoundError,
-  isAgentLoopDataModelNotFoundError,
+  isAgentLoopConfigNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -42,7 +41,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -535,9 +533,9 @@ export async function finalizeUnavailableAgentLoop(
 }
 
 /**
- * Stops the loop's agent message without its agent configuration, which can no longer be loaded
- * (see `isAgentLoopDataAgentNotFoundError`): retrying would fail forever. Pending tokens are not
- * flushed, as that requires the configuration.
+ * Stops the loop's agent message without its agent configuration or model, which can no longer be
+ * loaded (see `isAgentLoopConfigNotFoundError`): retrying would fail forever. Pending tokens are
+ * not flushed, as that requires the configuration.
  */
 async function stopWithoutAgentConfiguration(
   authType: AuthenticatorType,
@@ -715,9 +713,9 @@ export async function notifyAgentMessageError(
  */
 /**
  * @cc [owner:philipperolet,label:error-handling;backend] cancel-without-agent-configuration
- * When the loop's agent configuration cannot be loaded (`isAgentLoopDataAgentNotFoundError`),
- * `finalizeCancellation` MUST mark the agent message `cancelled` and return without throwing, as
- * its activity retries without limit.
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeCancellation` MUST mark the agent message
+ * `cancelled` and return without throwing, as its activity retries without limit.
  */
 export async function finalizeCancellation(
   authType: AuthenticatorType,
@@ -739,17 +737,9 @@ export async function finalizeCancellation(
       );
       return;
     }
-    if (isAgentLoopDataAgentNotFoundError(runAgentDataRes.error)) {
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
       await stopWithoutAgentConfiguration(authType, agentLoopArgs, "cancelled");
       return;
-    }
-    if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
-      // The selected model no longer exists. Retrying the
-      // cancel finalizer cannot recover an endpoint and would loop forever.
-      throw ApplicationFailure.nonRetryable(
-        `Failed to get run agent data: ${runAgentDataRes.error.message}`,
-        "ModelNotFound"
-      );
     }
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
@@ -804,9 +794,9 @@ export async function finalizeCancellation(
  */
 /**
  * @cc [owner:philipperolet,label:error-handling;backend] interrupt-without-agent-configuration
- * When the loop's agent configuration cannot be loaded (`isAgentLoopDataAgentNotFoundError`),
- * `finalizeInterruption` MUST mark the agent message `interrupted` and return without throwing, as
- * its activity retries without limit.
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeInterruption` MUST mark the agent message
+ * `interrupted` and return without throwing, as its activity retries without limit.
  */
 export async function finalizeInterruption(
   authType: AuthenticatorType,
@@ -828,7 +818,7 @@ export async function finalizeInterruption(
       );
       return;
     }
-    if (isAgentLoopDataAgentNotFoundError(runAgentDataRes.error)) {
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
       await stopWithoutAgentConfiguration(
         authType,
         agentLoopArgs,
