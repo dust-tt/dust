@@ -18,7 +18,7 @@ The producer runs inside front application context with the existing `Authentica
 
 ## Configuration
 
-The authoritative generated JSON schema is [canary.schema.json](../import/config/canary.schema.json). Unknown fields, importer tokens, global Pub/Sub endpoints, shared queue IDs, identical reader-token paths and prefixes other than `files/w/<workspaceId>/` are rejected. Use one explicitly enrolled test workspace per scheduled job. Supply its same bucket, prefix, tenant, endpoint and notification IDs used by the importer binding, but never its importer token.
+The authoritative generated JSON schema is [canary.schema.json](../import/config/canary.schema.json). Unknown fields, importer tokens, global Pub/Sub endpoints, shared queue IDs, identical reader-token paths and prefixes other than `files/w/<workspaceId>/` are rejected. Use one explicitly enrolled test workspace per scheduled job. Supply its same bucket, prefix, tenant, endpoint, final `directoryId` and notification IDs used by the importer binding, but never its importer token.
 
 ```json
 {

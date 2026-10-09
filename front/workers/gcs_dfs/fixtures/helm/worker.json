@@ -2,18 +2,20 @@
   "bindings": [
     {
       "bucket": "bkt-prj-dust-test-private-uploads",
+      "directoryId": "019000000000700080000000000000a1",
       "endpoint": "https://dfs.internal:9841",
       "notificationConfigs": [
         "projects/_/buckets/bkt-prj-dust-test-private-uploads/notificationConfigs/1"
       ],
       "prefix": "files/w/workspace-test/",
-      "readers": ["reader-test"],
+      "readers": [
+        "reader-test"
+      ],
+      "stagingDirectoryId": "019000000000700080000000000000a2",
       "tenant": "tenant-test",
       "tokenFile": "/etc/gcs-dfs/tokens/test-token",
       "workspaceId": "workspace-test",
-      "directoryId": "0190c3a0b1c27d4e8f0a1b2c3d4e5f60",
-      "stagingDirectoryId": "0190c3a0b1c27d4e8f0a1b2c3d4e5f61",
-      "writerSubject": "gcs-importer"
+      "writerSubject": "writer-test"
     }
   ],
   "cell": "cell-99999",

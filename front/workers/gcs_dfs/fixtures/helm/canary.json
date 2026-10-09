@@ -3,14 +3,14 @@
     "allowedReaderTokenFile": "/etc/gcs-dfs/canary-tokens/allowed",
     "bucket": "bkt-prj-dust-test-private-uploads",
     "deniedReaderTokenFile": "/etc/gcs-dfs/canary-tokens/denied",
+    "directoryId": "019000000000700080000000000000a1",
     "endpoint": "https://dfs.internal:9841",
     "notificationConfigs": [
       "projects/_/buckets/bkt-prj-dust-test-private-uploads/notificationConfigs/1"
     ],
     "prefix": "files/w/workspace-test/",
     "tenant": "tenant-test",
-    "workspaceId": "workspace-test",
-    "directoryId": "0190c3a0b1c27d4e8f0a1b2c3d4e5f60"
+    "workspaceId": "workspace-test"
   },
   "cell": "cell-99999",
   "deadlineSeconds": 180,
