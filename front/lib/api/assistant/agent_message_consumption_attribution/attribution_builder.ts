@@ -166,13 +166,10 @@ function getRunTokenRates(usage: RunUsageForAttribution): {
 const RECORDED_COST_ROUNDING_MICRO_USD = 0.5;
 
 /**
- * @cc [owner:sfriquet,label:product] recorded-cost-split
- * The output part MUST be `completionTokens` at the usage's output rate, and the input part MUST
- * be the rest of the recorded `costMicroUsd`, so the input part carries every cache read discount
- * and cache write premium. The split MUST fail (return null) when the output part exceeds the
- * recorded cost by more than the half micro-dollar the stored cost was rounded to.
- * `cachedTokenWeight` MUST be the cache read rate divided by the full input rate for the same
- * pricing entry, or 1 when the full input rate is zero.
+ * @cc [owner:sfriquet,label:product] output-at-list-price
+ * A call's output MUST be priced at its list price, and every cache discount or premium MUST go to
+ * its input. The split MUST fail when the output alone costs more than the call's recorded cost,
+ * beyond the rounding of the stored cost.
  */
 export function splitRecordedUsageCost(
   usage: RunUsageForAttribution & Pick<RunUsageWithRunKeyType, "costMicroUsd">

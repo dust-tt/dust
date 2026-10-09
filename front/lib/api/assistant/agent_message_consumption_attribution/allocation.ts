@@ -109,10 +109,9 @@ function groupByRunUsage(
 }
 
 /**
- * @cc [owner:sfriquet,label:product;backend] tool-result-read-by-next-call
- * A tool row's result input MUST be paid by the first usage, in run creation order, of the run
- * after the run whose usage emitted the tool call. A tool result with no such later run MUST NOT
- * receive any input cost.
+ * @cc [owner:sfriquet,label:product;backend] tool-result-paid-by-next-call
+ * A tool result MUST only be charged when a later LLM call of the message read it, and only from
+ * that call's input cost.
  */
 function mapUsageToNextCall<TUsage extends RunUsageWithRunKeyType>({
   runs,
@@ -150,13 +149,14 @@ function mapUsageToNextCall<TUsage extends RunUsageWithRunKeyType>({
 }
 
 /**
- * @cc [owner:sfriquet,label:product;backend] per-call-cost-split
- * Each usage's billed credits MUST be split between the items it paid for in proportion to its
- * recorded cost (see `recorded-cost-split`): the output part across its `output` and `reasoning`
- * rows and the tool-call output of the tool rows it emitted, by output tokens; the input part
- * between the tool results it read and its own `system` and `input` rows. Caches match prompts from
- * their start, so the tool results, which end the prompt, MUST take the usage's uncached tokens
- * first and the cached rate for the rest of their tokens, capped to the prompt.
+ * @cc [owner:sfriquet,label:product;backend] call-pays-its-own-rows
+ * An LLM call's credits MUST only go to what that call paid for: its output, its reasoning, the tool
+ * calls it emitted, its prompt, and the tool results it read.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] tool-result-at-paid-price
+ * A tool result MUST be charged at the price its reading call paid for its tokens: the cached price
+ * when the call read them from the provider's cache.
  */
 function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   billedCreditMicroByRunUsageModelId,
@@ -307,15 +307,18 @@ function buildBillingGroupReconciliations<
 }
 
 /**
- * @cc [owner:sfriquet,label:product;backend] reconcile-to-bill-by-call-cost
- * Tool direct credits MUST keep their stored amounts and MUST NOT exceed the bill. The bill minus
- * direct credits MUST equal, to the micro-credit, the LLM bill that `buildAgentMessageBillingPlan`
- * computes from the usages without origin waivers; reconciliation MUST fail otherwise, so
- * free-origin messages and any unexplained gap fail instead of being absorbed. Each usage's share
- * of its billing line (`usageAllocations`) MUST then be split between the items it paid for (see
- * `per-call-cost-split`), so the rounding up of a billing line stays on the items paid by its own
- * usages, and reconciliation MUST fail when that is impossible. Item amounts MUST use
- * largest-remainder rounding in item order so the total equals the bill exactly.
+ * @cc [owner:sfriquet,label:product;backend] tool-fee-as-billed
+ * A tool's fee MUST be attributed to that tool exactly as billed.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] rounding-stays-in-its-group
+ * The rounding up of a billing group (one execution and model) MUST only be spread over the rows
+ * paid by that group's LLM calls, in proportion to their cost.
+ */
+/**
+ * @cc [owner:sfriquet,label:product;backend] credits-add-up-to-bill
+ * The attributed credits MUST add up exactly to the message's bill. When the bill differs from its
+ * tool fees plus its LLM calls' rounded-up cost, attribution MUST fail instead of absorbing the gap.
  */
 function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   billedCredits,
