@@ -202,25 +202,49 @@ export const DocumentLiveAgent = ({
   );
 };
 
-interface DocumentSaveErrorProps {
-  error: string;
-}
-
-/** The save failure, in full under the status row. */
-export const DocumentSaveError = ({ error }: DocumentSaveErrorProps) => (
-  <p
-    role="alert"
-    className="-mt-2 mb-6 rounded-lg border border-border bg-muted-background px-4 py-3 text-foreground copy-sm print:hidden"
-  >
-    {error}
-  </p>
-);
-
-interface DocumentStatusProps {
+interface DocumentSaveState {
   editable: boolean;
   dirty: boolean;
   saving: boolean;
   error: string | null;
+}
+
+/** The save failure, or why saving is unavailable once editability is lost with unsaved changes. */
+const useSaveError = ({
+  editable,
+  dirty,
+  saving,
+  error,
+}: DocumentSaveState) => {
+  const { t } = useLingui();
+  return !editable && dirty && !saving
+    ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
+    : error;
+};
+
+const showsSaveStatus = ({ editable, dirty, saving }: DocumentSaveState) =>
+  editable || dirty || saving;
+
+/**
+ * @cc [owner:tdraier,label:product] document-save-error
+ * While the save status shows, the save error's full reason MUST show here, under the status row.
+ */
+export const DocumentSaveError = (props: DocumentSaveState) => {
+  const saveError = useSaveError(props);
+  return (
+    showsSaveStatus(props) &&
+    saveError && (
+      <p
+        role="alert"
+        className="-mt-2 mb-6 rounded-lg border border-border bg-muted-background px-4 py-3 text-foreground copy-sm print:hidden"
+      >
+        {saveError}
+      </p>
+    )
+  );
+};
+
+interface DocumentStatusProps extends DocumentSaveState {
   autosaveDebounceMs: number;
   onRetry: () => Promise<void>;
   /** Statuses shown in the badge after the save status, such as the live status. */
@@ -231,13 +255,12 @@ interface DocumentStatusProps {
   badge?: ReactNode;
 }
 
-/** The status row with the save status and the host's controls, and the save error under it. */
+/** The status row with the save status and the host's controls; `DocumentSaveError` goes under it. */
 /**
  * @cc [owner:tdraier,label:product] document-status-placement
  * The save status with its Retry and the statuses given as children MUST show in a badge above
  * the document that stays in view while the document scrolls, with the given controls next to
- * it and the given `badge` at the start of the row; the save error's full reason MUST show under
- * them.
+ * it and the given `badge` at the start of the row.
  */
 export const DocumentStatus = ({
   editable,
@@ -250,40 +273,30 @@ export const DocumentStatus = ({
   controls,
   badge,
 }: DocumentStatusProps) => {
-  const { t } = useLingui();
-  const showSaveStatus = editable || dirty || saving;
-  const saveError =
-    !editable && dirty && !saving
-      ? t`Saving is unavailable. Your unsaved changes are still here. Copy them before reopening.`
-      : error;
+  const saveError = useSaveError({ editable, dirty, saving, error });
+  const showSaveStatus = showsSaveStatus({ editable, dirty, saving, error });
 
   if (!showSaveStatus && !children && !controls && !badge) {
     return null;
   }
   return (
-    <>
-      <StatusRow>
-        {badge && <div className="mr-auto flex">{badge}</div>}
-        {(showSaveStatus || children) && (
-          <Chip
-            size="xs"
-            className="gap-2.5 border border-border bg-background"
-          >
-            {showSaveStatus && (
-              <DocumentSaveStatus
-                dirty={dirty}
-                saving={saving}
-                error={saveError}
-                onRetry={editable ? onRetry : undefined}
-                autosaveDebounceMs={autosaveDebounceMs}
-              />
-            )}
-            {children}
-          </Chip>
-        )}
-        {controls}
-      </StatusRow>
-      {showSaveStatus && saveError && <DocumentSaveError error={saveError} />}
-    </>
+    <StatusRow>
+      {badge && <div className="mr-auto flex">{badge}</div>}
+      {(showSaveStatus || children) && (
+        <Chip size="xs" className="gap-2.5 border border-border bg-background">
+          {showSaveStatus && (
+            <DocumentSaveStatus
+              dirty={dirty}
+              saving={saving}
+              error={saveError}
+              onRetry={editable ? onRetry : undefined}
+              autosaveDebounceMs={autosaveDebounceMs}
+            />
+          )}
+          {children}
+        </Chip>
+      )}
+      {controls}
+    </StatusRow>
   );
 };

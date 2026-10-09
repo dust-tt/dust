@@ -12,6 +12,7 @@ import { DocumentMarkdownPreview } from "@app/components/editor/document/Documen
 import {
   DocumentLiveAgent,
   DocumentLiveStatus,
+  DocumentSaveError,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
@@ -70,6 +71,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * With headerControlsContainer, the comments button MUST show in it and not above the document;
  * the save and live statuses MUST stay above the document. Without one, the comments button MUST
  * show with them.
+ */
+/**
+ * @cc [owner:tdraier,label:product] document-chrome-spans-article
+ * The status row, the comments list and the comment markers MUST span the whole article, not the
+ * document's max-width column, so that in a wide host they sit at its edges; the save error MUST
+ * stay in the column, under the status row.
  */
 /**
  * @cc [owner:tdraier,label:product] document-live-participants
@@ -278,6 +285,7 @@ export const DocumentView = ({
     verify: verifyCommentMessage,
     live: live.binding?.comments,
   });
+  const articleRef = useRef<HTMLElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const listId = useId();
   const showCommentsToggle = comments.comments.length > 0 || comments.canWrite;
@@ -330,44 +338,62 @@ export const DocumentView = ({
 
   return (
     <article
-      className={cn("@container relative", className)}
+      ref={articleRef}
+      className={cn(
+        "@container relative px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:p-0",
+        editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18",
+        className
+      )}
       onKeyDownCapture={handleKeyDown}
       onKeyDown={(event) => handleDocumentEscape(event, comments)}
     >
       {showControls &&
         headerControlsContainer &&
         createPortal(controls, headerControlsContainer)}
+      <DocumentStatus
+        editable={canEditFile}
+        dirty={dirty}
+        saving={saving}
+        error={error}
+        autosaveDebounceMs={autosaveDebounceMs}
+        onRetry={save}
+        controls={showControls && !headerControlsContainer && controls}
+        badge={badge}
+      >
+        {liveView && <DocumentLiveStatus status={liveView.status} />}
+      </DocumentStatus>
+      {editor && showCommentsToggle && (
+        <DocumentCommentsList
+          id={listId}
+          comments={comments}
+          renderCommentBody={renderCommentBody}
+          commentInputExtensions={commentInputExtensions}
+          mountPortalContainer={mountPortalContainer}
+          renderAuthorAvatar={renderCommentAuthorAvatar}
+        />
+      )}
+      {editor && comments.unresolved.length > 0 && (
+        <DocumentCommentMarkers
+          editor={editor}
+          comments={comments}
+          containerRef={articleRef}
+          mountPortalContainer={mountPortalContainer}
+        />
+      )}
       <div
         ref={contentRef}
         className={cn(
-          "relative mx-auto max-w-[50rem] px-5 pb-16 font-sans text-foreground antialiased @sm:px-12 print:max-w-none print:p-0",
-          // The comment bubbles sit in the right gutter, so narrow documents widen it for them.
-          comments.unresolved.length > 0 && "pr-12",
-          editable || showCommentsToggle ? "pt-5 @sm:pt-8" : "pt-8 @sm:pt-18"
+          "relative mx-auto max-w-[50rem] print:max-w-none",
+          // The comment bubbles sit in the article's right padding, so narrow documents widen it.
+          comments.unresolved.length > 0 && "pr-7 @sm:pr-0"
         )}
       >
-        <DocumentStatus
+        <DocumentSaveError
           editable={canEditFile}
           dirty={dirty}
           saving={saving}
           error={error}
-          autosaveDebounceMs={autosaveDebounceMs}
-          onRetry={save}
-          controls={showControls && !headerControlsContainer && controls}
-          badge={badge}
-        >
-          {liveView && <DocumentLiveStatus status={liveView.status} />}
-        </DocumentStatus>
-        {editor && showCommentsToggle && (
-          <DocumentCommentsList
-            id={listId}
-            comments={comments}
-            renderCommentBody={renderCommentBody}
-            commentInputExtensions={commentInputExtensions}
-            mountPortalContainer={mountPortalContainer}
-            renderAuthorAvatar={renderCommentAuthorAvatar}
-          />
-        )}
+        />
         {editable && (
           <DocumentEditingControls
             editor={editor}
@@ -383,14 +409,6 @@ export const DocumentView = ({
         >
           <EditorContent editor={editor} />
         </div>
-        {editor && comments.unresolved.length > 0 && (
-          <DocumentCommentMarkers
-            editor={editor}
-            comments={comments}
-            containerRef={contentRef}
-            mountPortalContainer={mountPortalContainer}
-          />
-        )}
         {editor && (
           <DocumentCommentCard
             editor={editor}
