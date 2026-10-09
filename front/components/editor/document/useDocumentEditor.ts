@@ -75,6 +75,7 @@ const loggedRefusals = new Set<string>();
  * `loggableRefusal` gives it and never its content, so refusals can be counted by reason.
  */
 const logRefusal = (reason: string, source: string) => {
+  // `rand` seeded with the source is a stable hash of it: the source itself is not kept.
   const key = `${rand(source)()}:${reason}`;
   if (loggedRefusals.has(key)) {
     return;

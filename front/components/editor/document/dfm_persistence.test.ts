@@ -260,11 +260,28 @@ describe("loadDfm", () => {
     );
   });
 
+  // Each source makes the editor write one of its own refusals: rewording one without updating
+  // the log allowlist fails here instead of silently logging it as invalid DFM.
   it.each([
-    "The Markdown uses formatting the editor cannot keep: a table at line 9.",
-    "The Markdown would not read back the same after editing, from line 3.",
-    'A comment is anchored where the editor cannot show it: "c1".',
-  ])("logs a reason the editor writes as it is: %s", (reason) => {
+    ["an unsupported element", "| a | b |\n|---|---|\n| 1 | 2 |\n"],
+    ["Markdown that changes when saved", "A\n\n* a\n+ b\n"],
+    [
+      "an anchor the editor cannot show",
+      `See [docs](https://example.com/:comment-start{id=c1}a:comment-end{id=c1})\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "a comment edge on text the editor cannot highlight",
+      `Hi :comment-start{id=c1}\`code\` there:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+    [
+      "a comment covering no text the editor can highlight",
+      `Run :comment-start{id=c1}\`npm test\`:comment-end{id=c1}\n\n${OPEN_THREAD}`,
+    ],
+  ])("logs the editor's own refusal for %s as it is", (_, source) => {
+    const loaded = loadDfm(source);
+    const reason = loaded.isErr() ? loaded.error : "";
+
+    expect(reason).not.toBe("");
     expect(loggableRefusal(reason)).toBe(reason);
   });
 

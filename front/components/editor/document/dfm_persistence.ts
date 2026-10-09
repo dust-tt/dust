@@ -65,7 +65,7 @@ const EDITOR_REFUSALS = [
   /^The Markdown could not be parsed\.$/,
   /^The Markdown does not fit the editor's document structure\.$/,
   /^The Markdown would not read back the same after editing(, from line \d+)?\.$/,
-  /^A comment is anchored where the editor cannot show it: [^\n]*\.$/,
+  /^A comment is anchored where the editor cannot show it: "[\w-]+"(, "[\w-]+")*\.$/,
   /^Comment "[\w-]+" (starts or ends on text the editor cannot highlight|covers no text the editor can highlight)\.$/,
   /^Comment anchor "[\w-]+" is (not paired|never closed) where the editor reads it\.$/,
 ];
@@ -125,9 +125,12 @@ export function loadDfm(source: string): Result<LoadedDfm, string> {
   const anchored = new Set(anchors.value.anchors.map((anchor) => anchor.id));
   const marked = getMarkedCommentIds(document);
   if (!sameIds(anchored, marked)) {
-    const lost = [...anchored].filter((id) => !marked.has(id));
+    const differing = [
+      ...[...anchored].filter((id) => !marked.has(id)),
+      ...[...marked].filter((id) => !anchored.has(id)),
+    ];
     return new Err(
-      `A comment is anchored where the editor cannot show it: ${lost
+      `A comment is anchored where the editor cannot show it: ${differing
         .map((id) => `"${id}"`)
         .join(", ")}.`
     );
