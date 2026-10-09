@@ -7,15 +7,15 @@
 //          and compares digests with A's native copy; B measures how long A's new files take to show
 //          up (the 1 s freshness bound).
 //   git:   see `git` below.
-// A round is valid only if the scenario's checks pass and every mount exits cleanly with no dropped
-// ops and no missed windows.
+// A round is valid only if the scenario's checks pass and every mount client exits 0, is never
+// OOM-killed, and its own totals are healthy (see MountSpec.healthy).
 
 import { execFile } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { promisify } from "node:util";
 import { Sandbox } from "e2b";
 
-import { henryImpl, type MountSpec } from "./impls.ts";
+import { CLIENT_CACHE_MIB, henryImpl, spoluImpl, type MountSpec } from "./impls.ts";
 
 // Built by bin/bootstrap (orchestrator/template.ts): 2 vCPU, 2 GB, like prod agent sandboxes.
 const TEMPLATE = "dfs-bench";
@@ -26,8 +26,9 @@ const MAX_ROUND_MS = 3 * 3600_000;
 const MOUNT_POINT = "/mnt/dfs";
 const BINARY = "/usr/local/bin/dfs-client";
 // Memory the mount client gets, page cache it charges included: a cgroup v2 limit, so going over it
-// gets the client OOM-killed and the round invalid.
-const MOUNT_MEMORY_MB = 512;
+// gets the client OOM-killed and the round invalid. 20% above the clients' 512 MiB cache budget
+// (CLIENT_CACHE_MIB in impls.ts), for their runtime and bookkeeping.
+const MOUNT_MEMORY_MB = 614;
 const MOUNT_CGROUP = "/sys/fs/cgroup/dfs-mount";
 const WORKLOAD = "/opt/fsbench.py";
 const JD_GENERATE = "/opt/jd_generate.py";
@@ -63,6 +64,17 @@ function loadImpl(): { mount: MountSpec; image: string; endpoint: string } {
       const tenant = JSON.parse(readFileSync(`${deployDir}/tenant.json`, "utf8"));
       return {
         mount: henryImpl(endpoint, tenant.tokens.bench, buildDir),
+        image: readFileSync(`${buildDir}/image`, "utf8").trim(),
+        endpoint,
+      };
+    }
+    case "spolu": {
+      const deployDir = `${stateDir}/runs/${runId}/spolu`;
+      const buildDir = `${stateDir}/impls/spolu/latest`;
+      const endpoint = readFileSync(`${deployDir}/endpoint`, "utf8").trim();
+      const session = JSON.parse(readFileSync(`${deployDir}/session.json`, "utf8"));
+      return {
+        mount: spoluImpl(endpoint, session.session_key, buildDir),
         image: readFileSync(`${buildDir}/image`, "utf8").trim(),
         endpoint,
       };
@@ -159,7 +171,7 @@ async function mount(sandbox: Sandbox, spec: MountSpec): Promise<Mounted> {
   handle.wait().catch(() => undefined);
   await root(
     sandbox,
-    `for i in $(seq 300); do grep -q '${spec.readyMarker}' /tmp/mount.out && exit 0; sleep 0.2; done; tail -20 /tmp/mount.log; exit 1`
+    `for i in $(seq 300); do cat /tmp/mount.out /tmp/mount.log | grep -qF '${spec.readyMarker}' && exit 0; sleep 0.2; done; tail -20 /tmp/mount.log; exit 1`
   );
   return { sandbox };
 }
@@ -177,24 +189,20 @@ async function unmount(mounted: Mounted, spec: MountSpec): Promise<Record<string
     .split("\n")
     .map(Number);
   const memory = { limit_mb: MOUNT_MEMORY_MB, peak_mb: Math.round(peakBytes / 2 ** 20), oom_kills: oomKills };
-  const logLines = (await root(mounted.sandbox, "cat /tmp/mount.log")).split("\n");
-  const totals = logLines
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {
-        return null;
-      }
-    })
-    .filter((row) => row && (row.message === spec.totalsMessage || row.fields?.message === spec.totalsMessage))
-    .pop();
-  return { sandbox: mounted.sandbox.sandboxId, exitCode, memory, totals: totals ?? null };
+  const totals = spec.totals((await root(mounted.sandbox, "cat /tmp/mount.log")).split("\n"));
+  return {
+    sandbox: mounted.sandbox.sandboxId,
+    exitCode,
+    memory,
+    healthy: spec.healthy(totals),
+    budget: spec.budget(totals),
+    commit_delays: spec.commitDelays(totals),
+    totals,
+  };
 }
 
-function cleanCommit(result: Record<string, unknown>): boolean {
-  const totals = result.totals as { commit?: { dropped_ops?: number; missed_windows?: number }; fields?: { commit?: { dropped_ops?: number; missed_windows?: number } } } | null;
-  const commit = totals?.commit ?? totals?.fields?.commit;
-  return result.exitCode === 0 && commit?.dropped_ops === 0 && commit?.missed_windows === 0;
+function cleanExit(result: Record<string, unknown>): boolean {
+  return result.exitCode === 0 && (result.memory as { oom_kills: number }).oom_kills === 0 && result.healthy === true;
 }
 
 interface Round {
@@ -292,7 +300,7 @@ async function main(): Promise<void> {
   }
   const impl = loadImpl();
   const startedAt = new Date();
-  const roundDir = `${MOUNT_POINT}/rounds/${startedAt.toISOString().replace(/[:.]/g, "-")}`;
+  const roundDir = `${[MOUNT_POINT, impl.mount.workDir].filter(Boolean).join("/")}/rounds/${startedAt.toISOString().replace(/[:.]/g, "-")}`;
   log(`run ${runId}: ${implName} at ${impl.endpoint}, scenario ${scenario}, template ${TEMPLATE}`);
 
   const sandboxes = await Promise.all(
@@ -345,8 +353,9 @@ async function main(): Promise<void> {
     const outcome = await run({ a, b, roundDir });
 
     const clients = await Promise.all(mounts.map((m) => unmount(m, impl.mount)));
-    const valid = outcome.passed && clients.every(cleanCommit);
+    const valid = outcome.passed && clients.every(cleanExit);
     log(`mount memory peak ${clients.map((c) => JSON.stringify(c.memory)).join(" / ")}`);
+    log(`commit delays (max ms) ${clients.map((c) => JSON.stringify(c.commit_delays)).join(" / ")}`);
 
     const result = {
       run_id: runId,
@@ -359,8 +368,9 @@ async function main(): Promise<void> {
       started_at: startedAt.toISOString(),
       finished_at: new Date().toISOString(),
       valid,
-      budget: (clients[0]?.totals as { budget?: unknown } | null)?.budget ?? null,
+      budget: clients[0]?.budget ?? null,
       mount_memory_mb: MOUNT_MEMORY_MB,
+      client_cache_mib: CLIENT_CACHE_MIB,
       network,
       ...outcome.data,
       clients,

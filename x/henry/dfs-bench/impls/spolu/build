@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-# Usage: impls/henry/build. Builds x/henry/dfs for linux/amd64, pushes the server image and copies
-# dfs-mount to .state/impls/henry/<tag>/. Prints the tag. Tag = last commit touching x/henry/dfs,
+# Usage: impls/spolu/build. Builds x/spolu/dfs/v5 for linux/amd64, pushes the server image and copies
+# dfs-fuse to .state/impls/spolu/<tag>/. Prints the tag. Tag = last commit touching x/spolu/dfs/v5,
 # suffixed with -dirty-<diff hash> when the tree has local changes.
 source "$(dirname "$0")/../../bin/lib.sh"
 require_dust_dev
 
-SRC="$(cd "$BENCH_DIR/../dfs" && pwd)"
+SRC="$(cd "$BENCH_DIR/../../spolu/dfs/v5" && pwd)"
 TAG="$(git -C "$SRC" log -1 --format=%h -- .)"
 [[ -z "$(git -C "$SRC" status --porcelain -- .)" ]] ||
   TAG="$TAG-dirty-$(git -C "$SRC" diff HEAD -- . | shasum -a 256 | cut -c1-8)"
-IMAGE="$REGISTRY/henry-dfs:$TAG"
-OUT="$STATE_DIR/impls/henry/$TAG"
+IMAGE="$REGISTRY/spolu-dfs-v5:$TAG"
+OUT="$STATE_DIR/impls/spolu/$TAG"
 
 use_docker
 log "building $IMAGE"
 docker buildx build --platform linux/amd64 --build-arg "FDB_VERSION=$FDB_VERSION" \
-  -f "$BENCH_DIR/impls/henry/Dockerfile" -t "$IMAGE" --load "$SRC"
+  -f "$BENCH_DIR/impls/spolu/Dockerfile" -t "$IMAGE" --load "$SRC"
 docker push -q "$IMAGE"
 
 mkdir -p "$OUT"
 container="$(docker create --platform linux/amd64 "$IMAGE")"
-docker cp -q "$container:/usr/local/bin/dfs-mount" "$OUT/dfs-mount"
+docker cp -q "$container:/usr/local/bin/dfs-fuse" "$OUT/dfs-fuse"
 docker rm "$container" >/dev/null
 echo "$IMAGE" >"$OUT/image"
-ln -sfn "$TAG" "$STATE_DIR/impls/henry/latest"
-log "built $IMAGE, dfs-mount in $OUT"
+ln -sfn "$TAG" "$STATE_DIR/impls/spolu/latest"
+log "built $IMAGE, dfs-fuse in $OUT"
 echo "$TAG"

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Usage: bin/matrix [run_id]. Runs every scenario against every implementation, each round on a
+# freshly cleared cluster (bin/clear, then impls/<impl>/deploy): untar of jd's corpus, untar of the
+# scatter corpus, git clone + status. Native numbers come from the same rounds (each one repeats
+# the work on sandbox A's local disk). Env: MATRIX_IMPLS (default "spolu henry"). One log per round
+# under .state/matrix/<run_id>/; results go where bin/bench puts them.
+source "$(dirname "$0")/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(current_run)}"
+OUT="$STATE_DIR/matrix/$RUN_ID"
+mkdir -p "$OUT"
+
+failed=0
+for impl in ${MATRIX_IMPLS:-spolu henry}; do
+  for round in jd scatter git; do
+    log "matrix: $impl $round"
+    {
+      "$BENCH_DIR/bin/clear" "$RUN_ID" &&
+        "$BENCH_DIR/impls/$impl/deploy" "$RUN_ID" &&
+        case "$round" in
+          git) "$BENCH_DIR/bin/bench" "$impl" git "$RUN_ID" ;;
+          *) BENCH_CORPUS="$round" "$BENCH_DIR/bin/bench" "$impl" basic "$RUN_ID" ;;
+        esac
+    } >"$OUT/$impl-$round.log" 2>&1 || {
+      failed=1
+      log "matrix: $impl $round FAILED, see $OUT/$impl-$round.log"
+    }
+  done
+done
+exit "$failed"

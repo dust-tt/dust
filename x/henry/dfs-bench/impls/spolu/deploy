@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Usage: impls/spolu/deploy [run_id]. Deploys the latest build on a run's cluster, creates one tenant
+# and a session for the mounts, and the `bench` directory rounds run in. Re-run after bin/clear. Writes .state/runs/<run_id>/spolu/
+# {endpoint,server.key,tenant.json,session.json}. Sessions expire after an hour.
+source "$(dirname "$0")/../../bin/lib.sh"
+require_dust_dev
+
+RUN_ID="${1:-$(current_run)}"
+BUILD="$STATE_DIR/impls/spolu/latest"
+[[ -f "$BUILD/image" ]] || die "no build; run impls/spolu/build"
+IMAGE="$(cat "$BUILD/image")"
+PREFIX="bench-$(date -u +%H%M%S)"
+OUT="$STATE_DIR/runs/$RUN_ID/spolu"
+mkdir -p "$OUT"
+rm -f "$OUT/server.key" "$OUT/tenant.json" "$OUT/session.json"
+fetch_credentials "$RUN_ID"
+
+# ConfigMaps are namespaced: copy the operator's cluster file next to the server.
+kubectl -n fdb get configmap fdb-config -o json |
+  jq '{apiVersion, kind, metadata: {name: .metadata.name, namespace: "dfs"}, data}' |
+  kubectl apply -f -
+(umask 077 && openssl rand -hex 32 >"$OUT/server.key")
+kubectl -n dfs create secret generic dfs-server-key --from-file=server.key="$OUT/server.key" \
+  --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+
+log "deploying $IMAGE (fdb prefix $PREFIX)"
+sed -e "s|__IMAGE__|$IMAGE|" -e "s|__PREFIX__|$PREFIX|" "$BENCH_DIR/impls/spolu/k8s/server.yaml" |
+  kubectl apply -f -
+kubectl -n dfs rollout status deploy/dfs-server --timeout=10m
+
+log "waiting for the load balancer"
+ip=""
+for _ in $(seq 60); do
+  ip="$(kubectl -n dfs get svc dfs-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}')"
+  [[ -n "$ip" ]] && break
+  sleep 5
+done
+[[ -n "$ip" ]] || die "load balancer has no IP"
+echo "http://$ip:7400" >"$OUT/endpoint"
+
+# RPCs run inside the server pod over loopback. `dfs` writes returned credentials to a fresh 0600
+# file (--output), other responses to stdout.
+rpc() {
+  local key="$1" method="$2" body="$3"
+  kubectl -n dfs exec -i deploy/dfs-server -- sh -c '
+    set -e; d="$(mktemp -d)"; trap "rm -rf $d" EXIT
+    (umask 077 && printf %s "$1" >"$d/key")
+    case "$2" in
+      create-tenant|create-session) dfs --endpoint http://127.0.0.1:7400 --key-file "$d/key" "$2" --output "$d/out" && cat "$d/out" ;;
+      *) dfs --endpoint http://127.0.0.1:7400 --key-file "$d/key" "$2" ;;
+    esac' \
+    rpc "$key" "$method" <<<"$body"
+}
+log "creating the tenant and a session"
+(umask 077 && rpc "$(cat "$OUT/server.key")" create-tenant '{"tenant_id":"bench","root_grants":["owner"]}' \
+  >"$OUT/tenant.json")
+tenant_key="$(jq -er '.tenant_key' "$OUT/tenant.json")" || die "create-tenant returned no key"
+(umask 077 && rpc "$tenant_key" create-session '{"tenant_id":"bench","grants":["owner"]}' >"$OUT/session.json")
+session_key="$(jq -er '.session_key' "$OUT/session.json")" || die "create-session returned no key"
+# The mount's root is a read-only projection; rounds run in a real directory below it, like
+# v5's own tests do.
+rpc "$session_key" create "$(jq -nc --arg root "$(jq -r .root_id "$OUT/tenant.json")" \
+  '{parent_id: $root, name: "bench", directory: true, mode: 493}')" >/dev/null
+log "spolu deployed: endpoint http://$ip:7400"

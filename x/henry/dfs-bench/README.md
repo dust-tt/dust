@@ -29,15 +29,23 @@ impls/henry/deploy    # 3 servers (one per zone) behind a load balancer, one pro
 bin/bench henry       # one `basic` round on 2 E2B sandboxes; results in .state/results/ and GCS
 ```
 
+Implementations: `henry` (x/henry/dfs, 3 server replicas) and `spolu` (x/spolu/dfs/v5, one server
+replica since its sessions live in server memory; plain gRPC). Both mount at the 1 s budget.
+`bin/matrix` runs every scenario (jd untar, scatter untar, git) against both, clearing the cluster
+and redeploying before each round.
+
 A `basic` round: both sandboxes time round trips to an in-cluster echo service (the network floor of
 an RPC), sandbox A untars jd's 10k-file corpus (the one behind `x/henry/dfs/DESIGN.md` numbers,
 checked by manifest hash) into its mount, sandbox B reads it all back through its own mount and
 checks digests, then B measures how long A's new files take to show up (the 1 s freshness bound).
 `BENCH_CORPUS=scatter` swaps in a metadata stress instead: ~1.8 files per directory over ~5.5k
-directories in random order, not comparable with other numbers. It only counts as valid if both mounts exit with no dropped ops and no
-missed commit windows. Each mount client runs in a cgroup capped at 512 MB (`MOUNT_MEMORY_MB` in
-`orchestrator/bench.ts`): going over it gets the client OOM-killed and the round invalid.
-`bin/clear` wipes the deployment too: re-run `deploy` after it.
+directories in random order, not comparable with other numbers.
+
+A round only counts as valid if both mounts exit with no dropped ops. Late commits are not failures:
+every client reports its max commit delays (client only, commit RPC, end to end; see
+`MountSpec.commitDelays`). Each mount client is configured with a 512 MiB cache and runs in a cgroup
+capped 20% above (`MOUNT_MEMORY_MB` in `orchestrator/bench.ts`): going over it gets the client
+OOM-killed and the round invalid. `bin/clear` wipes the deployment too: re-run `deploy` after it.
 
 `bin/bench henry git` runs the `git` round instead: A clones dust from GitHub natively and into its
 mount and times `git status`; B runs `git status` on A's clone through its own mount and checks every
