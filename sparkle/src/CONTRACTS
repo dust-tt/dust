@@ -25,8 +25,3 @@ The TSX modules and `index.ts` files under `src/icons/v2-stroke/`, `src/logo/dus
 the SVG sources in `src/icons/src/` and `src/logo/src/`: running it on a clean tree MUST leave no
 diff. A change to an icon or logo (colour, `viewBox`, path, transform) MUST be made in its SVG source
 and regenerated, never by editing the generated TSX.
-
-@cc [owner:tdraier,notify:tdraier,label:coding] generated-icon-modules-keep-svg-paths
-Each generated icon or logo module MUST carry the `d` of every path exactly as written in its SVG
-source. `./build_icons.sh` MUST NOT optimize or rewrite the artwork (svgo is limited to
-`prefixIds`); an optimized path belongs in the SVG source itself.

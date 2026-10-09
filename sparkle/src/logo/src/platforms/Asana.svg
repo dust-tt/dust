@@ -1,19 +1,13 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  fill="none"
-  viewBox="0 0 24 24"
->
-  <g clip-path="url(#Asana_svg__a)">
-    <rect width="24" height="24" fill="#F7F7F7" rx="6" />
-    <circle cx="12" cy="7.5" r="4" fill="#F06A6A" />
-    <circle cx="17" cy="16.5" r="4" fill="#F06A6A" />
-    <circle cx="7" cy="16.5" r="4" fill="#F06A6A" />
-  </g>
-  <defs>
-    <clipPath id="Asana_svg__a">
-      <path fill="#fff" d="M0 0h24v24H0z" />
-    </clipPath>
-  </defs>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_1796_97)">
+<rect width="24" height="24" rx="6" fill="#F7F7F7"/>
+<circle cx="12" cy="7.5" r="4" fill="#F06A6A"/>
+<circle cx="17" cy="16.5" r="4" fill="#F06A6A"/>
+<circle cx="7" cy="16.5" r="4" fill="#F06A6A"/>
+</g>
+<defs>
+<clipPath id="clip0_1796_97">
+<rect width="24" height="24" fill="white"/>
+</clipPath>
+</defs>
 </svg>

@@ -1,20 +1,11 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  fill="none"
-  viewBox="0 0 24 24"
->
-  <g clip-path="url(#Replicate_svg__a)">
-    <rect width="24" height="24" fill="#000" rx="6" />
-    <path
-      fill="#fff"
-      d="M18.76 6.576H7.766V19H6V5h12.76zm0 2.988h-7.661V19H9.332V7.99h9.428zm0 2.989h-4.328V19h-1.767v-8.032h6.095z"
-    />
-  </g>
-  <defs>
-    <clipPath id="Replicate_svg__a">
-      <rect width="24" height="24" fill="#fff" rx="4" />
-    </clipPath>
-  </defs>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_292_427)">
+<rect width="24" height="24" rx="6" fill="black"/>
+<path d="M18.7598 6.57617H7.76562V19H6V5H18.7598V6.57617ZM18.7598 9.56445H11.0986V19H9.33203V7.98926H18.7598V9.56445ZM18.7598 12.5527H14.4316V19H12.665V10.9678H18.7598V12.5527Z" fill="white"/>
+</g>
+<defs>
+<clipPath id="clip0_292_427">
+<rect width="24" height="24" rx="4" fill="white"/>
+</clipPath>
+</defs>
 </svg>

@@ -1,20 +1,14 @@
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  width="24"
-  height="24"
-  fill="none"
-  viewBox="0 0 24 24"
->
-  <g clip-path="url(#Zendesk_svg__a)">
-    <rect width="24" height="24" fill="#F7F7F7" rx="6" />
-    <path
-      fill="#000"
-      d="M12.818 5v10.5L21 5zM7.09 9.375C4.833 9.375 3 7.416 3 5h8.182c0 2.416-1.832 4.375-4.091 4.375M16.91 14.625c2.258 0 4.09 1.959 4.09 4.375h-8.182c0-2.416 1.832-4.375 4.091-4.375M11.182 8.5V19H3z"
-    />
-  </g>
-  <defs>
-    <clipPath id="Zendesk_svg__a">
-      <path fill="#fff" d="M0 0h24v24H0z" />
-    </clipPath>
-  </defs>
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_987_271)">
+<rect width="24" height="24" rx="6" fill="#F7F7F7"/>
+<path d="M12.8182 5L12.8182 15.5L21 5L12.8182 5Z" fill="black"/>
+<path d="M7.09091 9.375C4.83156 9.375 3 7.41625 3 5H11.1818C11.1818 7.41625 9.35026 9.375 7.09091 9.375Z" fill="black"/>
+<path d="M16.9091 14.625C19.1684 14.625 21 16.5838 21 19H12.8182C12.8182 16.5838 14.6497 14.625 16.9091 14.625Z" fill="black"/>
+<path d="M11.1818 8.5V19H3L11.1818 8.5Z" fill="black"/>
+</g>
+<defs>
+<clipPath id="clip0_987_271">
+<rect width="24" height="24" fill="white"/>
+</clipPath>
+</defs>
 </svg>
