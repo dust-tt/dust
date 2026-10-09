@@ -98,6 +98,27 @@ describe("loadDfm", () => {
     expect(getDocumentJSONComments(content)).toEqual([]);
   });
 
+  it.each([
+    "French frontend ~done.",
+    "5 * 3 = 15",
+    "Call snake_case_name.",
+    "Read array[0], see [note.",
+    "Open path\\to\\file.",
+    "Already escaped \\*b\\*.",
+  ])("opens and saves text with characters Markdown escapes: %s", (source) => {
+    const textOf = (markdown: string) =>
+      load(markdown).content.content?.[0].content?.[0].text;
+
+    // The serializer escapes them; the file must still open, and keep its text once saved.
+    expect(textOf(roundTrip(source))).toBe(textOf(source));
+  });
+
+  it("keeps real formatting next to escaped characters", () => {
+    const source = "~~Gone~~, **bold** and 5 \\* 3.\n";
+
+    expect(roundTrip(source)).toBe(source);
+  });
+
   it("keeps front matter in the envelope and threads in the document", () => {
     const { envelope, content } = load(
       `---\ntitle: x\n---\n\n# Title\n\n${THREAD}`
