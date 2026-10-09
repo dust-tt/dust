@@ -3,7 +3,7 @@ import React from "react";
 
 import { CitationGrid } from "./Citation";
 
-export const COMPOSER_VARIANTS = ["floating", "flat"] as const;
+export const COMPOSER_VARIANTS = ["floating", "flat", "comment"] as const;
 export type ComposerVariantType = (typeof COMPOSER_VARIANTS)[number];
 
 interface ComposerProps {
@@ -17,7 +17,12 @@ interface ComposerProps {
   leftActions?: React.ReactNode;
   /** Actions anchored to the bottom-right (voice, send). */
   rightActions?: React.ReactNode;
-  /** Surface style: `floating` (elevated card) or `flat` (bordered). */
+  /**
+   * Surface style: `floating` (elevated card), `flat` (bordered) or `comment`
+   * (the flat surface in a compact single row, for comments on documents).
+   * In `comment`, `leftActions` sit before the input and `rightActions` after
+   * it; `attachments` and `chips` are not rendered.
+   */
   variant?: ComposerVariantType;
   /** Apply the focused surface treatment (stronger shadow/border). */
   isFocused?: boolean;
@@ -45,7 +50,8 @@ export function Composer({
   className,
 }: ComposerProps) {
   const cardClassName = cn(
-    "rounded-squircle-40 relative flex w-full flex-col items-stretch overflow-hidden",
+    "relative flex w-full flex-col items-stretch overflow-hidden",
+    variant === "comment" ? "rounded-xl" : "rounded-squircle-40",
     variant === "floating" && [
       "border border-white/90",
       "transition-[background-color,box-shadow] duration-150 ease-emphasized motion-reduce:transition-none",
@@ -61,7 +67,8 @@ export function Composer({
         ? "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.035),inset_0px_0px_0px_1px_rgba(255,255,255,0.055),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
         : "dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]",
     ],
-    variant === "flat" && [
+    // `comment` reuses the flat surface, so hover/focus behave the same.
+    (variant === "flat" || variant === "comment") && [
       "border",
       "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
       isFocused ? "bg-stone-25" : "bg-[oklch(0.988_0_89.876)]",
@@ -72,6 +79,35 @@ export function Composer({
     ],
     className
   );
+
+  if (variant === "comment") {
+    return (
+      <div className={cardClassName}>
+        {/* Actions stay on the last line while the input grows. */}
+        <div
+          className={cn(
+            "flex items-end gap-1.5 p-2",
+            onContentClick && "cursor-text"
+          )}
+          onClick={onContentClick}
+        >
+          {leftActions != null && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              {leftActions}
+            </div>
+          )}
+          <div className="flex min-w-0 flex-1 flex-col items-start py-0.5">
+            {children}
+          </div>
+          {rightActions != null && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              {rightActions}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cardClassName}>

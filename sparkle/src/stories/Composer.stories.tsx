@@ -20,6 +20,7 @@ import {
   Code01,
   Command,
   DoubleQuotes,
+  Edit04,
   File02,
   Folder,
   Globe01,
@@ -1101,6 +1102,108 @@ export const Flat: Story = {
   render: () => (
     <div className="flex min-h-[480px] items-center justify-center p-10">
       <ComposerDemo variant="flat" />
+    </div>
+  ),
+};
+
+function CommentComposerDemo() {
+  const [text, setText] = useState("");
+  const [comments, setComments] = useState<{ id: string; text: string }[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const mentionItems: ComposerSuggestionItem[] = MOCK_AGENTS.map((agent) => ({
+    id: agent.id,
+    label: agent.name,
+    description: agent.description,
+    icon: Robot,
+    visual: agent.pictureUrl,
+  }));
+
+  const handleSubmit = () => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return;
+    }
+    setComments((prev) => [...prev, { id: `${Date.now()}`, text: trimmed }]);
+    setText("");
+  };
+
+  return (
+    <div className="flex w-full max-w-[428px] flex-col gap-3">
+      <p className="text-sm text-muted-foreground">
+        Comment on{" "}
+        <span className="rounded-sm bg-highlight-muted px-0.5 text-foreground">
+          the Q3 launch timeline
+        </span>
+      </p>
+      {comments.map((comment) => (
+        <div
+          key={comment.id}
+          className="whitespace-pre-wrap text-sm text-foreground"
+        >
+          {comment.text}
+        </div>
+      ))}
+      <Composer
+        variant="comment"
+        isFocused={isFocused}
+        onContentClick={() => inputRef.current?.focus()}
+        rightActions={
+          <>
+            <Button
+              variant="outline"
+              size="xs"
+              icon={Edit04}
+              tooltip="Suggest an edit"
+              className="rounded-full"
+            />
+            <Button
+              variant="highlight"
+              size="xs"
+              aria-label="Send comment"
+              icon={ArrowUp}
+              className="rounded-full"
+              onClick={handleSubmit}
+            />
+          </>
+        }
+      >
+        <ComposerInput
+          ref={inputRef}
+          value={text}
+          onChange={setText}
+          onSubmit={handleSubmit}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          placeholder="Type or @..."
+          className="min-h-5 text-sm"
+          suggestions={[
+            {
+              trigger: "@",
+              items: mentionItems,
+              // The trigger text is already removed: put the mention back.
+              onSelect: (item) => setText((prev) => `${prev}@${item.label} `),
+            },
+          ]}
+        />
+      </Composer>
+    </div>
+  );
+}
+
+/**
+ * The `comment` variant — the flat surface (same focus treatment) in a compact
+ * single row, for commenting on documents. The input grows with its content
+ * while the actions stay on the last line. Pass a smaller input with
+ * `className="min-h-5 text-sm"` on `ComposerInput`.
+ * @summary Interactive demo of the compact comment variant.
+ */
+export const Comment: Story = {
+  name: "Comment (documents)",
+  render: () => (
+    <div className="flex min-h-[320px] items-center justify-center p-10">
+      <CommentComposerDemo />
     </div>
   ),
 };
