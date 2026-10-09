@@ -5,6 +5,7 @@ import {
   isExternalSubscriberId,
 } from "@app/lib/notifications/transactional_emails";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { SupportedLocale } from "@app/types/locale";
@@ -38,7 +39,7 @@ describe("getNotificationLocale", () => {
 
   it("uses the workspace's locale for recipients without a Dust user", async () => {
     const workspace = await makeWorkspaceWithLocale("fr-FR");
-    const [external] = await emailRecipientsFromAddresses([
+    const [external] = await emailRecipientsFromAddresses(workspace, [
       "someone-outside@example.com",
     ]);
 
@@ -57,9 +58,11 @@ describe("getNotificationLocale", () => {
 });
 
 describe("emailRecipientsFromAddresses", () => {
-  it("targets the Dust user owning the address, an external subscriber otherwise", async () => {
+  it("targets the member owning the address, an external subscriber otherwise", async () => {
+    const workspace = await WorkspaceFactory.basic();
     const user = await UserFactory.basic();
-    const [asUser, asExternal] = await emailRecipientsFromAddresses([
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    const [asUser, asExternal] = await emailRecipientsFromAddresses(workspace, [
       ` ${user.email.toUpperCase()} `,
       "Outsider@Example.com",
     ]);
@@ -71,10 +74,25 @@ describe("emailRecipientsFromAddresses", () => {
     expect(asExternal.email).toBe("Outsider@Example.com");
     expect(asExternal.firstName).toBeUndefined();
 
-    const [again] = await emailRecipientsFromAddresses([
+    const [again] = await emailRecipientsFromAddresses(workspace, [
       "outsider@example.com",
     ]);
     expect(again.subscriberId).toBe(asExternal.subscriberId);
+  });
+
+  it("targets a user of another workspace as an external subscriber", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const otherWorkspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(otherWorkspace, user, { role: "user" });
+
+    const [recipient] = await emailRecipientsFromAddresses(workspace, [
+      user.email,
+    ]);
+
+    expect(isExternalSubscriberId(recipient.subscriberId)).toBe(true);
+    expect(recipient.email).toBe(user.email);
+    expect(recipient.firstName).toBeUndefined();
   });
 });
 

@@ -1,11 +1,13 @@
 import config from "@app/lib/api/config";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { LightWorkspaceType } from "@app/types/user";
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { createHash } from "crypto";
@@ -77,14 +79,19 @@ export function emailRecipientFromUser(user: {
 /**
  * @cc [owner:Nils-Fedrigo,label:product;security] recipients-from-addresses
  * Returns one recipient per entry of `emails`, in order. When `UserResource.fetchByEmails` finds a
- * Dust user for the address (the most recently updated one if several), the recipient MUST be that
- * user, with their sId as subscriber so the email follows their own locale. Otherwise it MUST be an
- * external subscriber for the trimmed address, with no name.
+ * Dust user for the address who is an active member of `workspace` (the most recently updated one
+ * if several), the recipient MUST be that user, with their sId as subscriber so the email follows
+ * their own locale. Otherwise, including for users of other workspaces only, it MUST be an external
+ * subscriber for the trimmed address, with no name.
  */
 export async function emailRecipientsFromAddresses(
+  workspace: LightWorkspaceType,
   emails: string[]
 ): Promise<EmailRecipient[]> {
-  const users = await UserResource.fetchByEmails(emails.map((e) => e.trim()));
+  const users = await MembershipResource.filterActiveMembers({
+    users: await UserResource.fetchByEmails(emails.map((e) => e.trim())),
+    workspace,
+  });
   const userByEmail = new Map<string, UserResource>();
   for (const user of users) {
     const key = user.email.toLowerCase();
