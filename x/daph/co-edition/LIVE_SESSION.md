@@ -246,14 +246,28 @@ session opening or closing is still recognized.
 **Playing an agent's edit back.** Built 2026-10-08, without awareness: the service sends a stateless
 `agent_activity` message (agent, `reading` or `editing`) to the document's editors. `reading` goes
 out once the agent's read passes the access check; `editing` goes out just before the agent's change
-is applied, since Hocuspocus may batch document updates but sends stateless messages at once. Each
-browser diffs its own document before and after the next remote change, so no range travels and
-nothing persists in awareness. It then plays the change back as decorations: removed text fading,
-new text revealed behind the agent's caret, a highlight settling. The document holds the whole change
-from the start, so the typing effect is presentation only. The status "agent is working" lasts a
-fixed 20 s after a read, since the service learns nothing between the read and the write; follow-ups
-listen to the agent message's own stream to end it precisely, then stream the tool's arguments to
-know the edited document while the model writes.
+is applied, since Hocuspocus may batch document updates but sends stateless messages at once.
+
+The change itself is attributed, in the shape of Yjs v14 attributions: while it is applied, before
+its update leaves however large it is, the service sends an `attribution` message with its author,
+its time, the Yjs items it inserted and deleted, and the text it removed, read before Yjs collects
+it, anchored at the item it starts with. A browser plays back a session transaction only when it
+holds those items, and builds what it shows from them: each inserted item still showing, located
+through the binding's own mapping, and each removed text at its anchor. Nothing is inferred from
+when a change arrives or from a diff of the text, so another editor's text is never shown as the
+agent's, even typed inside the agent's change, and a change a browser shows nowhere, such as text
+it already deleted, plays nothing there. It plays back as decorations: removed text fading, new
+text revealed behind the agent's caret, a highlight settling. The document holds the whole change
+from the start, so the typing effect is presentation only.
+
+The status "agent is working" lasts a fixed 20 s after a read, since the service learns nothing
+between the read and the write; follow-ups listen to the agent message's own stream to end it
+precisely, then stream the tool's arguments to know the edited document while the model writes.
+
+Target once Yjs v14 and `@y/prosemirror` are stable: send attributions to the v14 attribution
+manager instead of the `attribution` message, which maps id ranges to their authors the same way,
+and let the binding render them as attribution marks in place of the editor's own hunks. That also
+gives agent edits as suggestions to accept or reject.
 
 **Closing.** When the last client has been gone for a grace period (minutes, so a dropped
 connection or a reload reconnects to the same state), under the per-file lock: final checkpoint of

@@ -1,10 +1,13 @@
+import { agentEdits } from "@app/components/editor/document/AgentAttribution";
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
+import { onLiveAttribution } from "@app/lib/client/live_agents";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
+import type { HocuspocusProvider } from "@hocuspocus/provider";
 import type { AnyExtension } from "@tiptap/core";
 import { Extension } from "@tiptap/core";
 import { Collaboration } from "@tiptap/extension-collaboration";
@@ -79,6 +82,7 @@ export const buildLiveDocumentExtensions = ({
   user,
   comments,
   resolveImageSource,
+  provider,
 }: {
   t: Translate;
   document: Y.Doc;
@@ -86,9 +90,21 @@ export const buildLiveDocumentExtensions = ({
   user: DocumentLiveUser;
   comments: LiveCommentChannel;
   resolveImageSource: DocumentImageOptions["resolveSource"];
+  /** The session's connection, which announces the agents editing the document. */
+  provider?: HocuspocusProvider;
 }): AnyExtension[] => [
   ...buildDocumentEditorExtensions(t, { live: true, resolveImageSource }),
   liveCommentThreads(comments),
+  ...(provider
+    ? [
+        agentEdits({
+          document: provider.document,
+          // The provider applies what the session sends with itself as the origin.
+          isSessionOrigin: (origin) => origin === provider,
+          onAttribution: (listener) => onLiveAttribution(provider, listener),
+        }),
+      ]
+    : []),
   Collaboration.configure({ document, field: BODY_FRAGMENT_NAME }),
   ...(awareness
     ? [CollaborationCaret.configure({ provider: { awareness }, user })]
