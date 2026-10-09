@@ -3,8 +3,8 @@ import { DfsClient } from "@app/lib/dfs/client";
 import { DfsGrpcTransport } from "@app/lib/dfs/grpc_transport";
 import type { DfsWireMessage } from "@app/lib/dfs/proto";
 import { encodeDfsMessage } from "@app/lib/dfs/proto";
-import { getDfsServiceDefinition } from "@app/tests/utils/dfsServiceDefinition";
-import { DfsWireFactory } from "@app/tests/utils/DfsWireFactory";
+import { getDfsServiceDefinition } from "@app/tests/utils/dfs/dfsServiceDefinition";
+import { DfsWireFactory } from "@app/tests/utils/dfs/DfsWireFactory";
 import type {
   sendUnaryData,
   ServerUnaryCall,
