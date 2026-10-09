@@ -9,17 +9,25 @@ import type { Editor } from "@tiptap/core";
 import type { RefObject } from "react";
 import { useLayoutEffect, useState } from "react";
 
-// Anchors closer than this start on the same line, so their bubbles sit side by side.
-const SAME_LINE_PX = 12;
-const SLOT_WIDTH_PX = 44;
+// A bubble's height plus the space kept between two stacked bubbles.
+const BUBBLE_STEP_PX = 28;
 
 interface PlacedMarker {
   id: string;
   /** Vertical center relative to the container's top edge. */
   center: number;
-  /** Position from the right edge among the bubbles of the same line. */
-  slot: number;
 }
+
+/** Keeps each bubble, from anchors sorted by center, level with its anchor or just below the previous one. */
+export const stackMarkers = (anchors: PlacedMarker[]): PlacedMarker[] => {
+  const placed: PlacedMarker[] = [];
+  let previous = Number.NEGATIVE_INFINITY;
+  for (const anchor of anchors) {
+    previous = Math.max(anchor.center, previous + BUBBLE_STEP_PX);
+    placed.push({ id: anchor.id, center: previous });
+  }
+  return placed;
+};
 
 interface DocumentCommentMarkersProps {
   editor: Editor;
@@ -53,25 +61,17 @@ const measureMarkers = (
       ];
     })
     .sort((a, b) => a.center - b.center);
-  const placed: PlacedMarker[] = [];
 
-  for (const anchor of anchors) {
-    const slot = placed.filter(
-      (marker) => Math.abs(marker.center - anchor.center) < SAME_LINE_PX
-    ).length;
-    placed.push({ ...anchor, slot });
-  }
-
-  return placed;
+  return stackMarkers(anchors);
 };
 
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-markers
  * At every document width, each open comment with visible highlighted text MUST have its own
- * bubble in the right gutter, aligned with its first highlight and showing the number of
- * messages in its thread; the document MUST keep that gutter wide enough for a bubble while it
- * has open comments. Bubbles of comments starting on the same line MUST sit side by side.
- * Activating a bubble MUST reveal its comment.
+ * bubble in the right gutter, showing the number of messages in its thread, and no bubble MUST
+ * overlap the text or another bubble; the document MUST keep that gutter wide enough for a bubble
+ * while it has open comments. Each bubble MUST be level with its first highlight, or just below
+ * the previous bubble when they would overlap. Activating a bubble MUST reveal its comment.
  */
 export const DocumentCommentMarkers = ({
   editor,
@@ -95,17 +95,13 @@ export const DocumentCommentMarkers = ({
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-2 w-9 print:hidden">
-      {markers.map(({ id, center, slot }) => {
+      {markers.map(({ id, center }) => {
         const thread = threadsById.get(id);
         if (!thread) {
           return null;
         }
         const authorName = thread.messages[0].author.name;
         const count = thread.messages.length;
-        const messages = plural(count, {
-          one: "# message",
-          other: "# messages",
-        });
 
         return (
           <Tooltip
@@ -116,12 +112,12 @@ export const DocumentCommentMarkers = ({
             trigger={
               <button
                 type="button"
-                aria-label={t`Show comment by ${authorName}, ${messages}`}
+                aria-label={t`Show comment by ${authorName}, ${plural(count, { one: "# message", other: "# messages" })}`}
                 aria-current={id === activeId ? "true" : undefined}
                 onClick={() => reveal(id)}
-                style={{ top: center, right: slot * SLOT_WIDTH_PX }}
+                style={{ top: center }}
                 className={cn(
-                  "pointer-events-auto absolute flex h-6 -translate-y-1/2 items-center gap-1 rounded-full border border-border bg-background px-1.5 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-muted-background hover:text-foreground motion-reduce:transition-none",
+                  "pointer-events-auto absolute right-0 flex h-6 -translate-y-1/2 items-center gap-0.5 rounded-full border border-border bg-background px-1 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-muted-background hover:text-foreground motion-reduce:transition-none",
                   "aria-[current=true]:border-golden-300 aria-[current=true]:bg-golden-100 aria-[current=true]:text-foreground dark:aria-[current=true]:border-golden-500/60 dark:aria-[current=true]:bg-golden-400/25",
                   "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
