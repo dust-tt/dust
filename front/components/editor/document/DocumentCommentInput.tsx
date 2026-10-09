@@ -51,8 +51,8 @@ const hasContent = (editor: Editor | null) => {
   return found;
 };
 
-/** Selects the text of the last suggestion block, so typing replaces it. */
-const selectLastSuggestion = (editor: Editor) => {
+/** Selects the text of the last suggestion block, so typing replaces it; false without one. */
+const selectLastSuggestion = (editor: Editor): boolean => {
   let range: { from: number; to: number } | null = null;
   editor.state.doc.descendants((node, pos) => {
     if (
@@ -62,16 +62,19 @@ const selectLastSuggestion = (editor: Editor) => {
       range = { from: pos + 1, to: pos + 1 + node.content.size };
     }
   });
-  if (range) {
-    editor.commands.setTextSelection(range);
+  if (!range) {
+    return false;
   }
+  editor.commands.setTextSelection(range);
+  return true;
 };
 
 /**
  * @cc [owner:tdraier,label:react] document-comment-input-suggest
  * With onSuggest, the field MUST offer a Suggest button that appends the suggestion block after
- * the typed content, focuses the field and selects the block's text so typing replaces it. A
- * refused suggestion MUST leave the content unchanged and show the reason until the content
+ * the typed content, focuses the field and selects the block's text so typing replaces it. When
+ * the content already holds a suggestion block, Suggest MUST append nothing and only focus the
+ * field and select the last block's text. A refused suggestion MUST leave the content unchanged and show the reason until the content
  * changes or is submitted. While pending, Suggest MUST NOT change the content.
  */
 /**
@@ -199,11 +202,16 @@ export const DocumentCommentInput = ({
   });
 
   const suggest = () => {
-    if (pending) {
+    if (pending || !editor) {
+      return;
+    }
+    // The button inserts the commented text each time: a second block would repeat it.
+    if (selectLastSuggestion(editor)) {
+      editor.commands.focus();
       return;
     }
     const block = onSuggest?.();
-    if (!block || !editor) {
+    if (!block) {
       return;
     }
     if (block.isErr()) {

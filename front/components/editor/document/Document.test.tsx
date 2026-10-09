@@ -646,6 +646,28 @@ describe("Document comments", () => {
       within(field).getByText("Suggested change", { exact: false })
     ).toBeDefined();
   });
+
+  it("adds one suggestion however many times Suggest is pressed", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    startComment(dom, editor, "brave");
+    const field = await findCommentField("Comment");
+    typeComment(field, "Softer?");
+    const suggest = screen.getByRole("button", { name: "Suggest a change" });
+    fireEvent.click(suggest);
+    act(() => {
+      field.editor.commands.insertContent("gentle");
+      field.editor.commands.setTextSelection(1);
+    });
+    fireEvent.click(suggest);
+    fireEvent.click(suggest);
+
+    expect(field.editor.getMarkdown().trim()).toBe(
+      "Softer?\n\n```suggestion\ngentle\n```"
+    );
+    const { from, to } = field.editor.state.selection;
+    expect(field.editor.state.doc.textBetween(from, to)).toBe("gentle");
+  });
 });
 
 describe("Document for a file the editor cannot open", () => {
