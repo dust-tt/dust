@@ -1,5 +1,6 @@
 import { searchAgents } from "@app/lib/api/agents/search";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -16,6 +17,12 @@ import { removeNulls } from "@app/types/shared/utils/general";
  * facets) through resources, and only name skills, spaces and tools the caller can read: unreadable
  * ones are dropped from the facets. Editors-only skills are only named for callers who can write
  * to them.
+ */
+/**
+ * @cc [owner:adrsimon,label:product] agent-search-listing-favorite
+ * Each listed agent MUST carry `userFavorite`, true iff the agent is in the calling user's
+ * favorites, regardless of the selection mode; it is false for every agent when there is no
+ * calling user.
  */
 export async function searchAgentListings(
   auth: Authenticator,
@@ -45,27 +52,28 @@ export async function searchAgentListings(
   const facetCountsById = (
     values: { value: string; count: number }[] | undefined
   ) => new Map((values ?? []).map(({ value, count }) => [value, count]));
-  const [users, tags, skills, spaces, mcpServerViews] = await Promise.all([
-    UserResource.fetchByIds(editorIds),
-    tagIds.length > 0 ? TagResource.fetchByIds(auth, tagIds) : [],
-    facetValues.skills?.length
-      ? SkillResource.fetchByIds(auth, facetIds(facetValues.skills), {
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-        })
-      : [],
-    facetValues.spaces?.length
-      ? SpaceResource.fetchByIds(auth, facetIds(facetValues.spaces))
-      : [],
-    facetValues.mcpServerViews?.length
-      ? MCPServerViewResource.fetchByIds(
-          auth,
-          facetIds(facetValues.mcpServerViews)
-        )
-      : [],
-  ]);
+  const users = await UserResource.fetchByIds(editorIds);
+  const tags = await TagResource.fetchByIds(auth, tagIds);
+  const skills = await SkillResource.fetchByIds(
+    auth,
+    facetIds(facetValues.skills),
+    {
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    }
+  );
+  const spaces = await SpaceResource.fetchByIds(
+    auth,
+    facetIds(facetValues.spaces)
+  );
+  const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    auth,
+    facetIds(facetValues.mcpServerViews)
+  );
+  const favoriteIds = await AgentResource.listFavoriteIdsForCurrentUser(auth);
 
+  const favoriteIdSet = new Set(favoriteIds);
   const editorsById = new Map(
     users.map((user) => {
       const { sId, fullName, image } = user.toJSON();
@@ -150,6 +158,7 @@ export async function searchAgentListings(
     },
     agents: result.value.agents.map((agent) => ({
       ...agent,
+      userFavorite: favoriteIdSet.has(agent.sId),
       editors: removeNulls(
         [...new Set(agent.editorIds)].map((id) => editorsById.get(id))
       ),

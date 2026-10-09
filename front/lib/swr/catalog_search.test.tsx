@@ -35,6 +35,7 @@ const agent: SearchAgentsResponseBody["agents"][number] = {
   editedBy: null,
   activeUsersCount: null,
   updatedAt: 0,
+  userFavorite: false,
 };
 const skill: SkillListItemType = {
   sId: "skill-1",

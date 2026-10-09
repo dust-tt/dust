@@ -18,6 +18,7 @@ interface CatalogMetadata {
   authors: readonly string[];
   isDustProvided: boolean;
   activeUsersCount: number | null;
+  isFavorite: boolean;
 }
 
 export type CatalogItem = CatalogMetadata &
@@ -113,11 +114,12 @@ export function toSearchAgentCatalogItem(
     authors: agent.editors.map((editor) => editor.fullName),
     isDustProvided: agent.scope === "global",
     activeUsersCount: agent.activeUsersCount,
+    isFavorite: agent.userFavorite,
   };
 }
 
 export function toSearchSkillCatalogItem(
-  skill: SkillListItemType
+  skill: SkillListItemType & { isFavorite: boolean }
 ): CatalogItem {
   return {
     kind: "skill",
@@ -125,6 +127,7 @@ export function toSearchSkillCatalogItem(
     authors: skill.editors.map((editor) => editor.fullName),
     isDustProvided: isDustProvidedSkill(skill),
     activeUsersCount: skill.activeUsersCount,
+    isFavorite: skill.isFavorite,
   };
 }
 

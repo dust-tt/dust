@@ -21,10 +21,12 @@ import { useDebounce } from "@app/hooks/useDebounce";
 import { useSearchAgents } from "@app/hooks/useSearchAgents";
 import { formatNumber } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { useUpdateUserFavorite } from "@app/lib/swr/assistants";
 import { useCatalogSearch } from "@app/lib/swr/catalog_search";
+import { useUpdateSkillFavorite } from "@app/lib/swr/skill_configurations";
 import { tagsSorter } from "@app/lib/utils";
 import type { RichAgentMentionCandidate } from "@app/types/assistant/mentions";
-import type { WorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
@@ -38,11 +40,14 @@ import {
   Pin02,
   SearchInput,
   Spinner,
+  Star01,
+  StarFilled,
   Users01,
 } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 
 const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
@@ -51,6 +56,12 @@ const CATALOG_VIEWS: { id: CatalogView; label: MessageDescriptor }[] = [
   { id: "favorites", label: msg`Favorites` },
   { id: "mine", label: msg({ message: "Mine", context: "catalog filter" }) },
 ];
+
+const REVEAL_ON_ROW_HOVER_CLASSES = cn(
+  "transition-opacity duration-150 motion-reduce:transition-none",
+  "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
+  "focus-within:opacity-100 group-hover:opacity-100"
+);
 
 const CATALOG_SKELETON_ROW_COUNT = 6;
 const TAGS_SKELETON_WIDTHS = ["w-20", "w-28", "w-16", "w-24"];
@@ -182,6 +193,8 @@ function SearchCatalog({
         onLoadMore={catalogSearch.loadMore}
         canClearFilters={canClearFilters}
         onClearFilters={onClearFilters}
+        owner={owner}
+        onFavoriteChange={catalogSearch.setItemFavorite}
         onDetails={(item) =>
           onDetails(item, () => {
             void catalogSearch.mutate();
@@ -388,6 +401,12 @@ interface CatalogResultsProps extends CatalogActions {
   onLoadMore?: () => void;
   canClearFilters: boolean;
   onClearFilters: () => void;
+  owner: LightWorkspaceType;
+  onFavoriteChange: (
+    item: CatalogItem,
+    isFavorite: boolean,
+    save: () => Promise<boolean>
+  ) => Promise<void>;
 }
 
 function CatalogResults({
@@ -400,6 +419,8 @@ function CatalogResults({
   onLoadMore,
   canClearFilters,
   onClearFilters,
+  owner,
+  onFavoriteChange,
   onUse,
   onPin,
   onDetails,
@@ -454,6 +475,15 @@ function CatalogResults({
                 onUse(item);
               }}
               onPin={onPin && (() => onPin(item))}
+              favoriteToggle={
+                <CatalogFavoriteButton
+                  owner={owner}
+                  item={item}
+                  onFavoriteChange={(isFavorite, save) =>
+                    onFavoriteChange(item, isFavorite, save)
+                  }
+                />
+              }
               onDetails={() => {
                 trackDiscoverItemDetailsOpen({
                   source: "catalog",
@@ -487,14 +517,70 @@ function CatalogResults({
   );
 }
 
+interface CatalogFavoriteButtonProps {
+  owner: LightWorkspaceType;
+  item: CatalogItem;
+  onFavoriteChange: (
+    isFavorite: boolean,
+    save: () => Promise<boolean>
+  ) => Promise<void>;
+}
+
+function CatalogFavoriteButton({
+  owner,
+  item,
+  onFavoriteChange,
+}: CatalogFavoriteButtonProps) {
+  const { updateUserFavorite } = useUpdateUserFavorite({
+    owner,
+    agentConfigurationId: item.kind === "agent" ? item.agent.sId : "",
+  });
+  const { updateSkillFavorite } = useUpdateSkillFavorite({ owner });
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { t } = useLingui();
+
+  const toggleFavorite = async () => {
+    const isFavorite = !item.isFavorite;
+    setIsSaving(true);
+    await onFavoriteChange(isFavorite, () =>
+      item.kind === "agent"
+        ? updateUserFavorite(isFavorite)
+        : updateSkillFavorite(item.skill, isFavorite)
+    );
+    setIsSaving(false);
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      icon={item.isFavorite ? StarFilled : Star01}
+      aria-pressed={item.isFavorite}
+      tooltip={item.isFavorite ? t`Remove from favorites` : t`Add to favorites`}
+      onClick={toggleFavorite}
+      disabled={isSaving}
+      className={cn(!item.isFavorite && REVEAL_ON_ROW_HOVER_CLASSES)}
+    />
+  );
+}
+
 interface CatalogRowProps {
   item: CatalogItem;
   onUse: () => void;
   onPin?: () => void;
+  favoriteToggle?: ReactNode;
   onDetails: () => void;
 }
 
-export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
+export function CatalogRow({
+  item,
+  onUse,
+  onPin,
+  favoriteToggle,
+  onDetails,
+}: CatalogRowProps) {
   const { t } = useLingui();
   const name = getItemName(item);
   const avatar =
@@ -510,51 +596,54 @@ export function CatalogRow({ item, onUse, onPin, onDetails }: CatalogRowProps) {
     <div className="group relative flex items-center gap-4 border-b border-separator py-4 last:border-b-0">
       <div className="shrink-0 self-start">{avatar}</div>
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex min-w-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label={useLabel}
-            onClick={onUse}
-            className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
-          >
-            {name}
-          </button>
-        </div>
-        <div className="flex h-5 items-center gap-4 copy-sm">
-          <ItemAuthor item={item} />
-          {activeUsersCount !== null && (
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Icon visual={Users01} size="xs" />
-              <span aria-hidden>{formatNumber(activeUsersCount)}</span>
-              <span className="sr-only">
-                {t`${plural(activeUsersCount, {
-                  one: "# active user",
-                  other: "# active users",
-                })}`}
-              </span>
-            </span>
-          )}
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label={useLabel}
+                onClick={onUse}
+                className="heading-base notranslate cursor-pointer truncate text-left text-foreground after:absolute after:inset-0"
+              >
+                {name}
+              </button>
+            </div>
+            <div className="flex h-5 items-center gap-4 copy-sm">
+              <ItemAuthor item={item} />
+              {activeUsersCount !== null && (
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <Icon visual={Users01} size="xs" />
+                  <span aria-hidden>{formatNumber(activeUsersCount)}</span>
+                  <span className="sr-only">
+                    {t`${plural(activeUsersCount, {
+                      one: "# active user",
+                      other: "# active users",
+                    })}`}
+                  </span>
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="relative flex shrink-0 items-center gap-1">
+            {onPin && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Pin02}
+                tooltip={t`Pin to Featured`}
+                aria-label={t`Pin ${name} to Featured`}
+                onClick={onPin}
+                className={REVEAL_ON_ROW_HOVER_CLASSES}
+              />
+            )}
+            {favoriteToggle}
+          </div>
         </div>
         <p className="copy-sm mt-1 line-clamp-2 text-muted-foreground">
           {getItemDescription(item)}
         </p>
       </div>
-      <div className="relative flex shrink-0 items-center gap-1 self-start">
-        {onPin && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={Pin02}
-            tooltip={t`Pin to Featured`}
-            aria-label={t`Pin ${name} to Featured`}
-            onClick={onPin}
-            className={cn(
-              "transition-opacity duration-150 motion-reduce:transition-none",
-              "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-              "focus-visible:opacity-100 group-hover:opacity-100"
-            )}
-          />
-        )}
+      <div className="relative shrink-0 self-start">
         <Button
           variant="outline"
           size="sm"

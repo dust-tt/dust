@@ -15,6 +15,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 const mockSearch = vi.hoisted(() => vi.fn());
 
@@ -385,6 +386,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
               image: user.toJSON().image,
             },
           ],
+          isFavorite: false,
         })),
         total: 3,
         hasMore: false,
@@ -392,7 +394,11 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
         facets: {},
       });
       for (const hit of body.skills) {
-        expect(SkillListItemSchema.strict().parse(hit)).toEqual(hit);
+        expect(
+          SkillListItemSchema.extend({ isFavorite: z.boolean() })
+            .strict()
+            .parse(hit)
+        ).toEqual(hit);
         expect(hit).not.toHaveProperty("instructions");
         expect(hit).not.toHaveProperty("instructionsHtml");
         expect(hit).not.toHaveProperty("tools");

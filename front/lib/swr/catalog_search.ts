@@ -4,6 +4,7 @@ import type {
 } from "@app/components/assistant/conversation/discover/catalog";
 import {
   deduplicateCatalogItems,
+  getItemId,
   interleaveCatalogItems,
   toSearchAgentCatalogItem,
   toSearchSkillCatalogItem,
@@ -178,6 +179,29 @@ export function useCatalogSearch({
       void setSize(size + 1);
     }
   }, [hasMore, isValidating, setSize, size]);
+  const setItemFavorite = useCallback(
+    async (
+      target: CatalogItem,
+      isFavorite: boolean,
+      save: () => Promise<boolean>
+    ) => {
+      await mutate(
+        (pages) =>
+          pages?.map((page) => ({
+            ...page,
+            items: page.items.map((item) =>
+              item.kind === target.kind && getItemId(item) === getItemId(target)
+                ? { ...item, isFavorite }
+                : item
+            ),
+          })),
+        { revalidate: false }
+      );
+      await save();
+      await mutate();
+    },
+    [mutate]
+  );
 
   return {
     items,
@@ -188,5 +212,6 @@ export function useCatalogSearch({
     hasError: Boolean(error),
     loadMore,
     mutate,
+    setItemFavorite,
   };
 }

@@ -85,6 +85,14 @@ msgid "Couldn't load more. Try again in a moment."
 msgstr "Impossible d’en charger davantage. Réessayez dans un instant."
 
 #: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Remove from favorites"
+msgstr "Retirer des favoris"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
+msgid "Add to favorites"
+msgstr "Ajouter aux favoris"
+
+#: front/components/assistant/conversation/discover/DiscoverCatalog.tsx
 msgid "Chat with {name}"
 msgstr "Discuter avec {name}"
 

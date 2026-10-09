@@ -5,6 +5,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SkillListItemFactory } from "@app/tests/utils/SkillListItemFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -263,11 +264,39 @@ describe("POST /api/w/:wId/skills/search", () => {
             requestedSpaceIds: [],
             sId: "search-result",
             userFacingDescription: "Description",
+            isFavorite: false,
           },
         ],
       });
     }
   );
+
+  it("flags the current user's favorite skills", async () => {
+    const { workspace, auth } = await setup();
+    const favorite = await SkillFactory.create(auth, { name: "Favorite" });
+    const other = await SkillFactory.create(auth, { name: "Other" });
+    expect((await favorite.setFavorite(auth, true)).isOk()).toBe(true);
+    searchSkills.mockResolvedValue(
+      new Ok({
+        skills: [
+          SkillListItemFactory.build({ sId: favorite.sId }),
+          SkillListItemFactory.build({ sId: other.sId }),
+        ],
+        total: 2,
+        hasMore: false,
+        isFavoritesOnly: false,
+        facets: {},
+      })
+    );
+
+    const response = await searchRequest(workspace.sId);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).skills).toMatchObject([
+      { sId: favorite.sId, isFavorite: true },
+      { sId: other.sId, isFavorite: false },
+    ]);
+  });
 
   it("passes offset through and returns total", async () => {
     const { workspace } = await setup();
