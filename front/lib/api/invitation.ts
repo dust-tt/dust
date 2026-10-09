@@ -360,6 +360,7 @@ export async function handleMembershipInvitations(
   const { resultsWithoutEmail, invitationsToEmail } = transactionResult.value;
 
   const recipients = await emailRecipientsFromAddresses(
+    owner,
     invitationsToEmail.map(({ invitation }) => invitation.inviteEmail)
   );
   const emailResults = await concurrentExecutor(

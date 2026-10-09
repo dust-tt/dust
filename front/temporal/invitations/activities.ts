@@ -39,6 +39,7 @@ export async function sendInvitationReminderBatchActivity(): Promise<boolean> {
   for (const [workspaceId, batch] of byWorkspaceId) {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const recipients = await emailRecipientsFromAddresses(
+      auth.getNonNullableWorkspace(),
       batch.map((invitation) => invitation.inviteEmail)
     );
 
