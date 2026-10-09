@@ -235,73 +235,82 @@ function groupLink(
   source: SourceDefinitions | null,
   links: LinkTargets | null
 ): string {
-  const title = escapeMarkdown(group);
   const line = source?.lines.get(group);
   if (!links || !source || !line) {
-    return title;
+    return escapeMarkdown(group);
   }
-  return `[${title}](${blobUrl(links, source.path, line)})`;
+  return `[\`${group}\`](${blobUrl(links, source.path, line)})`;
 }
+
+// Colored symbols only render through GitHub math, as emoji cannot be tinted.
+const CHANGE_MARKERS = {
+  added: "$`\\color{#3fb950}{+}`$",
+  changed: "$`\\color{#d29922}{\\sim}`$",
+  removed: "$`\\color{#f85149}{-}`$",
+};
 
 export function renderSummary(
   files: TestFileSummary[],
   sourcesWithoutTests: string[],
   links: LinkTargets | null = null
 ): string {
-  const count = (key: "added" | "changed" | "removed" | "unchanged") =>
-    files.reduce((total, file) => total + file[key].length, 0);
-
-  const lines = [
-    COMMENT_MARKER,
-    `### 🧪 Test recap`,
-    "",
-    `**+${count("added")} added · ~${count("changed")} changed · −${count("removed")} removed** · ${count("unchanged")} already tested`,
-    "",
-  ];
+  const lines = [COMMENT_MARKER, "### Test recap", ""];
 
   for (const file of files) {
     const fileName = `\`${file.path}\``;
     lines.push(
-      links
-        ? `**[${fileName}](${blobUrl(links, file.path)})**`
-        : `**${fileName}**`
+      "---",
+      "",
+      `#### 📄 ${links ? `[${fileName}](${blobUrl(links, file.path)})` : fileName}`,
+      ""
     );
-    const link = (
-      entry: TestEntry,
-      kind: "added" | "changed" | "removed" | "unchanged"
-    ) =>
-      [
-        ...entry.groups.map((group) => groupLink(group, file.source, links)),
-        testLink(file.path, entry, kind, links),
-      ].join(" › ");
-    // GitHub comments render each line break, so entries need no list markers.
-    lines.push(
-      ...file.removed.map(
-        (entry) => `⚠️ **removed**: ${link(entry, "removed")}`
-      )
-    );
-    lines.push(...file.added.map((entry) => `➕ ${link(entry, "added")}`));
-    lines.push(...file.changed.map((entry) => `✏️ ${link(entry, "changed")}`));
+    const groupTitle = (entry: TestEntry) =>
+      entry.groups
+        .map((group) => groupLink(group, file.source, links))
+        .join(" › ");
+
+    // Changed tests are listed under their describe titles, one block per group.
+    const blocks = new Map<string, string[]>();
+    for (const kind of ["added", "changed", "removed"] as const) {
+      for (const entry of file[kind]) {
+        const title = groupTitle(entry);
+        const test = testLink(file.path, entry, kind, links);
+        const line = `${title ? "&emsp;" : ""}${CHANGE_MARKERS[kind]} ${kind === "removed" ? `~~${test}~~` : test}`;
+        blocks.set(title, [...(blocks.get(title) ?? []), line]);
+      }
+    }
+    if (blocks.size === 0) {
+      lines.push("_No test changes._", "");
+    }
+    for (const [title, entries] of blocks) {
+      // A trailing backslash breaks the line without starting a new paragraph.
+      lines.push([...(title ? [title] : []), ...entries].join("\\\n"), "");
+    }
+
     if (file.unchanged.length > 0) {
       lines.push(
+        "<details>",
+        `<summary>✅ ${file.unchanged.length} already tested</summary>`,
         "",
-        `<details><summary>${file.unchanged.length} already tested</summary>`,
+        ...file.unchanged.map(
+          (entry) =>
+            `- ${[groupTitle(entry), testLink(file.path, entry, "unchanged", links)].filter(Boolean).join(" › ")}`
+        ),
         "",
-        ...file.unchanged.map((entry) => link(entry, "unchanged")),
-        "",
-        "</details>"
+        "</details>",
+        ""
       );
     }
-    lines.push("");
   }
 
   if (sourcesWithoutTests.length > 0) {
     lines.push(
-      `<details><summary>${sourcesWithoutTests.length} changed files have no matching test file</summary>`,
+      "---",
       "",
-      ...sourcesWithoutTests.map((path) => `\`${path}\``),
+      "#### 🚫 Changed files without a test file",
       "",
-      "</details>"
+      ...sourcesWithoutTests.map((path) => `- \`${path}\``),
+      ""
     );
   }
 

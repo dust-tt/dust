@@ -145,24 +145,43 @@ describe("siblingTestPath", () => {
 });
 
 describe("renderSummary", () => {
-  it("lists removed tests first and collapses unchanged ones", () => {
+  const links = {
+    pullUrl: "https://github.com/o/r/pull/7",
+    repoUrl: "https://github.com/o/r",
+    headSha: "abc",
+  };
+
+  it("lists changed tests under their describe title and collapses unchanged ones", () => {
     const body = renderSummary(
       [
         {
           path: "a.test.ts",
           source: null,
-          added: [{ groups: [], name: "new", line: 5 }],
-          changed: [],
-          removed: [{ groups: [], name: "dropped", line: 3 }],
-          unchanged: [{ groups: [], name: "kept", line: 1 }],
+          added: [{ groups: ["g"], name: "new", line: 5 }],
+          changed: [{ groups: ["g"], name: "edited", line: 2 }],
+          removed: [{ groups: ["g"], name: "dropped", line: 3 }],
+          unchanged: [{ groups: ["g"], name: "kept", line: 1 }],
         },
       ],
       []
     );
 
     assert.ok(body.startsWith(COMMENT_MARKER));
-    assert.ok(body.indexOf("**removed**: dropped") < body.indexOf("➕ new"));
-    assert.match(body, /<details><summary>1 already tested<\/summary>\n\nkept/);
+    assert.ok(
+      body.includes(
+        [
+          "g\\",
+          "&emsp;$`\\color{#3fb950}{+}`$ new\\",
+          "&emsp;$`\\color{#d29922}{\\sim}`$ edited\\",
+          "&emsp;$`\\color{#f85149}{-}`$ ~~dropped~~\n",
+        ].join("\n")
+      )
+    );
+    assert.ok(
+      body.includes(
+        "<details>\n<summary>✅ 1 already tested</summary>\n\n- g › kept\n"
+      )
+    );
   });
 
   it("links touched tests to the PR diff and untouched ones to the head file", () => {
@@ -178,26 +197,22 @@ describe("renderSummary", () => {
         },
       ],
       [],
-      {
-        pullUrl: "https://github.com/o/r/pull/7",
-        repoUrl: "https://github.com/o/r",
-        headSha: "abc",
-      }
+      links
     );
     const fileHash = createHash("sha256").update("a.test.ts").digest("hex");
 
     assert.ok(
       body.includes(
-        `➕ [new](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)`
+        `[new](https://github.com/o/r/pull/7/files#diff-${fileHash}R5)`
       )
     );
     assert.ok(
       body.includes(
-        `**removed**: [dropped](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)`
+        `~~[dropped](https://github.com/o/r/pull/7/files#diff-${fileHash}L3)~~`
       )
     );
     assert.ok(
-      body.includes("\n[kept](https://github.com/o/r/blob/abc/a.test.ts#L1)")
+      body.includes("- [kept](https://github.com/o/r/blob/abc/a.test.ts#L1)")
     );
   });
 
@@ -214,22 +229,39 @@ describe("renderSummary", () => {
         },
       ],
       [],
-      {
-        pullUrl: "https://github.com/o/r/pull/7",
-        repoUrl: "https://github.com/o/r",
-        headSha: "abc",
-      }
+      links
     );
 
     assert.ok(
       body.includes(
-        "**[`a.test.ts`](https://github.com/o/r/blob/abc/a.test.ts)**"
+        "#### 📄 [`a.test.ts`](https://github.com/o/r/blob/abc/a.test.ts)"
       )
     );
     assert.ok(
       body.includes(
-        "[parse](https://github.com/o/r/blob/abc/a.ts#L12) › edge cases › [x](https://github.com/o/r/blob/abc/a.test.ts#L4)"
+        "[`parse`](https://github.com/o/r/blob/abc/a.ts#L12) › edge cases › [x](https://github.com/o/r/blob/abc/a.test.ts#L4)"
       )
+    );
+  });
+
+  it("flags test files without changes and lists sources without a test file", () => {
+    const body = renderSummary(
+      [
+        {
+          path: "a.test.ts",
+          source: null,
+          added: [],
+          changed: [],
+          removed: [],
+          unchanged: [],
+        },
+      ],
+      ["b.ts"]
+    );
+
+    assert.ok(body.includes("_No test changes._"));
+    assert.ok(
+      body.includes("#### 🚫 Changed files without a test file\n\n- `b.ts`")
     );
   });
 });

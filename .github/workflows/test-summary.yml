@@ -33,7 +33,7 @@ jobs:
             const comments = await github.paginate(github.rest.issues.listComments, params);
             const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.startsWith(marker));
             if (!existing) {
-              await github.rest.issues.createComment({ ...params, body: `${marker}\n### 🧪 Test recap\n\n_Computing…_` });
+              await github.rest.issues.createComment({ ...params, body: `${marker}\n### Test recap\n\n_Computing…_` });
             }
 
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -73,10 +73,10 @@ jobs:
             const failed = process.env.SUMMARIZE_OUTCOME !== 'success';
             const summary = failed ? '' : readFileSync(process.env.SUMMARY_PATH, 'utf8');
             const body = failed
-              ? `${marker}\n### 🧪 Test recap\n\n⚠️ Could not compute the summary, see the [workflow run](${process.env.RUN_URL}).`
+              ? `${marker}\n### Test recap\n\n⚠️ Could not compute the summary, see the [workflow run](${process.env.RUN_URL}).`
               : summary.startsWith(marker)
                 ? summary
-                : `${marker}\n### 🧪 Test recap\n\nNo tests related to this PR's changes.`;
+                : `${marker}\n### Test recap\n\nNo tests related to this PR's changes.`;
 
             const params = { ...context.repo, issue_number: context.payload.pull_request.number };
             const comments = await github.paginate(github.rest.issues.listComments, params);
