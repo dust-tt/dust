@@ -16,6 +16,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   MembershipSeatType,
+  MembershipUpgradeRequestCause,
   MembershipUpgradeRequestStatus,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
@@ -78,7 +79,13 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       user,
       reason,
       reasonRequired,
-    }: { user: UserResource; reason: string | null; reasonRequired: boolean }
+      cause,
+    }: {
+      user: UserResource;
+      reason: string | null;
+      reasonRequired: boolean;
+      cause: MembershipUpgradeRequestCause;
+    }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
     let row;
@@ -106,6 +113,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
             userId: user.id,
             status: "pending",
             reason,
+            cause,
           },
           { transaction }
         );
@@ -339,6 +347,7 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
       createdAt: this.createdAt.getTime(),
       resolvedAt: this.resolvedAt ? this.resolvedAt.getTime() : null,
       reason: this.reason,
+      cause: this.cause,
       requester: {
         sId: this.requester.sId,
         name: this.requester.fullName() || this.requester.name,

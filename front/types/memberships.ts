@@ -287,12 +287,27 @@ export type MembershipUpgradeRequestStatus =
 
 export const MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS = 1024;
 
+// Why the member opened an upgrade request. Narrower than `UserBlockedReason`:
+// only causes that this request flow can address. Existing rows are backfilled
+// to `personal_limit` in the migration that adds the column.
+export const MEMBERSHIP_UPGRADE_REQUEST_DEFAULT_CAUSE = "personal_limit";
+
+export const MEMBERSHIP_UPGRADE_REQUEST_CAUSES = [
+  MEMBERSHIP_UPGRADE_REQUEST_DEFAULT_CAUSE,
+  "group_shared_limit",
+  "no_seat",
+] as const;
+
+export type MembershipUpgradeRequestCause =
+  (typeof MEMBERSHIP_UPGRADE_REQUEST_CAUSES)[number];
+
 export interface MembershipUpgradeRequestType {
   sId: string;
   status: MembershipUpgradeRequestStatus;
   createdAt: number;
   resolvedAt: number | null;
   reason: string | null;
+  cause: MembershipUpgradeRequestCause;
   requester: {
     sId: string;
     name: string;

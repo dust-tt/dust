@@ -62,7 +62,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     </div>
   ) : null;
 
-  // Pool / group blocks aren't fixed by a personal upgrade request — only
+  // Workspace pool exhaustion isn't fixed by a member upgrade request — only
   // managers get a link through to the workspace usage page.
   const managerUsageButton = isManager ? (
     <div className="shrink-0">
@@ -109,7 +109,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
 
     case "group_shared_usage_limit_reached":
       return (
-        <UsageBannerShell action={managerUsageButton}>
+        <UsageBannerShell action={upgradeButton}>
           <span className="copy-sm grow truncate text-warning-500">
             <Trans>Your group has reached its shared usage limit.</Trans>
           </span>
