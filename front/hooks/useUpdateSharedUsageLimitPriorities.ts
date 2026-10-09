@@ -4,6 +4,7 @@ import {
 } from "@app/hooks/useNotification";
 import { invalidateSharedUsageLimitOverlaps } from "@app/hooks/useSharedUsageLimitOverlaps";
 import { clientFetch } from "@app/lib/egress/client";
+import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
@@ -48,7 +49,10 @@ export function useUpdateSharedUsageLimitPriorities({
         title: t`Order of group budgets updated`,
         description: t`Members in several groups now use the budget of the first one in the new order.`,
       });
-      await invalidateSharedUsageLimitOverlaps(owner.sId);
+      await Promise.all([
+        invalidateSharedUsageLimitOverlaps(owner.sId),
+        invalidateMembersUsage(owner.sId),
+      ]);
       return true;
     },
     [owner.sId, sendApiErrorNotification, sendNotification, t]

@@ -18,6 +18,7 @@ import {
   bucketsToArray,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
+import { resolveReadableSharedUsageLimitGroupsForUsers } from "@app/lib/api/groups/group_shared_usage_limit";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import {
@@ -62,6 +63,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import {
   lifetimeSpendCycleUtc,
+  resolveMetronomeCycle,
   spendLimitCycleOverrideForAuth,
 } from "@app/lib/spend_limits/cycle";
 import type { EffectiveSpendLimitSource } from "@app/lib/spend_limits/effective";
@@ -80,6 +82,7 @@ import type {
   CreditUsageStatus,
   CreditUsageTarget,
 } from "@app/types/api/credits/usage_status";
+import type { MemberSharedUsageLimitGroup } from "@app/types/api/groups/shared_usage_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
   MembershipSeatType,
@@ -175,6 +178,10 @@ export type MemberUsageType = {
   // Name of the group behind `spendLimitAwuCredits` when `spendLimitSource`
   // is `"group"`. Null for every other source.
   spendLimitGroupName: string | null;
+  // Group whose budget the member draws from, resolved by `getMembersUsage`
+  // only; `hidden` when the caller cannot read that group's usage. Null when
+  // budgets are off or the member draws from none.
+  sharedUsageLimitGroup?: MemberSharedUsageLimitGroup | null;
   // Id of the Metronome alert backing the effective cap (override or default),
   // for deep-linking to the dashboard. Null when uncapped.
   spendLimitAlertId: string | null;
@@ -327,24 +334,6 @@ async function fetchCreditsResetAt(
     return null;
   }
   return periodResult.value?.cycleEnd.toISOString() ?? null;
-}
-
-// The workspace's current Metronome contract billing period, or null when it
-// cannot be resolved (no contract, or a Metronome failure).
-export async function resolveMetronomeCycle(
-  workspace: LightWorkspaceType
-): Promise<BillingCycle | null> {
-  const periodResult = await getCachedMetronomeCurrentBillingPeriod(
-    workspace.sId
-  );
-  if (periodResult.isErr()) {
-    logger.warn(
-      { err: periodResult.error, workspaceId: workspace.sId },
-      "[MembersUsage] Failed to resolve billing period"
-    );
-    return null;
-  }
-  return periodResult.value;
 }
 
 // Per-user consumed AWU credits for the requested cycle, summed from the
@@ -2245,6 +2234,7 @@ export async function getMembersUsage({
     perUserSpendLimits,
     groupNamesByUserModelId,
     groupCapByUserModelId,
+    sharedUsageLimitGroupByUserId,
   ] = await Promise.all([
     fetchConsumedAwuCreditsByUserId({
       workspace,
@@ -2294,6 +2284,7 @@ export async function getMembersUsage({
       workspace,
       userModelIds: users.map((u) => u.id),
     }),
+    resolveReadableSharedUsageLimitGroupsForUsers(auth, { users }),
   ]);
   const {
     perUserOverrideAlerts,
@@ -2468,6 +2459,7 @@ export async function getMembersUsage({
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
     const scheduled = scheduledByUserId.get(membership.userId);
+    const sharedUsageLimitGroup = sharedUsageLimitGroupByUserId.get(userId);
 
     // For free seats, the real allowance is the granted total of the member's
     // per-user free-seat credit (a Dust rep can raise it via the
@@ -2698,6 +2690,12 @@ export async function getMembersUsage({
             : null,
         spendLimitAlertId,
         spendLimitWarningAlertId,
+        sharedUsageLimitGroup:
+          sharedUsageLimitGroup === undefined
+            ? null
+            : sharedUsageLimitGroup === null
+              ? { kind: "hidden" }
+              : sharedUsageLimitGroup.toMemberSharedUsageLimitGroupJSON(),
         creditState: normalizeUserCreditState(membership.creditState),
         rateLimiterState,
         isSpendCapped,

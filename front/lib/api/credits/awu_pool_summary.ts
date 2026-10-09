@@ -1,7 +1,4 @@
-import {
-  getEsConsumedAwuCreditsForWorkspace,
-  resolveMetronomeCycle,
-} from "@app/lib/api/credits/members_usage";
+import { getEsConsumedAwuCreditsForWorkspace } from "@app/lib/api/credits/members_usage";
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -25,6 +22,7 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
+import { resolveMetronomeCycle } from "@app/lib/spend_limits/cycle";
 import { buildCacheWithRedisKey, cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type {

@@ -6,7 +6,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { resolveMetronomeCycle } from "@app/lib/api/credits/members_usage";
+import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import {
   bucketsToArray,
   searchConsumptionAnalytics,
@@ -24,7 +24,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { listGroupsWithVerb } from "@app/lib/resources/group_management_access";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
-import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
+import {
+  resolveMetronomeCycle,
+  resolveSpendLimitCycleBounds,
+} from "@app/lib/spend_limits/cycle";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
@@ -35,6 +38,7 @@ import {
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
 import type {
   SharedUsageLimit,
   SetSharedUsageLimitResponse,
@@ -417,6 +421,34 @@ export async function resolveSharedUsageLimitGroupForUser(
 }
 
 /**
+ * @cc [owner:rfrenoy,label:security;product] shared-usage-limit-group-read-scope
+ * Workspace admins and workspace managers MAY see every member's shared usage limit group; anyone else MUST only
+ * see the groups on which they hold `read_usage` (group managers). A member whose group they hold no `read_usage`
+ * on maps to null, which only reveals that they draw from another group. Members without one, or whose group the
+ * caller cannot `read` (see `resolveSharedUsageLimitGroupsForUsers`), are absent.
+ */
+export async function resolveReadableSharedUsageLimitGroupsForUsers(
+  auth: Authenticator,
+  { users }: { users: UserResource[] }
+): Promise<Map<string, GroupResource | null>> {
+  const sharedUsageLimitGroupByUserId =
+    await resolveSharedUsageLimitGroupsForUsers(auth, { users });
+  if (auth.isManager() || sharedUsageLimitGroupByUserId.size === 0) {
+    return sharedUsageLimitGroupByUserId;
+  }
+
+  const readableGroupModelIds = new Set(
+    (await listGroupsWithVerb(auth, "read_usage")).map((group) => group.id)
+  );
+  return new Map(
+    [...sharedUsageLimitGroupByUserId].map(([userId, group]) => [
+      userId,
+      readableGroupModelIds.has(group.id) ? group : null,
+    ])
+  );
+}
+
+/**
  * Whether the member's shared usage limit group has used its whole limit for the current cycle. Fails open (not
  * blocked) when the cycle or the counter cannot be read.
  */
@@ -642,21 +674,28 @@ export async function readGroupSharedUsageCount(
  * Workspace admins and workspace managers MAY read the shared usage of every limited group; anyone
  * else MUST only get the limited groups on which they hold `read_usage` (group managers).
  *
- * Each limited group with its usage this cycle, or null when shared usage limits are not enabled. Reads
- * the counters without seeding them; groups whose counter reads 0 are filled from a single
- * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0.
+ * Each limited group with its usage this cycle and its pace against the cycle, or null when shared usage limits
+ * are not enabled. Reads the counters without seeding them; groups whose counter reads 0 are filled from a single
+ * analytics-index query. Usage that cannot be read (or an unknown cycle) reports 0; an unknown cycle reports no
+ * pace.
  */
-export async function getGroupSharedUsageLimits(
-  auth: Authenticator
-): Promise<{ group: GroupResource; usedAwuCredits: number }[] | null> {
+export async function getGroupSharedUsageLimits(auth: Authenticator): Promise<
+  | {
+      group: GroupResource;
+      usedAwuCredits: number;
+      usageTarget: CreditUsageTarget | null;
+    }[]
+  | null
+> {
   if (!(await areGroupSharedUsageLimitsEnabled(auth))) {
     return null;
   }
 
-  const [limitedGroups, readableGroups, bounds] = await Promise.all([
+  const [limitedGroups, readableGroups, bounds, cycle] = await Promise.all([
     GroupResource.listGroupsWithSharedUsageLimit(auth),
     auth.isManager() ? null : listGroupsWithVerb(auth, "read_usage"),
     resolveSpendLimitCycleBounds(auth.getNonNullableWorkspace()),
+    resolveMetronomeCycle(auth.getNonNullableWorkspace()),
   ]);
   const readableGroupModelIds = readableGroups
     ? new Set(readableGroups.map((group) => group.id))
@@ -701,10 +740,22 @@ export async function getGroupSharedUsageLimits(
     }
   }
 
-  return groups.map((group) => ({
-    group,
-    usedAwuCredits: microCreditsToCredits(countByGroupId.get(group.sId) ?? 0),
-  }));
+  const nowMs = Date.now();
+  return groups.map((group) => {
+    const usedAwuCredits = microCreditsToCredits(
+      countByGroupId.get(group.sId) ?? 0
+    );
+    const usageTarget =
+      bounds && cycle
+        ? (computeCreditUsageStatus({
+            consumedAwuCredits: usedAwuCredits,
+            limitAwuCredits: group.sharedUsageLimitAwuCredits ?? 0,
+            billingCycle: cycle,
+            nowMs,
+          })?.target ?? null)
+        : null;
+    return { group, usedAwuCredits, usageTarget };
+  });
 }
 
 /**

@@ -28,8 +28,8 @@ app.get(
       });
     }
     return ctx.json({
-      groups: usage.map(({ group, usedAwuCredits }) =>
-        group.toSharedUsageLimitJSON({ usedAwuCredits })
+      groups: usage.map(({ group, usedAwuCredits, usageTarget }) =>
+        group.toSharedUsageLimitJSON({ usedAwuCredits, usageTarget })
       ),
     });
   }

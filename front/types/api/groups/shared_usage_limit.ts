@@ -1,3 +1,5 @@
+import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
+
 export const MIN_SHARED_USAGE_LIMIT_AWU_CREDITS = 0;
 export const MAX_SHARED_USAGE_LIMIT_AWU_CREDITS = 100_000_000;
 
@@ -15,7 +17,18 @@ export type SharedUsageLimitWithUsage = {
   groupId: string;
   limitAwuCredits: number;
   usedAwuCredits: number;
+  usageTarget?: CreditUsageTarget | null;
 };
+
+export type VisibleMemberSharedUsageLimitGroup = {
+  kind: "visible";
+  groupId: string;
+  name: string;
+};
+
+export type MemberSharedUsageLimitGroup =
+  | VisibleMemberSharedUsageLimitGroup
+  | { kind: "hidden" };
 
 export type GetGroupsUsageResponseBody = {
   groups: SharedUsageLimitWithUsage[];

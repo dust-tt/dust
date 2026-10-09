@@ -6,6 +6,7 @@ import {
 import { invalidateSharedUsageLimitOverlaps } from "@app/hooks/useSharedUsageLimitOverlaps";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatNumber } from "@app/lib/i18n/format";
+import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import type { SharedUsageLimit } from "@app/types/api/groups/shared_usage_limit";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
@@ -61,6 +62,7 @@ export function useUpdateGroupSharedUsageLimit({
       await Promise.all([
         mutate(groupsUsageUrl(owner.sId)),
         invalidateSharedUsageLimitOverlaps(owner.sId),
+        invalidateMembersUsage(owner.sId),
       ]);
       return true;
     },

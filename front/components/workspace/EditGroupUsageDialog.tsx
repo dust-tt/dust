@@ -188,9 +188,6 @@ function useGroupBudgetOrderDraft(
   const budgetAwuCredits = draft.sharedLimitResult.ok
     ? draft.sharedLimitResult.awuCredits
     : (group.sharedUsageLimitUsage?.limitAwuCredits ?? null);
-  const poolCapAwuCredits = draft.memberLimitResult.ok
-    ? draft.memberLimitResult.awuCredits
-    : group.poolCapAwuCredits;
   const baseOrder = getBaseBudgetOrder(
     overlaps.map((overlap) => overlap.groupId),
     group.groupId,
@@ -209,7 +206,6 @@ function useGroupBudgetOrderDraft(
           name: group.name,
           position: index + 1,
           limitAwuCredits: budgetAwuCredits,
-          poolCapAwuCredits,
           usedAwuCredits: usageByGroupId.get(groupId)?.usedAwuCredits ?? 0,
           sharedMemberCount: null,
           isCurrentGroup: true,
