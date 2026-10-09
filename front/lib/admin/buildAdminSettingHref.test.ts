@@ -9,6 +9,9 @@ describe("buildAdminSettingHref", () => {
     expect(
       buildAdminSettingHref("/w/ws/governance", { sectionId: "pods" })
     ).toBe("/w/ws/governance#pods");
+    expect(
+      buildAdminSettingHref("/w/ws/governance?foo=1", { sectionId: "pods" })
+    ).toBe("/w/ws/governance?foo=1#pods");
   });
 
   it("sets tab when present", () => {
@@ -20,13 +23,13 @@ describe("buildAdminSettingHref", () => {
     ).toBe("/w/ws/usage?tab=settings#features");
   });
 
-  it("preserves existing query params", () => {
+  it("replaces existing query params with the tab", () => {
     expect(
       buildAdminSettingHref("/w/ws/members?foo=1", {
         sectionId: "roles",
         tab: "groups",
       })
-    ).toBe("/w/ws/members?foo=1&tab=groups#roles");
+    ).toBe("/w/ws/members?tab=groups#roles");
   });
 });
 

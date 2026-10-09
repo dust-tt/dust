@@ -7,6 +7,6 @@ export function parseOptionalInt(
   if (!value) {
     return undefined;
   }
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? undefined : parsed;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : undefined;
 }

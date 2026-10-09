@@ -6,7 +6,8 @@ export function buildAdminSettingHref(
   entry: Pick<AdminSettingEntry, "tab" | "sectionId">
 ): string {
   const [path, existingQuery = ""] = pageHref.split("?");
-  const params = new URLSearchParams(existingQuery);
+  // A tab deep link replaces the page's query rather than merging into it.
+  const params = new URLSearchParams(entry.tab ? "" : existingQuery);
   if (entry.tab) {
     params.set("tab", entry.tab);
   }

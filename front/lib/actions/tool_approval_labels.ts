@@ -55,7 +55,7 @@ export async function getApprovalArgsLabel({
     ) {
       const file = await FileResource.fetchById(auth, inputValue);
       if (file) {
-        return `Always allow agents to ${asDisplayName(toolName)} for file ${file?.fileName ?? inputValue}.`;
+        return `Always allow agents to ${asDisplayName(toolName)} on file ${file?.fileName ?? inputValue}.`;
       }
     }
   }
