@@ -27,6 +27,7 @@ export class UserModel extends BaseModel<UserModel> {
   declare firstName: string;
   declare lastName: string | null;
   declare imageUrl: string | null;
+  declare pronouns: string | null;
 
   declare isDustSuperUser: CreationOptional<boolean>;
 }
@@ -85,6 +86,10 @@ UserModel.init(
     },
     imageUrl: {
       type: DataTypes.STRING(2048),
+      allowNull: true,
+    },
+    pronouns: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     isDustSuperUser: {
