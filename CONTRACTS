@@ -516,11 +516,9 @@ try {
 ```
 
 @cc [owner:avervaet,label:testing] test-title-matches-body
-Each test MUST check the behavior its title states: its assertions MUST fail if that behavior
-breaks. A test MUST NOT only restate the implementation's output, assert solely on mocks it
-configured itself, or pass regardless of the code under test. Every claim in the title (e.g.
-"without updating", "before exchanging") MUST be asserted.
+A test MUST fail when the behavior its title states breaks, and every claim in its title MUST be
+asserted. Restating the implementation's output or asserting on self-configured mocks does not
+count.
 
-Reviewer: For each added or changed test, name a concrete implementation change that breaks the
-titled behavior and check that the test would fail. If it would still pass, or a title claim is not
-asserted, report it.
+Reviewer: For each added or changed test, name a code change that breaks the titled behavior. Report
+the test if it would still pass or if a title claim is not asserted.
