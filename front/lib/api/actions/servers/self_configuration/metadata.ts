@@ -8,17 +8,27 @@ export const ADJUST_REASONING_EFFORT_TOOL_NAME = "adjust_reasoning_effort";
 export const ADJUST_REASONING_EFFORT_SCHEMA = {
   direction: z
     .enum(REASONING_EFFORT_DIRECTIONS)
-    .describe("Whether to raise or lower your reasoning effort by one step."),
+    .describe("Whether to raise or lower your reasoning effort."),
+  steps: z
+    .number()
+    .int()
+    .min(1)
+    .optional()
+    .describe(
+      "How many steps to move, 1 by default. Efforts from lowest to highest: low, medium, " +
+        "high, xhigh, maximal."
+    ),
 };
 
 export const SELF_CONFIGURATION_TOOLS_METADATA = [
   {
     name: ADJUST_REASONING_EFFORT_TOOL_NAME,
     description:
-      "Raise or lower your reasoning effort by one step for the rest of the conversation, e.g. " +
-      "raise it when the user's requests need deeper reasoning than you currently give (hard " +
-      "math, intricate debugging, long multi-step analysis). The change applies from the user's " +
-      "next message on: the answer you are writing keeps its current effort.",
+      "Raise or lower your reasoning effort by one or more steps for the rest of the " +
+      "conversation, e.g. raise it when the user's requests need deeper reasoning than you " +
+      "currently give (hard math, intricate debugging, long multi-step analysis). The change " +
+      "stops at the highest effort available and applies from the user's next message on: the " +
+      "answer you are writing keeps its current effort.",
     schema: ADJUST_REASONING_EFFORT_SCHEMA,
     stake: "never_ask",
     eager: true,

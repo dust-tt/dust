@@ -2,7 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
-import { getNextRaisedReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
+import { raiseReasoningEffort } from "@app/lib/api/actions/servers/self_configuration/helpers";
 import {
   ADJUST_REASONING_EFFORT_TOOL_NAME,
   SELF_CONFIGURATION_TOOLS_METADATA,
@@ -12,7 +12,7 @@ import assert from "assert";
 
 const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
   [ADJUST_REASONING_EFFORT_TOOL_NAME]: async (
-    { direction },
+    { direction, steps = 1 },
     { runContext }
   ) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
@@ -25,15 +25,18 @@ const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
       );
     }
 
-    const { modelInfo } = runContext;
-    if (
-      getNextRaisedReasoningEffort(modelInfo, modelInfo.reasoningEffort) ===
-      null
-    ) {
+    const { modelInfo, stepContext } = runContext;
+    const from =
+      stepContext.reasoningEffortInEffect ?? modelInfo.reasoningEffort;
+    const to = raiseReasoningEffort(modelInfo, { from, steps });
+    if (to === undefined || to === from) {
       return new Err(
-        new MCPError("Your reasoning effort cannot be raised.", {
-          tracked: false,
-        })
+        new MCPError(
+          from === undefined
+            ? "Your reasoning effort cannot be raised."
+            : `Your reasoning effort is already at the highest one available ("${from}").`,
+          { tracked: false }
+        )
       );
     }
 
@@ -41,9 +44,8 @@ const handlers: ToolHandlers<typeof SELF_CONFIGURATION_TOOLS_METADATA> = {
       {
         type: "text",
         text:
-          "Your reasoning effort goes one step up from the user's next message on, unless it " +
-          "is already at the highest one available: the answer you are writing keeps its " +
-          "current effort.",
+          `Your reasoning effort goes from "${from}" to "${to}" from the user's next message on: ` +
+          "the answer you are writing keeps its current effort.",
       },
     ]);
   },

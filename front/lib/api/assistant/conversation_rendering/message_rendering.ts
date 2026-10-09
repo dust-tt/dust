@@ -31,6 +31,7 @@ import type {
   ModelMessageTypeMultiActions,
   EffortChangeMessageTypeModel,
 } from "@app/types/assistant/generation";
+import type { ReasoningEffortChange } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -128,15 +129,20 @@ function renderAgentSteps(
         messages.push(...enabledSkillMessages);
       }
       // An effort change is rendered after the whole step on every later render, so it holds and
-      // the cached prefix stays stable. Parallel changes in one step count once. The agent loop
-      // resolves its effort against the run's effort.
-      const direction = step.actions
-        .map((a) => a.effortChange)
-        .find((d) => d !== null);
-      if (direction) {
+      // the cached prefix stays stable. Parallel changes in one step count once: the largest one
+      // applies. The agent loop resolves its effort against the run's effort.
+      const effortChange = step.actions.reduce<ReasoningEffortChange | null>(
+        (largest, { effortChange: change }) =>
+          change !== null && (largest === null || change.steps > largest.steps)
+            ? change
+            : largest,
+        null
+      );
+      if (effortChange) {
         messages.push({
           role: "effort_change",
-          direction,
+          direction: effortChange.direction,
+          steps: effortChange.steps,
           effort: null,
         } satisfies EffortChangeMessageTypeModel);
       }

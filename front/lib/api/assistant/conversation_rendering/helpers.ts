@@ -45,7 +45,7 @@ import type {
   ModelMessageTypeMultiActions,
   UserMessageTypeModel,
 } from "@app/types/assistant/generation";
-import type { ReasoningEffortDirection } from "@app/types/assistant/models/reasoning";
+import type { ReasoningEffortChange } from "@app/types/assistant/models/reasoning";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -146,7 +146,7 @@ export type Step = {
     call: FunctionCallType;
     result: FunctionMessageTypeModel;
     enabledSkillMessages: UserMessageTypeModel[];
-    effortChange: ReasoningEffortDirection | null;
+    effortChange: ReasoningEffortChange | null;
   }[];
 };
 

@@ -14,6 +14,11 @@ const LEGACY_LIGHT_REASONING_EFFORT = "light";
 export const REASONING_EFFORT_DIRECTIONS = ["raise", "lower"] as const;
 export type ReasoningEffortDirection =
   (typeof REASONING_EFFORT_DIRECTIONS)[number];
+export type ReasoningEffortChange = {
+  direction: ReasoningEffortDirection;
+  // Number of steps to move, at least 1.
+  steps: number;
+};
 
 export const REASONING_EFFORT_LABELS: Record<ReasoningEffort, string> = {
   none: "None",

@@ -692,10 +692,12 @@ export async function runModel(
   }
 
   // Resolve the effort changes against this run's effort (raise-keeps-model-tier).
-  modelConversationRes.value.modelConversation.messages = resolveEffortChanges(
+  const resolvedEffortChanges = resolveEffortChanges(
     modelInfo,
     modelConversationRes.value.modelConversation.messages
   );
+  modelConversationRes.value.modelConversation.messages =
+    resolvedEffortChanges.messages;
 
   if (disableToolUse) {
     // Tool choice "none" alone leaves the model with nothing to do; spell it out
@@ -1343,7 +1345,10 @@ export async function runModel(
     model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
-  });
+  }).map((stepContext) => ({
+    ...stepContext,
+    reasoningEffortInEffect: resolvedEffortChanges.effortInEffect,
+  }));
 
   return {
     actions,

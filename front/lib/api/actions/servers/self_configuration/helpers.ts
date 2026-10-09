@@ -42,14 +42,32 @@ export function getNextRaisedReasoningEffort(
   );
 }
 
-// Resolves the rendered effort changes against this run's effort: each raise goes one step up from
-// the effort in effect (getNextRaisedReasoningEffort), and changes that cannot apply are dropped.
+// The effort reached by raising `from` by up to `steps` steps for this run, stopping at the highest
+// one available (getNextRaisedReasoningEffort). Equals `from` when it cannot be raised.
+export function raiseReasoningEffort(
+  modelInfo: StreamModelInfo,
+  { from, steps }: { from: ReasoningEffort | undefined; steps: number }
+): ReasoningEffort | undefined {
+  let effort = from;
+  for (let step = 0; step < steps; step++) {
+    const next = getNextRaisedReasoningEffort(modelInfo, effort);
+    if (next === null) {
+      break;
+    }
+    effort = next;
+  }
+  return effort;
+}
+
+// Resolves the rendered effort changes against this run's effort: each raise climbs from the effort
+// in effect (raiseReasoningEffort), and changes that cannot apply at all are dropped. Also returns
+// the effort in effect once every change is applied.
 export function resolveEffortChanges<M extends ModelMessageTypeMultiActions>(
   modelInfo: StreamModelInfo,
   messages: M[]
-): M[] {
+): { messages: M[]; effortInEffect: ReasoningEffort | undefined } {
   let effortInEffect = modelInfo.reasoningEffort;
-  return removeNulls(
+  const resolved = removeNulls(
     messages.map((m) => {
       if (m.role !== "effort_change") {
         return m;
@@ -58,12 +76,16 @@ export function resolveEffortChanges<M extends ModelMessageTypeMultiActions>(
       if (m.direction !== "raise") {
         return null;
       }
-      const effort = getNextRaisedReasoningEffort(modelInfo, effortInEffect);
-      if (effort === null) {
+      const effort = raiseReasoningEffort(modelInfo, {
+        from: effortInEffect,
+        steps: m.steps,
+      });
+      if (effort === undefined || effort === effortInEffect) {
         return null;
       }
       effortInEffect = effort;
       return { ...m, effort };
     })
   );
+  return { messages: resolved, effortInEffect };
 }
