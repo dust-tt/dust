@@ -2,6 +2,7 @@ mod cache;
 pub mod client;
 pub mod engine;
 pub mod freshness;
+pub mod import_http;
 pub mod model;
 #[cfg(target_os = "linux")]
 pub mod mount;

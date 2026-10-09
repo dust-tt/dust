@@ -40,6 +40,9 @@ export function getDefaultInit(): Promise<RequestInit> | null {
 }
 
 const config = {
+  getGcsDfsWorkerConfigPath: (): string => {
+    return EnvironmentConfig.getEnvVariable("GCS_DFS_WORKER_CONFIG_PATH");
+  },
   getPreStopDrainDurationMs: (): number => {
     const value = EnvironmentConfig.getOptionalEnvVariable(
       "PRESTOP_DRAIN_DURATION_SECONDS"

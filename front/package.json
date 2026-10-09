@@ -41,7 +41,11 @@
     "debug:profiler": "node ./scripts/debug/run_profiler.ts",
     "generate:custom-models": "tsx scripts/fetch-custom-models.ts",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts",
-    "simulated-failure-model": "tsx scripts/simulated_failure_model.ts"
+    "simulated-failure-model": "tsx scripts/simulated_failure_model.ts",
+    "build:gcs-dfs-worker": "esbuild start_gcs_dfs_worker.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/start_gcs_dfs_worker.js --sourcemap",
+    "start:gcs-dfs-worker": "node dist/start_gcs_dfs_worker.js",
+    "build:gcs-dfs-health": "esbuild check_gcs_dfs_health.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/check_gcs_dfs_health.js --sourcemap",
+    "check:gcs-dfs-health": "node dist/check_gcs_dfs_health.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
