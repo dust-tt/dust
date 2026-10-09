@@ -30,11 +30,12 @@ msgid "Insert"
 msgstr "Insérer"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Close"
 msgstr "Fermer"
 
 #: front/components/editor/document/DocumentCommentInput.tsx
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Suggested change"
 msgstr "Modification suggérée"
 
@@ -59,7 +60,7 @@ msgid "Show {count, plural, one {# comment} other {# comments}}"
 msgstr "Afficher {count, plural, one {# commentaire} other {# commentaires}}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Comment by {authorName}"
 msgstr "Commentaire de {authorName}"
 
@@ -75,95 +76,104 @@ msgstr "Commentaire d’un auteur inconnu"
 msgid "Show comment by unknown"
 msgstr "Afficher le commentaire d’un auteur inconnu"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
 msgstr "Dust ne peut pas confirmer l’auteur de ce message. Il peut provenir d’un agent ou d’une modification faite en dehors de l’éditeur."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Unverified"
 msgstr "Non vérifié"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Apply"
 msgstr "Appliquer"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Replaces:"
 msgstr "Remplace :"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "The commented text was removed."
 msgstr "Le texte commenté a été supprimé."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "With:"
 msgstr "Par :"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Deletes the text."
 msgstr "Supprime le texte."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "New comment"
 msgstr "Nouveau commentaire"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Commented text:"
-msgstr "Texte commenté :"
-
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Comment"
 msgstr "Commenter"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Add a comment…"
-msgstr "Ajouter un commentaire…"
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Comment or @mention…"
+msgstr "Commentez ou @mentionnez…"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reopen"
 msgstr "Rouvrir"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Resolve"
 msgstr "Résoudre"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Delete comment"
 msgstr "Supprimer le commentaire"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#. placeholder {0}: replies.length
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "{0, plural, one {# reply} other {# replies}}"
+msgstr "{0, plural, one {# réponse} other {# réponses}}"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Commented text:"
+msgstr "Texte commenté :"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reply"
 msgstr "Répondre"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Reply…"
-msgstr "Répondre…"
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Reply or @mention…"
+msgstr "Répondez ou @mentionnez…"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Comments"
 msgstr "Commentaires"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Comments, {unresolvedCount, plural, one {# unresolved} other {# unresolved}}"
 msgstr "Commentaires, {unresolvedCount, plural, one {# non résolu} other {# non résolus}}"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Close comments"
 msgstr "Fermer les commentaires"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "No comments yet"
 msgstr "Aucun commentaire pour l’instant"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Select some text and choose Comment to start a thread."
-msgstr "Sélectionnez du texte et choisissez Commenter pour lancer une discussion."
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Select text to add a comment."
+msgstr "Sélectionnez du texte pour ajouter un commentaire."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Resolved ({resolvedCount})"
 msgstr "Résolus ({resolvedCount})"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "All comments"
+msgstr "Tous les commentaires"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"

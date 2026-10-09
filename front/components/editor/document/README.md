@@ -55,11 +55,13 @@ code, keeps the file read-only, since a save would drop or shrink it.
 
 Pass `commentAuthor` to let the current user comment; without it, or read-only, comments stay
 browsable. Selected text shows a Comment action, also reachable with Cmd/Ctrl+Alt+M, which
-opens the panel on a new comment card at the text's place among the open threads. Posting,
+opens a new comment card floating under the text. Clicking a highlight or its margin marker floats
+its thread in a card under the text; the comments button above the document opens a list of every
+thread, pinned at the top right, where the picked thread unfolds in place. Posting,
 replying, resolving and deleting stay out of text undo history. A message the codec cannot
 write, such as one with a line starting with `::`, is refused before it reaches the document.
 The host renders message bodies through `renderCommentBody`, and authors' avatars through
-`renderCommentAuthorAvatar`, which the panel calls only once it has been opened.
+`renderCommentAuthorAvatar`, called only for threads shown in the card or the list.
 
 ## Mentions
 
@@ -87,14 +89,14 @@ verified one moved within its thread (`front/lib/api/files/dfm_comment_signature
 never rewrites the file. Signatures bind the file's path and the message before each one, so a
 renamed or moved file reads as unverified. A comment an agent posts with `documents.add_comment`
 is signed by the server for that agent (`front/lib/api/files/dfm_agent_comments.ts`). With
-`verifyCommentMessage`, the panel marks each message whose signature does not check out as
+`verifyCommentMessage`, threads mark each message whose signature does not check out as
 Unverified, such as one written from a sandbox or by an agent editing the file directly; without
 it, no message is marked.
 
 ## Suggestions
 
 A message can suggest new wording for the commented text, in a `suggestion` block as on
-GitHub (see the DFM README). The panel shows the commented text as it is now next to the
+GitHub (see the DFM README). A thread shows the commented text as it is now next to the
 suggested text. Suggest, in the new comment and reply fields, adds a block holding the commented
 text as Markdown, shown as a suggested change and selected so typing replaces it. Apply
 replaces the commented text, which keeps the comment, and resolves the thread; the text change
@@ -119,7 +121,8 @@ only when it is one paragraph of text: anything else is refused with the reason.
 | `DocumentComments.ts` | The `comment` mark, the thread commands and the highlights. |
 | `DocumentCommentAnchor.ts` | Anchor directives in Markdown, and anchors to marks and back. |
 | `useDocumentComments.ts` | Comment state and actions for the components below. |
-| `DocumentCommentsPanel.tsx`, `DocumentCommentInput.tsx`, `DocumentCommentMarkers.tsx` | The threads panel with the new comment card, the message field and the gutter markers. |
+| `DocumentCommentThread.tsx`, `DocumentCommentInput.tsx` | A thread and the new comment card, and the message field. |
+| `DocumentCommentCard.tsx`, `DocumentCommentsList.tsx`, `DocumentCommentMarkers.tsx` | The card floating under commented text, the comments list and its button, and the gutter markers. |
 | `commentInputExtensions.ts` | The message field's schema, its Markdown and its keys. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`

@@ -280,6 +280,66 @@ describe("useDocumentComments", () => {
     expect(onSave.mock.calls[1][0]).toBe("Hi there\n");
   });
 
+  it("keeps a pending draft when a comment is revealed", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      select(editor, "Hi");
+      result.current.comments.startDraft();
+    });
+    act(() => {
+      result.current.comments.reveal("c1");
+    });
+
+    expect(result.current.comments.draft).not.toBeNull();
+    expect(result.current.comments.activeId).toBeNull();
+  });
+
+  it("ignores a thread action while another is pending, and shows its refusal until the thread changes", async () => {
+    const { result } = await renderCommentedEditor(SOURCE);
+    let refuse: (done: Result<void, string>) => void = () => undefined;
+    let firstRun: Promise<Result<void, string> | null> = Promise.resolve(null);
+
+    act(() => {
+      firstRun = result.current.comments.runThreadAction(
+        "c1",
+        () =>
+          new Promise<Result<void, string>>((resolve) => {
+            refuse = resolve;
+          })
+      );
+    });
+    expect(result.current.comments.busyThreadIds.has("c1")).toBe(true);
+
+    const second = vi.fn(async () => new Ok(undefined));
+    await act(async () => {
+      expect(
+        await result.current.comments.runThreadAction("c1", second)
+      ).toBeNull();
+    });
+    expect(second).not.toHaveBeenCalled();
+
+    await act(async () => {
+      refuse(new Err("Refused."));
+      await firstRun;
+    });
+    expect(result.current.comments.busyThreadIds.has("c1")).toBe(false);
+    expect(
+      result.current.comments.threadError(result.current.comments.comments[0])
+    ).toBe("Refused.");
+
+    await act(async () => {
+      await result.current.comments.reply("c1", "Done.");
+    });
+    expect(
+      result.current.comments.threadError(result.current.comments.comments[0])
+    ).toBeNull();
+  });
+
   describe("in a live session", () => {
     it("has the session create the thread, then anchors it", async () => {
       const { channel, send } = liveChannel(

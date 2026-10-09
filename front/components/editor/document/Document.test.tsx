@@ -1,4 +1,5 @@
 import { Document } from "@app/components/editor/document/Document";
+import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
@@ -79,6 +80,12 @@ function startComment(dom: HTMLElement, editor: Editor, text: string) {
   });
 }
 
+/** The card floating over the text, or null when none shows; a closing one animates out. */
+const floatingCard = () =>
+  document.querySelector<HTMLElement>(
+    '[data-document-comment-card][data-state="open"]'
+  );
+
 /** The comment field's own editor, once it has mounted. */
 const findCommentField = async (name: string) => {
   const field = await screen.findByRole("textbox", { name });
@@ -96,6 +103,7 @@ const typeComment = (field: HTMLElement & { editor: Editor }, text: string) =>
 describe("Document comments", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     // jsdom lays nothing out; ProseMirror measures ranges when it scrolls to the selection.
     Object.defineProperty(Range.prototype, "getClientRects", {
       configurable: true,
@@ -119,14 +127,27 @@ describe("Document comments", () => {
 
     fireEvent.click(highlight(dom, "c1"));
 
-    expect(
-      screen.getByRole("complementary", { name: "Comments" }).dataset.state
-    ).toBe("open");
-    await waitFor(() =>
-      expect(document.activeElement).toBe(
-        screen.getByRole("article", { name: "Comment by Daph" })
-      )
+    const thread = await screen.findByRole("article", {
+      name: "Comment by Daph",
+    });
+    expect(floatingCard()?.contains(thread)).toBe(true);
+    await waitFor(() => expect(document.activeElement).toBe(thread));
+  });
+
+  it("closes the card on Escape outside its fields and clears the active comment", async () => {
+    const { dom, editor } = await renderDocument(SOURCE);
+
+    fireEvent.click(highlight(dom, "c1"));
+    const thread = await screen.findByRole("article", {
+      name: "Comment by Daph",
+    });
+    fireEvent.keyDown(thread, { key: "Escape" });
+
+    expect(floatingCard()).toBeNull();
+    expect(documentCommentsPluginKey.getState(editor.state)?.activeId).toBe(
+      null
     );
+    await waitFor(() => expect(document.activeElement).toBe(dom));
   });
 
   it("keeps a selection on commented text in the editor", async () => {
@@ -137,9 +158,7 @@ describe("Document comments", () => {
     });
     fireEvent.click(highlight(dom, "c1"));
 
-    expect(
-      screen.getByRole("complementary", { name: "Comments" }).dataset.state
-    ).toBe("closed");
+    expect(floatingCard()).toBeNull();
     expect(editor.state.selection.empty).toBe(false);
   });
 
@@ -163,16 +182,16 @@ describe("Document comments", () => {
     );
   });
 
-  it("writes a new comment in a card inside the comments panel", async () => {
+  it("writes a new comment in a card floating under the selection", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
     startComment(dom, editor, "brave");
 
-    const panel = screen.getByRole("complementary", { name: "Comments" });
-    expect(panel.dataset.state).toBe("open");
-    const card = screen.getByRole("article", { name: "New comment" });
-    expect(panel.contains(card)).toBe(true);
-    expect(card.textContent).toContain("brave");
+    const card = await screen.findByRole("article", { name: "New comment" });
+    expect(floatingCard()?.contains(card)).toBe(true);
+    expect(dom.querySelector("[data-comment-draft]")?.textContent).toBe(
+      "brave"
+    );
     const field = await findCommentField("Comment");
     await waitFor(() => expect(document.activeElement).toBe(field));
 
@@ -187,7 +206,7 @@ describe("Document comments", () => {
     ).toContain("Too bold?");
   });
 
-  it("focuses a new comment's field after the panel was opened and closed", async () => {
+  it("focuses a new comment's field after the comments list was opened and closed", async () => {
     const { dom, editor } = await renderDocument("Hello brave world.\n");
 
     fireEvent.click(screen.getByRole("button", { name: "Comments" }));
@@ -268,9 +287,6 @@ describe("Document comments", () => {
     );
     fireEvent.keyDown(field, { key: "Escape" });
 
-    expect(
-      screen.getByRole("complementary", { name: "Comments" }).dataset.state
-    ).toBe("open");
     expect(screen.getByRole("article", { name: "New comment" })).toBeDefined();
     expect(field.editor.getText()).toBe("Too bold?");
 
@@ -374,24 +390,52 @@ describe("Document comments", () => {
     expect(field.editor.getText()).toBe("Too bold?");
   });
 
-  it("places the card among open threads in document order", async () => {
-    const thread = (id: string) =>
-      `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote ${id}.\n`;
-    const { dom, editor } = await renderDocument(
-      `:comment-start{id=a}One:comment-end{id=a} two :comment-start{id=b}three:comment-end{id=b}\n\n:::annotations\n${thread("a")}\n${thread("b")}:::\n`
+  it("lists open threads in document order and unfolds the picked one", async () => {
+    const thread = (id: string, name: string, replies = "") =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n${replies}`;
+    const reply = `\n::message{author=user:v name="Val" at=${AT}}\n\nAgreed.\n`;
+    const { editor } = await renderDocument(
+      `:comment-start{id=a}One:comment-end{id=a} two :comment-start{id=b}three:comment-end{id=b}\n\n:::annotations\n${thread("b", "Bea", reply)}\n${thread("a", "Al")}:::\n`
     );
 
-    startComment(dom, editor, "two");
+    fireEvent.click(screen.getByRole("button", { name: /^Comments/ }));
 
-    const cards = within(
-      screen.getByRole("complementary", { name: "Comments" })
-    )
-      .getAllByRole("article")
-      .map((article) => article.getAttribute("aria-label"));
-    expect(cards).toEqual(["Comment by U", "New comment", "Comment by U"]);
+    const list = screen.getByRole("complementary", { name: "Comments" });
+    expect(
+      within(list)
+        .getAllByRole("article")
+        .map((article) => article.getAttribute("aria-label"))
+    ).toEqual(["Comment by Al", "Comment by Bea"]);
+    const bea = within(list).getByRole("article", { name: "Comment by Bea" });
+    expect(bea.textContent).toContain("1 reply");
+    expect(bea.textContent).not.toContain("Agreed.");
+
+    fireEvent.click(within(bea).getByRole("button", { name: /three/ }));
+
+    expect(editor.state.doc.textContent).toBe("One two three");
+    expect(bea.getAttribute("aria-current")).toBe("true");
+    expect(bea.textContent).toContain("Agreed.");
+    expect(floatingCard()).toBeNull();
   });
 
-  it("shows comment authors with the host's avatars once the panel has opened", async () => {
+  it("closes the comments list when a comment starts", async () => {
+    const { dom, editor } = await renderDocument("Hello brave world.\n");
+
+    fireEvent.click(screen.getByRole("button", { name: "Comments" }));
+    expect(
+      screen.getByRole("complementary", { name: "Comments" })
+    ).toBeDefined();
+    startComment(dom, editor, "brave");
+
+    expect(
+      screen.queryByRole("complementary", { name: "Comments" })
+    ).toBeNull();
+    expect(
+      await screen.findByRole("article", { name: "New comment" })
+    ).toBeDefined();
+  });
+
+  it("renders the host's avatars only for threads on screen", async () => {
     render(
       <Document
         initialContent={SOURCE}
@@ -411,36 +455,9 @@ describe("Document comments", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close comments" }));
 
-    expect(screen.getByTestId("avatar:user:usr_daph:xxs")).toBeDefined();
-  });
-
-  it("shows the commenting user with the host's avatar in a new comment", async () => {
-    const { container } = render(
-      <Document
-        initialContent={"Hello brave world.\n"}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
-        commentAuthor={AUTHOR}
-        renderCommentBody={(body) => <p>{body}</p>}
-        renderCommentAuthorAvatar={(author, size) => (
-          <span data-testid={`avatar:${author.id}:${size}`} />
-        )}
-      />
+    await waitFor(() =>
+      expect(screen.queryByTestId("avatar:user:usr_daph:xxs")).toBeNull()
     );
-    const dom = await waitFor(() => {
-      const element = container.querySelector(".tiptap");
-      if (!hasEditor(element)) {
-        throw new Error("Editor did not mount.");
-      }
-      return element;
-    });
-
-    startComment(dom, dom.editor, "brave");
-
-    expect(
-      within(screen.getByRole("article", { name: "New comment" })).getByTestId(
-        "avatar:usr_tom:xxs"
-      )
-    ).toBeDefined();
   });
 
   it.each([

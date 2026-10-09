@@ -30,11 +30,12 @@ msgid "Insert"
 msgstr "Insert"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Close"
 msgstr "Close"
 
 #: front/components/editor/document/DocumentCommentInput.tsx
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Suggested change"
 msgstr "Suggested change"
 
@@ -59,7 +60,7 @@ msgid "Show {count, plural, one {# comment} other {# comments}}"
 msgstr "Show {count, plural, one {# comment} other {# comments}}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Comment by {authorName}"
 msgstr "Comment by {authorName}"
 
@@ -75,95 +76,104 @@ msgstr "Comment by unknown"
 msgid "Show comment by unknown"
 msgstr "Show comment by unknown"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
 msgstr "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Unverified"
 msgstr "Unverified"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Apply"
 msgstr "Apply"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Replaces:"
 msgstr "Replaces:"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "The commented text was removed."
 msgstr "The commented text was removed."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "With:"
 msgstr "With:"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Deletes the text."
 msgstr "Deletes the text."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "New comment"
 msgstr "New comment"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Commented text:"
-msgstr "Commented text:"
-
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Comment"
 msgstr "Comment"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Add a comment…"
-msgstr "Add a comment…"
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Comment or @mention…"
+msgstr "Comment or @mention…"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reopen"
 msgstr "Reopen"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Resolve"
 msgstr "Resolve"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Delete comment"
 msgstr "Delete comment"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#. placeholder {0}: replies.length
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "{0, plural, one {# reply} other {# replies}}"
+msgstr "{0, plural, one {# reply} other {# replies}}"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Commented text:"
+msgstr "Commented text:"
+
+#: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Reply"
 msgstr "Reply"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Reply…"
-msgstr "Reply…"
+#: front/components/editor/document/DocumentCommentThread.tsx
+msgid "Reply or @mention…"
+msgstr "Reply or @mention…"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Comments"
 msgstr "Comments"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Comments, {unresolvedCount, plural, one {# unresolved} other {# unresolved}}"
 msgstr "Comments, {unresolvedCount, plural, one {# unresolved} other {# unresolved}}"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Close comments"
 msgstr "Close comments"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "No comments yet"
 msgstr "No comments yet"
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
-msgid "Select some text and choose Comment to start a thread."
-msgstr "Select some text and choose Comment to start a thread."
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "Select text to add a comment."
+msgstr "Select text to add a comment."
 
-#: front/components/editor/document/DocumentCommentsPanel.tsx
+#: front/components/editor/document/DocumentCommentsList.tsx
 msgid "Resolved ({resolvedCount})"
 msgstr "Resolved ({resolvedCount})"
+
+#: front/components/editor/document/DocumentCommentsList.tsx
+msgid "All comments"
+msgstr "All comments"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"
