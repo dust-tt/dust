@@ -31,7 +31,6 @@ export default function LiveDocument(props: LiveDocumentProps) {
             user: { name, color },
             comments: connection.comments,
             resolveImageSource,
-            provider: connection.provider,
           })
         : null,
     [t, connection, name, color, resolveImageSource]
