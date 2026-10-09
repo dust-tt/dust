@@ -47,6 +47,11 @@ const MITM_CA_PATH = "/run/dust/egress-ca.pem";
 const MITM_CA_BUNDLE_PATH = "/etc/dust/ca-bundle.pem";
 const MITM_TRUST_BUNDLE_INSTALLER_PATH =
   "/usr/local/bin/dust-install-trust-bundle";
+const MITM_TRUST_BUNDLE_LOCK_DIR = "/run/dust-trust-bundle";
+const MITM_TRUST_BUNDLE_LOCK_PATH = "/run/dust-trust-bundle/install.lock";
+// Below the provider's default root exec timeout, so a waiter fails with a
+// clear error instead of being killed mid-wait.
+const MITM_TRUST_BUNDLE_LOCK_WAIT_SECONDS = 30;
 // Constants used by the pre-0.8.8 fallback path. Remove with the fallback
 // once all dust-base:0.8.7 sandboxes have aged out.
 const MITM_SYSTEM_CA_DIR = "/usr/local/share/ca-certificates";
@@ -806,8 +811,17 @@ async function installMitmTrustBundle(
     `/usr/bin/mv "$_bundle_tmp" ${shellEscape(MITM_CA_BUNDLE_PATH)} && ` +
     `/bin/rm -f "$_ca_tmp"`;
 
+  // Readiness for one sandbox can run concurrently from several worker pods
+  // (prewarm vs first tool call, concurrent Frame invocations on wake). keytool
+  // rewrites the Java cacerts in place, so an overlapping run reads a torn
+  // keystore and fails. Serialize installs inside the sandbox. The lock lives
+  // in a root-only directory so sandbox workloads cannot hold it.
   const command = rootCommand.unsafeShell(
-    `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
+    `/usr/bin/install -d -o root -g root -m 700 ${shellEscape(MITM_TRUST_BUNDLE_LOCK_DIR)} || exit 1; ` +
+      `exec 9>${shellEscape(MITM_TRUST_BUNDLE_LOCK_PATH)} || exit 1; ` +
+      `/usr/bin/flock -w ${MITM_TRUST_BUNDLE_LOCK_WAIT_SECONDS} -x 9 || ` +
+      `{ echo "timed out waiting for the trust bundle install lock" >&2; exit 1; }; ` +
+      `[ -s ${shellEscape(MITM_CA_PATH)} ] || ` +
       `{ echo "dsbx CA file ${MITM_CA_PATH} missing or empty" >&2; exit 1; }; ` +
       `if [ -x ${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)} ]; then ` +
       `${shellEscape(MITM_TRUST_BUNDLE_INSTALLER_PATH)}; ` +
@@ -815,7 +829,7 @@ async function installMitmTrustBundle(
       `${inlineFallback}; ` +
       `fi && ` +
       `: > ${shellEscape(MITM_CA_BUNDLE_MARKER_PATH)}`,
-    "MITM trust bundle repair needs a pre-0.8.8 compound fallback"
+    "MITM trust bundle repair needs an install lock and a pre-0.8.8 compound fallback"
   );
 
   return runSuccessfulRootCommand(auth, sandbox, command);

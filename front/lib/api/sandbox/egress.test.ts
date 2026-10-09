@@ -296,6 +296,17 @@ describe("sandbox egress helpers", () => {
     expect(
       installCall.indexOf("/usr/local/bin/dust-install-trust-bundle")
     ).toBeLessThan(installCall.indexOf("/etc/dust/.ca-bundle.merged"));
+    // Concurrent readiness runs must not overlap the keytool import: the
+    // install holds a root-only lock before touching anything.
+    expect(installCall).toContain(
+      "/usr/bin/install -d -o root -g root -m 700 '/run/dust-trust-bundle'"
+    );
+    expect(installCall).toContain(
+      "exec 9>'/run/dust-trust-bundle/install.lock'"
+    );
+    expect(installCall.indexOf("/usr/bin/flock -w 30 -x 9")).toBeLessThan(
+      installCall.indexOf("/usr/local/bin/dust-install-trust-bundle")
+    );
     // Pre-0.8.8 sandbox fallback: when the helper script is missing, the
     // exec must inline the system-store + merged-bundle install so old
     // sandboxes don't fail on wake. Remove with the fallback in egress.ts.
