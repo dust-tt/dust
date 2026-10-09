@@ -93,11 +93,11 @@ msgstr "Posez n’importe quelle question"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Type @ to mention agents or people"
-msgstr "Tapez @ pour mentionner des agents ou des personnes"
+msgstr "Mentionnez agents et personnes avec @"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Type / for skills, tools, and more"
-msgstr "Tapez / pour les compétences, les outils et plus"
+msgstr "Tapez / : compétences, outils et plus"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to inline text"
