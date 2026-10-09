@@ -42,7 +42,7 @@ export function IntegrationsPage() {
           <TabsList className="mb-6">
             <TabsTrigger value="messaging" label={t`Messaging`} />
             <TabsTrigger value="email" label={t`Email`} />
-            <TabsTrigger value="clients" label={t`Clients`} />
+            <TabsTrigger value="clients" label={t`Clients & Tools`} />
           </TabsList>
           <TabsContent value="messaging" className="flex flex-col gap-8">
             <GovernanceSettingSection
@@ -64,7 +64,7 @@ export function IntegrationsPage() {
           <TabsContent value="clients" className="flex flex-col gap-8">
             <GovernanceSettingSection
               sectionId={ADMIN_SECTION_IDS.integrations.clients}
-              label={t`Clients`}
+              label={t`Clients & Tools`}
             >
               <DustMcpServerSettingsItem owner={owner} />
               <ExtensionMcpToolsSection owner={owner} />
