@@ -8,6 +8,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserProviderType } from "@app/types/user";
+import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class UserModel extends BaseModel<UserModel> {
@@ -27,6 +28,7 @@ export class UserModel extends BaseModel<UserModel> {
   declare firstName: string;
   declare lastName: string | null;
   declare imageUrl: string | null;
+  declare pronouns: string | null;
 
   declare isDustSuperUser: CreationOptional<boolean>;
 }
@@ -85,6 +87,10 @@ UserModel.init(
     },
     imageUrl: {
       type: DataTypes.STRING(2048),
+      allowNull: true,
+    },
+    pronouns: {
+      type: DataTypes.STRING(MAX_USER_PRONOUNS_LENGTH),
       allowNull: true,
     },
     isDustSuperUser: {

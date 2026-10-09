@@ -87,6 +87,8 @@ type CachedUserData = {
   lastName: string | null;
   fullName: string;
   image: string | null;
+  // Absent from entries cached before the `pronouns` column existed.
+  pronouns?: string | null;
   createdAt: number;
   updatedAt: number;
   isDustSuperUser: boolean;
@@ -134,8 +136,11 @@ export class UserResource extends BaseResource<UserModel> {
       | "isDustSuperUser"
       | "providerId"
       | "imageUrl"
+      | "pronouns"
     > &
-      Partial<Pick<Attributes<UserModel>, "providerId" | "imageUrl">>
+      Partial<
+        Pick<Attributes<UserModel>, "providerId" | "imageUrl" | "pronouns">
+      >
   ): Promise<UserResource> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
@@ -287,6 +292,7 @@ export class UserResource extends BaseResource<UserModel> {
       lastName: user.lastName,
       fullName: user.name,
       image: user.imageUrl,
+      pronouns: user.pronouns,
       createdAt: user.createdAt.getTime(),
       updatedAt: user.updatedAt.getTime(),
       isDustSuperUser: user.isDustSuperUser,
@@ -319,6 +325,7 @@ export class UserResource extends BaseResource<UserModel> {
       firstName: data.firstName,
       lastName: data.lastName,
       imageUrl: data.image,
+      pronouns: data.pronouns ?? null,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
       isDustSuperUser: data.isDustSuperUser,
