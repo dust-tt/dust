@@ -1,0 +1,177 @@
+{
+  "capturedAt": "2026-10-08T21:44:51.040287+00:00",
+  "result": {
+    "completed": true,
+    "documents": 100000,
+    "workers": 4,
+    "concurrencyPerWorker": 32,
+    "sourceOperations": 1000000,
+    "published": 1410000,
+    "durationMs": 2611705,
+    "corpusHash": "db653f29965fd2f86e79b10481786ef2b7bf2984d753f02ac2df178961656720"
+  },
+  "phases": [
+    {
+      "phase": 0,
+      "published": 101000,
+      "sourceOperations": 100000,
+      "durationMs": 212089
+    },
+    {
+      "phase": 1,
+      "published": 202000,
+      "sourceOperations": 200000,
+      "durationMs": 138846
+    },
+    {
+      "phase": 2,
+      "published": 403000,
+      "sourceOperations": 300000,
+      "durationMs": 356449
+    },
+    {
+      "phase": 3,
+      "published": 504000,
+      "sourceOperations": 400000,
+      "durationMs": 154782
+    },
+    {
+      "phase": 4,
+      "published": 705000,
+      "sourceOperations": 500000,
+      "durationMs": 312568
+    },
+    {
+      "phase": 5,
+      "published": 806000,
+      "sourceOperations": 600000,
+      "durationMs": 194870
+    },
+    {
+      "phase": 6,
+      "published": 1007000,
+      "sourceOperations": 700000,
+      "durationMs": 409075
+    },
+    {
+      "phase": 7,
+      "published": 1108000,
+      "sourceOperations": 800000,
+      "durationMs": 213035
+    },
+    {
+      "phase": 8,
+      "published": 1309000,
+      "sourceOperations": 900000,
+      "durationMs": 403730
+    },
+    {
+      "phase": 9,
+      "published": 1410000,
+      "sourceOperations": 1000000,
+      "durationMs": 216190
+    }
+  ],
+  "expected": {
+    "documents": 100000,
+    "bucket": "simulated-gcs",
+    "generation": "9007199254740993",
+    "metageneration": "2",
+    "deletedModulo": 4,
+    "bodyTemplate": "doc:{index};generation:{generation}\\n"
+  },
+  "workers": [
+    {
+      "acknowledged": 352584,
+      "applied": 250177,
+      "stale": 102275,
+      "stagedBytes": 11070097,
+      "maxRssBytes": 335364096,
+      "startedMs": 1791493274333,
+      "updatedMs": 1791495890134
+    },
+    {
+      "acknowledged": 352608,
+      "applied": 250010,
+      "stale": 102468,
+      "stagedBytes": 11069213,
+      "maxRssBytes": 332165120,
+      "startedMs": 1791493274381,
+      "updatedMs": 1791495890170
+    },
+    {
+      "acknowledged": 352272,
+      "applied": 249788,
+      "stale": 102363,
+      "stagedBytes": 11059421,
+      "maxRssBytes": 334688256,
+      "startedMs": 1791493274367,
+      "updatedMs": 1791495890044
+    },
+    {
+      "acknowledged": 352536,
+      "applied": 250025,
+      "stale": 102370,
+      "stagedBytes": 11068790,
+      "maxRssBytes": 335798272,
+      "startedMs": 1791493274373,
+      "updatedMs": 1791495891007
+    }
+  ],
+  "totals": {
+    "acknowledged": 1410000,
+    "applied": 1000000,
+    "stale": 409476,
+    "stagedBytes": 44267521,
+    "maxRssBytes": 1338015744
+  },
+  "sourceOperationsPerSecond": 382.89163592365907,
+  "publishedMessagesPerSecond": 539.8772066523593,
+  "workerWarningsAndErrors": [
+    {
+      "level": "error",
+      "time": 1791493274404,
+      "pid": 16430,
+      "hostname": "gcs-dfs-jd-20261008",
+      "statusCode": 404,
+      "msg": "GCS DFS subscription unavailable"
+    },
+    {
+      "level": "error",
+      "time": 1791493274435,
+      "pid": 16452,
+      "hostname": "gcs-dfs-jd-20261008",
+      "statusCode": 404,
+      "msg": "GCS DFS subscription unavailable"
+    },
+    {
+      "level": "error",
+      "time": 1791493274436,
+      "pid": 16444,
+      "hostname": "gcs-dfs-jd-20261008",
+      "statusCode": 404,
+      "msg": "GCS DFS subscription unavailable"
+    },
+    {
+      "level": "error",
+      "time": 1791493274440,
+      "pid": 16437,
+      "hostname": "gcs-dfs-jd-20261008",
+      "statusCode": 404,
+      "msg": "GCS DFS subscription unavailable"
+    }
+  ],
+  "fdbDiskUsage": "2.6G\t/opt/gcs-dfs/fdb/data",
+  "executedBundleSha256": "6fe01102a4717ab882716566a1e105a4ebaf4895596150edd2c95a1bb630b522",
+  "processSnapshot": [
+    "COMMAND         %CPU   RSS",
+    "java            69.4 9914236",
+    "fdbserver       57.0 3096672",
+    "MainThread      41.6 327668",
+    "MainThread      41.1 326988",
+    "MainThread      41.2 326344",
+    "MainThread      41.1 324120",
+    "rsyslogd         0.0 76700",
+    "dfsd-fdb         153 63724"
+  ]
+}

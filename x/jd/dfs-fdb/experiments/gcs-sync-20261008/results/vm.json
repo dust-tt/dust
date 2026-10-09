@@ -1,0 +1,7 @@
+{
+  "creationTimestamp": "2026-10-08T13:27:16.396-07:00",
+  "machineType": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/machineTypes/e2-standard-8",
+  "name": "gcs-dfs-jd-20261008",
+  "status": "RUNNING",
+  "zone": "https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a"
+}

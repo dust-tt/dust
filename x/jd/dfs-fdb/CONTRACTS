@@ -99,12 +99,3 @@ A delta within 4096 retained journal events MUST remain incremental unless an au
 
 @cc [owner:id13,label:backend;security;performance] transaction-key-hints
 Session key hints MAY retain only credential and principal key addresses, bounded to 256 entries and 256 KiB of charged key/value storage. Every operation MUST read session validity and current credential authority in its native transaction; a hint MUST NOT authorize an operation or renew metadata. Mutation prefetch MUST retain conflict dependencies on absent and present target keys, original revisions, current authority and retry outcomes. A stale hint MUST fall back to the key selected by the authoritative session record. Index checkpoint-only transactions MUST NOT acquire a filesystem-head dependency.
-
-@cc [owner:id13,label:backend;concurrency] atomic-gcs-projection
-GCS import publication MUST atomically compare-and-swap the expected source cursor and commit the observed live-source cursor with namespace, content manifest, grants, journal and indexing changes. A tombstone MUST beat all live records of its generation and MUST remain durable across restarts. Generations MUST NOT be ordered numerically. A cursor conflict MUST require a new live-source observation before retry. Recreate after deletion MUST allocate a new file identity. Referenced chunks MUST have validated tenant-local staging receipts.
-
-@cc [owner:id13,label:security] gcs-import-authority
-Every import operation MUST validate current unexpired, unscoped administrator authority in the same tenant snapshot as its reads or writes. The HTTP listener MUST additionally restrict callers to explicitly configured importer token hashes. Request-selected tenants MUST match credential authority. Source metadata MUST NOT confer grants; grants come from trusted worker bindings. Non-loopback import transport MUST use TLS.
-
-@cc [owner:id13,label:backend;concurrency] immutable-import-staging-receipts
-A successful import staging receipt and its chunk MUST remain immutable and present until the entire isolated namespace is destroyed. Publication MAY validate receipts across bounded snapshots before its final transaction; this is valid only while no chunk or receipt garbage collection exists. Adding garbage collection MUST first replace this assumption with transactional reachability protection. Final publication MUST revalidate current importer authority and the expected source cursor.

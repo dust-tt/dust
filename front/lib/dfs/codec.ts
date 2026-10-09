@@ -197,7 +197,7 @@ export const WireAttrSchema = z
   .object({
     id: WireObjectRefSchema,
     name: z.string(),
-    directory: z.boolean(),
+    kind: z.enum(["FILE", "DIRECTORY"]),
     size: WireNumberUint64Schema,
     mode: z.number().int(),
     atime: WireNumberUint64Schema.optional(),
@@ -211,7 +211,7 @@ export const WireAttrSchema = z
   .transform((a): DfsAttr => ({
     id: a.id,
     name: a.name,
-    directory: a.directory,
+    directory: a.kind === "DIRECTORY",
     size: a.size,
     mode: a.mode,
     atimeMs: a.atime,
@@ -407,7 +407,7 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
           parentId: encodeObjectId(operation.parentId),
           name: operation.name,
           objectId: encodeObjectId(operation.objectId),
-          directory: operation.directory,
+          kind: operation.directory ? "DIRECTORY" : "FILE",
           mimeType: operation.mimeType,
           xattrs: operation.xattrs ?? {},
         },
@@ -445,7 +445,7 @@ export function encodeOperation(operation: DfsOperation): DfsWireMessage {
       return {
         remove: {
           objectId: encodeObjectId(operation.objectId),
-          directory: operation.directory,
+          kind: operation.directory ? "DIRECTORY" : "FILE",
         },
       };
     default:
@@ -540,7 +540,7 @@ const WireSearchAttrSchema = z
   .object({
     id: WireObjectIdSchema,
     name: z.string(),
-    directory: z.boolean(),
+    kind: z.enum(["FILE", "DIRECTORY"]),
     size: WireNumberUint64Schema,
     atime: WireNumberUint64Schema.optional(),
     mtime: WireNumberUint64Schema.optional(),
@@ -550,7 +550,7 @@ const WireSearchAttrSchema = z
   .transform((a): DfsSearchAttr => ({
     id: a.id,
     name: a.name,
-    directory: a.directory,
+    directory: a.kind === "DIRECTORY",
     size: a.size,
     atimeMs: a.atime,
     mtimeMs: a.mtime,

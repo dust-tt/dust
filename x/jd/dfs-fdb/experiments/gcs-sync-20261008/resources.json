@@ -1,0 +1,30 @@
+{
+  "project": "dust-dev",
+  "zone": "us-central1-a",
+  "vm": "gcs-dfs-jd-20261008",
+  "serviceAccount": "gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com",
+  "bucket": "dust-dev-gcs-dfs-jd-20261008",
+  "topic": "gcs-dfs-jd-20261008",
+  "subscription": "gcs-dfs-jd-20261008",
+  "deadLetterTopic": "gcs-dfs-jd-20261008-dead",
+  "deadLetterSubscription": "gcs-dfs-jd-20261008-dead",
+  "status": "all experiment cloud resources deleted and absence verified",
+  "created": [
+    "vm",
+    "serviceAccount",
+    "bucket",
+    "topic",
+    "subscription",
+    "deadLetterTopic",
+    "deadLetterSubscription"
+  ],
+  "notificationCreated": false,
+  "iamBindingsAdded": [],
+  "deletedEarly": [
+    "bucket",
+    "topic",
+    "subscription",
+    "deadLetterTopic",
+    "deadLetterSubscription"
+  ]
+}

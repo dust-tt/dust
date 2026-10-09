@@ -1,0 +1,44 @@
+Started gcs-dfs-integration.service - /root/.cargo/bin/cargo test --release --test import --test engine --test storage -- --include-ignored.
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.14s
+     Running tests/engine.rs (target/release/deps/engine-d01b2505c5bc2afd)
+running 7 tests
+test warm_key_hints_do_not_cache_credential_authority                ... ok
+test identical_append_resolves_once_and_rejects_changed_payload      ... ok
+test opposing_directory_moves_cannot_form_cycle                      ... ok
+test chunk_boundaries_holes_and_stale_base_are_preserved             ... ok
+test sessions_handles_and_logout_cross_frontends                     ... ok
+test cached_history_and_handles_do_not_bypass_group_revocation       ... ok
+test view_pins_fence_writes_by_version_session_and_current_authority ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.21s
+     Running tests/import.rs (target/release/deps/import-d83f693089a78bbb)
+running 3 tests
+test http_auth_and_schema                     ... ok
+test ordering_authority_and_cross_frontends   ... ok
+test chunk_integrity_and_delete_before_create ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+     Running tests/storage.rs (target/release/deps/storage-454d12553c7c31dd)
+running 7 tests
+test rejected_growth_cannot_publish_partial_batch                 ... ok
+test atomic_conflicts_and_stable_snapshots                        ... ok
+test independent_records_and_snapshot_dependencies                ... ok
+test ordered_scans_survive_edits_eviction_and_empty_cache_restart ... ok
+test large_publication_and_corrupt_chunks                         ... ok
+test independent_clients_publish_without_lost_updates             ... ok
+test chunk_boundaries_and_expiring_snapshots                      ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.07s
+gcs-dfs-integration.service: Deactivated successfully.
+Started gcs-dfs-cas-build.service - /bin/bash /tmp/gcs-dfs-cas-build.sh.
+   Compiling dfs-fdb v0.1.0 (/opt/gcs-dfs/dfs-fdb)
+    Finished `release` profile [optimized + debuginfo] target(s) in 36.61s
+     Running tests/import.rs (target/release/deps/import-d83f693089a78bbb)
+running 3 tests
+test http_auth_and_schema                     ... ok
+test ordering_authority_and_cross_frontends   ... ok
+test chunk_integrity_and_delete_before_create ... ok
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.45s
+   Compiling dfs-fdb v0.1.0 (/opt/gcs-dfs/dfs-fdb)
+    Finished `release` profile [optimized + debuginfo] target(s) in 3.14s
+   Compiling dfs-fdb v0.1.0 (/opt/gcs-dfs/dfs-fdb)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 2.44s
+gcs-dfs-cas-build.service: Deactivated successfully.
+gcs-dfs-cas-build.service: Consumed 4min 2.111s CPU time.

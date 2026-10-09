@@ -1,0 +1,9 @@
+
+ RUN  v4.0.18 /Users/jd/repos/dust-tt/dust/.hives/gcs-dfs-sync/front
+
+ ✓ workers/gcs_dfs/worker.test.ts (14 tests) 115ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  23:19:02
+   Duration  279ms (transform 39ms, setup 0ms, import 74ms, tests 115ms, environment 0ms)

@@ -22,10 +22,6 @@ struct Args {
     cache_bytes: usize,
     #[arg(long, requires = "elasticsearch")]
     search_listen: Option<SocketAddr>,
-    #[arg(long, requires = "import_token_hashes")]
-    import_listen: Option<SocketAddr>,
-    #[arg(long, value_delimiter = ',', requires = "import_listen")]
-    import_token_hashes: Vec<String>,
     #[arg(long, default_value_t = 100_000)]
     max_nodes: usize,
     #[arg(long, requires = "tls_key")]
@@ -82,21 +78,6 @@ async fn run() -> anyhow::Result<()> {
         )
         .await?,
     );
-    let import_server = if let Some(address) = args.import_listen {
-        Some(
-            dfs_fdb::import_http::start(
-                Arc::new(dfs_fdb::import_http::ImportApi::new(
-                    engine.clone(),
-                    args.import_token_hashes,
-                )?),
-                address,
-                args.tls_cert.clone().zip(args.tls_key.clone()),
-            )
-            .await?,
-        )
-    } else {
-        None
-    };
     let search_server = if let Some(address) = args.search_listen {
         Some(
             dfs_fdb::search::http::start(
@@ -159,26 +140,16 @@ async fn run() -> anyhow::Result<()> {
             }
             shutdown.stop();
         });
-    let serve = async {
-        if let Some(mut http) = search_server {
-            tokio::select! {
-                result = rpc => {
-                    http.abort();
-                    result.map_err(anyhow::Error::from)
-                }
-                result = &mut http => Err(anyhow::anyhow!("search listener stopped: {result:?}")),
-            }
-        } else {
-            rpc.await.map_err(anyhow::Error::from)
-        }
-    };
-    let result = if let Some(mut http) = import_server {
+    let result = if let Some(mut http) = search_server {
         tokio::select! {
-            result = serve => { http.abort(); let _ = http.await; result },
-            result = &mut http => Err(anyhow::anyhow!("import listener stopped: {result:?}")),
+            result = rpc => {
+                http.abort();
+                result.map_err(anyhow::Error::from)
+            }
+            result = &mut http => Err(anyhow::anyhow!("search listener stopped: {result:?}")),
         }
     } else {
-        serve.await
+        rpc.await.map_err(anyhow::Error::from)
     };
     if let Some(worker) = index_worker {
         worker.abort();

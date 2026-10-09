@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import type { HealthTransport } from "@app/workers/gcs_dfs/health";
+import type {
+  HealthTransport,
+  MetricSample,
+} from "@app/workers/gcs_dfs/health";
 import { MetadataSchema } from "@app/workers/gcs_dfs/protocol";
 import type { Source } from "@app/workers/gcs_dfs/protocol";
 import {
@@ -48,7 +51,7 @@ export class GoogleHealthTransport
   extends GoogleTransport
   implements HealthTransport
 {
-  private async json(url: URL, init?: RequestInit) {
+  protected async json(url: URL, init?: RequestInit) {
     const response = await this.request(url.href, init);
     if (!response.ok) {
       await response.body?.cancel();
@@ -85,17 +88,23 @@ export class GoogleHealthTransport
   }
 
   async publisherGranted(topic: string, serviceAccount: string) {
-    const url = new URL(
-      `https://pubsub.googleapis.com/v1/${topic}:getIamPolicy`
-    );
+    return this.roleGranted(topic, "roles/pubsub.publisher", serviceAccount);
+  }
+
+  async roleGranted(resource: string, role: string, serviceAccount: string) {
+    const url = new URL(`${this.healthEndpoint}/v1/${resource}:getIamPolicy`);
     url.searchParams.set("options.requestedPolicyVersion", "3");
     const policy = PolicySchema.parse(await this.json(url));
     return policy.bindings.some(
       (binding) =>
-        binding.role === "roles/pubsub.publisher" &&
+        binding.role === role &&
         !binding.condition &&
         binding.members.includes(`serviceAccount:${serviceAccount}`)
     );
+  }
+
+  private get healthEndpoint() {
+    return this.config.pubsubEndpoint;
   }
 
   async subscription(name: string) {
@@ -107,17 +116,24 @@ export class GoogleHealthTransport
     return z
       .object({
         topic: z.string(),
-        deadLetterPolicy: z.object({ deadLetterTopic: z.string() }).optional(),
+        enableMessageOrdering: z.boolean().optional(),
+        messageRetentionDuration: z.string().optional(),
+        retainAckedMessages: z.boolean().optional(),
+        expirationPolicy: z.object({ ttl: z.string().optional() }).optional(),
+        deadLetterPolicy: z
+          .object({
+            deadLetterTopic: z.string(),
+            maxDeliveryAttempts: z.number().optional(),
+          })
+          .optional(),
       })
-      .parse(
-        await this.json(new URL(`https://pubsub.googleapis.com/v1/${name}`))
-      );
+      .parse(await this.json(new URL(`${this.healthEndpoint}/v1/${name}`)));
   }
 
   async metric(
     subscription: string,
     metric: "oldest_unacked_message_age" | "num_undelivered_messages"
-  ) {
+  ): Promise<MetricSample | null> {
     const resource =
       /^projects\/([a-zA-Z0-9-]+)\/subscriptions\/([a-zA-Z0-9._~+%-]+)$/.exec(
         subscription

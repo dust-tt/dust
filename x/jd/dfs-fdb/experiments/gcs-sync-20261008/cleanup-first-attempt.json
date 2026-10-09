@@ -1,0 +1,159 @@
+[
+  {
+    "resource": "subscription",
+    "before": {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "describe",
+        "gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.subscriptions.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "deadLetterSubscription",
+    "before": {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "describe",
+        "gcs-dfs-jd-20261008-dead"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.subscriptions.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008-dead). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "topic",
+    "before": {
+      "command": [
+        "pubsub",
+        "topics",
+        "describe",
+        "gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.topics.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "deadLetterTopic",
+    "before": {
+      "command": [
+        "pubsub",
+        "topics",
+        "describe",
+        "gcs-dfs-jd-20261008-dead"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.topics.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008-dead). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "bucket",
+    "before": {
+      "command": [
+        "storage",
+        "buckets",
+        "describe",
+        "gs://dust-dev-gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.storage.buckets.describe) gs://dust-dev-gcs-dfs-jd-20261008 not found: 404.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "vm",
+    "before": {
+      "command": [
+        "compute",
+        "instances",
+        "describe",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a"
+      ],
+      "exitCode": 0,
+      "output": "canIpForward: false\ncpuPlatform: AMD Rome\ncreationTimestamp: '2026-10-08T13:27:16.396-07:00'\ndeletionProtection: false\ndisks:\n- architecture: X86_64\n  autoDelete: true\n  boot: true\n  deviceName: persistent-disk-0\n  diskSizeGb: '100'\n  guestOsFeatures:\n  - type: UEFI_COMPATIBLE\n  - type: VIRTIO_SCSI_MULTIQUEUE\n  - type: GVNIC\n  - type: SEV_CAPABLE\n  - type: SEV_LIVE_MIGRATABLE_V2\n  - type: SUSPEND_SAFE_FPR\n  index: 0\n  interface: SCSI\n  kind: compute#attachedDisk\n  licenses:\n  - https://www.googleapis.com/compute/v1/projects/debian-cloud/global/licenses/debian-12-bookworm\n  mode: READ_WRITE\n  source: https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/disks/gcs-dfs-jd-20261008\n  type: PERSISTENT\nfingerprint: z_YAmqvgrsQ=\nid: '7519015767131177547'\nkind: compute#instance\nlabelFingerprint: UgXauefuS6k=\nlabels:\n  owner: jd\n  purpose: gcs-dfs-sync\nlastStartTimestamp: '2026-10-08T13:27:25.949-07:00'\nmachineType: https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/machineTypes/e2-standard-8\nmetadata:\n  fingerprint: 889R_BfSvxw=\n  items:\n  - key: startup-script\n    value: |\n      #!/bin/bash\n      set -euo pipefail\n      exec > /var/log/gcs-dfs-setup.log 2>&1\n      apt-get update\n      DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential clang libclang-dev pkg-config curl ca-certificates python3-venv openssl\n      mkdir -p /opt/gcs-dfs/fdb/bin /opt/gcs-dfs/fdb/data /opt/gcs-dfs/fdb/log\n      cd /opt/gcs-dfs/fdb/bin\n      for binary in fdbserver fdbcli; do\n        curl -fL --retry 4 \"https://github.com/apple/foundationdb/releases/download/7.3.69/$binary.x86_64\" -o \"$binary\"\n        chmod 755 \"$binary\"\n      done\n      curl -fL --retry 4 https://github.com/apple/foundationdb/releases/download/7.3.69/libfdb_c.x86_64.so -o libfdb_c.so\n      printf '%s\\n' 'gcsdfs:jd20261008@127.0.0.1:4500' > /opt/gcs-dfs/fdb/fdb.cluster\n      systemd-run --unit=gcs-dfs-fdb --property=Restart=on-failure /opt/gcs-dfs/fdb/bin/fdbserver --cluster-file /opt/gcs-dfs/fdb/fdb.cluster --public-address 127.0.0.1:4500 --listen-address 127.0.0.1:4500 --datadir /opt/gcs-dfs/fdb/data --logdir /opt/gcs-dfs/fdb/log --memory 4GiB --cache-memory 1GiB\n      /opt/gcs-dfs/fdb/bin/fdbcli -C /opt/gcs-dfs/fdb/fdb.cluster --exec 'configure new single ssd'\n      curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal\n      curl -fL --retry 4 https://nodejs.org/dist/v24.16.0/node-v24.16.0-linux-x64.tar.xz -o /tmp/node.tar.xz\n      tar -xJf /tmp/node.tar.xz -C /opt/gcs-dfs\n      ln -sf /opt/gcs-dfs/node-v24.16.0-linux-x64/bin/node /usr/local/bin/node\n      ln -sf /opt/gcs-dfs/node-v24.16.0-linux-x64/bin/npm /usr/local/bin/npm\n      printf '%s\\n' ready > /opt/gcs-dfs/setup-ready\n  kind: compute#metadata\nname: gcs-dfs-jd-20261008\nnetworkInterfaces:\n- accessConfigs:\n  - kind: compute#accessConfig\n    name: external-nat\n    natIP: 34.42.119.119\n    networkTier: PREMIUM\n    type: ONE_TO_ONE_NAT\n  fingerprint: aSZSPGNDiiY=\n  kind: compute#networkInterface\n  name: nic0\n  network: https://www.googleapis.com/compute/v1/projects/dust-dev/global/networks/default\n  networkIP: 10.128.15.226\n  stackType: IPV4_ONLY\n  subnetwork: https://www.googleapis.com/compute/v1/projects/dust-dev/regions/us-central1/subnetworks/default\nresourceStatus:\n  effectiveInstanceMetadata:\n    vmDnsSettingMetadataValue: ZonalOnly\nsatisfiesPzi: true\nscheduling:\n  automaticRestart: true\n  onHostMaintenance: MIGRATE\n  preemptible: false\n  provisioningModel: STANDARD\nselfLink: https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/gcs-dfs-jd-20261008\nserviceAccounts:\n- email: gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com\n  scopes:\n  - https://www.googleapis.com/auth/cloud-platform\nshieldedInstanceConfig:\n  enableIntegrityMonitoring: true\n  enableSecureBoot: false\n  enableVtpm: true\nshieldedInstanceIntegrityPolicy:\n  updateAutoLearnPolicy: true\nstartRestricted: false\nstatus: RUNNING\ntags:\n  fingerprint: 42WmSpB8rSM=\nzone: https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a\n"
+    },
+    "delete": {
+      "command": [
+        "compute",
+        "instances",
+        "delete",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a",
+        "--delete-disks=all"
+      ],
+      "exitCode": 0,
+      "output": "Deleted [https://www.googleapis.com/compute/v1/projects/dust-dev/zones/us-central1-a/instances/gcs-dfs-jd-20261008].\n"
+    },
+    "after": {
+      "command": [
+        "compute",
+        "instances",
+        "describe",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.compute.instances.describe) Could not fetch resource:\n - The resource 'projects/dust-dev/zones/us-central1-a/instances/gcs-dfs-jd-20261008' was not found\n\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "serviceAccount",
+    "before": {
+      "command": [
+        "iam",
+        "service-accounts",
+        "describe",
+        "gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com"
+      ],
+      "exitCode": 0,
+      "output": "displayName: Temporary GCS DFS replication experiment\nemail: gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com\netag: MDEwMjE5MjA=\nname: projects/dust-dev/serviceAccounts/gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com\noauth2ClientId: '111089742833375153195'\nprojectId: dust-dev\nuniqueId: '111089742833375153195'\n"
+    },
+    "delete": {
+      "command": [
+        "iam",
+        "service-accounts",
+        "delete",
+        "gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com"
+      ],
+      "exitCode": 0,
+      "output": "deleted service account [gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com]\n"
+    },
+    "after": {
+      "command": [
+        "iam",
+        "service-accounts",
+        "describe",
+        "gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.iam.service-accounts.describe) PERMISSION_DENIED: Permission 'iam.serviceAccounts.get' denied on resource (or it may not exist). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n- '@type': type.googleapis.com/google.rpc.ErrorInfo\n  domain: iam.googleapis.com\n  metadata:\n    permission: iam.serviceAccounts.get\n  reason: IAM_PERMISSION_DENIED\n"
+    },
+    "absent": false
+  },
+  {
+    "resource": "bootDisk",
+    "after": {
+      "command": [
+        "compute",
+        "disks",
+        "describe",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.compute.disks.describe) HTTPError 404: The resource 'projects/dust-dev/zones/us-central1-a/disks/gcs-dfs-jd-20261008' was not found. This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property\n"
+    },
+    "absent": true
+  }
+]

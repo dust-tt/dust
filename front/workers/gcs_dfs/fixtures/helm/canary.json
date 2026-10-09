@@ -1,0 +1,46 @@
+{
+  "binding": {
+    "allowedReaderTokenFile": "/etc/gcs-dfs/canary-tokens/allowed",
+    "bucket": "bkt-prj-dust-test-private-uploads",
+    "deniedReaderTokenFile": "/etc/gcs-dfs/canary-tokens/denied",
+    "endpoint": "https://dfs.internal:9841",
+    "notificationConfigs": [
+      "projects/_/buckets/bkt-prj-dust-test-private-uploads/notificationConfigs/1"
+    ],
+    "prefix": "files/w/workspace-test/",
+    "tenant": "tenant-test",
+    "workspaceId": "workspace-test",
+    "directoryId": "0190c3a0b1c27d4e8f0a1b2c3d4e5f60"
+  },
+  "cell": "cell-99999",
+  "deadlineSeconds": 180,
+  "environment": "development",
+  "maxBacklogAgeSeconds": 300,
+  "pollSeconds": 2,
+  "pubsubEndpoint": "https://europe-west1-pubsub.googleapis.com",
+  "relay": {
+    "deadLetterSubscription": "projects/prj-dust-test/subscriptions/relay-dead",
+    "deadLetterTopic": "projects/prj-dust-test/topics/relay-dead",
+    "maxDeliveryAttempts": 10,
+    "minDeadLetterRetentionSeconds": 1209600,
+    "minRetentionSeconds": 604800,
+    "publisherServiceAccount": "service-123@gs-project-accounts.iam.gserviceaccount.com",
+    "pubsubServiceAgent": "service-123@gcp-sa-pubsub.iam.gserviceaccount.com",
+    "subscriberServiceAccount": "relay@test.iam.gserviceaccount.com",
+    "subscription": "projects/prj-dust-test/subscriptions/relay",
+    "topic": "projects/prj-dust-test/topics/native"
+  },
+  "requestTimeoutMs": 30000,
+  "worker": {
+    "deadLetterSubscription": "projects/prj-dust-test/subscriptions/dfs-dead",
+    "deadLetterTopic": "projects/prj-dust-test/topics/dfs-dead",
+    "maxDeliveryAttempts": 10,
+    "minDeadLetterRetentionSeconds": 1209600,
+    "minRetentionSeconds": 604800,
+    "publisherServiceAccount": "relay@test.iam.gserviceaccount.com",
+    "pubsubServiceAgent": "service-123@gcp-sa-pubsub.iam.gserviceaccount.com",
+    "subscriberServiceAccount": "worker@test.iam.gserviceaccount.com",
+    "subscription": "projects/prj-dust-test/subscriptions/dfs",
+    "topic": "projects/prj-dust-test/topics/keyed"
+  }
+}

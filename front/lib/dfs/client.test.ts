@@ -22,6 +22,19 @@ function setup(answers: Partial<Record<DfsMethod, FakeDfsAnswer>>) {
 }
 
 describe("DfsClient", () => {
+  it("rejects reserved symlink attributes instead of treating them as files", async () => {
+    const { client } = setup({
+      Stat: new Ok({
+        results: [{ object: wireAttr(FILE_ID, { kind: "SYMLINK" }) }],
+      }),
+    });
+    const response = await client.stat({ objectIds: [FILE_ID] });
+    expect(response.isErr()).toBe(true);
+    if (response.isErr()) {
+      expect(response.error.code).toBe("invalid_response");
+    }
+  });
+
   it("creates a session and decodes ids and timestamps", async () => {
     const { client, transport } = setup({
       CreateSession: new Ok(
@@ -349,7 +362,7 @@ describe("DfsClient", () => {
             parentId: wireId(ROOT_ID),
             name: "new.txt",
             objectId: wireId(newId),
-            directory: false,
+            kind: "FILE",
             xattrs: { "user.k": Buffer.from("v") },
           },
         },
@@ -370,7 +383,7 @@ describe("DfsClient", () => {
           },
         },
         {
-          remove: { objectId: wireId(FILE_ID), directory: false },
+          remove: { objectId: wireId(FILE_ID), kind: "FILE" },
         },
       ],
     });
@@ -442,7 +455,7 @@ describe("DfsClient", () => {
             object: {
               id: wireId(FILE_ID),
               name: "notes.txt",
-              directory: false,
+              kind: "FILE",
               size: "5",
               mtime: "1700000000000",
             },

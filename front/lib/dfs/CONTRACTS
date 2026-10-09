@@ -4,3 +4,6 @@ Exception to `no-catching-own-errors`: the `encode*` functions of `codec.ts` MUS
 values outside their protobuf integer type) instead of returning them as `Err`, and MUST NOT throw any
 other `DfsError`. Only `DfsClient` request building MAY catch them, using an `instanceof DfsError`
 guard and rethrowing anything else.
+
+@cc [owner:id13,label:api] object-kind-wire-mapping
+Filesystem and search attribute decoders MUST derive the logical directory flag from the protobuf ObjectKind enum and MUST reject reserved SYMLINK values. Create and remove encoders MUST translate the logical directory flag to DIRECTORY or FILE; they MUST NOT emit the removed directory protobuf field.

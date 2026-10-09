@@ -17,17 +17,18 @@ export class DfsWireFactory {
 
   // A regular file attribute for `id`.
   static attr(id: string, overrides: DfsWireMessage = {}): DfsWireMessage {
+    const { directory, ...fields } = overrides;
     return {
       id: DfsWireFactory.objectRef(id),
       name: "notes.txt",
-      directory: false,
+      kind: directory === true ? "DIRECTORY" : "FILE",
       size: "5",
       mode: 0o600,
       mtime: "1700000000000",
       attrVersion: "3",
       contentVersion: "2",
       view: DfsWireFactory.view(),
-      ...overrides,
+      ...fields,
     };
   }
 

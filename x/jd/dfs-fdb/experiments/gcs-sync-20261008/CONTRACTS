@@ -1,0 +1,5 @@
+@cc [owner:id13,label:security] isolated-gcs-experiment
+Experiment mutation and cleanup commands MUST target only the explicitly recorded resources in dust-dev. Source and cleanup results MUST not contain credentials. Existing resources from unrelated experiments MUST remain untouched.
+
+@cc [owner:id13,label:error-handling] simulation-failures
+The simulation MAY catch failures from external transports at its process boundary. Unexpected errors MUST terminate the run. Failed or ambiguous operations MUST NOT count as successful. Published-message and applied-operation counters MUST be reported separately, and final correctness MUST be verified independently through DFS reads.

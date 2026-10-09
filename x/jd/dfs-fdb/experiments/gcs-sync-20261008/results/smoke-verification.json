@@ -1,0 +1,9 @@
+{
+  "contentBytes": 26918,
+  "crossTenantDenials": 750,
+  "deleted": 250,
+  "documents": 1000,
+  "durationMs": 1585,
+  "live": 750,
+  "verified": true
+}

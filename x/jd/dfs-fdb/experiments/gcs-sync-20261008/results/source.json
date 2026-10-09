@@ -1,0 +1,27 @@
+{
+  "baseCommit": "d0970b128f1a850cd02e19bfe74eea64a6d6e88a",
+  "branch": "jd/gcs-dfs-sync",
+  "files": {
+    "front/workers/gcs_dfs/vitest.config.mts": "e2d696f9374e4d3f47d74912658c04075b68380dec9dec995134f470c9b3993a",
+    "front/workers/gcs_dfs/CONTRACTS": "652814295bfc9f48c485360586eae0d32e7e4493edc2c6f40009f98cd7709dc7",
+    "front/workers/gcs_dfs/processor.ts": "f7fffe15eebe9e78893bc20d362a987b8148e399eba82160b5712485aed30df3",
+    "front/workers/gcs_dfs/protocol.ts": "bb916bd4725626052a3c8cc73606064c56812169de664d7f9cbd3aa58b38ada3",
+    "front/workers/gcs_dfs/worker.test.ts": "b4da7490cc2e13a73527f713c4c6cc7900f2bb411a75ad330f8ab1e707d8e732",
+    "front/workers/gcs_dfs/transport.ts": "4cde283f7bb9512687877ca092364b8824a8b163490d1125e92f61646b451f1a",
+    "front/workers/gcs_dfs/worker.ts": "56fb25d9a60b09f895d0c500295b62b322f57101eb686bbffdc62fb00c6a9a7b",
+    "front/start_gcs_dfs_worker.ts": "24a4f4abc214336e85f13048746c6d65a9beea5c5bc25e92991c407c580a17e5",
+    "front/lib/api/config.ts": "e280e5e9d3360607b62d63d1c234d5001d267ddfcae9489e4b5594cd0cb13beb",
+    "front/package.json": "9ec676543639c9c7a5093bbb8ffe5f9e2315bb6b47f2d1dfeb292d5823e8a527",
+    "x/jd/dfs-fdb/src/engine/import.rs": "30ba0c943f384d687926eba06aed013def9437471d9c50eb6a0f5b67cf217680",
+    "x/jd/dfs-fdb/src/import_http.rs": "236d9f540883a202327e14071799320d0a7ebc67dc54cb642584491b1b7891fb",
+    "x/jd/dfs-fdb/src/bin/dfsd-fdb.rs": "602c0c111e88393913c50a3d1b4746dc88eca602277028698731b31ef66cdb1d",
+    "x/jd/dfs-fdb/src/engine.rs": "1be2e60e905ded05defbae5a5caf23e5f6e8242506bf2b1ddcca02e9147c2408",
+    "x/jd/dfs-fdb/src/lib.rs": "6e164903acb3fdc1482043c683ba2340f4067748488c0c1d303a36142406f072",
+    "x/jd/dfs-fdb/Cargo.toml": "c834999bff0898d1682744038e768d3452d63e05d9c1df469e1776ce1d988d38",
+    "x/jd/dfs-fdb/tests/import.rs": "e4517ce7eca71f0b4785ea8c8b164acbdef09d04d02a83a6aae9939c02bfea79",
+    "x/jd/dfs-fdb/examples/verify_gcs_simulation.rs": "cc5db06030ceef6961bdc762814f10f31637ca6078bdc225cf3162ddf63b291e",
+    "x/jd/dfs-fdb/import/openapi.json": "cd76bb9eeed73c5010bf7471ad003662f8610fbfeaeaff38ee067e6f43df9de8",
+    "x/jd/dfs-fdb/experiments/gcs-sync-20261008/simulate.ts": "15142f4c065d64830a319f46ff6efe5831b463fcd8586f59124cbd93a9a3ed04"
+  },
+  "executedSimulationBundleSha256": "6fe01102a4717ab882716566a1e105a4ebaf4895596150edd2c95a1bb630b522"
+}

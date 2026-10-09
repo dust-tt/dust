@@ -1,0 +1,127 @@
+[
+  {
+    "resource": "subscription",
+    "before": {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "describe",
+        "gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.subscriptions.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "deadLetterSubscription",
+    "before": {
+      "command": [
+        "pubsub",
+        "subscriptions",
+        "describe",
+        "gcs-dfs-jd-20261008-dead"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.subscriptions.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008-dead). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "topic",
+    "before": {
+      "command": [
+        "pubsub",
+        "topics",
+        "describe",
+        "gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.topics.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "deadLetterTopic",
+    "before": {
+      "command": [
+        "pubsub",
+        "topics",
+        "describe",
+        "gcs-dfs-jd-20261008-dead"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.pubsub.topics.describe) NOT_FOUND: Resource not found (resource=gcs-dfs-jd-20261008-dead). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "bucket",
+    "before": {
+      "command": [
+        "storage",
+        "buckets",
+        "describe",
+        "gs://dust-dev-gcs-dfs-jd-20261008"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.storage.buckets.describe) gs://dust-dev-gcs-dfs-jd-20261008 not found: 404.\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "vm",
+    "before": {
+      "command": [
+        "compute",
+        "instances",
+        "describe",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.compute.instances.describe) Could not fetch resource:\n - The resource 'projects/dust-dev/zones/us-central1-a/instances/gcs-dfs-jd-20261008' was not found\n\n"
+    },
+    "absent": true
+  },
+  {
+    "resource": "serviceAccount",
+    "before": {
+      "command": [
+        "iam",
+        "service-accounts",
+        "describe",
+        "gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.iam.service-accounts.describe) PERMISSION_DENIED: Permission 'iam.serviceAccounts.get' denied on resource (or it may not exist). This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property.\n- '@type': type.googleapis.com/google.rpc.ErrorInfo\n  domain: iam.googleapis.com\n  metadata:\n    permission: iam.serviceAccounts.get\n  reason: IAM_PERMISSION_DENIED\n"
+    },
+    "absent": true,
+    "inventory": {
+      "command": [
+        "iam",
+        "service-accounts",
+        "list",
+        "--filter=email=gcs-dfs-jd-20261008@dust-dev.iam.gserviceaccount.com",
+        "--format=json(email,uniqueId)"
+      ],
+      "exitCode": 0,
+      "output": "[]\n"
+    }
+  },
+  {
+    "resource": "bootDisk",
+    "after": {
+      "command": [
+        "compute",
+        "disks",
+        "describe",
+        "gcs-dfs-jd-20261008",
+        "--zone=us-central1-a"
+      ],
+      "exitCode": 1,
+      "output": "ERROR: (gcloud.compute.disks.describe) HTTPError 404: The resource 'projects/dust-dev/zones/us-central1-a/disks/gcs-dfs-jd-20261008' was not found. This command is authenticated as henry-dev-cli@dust-dev.iam.gserviceaccount.com which is the active account specified by the [core/account] property\n"
+    },
+    "absent": true
+  }
+]

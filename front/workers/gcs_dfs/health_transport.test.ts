@@ -15,6 +15,9 @@ function fixture(response: unknown, status = 200) {
         tenant: "tenant",
         endpoint: "http://127.0.0.1:7544",
         tokenFile: "/unused",
+        directoryId: "0190c3a0b1c27d4e8f0a1b2c3d4e5f60",
+        stagingDirectoryId: "0190c3a0b1c27d4e8f0a1b2c3d4e5f61",
+        writerSubject: "gcs-importer",
         readers: [],
         notificationConfigs: [
           "projects/_/buckets/bucket/notificationConfigs/1",

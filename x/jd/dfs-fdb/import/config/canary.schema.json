@@ -1,0 +1,173 @@
+{
+  "$ref": "#/definitions/GcsDfsCanaryConfig",
+  "definitions": {
+    "GcsDfsCanaryConfig": {
+      "type": "object",
+      "properties": {
+        "pubsubEndpoint": {
+          "type": "string",
+          "pattern": "^https:\\/\\/(?:[a-z][a-z0-9-]*-)?pubsub\\.googleapis\\.com$",
+          "default": "https://pubsub.googleapis.com"
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 30000
+        },
+        "environment": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "default": "development"
+        },
+        "cell": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "default": "local"
+        },
+        "deadlineSeconds": {
+          "type": "integer",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 180
+        },
+        "pollSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 2
+        },
+        "maxBacklogAgeSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400,
+          "default": 300
+        },
+        "relay": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "pattern": "^projects\\/[a-zA-Z0-9-]+\\/topics\\/[a-zA-Z0-9._~+%-]+$"
+            },
+            "subscription": {
+              "type": "string",
+              "pattern": "^projects\\/[a-zA-Z0-9-]+\\/subscriptions\\/[a-zA-Z0-9._~+%-]+$"
+            },
+            "deadLetterTopic": {
+              "$ref": "#/definitions/GcsDfsCanaryConfig/properties/relay/properties/topic"
+            },
+            "deadLetterSubscription": {
+              "$ref": "#/definitions/GcsDfsCanaryConfig/properties/relay/properties/subscription"
+            },
+            "publisherServiceAccount": {
+              "type": "string",
+              "format": "email"
+            },
+            "subscriberServiceAccount": {
+              "$ref": "#/definitions/GcsDfsCanaryConfig/properties/relay/properties/publisherServiceAccount"
+            },
+            "pubsubServiceAgent": {
+              "$ref": "#/definitions/GcsDfsCanaryConfig/properties/relay/properties/publisherServiceAccount"
+            },
+            "maxDeliveryAttempts": {
+              "type": "integer",
+              "minimum": 5,
+              "maximum": 100,
+              "default": 10
+            },
+            "minRetentionSeconds": {
+              "type": "integer",
+              "minimum": 600,
+              "maximum": 2678400,
+              "default": 604800
+            },
+            "minDeadLetterRetentionSeconds": {
+              "type": "integer",
+              "minimum": 600,
+              "maximum": 2678400,
+              "default": 1209600
+            }
+          },
+          "required": [
+            "topic",
+            "subscription",
+            "deadLetterTopic",
+            "deadLetterSubscription",
+            "publisherServiceAccount",
+            "subscriberServiceAccount",
+            "pubsubServiceAgent"
+          ],
+          "additionalProperties": false
+        },
+        "worker": {
+          "$ref": "#/definitions/GcsDfsCanaryConfig/properties/relay"
+        },
+        "binding": {
+          "type": "object",
+          "properties": {
+            "bucket": {
+              "type": "string",
+              "minLength": 1
+            },
+            "prefix": {
+              "type": "string"
+            },
+            "workspaceId": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_-]{1,128}$"
+            },
+            "notificationConfigs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1,
+              "maxItems": 32
+            },
+            "tenant": {
+              "type": "string",
+              "minLength": 1
+            },
+            "endpoint": {
+              "type": "string",
+              "format": "uri"
+            },
+            "directoryId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{12}7[0-9a-f]{3}[89ab][0-9a-f]{15}$"
+            },
+            "allowedReaderTokenFile": {
+              "type": "string",
+              "minLength": 1
+            },
+            "deniedReaderTokenFile": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "bucket",
+            "prefix",
+            "workspaceId",
+            "notificationConfigs",
+            "tenant",
+            "endpoint",
+            "directoryId",
+            "allowedReaderTokenFile",
+            "deniedReaderTokenFile"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "relay",
+        "worker",
+        "binding"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

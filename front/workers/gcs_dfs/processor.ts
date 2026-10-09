@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { ignoreObservation } from "@app/workers/gcs_dfs/telemetry";
+import type { Observer } from "@app/workers/gcs_dfs/telemetry";
 
 import {
   CHUNK_BYTES,
@@ -21,7 +23,7 @@ export interface SourceStorage {
   content(metadata: Metadata): AsyncIterable<Uint8Array>;
 }
 
-export interface Projection {
+export interface ProjectionSession {
   cursor(binding: Binding, source: Source): Promise<Cursor | null>;
   stage(binding: Binding, hash: string, bytes: Uint8Array): Promise<void>;
   publish(
@@ -30,9 +32,17 @@ export interface Projection {
   ): Promise<"applied" | "stale">;
 }
 
+export interface Projection extends Pick<ProjectionSession, "cursor"> {
+  withSource<T>(
+    binding: Binding,
+    source: Source,
+    run: (projection: ProjectionSession) => Promise<T>
+  ): Promise<T>;
+}
+
 async function stageContent(
   storage: SourceStorage,
-  projection: Projection,
+  projection: ProjectionSession,
   binding: Binding,
   metadata: Metadata
 ) {
@@ -81,7 +91,8 @@ async function processAttempt(
   message: Message,
   bindings: Binding[],
   storage: SourceStorage,
-  projection: Projection
+  projection: ProjectionSession,
+  observe: Observer = ignoreObservation
 ): Promise<"applied" | "stale"> {
   const notification = parseNotification(message, bindings);
   const { binding } = notification;
@@ -123,7 +134,7 @@ async function processAttempt(
   const chunks = cursor.deleted
     ? []
     : await stageContent(storage, projection, binding, metadata);
-  return projection.publish(binding, {
+  const outcome = await projection.publish(binding, {
     ...source,
     ...cursor,
     tenant: binding.tenant,
@@ -134,23 +145,43 @@ async function processAttempt(
     mtime_ms: Date.parse(metadata.updated),
     metadata,
   });
+  observe({
+    operation: cursor.deleted
+      ? "delete"
+      : existing && !existing.deleted
+        ? "update"
+        : "create",
+    outcome,
+  });
+  return outcome;
 }
 
 export async function processNotification(
   message: Message,
   bindings: Binding[],
   storage: SourceStorage,
-  projection: Projection
+  projection: Projection,
+  observe: Observer = ignoreObservation
 ): Promise<"applied" | "stale"> {
+  const { binding, metadata } = parseNotification(message, bindings);
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      return await processAttempt(message, bindings, storage, projection);
+      return await projection.withSource(binding, metadata, (session) =>
+        processAttempt(message, bindings, storage, session, observe)
+      );
     } catch (error) {
       if (
         !(error instanceof GcsDfsError) ||
         error.reason !== "source_cursor_changed"
       ) {
         throw error;
+      }
+      if (attempt < 4) {
+        observe({
+          operation: "cas_retry",
+          outcome: "error",
+          errorClass: "source_cursor_changed",
+        });
       }
     }
   }

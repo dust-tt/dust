@@ -1,0 +1,22 @@
+{
+  "bindings": [
+    {
+      "bucket": "bkt-prj-dust-test-private-uploads",
+      "notificationConfigs": [
+        "projects/_/buckets/bkt-prj-dust-test-private-uploads/notificationConfigs/1"
+      ],
+      "prefix": "files/w/workspace-test/",
+      "workspaceId": "workspace-test"
+    }
+  ],
+  "cell": "cell-99999",
+  "concurrency": 8,
+  "drainTimeoutMs": 60000,
+  "environment": "development",
+  "healthPort": 3001,
+  "leaseSeconds": 60,
+  "pubsubEndpoint": "https://europe-west1-pubsub.googleapis.com",
+  "requestTimeoutMs": 30000,
+  "subscription": "projects/prj-dust-test/subscriptions/relay",
+  "topic": "projects/prj-dust-test/topics/keyed"
+}

@@ -1,0 +1,117 @@
+{
+  "$ref": "#/definitions/GcsDfsRelayConfig",
+  "definitions": {
+    "GcsDfsRelayConfig": {
+      "type": "object",
+      "properties": {
+        "pubsubEmulatorHost": {
+          "type": "string",
+          "pattern": "^(127\\.0\\.0\\.1|localhost|\\[::1\\]):[0-9]{1,5}$"
+        },
+        "pubsubEndpoint": {
+          "type": "string",
+          "pattern": "^https:\\/\\/(?:[a-z][a-z0-9-]*-)?pubsub\\.googleapis\\.com$",
+          "default": "https://pubsub.googleapis.com"
+        },
+        "subscription": {
+          "type": "string",
+          "pattern": "^projects\\/[^/]+\\/subscriptions\\/[^/]+$"
+        },
+        "concurrency": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "default": 8
+        },
+        "leaseSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 600,
+          "default": 60
+        },
+        "requestTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 120000,
+          "default": 30000
+        },
+        "healthPort": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 3001
+        },
+        "drainTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000,
+          "default": 60000
+        },
+        "livenessTimeoutMs": {
+          "type": "integer",
+          "minimum": 30000,
+          "maximum": 900000,
+          "default": 300000
+        },
+        "environment": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "default": "development"
+        },
+        "cell": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "default": "local"
+        },
+        "topic": {
+          "type": "string",
+          "pattern": "^projects\\/[^/]+\\/topics\\/[^/]+$"
+        },
+        "bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "bucket": {
+                "type": "string",
+                "minLength": 1
+              },
+              "prefix": {
+                "type": "string"
+              },
+              "workspaceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "notificationConfigs": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "bucket",
+              "prefix",
+              "workspaceId",
+              "notificationConfigs"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 1024
+        }
+      },
+      "required": [
+        "subscription",
+        "topic",
+        "bindings"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}

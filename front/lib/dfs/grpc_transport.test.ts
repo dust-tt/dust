@@ -111,6 +111,40 @@ const implementation: UntypedServiceImplementation = {
   RevokeSession: (_call: UnaryCall, callback: Callback) => {
     callback(null, {});
   },
+  Apply: (call: UnaryCall, callback: Callback) => {
+    const expected = {
+      operations: [
+        {
+          create: {
+            parentId: DfsWireFactory.objectId(ROOT_ID),
+            name: "directory",
+            objectId: DfsWireFactory.objectId(FILE_ID),
+            kind: "DIRECTORY",
+            xattrs: {},
+          },
+        },
+        {
+          remove: {
+            objectId: DfsWireFactory.objectId(FILE_ID),
+            kind: "DIRECTORY",
+          },
+        },
+      ],
+    };
+    if (!isAuthorized(call)) {
+      callback(dfsStatusError(status.UNAUTHENTICATED, "UNAUTHENTICATED"));
+      return;
+    }
+    try {
+      expect(call.request).toEqual(expected);
+    } catch {
+      callback(dfsStatusError(status.INVALID_ARGUMENT, "INVALID_INPUT"));
+      return;
+    }
+    callback(null, {
+      results: [{ mutation: { related: [] } }, { mutation: { related: [] } }],
+    });
+  },
   // Replies with a payload of the response budget plus `offset` bytes.
   Read: (call: UnaryCall, callback: Callback) => {
     const excess = Number(call.request.offset);
@@ -142,6 +176,28 @@ describe("DfsGrpcTransport", () => {
   afterAll(() => {
     transport.close();
     server.forceShutdown();
+  });
+
+  it("encodes directory create and remove using the protocol ObjectKind enum", async () => {
+    const client = new DfsClient(transport, SESSION_KEY);
+    const response = await client.apply({
+      operations: [
+        {
+          type: "create",
+          parentId: ROOT_ID,
+          name: "directory",
+          objectId: FILE_ID,
+          directory: true,
+        },
+        { type: "remove", objectId: FILE_ID, directory: true },
+      ],
+    });
+    expect(response.isOk()).toBe(true);
+    if (response.isOk()) {
+      expect(
+        response.value.results.every((result) => result.status === "ok")
+      ).toBe(true);
+    }
   });
 
   it("sends the key as bearer metadata and decodes the response", async () => {

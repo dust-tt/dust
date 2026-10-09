@@ -7,7 +7,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["workers/gcs_dfs/*.test.ts"],
+    include: ["workers/gcs_dfs/*.test.ts", "lib/dfs/*.test.ts"],
     maxWorkers: 1,
     minWorkers: 1,
   },

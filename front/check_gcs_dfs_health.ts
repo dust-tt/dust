@@ -1,14 +1,15 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 
+import { closeRedisClients } from "@app/lib/api/redis";
 import logger from "@app/logger/logger";
 import {
   HealthConfigSchema,
   runHealthChecks,
 } from "@app/workers/gcs_dfs/health";
 import { GoogleHealthTransport } from "@app/workers/gcs_dfs/health_transport";
+import { createDfsProjection } from "@app/workers/gcs_dfs/projection";
 import { ConfigSchema } from "@app/workers/gcs_dfs/protocol";
-import { DfsProjection } from "@app/workers/gcs_dfs/transport";
 
 async function main() {
   const [workerPath, healthPath] = z
@@ -30,12 +31,16 @@ async function main() {
     process.exitCode = 1;
     return;
   }
+  const dfs = await createDfsProjection(worker);
   const checks = await runHealthChecks(
     worker,
     health,
     new GoogleHealthTransport(worker),
-    new DfsProjection(worker.requestTimeoutMs)
-  );
+    dfs
+  ).finally(async () => {
+    dfs.close();
+    await closeRedisClients();
+  });
   for (const check of checks) {
     if (check.healthy) {
       logger.info(check, "GCS DFS health check passed");

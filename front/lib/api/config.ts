@@ -40,6 +40,12 @@ export function getDefaultInit(): Promise<RequestInit> | null {
 }
 
 const config = {
+  getGcsDfsCanaryConfigPath: (): string => {
+    return EnvironmentConfig.getEnvVariable("GCS_DFS_CANARY_CONFIG_PATH");
+  },
+  getGcsDfsRelayConfigPath: (): string => {
+    return EnvironmentConfig.getEnvVariable("GCS_DFS_RELAY_CONFIG_PATH");
+  },
   getGcsDfsWorkerConfigPath: (): string => {
     return EnvironmentConfig.getEnvVariable("GCS_DFS_WORKER_CONFIG_PATH");
   },

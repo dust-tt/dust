@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 
-import type { Projection, SourceStorage } from "@app/workers/gcs_dfs/processor";
+import type {
+  Projection,
+  ProjectionSession,
+  SourceStorage,
+} from "@app/workers/gcs_dfs/processor";
 import {
   CHUNK_BYTES,
   ConfigSchema,
@@ -24,6 +28,9 @@ const config = ConfigSchema.parse({
       tenant: "one",
       endpoint: "http://127.0.0.1:8080",
       tokenFile: "/unused",
+      directoryId: "0190c3a0b1c27d4e8f0a1b2c3d4e5f60",
+      stagingDirectoryId: "0190c3a0b1c27d4e8f0a1b2c3d4e5f61",
+      writerSubject: "gcs-importer",
       readers: ["reader"],
       notificationConfigs: ["config"],
     },
@@ -66,10 +73,11 @@ function fixture(
       yield bytes;
     }),
   };
-  const projection: Projection = {
+  const projection: Projection & ProjectionSession = {
+    withSource: async (_binding, _source, run) => run(projection),
     cursor: vi.fn(async () => null),
     stage: vi.fn(async () => {}),
-    publish: vi.fn<Projection["publish"]>(async () => "applied"),
+    publish: vi.fn<ProjectionSession["publish"]>(async () => "applied"),
   };
   const subscription = {
     pull: vi.fn(async () => [message]),
@@ -82,7 +90,7 @@ function fixture(
 describe("GCS DFS worker delivery", () => {
   it("stages exact bytes and acknowledges only after durable publication", async () => {
     const test = fixture();
-    test.projection.publish = vi.fn<Projection["publish"]>(
+    test.projection.publish = vi.fn<ProjectionSession["publish"]>(
       async (binding, publication: Publication) => {
         expect(binding.tenant).toBe("one");
         expect(publication.generation).toBe("9007199254740993");
@@ -153,7 +161,7 @@ describe("GCS DFS worker delivery", () => {
 
   it("leaves publication failures and untrusted notifications unacknowledged", async () => {
     const test = fixture();
-    test.projection.publish = vi.fn<Projection["publish"]>(async () => {
+    test.projection.publish = vi.fn<ProjectionSession["publish"]>(async () => {
       throw new Error("external DFS unavailable");
     });
     expect(
@@ -213,7 +221,7 @@ describe("GCS DFS worker delivery", () => {
   it("re-reads both DFS and live GCS after a competing publication", async () => {
     const test = fixture();
     const published = { generation: "42", metageneration: "1", deleted: false };
-    test.projection.publish = vi.fn<Projection["publish"]>(async () => {
+    test.projection.publish = vi.fn<ProjectionSession["publish"]>(async () => {
       test.projection.cursor = vi.fn(async () => published);
       test.storage.metadata = vi.fn(async () => ({
         ...test.metadata,
@@ -378,7 +386,7 @@ describe("GCS DFS worker delivery", () => {
     try {
       const test = fixture();
       let finish: ((value: "applied") => void) | undefined;
-      test.projection.publish = vi.fn<Projection["publish"]>(
+      test.projection.publish = vi.fn<ProjectionSession["publish"]>(
         () =>
           new Promise((resolve) => {
             finish = resolve;

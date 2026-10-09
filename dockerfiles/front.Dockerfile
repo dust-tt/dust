@@ -36,6 +36,7 @@ COPY /front-spa .
 # Copy front source
 WORKDIR /app/front
 COPY /front .
+COPY /dfs/protocol/proto /app/dfs/protocol/proto
 
 # Generate custom models TypeScript from JSON config (downloaded by CI)
 RUN npm run generate:custom-models
@@ -77,7 +78,7 @@ ENV DD_GIT_COMMIT_SHA=${DD_GIT_COMMIT_SHA}
 
 # Build temporal workers and esbuild workers (workers only)
 RUN FRONT_DATABASE_URI="postgres://fake:fake@localhost:5432/fake" npm run build:temporal-bundles
-RUN npm run build:workers
+RUN npm run build:workers && npm run build:gcs-dfs
 
 # Upload worker source maps to Datadog for Error Tracking (map files kept in image for --enable-source-maps)
 RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
@@ -112,6 +113,8 @@ COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
+COPY --from=base-deps /app/front/lib/dfs/proto.ts ./lib/dfs/proto.ts
+COPY --from=base-deps /app/dfs/protocol/proto /app/dfs/protocol/proto
 # Code-defined skill attachments are read when the skill definitions are loaded.
 COPY --from=base-deps /app/front/lib/resources/skill/code_defined/global/frames/assets ./lib/resources/skill/code_defined/global/frames/assets
 # Copy scripts directory
@@ -222,6 +225,7 @@ COPY --from=front-api-build /app/package.json ./package.json
 COPY --from=front-api-build /app/package-lock.json ./package-lock.json
 
 COPY --from=front-api-build /app/front ./front
+COPY --from=base-deps /app/dfs/protocol/proto ./dfs/protocol/proto
 # Ensure migrate.js is present explicitly
 COPY --from=base-deps /app/front/dist/migrate.js ./front/dist/migrate.js
 # Shared migration tooling lives at the repo root; front-api/package.json runs `node ../scripts/db/run-migrate.cjs`.

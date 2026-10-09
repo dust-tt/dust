@@ -43,7 +43,12 @@
     "build:gcs-dfs-worker": "esbuild start_gcs_dfs_worker.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/start_gcs_dfs_worker.js --sourcemap",
     "start:gcs-dfs-worker": "node dist/start_gcs_dfs_worker.js",
     "build:gcs-dfs-health": "esbuild check_gcs_dfs_health.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/check_gcs_dfs_health.js --sourcemap",
-    "check:gcs-dfs-health": "node dist/check_gcs_dfs_health.js"
+    "check:gcs-dfs-health": "node dist/check_gcs_dfs_health.js",
+    "build:gcs-dfs-relay": "esbuild start_gcs_dfs_relay.ts --bundle --platform=node --target=node22 --alias:@app=. --packages=external --outfile=dist/start_gcs_dfs_relay.js --sourcemap",
+    "start:gcs-dfs-relay": "node dist/start_gcs_dfs_relay.js",
+    "build:gcs-dfs": "npm run build:gcs-dfs-worker && npm run build:gcs-dfs-relay && npm run build:gcs-dfs-health && npm run build:gcs-dfs-canary",
+    "build:gcs-dfs-canary": "esbuild check_gcs_dfs_canary.ts --bundle --platform=node --target=node22 --jsx=automatic --alias:@app=. --packages=external --outfile=dist/check_gcs_dfs_canary.js --sourcemap",
+    "check:gcs-dfs-canary": "node dist/check_gcs_dfs_canary.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
