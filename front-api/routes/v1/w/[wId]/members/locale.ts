@@ -14,8 +14,6 @@ import { validate } from "@front-api/middlewares/validator";
 
 // Mounted at /api/v1/w/:wId/members/locale. The email is sent in the body, not the query string,
 // as it is personal data.
-const app = publicApiApp();
-
 /**
  * @cc [owner:Nils-Fedrigo,label:product;api] member-locale-response
  * `workspaceLocale` MUST be the workspace's `locale`. `userLocale` MUST be the `getStoredLocale` of
@@ -23,6 +21,8 @@ const app = publicApiApp();
  * and `null` when no email is given or no user with this email is an active member.
  * `localisationEnabled` MUST be whether the workspace has the `localisation` feature flag.
  */
+const app = publicApiApp();
+
 app.post(
   "/",
   ensureIsSystemKey(),
