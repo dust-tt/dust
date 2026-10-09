@@ -1,10 +1,11 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import type { DustMcpServerSettings } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import { getDustMcpServerSettingsFromMetadata } from "@app/lib/api/mcp_server/dust_mcp_server_settings";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
 
 interface UseDustMcpServerSettingsProps {
@@ -14,7 +15,8 @@ interface UseDustMcpServerSettingsProps {
 export function useDustMcpServerSettings({
   owner,
 }: UseDustMcpServerSettingsProps) {
-  const sendNotification = useSendNotification();
+  const { t } = useLingui();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
   const [settings, setSettings] = useState<DustMcpServerSettings>(() =>
     getDustMcpServerSettingsFromMetadata(owner.metadata)
@@ -41,7 +43,7 @@ export function useDustMcpServerSettings({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Dust MCP server settings");
+        throw await getErrorFromResponse(res);
       }
 
       setSettings(nextSettings);
@@ -51,10 +53,9 @@ export function useDustMcpServerSettings({
       });
       return true;
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update Dust MCP server settings",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update the Dust MCP server settings`,
+        error,
       });
       return false;
     } finally {

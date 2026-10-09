@@ -3,6 +3,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import type { PatchConversationsRequestBody } from "@app/types/api/assistant/conversation/types";
 import type { ConversationUrlAccessMode } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import { useConversation } from "./useConversation";
 import { useConversations } from "./useConversations";
@@ -16,6 +17,7 @@ export function useConversationUrlAccessMode({
   owner,
   conversationId,
 }: UseConversationUrlAccessModeProps) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateConversation } = useConversation({
     conversationId,
@@ -55,7 +57,7 @@ export function useConversationUrlAccessMode({
         if (!response.ok) {
           sendNotification({
             type: "error",
-            title: "Failed to update URL access",
+            title: t`Failed to update URL access`,
           });
           return false;
         }
@@ -96,8 +98,8 @@ export function useConversationUrlAccessMode({
           type: "success",
           title:
             accessMode === "workspace_members"
-              ? "URL is now accessible"
-              : "URL access restricted",
+              ? t`URL is now accessible`
+              : t`URL access restricted`,
         });
         return true;
       } finally {
@@ -111,6 +113,7 @@ export function useConversationUrlAccessMode({
       mutateConversations,
       owner.sId,
       sendNotification,
+      t,
     ]
   );
 

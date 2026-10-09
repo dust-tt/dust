@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useCancelMessage({
@@ -10,6 +11,7 @@ export function useCancelMessage({
   owner: LightWorkspaceType;
   conversationId?: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   return useCallback(
@@ -30,9 +32,9 @@ export function useCancelMessage({
           }
         );
       } catch {
-        sendNotification({ type: "error", title: "Failed to cancel message" });
+        sendNotification({ type: "error", title: t`Failed to cancel message` });
       }
     },
-    [owner.sId, conversationId, sendNotification]
+    [owner.sId, conversationId, sendNotification, t]
   );
 }

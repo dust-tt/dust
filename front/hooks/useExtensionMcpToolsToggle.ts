@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { areExtensionMcpToolsAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseExtensionMcpToolsToggleProps {
@@ -11,6 +12,7 @@ interface UseExtensionMcpToolsToggleProps {
 export function useExtensionMcpToolsToggle({
   owner,
 }: UseExtensionMcpToolsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -38,9 +40,8 @@ export function useExtensionMcpToolsToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update extension MCP tools setting",
-        description:
-          "Could not update the browser extension MCP tools setting.",
+        title: t`Failed to update the extension MCP tools setting`,
+        description: t`Could not update the browser extension MCP tools setting.`,
       });
     }
     setIsChanging(false);

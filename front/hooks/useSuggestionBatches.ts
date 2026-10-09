@@ -18,6 +18,7 @@ import type {
 import { MAX_SUGGESTION_BATCH_IDS_PER_REQUEST } from "@app/types/api/assistant/suggestion_batches";
 import { isString } from "@app/types/shared/utils/general";
 import type { BatchSuggestionType } from "@app/types/suggestions/batch_suggestion";
+import { useLingui } from "@lingui/react/macro";
 import chunk from "lodash/chunk";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -90,6 +91,7 @@ interface UsePatchSuggestionBatchParams {
 function usePatchSuggestionBatch({
   workspaceId,
 }: UsePatchSuggestionBatchParams) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -113,7 +115,7 @@ function usePatchSuggestionBatch({
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
           sendApiErrorNotification({
-            title: "Failed to update the suggestions",
+            title: t`Failed to update the suggestions`,
             error: errorData,
           });
           return null;
@@ -123,12 +125,12 @@ function usePatchSuggestionBatch({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update the suggestions",
+          title: t`Failed to update the suggestions`,
         });
         return null;
       }
     },
-    [sendApiErrorNotification, sendNotification, workspaceId]
+    [sendApiErrorNotification, sendNotification, t, workspaceId]
   );
 
   return { patchBatch };

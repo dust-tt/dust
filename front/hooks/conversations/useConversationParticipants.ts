@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import type { FetchConversationParticipantsResponse } from "@app/lib/api/assistant/participants";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
@@ -100,6 +101,7 @@ export const useJoinConversation = ({
   ownerId: string;
   conversationId?: string | null;
 }): (() => Promise<boolean>) => {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const { mutateConversations } = useConversations({
@@ -131,8 +133,8 @@ export const useJoinConversation = ({
         if (error.type === "user_already_participant") {
           sendNotification({
             type: "error",
-            title: "Already subscribed",
-            description: "You are already a participant in this conversation.",
+            title: t`Already subscribed`,
+            description: t`You are already a participant in this conversation.`,
           });
           return false;
         }
@@ -142,16 +144,16 @@ export const useJoinConversation = ({
     } catch {
       sendNotification({
         type: "error",
-        title: "Error",
-        description: "Failed to subscribe to the conversation.",
+        title: t`Error`,
+        description: t`Failed to subscribe to the conversation.`,
       });
       return false;
     }
 
     sendNotification({
       type: "success",
-      title: "Subscribed!",
-      description: "You have been added to this conversation.",
+      title: t`Subscribed`,
+      description: t`You have been added to this conversation.`,
     });
 
     void mutateConversations();
@@ -164,6 +166,7 @@ export const useJoinConversation = ({
     mutateConversations,
     mutateConversationParticipants,
     conversationId,
+    t,
   ]);
 
   return joinConversation;

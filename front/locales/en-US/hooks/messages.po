@@ -13,9 +13,586 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: front/hooks/useAnswerUserQuestion.ts
+msgid "Failed to submit answer. Try again."
+msgstr "Failed to submit answer. Try again."
+
+#: front/hooks/useArchivePod.tsx
+msgid "Archive Pod?"
+msgstr "Archive Pod?"
+
+#: front/hooks/useArchivePod.tsx
+msgid "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+msgstr "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access."
+
+#: front/hooks/useArchivePod.tsx
+msgctxt "button label"
+msgid "Archive"
+msgstr "Archive"
+
+#: front/hooks/useAuditLogsToggle.ts
+msgid "Failed to update the audit logs setting"
+msgstr "Failed to update the audit logs setting"
+
+#: front/hooks/useAwaitableDialog.tsx
+msgid "OK"
+msgstr "OK"
+
+#: front/hooks/useChangeMembersRoles.ts
+#: front/hooks/useProvidersSelection.ts
+msgid "Update failed"
+msgstr "Update failed"
+
+#: front/hooks/useChangeMembersRoles.ts
+msgid "Failed to update the role of {failedCount, plural, one {# member} other {# members}} ({succeededCount} succeeded)."
+msgstr "Failed to update the role of {failedCount, plural, one {# member} other {# members}} ({succeededCount} succeeded)."
+
+#: front/hooks/useChangeMembersRoles.ts
+msgid "Role updated"
+msgstr "Role updated"
+
+#: front/hooks/useChangeMembersRoles.ts
+msgid "Role updated to {roleName} for {memberCount, plural, one {# member} other {# members}}."
+msgstr "Role updated to {roleName} for {memberCount, plural, one {# member} other {# members}}."
+
+#: front/hooks/useChangeMembersRoles.ts
+msgid "An unexpected error occurred while updating member roles."
+msgstr "An unexpected error occurred while updating member roles."
+
+#: front/hooks/useConsumptionExports.ts
+msgid "Failed to start export"
+msgstr "Failed to start export"
+
+#: front/hooks/useConsumptionExports.ts
+msgid "Could not start generating the export."
+msgstr "Could not start generating the export."
+
+#: front/hooks/useConversationExternalNotificationsToggle.ts
+msgid "Failed to update conversation email and Slack notifications"
+msgstr "Failed to update conversation email and Slack notifications"
+
+#: front/hooks/useCreateConversationWithMessage.ts
+msgid "User not found"
+msgstr "User not found"
+
+#: front/hooks/useCreateConversationWithMessage.ts
+#: front/hooks/useSubmitMessage.ts
+msgid "Your message could not be sent."
+msgstr "Your message could not be sent."
+
+#: front/hooks/useDeleteAgentMessage.ts
+#: front/hooks/useDeleteMessage.ts
+msgid "Message deleted"
+msgstr "Message deleted"
+
+#: front/hooks/useDeleteAgentMessage.ts
+msgid "The agent message has been deleted successfully."
+msgstr "The agent message has been deleted successfully."
+
+#: front/hooks/useDeleteConversation.ts
+msgid "Error deleting conversation."
+msgstr "Error deleting conversation."
+
+#: front/hooks/useDeleteMessage.ts
+msgid "Message has been deleted successfully."
+msgstr "Message has been deleted successfully."
+
+#: front/hooks/useDfmCommentSignatures.ts
+msgid "Commenting is unavailable."
+msgstr "Commenting is unavailable."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "Failed to mark feedback as seen."
+msgstr "Failed to mark feedback as seen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "Failed to mark feedback as unseen."
+msgstr "Failed to mark feedback as unseen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "An error occurred while marking feedback as seen."
+msgstr "An error occurred while marking feedback as seen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "An error occurred while marking feedback as unseen."
+msgstr "An error occurred while marking feedback as unseen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "Feedback marked as seen."
+msgstr "Feedback marked as seen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "Feedback marked as unseen."
+msgstr "Feedback marked as unseen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "The feedback has been marked as seen."
+msgstr "The feedback has been marked as seen."
+
+#: front/hooks/useDismissFeedback.ts
+msgid "The feedback has been marked as unseen."
+msgstr "The feedback has been marked as unseen."
+
+#: front/hooks/useDustMcpServerSettings.ts
+msgid "Failed to update the Dust MCP server settings"
+msgstr "Failed to update the Dust MCP server settings"
+
+#: front/hooks/useEditAndValidateAction.ts
+msgid "Failed to edit and approve action"
+msgstr "Failed to edit and approve action"
+
+#: front/hooks/useEditUserMessage.ts
+msgid "Failed to edit message"
+msgstr "Failed to edit message"
+
+#: front/hooks/useEditUserMessage.ts
+msgid "Try again."
+msgstr "Try again."
+
+#: front/hooks/useEditUserMessage.ts
+msgid "Message edited"
+msgstr "Message edited"
+
+#: front/hooks/useEditUserMessage.ts
+msgid "Message has been edited successfully."
+msgstr "Message has been edited successfully."
+
+#: front/hooks/useEmailAgentsToggle.ts
+msgid "Failed to update the email agents setting"
+msgstr "Failed to update the email agents setting"
+
+#: front/hooks/useEnableBrowserNotification.tsx
+msgid "Enable notifications"
+msgstr "Enable notifications"
+
+#: front/hooks/useEnableBrowserNotification.tsx
+msgid "Get notified in your browser when messages arrive."
+msgstr "Get notified in your browser when messages arrive."
+
+#: front/hooks/useEnableBrowserNotification.tsx
+msgid "Enable"
+msgstr "Enable"
+
+#: front/hooks/useEnableBrowserNotification.tsx
+msgid "Later"
+msgstr "Later"
+
+#: front/hooks/useExtensionMcpToolsToggle.ts
+msgid "Failed to update the extension MCP tools setting"
+msgstr "Failed to update the extension MCP tools setting"
+
+#: front/hooks/useExtensionMcpToolsToggle.ts
+msgid "Could not update the browser extension MCP tools setting."
+msgstr "Could not update the browser extension MCP tools setting."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{fileName}\" ({fileSize}) exceeds the image limit of {maxFileSize}. Upload a smaller file."
+msgstr "File \"{fileName}\" ({fileSize}) exceeds the image limit of {maxFileSize}. Upload a smaller file."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{fileName}\" ({fileSize}) exceeds the data limit of {maxFileSize}. Upload a smaller file."
+msgstr "File \"{fileName}\" ({fileSize}) exceeds the data limit of {maxFileSize}. Upload a smaller file."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{fileName}\" ({fileSize}) exceeds the code limit of {maxFileSize}. Upload a smaller file."
+msgstr "File \"{fileName}\" ({fileSize}) exceeds the code limit of {maxFileSize}. Upload a smaller file."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{fileName}\" ({fileSize}) exceeds the delimited limit of {maxFileSize}. Upload a smaller file."
+msgstr "File \"{fileName}\" ({fileSize}) exceeds the delimited limit of {maxFileSize}. Upload a smaller file."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{fileName}\" ({fileSize}) exceeds the audio limit of {maxFileSize}. Upload a smaller file."
+msgstr "File \"{fileName}\" ({fileSize}) exceeds the audio limit of {maxFileSize}. Upload a smaller file."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File \"{renamedFileName}\" is not supported ({fileType})."
+msgstr "File \"{renamedFileName}\" is not supported ({fileType})."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Audio attachments require voice transcription, which is unavailable in this workspace. Upload a text transcript instead."
+msgstr "Audio attachments require voice transcription, which is unavailable in this workspace. Upload a text transcript instead."
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload the preview of {maybeTruncatedFilename}"
+msgstr "Failed to upload the preview of {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload {maybeTruncatedFilename}"
+msgstr "Failed to upload {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload file preview"
+msgstr "Failed to upload file preview"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Failed to upload file"
+msgstr "Failed to upload file"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "Error uploading {maybeTruncatedFilename}"
+msgstr "Error uploading {maybeTruncatedFilename}"
+
+#: front/hooks/useFileUploaderService.ts
+msgid "File too large."
+msgstr "File too large."
+
+#: front/hooks/useFrameSharingToggle.ts
+msgid "Failed to update the Frame sharing setting"
+msgstr "Failed to update the Frame sharing setting"
+
+#: front/hooks/useFrameSharingToggle.ts
+msgid "Could not update the Frame sharing policy."
+msgstr "Could not update the Frame sharing policy."
+
+#: front/hooks/useGoTemplateFromSearchParam.ts
+msgid "Template unavailable"
+msgstr "Template unavailable"
+
+#: front/hooks/useGoTemplateFromSearchParam.ts
+msgid "This link template could not be loaded."
+msgstr "This link template could not be loaded."
+
+#: front/hooks/useGoTemplateFromSearchParam.ts
+msgid "Some attachments could not be loaded"
+msgstr "Some attachments could not be loaded"
+
+#: front/hooks/useGoTemplateFromSearchParam.ts
+msgid "{skippedAttachmentCount, plural, one {# attachment was skipped.} other {# attachments were skipped.}}"
+msgstr "{skippedAttachmentCount, plural, one {# attachment was skipped.} other {# attachments were skipped.}}"
+
+#: front/hooks/useHomepageUseCases.ts
+msgid "Failed to hide the suggestion."
+msgstr "Failed to hide the suggestion."
+
+#: front/hooks/useMarkAllConversationsAsRead.ts
+msgid "All conversations marked as read"
+msgstr "All conversations marked as read"
+
+#: front/hooks/useMarkAllConversationsAsRead.ts
+msgid "{total, plural, one {# conversation marked as read.} other {# conversations marked as read.}}"
+msgstr "{total, plural, one {# conversation marked as read.} other {# conversations marked as read.}}"
+
+#: front/hooks/useMarkAllConversationsAsRead.ts
+msgid "Failed to mark conversations as read"
+msgstr "Failed to mark conversations as read"
+
+#: front/hooks/useMarkAllConversationsAsRead.ts
+msgid "{total, plural, one {Could not mark the conversation as read.} other {Could not mark the conversations as read.}}"
+msgstr "{total, plural, one {Could not mark the conversation as read.} other {Could not mark the conversations as read.}}"
+
+#: front/hooks/useMessageFeedback.ts
+msgid "Feedback sent"
+msgstr "Feedback sent"
+
+#: front/hooks/useMessageFeedback.ts
+msgid "The agent will improve with your feedback."
+msgstr "The agent will improve with your feedback."
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Cancellation failed"
+msgstr "Cancellation failed"
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Failed to cancel your subscription."
+msgstr "Failed to cancel your subscription."
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Subscription cancelled"
+msgstr "Subscription cancelled"
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Your subscription has been cancelled."
+msgstr "Your subscription has been cancelled."
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Reactivation failed"
+msgstr "Reactivation failed"
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Failed to reactivate your subscription."
+msgstr "Failed to reactivate your subscription."
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Subscription reactivated"
+msgstr "Subscription reactivated"
+
+#: front/hooks/useMetronomeContractLifecycleAction.ts
+msgid "Your subscription will continue normally."
+msgstr "Your subscription will continue normally."
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+msgid "Remove from Pod?"
+msgstr "Remove from Pod?"
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+msgid "<0>{conversationTitle}</0> will be removed from the Pod. Participants who no longer have access to the required spaces will be removed from the conversation."
+msgstr "<0>{conversationTitle}</0> will be removed from the Pod. Participants who no longer have access to the required spaces will be removed from the conversation."
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+#: front/hooks/usePodFileTabs.ts
+msgid "Remove"
+msgstr "Remove"
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+msgid "Error removing conversation from Pod."
+msgstr "Error removing conversation from Pod."
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+msgid "Conversation removed."
+msgstr "Conversation removed."
+
+#: front/hooks/useMoveConversationOutOfPod.tsx
+msgid "The conversation has been removed from the Pod."
+msgstr "The conversation has been removed from the Pod."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Move conversation to Pod"
+msgstr "Move conversation to Pod"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "The content of the conversation <0>{conversationTitle}</0> will be available to all members of the Pod <1>{podName}</1>."
+msgstr "The content of the conversation <0>{conversationTitle}</0> will be available to all members of the Pod <1>{podName}</1>."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Move"
+msgstr "Move"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Error moving conversation."
+msgstr "Error moving conversation."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Conversation moved."
+msgstr "Conversation moved."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "The conversation has been moved to the Pod."
+msgstr "The conversation has been moved to the Pod."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Move conversations to Pod"
+msgstr "Move conversations to Pod"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "The content of {total, plural, one {# conversation} other {# conversations}} will be available to all members of the Pod <0>{podName}</0>."
+msgstr "The content of {total, plural, one {# conversation} other {# conversations}} will be available to all members of the Pod <0>{podName}</0>."
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Conversations successfully moved"
+msgstr "Conversations successfully moved"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "{total, plural, one {# conversation has been moved to the Pod.} other {# conversations have been moved to the Pod.}}"
+msgstr "{total, plural, one {# conversation has been moved to the Pod.} other {# conversations have been moved to the Pod.}}"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Failed to move conversations"
+msgstr "Failed to move conversations"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "{total, plural, one {Could not move the selected conversation.} other {Could not move the selected conversations.}}"
+msgstr "{total, plural, one {Could not move the selected conversation.} other {Could not move the selected conversations.}}"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Some conversations couldn’t be moved"
+msgstr "Some conversations couldn’t be moved"
+
+#: front/hooks/useMoveConversationToPod.tsx
+msgid "Moved {successCount} of {total} conversations."
+msgstr "Moved {successCount} of {total} conversations."
+
+#: front/hooks/useNavigationLock.tsx
+msgid "Discard your unsaved changes?"
+msgstr "Discard your unsaved changes?"
+
+#: front/hooks/useNavigationLock.tsx
+msgid "If you leave now, your latest edits won't be kept."
+msgstr "If you leave now, your latest edits won't be kept."
+
+#: front/hooks/useNavigationLock.tsx
+msgid "Discard"
+msgstr "Discard"
+
+#: front/hooks/useNavigationLock.tsx
+msgid "Keep editing"
+msgstr "Keep editing"
+
+#: front/hooks/useOpenPodsPolicy.ts
+msgid "Failed to update Pod visibility policy"
+msgstr "Failed to update Pod visibility policy"
+
+#: front/hooks/usePinPodBanner.ts
+msgid "Pin as Pod banner?"
+msgstr "Pin as Pod banner?"
+
+#: front/hooks/usePinPodBanner.ts
+msgid "\"{label}\" will appear at the top of this Pod for all members."
+msgstr "\"{label}\" will appear at the top of this Pod for all members."
+
+#: front/hooks/usePinPodBanner.ts
+msgid "Pin"
+msgstr "Pin"
+
+#: front/hooks/usePinPodBanner.ts
+msgid "Unpin Pod banner?"
+msgstr "Unpin Pod banner?"
+
+#: front/hooks/usePinPodBanner.ts
+msgid "\"{fileName}\" will no longer appear at the top of this Pod."
+msgstr "\"{fileName}\" will no longer appear at the top of this Pod."
+
+#: front/hooks/usePinPodBanner.ts
+msgid "The pinned banner will no longer appear at the top of this Pod."
+msgstr "The pinned banner will no longer appear at the top of this Pod."
+
+#: front/hooks/usePinPodBanner.ts
+msgid "Unpin"
+msgstr "Unpin"
+
+#: front/hooks/usePodFileTabs.ts
+msgid "Pod tab limit reached"
+msgstr "Pod tab limit reached"
+
+#: front/hooks/usePodFileTabs.ts
+msgid "A Pod can have at most {maxTabs} custom tabs."
+msgstr "A Pod can have at most {maxTabs} custom tabs."
+
+#: front/hooks/usePodFileTabs.ts
+msgid "Add as Pod tab?"
+msgstr "Add as Pod tab?"
+
+#: front/hooks/usePodFileTabs.ts
+msgid "\"{label}\" will appear as a tab in this Pod for all members."
+msgstr "\"{label}\" will appear as a tab in this Pod for all members."
+
+#: front/hooks/usePodFileTabs.ts
+msgid "Add tab"
+msgstr "Add tab"
+
+#: front/hooks/usePodFileTabs.ts
+msgid "Remove Pod tab?"
+msgstr "Remove Pod tab?"
+
+#: front/hooks/usePodFileTabs.ts
+msgid "\"{label}\" will no longer appear as a tab in this Pod."
+msgstr "\"{label}\" will no longer appear as a tab in this Pod."
+
+#: front/hooks/usePodKnowledgePolicy.ts
+msgid "Failed to update Pod knowledge policy"
+msgstr "Failed to update Pod knowledge policy"
+
+#: front/hooks/usePrivateConversationUrlsToggle.ts
+msgid "Failed to update the private conversation URLs setting"
+msgstr "Failed to update the private conversation URLs setting"
+
+#: front/hooks/useProvidersSelection.ts
+msgid "Providers updated"
+msgstr "Providers updated"
+
+#: front/hooks/useProvidersSelection.ts
+msgid "The list of providers has been successfully updated."
+msgstr "The list of providers has been successfully updated."
+
+#: front/hooks/useProvidersSelection.ts
+msgid "An unexpected error occurred while updating providers."
+msgstr "An unexpected error occurred while updating providers."
+
+#: front/hooks/useProvidersSelection.ts
+msgid "One provider required"
+msgstr "One provider required"
+
+#: front/hooks/useProvidersSelection.ts
+msgid "Select at least one provider to continue with the update."
+msgstr "Select at least one provider to continue with the update."
+
+#: front/hooks/usePublishedAgentsRestrictedModelsToggle.ts
+msgid "Failed to update the published agents setting"
+msgstr "Failed to update the published agents setting"
+
+#: front/hooks/usePublishedAgentsRestrictedModelsToggle.ts
+msgid "Could not update the published agents model access setting."
+msgstr "Could not update the published agents model access setting."
+
 #: front/hooks/useSearchMembersByEmails.ts
 msgid "We couldn't check which users are already members"
 msgstr "We couldn't check which users are already members"
+
+#: front/hooks/useSetupNotifications.ts
+msgid "New notification"
+msgstr "New notification"
+
+#: front/hooks/useSkillMenuItems.ts
+msgctxt "verb, menu item"
+msgid "Edit"
+msgstr "Edit"
+
+#: front/hooks/useSkillMenuItems.ts
+msgid "More info"
+msgstr "More info"
+
+#: front/hooks/useSkillMenuItems.ts
+msgid "Copied!"
+msgstr "Copied!"
+
+#: front/hooks/useSkillMenuItems.ts
+msgid "Copy link"
+msgstr "Copy link"
+
+#: front/hooks/useSkillMenuItems.ts
+msgctxt "verb, menu item"
+msgid "Archive"
+msgstr "Archive"
+
+#: front/hooks/useSkillSuggestions.ts
+msgid "Failed to update skill suggestion"
+msgstr "Failed to update skill suggestion"
+
+#: front/hooks/useSlackPersonalFooterRemovalToggle.ts
+msgid "Failed to update the Slack footer removal setting"
+msgstr "Failed to update the Slack footer removal setting"
+
+#: front/hooks/useSlackPersonalFooterRemovalToggle.ts
+msgid "Could not update the Slack footer removal setting."
+msgstr "Could not update the Slack footer removal setting."
+
+#: front/hooks/useSoundNotification.ts
+msgid "Dust — Action required"
+msgstr "Dust — Action required"
+
+#: front/hooks/useSoundNotification.ts
+msgid "A manual action requires your approval."
+msgstr "A manual action requires your approval."
+
+#: front/hooks/useSubmitMessage.ts
+msgid "Conversation not found"
+msgstr "Conversation not found"
+
+#: front/hooks/useSubmitMessage.ts
+msgid "Error uploading file."
+msgstr "Error uploading file."
+
+#: front/hooks/useSubmitMessage.ts
+msgid "Your message is too long to be sent."
+msgstr "Your message is too long to be sent."
+
+#: front/hooks/useSuggestionBatches.ts
+msgid "Failed to update the suggestions"
+msgstr "Failed to update the suggestions"
+
+#: front/hooks/useToolFileUpload.ts
+msgid "Failed to attach file"
+msgstr "Failed to attach file"
+
+#: front/hooks/useUpdateConversationTitle.ts
+msgid "Failed to edit title"
+msgstr "Failed to edit title"
+
+#: front/hooks/useUpdateConversationTitle.ts
+msgid "Title edited"
+msgstr "Title edited"
 
 #: front/hooks/useUpdateGroupSharedUsageLimit.ts
 msgid "Failed to update the group budget"
@@ -40,3 +617,167 @@ msgstr "Could not save the language"
 #: front/hooks/useUserLocale.ts
 msgid "Your language could not be saved to your account."
 msgstr "Your language could not be saved to your account."
+
+#: front/hooks/useVoiceLiveTranscriberService.ts
+msgid "Microphone permission required."
+msgstr "Microphone permission required."
+
+#: front/hooks/useVoiceLiveTranscriberService.ts
+msgid "Allow microphone access and try again."
+msgstr "Allow microphone access and try again."
+
+#: front/hooks/useVoiceLiveTranscriberService.ts
+msgid "Could not start recording."
+msgstr "Could not start recording."
+
+#: front/hooks/useVoiceTranscriptionToggle.ts
+msgid "Failed to update the voice transcription setting"
+msgstr "Failed to update the voice transcription setting"
+
+#: front/hooks/useVoiceTranscriptionToggle.ts
+msgid "Could not update the voice transcription setting."
+msgstr "Could not update the voice transcription setting."
+
+#: front/hooks/useWorkspaceAnalyticsToggle.ts
+msgid "Failed to update the Workspace Analyst setting"
+msgstr "Failed to update the Workspace Analyst setting"
+
+#: front/hooks/useWorkspaceAnalyticsToggle.ts
+msgid "Could not update the Workspace Analyst setting."
+msgstr "Could not update the Workspace Analyst setting."
+
+#: front/hooks/useWorkspaceDefaultAgent.ts
+msgid "Failed to update the workspace default agent"
+msgstr "Failed to update the workspace default agent"
+
+#: front/hooks/useWorkspaceLocale.ts
+msgid "Failed to update the workspace language"
+msgstr "Failed to update the workspace language"
+
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Your subscription will end at the end of the current period."
+msgstr "Your subscription will end at the end of the current period."
+
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Resume failed"
+msgstr "Resume failed"
+
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Subscription resumed"
+msgstr "Subscription resumed"
+
+#: front/hooks/useWorkspaceSubscriptionCancellation.ts
+msgid "Your subscription has been resumed."
+msgstr "Your subscription has been resumed."
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Invalid file type"
+msgstr "Invalid file type"
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Select a YAML file (.yaml or .yml)."
+msgstr "Select a YAML file (.yaml or .yml)."
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Agent creation failed"
+msgstr "Agent creation failed"
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Agent created with warnings"
+msgstr "Agent created with warnings"
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Agent \"{agentName}\" was created, but some actions were skipped."
+msgstr "Agent \"{agentName}\" was created, but some actions were skipped."
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Action skipped: {actionName}"
+msgstr "Action skipped: {actionName}"
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Agent created successfully"
+msgstr "Agent created successfully"
+
+#: front/hooks/useYAMLUpload.ts
+msgid "Agent \"{agentName}\" was created from YAML."
+msgstr "Agent \"{agentName}\" was created from YAML."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Tag already exists"
+msgstr "Tag already exists"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "The tag \"{tag}\" is already in the include list."
+msgstr "The tag \"{tag}\" is already in the include list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "The tag \"{tag}\" is already in the exclude list."
+msgstr "The tag \"{tag}\" is already in the exclude list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Tag added"
+msgstr "Tag added"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Added \"{tag}\" to the include list."
+msgstr "Added \"{tag}\" to the include list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Added \"{tag}\" to the exclude list."
+msgstr "Added \"{tag}\" to the exclude list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Failed to add tag"
+msgstr "Failed to add tag"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "An error occurred while adding the tag."
+msgstr "An error occurred while adding the tag."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Tag not found"
+msgstr "Tag not found"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "The tag \"{tag}\" is not in the include list."
+msgstr "The tag \"{tag}\" is not in the include list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "The tag \"{tag}\" is not in the exclude list."
+msgstr "The tag \"{tag}\" is not in the exclude list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Tag removed"
+msgstr "Tag removed"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Removed \"{tag}\" from the include list."
+msgstr "Removed \"{tag}\" from the include list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Removed \"{tag}\" from the exclude list."
+msgstr "Removed \"{tag}\" from the exclude list."
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "Failed to remove tag"
+msgstr "Failed to remove tag"
+
+#: front/hooks/useZendeskOrganizationTagFilters.ts
+#: front/hooks/useZendeskTicketTagFilters.ts
+msgid "An error occurred while removing the tag."
+msgstr "An error occurred while removing the tag."

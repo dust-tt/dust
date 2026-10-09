@@ -7,6 +7,8 @@ import {
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { WorkspaceType } from "@app/types/user";
+import { plural } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 interface useMarkAllConversationsAsReadParams {
@@ -19,6 +21,7 @@ export function useMarkAllConversationsAsRead({
   podId,
 }: useMarkAllConversationsAsReadParams) {
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
@@ -96,8 +99,8 @@ export function useMarkAllConversationsAsRead({
 
         sendNotification({
           type: "success",
-          title: "All conversations marked as read",
-          description: `${total} conversation${total > 1 ? "s" : ""} marked as read.`,
+          title: t`All conversations marked as read`,
+          description: t`${plural(total, { one: "# conversation marked as read.", other: "# conversations marked as read." })}`,
         });
 
         // Unread pod conversations are rendered from these caches, so hold
@@ -114,8 +117,8 @@ export function useMarkAllConversationsAsRead({
 
         sendNotification({
           type: "error",
-          title: "Failed to mark conversations as read",
-          description: `Could not mark the ${total > 1 ? "conversations" : "conversation"} as read.`,
+          title: t`Failed to mark conversations as read`,
+          description: t`${plural(total, { one: "Could not mark the conversation as read.", other: "Could not mark the conversations as read." })}`,
         });
       } finally {
         setIsMarkingAllAsRead(false);
@@ -128,6 +131,7 @@ export function useMarkAllConversationsAsRead({
       mutatePodConversations,
       sendNotification,
       mutateUnreadConversationIds,
+      t,
     ]
   );
 

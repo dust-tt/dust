@@ -6,6 +6,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetConversationPlanModeResponseBody } from "@app/types/api/assistant/plan_mode";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
@@ -50,6 +51,7 @@ export function useClosePlan({
   workspaceId: string;
   conversationId: string | null;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutate } = useSWRConfig();
   const [isClosing, setIsClosing] = useState(false);
@@ -66,7 +68,7 @@ export function useClosePlan({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to archive plan",
+          title: t`Failed to archive plan`,
           error: errorData,
         });
         return false;
@@ -79,7 +81,7 @@ export function useClosePlan({
     } finally {
       setIsClosing(false);
     }
-  }, [workspaceId, conversationId, sendApiErrorNotification, mutate]);
+  }, [workspaceId, conversationId, sendApiErrorNotification, mutate, t]);
 
   return { closePlan, isClosing };
 }

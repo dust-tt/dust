@@ -2,6 +2,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useUser } from "@app/lib/swr/user";
 import { isChromeExtension } from "@app/lib/utils/extension";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useMemo, useRef, useState } from "react";
 
 const LOCAL_STORAGE_KEY = "browser-notification-last-asked-for";
@@ -32,6 +33,7 @@ function setLastAskedTimestamp(ts: number): void {
 }
 
 export const useEnableBrowserNotification = () => {
+  const { t } = useLingui();
   const { user } = useUser();
   // No subscriberHash means we will not sent notifications to this user.
   // TODO(mentions v2): remove when notifications are released to everyone.
@@ -73,12 +75,14 @@ export const useEnableBrowserNotification = () => {
 
     const confirmed = await confirm({
       title: (
-        <div className="flex items-center gap-2">Enable notifications</div>
+        <div className="flex items-center gap-2">
+          <Trans>Enable notifications</Trans>
+        </div>
       ),
-      message: "Get notified in your browser when messages arrive.",
-      validateLabel: "Enable",
+      message: t`Get notified in your browser when messages arrive.`,
+      validateLabel: t`Enable`,
       validateVariant: "highlight",
-      cancelLabel: "Later",
+      cancelLabel: t`Later`,
     });
 
     if (confirmed) {
@@ -90,7 +94,7 @@ export const useEnableBrowserNotification = () => {
     }
 
     shownRef.current = false;
-  }, [canAsk, confirm]);
+  }, [canAsk, confirm, t]);
 
   return { askForPermission };
 };

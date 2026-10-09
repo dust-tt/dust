@@ -18,9 +18,11 @@ import {
   Trash01,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const tracking = useManageTracking();
   const { push } = useAppRouter();
   const [copiedSkillId, setCopiedSkillId] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
       if (canEdit) {
         menuItems.push({
           kind: "item",
-          label: "Edit",
+          label: t({ message: "Edit", context: "verb, menu item" }),
           icon: Edit04,
           onClick: (event) => {
             event.stopPropagation();
@@ -56,7 +58,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
       menuItems.push(
         {
           kind: "item",
-          label: "More info",
+          label: t`More info`,
           icon: Eye,
           onClick: (event) => {
             event.stopPropagation();
@@ -66,7 +68,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
         {
           kind: "item",
           label:
-            isCopied && copiedSkillId === skillId ? "Copied!" : "Copy link",
+            isCopied && copiedSkillId === skillId ? t`Copied!` : t`Copy link`,
           icon:
             isCopied && copiedSkillId === skillId ? ClipboardCheck : Clipboard,
           onClick: async (event) => {
@@ -83,7 +85,7 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
       if (onArchive) {
         menuItems.push({
           kind: "item",
-          label: "Archive",
+          label: t({ message: "Archive", context: "verb, menu item" }),
           icon: Trash01,
           variant: "warning",
           onClick: (event) => {
@@ -95,6 +97,6 @@ export function useSkillMenuItems({ owner }: { owner: LightWorkspaceType }) {
 
       return menuItems;
     },
-    [push, owner.sId, isCopied, copiedSkillId, copyLink, tracking]
+    [push, owner.sId, isCopied, copiedSkillId, copyLink, tracking, t]
   );
 }

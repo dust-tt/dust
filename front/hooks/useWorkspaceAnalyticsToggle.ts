@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseWorkspaceAnalyticsToggleProps {
@@ -11,6 +12,7 @@ interface UseWorkspaceAnalyticsToggleProps {
 export function useWorkspaceAnalyticsToggle({
   owner,
 }: UseWorkspaceAnalyticsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -37,8 +39,8 @@ export function useWorkspaceAnalyticsToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update Workspace Analyst setting",
-        description: "Could not update the Workspace Analyst setting.",
+        title: t`Failed to update the Workspace Analyst setting`,
+        description: t`Could not update the Workspace Analyst setting.`,
       });
     }
     setIsChanging(false);

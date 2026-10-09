@@ -1,8 +1,9 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { isManualPodFilesManagementAllowed } from "@app/lib/workspace_policies";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UsePodKnowledgePolicyProps {
@@ -10,8 +11,9 @@ interface UsePodKnowledgePolicyProps {
 }
 
 export function usePodKnowledgePolicy({ owner }: UsePodKnowledgePolicyProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [
     allowManualPodKnowledgeManagement,
     setAllowManualPodKnowledgeManagement,
@@ -31,15 +33,14 @@ export function usePodKnowledgePolicy({ owner }: UsePodKnowledgePolicyProps) {
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update Pod knowledge policy.");
+        throw await getErrorFromResponse(res);
       }
 
       setAllowManualPodKnowledgeManagement(nextValue);
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update Pod knowledge policy",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update Pod knowledge policy`,
+        error,
       });
       return false;
     } finally {

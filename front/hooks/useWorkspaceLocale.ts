@@ -1,9 +1,10 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import type { SupportedLocale } from "@app/types/locale";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseWorkspaceLocaleProps {
@@ -11,8 +12,9 @@ interface UseWorkspaceLocaleProps {
 }
 
 export function useWorkspaceLocale({ owner }: UseWorkspaceLocaleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateAuthContext } = useAuthContext({ workspaceId: owner.sId });
 
   const doUpdateWorkspaceLocale = async (
@@ -29,10 +31,9 @@ export function useWorkspaceLocale({ owner }: UseWorkspaceLocaleProps) {
       });
 
       if (!res.ok) {
-        sendNotification({
-          type: "error",
-          title: "Failed to update the workspace language",
-          description: "Could not update the workspace language.",
+        sendApiErrorNotification({
+          title: t`Failed to update the workspace language`,
+          error: await getErrorFromResponse(res),
         });
         return false;
       }
@@ -42,10 +43,9 @@ export function useWorkspaceLocale({ owner }: UseWorkspaceLocaleProps) {
         // Non-critical — the update succeeded. Context will sync on next navigation.
       });
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update the workspace language",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update the workspace language`,
+        error,
       });
       return false;
     } finally {

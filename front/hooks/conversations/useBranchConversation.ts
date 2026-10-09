@@ -11,6 +11,7 @@ import type { PostConversationForkResponseBody } from "@app/types/api/assistant/
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isRecord, isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 function isPostConversationForkResponseBody(
@@ -36,6 +37,7 @@ export function useBranchConversation({
   conversationId?: string | null;
   onConversationBranched?: () => Promise<void> | void;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const router = useAppRouter();
@@ -72,7 +74,7 @@ export function useBranchConversation({
           const errorData = await getErrorFromResponse(res);
 
           sendApiErrorNotification({
-            title: "Failed to branch conversation",
+            title: t`Failed to branch conversation`,
             error: errorData,
           });
 
@@ -83,8 +85,8 @@ export function useBranchConversation({
         if (!isPostConversationForkResponseBody(responseBody)) {
           sendNotification({
             type: "error",
-            title: "Failed to branch conversation",
-            description: "Unexpected response from server.",
+            title: t`Failed to branch conversation`,
+            description: t`Unexpected response from server.`,
           });
 
           return false;
@@ -96,9 +98,10 @@ export function useBranchConversation({
           // asynchronously via Temporal so the new conversation is not in ES yet at that point —
           // the item would disappear from the sidebar. { revalidate: false } keeps the optimistic
           // item until the next natural SWR revalidation, by which time ES has caught up.
-          const displayTitle = responseBody.parentConversationTitle
-            ? `Branched from '${responseBody.parentConversationTitle}'`
-            : "Branched conversation";
+          const parentConversationTitle = responseBody.parentConversationTitle;
+          const displayTitle = parentConversationTitle
+            ? t`Branched from '${parentConversationTitle}'`
+            : t`Branched conversation`;
 
           const nowMs = Date.now();
           const optimisticConversationItem: ConversationListItemType = {
@@ -139,7 +142,7 @@ export function useBranchConversation({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to branch conversation",
+          title: t`Failed to branch conversation`,
         });
 
         return false;
@@ -156,6 +159,7 @@ export function useBranchConversation({
       router,
       sendApiErrorNotification,
       sendNotification,
+      t,
     ]
   );
 

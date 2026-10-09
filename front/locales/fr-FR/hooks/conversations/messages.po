@@ -1,0 +1,86 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-08 22:17+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/hooks/conversations/useBranchConversation.ts
+msgid "Failed to branch conversation"
+msgstr "Impossible de créer une branche de la conversation"
+
+#: front/hooks/conversations/useBranchConversation.ts
+msgid "Unexpected response from server."
+msgstr "Réponse inattendue du serveur."
+
+#: front/hooks/conversations/useBranchConversation.ts
+msgid "Branched from '{parentConversationTitle}'"
+msgstr "Branche créée à partir de « {parentConversationTitle} »"
+
+#: front/hooks/conversations/useBranchConversation.ts
+msgid "Branched conversation"
+msgstr "Branche de conversation"
+
+#: front/hooks/conversations/useCancelMessage.ts
+msgid "Failed to cancel message"
+msgstr "Impossible d’annuler le message"
+
+#: front/hooks/conversations/useCompactConversation.ts
+msgid "Failed to compact conversation"
+msgstr "Impossible de compacter la conversation"
+
+#: front/hooks/conversations/useConversationMarkAsUnread.ts
+msgid "Failed to mark conversation as unread"
+msgstr "Impossible de marquer la conversation comme non lue"
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "Already subscribed"
+msgstr "Abonnement déjà actif"
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "You are already a participant in this conversation."
+msgstr "Vous participez déjà à cette conversation."
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "Error"
+msgstr "Erreur"
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "Failed to subscribe to the conversation."
+msgstr "Impossible de vous abonner à la conversation."
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "Subscribed"
+msgstr "Abonnement activé"
+
+#: front/hooks/conversations/useConversationParticipants.ts
+msgid "You have been added to this conversation."
+msgstr "Vous participez désormais à cette conversation."
+
+#: front/hooks/conversations/useConversationUrlAccessMode.ts
+msgid "Failed to update URL access"
+msgstr "Impossible de modifier l’accès par URL"
+
+#: front/hooks/conversations/useConversationUrlAccessMode.ts
+msgid "URL is now accessible"
+msgstr "L’URL est désormais accessible"
+
+#: front/hooks/conversations/useConversationUrlAccessMode.ts
+msgid "URL access restricted"
+msgstr "Accès par URL restreint"
+
+#: front/hooks/conversations/usePlanFile.ts
+msgid "Failed to archive plan"
+msgstr "Impossible d’archiver le plan"
+
+#: front/hooks/conversations/usePostOnboardingFollowUp.ts
+msgid "Failed to send follow-up message"
+msgstr "Impossible d’envoyer le message de suivi"

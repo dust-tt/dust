@@ -7,6 +7,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { GetHomepageUseCasesResponseBody } from "@app/types/api/homepage_use_cases";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
@@ -45,6 +46,7 @@ export function useDismissHomepageUseCase({
 }: {
   workspaceId: string;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { mutateUseCases } = useHomepageUseCases({
     disabled: true,
@@ -65,7 +67,7 @@ export function useDismissHomepageUseCase({
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
         sendApiErrorNotification({
-          title: "Failed to hide the suggestion.",
+          title: t`Failed to hide the suggestion.`,
           error: errorData,
         });
         return;
@@ -79,6 +81,6 @@ export function useDismissHomepageUseCase({
         { revalidate: false }
       );
     },
-    [mutateUseCases, sendApiErrorNotification, workspaceId]
+    [mutateUseCases, sendApiErrorNotification, t, workspaceId]
   );
 }

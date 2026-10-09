@@ -7,6 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import type { WorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useZendeskTicketTagFilters({
@@ -16,6 +17,7 @@ export function useZendeskTicketTagFilters({
   owner: WorkspaceType;
   dataSource: DataSourceType;
 }) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -54,8 +56,11 @@ export function useZendeskTicketTagFilters({
         if (currentTags.includes(tag)) {
           sendNotification({
             type: "info",
-            title: "Tag already exists",
-            description: `The tag "${tag}" is already in the ${type} list.`,
+            title: t`Tag already exists`,
+            description:
+              type === "include"
+                ? t`The tag "${tag}" is already in the include list.`
+                : t`The tag "${tag}" is already in the exclude list.`,
           });
           return;
         }
@@ -78,21 +83,24 @@ export function useZendeskTicketTagFilters({
           }
           sendNotification({
             type: "success",
-            title: "Tag added",
-            description: `Added "${tag}" to ${type} list.`,
+            title: t`Tag added`,
+            description:
+              type === "include"
+                ? t`Added "${tag}" to the include list.`
+                : t`Added "${tag}" to the exclude list.`,
           });
         } else {
           const err = await res.json();
           sendApiErrorNotification({
-            title: "Failed to add tag",
+            title: t`Failed to add tag`,
             error: err,
           });
         }
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to add tag",
-          description: "An error occurred while adding the tag.",
+          title: t`Failed to add tag`,
+          description: t`An error occurred while adding the tag.`,
         });
       }
     },
@@ -107,6 +115,7 @@ export function useZendeskTicketTagFilters({
       mutateIncludedTags,
       mutateExcludedTags,
       sendApiErrorNotification,
+      t,
     ]
   );
 
@@ -122,13 +131,18 @@ export function useZendeskTicketTagFilters({
         if (!currentTags.includes(tag)) {
           sendNotification({
             type: "info",
-            title: "Tag not found",
-            description: `The tag "${tag}" is not in the ${type} list.`,
+            title: t`Tag not found`,
+            description:
+              type === "include"
+                ? t`The tag "${tag}" is not in the include list.`
+                : t`The tag "${tag}" is not in the exclude list.`,
           });
           return;
         }
 
-        const newTags = currentTags.filter((t: string) => t !== tag);
+        const newTags = currentTags.filter(
+          (existingTag: string) => existingTag !== tag
+        );
         const res = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
           {
@@ -146,21 +160,24 @@ export function useZendeskTicketTagFilters({
           }
           sendNotification({
             type: "success",
-            title: "Tag removed",
-            description: `Removed "${tag}" from ${type} list.`,
+            title: t`Tag removed`,
+            description:
+              type === "include"
+                ? t`Removed "${tag}" from the include list.`
+                : t`Removed "${tag}" from the exclude list.`,
           });
         } else {
           const err = await res.json();
           sendApiErrorNotification({
-            title: "Failed to remove tag",
+            title: t`Failed to remove tag`,
             error: err,
           });
         }
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to remove tag",
-          description: "An error occurred while removing the tag.",
+          title: t`Failed to remove tag`,
+          description: t`An error occurred while removing the tag.`,
         });
       }
     },
@@ -175,6 +192,7 @@ export function useZendeskTicketTagFilters({
       mutateIncludedTags,
       mutateExcludedTags,
       sendApiErrorNotification,
+      t,
     ]
   );
 

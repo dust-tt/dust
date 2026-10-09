@@ -4,6 +4,7 @@ import type {
   LightWorkspaceType,
   WorkspaceSharingPolicy,
 } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useState } from "react";
 
 interface UseFrameSharingToggleProps {
@@ -11,6 +12,7 @@ interface UseFrameSharingToggleProps {
 }
 
 export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const [sharingPolicy, setSharingPolicy] = useState<WorkspaceSharingPolicy>(
     owner.sharingPolicy ?? "all_scopes"
@@ -35,14 +37,14 @@ export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update Frame sharing setting",
-          description: "Could not update the Frame sharing policy.",
+          title: t`Failed to update the Frame sharing setting`,
+          description: t`Could not update the Frame sharing policy.`,
         });
       } finally {
         setIsChanging(false);
       }
     },
-    [owner.sId, sendNotification]
+    [owner.sId, sendNotification, t]
   );
 
   return {

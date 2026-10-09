@@ -1,8 +1,9 @@
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { arePrivateConversationUrlsDefault } from "@app/lib/workspace_policies";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UsePrivateConversationUrlsToggleProps {
@@ -12,8 +13,9 @@ interface UsePrivateConversationUrlsToggleProps {
 export function usePrivateConversationUrlsToggle({
   owner,
 }: UsePrivateConversationUrlsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
-  const sendNotification = useSendNotification();
+  const sendApiErrorNotification = useSendApiErrorNotification();
   const [isEnabled, setIsEnabled] = useState(
     arePrivateConversationUrlsDefault(owner)
   );
@@ -32,15 +34,14 @@ export function usePrivateConversationUrlsToggle({
       });
 
       if (!res.ok) {
-        throw new Error("Failed to update private conversation URLs setting");
+        throw await getErrorFromResponse(res);
       }
 
       setIsEnabled(!isEnabled);
     } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to update private conversation URLs setting",
-        description: normalizeError(error).message,
+      sendApiErrorNotification({
+        title: t`Failed to update the private conversation URLs setting`,
+        error,
       });
     } finally {
       setIsChanging(false);

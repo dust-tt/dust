@@ -6,6 +6,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { COMPACTION_COMPLETED_EVENT } from "@app/lib/notifications/events";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useState } from "react";
 
 export function useCompactConversation({
@@ -15,6 +16,7 @@ export function useCompactConversation({
   owner: LightWorkspaceType;
   conversationId?: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const [isCompacting, setIsCompacting] = useState(false);
@@ -48,7 +50,7 @@ export function useCompactConversation({
         if (!res.ok) {
           const body = await res.json();
           sendApiErrorNotification({
-            title: "Failed to compact conversation",
+            title: t`Failed to compact conversation`,
             error: body,
           });
           setIsCompacting(false);
@@ -57,12 +59,12 @@ export function useCompactConversation({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to compact conversation",
+          title: t`Failed to compact conversation`,
         });
         setIsCompacting(false);
       }
     },
-    [owner.sId, conversationId, sendApiErrorNotification, sendNotification]
+    [owner.sId, conversationId, sendApiErrorNotification, sendNotification, t]
   );
 
   return { compact, isCompacting };

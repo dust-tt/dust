@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
 import { areRestrictedModelsAllowedForPublishedAgents } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UsePublishedAgentsRestrictedModelsToggleProps {
@@ -11,6 +12,7 @@ interface UsePublishedAgentsRestrictedModelsToggleProps {
 export function usePublishedAgentsRestrictedModelsToggle({
   owner,
 }: UsePublishedAgentsRestrictedModelsToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -37,9 +39,8 @@ export function usePublishedAgentsRestrictedModelsToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update published agents setting",
-        description:
-          "Could not update the published agents model access setting.",
+        title: t`Failed to update the published agents setting`,
+        description: t`Could not update the published agents model access setting.`,
       });
     }
     setIsChanging(false);

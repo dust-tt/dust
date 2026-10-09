@@ -4,6 +4,7 @@ import {
   isSoundNotificationType,
   SOUND_NOTIFICATION_METADATA_KEYS,
 } from "@app/types/notification_preferences";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MANUAL_ACTION_SOUND_DEBOUNCE_MS = 1000;
@@ -11,10 +12,16 @@ const MANUAL_ACTION_SOUND_LAST_CHIME_KEY =
   "dust:manual-action-sound:last-chime-ms";
 const MANUAL_ACTION_SOUND_LOCK_NAME = "dust:manual-action-sound";
 
-function showNotification(): void {
+function showNotification({
+  title,
+  body,
+}: {
+  title: string;
+  body: string;
+}): void {
   if (Notification.permission === "granted") {
-    new Notification("Dust — Action required", {
-      body: "A manual action requires your approval.",
+    new Notification(title, {
+      body,
       icon: "/favicon.ico",
     });
   }
@@ -51,6 +58,7 @@ async function canChimeManualActionSound(nowMs: number): Promise<boolean> {
 }
 
 export function useSoundNotification() {
+  const { t } = useLingui();
   const { metadata: enabledMetadata, isMetadataLoading: isEnabledLoading } =
     useUserMetadata(SOUND_NOTIFICATION_METADATA_KEYS.enabled);
   const { metadata: soundMetadata, isMetadataLoading: isSoundLoading } =
@@ -116,10 +124,13 @@ export function useSoundNotification() {
         source.connect(ctx.destination);
         source.start(0);
       } catch {
-        showNotification();
+        showNotification({
+          title: t`Dust — Action required`,
+          body: t`A manual action requires your approval.`,
+        });
       }
     },
-    [getAudioContext]
+    [getAudioContext, t]
   );
 
   const requestManualActionSound = useCallback(() => {

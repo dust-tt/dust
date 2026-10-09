@@ -8,6 +8,7 @@ import { toMentionType } from "@app/types/assistant/mentions";
 import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { useLingui } from "@lingui/react/macro";
 
 export function useEditUserMessage({
   owner,
@@ -16,6 +17,7 @@ export function useEditUserMessage({
   owner: { sId: string };
   conversationId: string;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const { submit: editMessage, isSubmitting } = useSubmitFunction(
@@ -53,16 +55,16 @@ export function useEditUserMessage({
           }
         }
         sendNotification({
-          title: "Failed to edit message",
-          description: "Please try again.",
+          title: t`Failed to edit message`,
+          description: t`Try again.`,
           type: "error",
         });
         return new Ok(undefined);
       }
 
       sendNotification({
-        title: "Message edited",
-        description: "Message has been edited successfully.",
+        title: t`Message edited`,
+        description: t`Message has been edited successfully.`,
         type: "success",
       });
       return new Ok(undefined);

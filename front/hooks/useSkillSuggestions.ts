@@ -21,6 +21,7 @@ import type {
 } from "@app/types/api/assistant/skills/suggestions";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
@@ -117,6 +118,7 @@ export function usePatchSkillSuggestions({
   skillId,
   workspaceId,
 }: UsePatchSkillSuggestionsParams) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
   const sendNotification = useSendNotification();
 
@@ -147,7 +149,7 @@ export function usePatchSkillSuggestions({
         if (!res.ok) {
           const errorData = await getErrorFromResponse(res);
           sendApiErrorNotification({
-            title: "Failed to update skill suggestion",
+            title: t`Failed to update skill suggestion`,
             error: errorData,
           });
           return null;
@@ -158,12 +160,12 @@ export function usePatchSkillSuggestions({
       } catch {
         sendNotification({
           type: "error",
-          title: "Failed to update skill suggestion",
+          title: t`Failed to update skill suggestion`,
         });
         return null;
       }
     },
-    [skillId, sendApiErrorNotification, sendNotification, workspaceId]
+    [skillId, sendApiErrorNotification, sendNotification, t, workspaceId]
   );
 
   return { patchSuggestions };

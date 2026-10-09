@@ -7,13 +7,9 @@ import { clientFetch, clientUpload } from "@app/lib/egress/client";
 import { formatFileSize } from "@app/lib/i18n/format";
 import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import {
-  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE,
-  isAudioTranscriptionAvailable,
-} from "@app/lib/workspace_policies";
+import { isAudioTranscriptionAvailable } from "@app/lib/workspace_policies";
 import logger from "@app/logger/logger";
 import type { FileUploadRequestResponseBody } from "@app/types/api/files/upload_metadata";
-import type { APIError } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
   FileUseCase,
@@ -33,7 +29,11 @@ import {
 } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -64,15 +64,55 @@ export type FileBlob = FileBlobUploadState & {
 };
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
-// `msg` is a client-side message (unsupported file, network failure); `apiError` is the error
-// returned by the API, displayed through `formatError`.
+// `message` is a translated client-side message (unsupported file); `error` is the API or network
+// error, displayed through `formatError`.
 class FileBlobUploadError extends Error {
   constructor(
     readonly file: File,
-    msg?: string,
-    readonly apiError?: APIError
+    message?: string,
+    readonly error?: unknown
   ) {
-    super(msg ?? apiError?.message);
+    super(message);
+  }
+}
+
+function getFileTooLargeDescription(
+  t: (descriptor: MessageDescriptor) => string,
+  {
+    category,
+    fileName,
+    fileSize,
+    maxFileSize,
+  }: {
+    category: NonNullable<ReturnType<typeof getFileFormatCategory>>;
+    fileName: string;
+    fileSize: string;
+    maxFileSize: string;
+  }
+): string {
+  switch (category) {
+    case "image":
+      return t(
+        msg`File "${fileName}" (${fileSize}) exceeds the image limit of ${maxFileSize}. Upload a smaller file.`
+      );
+    case "data":
+      return t(
+        msg`File "${fileName}" (${fileSize}) exceeds the data limit of ${maxFileSize}. Upload a smaller file.`
+      );
+    case "code":
+      return t(
+        msg`File "${fileName}" (${fileSize}) exceeds the code limit of ${maxFileSize}. Upload a smaller file.`
+      );
+    case "delimited":
+      return t(
+        msg`File "${fileName}" (${fileSize}) exceeds the delimited limit of ${maxFileSize}. Upload a smaller file.`
+      );
+    case "audio":
+      return t(
+        msg`File "${fileName}" (${fileSize}) exceeds the audio limit of ${maxFileSize}. Upload a smaller file.`
+      );
+    default:
+      return assertNever(category);
   }
 }
 
@@ -117,6 +157,7 @@ export function useFileUploaderService({
 
   const isProcessingFiles = numFilesProcessing > 0;
 
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
@@ -197,13 +238,14 @@ export function useFileUploaderService({
           // File objects are immutable - we can't modify their properties directly.
           // When we need to change the name or type, we must create a new File object.
           const renamedFile = getRenamedFile(file, fileType);
+          const renamedFileName = renamedFile.name;
 
           if (!isSupportedFileContentType(fileType)) {
             acc.push(
               new Err(
                 new FileBlobUploadError(
                   renamedFile,
-                  `File "${renamedFile.name}" is not supported (${fileType}).`
+                  t`File "${renamedFileName}" is not supported (${fileType}).`
                 )
               )
             );
@@ -215,7 +257,7 @@ export function useFileUploaderService({
               new Err(
                 new FileBlobUploadError(
                   renamedFile,
-                  AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE
+                  t`Audio attachments require voice transcription, which is unavailable in this workspace. Upload a text transcript instead.`
                 )
               )
             );
@@ -233,6 +275,7 @@ export function useFileUploaderService({
       findAvailableTitle,
       isAudioSupported,
       resolveSelectedFileContentType,
+      t,
     ]
   );
 
@@ -273,10 +316,7 @@ export function useFileUploaderService({
             logger.error({ err }, "Error uploading files");
 
             return new Err(
-              new FileBlobUploadError(
-                fileBlob.file,
-                err instanceof Error ? err.message : undefined
-              )
+              new FileBlobUploadError(fileBlob.file, undefined, err)
             );
           }
 
@@ -332,22 +372,18 @@ export function useFileUploaderService({
             logger.error({ err }, "Error uploading files");
 
             return new Err(
-              new FileBlobUploadError(
-                fileBlob.file,
-                err instanceof Error ? err.message : undefined
-              )
+              new FileBlobUploadError(fileBlob.file, undefined, err)
             );
           }
 
           if (!uploadResult.ok) {
             const body = await uploadResult.json();
             return new Err(
-              isAPIErrorResponse(body)
-                ? new FileBlobUploadError(fileBlob.file, undefined, body.error)
-                : new FileBlobUploadError(
-                    fileBlob.file,
-                    "An unknown error happened."
-                  )
+              new FileBlobUploadError(
+                fileBlob.file,
+                undefined,
+                isAPIErrorResponse(body) ? body.error : undefined
+              )
             );
           }
 
@@ -382,21 +418,27 @@ export function useFileUploaderService({
         if (result.isErr()) {
           const uploadError = result.error;
           erroredBlobs.push(uploadError);
-          const title = `Failed to upload file${previewMode ? " preview" : ""}`;
-          if (uploadError.apiError) {
-            sendApiErrorNotification({ title, error: uploadError.apiError });
-            return;
-          }
           const maybeTruncatedFilename =
             uploadError.file.name.length > 50
               ? uploadError.file.name.slice(0, 47) + "..."
               : uploadError.file.name;
+          if (uploadError.error !== undefined) {
+            sendApiErrorNotification({
+              title: previewMode
+                ? t`Failed to upload the preview of ${maybeTruncatedFilename}`
+                : t`Failed to upload ${maybeTruncatedFilename}`,
+              error: uploadError.error,
+            });
+            return;
+          }
           sendNotification({
             type: "error",
-            title,
+            title: previewMode
+              ? t`Failed to upload file preview`
+              : t`Failed to upload file`,
             description: uploadError.message
               ? `${uploadError.message} (${maybeTruncatedFilename})`
-              : `Error uploading ${maybeTruncatedFilename}`,
+              : t`Error uploading ${maybeTruncatedFilename}`,
           });
         } else {
           successfulBlobs.push(result.value);
@@ -423,7 +465,7 @@ export function useFileUploaderService({
 
       return successfulBlobs;
     },
-    [sendApiErrorNotification, sendNotification]
+    [sendApiErrorNotification, sendNotification, t]
   );
 
   const handleFilesUpload = useCallback(
@@ -450,8 +492,15 @@ export function useFileUploaderService({
       for (const { category, file } of oversizedFiles) {
         sendNotification({
           type: "error",
-          title: "File too large.",
-          description: `File "${file.name}" (${formatFileSize(file.size, { decimals: 0 })}) exceeds the ${category} limit of ${formatFileSize(maxFileSizes[category], { decimals: 0 })}. Please upload a smaller file.`,
+          title: t`File too large.`,
+          description: getFileTooLargeDescription(t, {
+            category,
+            fileName: file.name,
+            fileSize: formatFileSize(file.size, { decimals: 0 }),
+            maxFileSize: formatFileSize(maxFileSizes[category], {
+              decimals: 0,
+            }),
+          }),
         });
       }
 
@@ -485,6 +534,7 @@ export function useFileUploaderService({
       resolveSelectedFileContentType,
       sendNotification,
       sizeResolverOpts,
+      t,
       uploadFiles,
     ]
   );

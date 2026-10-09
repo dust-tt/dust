@@ -2,6 +2,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { isSlackPersonalFooterRemovalAllowed } from "@app/lib/workspace_policies";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface UseSlackPersonalFooterRemovalToggleProps {
@@ -11,6 +12,7 @@ interface UseSlackPersonalFooterRemovalToggleProps {
 export function useSlackPersonalFooterRemovalToggle({
   owner,
 }: UseSlackPersonalFooterRemovalToggleProps) {
+  const { t } = useLingui();
   const [isChanging, setIsChanging] = useState(false);
   const sendNotification = useSendNotification();
   const [isEnabled, setIsEnabled] = useState(
@@ -38,8 +40,8 @@ export function useSlackPersonalFooterRemovalToggle({
     } catch {
       sendNotification({
         type: "error",
-        title: "Failed to update Slack footer removal setting",
-        description: "Could not update the Slack footer removal setting.",
+        title: t`Failed to update the Slack footer removal setting`,
+        description: t`Could not update the Slack footer removal setting.`,
       });
     }
     setIsChanging(false);

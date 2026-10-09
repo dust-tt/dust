@@ -2,6 +2,7 @@ import { useConversationFeedbacks } from "@app/hooks/conversations";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useMessageFeedback({
@@ -11,6 +12,7 @@ export function useMessageFeedback({
   owner: LightWorkspaceType;
   conversationId?: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutateReactions } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
@@ -54,8 +56,8 @@ export function useMessageFeedback({
       if (response.ok) {
         if (!shouldRemoveExistingFeedback) {
           sendNotification({
-            title: "Feedback sent",
-            description: "The agent will improve with your feedback.",
+            title: t`Feedback sent`,
+            description: t`The agent will improve with your feedback.`,
             type: "success",
           });
         }
@@ -66,6 +68,6 @@ export function useMessageFeedback({
 
       return false;
     },
-    [owner.sId, conversationId, sendNotification, mutateReactions]
+    [owner.sId, conversationId, sendNotification, mutateReactions, t]
   );
 }

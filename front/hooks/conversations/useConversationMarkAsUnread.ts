@@ -6,9 +6,11 @@ import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { PatchConversationsRequestBody } from "@app/types/api/assistant/conversation/types";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
+  const { t } = useLingui();
   const sendApiErrorNotification = useSendApiErrorNotification();
 
   const { mutateConversations } = useConversations({
@@ -40,7 +42,7 @@ export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
         const errorData = await getErrorFromResponse(res);
 
         sendApiErrorNotification({
-          title: "Error marking conversation as unread.",
+          title: t`Failed to mark conversation as unread`,
           error: errorData,
         });
         return false;
@@ -62,6 +64,7 @@ export function useConversationMarkAsUnread(owner: LightWorkspaceType) {
       mutateConversations,
       mutatePodConversationsSummary,
       sendApiErrorNotification,
+      t,
     ]
   );
 }

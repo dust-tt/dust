@@ -1,6 +1,7 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import datadogLogger from "@app/logger/datadogLogger";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback } from "react";
 
 export function usePostOnboardingFollowUp({
@@ -10,6 +11,7 @@ export function usePostOnboardingFollowUp({
   workspaceId: string;
   conversationId?: string | null;
 }) {
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
 
   const postFollowUp = useCallback(
@@ -41,12 +43,12 @@ export function usePostOnboardingFollowUp({
         });
         sendNotification({
           type: "error",
-          title: "Failed to send follow-up message",
+          title: t`Failed to send follow-up message`,
         });
         return false;
       }
     },
-    [workspaceId, conversationId, sendNotification]
+    [workspaceId, conversationId, sendNotification, t]
   );
 
   return { postFollowUp };
