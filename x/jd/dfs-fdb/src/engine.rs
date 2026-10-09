@@ -6,6 +6,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::time::Duration;
 
 mod content;
+pub mod import;
 pub(crate) mod indexing;
 mod mutations;
 pub(crate) mod search;
