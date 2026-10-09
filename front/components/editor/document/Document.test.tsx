@@ -556,13 +556,18 @@ describe("Document comments", () => {
     );
   });
 
-  it("shows a marker without a count beside a single comment", async () => {
-    const { dom } = await renderDocument(SOURCE);
+  it("shows a marker with its thread's message count beside a comment", async () => {
+    const { dom } = await renderDocument(
+      SOURCE.replace(
+        "Note.\n",
+        `Note.\n\n::message{author=user:usr_tom name="Tom" at=${AT}}\n\nAgreed.\n`
+      )
+    );
 
     const marker = screen.getByRole("button", {
-      name: "Show comment by Daph",
+      name: "Show comment by Daph, 2 messages",
     });
-    expect(marker.textContent).toBe("");
+    expect(marker.textContent).toBe("2");
 
     fireEvent.click(marker);
 
@@ -573,24 +578,28 @@ describe("Document comments", () => {
     expect(marker.getAttribute("aria-current")).toBe("true");
   });
 
-  it("merges the markers of a line and cycles through their comments", async () => {
+  it("gives each comment of a line its own marker, stacked below the first", async () => {
     const thread = (id: string, name: string) =>
       `::comment{id=${id} status=open}\n\n::message{author=user:u name="${name}" at=${AT}}\n\nNote ${id}.\n`;
     const { editor } = await renderDocument(
       `:comment-start{id=a}One:comment-end{id=a} two :comment-start{id=b}three:comment-end{id=b}\n\n:::annotations\n${thread("a", "Al")}\n${thread("b", "Bea")}:::\n`
     );
-    const activeId = () =>
-      documentCommentsPluginKey.getState(editor.state)?.activeId;
 
-    const marker = screen.getByRole("button", { name: "Show 2 comments" });
-    expect(marker.textContent).toBe("2");
+    const al = screen.getByRole("button", {
+      name: "Show comment by Al, 1 message",
+    });
+    const bea = screen.getByRole("button", {
+      name: "Show comment by Bea, 1 message",
+    });
+    expect(Number.parseFloat(bea.style.top)).toBeGreaterThan(
+      Number.parseFloat(al.style.top)
+    );
 
-    fireEvent.click(marker);
-    expect(activeId()).toBe("a");
-    fireEvent.click(marker);
-    expect(activeId()).toBe("b");
-    fireEvent.click(marker);
-    expect(activeId()).toBe("a");
+    fireEvent.click(bea);
+
+    expect(documentCommentsPluginKey.getState(editor.state)?.activeId).toBe(
+      "b"
+    );
   });
 
   it.each([

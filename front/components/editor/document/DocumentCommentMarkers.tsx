@@ -9,14 +9,26 @@ import type { Editor } from "@tiptap/core";
 import type { RefObject } from "react";
 import { useLayoutEffect, useState } from "react";
 
-// Anchors closer than this share one marker.
-const CLUSTER_DISTANCE_PX = 24;
+// A marker's height plus the space kept between two stacked markers.
+const MARKER_STEP_PX = 28;
 
-interface MarkerCluster {
+interface PlacedMarker {
+  id: string;
   /** Vertical center relative to the container's top edge. */
   center: number;
-  ids: string[];
 }
+
+/**
+ * Places markers, from anchors sorted by center, level with their anchor or just below the
+ * previous marker, so markers of one line stack and push the next lines' markers down.
+ */
+export const stackMarkers = (anchors: PlacedMarker[]): PlacedMarker[] => {
+  let previous = Number.NEGATIVE_INFINITY;
+  return anchors.map(({ id, center }) => {
+    previous = Math.max(center, previous + MARKER_STEP_PX);
+    return { id, center: previous };
+  });
+};
 
 interface DocumentCommentMarkersProps {
   editor: Editor;
@@ -25,11 +37,11 @@ interface DocumentCommentMarkersProps {
   mountPortalContainer?: HTMLElement;
 }
 
-const measureClusters = (
+const measureMarkers = (
   editor: Editor,
   comments: DfmComment[],
   container: HTMLElement
-): MarkerCluster[] => {
+): PlacedMarker[] => {
   const containerTop = container.getBoundingClientRect().top;
   const highlights = getCommentHighlights(editor);
   const anchors = comments
@@ -50,26 +62,17 @@ const measureClusters = (
       ];
     })
     .sort((a, b) => a.center - b.center);
-  const clusters: MarkerCluster[] = [];
 
-  for (const anchor of anchors) {
-    const last = clusters[clusters.length - 1];
-    if (last && anchor.center - last.center < CLUSTER_DISTANCE_PX) {
-      last.ids.push(anchor.id);
-    } else {
-      clusters.push({ center: anchor.center, ids: [anchor.id] });
-    }
-  }
-
-  return clusters;
+  return stackMarkers(anchors);
 };
 
 /**
  * @cc [owner:flvndvd;tdraier,label:react] document-comment-markers
- * At every document width, each open comment with visible highlighted text MUST have a marker
- * in the right gutter aligned with its first highlight; the document MUST keep that gutter wide
- * enough for a marker while it has open comments. Markers on the same line MUST merge into one
- * showing the count. Activating a merged marker MUST cycle through its comments.
+ * At every document width, each open comment with visible highlighted text MUST have its own
+ * marker in the right gutter, showing the number of messages in its thread, level with its first highlight or just below the previous marker,
+ * so markers of comments on one line stack and push the next lines' markers down; no marker MUST
+ * overlap the text or another marker. The document MUST keep that gutter wide enough for a marker
+ * while it has open comments. Activating a marker MUST reveal its comment.
  */
 export const DocumentCommentMarkers = ({
   editor,
@@ -79,66 +82,49 @@ export const DocumentCommentMarkers = ({
 }: DocumentCommentMarkersProps) => {
   const { t } = useLingui();
   const { unresolved, activeId, reveal } = comments;
-  const [clusters, setClusters] = useState<MarkerCluster[]>([]);
+  const [markers, setMarkers] = useState<PlacedMarker[]>([]);
   // Measured here so document updates re-render the markers, not the whole editor chrome.
   const layoutVersion = useEditorLayoutVersion(editor, containerRef);
-  const authorsById = new Map(
-    unresolved.map((comment) => [comment.id, comment.messages[0].author.name])
+  const threadsById = new Map(
+    unresolved.map((comment) => [comment.id, comment])
   );
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    setClusters(
-      container ? measureClusters(editor, unresolved, container) : []
-    );
+    setMarkers(container ? measureMarkers(editor, unresolved, container) : []);
   }, [editor, unresolved, containerRef, layoutVersion]);
 
   return (
     <div className="pointer-events-none absolute inset-y-0 right-2 w-9 print:hidden">
-      {clusters.map((cluster) => {
-        const active = activeId !== null ? cluster.ids.indexOf(activeId) : -1;
-        const targetId = cluster.ids[(active + 1) % cluster.ids.length];
-        const count = cluster.ids.length;
-        const authorName = authorsById.get(cluster.ids[0]);
-        let label: string;
-        let ariaLabel: string;
-        if (count > 1) {
-          label = t`${plural(count, { one: "# comment", other: "# comments" })}`;
-          ariaLabel = t`Show ${plural(count, { one: "# comment", other: "# comments" })}`;
-        } else if (authorName !== undefined) {
-          label = t`Comment by ${authorName}`;
-          ariaLabel = t`Show comment by ${authorName}`;
-        } else {
-          label = t`Comment by unknown`;
-          ariaLabel = t`Show comment by unknown`;
+      {markers.map(({ id, center }) => {
+        const thread = threadsById.get(id);
+        if (!thread) {
+          return null;
         }
+        const authorName = thread.messages[0].author.name;
+        const count = thread.messages.length;
 
         return (
           <Tooltip
-            key={cluster.ids.join(",")}
-            label={label}
+            key={id}
+            label={t`Comment by ${authorName}`}
             tooltipTriggerAsChild
             mountPortalContainer={mountPortalContainer}
             trigger={
               <button
                 type="button"
-                aria-label={ariaLabel}
-                aria-current={active >= 0 ? "true" : undefined}
-                onClick={() => reveal(targetId)}
-                style={{ top: cluster.center }}
+                aria-label={t`Show comment by ${authorName}, ${plural(count, { one: "# message", other: "# messages" })}`}
+                aria-current={id === activeId ? "true" : undefined}
+                onClick={() => reveal(id)}
+                style={{ top: center }}
                 className={cn(
-                  "pointer-events-auto absolute right-0 flex h-6 min-w-6 -translate-y-1/2 items-center justify-center gap-0.5 rounded-full border border-border bg-background text-muted-foreground shadow-sm transition-colors hover:bg-muted-background hover:text-foreground motion-reduce:transition-none",
+                  "pointer-events-auto absolute right-0 flex h-6 -translate-y-1/2 items-center gap-0.5 rounded-full border border-border bg-background px-1 text-xs text-muted-foreground shadow-sm transition-colors hover:bg-muted-background hover:text-foreground motion-reduce:transition-none",
                   "aria-[current=true]:border-golden-300 aria-[current=true]:bg-golden-100 aria-[current=true]:text-foreground dark:aria-[current=true]:border-golden-500/60 dark:aria-[current=true]:bg-golden-400/25",
-                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-                  cluster.ids.length > 1 && "px-1.5"
+                  "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
               >
                 <Icon visual={MessageCircle01} size="xs" />
-                {cluster.ids.length > 1 && (
-                  <span className="text-xs font-medium tabular-nums">
-                    {cluster.ids.length}
-                  </span>
-                )}
+                <span className="tabular-nums">{count}</span>
               </button>
             }
           />
