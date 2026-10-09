@@ -5,9 +5,12 @@ use foundationdb::{
 };
 use tonic::Status;
 
-use crate::auth::{self, KeyHash};
+use crate::{
+    auth::{self, KeyHash},
+    storage::resources::layout::tenant_subspace,
+};
 
-const SUBSPACE: &str = "tenant";
+const FAMILY: &str = "tenant";
 const TENANT_ID_MAX_BYTES: usize = 256;
 
 pub struct TenantResource {
@@ -74,5 +77,5 @@ impl TenantResource {
 }
 
 fn key(tenant_id: &str) -> Vec<u8> {
-    pack(&(SUBSPACE, tenant_id))
+    tenant_subspace(tenant_id).pack(&FAMILY)
 }
