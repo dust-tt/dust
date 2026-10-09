@@ -4,7 +4,7 @@ import {
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
-import { CollabBadge } from "@app/components/file_explorer/CollabBadge";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -176,9 +176,7 @@ export function FilePreviewPanel({
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
-          {markdown.collab && (
-            <CollabBadge collab={markdown.collab} />
-          )}
+          {markdown.richEditor && <CoEditionBadge />}
         </div>
         <div className="ml-2 flex items-center gap-1">
           {markdown.canEdit && !markdown.richEditor && (
