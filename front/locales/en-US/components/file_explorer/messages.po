@@ -14,6 +14,18 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/file_explorer/CoEditionBadge.tsx
+msgid "Switch back to the regular preview and editor."
+msgstr "Switch back to the regular preview and editor."
+
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "Open Markdown files in the Co-edition editor."
+msgstr "Open Markdown files in the Co-edition editor."
+
+#: front/components/file_explorer/CoEditionBadge.tsx
+msgid "Save your changes before switching editors."
+msgstr "Save your changes before switching editors."
+
+#: front/components/file_explorer/CoEditionBadge.tsx
 msgid "This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
 msgstr "This editor for Markdown files is an unstable alpha from the Co-edition initiative. It is only enabled on the Dust workspace while we build it."
 

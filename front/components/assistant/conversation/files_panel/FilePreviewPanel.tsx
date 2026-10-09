@@ -176,7 +176,9 @@ export function FilePreviewPanel({
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
-          {markdown.richEditor && <CoEditionBadge />}
+          {markdown.coEdition && (
+            <CoEditionBadge coEdition={markdown.coEdition} />
+          )}
         </div>
         <div className="ml-2 flex items-center gap-1">
           {markdown.canEdit && !markdown.richEditor && (

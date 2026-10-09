@@ -138,7 +138,9 @@ export function FilePreviewDialog({
               <span className="min-w-16 truncate leading-5 text-foreground">
                 {entry?.fileName ?? t`Preview data`}
               </span>
-              {markdown.richEditor && <CoEditionBadge />}
+              {markdown.coEdition && (
+                <CoEditionBadge coEdition={markdown.coEdition} />
+              )}
             </div>
           </DialogTitle>
           <div className="flex items-center justify-between">
