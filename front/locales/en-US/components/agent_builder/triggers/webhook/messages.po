@@ -86,9 +86,11 @@ msgstr "{0, plural, one {# event found in the last 24 hours.} other {# events fo
 msgid "At least 10 events are needed for estimation."
 msgstr "At least 10 events are needed for estimation."
 
+#. placeholder {0}: estimation.matchingCount
+#. placeholder {1}: estimation.totalCount
 #: front/components/agent_builder/triggers/webhook/WebhookEditionFilters.tsx
-msgid "According to the most recent data, this trigger would have created <0>{matchingCount}</0> conversations out of <1>{totalCount}</1> events in the last 24 hours."
-msgstr "According to the most recent data, this trigger would have created <0>{matchingCount}</0> conversations out of <1>{totalCount}</1> events in the last 24 hours."
+msgid "According to the most recent data, this trigger would have created <0>{0, plural, one {# conversation} other {# conversations}}</0> out of <1>{1, plural, one {# event} other {# events}}</1> in the last 24 hours."
+msgstr "According to the most recent data, this trigger would have created <0>{0, plural, one {# conversation} other {# conversations}}</0> out of <1>{1, plural, one {# event} other {# events}}</1> in the last 24 hours."
 
 #: front/components/agent_builder/triggers/webhook/WebhookEditionSheet.tsx
 msgid "Name"

@@ -64,6 +64,23 @@ export function formatNumber(
   return new Intl.NumberFormat(locale, options).format(value);
 }
 
+/**
+ * @cc [owner:sfriquet,label:product] decimal-separator-normalized-to-point
+ * `normalizeDecimalSeparator` MUST replace every occurrence of the resolved locale's decimal
+ * separator with `.` and leave every other character unchanged, so `Number` and `parseFloat` read
+ * "12,5" typed in `fr-FR` as 12.5. In a locale whose separator is `.`, it MUST return the value
+ * unchanged.
+ */
+export function normalizeDecimalSeparator(
+  value: string,
+  locale: SupportedLocale | undefined = activeFormatLocale
+): string {
+  const decimalSeparator = new Intl.NumberFormat(locale)
+    .formatToParts(1.5)
+    .find((part) => part.type === "decimal")?.value;
+  return decimalSeparator ? value.replaceAll(decimalSeparator, ".") : value;
+}
+
 export function formatRelativeTime(
   value: number,
   unit: Intl.RelativeTimeFormatUnit,

@@ -167,7 +167,13 @@ const MCP_TOOL_OVERRIDES: Partial<
         const removeCount = inputs.membersToRemove?.length ?? 0;
         if (addCount > 0 && removeCount > 0) {
           return t(
-            msg`Allow agent to add ${addCount} and remove ${removeCount} Pod users?`
+            msg`Allow agent to add ${plural(addCount, {
+              one: "# Pod user",
+              other: "# Pod users",
+            })} and remove ${plural(removeCount, {
+              one: "# Pod user",
+              other: "# Pod users",
+            })}?`
           );
         }
         if (addCount > 0) {

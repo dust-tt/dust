@@ -947,8 +947,8 @@ msgid "Some conversations couldn’t be deleted"
 msgstr "Some conversations couldn’t be deleted"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
-msgid "Deleted {successCount} of {total} conversations."
-msgstr "Deleted {successCount} of {total} conversations."
+msgid "Deleted {successCount} of {total, plural, one {# conversation} other {# conversations}}."
+msgstr "Deleted {successCount} of {total, plural, one {# conversation} other {# conversations}}."
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Could not delete conversation history."

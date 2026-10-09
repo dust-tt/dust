@@ -367,13 +367,21 @@ function PoolCreditUsageBar({
     poolCapOverridePreviousAwuCredits !== null
       ? formatCredits(poolCapOverridePreviousAwuCredits)
       : null;
+  const previousLimitCreditCount =
+    poolCapOverridePreviousAwuCredits !== null
+      ? roundCredits(poolCapOverridePreviousAwuCredits)
+      : null;
   const temporaryResetLabel =
     resetDate !== null
-      ? previousLimit === null
+      ? previousLimit === null || previousLimitCreditCount === null
         ? t`Resets to no personal limit on ${resetDate}`
-        : t`Resets to ${previousLimit} credits on ${resetDate}`
+        : t`${plural(previousLimitCreditCount, {
+            one: `Resets to ${previousLimit} credit on ${resetDate}`,
+            other: `Resets to ${previousLimit} credits on ${resetDate}`,
+          })}`
       : null;
   const consumedLabel = formatCredits(consumedFromPool);
+  const limitCreditCount = roundCredits(poolLimit);
   return (
     <div className="flex w-full flex-col gap-1">
       <div className="flex justify-between text-xs tabular-nums text-foreground">
@@ -401,7 +409,10 @@ function PoolCreditUsageBar({
         <ProgressBar
           aria-label={t`Member pool credit usage`}
           aria-valuenow={percentage}
-          aria-valuetext={t`${consumedLabel} of ${limitLabel} pool credits used`}
+          aria-valuetext={t`${plural(limitCreditCount, {
+            one: `${consumedLabel} of ${limitLabel} pool credit used`,
+            other: `${consumedLabel} of ${limitLabel} pool credits used`,
+          })}`}
           className="h-1 w-full gap-px"
           variant="transparent"
           values={[
@@ -484,12 +495,20 @@ export function AwuUsageBar({
   const poolRemainingLabel = formatCredits(poolRemaining);
   const poolLimitLabel = formatCredits(poolLimit);
   const overageLabel = formatCredits(overage);
+  const seatConsumedCreditCount = roundCredits(seatConsumed);
+  const allowanceCreditCount = roundCredits(allowance);
+  const poolConsumedCreditCount = roundCredits(poolConsumed);
+  const poolRemainingCreditCount = roundCredits(poolRemaining);
+  const overageCreditCount = roundCredits(overage);
   if (seatConsumed > 0) {
     sections.push({
       value: seatConsumed,
       className: seatColors.fill,
       label: isFreeWithBalance
-        ? t`${seatConsumedLabel} of ${allowanceLabel} lifetime credits used`
+        ? t`${plural(allowanceCreditCount, {
+            one: `${seatConsumedLabel} of ${allowanceLabel} lifetime credit used`,
+            other: `${seatConsumedLabel} of ${allowanceLabel} lifetime credits used`,
+          })}`
         : t`${seatConsumedLabel} of ${allowanceLabel} seat allowance used`,
     });
   }
@@ -498,7 +517,10 @@ export function AwuUsageBar({
       value: seatRemaining,
       className: seatColors.track,
       label: isFreeWithBalance
-        ? t`${seatRemainingLabel} of ${allowanceLabel} lifetime credits remaining`
+        ? t`${plural(allowanceCreditCount, {
+            one: `${seatRemainingLabel} of ${allowanceLabel} lifetime credit remaining`,
+            other: `${seatRemainingLabel} of ${allowanceLabel} lifetime credits remaining`,
+          })}`
         : t`${seatRemainingLabel} of ${allowanceLabel} seat allowance remaining`,
     });
   }
@@ -506,14 +528,20 @@ export function AwuUsageBar({
     sections.push({
       value: poolConsumed,
       className: MUTED_BAR_CLASSES.fill,
-      label: t`${poolConsumedLabel} credits used from the workspace pool`,
+      label: t`${plural(poolConsumedCreditCount, {
+        one: `${poolConsumedLabel} credit used from the workspace pool`,
+        other: `${poolConsumedLabel} credits used from the workspace pool`,
+      })}`,
     });
   }
   if (poolRemaining > 0) {
     sections.push({
       value: poolRemaining,
       className: MUTED_BAR_CLASSES.track,
-      label: t`${poolRemainingLabel} credits remaining before spend limit`,
+      label: t`${plural(poolRemainingCreditCount, {
+        one: `${poolRemainingLabel} credit remaining before spend limit`,
+        other: `${poolRemainingLabel} credits remaining before spend limit`,
+      })}`,
     });
   }
 
@@ -543,7 +571,10 @@ export function AwuUsageBar({
       track: seatColors.track,
       fill: seatColors.fill,
       legend: isFreeWithBalance ? t`Lifetime credits` : t`Seat usage`,
-      usage: t`${seatConsumedLabel} credits used out of ${allowanceLabel}`,
+      usage: t`${plural(seatConsumedCreditCount, {
+        one: `${seatConsumedLabel} credit used out of ${allowanceLabel}`,
+        other: `${seatConsumedLabel} credits used out of ${allowanceLabel}`,
+      })}`,
     });
   }
   if (hasPoolSections) {
@@ -551,7 +582,10 @@ export function AwuUsageBar({
       track: MUTED_BAR_CLASSES.track,
       fill: MUTED_BAR_CLASSES.fill,
       legend: t`Pool usage`,
-      usage: t`${poolConsumedLabel} credits used out of ${poolLimitLabel}`,
+      usage: t`${plural(poolConsumedCreditCount, {
+        one: `${poolConsumedLabel} credit used out of ${poolLimitLabel}`,
+        other: `${poolConsumedLabel} credits used out of ${poolLimitLabel}`,
+      })}`,
     });
   }
   if (overage > 0) {
@@ -559,7 +593,10 @@ export function AwuUsageBar({
       track: OVERAGE_BAR_CLASSES.track,
       fill: OVERAGE_BAR_CLASSES.fill,
       legend: t`Overage`,
-      usage: t`${overageLabel} credits over the spend limit`,
+      usage: t`${plural(overageCreditCount, {
+        one: `${overageLabel} credit over the spend limit`,
+        other: `${overageLabel} credits over the spend limit`,
+      })}`,
     });
   }
 
@@ -777,11 +814,17 @@ function buildSeatUsageColumn(t: Translate): ColumnDef<RowData, string> {
       }
       const consumedLabel = formatCredits(consumed);
       const allowanceLabel = formatCredits(allowance);
+      const allowanceCreditCount = roundCredits(allowance);
       return (
         <DataTable.CellContent className="justify-center">
           <Tooltip
             tooltipTriggerAsChild
-            label={t(msg`${consumedLabel} / ${allowanceLabel} credits used`)}
+            label={t(
+              msg`${plural(allowanceCreditCount, {
+                one: `${consumedLabel} / ${allowanceLabel} credit used`,
+                other: `${consumedLabel} / ${allowanceLabel} credits used`,
+              })}`
+            )}
             trigger={
               <span className="text-xs font-medium text-muted-foreground">
                 {Math.round(percent)}%
@@ -875,7 +918,13 @@ function buildPremiumMessageUsageColumn(
           aria-label={t(msg`Premium message usage`)}
           aria-valuenow={percentage}
           aria-valuetext={t(
-            msg`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`
+            msg`${usedMessages} of ${plural(limitMessages, {
+              one: "# premium message",
+              other: "# premium messages",
+            })} used over the last ${plural(windowDays, {
+              one: "# day",
+              other: "# days",
+            })}`
           )}
           className="h-1 w-full gap-px"
           variant="transparent"

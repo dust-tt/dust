@@ -9,7 +9,7 @@ import {
   BALANCE_THRESHOLD_REACHED_TRIGGER_ID,
 } from "@app/types/notification_preferences";
 import type { I18n } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
+import { msg, plural } from "@lingui/core/macro";
 import { workflow } from "@novu/framework";
 
 export function buildBalanceThresholdReachedEmailCopy(
@@ -36,7 +36,14 @@ export function buildBalanceThresholdReachedEmailCopy(
   ];
   if (remainingBalanceCredits !== null) {
     const remaining = i18n.number(remainingBalanceCredits);
-    lines.push(i18n._(msg`Remaining balance: ${remaining} credits`));
+    lines.push(
+      i18n._(
+        msg`${plural(remainingBalanceCredits, {
+          one: `Remaining balance: ${remaining} credit`,
+          other: `Remaining balance: ${remaining} credits`,
+        })}`
+      )
+    );
   }
   lines.push(
     isEnterprise

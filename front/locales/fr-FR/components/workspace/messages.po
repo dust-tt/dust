@@ -904,8 +904,8 @@ msgid "This group has no budget."
 msgstr "Ce groupe n’a pas de budget."
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "Shared by all members. {usedCredits} credits used so far this cycle."
-msgstr "Partagé par tous les membres. {usedCredits} crédits utilisés jusqu’ici ce cycle."
+msgid "{usedCreditCount, plural, one {Shared by all members. {usedCredits} credit used so far this cycle.} other {Shared by all members. {usedCredits} credits used so far this cycle.}}"
+msgstr "{usedCreditCount, plural, one {Partagé par tous les membres. {usedCredits} crédit utilisé jusqu’ici ce cycle.} other {Partagé par tous les membres. {usedCredits} crédits utilisés jusqu’ici ce cycle.}}"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
@@ -947,8 +947,8 @@ msgid "Reset to no personal limit at the next billing cycle"
 msgstr "Supprimer la limite personnelle au prochain cycle de facturation"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
-msgid "Reset to {resetBaselineCredits} credits at the next billing cycle"
-msgstr "Réinitialiser à {resetBaselineCredits} crédits au prochain cycle de facturation"
+msgid "{resetBaselineCreditCount, plural, one {Reset to {resetBaselineCredits} credit at the next billing cycle} other {Reset to {resetBaselineCredits} credits at the next billing cycle}}"
+msgstr "{resetBaselineCreditCount, plural, one {Réinitialiser à {resetBaselineCredits} crédit au prochain cycle de facturation} other {Réinitialiser à {resetBaselineCredits} crédits au prochain cycle de facturation}}"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "A personal limit applies to this member across the workspace."
@@ -1090,40 +1090,40 @@ msgid "Resets to no personal limit on {resetDate}"
 msgstr "Plus de limite personnelle à partir du {resetDate}"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "Resets to {previousLimit} credits on {resetDate}"
-msgstr "Revient à {previousLimit} crédits le {resetDate}"
+msgid "{previousLimitCreditCount, plural, one {Resets to {previousLimit} credit on {resetDate}} other {Resets to {previousLimit} credits on {resetDate}}}"
+msgstr "{previousLimitCreditCount, plural, one {Revient à {previousLimit} crédit le {resetDate}} other {Revient à {previousLimit} crédits le {resetDate}}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member pool credit usage"
 msgstr "Consommation de crédits de la réserve par le membre"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{consumedLabel} of {limitLabel} pool credits used"
-msgstr "{consumedLabel} crédits de la réserve utilisés sur {limitLabel}"
+msgid "{limitCreditCount, plural, one {{consumedLabel} of {limitLabel} pool credit used} other {{consumedLabel} of {limitLabel} pool credits used}}"
+msgstr "{limitCreditCount, plural, one {{consumedLabel} sur {limitLabel} crédit de la réserve utilisé} other {{consumedLabel} sur {limitLabel} crédits de la réserve utilisés}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{seatConsumedLabel} of {allowanceLabel} lifetime credits used"
-msgstr "{seatConsumedLabel} crédits à vie utilisés sur {allowanceLabel}"
+msgid "{allowanceCreditCount, plural, one {{seatConsumedLabel} of {allowanceLabel} lifetime credit used} other {{seatConsumedLabel} of {allowanceLabel} lifetime credits used}}"
+msgstr "{allowanceCreditCount, plural, one {{seatConsumedLabel} sur {allowanceLabel} crédit à vie utilisé} other {{seatConsumedLabel} sur {allowanceLabel} crédits à vie utilisés}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "{seatConsumedLabel} of {allowanceLabel} seat allowance used"
 msgstr "{seatConsumedLabel} utilisés sur les {allowanceLabel} crédits du siège"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{seatRemainingLabel} of {allowanceLabel} lifetime credits remaining"
-msgstr "{seatRemainingLabel} crédits à vie restants sur {allowanceLabel}"
+msgid "{allowanceCreditCount, plural, one {{seatRemainingLabel} of {allowanceLabel} lifetime credit remaining} other {{seatRemainingLabel} of {allowanceLabel} lifetime credits remaining}}"
+msgstr "{allowanceCreditCount, plural, one {{seatRemainingLabel} sur {allowanceLabel} crédit à vie restant} other {{seatRemainingLabel} sur {allowanceLabel} crédits à vie restants}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "{seatRemainingLabel} of {allowanceLabel} seat allowance remaining"
 msgstr "{seatRemainingLabel} restants sur les {allowanceLabel} crédits du siège"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{poolConsumedLabel} credits used from the workspace pool"
-msgstr "{poolConsumedLabel} crédits utilisés de la réserve du workspace"
+msgid "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} credit used from the workspace pool} other {{poolConsumedLabel} credits used from the workspace pool}}"
+msgstr "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} crédit utilisé de la réserve du workspace} other {{poolConsumedLabel} crédits utilisés de la réserve du workspace}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{poolRemainingLabel} credits remaining before spend limit"
-msgstr "{poolRemainingLabel} crédits restants avant la limite de dépenses"
+msgid "{poolRemainingCreditCount, plural, one {{poolRemainingLabel} credit remaining before spend limit} other {{poolRemainingLabel} credits remaining before spend limit}}"
+msgstr "{poolRemainingCreditCount, plural, one {{poolRemainingLabel} crédit restant avant la limite de dépenses} other {{poolRemainingLabel} crédits restants avant la limite de dépenses}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Lifetime credits"
@@ -1134,24 +1134,24 @@ msgid "Seat usage"
 msgstr "Utilisation du siège"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{seatConsumedLabel} credits used out of {allowanceLabel}"
-msgstr "{seatConsumedLabel} crédits utilisés sur {allowanceLabel}"
+msgid "{seatConsumedCreditCount, plural, one {{seatConsumedLabel} credit used out of {allowanceLabel}} other {{seatConsumedLabel} credits used out of {allowanceLabel}}}"
+msgstr "{seatConsumedCreditCount, plural, one {{seatConsumedLabel} crédit utilisé sur {allowanceLabel}} other {{seatConsumedLabel} crédits utilisés sur {allowanceLabel}}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Pool usage"
 msgstr "Utilisation de la réserve"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{poolConsumedLabel} credits used out of {poolLimitLabel}"
-msgstr "{poolConsumedLabel} crédits utilisés sur {poolLimitLabel}"
+msgid "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} credit used out of {poolLimitLabel}} other {{poolConsumedLabel} credits used out of {poolLimitLabel}}}"
+msgstr "{poolConsumedCreditCount, plural, one {{poolConsumedLabel} crédit utilisé sur {poolLimitLabel}} other {{poolConsumedLabel} crédits utilisés sur {poolLimitLabel}}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Overage"
 msgstr "Dépassement"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{overageLabel} credits over the spend limit"
-msgstr "{overageLabel} crédits au-delà de la limite de dépenses"
+msgid "{overageCreditCount, plural, one {{overageLabel} credit over the spend limit} other {{overageLabel} credits over the spend limit}}"
+msgstr "{overageCreditCount, plural, one {{overageLabel} crédit au-delà de la limite de dépenses} other {{overageLabel} crédits au-delà de la limite de dépenses}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Member credit usage"
@@ -1170,8 +1170,8 @@ msgid "{seatName} seat"
 msgstr "Siège {seatName}"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{consumedLabel} / {allowanceLabel} credits used"
-msgstr "{consumedLabel} / {allowanceLabel} crédits utilisés"
+msgid "{allowanceCreditCount, plural, one {{consumedLabel} / {allowanceLabel} credit used} other {{consumedLabel} / {allowanceLabel} credits used}}"
+msgstr "{allowanceCreditCount, plural, one {{consumedLabel} / {allowanceLabel} crédit utilisé} other {{consumedLabel} / {allowanceLabel} crédits utilisés}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Credit usage"
@@ -1190,8 +1190,8 @@ msgid "Premium message usage"
 msgstr "Utilisation des messages premium"
 
 #: front/components/workspace/MembersUsageTable.tsx
-msgid "{usedMessages} of {limitMessages} premium messages used over the last {windowDays} days"
-msgstr "{usedMessages} messages premium utilisés sur {limitMessages} au cours des {windowDays} derniers jours"
+msgid "{usedMessages} of {limitMessages, plural, one {# premium message} other {# premium messages}} used over the last {windowDays, plural, one {# day} other {# days}}"
+msgstr "{usedMessages} sur {limitMessages, plural, one {# message premium utilisé} other {# messages premium utilisés}} au cours {windowDays, plural, one {du dernier jour} other {des # derniers jours}}"
 
 #: front/components/workspace/MembersUsageTable.tsx
 msgid "Reset schedule:"
@@ -1206,6 +1206,7 @@ msgid "Fair-use credits usage"
 msgstr "Consommation de crédits d’usage raisonnable"
 
 #: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/SharedUsageLimitCell.tsx
 msgid "{limitCreditCount, plural, one {{usedLabel} of {limitLabel} credit used} other {{usedLabel} of {limitLabel} credits used}}"
 msgstr "{limitCreditCount, plural, one {{usedLabel} sur {limitLabel} crédit utilisé} other {{usedLabel} sur {limitLabel} crédits utilisés}}"
 
@@ -1532,10 +1533,6 @@ msgstr "Cela ne modifiera pas votre facture."
 #: front/components/workspace/SharedUsageLimitCell.tsx
 msgid "Group budget usage"
 msgstr "Utilisation du budget du groupe"
-
-#: front/components/workspace/SharedUsageLimitCell.tsx
-msgid "{usedLabel} of {limitLabel} credits used"
-msgstr "{usedLabel} crédits utilisés sur {limitLabel}"
 
 #: front/components/workspace/TopUpsHistoryTable.tsx
 msgid "Date"

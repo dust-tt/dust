@@ -172,20 +172,20 @@ msgid "Download"
 msgstr "Download"
 
 #: front/components/app/FairUseCreditsUsage.tsx
-msgid "{usedCredits} / {limitCredits} credits per day"
-msgstr "{usedCredits} / {limitCredits} credits per day"
+msgid "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per day} other {{usedCredits} / {limitCredits} credits per day}}"
+msgstr "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per day} other {{usedCredits} / {limitCredits} credits per day}}"
 
 #: front/components/app/FairUseCreditsUsage.tsx
-msgid "{usedCredits} / {limitCredits} credits per week"
-msgstr "{usedCredits} / {limitCredits} credits per week"
+msgid "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per week} other {{usedCredits} / {limitCredits} credits per week}}"
+msgstr "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per week} other {{usedCredits} / {limitCredits} credits per week}}"
 
 #: front/components/app/FairUseCreditsUsage.tsx
-msgid "{usedCredits} / {limitCredits} credits per month"
-msgstr "{usedCredits} / {limitCredits} credits per month"
+msgid "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per month} other {{usedCredits} / {limitCredits} credits per month}}"
+msgstr "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit per month} other {{usedCredits} / {limitCredits} credits per month}}"
 
 #: front/components/app/FairUseCreditsUsage.tsx
-msgid "{usedCredits} / {limitCredits} credits"
-msgstr "{usedCredits} / {limitCredits} credits"
+msgid "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit} other {{usedCredits} / {limitCredits} credits}}"
+msgstr "{displayedLimit, plural, one {{usedCredits} / {limitCredits} credit} other {{usedCredits} / {limitCredits} credits}}"
 
 #: front/components/app/FairUseCreditsUsage.tsx
 msgid "Fair usage"
