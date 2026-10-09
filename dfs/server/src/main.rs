@@ -1,11 +1,17 @@
 use std::net::SocketAddr;
 
 use clap::Parser;
-use dfs_api::{fdb, router};
-use tokio::signal::unix::{SignalKind, signal};
+use dfs_api::{fdb, serve};
+use tokio::{
+    net::TcpListener,
+    signal::unix::{SignalKind, signal},
+};
 
 #[derive(Parser)]
-#[command(version, about = "dfs gRPC API")]
+#[command(
+    version,
+    about = "dfs-server: Dust distributed file system (dfs://) server"
+)]
 struct Config {
     #[arg(long, env = "DFS_LISTEN", default_value = "127.0.0.1:50051")]
     listen: SocketAddr,
@@ -27,24 +33,15 @@ async fn main() -> anyhow::Result<()> {
     fdb::ping(&database).await?;
     tracing::info!(cluster_file = %config.fdb_cluster_file, "connected to FoundationDB");
 
-    tracing::info!(listen = %config.listen, "dfs-api listening");
-    router()
-        .serve_with_shutdown(config.listen, shutdown_signal())
-        .await?;
-    Ok(())
-}
-
-async fn shutdown_signal() {
-    let terminate = async {
-        match signal(SignalKind::terminate()) {
-            Ok(mut stream) => {
-                stream.recv().await;
-            }
-            Err(_) => std::future::pending::<()>().await,
+    let mut interrupt = signal(SignalKind::interrupt())?;
+    let mut terminate = signal(SignalKind::terminate())?;
+    let listener = TcpListener::bind(config.listen).await?;
+    tracing::info!(listen = %listener.local_addr()?, "dfs-api listening");
+    serve(listener, async {
+        tokio::select! {
+            _ = interrupt.recv() => {}
+            _ = terminate.recv() => {}
         }
-    };
-    tokio::select! {
-        _ = tokio::signal::ctrl_c() => {}
-        _ = terminate => {}
-    }
+    })
+    .await
 }
