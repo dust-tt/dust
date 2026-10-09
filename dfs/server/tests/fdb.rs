@@ -12,15 +12,24 @@ const PING_DEADLINE_HEADROOM_MS: i32 = 5_000;
 const UNREACHABLE_PING_DEADLINE: Duration =
     Duration::from_millis((fdb::PING_TIMEOUT_MS + PING_DEADLINE_HEADROOM_MS) as u64);
 
-#[tokio::test]
-async fn fdb_answers_a_transaction() -> Result<()> {
-    let database = fdb::open(&cluster_file())?;
+/// The network boots once per process and cannot restart once stopped, so every FDB check runs
+/// under this one test, which holds the guard and drops it before the binary exits.
+#[test]
+fn fdb_client() -> Result<()> {
+    // SAFETY: the only `boot` in this test binary; `_network` is dropped when this test returns.
+    #[allow(unsafe_code)]
+    let _network = unsafe { foundationdb::boot() };
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?;
 
-    fdb::ping(&database).await?;
-    Ok(())
+    runtime.block_on(async {
+        let database = fdb::open(&cluster_file())?;
+        fdb::ping(&database).await?;
+        ping_fails_instead_of_hanging_when_fdb_is_unreachable().await
+    })
 }
 
-#[tokio::test]
 async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
     let cluster_file =
         std::env::temp_dir().join(format!("dfs-unreachable-{}.cluster", std::process::id()));
