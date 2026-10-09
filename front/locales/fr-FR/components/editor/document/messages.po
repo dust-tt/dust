@@ -14,12 +14,12 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
-msgid "Add a block"
-msgstr "Ajouter un bloc"
+msgid "Add a paragraph"
+msgstr "Ajouter un paragraphe"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
-msgid "No matching blocks"
-msgstr "Aucun bloc correspondant"
+msgid "No matching paragraphs"
+msgstr "Aucun paragraphe correspondant"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Navigate"
@@ -331,8 +331,8 @@ msgid "Code"
 msgstr "Code"
 
 #: front/components/editor/document/blocks.ts
-msgid "A block of code"
-msgstr "Un bloc de code"
+msgid "A code snippet"
+msgstr "Un extrait de code"
 
 #: front/components/editor/document/blocks.ts
 msgid "Divider"

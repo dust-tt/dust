@@ -78,7 +78,7 @@ export const BLOCKS = [
   },
   {
     name: msg({ message: "Code", context: "document paragraph style" }),
-    description: msg`A block of code`,
+    description: msg`A code snippet`,
     icon: Code01,
     keywords: "codeblock",
     apply: (chain: ChainedCommands) => chain.toggleCodeBlock().run(),

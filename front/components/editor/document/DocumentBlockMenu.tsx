@@ -125,12 +125,12 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
         )}
       >
         <div className="px-2.5 pt-1.5 pb-2 text-muted-foreground label-xs">
-          <Trans>Add a block</Trans>
+          <Trans>Add a paragraph</Trans>
         </div>
         <div
           className="max-h-[min(22rem,55vh)] overflow-y-auto overscroll-contain [scrollbar-width:thin]"
           role="menu"
-          aria-label={t`Add a block`}
+          aria-label={t`Add a paragraph`}
         >
           {menu.blocks.map((block, index) => (
             <button
@@ -170,7 +170,7 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
           ))}
           {menu.blocks.length === 0 && (
             <div className="px-2.5 py-6 text-muted-foreground copy-sm">
-              <Trans>No matching blocks</Trans>
+              <Trans>No matching paragraphs</Trans>
             </div>
           )}
         </div>
