@@ -908,6 +908,7 @@ msgid "{usedCreditCount, plural, one {Shared by all members. {usedCredits} credi
 msgstr "{usedCreditCount, plural, one {Partagé par tous les membres. {usedCredits} crédit utilisé jusqu’ici ce cycle.} other {Partagé par tous les membres. {usedCredits} crédits utilisés jusqu’ici ce cycle.}}"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "Group budget"
 msgstr "Budget du groupe"
@@ -917,14 +918,11 @@ msgid "Grant {reviewSeatName} to {groupName}"
 msgstr "Attribuer {reviewSeatName} à {groupName}"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
-msgid "Edit limits for {groupName}"
-msgstr "Modifier les limites de {groupName}"
-
-#: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Granted seat"
 msgstr "Siège attribué"
 
 #: front/components/workspace/EditGroupUsageDialog.tsx
+#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 msgid "Limit per member"
 msgstr "Limite par membre"
@@ -937,6 +935,18 @@ msgstr "Aucune limite"
 #: front/components/workspace/EditGroupUsageDialog.tsx
 msgid "Caps what each member can spend."
 msgstr "Plafonne ce que chaque membre peut dépenser."
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Edit limits for {groupName}"
+msgstr "Modifier les limites de {groupName}"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Limits"
+msgstr "Limites"
+
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Order"
+msgstr "Ordre"
 
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
@@ -966,10 +976,43 @@ msgstr "Outils de l’extension de navigateur"
 msgid "Whether the Dust browser extension is allowed to list and read browser tabs."
 msgstr "Indique si l’extension de navigateur Dust peut lister et lire les onglets du navigateur."
 
+#: front/components/workspace/GroupBudgetOrderTab.tsx
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 msgid "Group"
 msgstr "Groupe"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "This group"
+msgstr "Ce groupe"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Shared members"
+msgstr "Membres en commun"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Move up"
+msgstr "Monter"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Move down"
+msgstr "Descendre"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "The order of group budgets could not be loaded."
+msgstr "Impossible de charger l’ordre des budgets de groupe."
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "No group has a budget yet."
+msgstr "Aucun groupe n’a encore de budget."
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "Shares members with <0>{groupName}</0>"
+msgstr "Membres en commun avec <0>{groupName}</0>"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "{visibleCount} of {totalCount, plural, one {# group} other {# groups}}"
+msgstr "{visibleCount} sur {totalCount, plural, one {# groupe} other {# groupes}}"
 
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx

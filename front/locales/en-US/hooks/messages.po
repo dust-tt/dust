@@ -614,6 +614,18 @@ msgstr "{groupName}'s budget is now {amount} credits per billing cycle."
 msgid "Group budget updated"
 msgstr "Group budget updated"
 
+#: front/hooks/useUpdateSharedUsageLimitPriorities.ts
+msgid "Failed to update the order of group budgets"
+msgstr "Failed to update the order of group budgets"
+
+#: front/hooks/useUpdateSharedUsageLimitPriorities.ts
+msgid "Order of group budgets updated"
+msgstr "Order of group budgets updated"
+
+#: front/hooks/useUpdateSharedUsageLimitPriorities.ts
+msgid "Members in several groups now use the budget of the first one in the new order."
+msgstr "Members in several groups now use the budget of the first one in the new order."
+
 #: front/hooks/useUserLocale.ts
 msgid "Could not save the language"
 msgstr "Could not save the language"

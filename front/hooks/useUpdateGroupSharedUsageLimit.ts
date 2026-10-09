@@ -3,6 +3,7 @@ import {
   useSendApiErrorNotification,
   useSendNotification,
 } from "@app/hooks/useNotification";
+import { invalidateSharedUsageLimitOverlaps } from "@app/hooks/useSharedUsageLimitOverlaps";
 import { clientFetch } from "@app/lib/egress/client";
 import { formatNumber } from "@app/lib/i18n/format";
 import type { SharedUsageLimit } from "@app/types/api/groups/shared_usage_limit";
@@ -57,7 +58,10 @@ export function useUpdateGroupSharedUsageLimit({
         title: t`Group budget updated`,
         description,
       });
-      await mutate(groupsUsageUrl(owner.sId));
+      await Promise.all([
+        mutate(groupsUsageUrl(owner.sId)),
+        invalidateSharedUsageLimitOverlaps(owner.sId),
+      ]);
       return true;
     },
     [owner.sId, sendApiErrorNotification, sendNotification, t]
