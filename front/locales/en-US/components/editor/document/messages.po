@@ -179,6 +179,10 @@ msgstr "All comments"
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "Why this document can't be edited"
+msgstr "Why this document can't be edited"
+
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Not saved"
 msgstr "Not saved"
