@@ -31,7 +31,6 @@ vi.mock("@app/lib/api/config", async (importOriginal) => {
     getDocumentRendererUrl: () => "http://localhost:3100",
     getEgressPolicyBucket: () => "test-egress-policy-bucket",
     getDustInviteTokenSecret: () => "test-invite-secret-32chars!!!!!",
-    getInvitationEmailTemplate: () => "d-test",
     getOAuthAPIConfig: () => ({
       url: "https://oauth-api.example.com",
       apiKey: "test-api-key",
