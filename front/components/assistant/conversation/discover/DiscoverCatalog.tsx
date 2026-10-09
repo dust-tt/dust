@@ -474,11 +474,7 @@ function CatalogResults({
               nextPage={onLoadMore}
               hasMore={hasNextPage && !hasError}
               showLoader={isLoadingMore}
-              loader={
-                <div className="flex justify-center py-4">
-                  <Spinner size="xs" />
-                </div>
-              }
+              loader={<CatalogRowsSkeleton count={1} />}
             />
           )}
         </>
