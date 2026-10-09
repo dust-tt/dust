@@ -1,12 +1,14 @@
-import type { ValidationRequiredToolExecution } from "@app/components/assistant/conversation/editable_tool_validation/types";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
+import { LightUserFactory } from "@app/tests/utils/LightUserFactory";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
+import { ValidationRequiredToolExecutionFactory } from "@app/tests/utils/ValidationRequiredToolExecutionFactory";
 import { MCPToolValidationRequired } from "./MCPToolValidationRequired";
 
+const currentUser = LightUserFactory.build();
 const validateActionMock = vi.fn().mockResolvedValue({ success: true });
 const getBlockedActionsMock = vi.fn();
 
@@ -31,7 +33,7 @@ vi.mock(
 );
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
-  useAuth: () => ({ user: { sId: "user_1" } }),
+  useAuth: () => ({ user: currentUser }),
   useFeatureFlags: () => ({ hasFeature: () => false }),
 }));
 
@@ -63,62 +65,28 @@ vi.mock("@app/hooks/useNotification", () => ({
 
 const owner = LightWorkspaceFactory.build({ sId: "w_1", role: "user" });
 
-function makeBlockedAction({
-  actionId,
-  mcpServerName,
-  toolName,
-  to,
-}: {
-  actionId: string;
-  mcpServerName: string;
-  toolName: string;
-  to: string;
-}): ValidationRequiredToolExecution {
-  return {
-    conversationId: "conv_1",
-    messageId: "msg_1",
-    configurationId: "config_1",
-    actionId,
-    userId: "user_1",
-    created: 1,
-    stake: "medium",
-    metadata: { mcpServerName, toolName, agentName: "agent" },
-    inputs: { to },
-    argumentsRequiringApproval: ["to"],
-    status: "blocked_validation_required",
-    authorizationInfo: null,
-  };
-}
-
 describe("MCPToolValidationRequired", () => {
   it("sends always_approved to every queued call of the same server and tool", async () => {
     const user = userEvent.setup();
-    const teamCall = makeBlockedAction({
-      actionId: "action_team",
-      mcpServerName: "slack",
-      toolName: "post_message",
-      to: "#team",
+    const teamCall = ValidationRequiredToolExecutionFactory.build({
+      stake: "medium",
+      argumentsRequiringApproval: ["to"],
+      inputs: { to: "#team" },
+    });
+    const generalCall = ValidationRequiredToolExecutionFactory.build({
+      stake: "medium",
+      argumentsRequiringApproval: ["to"],
+      inputs: { to: "#general" },
     });
     getBlockedActionsMock.mockReturnValue([
       teamCall,
-      makeBlockedAction({
-        actionId: "action_schedule",
-        mcpServerName: "slack",
-        toolName: "schedule_message",
-        to: "#general",
+      ValidationRequiredToolExecutionFactory.build({
+        metadata: { ...teamCall.metadata, toolName: "other_tool" },
       }),
-      makeBlockedAction({
-        actionId: "action_teams",
-        mcpServerName: "microsoft_teams",
-        toolName: "post_message",
-        to: "#general",
+      ValidationRequiredToolExecutionFactory.build({
+        metadata: { ...teamCall.metadata, mcpServerName: "other_server" },
       }),
-      makeBlockedAction({
-        actionId: "action_general",
-        mcpServerName: "slack",
-        toolName: "post_message",
-        to: "#general",
-      }),
+      generalCall,
     ]);
 
     render(
@@ -138,8 +106,8 @@ describe("MCPToolValidationRequired", () => {
           approved,
         ])
       ).toEqual([
-        ["action_team", "always_approved"],
-        ["action_general", "always_approved"],
+        [teamCall.actionId, "always_approved"],
+        [generalCall.actionId, "always_approved"],
       ]);
     });
   });
