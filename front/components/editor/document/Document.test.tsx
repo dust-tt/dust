@@ -1,9 +1,14 @@
 import {
   Document,
+  DocumentView,
   hasOpenDocumentLayer,
 } from "@app/components/editor/document/Document";
 import { documentCommentsPluginKey } from "@app/components/editor/document/DocumentComments";
-import type { DocumentProps } from "@app/components/editor/document/types";
+import type {
+  DocumentLiveParticipant,
+  DocumentProps,
+  LiveStatus,
+} from "@app/components/editor/document/types";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
 import datadogLogger from "@app/logger/datadogLogger";
@@ -718,6 +723,77 @@ describe("Document comments", () => {
     );
     const { from, to } = field.editor.state.selection;
     expect(field.editor.state.doc.textBetween(from, to)).toBe("gentle");
+  });
+});
+
+describe("Document live participants", () => {
+  const PARTICIPANTS: DocumentLiveParticipant[] = [
+    { id: "usr_bob", name: "Bob" },
+    { id: "usr_ada", name: "Ada" },
+  ];
+
+  const renderLiveView = (
+    status: LiveStatus,
+    participants: DocumentLiveParticipant[],
+    headerControlsContainer?: HTMLElement
+  ) =>
+    render(
+      <DocumentView
+        initialContent={SOURCE}
+        headerControlsContainer={headerControlsContainer}
+        liveView={{ status, participants, binding: null }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+        renderLiveParticipants={(shown) => (
+          <span data-testid="participants">
+            {shown.map(({ name }) => name).join(", ")}
+          </span>
+        )}
+      />
+    );
+
+  it("shows the participants right before the comments button in the host's container", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    renderLiveView("live", PARTICIPANTS, container);
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    const participants = within(container).getByTestId("participants");
+    expect(participants.textContent).toBe("Bob, Ada");
+    expect(participants.nextElementSibling).toBe(toggle);
+    container.remove();
+  });
+
+  it("shows the participants with the comments button above the document without a container", async () => {
+    const { container } = renderLiveView("live", PARTICIPANTS);
+
+    const toggle = await within(container).findByRole("button", {
+      name: /^Comments/,
+    });
+    expect(
+      within(container).getByTestId("participants").nextElementSibling
+    ).toBe(toggle);
+  });
+
+  it("shows no participants while the session is not live, or has no one else", async () => {
+    const { container, rerender } = renderLiveView("offline", PARTICIPANTS);
+    await within(container).findByRole("button", { name: /^Comments/ });
+    expect(within(container).queryByTestId("participants")).toBeNull();
+
+    rerender(
+      <DocumentView
+        initialContent={SOURCE}
+        liveView={{ status: "live", participants: [], binding: null }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={() => null}
+        renderLiveParticipants={() => <span data-testid="participants" />}
+      />
+    );
+    expect(within(container).queryByTestId("participants")).toBeNull();
   });
 });
 

@@ -64,6 +64,10 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
+  /** Renders the other users in the live session, such as an avatar stack. */
+  renderLiveParticipants?: (
+    participants: DocumentLiveParticipant[]
+  ) => ReactNode;
 }
 
 /** Where and as whom a Document joins its live session. */
@@ -73,6 +77,12 @@ export interface DocumentLiveSession {
   /** Fetches a one-time ticket for each connection; throws when access is refused. */
   getTicket: () => Promise<string>;
   user: { id: string; name: string; color: string };
+}
+
+/** Another user with the live document open. */
+export interface DocumentLiveParticipant {
+  id: string;
+  name: string;
 }
 
 /** Where a live document's connection stands, shown in place of the save status. */

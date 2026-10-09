@@ -5,6 +5,7 @@ export {
 export type {
   DocumentCommentAvatarSize,
   DocumentDraftState,
+  DocumentLiveParticipant,
   DocumentProps,
   DocumentSaveResult,
 } from "@app/components/editor/document/types";

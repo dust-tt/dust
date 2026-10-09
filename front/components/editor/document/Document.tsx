@@ -16,6 +16,7 @@ import {
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
 import type {
+  DocumentLiveParticipant,
   DocumentProps,
   LiveStatus,
 } from "@app/components/editor/document/types";
@@ -70,6 +71,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * the save and live statuses MUST stay above the document. Without one, the comments button MUST
  * show with them.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-live-participants
+ * While the live session is live and has other participants, `renderLiveParticipants` MUST show
+ * them right before the comments button, wherever that button shows; otherwise nothing MUST
+ * render for them.
+ */
 export const Document = (props: DocumentProps) =>
   props.live ? (
     <Suspense
@@ -91,6 +98,7 @@ interface DocumentViewProps extends DocumentProps {
     status: LiveStatus;
     /** What an agent is doing in the document, as the session last announced. */
     agent?: LiveAgentEvent | null;
+    participants?: DocumentLiveParticipant[];
     /** Bound to the shared document once synced; until then the file shows read-only. */
     binding: {
       extensions: AnyExtension[];
@@ -230,6 +238,7 @@ export const DocumentView = ({
   renderCommentBody,
   commentInputExtensions,
   resolveImageSource,
+  renderLiveParticipants,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
   const {
@@ -283,12 +292,23 @@ export const DocumentView = ({
     );
   }
 
-  const commentsToggle = (
-    <DocumentCommentsToggle
-      listId={listId}
-      comments={comments}
-      size={headerControlsContainer ? "sm" : "xs"}
-    />
+  const participants =
+    liveView?.status === "live" ? (liveView.participants ?? []) : [];
+  const showParticipants =
+    renderLiveParticipants !== undefined && participants.length > 0;
+  const showControls = showCommentsToggle || showParticipants;
+  // One element, so the participants keep their place before the button in a shared container.
+  const controls = (
+    <div className="flex items-center gap-2">
+      {showParticipants && renderLiveParticipants(participants)}
+      {showCommentsToggle && (
+        <DocumentCommentsToggle
+          listId={listId}
+          comments={comments}
+          size={headerControlsContainer ? "sm" : "xs"}
+        />
+      )}
+    </div>
   );
 
   return (
@@ -297,9 +317,9 @@ export const DocumentView = ({
       onKeyDownCapture={handleKeyDown}
       onKeyDown={(event) => handleDocumentEscape(event, comments)}
     >
-      {showCommentsToggle &&
+      {showControls &&
         headerControlsContainer &&
-        createPortal(commentsToggle, headerControlsContainer)}
+        createPortal(controls, headerControlsContainer)}
       <div
         ref={contentRef}
         className={cn(
@@ -316,9 +336,7 @@ export const DocumentView = ({
           error={error}
           autosaveDebounceMs={autosaveDebounceMs}
           onRetry={save}
-          controls={
-            showCommentsToggle && !headerControlsContainer && commentsToggle
-          }
+          controls={showControls && !headerControlsContainer && controls}
         >
           {liveView?.agent && <DocumentLiveAgent activity={liveView.agent} />}
           {liveView && <DocumentLiveStatus status={liveView.status} />}

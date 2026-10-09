@@ -3,6 +3,7 @@ import { MentionExtension } from "@app/components/editor/extensions/MentionExten
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -437,6 +438,9 @@ function RichMarkdownDocument({
       resolveImageSource={resolveImageSource}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
+      )}
+      renderLiveParticipants={(participants) => (
+        <LiveParticipantsAvatars owner={owner} participants={participants} />
       )}
     />
   );
