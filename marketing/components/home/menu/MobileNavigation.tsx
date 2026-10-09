@@ -2,7 +2,6 @@ import {
   Button,
   ChevronRight,
   DustLogo,
-  IconButton,
   Menu01,
   ScrollArea,
   Sheet,
@@ -25,7 +24,12 @@ export function MobileNavigation() {
     <div className="flex xl:hidden">
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <IconButton size="md" icon={Menu01} className="text-gray-900" />
+          <Button
+            size="md"
+            icon={Menu01}
+            className="text-gray-900"
+            variant="ghost-secondary"
+          />
         </SheetTrigger>
         <SheetContent
           side="left"
