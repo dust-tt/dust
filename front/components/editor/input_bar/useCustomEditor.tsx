@@ -47,7 +47,7 @@ import type { Editor } from "@tiptap/react";
 import { useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { useReducedMotion } from "framer-motion";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 
 const DEFAULT_LONG_TEXT_PASTE_CHARS_THRESHOLD = 16000;
 const SUBMIT_COOLDOWN_MS = 750;
@@ -633,14 +633,14 @@ const useCustomEditor = ({
     [conversationId]
   );
 
-  // Apply placeholder changes by typing the new placeholder from left to right,
-  // like the sidebar conversation titles.
+  // Type the placeholder from left to right, like the sidebar conversation
+  // titles, when it changes or a new editor shows it.
   // The Placeholder extension only re-reads placeholderRef on a state update,
-  // so dispatch an empty transaction for each change. Skipped on mount since
-  // the ref starts in sync with the override.
-  useEffect(() => {
+  // so dispatch an empty transaction for each change. A layout effect, so a new
+  // editor never paints its full placeholder before typing starts.
+  useLayoutEffect(() => {
     const target = placeholderOverride ?? defaultPlaceholder;
-    if (!editor || editor.isDestroyed || placeholderRef.current === target) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 
@@ -649,9 +649,12 @@ const useCustomEditor = ({
       editor.view.dispatch(editor.state.tr);
     };
 
-    // The placeholder is hidden while the editor has content: no need to type it.
-    if (shouldReduceMotion || !editor.isEmpty) {
-      setPlaceholder(target);
+    // Only type a visible placeholder: the editor is on the page and empty.
+    // This skips the hidden editors of user messages.
+    if (shouldReduceMotion || !editor.view.dom.isConnected || !editor.isEmpty) {
+      if (placeholderRef.current !== target) {
+        setPlaceholder(target);
+      }
       return;
     }
 

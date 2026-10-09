@@ -308,6 +308,8 @@ describe("useCustomEditor placeholder override", () => {
     if (!editor) {
       throw new Error("Editor was not initialized");
     }
+    // The placeholder is only typed while the editor is on the page.
+    document.body.append(editor.view.dom);
 
     return { editor, result, rerender };
   }
