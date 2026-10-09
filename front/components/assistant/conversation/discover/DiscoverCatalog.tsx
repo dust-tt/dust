@@ -295,9 +295,9 @@ function CatalogLayout({
   const { t } = useLingui();
   return (
     <div className="flex flex-col">
-      {/* The search sticks below the Discover header. The negative margin stretches its
-          background over the gap above it so scrolled results never show through. */}
-      <div className="sticky top-(--discover-header-height) z-20 -mt-8 bg-(--color-panel-background) pb-8 pt-8">
+      {/* The search sticks below the Discover header. Its padding carries the spacing so its
+          background covers it and scrolled results never show through. */}
+      <div className="sticky top-(--discover-header-height) z-20 bg-(--color-panel-background) py-4">
         <SearchInput
           name="discover-search"
           placeholder={t`Search for agents or skills`}
