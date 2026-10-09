@@ -48,7 +48,10 @@ export const DocumentMarkdownPreview = ({
     <article className={className}>
       <div className="mx-auto max-w-[50rem] px-5 py-8 text-foreground">
         <p role="alert" className="mb-6 text-muted-foreground copy-sm">
-          <Trans>This document can't be edited here yet.</Trans>
+          <Trans>
+            This document uses formatting the editor doesn't support yet, so it
+            can't be edited here.
+          </Trans>
         </p>
         {preview.rendered ? (
           <Markdown
