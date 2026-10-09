@@ -821,9 +821,18 @@ export class UserResource extends BaseResource<UserModel> {
    * supported locale.
    */
   async getLocale(fallbackLocale: SupportedLocale): Promise<SupportedLocale> {
+    return (await this.getStoredLocale()) ?? fallbackLocale;
+  }
+
+  /**
+   * @cc [owner:Nils-Fedrigo,label:product;backend] stored-locale-or-null
+   * MUST return the locale stored in the user's global `locale` metadata when it is one of
+   * `SUPPORTED_LOCALES`, and `null` when there is no stored value or it is not a supported locale.
+   */
+  async getStoredLocale(): Promise<SupportedLocale | null> {
     const metadata = await this.getMetadata(USER_LOCALE_METADATA_KEY);
     const storedLocale = metadata?.value;
-    return isSupportedLocale(storedLocale) ? storedLocale : fallbackLocale;
+    return isSupportedLocale(storedLocale) ? storedLocale : null;
   }
 
   async getProfile(): Promise<UserProfileType> {
