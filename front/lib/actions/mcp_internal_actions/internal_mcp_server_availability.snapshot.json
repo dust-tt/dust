@@ -42,7 +42,8 @@
     { "name": "agent_delegation", "id": 1045 },
     { "name": "workspace_management", "id": 1048 },
     { "name": "building_agents_and_skills", "id": 1050 },
-    { "name": "documents", "id": 1051 }
+    { "name": "documents", "id": 1051 },
+    { "name": "self_configuration", "id": 1052 }
   ],
   "manual": [
     { "name": "github", "id": 1 },
