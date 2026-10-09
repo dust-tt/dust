@@ -7,7 +7,11 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
-import { getStaticIpProxyDispatcher } from "@connectors/lib/proxy";
+import {
+  createProxyAgent,
+  getStaticIpProxyUrl,
+  http1Agent,
+} from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
@@ -292,7 +296,8 @@ export class GongClient {
     baseUrlForCustomer: string
   ) {
     this.baseUrl = `${baseUrlForCustomer}/v2`;
-    this.dispatcher = getStaticIpProxyDispatcher();
+    const proxyUrl = getStaticIpProxyUrl();
+    this.dispatcher = proxyUrl ? createProxyAgent(proxyUrl) : http1Agent;
   }
 
   /**

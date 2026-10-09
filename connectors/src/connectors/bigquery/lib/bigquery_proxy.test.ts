@@ -1,9 +1,7 @@
+import { getStaticIpProxyUrl } from "@connectors/lib/proxy";
 import { describe, expect, it } from "vitest";
 
-import {
-  getStaticIpProxyUrl,
-  withBigQueryStaticIpProxy,
-} from "./bigquery_proxy";
+import { withBigQueryStaticIpProxy } from "./bigquery_proxy";
 
 describe("getStaticIpProxyUrl", () => {
   it("returns undefined when any PROXY_* env var is missing", () => {
