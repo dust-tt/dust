@@ -13,10 +13,12 @@ import {
   isRichAgentMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
-import { useContext, useEffect, useRef } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 interface UseHandleMentionsOptions {
   allAgents: LightAgentConfigurationType[];
+  // While true, `allAgents` is still loading and cannot resolve the agent to select yet.
+  isAgentsLoading: boolean;
   conversation?: ConversationWithoutContentType;
   disableAutoFocus: boolean;
   editorService: EditorService;
@@ -34,10 +36,24 @@ interface UseHandleMentionsOptions {
   pendingInputText?: PendingInputText | null;
   selectedAgent: RichAgentMention | null;
   stickyMentions?: RichMention[];
+  // While true, `stickyMentions` is still loading (e.g. the conversation's messages).
+  isStickyMentionsLoading?: boolean;
+}
+
+// The user's personal default if set and still accessible, else @dust.
+function findDefaultAgent(
+  allAgents: LightAgentConfigurationType[],
+  defaultAgentId: string | null | undefined
+): LightAgentConfigurationType | undefined {
+  return (
+    (defaultAgentId && allAgents.find((a) => a.sId === defaultAgentId)) ||
+    allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST)
+  );
 }
 
 const useHandleMentions = ({
   allAgents,
+  isAgentsLoading,
   conversation,
   editorService,
   getDraft,
@@ -47,9 +63,11 @@ const useHandleMentions = ({
   pendingInputText,
   selectedAgent,
   stickyMentions,
+  isStickyMentionsLoading,
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const {
+    selectedSingleAgent,
     setSelectedSingleAgent,
     setSuppressDefaultAgent,
     suppressDefaultAgent,
@@ -138,10 +156,7 @@ const useHandleMentions = ({
         return;
       }
 
-      // Prefer the user's personal default (if set and still accessible), else @dust.
-      const defaultAgent =
-        (defaultAgentId && allAgents.find((a) => a.sId === defaultAgentId)) ||
-        allAgents.find((a) => a.sId === GLOBAL_AGENTS_SID.DUST);
+      const defaultAgent = findDefaultAgent(allAgents, defaultAgentId);
       if (defaultAgent) {
         setSelectedSingleAgent(toRichAgentMentionType(defaultAgent));
       }
@@ -178,7 +193,34 @@ const useHandleMentions = ({
     setSuppressDefaultAgent,
   ]);
 
-  return { stickyMentionsTextContent };
+  // Once the composer has had an agent, a null selection is a choice (e.g. the user deselected
+  // the agent), not a selection still being resolved.
+  const [hasHadSelectedAgent, setHasHadSelectedAgent] = useState(false);
+  if (selectedSingleAgent && !hasHadSelectedAgent) {
+    setHasHadSelectedAgent(true);
+  }
+
+  // The agent is selected asynchronously, through fetches and effects: from the conversation's
+  // sticky mentions, or for a new conversation from ?agent= or the default agent. It is pending
+  // until selected, as long as there is one to select.
+  const willSelectAgent = conversation
+    ? !!stickyMentions?.some(isRichAgentMention)
+    : agentSearchParam
+      ? allAgents.some((a) => a.sId === agentSearchParam)
+      : !!findDefaultAgent(allAgents, defaultAgentId);
+  const isNewConversationAgentCleared =
+    !conversation && (!!userSearchParam || suppressDefaultAgent);
+  const isSelectedAgentPending =
+    !isAgentBuilder &&
+    !isNewConversationAgentCleared &&
+    !selectedSingleAgent &&
+    !hasHadSelectedAgent &&
+    (isAgentsLoading ||
+      !!isDefaultAgentLoading ||
+      !!isStickyMentionsLoading ||
+      willSelectAgent);
+
+  return { stickyMentionsTextContent, isSelectedAgentPending };
 };
 
 export default useHandleMentions;

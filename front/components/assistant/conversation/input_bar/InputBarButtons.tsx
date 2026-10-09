@@ -20,6 +20,8 @@ import { useAppRouter } from "@app/lib/platform";
 import { useIsMobile, useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { setQueryParam } from "@app/lib/utils/router";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
   RichAgentMention,
@@ -59,6 +61,8 @@ interface InputBarButtonsProps {
   // current member (unpublished/deleted), so @dust is shown instead. Surfaces
   // a notice on the agent pill.
   isDefaultAgentUnavailable: boolean;
+  // When true, `selectedAgent` is still being resolved and the @dust pill stands in for it.
+  isSelectedAgentPending: boolean;
   lastRequestedModel: ModelSelectionType | null;
   onAgentRemove: () => void;
   onMCPServerViewSelect: (serverView: MCPServerViewLightType) => void;
@@ -80,6 +84,15 @@ interface InputBarButtonsProps {
   onPlusMenuOpenChange?: (open: boolean) => void;
   slashMenu: InputBarPlusMenuSlashMenu;
 }
+
+// @dust is the default agent, so showing it while loading avoids a layout shift.
+const LOADING_AGENT_PLACEHOLDER: RichAgentMention = {
+  id: GLOBAL_AGENTS_SID.DUST,
+  type: "agent",
+  label: "dust",
+  pictureUrl: DUST_AVATAR_URL,
+  description: "",
+};
 
 // The pill for the selected agent, with a notice when the default agent had to be replaced.
 function SelectedAgentPill({
@@ -151,6 +164,7 @@ function InputBarAgentButton({
   disableAgentSelector,
   handleSingleAgentSelect,
   isDefaultAgentUnavailable,
+  isSelectedAgentPending,
   onAgentPickerOpenChange,
   onAgentRemove,
   owner,
@@ -165,6 +179,7 @@ function InputBarAgentButton({
   | "disableAgentSelector"
   | "handleSingleAgentSelect"
   | "isDefaultAgentUnavailable"
+  | "isSelectedAgentPending"
   | "onAgentPickerOpenChange"
   | "onAgentRemove"
   | "owner"
@@ -174,6 +189,9 @@ function InputBarAgentButton({
   const { t } = useLingui();
   const router = useAppRouter();
   const isWidthConstrained = useIsWidthConstrained();
+  const displayedAgent =
+    selectedAgent ??
+    (isSelectedAgentPending ? LOADING_AGENT_PLACEHOLDER : null);
 
   return (
     <AgentPicker
@@ -194,11 +212,11 @@ function InputBarAgentButton({
       side={conversation ? "top" : "bottom"}
       showFooterButtons={showFooterButtons}
       pickerButton={
-        selectedAgent ? (
+        displayedAgent ? (
           <SelectedAgentPill
             buttonSize={buttonSize}
             isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-            selectedAgent={selectedAgent}
+            selectedAgent={displayedAgent}
             space={space}
           />
         ) : (
@@ -307,6 +325,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
   handleSingleAgentSelect,
   hideCapabilities,
   isDefaultAgentUnavailable,
+  isSelectedAgentPending,
   lastRequestedModel,
   onAgentRemove,
   onMCPServerViewSelect,
@@ -334,6 +353,7 @@ export const InputBarButtons = React.memo(function InputBarButtons({
       disableAgentSelector={disableAgentSelector}
       handleSingleAgentSelect={handleSingleAgentSelect}
       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
+      isSelectedAgentPending={isSelectedAgentPending}
       onAgentPickerOpenChange={onAgentPickerOpenChange}
       onAgentRemove={onAgentRemove}
       owner={owner}

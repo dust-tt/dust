@@ -221,6 +221,7 @@ export function useUnifiedAgentConfigurations({
 
   return {
     agentConfigurations: agentConfigurationsWithAuthors,
+    isAgentConfigurationsLoading: isAgentConfigurationsWithAuthorsLoading,
     isLoading:
       isAgentConfigurationsWithAuthorsLoading ||
       isAgentConfigurationsValidating,

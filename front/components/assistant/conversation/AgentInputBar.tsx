@@ -713,6 +713,8 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
                 user={context.user}
                 onSubmit={context.handleSubmit}
                 stickyMentions={autoMentions}
+                // A conversation always has messages: none yet means they are still loading.
+                isStickyMentionsLoading={allMessages.length === 0}
                 lastRequestedModel={lastRequestedModel}
                 conversation={context.conversation}
                 draftKey={context.draftKey}

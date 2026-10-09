@@ -234,6 +234,7 @@ function sameSkillIds(a: string[], b: string[]): boolean {
 export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
+  isAgentsLoading: boolean;
   disableAgentSelector: boolean;
   submitBlockMessage: string | null;
   placeholder?: string;
@@ -281,6 +282,7 @@ export interface InputBarContainerProps {
   isSelectableSpacesLoading?: boolean;
   onSelectedSpaceIdsChange?: (spaceIds: string[]) => Promise<string[] | null>;
   stickyMentions?: RichMention[];
+  isStickyMentionsLoading?: boolean;
   user: UserType | null;
 }
 
@@ -299,6 +301,7 @@ function hasActiveSelectionInEditor(
 
 const InputBarContainer = ({
   allAgents,
+  isAgentsLoading,
   onEnterKeyDown,
   owner,
   conversation,
@@ -306,6 +309,7 @@ const InputBarContainer = ({
   selectedAgent,
   pendingInputText,
   stickyMentions,
+  isStickyMentionsLoading,
   actions,
   disableAutoFocus,
   disableUserMentions,
@@ -1499,8 +1503,9 @@ const InputBarContainer = ({
     disableAutoFocus,
   ]);
 
-  useHandleMentions({
+  const { isSelectedAgentPending } = useHandleMentions({
     allAgents,
+    isAgentsLoading,
     conversation,
     disableAutoFocus,
     editorService,
@@ -1511,6 +1516,7 @@ const InputBarContainer = ({
     pendingInputText,
     selectedAgent,
     stickyMentions,
+    isStickyMentionsLoading,
   });
 
   useEffect(() => {
@@ -1596,6 +1602,7 @@ const InputBarContainer = ({
     !conversation &&
     !isAgentBuilder &&
     !isDefaultAgentLoading &&
+    !isAgentsLoading &&
     !!defaultAgentId &&
     defaultAgentId !== GLOBAL_AGENTS_SID.DUST &&
     !agentsById.has(defaultAgentId);
@@ -1826,6 +1833,7 @@ const InputBarContainer = ({
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
+                      isSelectedAgentPending={isSelectedAgentPending}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={handleToolSelect}
