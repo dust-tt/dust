@@ -1,7 +1,7 @@
 // Conversion between the dfs domain types (`@app/types/dfs`) and wire messages (`DfsWireMessage`).
 //
-// Encoders throw `DfsError("invalid_input")` on values that cannot be represented on the wire;
-// `DfsClient` turns those into `Err` results. Decoders validate wire messages with zod, and
+// Encoders throw `DfsError("invalid_input")` on values that cannot be represented on the wire (see
+// `encoders-throw-invalid-input` in `CONTRACTS`); `DfsClient` turns those into `Err` results. Decoders validate wire messages with zod, and
 // `decodeWireResponse` returns `DfsError("invalid_response")` when they do not match.
 
 import type { DfsWireMessage } from "@app/lib/dfs/proto";
@@ -77,15 +77,32 @@ export function dfsErrorCodeFromWire(value: string): DfsErrorCode {
 
 const UINT64_REGEX = /^\d+$/;
 const INT64_REGEX = /^-?\d+$/;
+// Largest values of the protobuf `uint32` and `uint64` types.
+const MAX_UINT32 = 2 ** 32 - 1;
+export const MAX_UINT64 = (BigInt(1) << BigInt(64)) - BigInt(1);
 
 export function encodeUint64(value: number | bigint, field: string): string {
   if (typeof value === "number" && !Number.isSafeInteger(value)) {
     throw new DfsError("invalid_input", `${field} must be a safe integer.`);
   }
-  if (value < 0) {
-    throw new DfsError("invalid_input", `${field} must be nonnegative.`);
+  if (value < 0 || BigInt(value) > MAX_UINT64) {
+    throw new DfsError("invalid_input", `${field} must fit in a uint64.`);
   }
   return value.toString();
+}
+
+export function encodeUint32(value: number, field: string): number {
+  if (!Number.isInteger(value) || value < 0 || value > MAX_UINT32) {
+    throw new DfsError("invalid_input", `${field} must fit in a uint32.`);
+  }
+  return value;
+}
+
+function encodeOptionalUint32(
+  value: number | undefined,
+  field: string
+): number | undefined {
+  return value === undefined ? undefined : encodeUint32(value, field);
 }
 
 function encodeOptionalUint64(
@@ -211,9 +228,14 @@ export const WireAttrSchema = z
 export function encodeGrant(grant: DfsGrant): DfsWireMessage {
   switch (grant.type) {
     case "allow":
-      return { allow: { subject: grant.subject, mode: grant.mode } };
+      return {
+        allow: {
+          subject: grant.subject,
+          mode: encodeUint32(grant.mode, "mode"),
+        },
+      };
     case "deny":
-      return { deny: { mode: grant.mode } };
+      return { deny: { mode: encodeUint32(grant.mode, "mode") } };
     default:
       assertNever(grant);
   }
@@ -512,7 +534,7 @@ export function encodeSearchRequest(request: DfsSearchRequest): DfsWireMessage {
       ),
       xattrs: filter.xattrs ?? [],
     },
-    limit: request.limit,
+    limit: encodeOptionalUint32(request.limit, "limit"),
   };
 }
 

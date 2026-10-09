@@ -3,6 +3,7 @@ import { DfsClient } from "@app/lib/dfs/client";
 import { DfsGrpcTransport } from "@app/lib/dfs/grpc_transport";
 import type { DfsWireMessage } from "@app/lib/dfs/proto";
 import { encodeDfsMessage, getDfsServiceDefinition } from "@app/lib/dfs/proto";
+import { DfsWireFactory } from "@app/tests/utils/DfsWireFactory";
 import type {
   sendUnaryData,
   ServerUnaryCall,
@@ -16,7 +17,6 @@ const FILE_ID = "0190c3a0b1c37aaa9bbbccccddddeeee";
 // The `dfs-response-size` budget, in encoded protobuf payload bytes.
 const RESPONSE_BUDGET_BYTES = 4 * 1024 * 1024;
 const SESSION_KEY = "k".repeat(64);
-const WIRE_VIEW = { storeVersion: "1", authVersion: "1" };
 
 type UnaryCall = ServerUnaryCall<DfsWireMessage, DfsWireMessage>;
 type Callback = sendUnaryData<DfsWireMessage>;
@@ -38,16 +38,10 @@ function firstTargetName(request: DfsWireMessage): unknown {
     : undefined;
 }
 
-const LARGE_FILE_ATTR = {
-  id: { id: { value: Buffer.from(FILE_ID, "hex") } },
+const LARGE_FILE_ATTR = DfsWireFactory.attr(FILE_ID, {
   name: "large.bin",
-  directory: false,
   size: "8388608",
-  mode: 0o600,
-  attrVersion: "1",
-  contentVersion: "1",
-  view: WIRE_VIEW,
-};
+});
 
 // A `ReadData` reply whose encoded payload is exactly `encodedBytes` long.
 function readDataOfEncodedSize(encodedBytes: number): DfsWireMessage {
@@ -65,6 +59,15 @@ function readDataOfEncodedSize(encodedBytes: number): DfsWireMessage {
   };
 }
 
+// The fake `Read` replies with the response budget plus `offset` bytes.
+function largeReadRequest(offset: number): DfsWireMessage {
+  return {
+    objectId: DfsWireFactory.objectId(FILE_ID),
+    offset: String(offset),
+    length: 1024 * 1024,
+  };
+}
+
 function isAuthorized(call: UnaryCall): boolean {
   return call.metadata.get("authorization")[0] === `Bearer ${SESSION_KEY}`;
 }
@@ -76,14 +79,7 @@ const implementation: UntypedServiceImplementation = {
       callback(dfsStatusError(status.UNAUTHENTICATED, "UNAUTHENTICATED"));
       return;
     }
-    callback(null, {
-      id: "session-1",
-      tenantId: "tenant-1",
-      subjects: ["g:eng"],
-      sessionKey: "",
-      expiresAt: "1700003600000",
-      rootId: { value: Buffer.from(ROOT_ID, "hex") },
-    });
+    callback(null, DfsWireFactory.session(ROOT_ID));
   },
   Lookup: (call: UnaryCall, callback: Callback) => {
     const name = firstTargetName(call.request);
@@ -100,16 +96,13 @@ const implementation: UntypedServiceImplementation = {
     callback(null, {
       results: [
         {
-          object: {
-            id: { id: { value: Buffer.from(ROOT_ID, "hex") } },
+          object: DfsWireFactory.attr(ROOT_ID, {
             name: "docs",
             directory: true,
             size: "0",
             mode: 0o700,
             attrVersion: "1",
-            contentVersion: "1",
-            view: WIRE_VIEW,
-          },
+          }),
         },
       ],
     });
@@ -215,23 +208,22 @@ describe("DfsGrpcTransport", () => {
       RESPONSE_BUDGET_BYTES
     );
 
-    const res = await new DfsClient(transport, SESSION_KEY).read({
-      objectId: FILE_ID,
-      offset: 0,
-      length: 1024 * 1024,
-    });
+    // Through the transport alone: `DfsClient.read` rejects data above 1 MiB.
+    const res = await transport.call("Read", largeReadRequest(0), SESSION_KEY);
 
     expect(res.isOk() && res.value.data).toEqual(expected.data);
   });
 
   it("rejects replies above the response budget", async () => {
-    const res = await new DfsClient(transport, SESSION_KEY).read({
-      objectId: FILE_ID,
-      offset: 1,
-      length: 1024 * 1024,
-    });
+    const res = await transport.call("Read", largeReadRequest(1), SESSION_KEY);
 
     expect(res.isErr() && res.error.code).toBe("capacity");
+  });
+
+  it("returns invalid_input for a key that is not a valid metadata value", async () => {
+    const res = await new DfsClient(transport, "bad\nkey").closeSession();
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
   });
 
   it("returns unimplemented methods as errors instead of throwing", async () => {

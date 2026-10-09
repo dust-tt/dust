@@ -97,7 +97,14 @@ export class DfsGrpcTransport implements DfsTransport {
     }
 
     const metadata = new Metadata();
-    metadata.set("authorization", `Bearer ${key}`);
+    try {
+      metadata.set("authorization", `Bearer ${key}`);
+    } catch {
+      // grpc-js rejects values outside printable ASCII; the key itself is not echoed back.
+      return new Err(
+        new DfsError("invalid_input", "Key is not a valid metadata value.")
+      );
+    }
 
     // Responses are decoded here rather than by grpc-js so that malformed messages surface as
     // `invalid_response` instead of a generic gRPC internal error.

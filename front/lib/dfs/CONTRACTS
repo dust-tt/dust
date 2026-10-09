@@ -1,0 +1,6 @@
+@cc [owner:fabiencelier,label:error-handling] encoders-throw-invalid-input
+Exception to `no-catching-own-errors`: the `encode*` functions of `codec.ts` MUST throw
+`DfsError("invalid_input")` for inputs that cannot be represented on the wire (malformed object ids,
+values outside their protobuf integer type) instead of returning them as `Err`, and MUST NOT throw any
+other `DfsError`. Only `DfsClient` request building MAY catch them, using an `instanceof DfsError`
+guard and rethrowing anything else.

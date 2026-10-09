@@ -5,6 +5,7 @@ import {
   encodeObjectRef,
   encodeOperation,
   encodeSearchRequest,
+  encodeUint32,
   encodeUint64,
   encodeVersionCheck,
   WireOperationBatchSchema,
@@ -23,6 +24,7 @@ import { DfsGrpcTransport } from "@app/lib/dfs/grpc_transport";
 import type { DfsMethod, DfsWireMessage } from "@app/lib/dfs/proto";
 import type { DfsTransport } from "@app/lib/dfs/transport";
 import type {
+  DfsAttrResult,
   DfsOperationBatch,
   DfsGrant,
   DfsGrantUpdate,
@@ -42,10 +44,39 @@ import type {
   DfsValidationBatch,
   DfsVersionCheck,
 } from "@app/types/dfs";
-import { DfsError } from "@app/types/dfs";
+import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 import type { z } from "zod";
+
+// `dfs-read-data-limit`: a read never returns more than 1 MiB.
+const MAX_READ_BYTES = 1024 * 1024;
+
+// A successful attribute result matches `expected` if it reports that object; virtual references
+// resolve to ids the client does not know, so any object matches them.
+function attrMatchesRef(
+  result: DfsAttrResult,
+  expected: DfsObjectRef
+): boolean {
+  return (
+    result.status !== "ok" ||
+    !isDfsObjectId(expected) ||
+    result.object.id === expected
+  );
+}
+
+// Successful lookups report the stored basename, which equals the requested name except under
+// virtual `shared`, whose names are projected aliases.
+function attrMatchesTarget(
+  result: DfsAttrResult,
+  { parentId, name }: DfsLookupTarget
+): boolean {
+  return (
+    result.status !== "ok" ||
+    parentId === "shared" ||
+    result.object.name === name
+  );
+}
 
 /**
  * Typed client for the dfs:// API (`dfs/design-docs/API.md`). Each instance authenticates every call
@@ -67,7 +98,9 @@ import type { z } from "zod";
  */
 /**
  * @cc [owner:fabiencelier,label:api;error-handling] batch-results-match-inputs
- * Batch responses whose results do not line up with the request MUST yield `invalid_response`.
+ * Batch responses whose results do not line up with the request MUST yield `invalid_response`: a
+ * result count different from the input count, or a successful result reporting an object other
+ * than the one its input names (by id, or by name for lookups outside virtual `shared`).
  */
 export class DfsClient {
   constructor(
@@ -94,18 +127,18 @@ export class DfsClient {
     return new DfsClient(this.transport, key);
   }
 
-  private async callBatch<T>(
+  private async callMatching<T>(
     method: DfsMethod,
     buildRequest: () => DfsWireMessage,
     schema: z.ZodType<T, z.ZodTypeDef, unknown>,
-    matchesInputs: (response: T) => boolean
+    matchesRequest: (response: T) => boolean
   ): Promise<Result<T, DfsError>> {
     const response = await this.call(method, buildRequest, schema);
-    if (response.isOk() && !matchesInputs(response.value)) {
+    if (response.isOk() && !matchesRequest(response.value)) {
       return new Err(
         new DfsError(
           "invalid_response",
-          `${method} results do not match the request.`
+          `${method} response does not match the request.`
         )
       );
     }
@@ -183,7 +216,11 @@ export class DfsClient {
   }): Promise<Result<DfsGrantPage, DfsError>> {
     return this.call(
       "ListGrants",
-      () => ({ objectId: encodeObjectId(objectId), after, limit }),
+      () => ({
+        objectId: encodeObjectId(objectId),
+        after,
+        limit: encodeUint32(limit, "limit"),
+      }),
       WireGrantPageSchema
     );
   }
@@ -217,11 +254,13 @@ export class DfsClient {
     objectIds: DfsObjectRef[];
     includeMetadata?: boolean;
   }): Promise<Result<DfsAttrBatch, DfsError>> {
-    return this.callBatch(
+    return this.callMatching(
       "Stat",
       () => ({ objectIds: objectIds.map(encodeObjectRef), includeMetadata }),
       WireAttrBatchSchema,
-      ({ results }) => results.length === objectIds.length
+      ({ results }) =>
+        results.length === objectIds.length &&
+        results.every((r, i) => attrMatchesRef(r, objectIds[i]))
     );
   }
 
@@ -233,7 +272,7 @@ export class DfsClient {
     targets: DfsLookupTarget[];
     includeMetadata?: boolean;
   }): Promise<Result<DfsAttrBatch, DfsError>> {
-    return this.callBatch(
+    return this.callMatching(
       "Lookup",
       () => ({
         targets: targets.map(({ parentId, name }) => ({
@@ -243,7 +282,9 @@ export class DfsClient {
         includeMetadata,
       }),
       WireAttrBatchSchema,
-      ({ results }) => results.length === targets.length
+      ({ results }) =>
+        results.length === targets.length &&
+        results.every((r, i) => attrMatchesTarget(r, targets[i]))
     );
   }
 
@@ -258,7 +299,11 @@ export class DfsClient {
   }): Promise<Result<DfsEntryPage, DfsError>> {
     return this.call(
       "List",
-      () => ({ directoryId: encodeObjectRef(directoryId), after, limit }),
+      () => ({
+        directoryId: encodeObjectRef(directoryId),
+        after,
+        limit: encodeUint32(limit, "limit"),
+      }),
       WireEntryPageSchema
     );
   }
@@ -272,14 +317,17 @@ export class DfsClient {
     offset: number;
     length: number;
   }): Promise<Result<DfsReadData, DfsError>> {
-    return this.call(
+    return this.callMatching(
       "Read",
       () => ({
         objectId: encodeObjectId(objectId),
         offset: encodeUint64(offset, "offset"),
-        length,
+        length: encodeUint32(length, "length"),
       }),
-      WireReadDataSchema
+      WireReadDataSchema,
+      ({ data, object }) =>
+        data.length <= Math.min(length, MAX_READ_BYTES) &&
+        object.id === objectId
     );
   }
 
@@ -288,13 +336,17 @@ export class DfsClient {
   }: {
     objectIds: DfsObjectId[];
   }): Promise<Result<DfsFilesBatch, DfsError>> {
-    return this.callBatch(
+    return this.callMatching(
       "ReadFiles",
       () => ({ objectIds: objectIds.map(encodeObjectId) }),
       WireFilesBatchSchema,
       ({ results }) =>
         results.length === objectIds.length &&
-        results.every((r, i) => r.objectId === objectIds[i])
+        results.every(
+          (r, i) =>
+            r.objectId === objectIds[i] &&
+            (r.status !== "ok" || r.object.id === objectIds[i])
+        )
     );
   }
 
@@ -303,7 +355,7 @@ export class DfsClient {
   }: {
     checks: DfsVersionCheck[];
   }): Promise<Result<DfsValidationBatch, DfsError>> {
-    return this.callBatch(
+    return this.callMatching(
       "Validate",
       () => ({ checks: checks.map(encodeVersionCheck) }),
       WireValidationBatchSchema,
@@ -322,11 +374,19 @@ export class DfsClient {
   }: {
     operations: DfsOperation[];
   }): Promise<Result<DfsOperationBatch, DfsError>> {
-    return this.callBatch(
+    return this.callMatching(
       "Apply",
       () => ({ operations: operations.map(encodeOperation) }),
       WireOperationBatchSchema,
-      ({ results }) => results.length === operations.length
+      // The primary object, when it survives the request, is the operation's object.
+      ({ results }) =>
+        results.length === operations.length &&
+        results.every(
+          (r, i) =>
+            r.status !== "ok" ||
+            !r.mutation.object ||
+            r.mutation.object.id === operations[i].objectId
+        )
     );
   }
 

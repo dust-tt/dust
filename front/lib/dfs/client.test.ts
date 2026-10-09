@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { DfsClient } from "@app/lib/dfs/client";
+import { MAX_UINT64 } from "@app/lib/dfs/codec";
 import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import type { DfsMethod, DfsWireMessage } from "@app/lib/dfs/proto";
 import {
@@ -8,6 +9,7 @@ import {
   encodeDfsMessage,
 } from "@app/lib/dfs/proto";
 import type { DfsTransport } from "@app/lib/dfs/transport";
+import { DfsWireFactory } from "@app/tests/utils/DfsWireFactory";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -17,30 +19,7 @@ const ROOT_ID = "0190c3a0b1c27d4e8f0a1b2c3d4e5f60";
 const FILE_ID = "0190c3a0b1c37aaa9bbbccccddddeeee";
 const SESSION_KEY = "s".repeat(64);
 
-function wireId(id: string): DfsWireMessage {
-  return { value: Buffer.from(id, "hex") };
-}
-
-function wireRef(id: string): DfsWireMessage {
-  return { id: wireId(id) };
-}
-
-const WIRE_VIEW = { storeVersion: "42", authVersion: "7" };
-
-function wireAttr(id: string, overrides: DfsWireMessage = {}): DfsWireMessage {
-  return {
-    id: wireRef(id),
-    name: "notes.txt",
-    directory: false,
-    size: "5",
-    mode: 0o600,
-    mtime: "1700000000000",
-    attrVersion: "3",
-    contentVersion: "2",
-    view: WIRE_VIEW,
-    ...overrides,
-  };
-}
+const { objectId: wireId, objectRef: wireRef, attr: wireAttr } = DfsWireFactory;
 
 type Answer = Result<DfsWireMessage, DfsError>;
 
@@ -95,14 +74,12 @@ function setup(answers: Partial<Record<DfsMethod, Answer>>) {
 describe("DfsClient", () => {
   it("creates a session and decodes ids and timestamps", async () => {
     const { client, transport } = setup({
-      CreateSession: new Ok({
-        id: "session-1",
-        tenantId: "tenant-1",
-        subjects: ["u:a@dust.tt", "g:eng"],
-        sessionKey: SESSION_KEY,
-        expiresAt: "1700003600000",
-        rootId: wireId(ROOT_ID),
-      }),
+      CreateSession: new Ok(
+        DfsWireFactory.session(ROOT_ID, {
+          subjects: ["u:a@dust.tt", "g:eng"],
+          sessionKey: SESSION_KEY,
+        })
+      ),
     });
 
     const res = await client.createSession({
@@ -128,14 +105,9 @@ describe("DfsClient", () => {
 
   it("rejects a session whose root is not a UUIDv7", async () => {
     const { client } = setup({
-      CurrentSession: new Ok({
-        id: "session-1",
-        tenantId: "tenant-1",
-        subjects: [],
-        sessionKey: "",
-        expiresAt: "1",
-        rootId: { value: Buffer.alloc(16) },
-      }),
+      CurrentSession: new Ok(
+        DfsWireFactory.session(ROOT_ID, { rootId: { value: Buffer.alloc(16) } })
+      ),
     });
 
     const res = await client.currentSession();
@@ -162,7 +134,7 @@ describe("DfsClient", () => {
           },
           {
             object: wireAttr(FILE_ID, {
-              attrVersion: "18446744073709551615",
+              attrVersion: MAX_UINT64.toString(),
               metadata: {
                 created: "1600000000000",
                 mimeType: "text/plain",
@@ -206,7 +178,7 @@ describe("DfsClient", () => {
         size: 5,
         mode: 0o600,
         mtimeMs: 1700000000000,
-        attrVersion: BigInt("18446744073709551615"),
+        attrVersion: MAX_UINT64,
         contentVersion: BigInt("2"),
         view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
         metadata: { createdMs: 1600000000000, mimeType: "text/plain" },
@@ -318,7 +290,7 @@ describe("DfsClient", () => {
           { outcome: "CHANGED" },
           { outcome: "DENIED", error: { code: "FORBIDDEN" } },
         ],
-        view: WIRE_VIEW,
+        view: DfsWireFactory.view(),
       }),
     });
 
@@ -692,6 +664,129 @@ describe("DfsClient", () => {
     const res = await client.readFiles({ objectIds: [FILE_ID, ROOT_ID] });
 
     expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("returns invalid_response when stat reports another object", async () => {
+    const { client } = setup({
+      Stat: new Ok({
+        results: [{ object: wireAttr(ROOT_ID) }, { object: wireAttr(FILE_ID) }],
+      }),
+    });
+
+    const res = await client.stat({ objectIds: [FILE_ID, ROOT_ID] });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("returns invalid_response when lookup reports another name", async () => {
+    const { client } = setup({
+      Lookup: new Ok({
+        results: [
+          { object: wireAttr(FILE_ID, { name: "b" }) },
+          { object: wireAttr(ROOT_ID, { name: "a" }) },
+        ],
+      }),
+    });
+
+    const res = await client.lookup({
+      targets: [
+        { parentId: ROOT_ID, name: "a" },
+        { parentId: ROOT_ID, name: "b" },
+      ],
+    });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("accepts projected names when looking up under shared", async () => {
+    const { client } = setup({
+      Lookup: new Ok({
+        results: [{ object: wireAttr(FILE_ID, { name: "notes.txt" }) }],
+      }),
+    });
+
+    const res = await client.lookup({
+      targets: [{ parentId: "shared", name: `notes.txt--${FILE_ID}` }],
+    });
+
+    expect(res.isOk()).toBe(true);
+  });
+
+  it("returns invalid_response when a readFiles result holds another object", async () => {
+    const { client } = setup({
+      ReadFiles: new Ok({
+        results: [
+          {
+            objectId: wireId(FILE_ID),
+            object: wireAttr(ROOT_ID),
+            data: Buffer.from("hello"),
+          },
+        ],
+      }),
+    });
+
+    const res = await client.readFiles({ objectIds: [FILE_ID] });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("returns invalid_response when apply reports another primary object", async () => {
+    const { client } = setup({
+      Apply: new Ok({
+        results: [
+          { mutation: { object: wireAttr(ROOT_ID), related: [] } },
+          { mutation: { object: wireAttr(FILE_ID), related: [] } },
+        ],
+      }),
+    });
+
+    const res = await client.apply({
+      operations: [
+        {
+          type: "write",
+          objectId: FILE_ID,
+          offset: 0,
+          data: Buffer.from("a"),
+          append: false,
+        },
+        {
+          type: "write",
+          objectId: ROOT_ID,
+          offset: 0,
+          data: Buffer.from("b"),
+          append: false,
+        },
+      ],
+    });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("returns invalid_response when a read returns more than requested", async () => {
+    const { client } = setup({
+      Read: new Ok({ data: Buffer.from("hello"), object: wireAttr(FILE_ID) }),
+    });
+
+    const res = await client.read({ objectId: FILE_ID, offset: 0, length: 4 });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_response");
+  });
+
+  it("returns invalid_input for values outside their wire integer type", async () => {
+    const { client, transport } = setup({});
+
+    const fractional = await client.read({
+      objectId: FILE_ID,
+      offset: 0,
+      length: 1.5,
+    });
+    const tooLarge = await client.validate({
+      checks: [{ objectId: FILE_ID, attrVersion: MAX_UINT64 + BigInt(1) }],
+    });
+
+    expect(fractional.isErr() && fractional.error.code).toBe("invalid_input");
+    expect(tooLarge.isErr() && tooLarge.error.code).toBe("invalid_input");
+    expect(transport.calls).toHaveLength(0);
   });
 
   it("returns invalid_input for negative offsets", async () => {
