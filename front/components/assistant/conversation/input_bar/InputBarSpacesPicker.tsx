@@ -38,7 +38,6 @@ export function getSpacesPickerLabel(
 
 interface InputBarSpacesPickerProps {
   canDeselectSelectedSpaces: boolean;
-  disabled: boolean;
   isLoading: boolean;
   onOpenChange?: (open: boolean) => void;
   onSelectedSpaceIdsChange: (spaceIds: string[]) => void;
@@ -52,7 +51,6 @@ interface InputBarSpacesPickerProps {
 
 export function InputBarSpacesPicker({
   canDeselectSelectedSpaces,
-  disabled,
   isLoading,
   onOpenChange,
   onSelectedSpaceIdsChange,
@@ -129,7 +127,6 @@ export function InputBarSpacesPicker({
           icon={
             <Icon size="xs" visual={Planet} className="text-muted-foreground" />
           }
-          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
             e.preventDefault();

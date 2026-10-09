@@ -377,8 +377,8 @@ export interface CustomEditorProps {
     slashMenuModeRef: React.RefObject<InputBarSlashMenuMode | null>;
     spaceIdRef: React.RefObject<string | null | undefined>;
   };
-  // Shown while the editor is empty (e.g. a hint or a blocked-state reason).
-  placeholder?: string | null;
+  // Shown while the editor is empty (e.g. a hint).
+  placeholder?: string;
   onSuggestionActiveChangeRef?: React.RefObject<
     ((active: boolean) => void) | undefined
   >;

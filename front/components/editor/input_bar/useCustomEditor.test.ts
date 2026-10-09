@@ -285,7 +285,7 @@ describe("useCustomEditor placeholder", () => {
   });
 
   interface EditorHookProps {
-    placeholder: string | null;
+    placeholder: string;
   }
 
   function renderEditorHook() {

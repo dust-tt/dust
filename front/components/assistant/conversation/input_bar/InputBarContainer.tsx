@@ -235,12 +235,6 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   disableAgentSelector: boolean;
-  // When true, the editor is made non-editable and every picker (agent,
-  // tools, attachment, voice) is disabled. Reserved for states where the user
-  // cannot interact at all (e.g. non-owner viewing a conversation with an
-  // active wake-up). `submitBlockMessage` on its own only mutes the send
-  // button.
-  disableInput: boolean;
   submitBlockMessage: string | null;
   placeholder?: string;
   onShake: () => void;
@@ -334,7 +328,6 @@ const InputBarContainer = ({
   saveDraft,
   user,
   disableAgentSelector,
-  disableInput,
   submitBlockMessage,
   placeholder,
   onShake,
@@ -837,14 +830,13 @@ const InputBarContainer = ({
     disableUserMentions,
     slashMenuMode,
   });
-  const editorPlaceholder = disableInput
-    ? submitBlockMessage
-    : (placeholder ??
-      t(
-        placeholderHints[
-          Math.floor(placeholderHintSeed * placeholderHints.length)
-        ]
-      ));
+  const editorPlaceholder =
+    placeholder ??
+    t(
+      placeholderHints[
+        Math.floor(placeholderHintSeed * placeholderHints.length)
+      ]
+    );
 
   const { editor, editorService } = useCustomEditor({
     onEnterKeyDown: onEnterKeyDownWithShake,
@@ -1088,19 +1080,6 @@ const InputBarContainer = ({
     },
   });
 
-  // Keep the editor non-editable while the input is fully disabled (e.g. a
-  // non-owner viewing a conversation with an active wake-up). The placeholder
-  // reads the block reason via `placeholder`; disabling editability
-  // prevents typing. Note: this must not fire for send-button-only blocks
-  // (such as "another agent is answering"), otherwise the user loses the
-  // ability to steer while the other agent is still generating.
-  useEffect(() => {
-    if (!editor || editor.isDestroyed) {
-      return;
-    }
-    editor.setEditable(!disableInput);
-  }, [editor, disableInput]);
-
   // When a user mention is *newly added* in single-agent mode, deselect the agent
   // and clear side-channel capabilities. Only triggers on the transition from no-user-mention to
   // user-mention so that re-selecting an agent (via card click or URL param) isn't
@@ -1292,7 +1271,7 @@ const InputBarContainer = ({
 
   useEffect(() => {
     // captureActions is defined only in the extension, so the shortcuts won't work in the web app
-    if (!captureActions || disableInput) {
+    if (!captureActions) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1313,7 +1292,7 @@ const InputBarContainer = ({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [captureActions, disableInput, fileUploaderService.isProcessingFiles]);
+  }, [captureActions, fileUploaderService.isProcessingFiles]);
 
   useEffect(() => {
     if (shouldFocusInput) {
@@ -1635,7 +1614,6 @@ const InputBarContainer = ({
   // recording or transcribing, where it shows a timer and a level meter.
   const showSendButton = !isVoiceActive || isSubmitting;
   const compactPreviewText = editorService.getTrimmedText();
-  const compactDisplayPlaceholder = editorPlaceholder ?? "";
 
   useEffect(() => {
     onVoiceActiveChange?.(isVoiceActive);
@@ -1706,7 +1684,7 @@ const InputBarContainer = ({
                 compactPreviewText ? "text-foreground" : "text-muted-foreground"
               )}
             >
-              {compactPreviewText || compactDisplayPlaceholder}
+              {compactPreviewText || editorPlaceholder}
             </div>
           )}
           {!subscription.plan.isByok &&
@@ -1728,7 +1706,6 @@ const InputBarContainer = ({
                   size={INPUT_BAR_BUTTON_SIZE}
                   compact
                   showStopLabel={false}
-                  disabled={disableInput}
                 />
               </div>
             )}
@@ -1825,7 +1802,6 @@ const InputBarContainer = ({
                       <InputBarSpacesPicker
                         anchorRef={inputBarButtonsRef}
                         canDeselectSelectedSpaces={!conversation?.sId}
-                        disabled={disableInput}
                         externalOpen={showSpacesPicker}
                         isLoading={isSelectableSpacesLoading}
                         onExternalOpenChange={handleSpacesPickerOpenChange}
@@ -1850,7 +1826,6 @@ const InputBarContainer = ({
                       handleSingleAgentSelect={handleSingleAgentSelect}
                       hideCapabilities={hideCapabilities}
                       isDefaultAgentUnavailable={isDefaultAgentUnavailable}
-                      isInputDisabled={disableInput}
                       lastRequestedModel={lastRequestedModel}
                       onAgentRemove={handleAgentRemove}
                       onMCPServerViewSelect={handleToolSelect}
@@ -1889,7 +1864,6 @@ const InputBarContainer = ({
                               variant="ghost-secondary"
                               icon={Plus}
                               size={INPUT_BAR_BUTTON_SIZE}
-                              disabled={disableInput}
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -1909,7 +1883,6 @@ const InputBarContainer = ({
                                   icon={Globe01}
                                   label={t`Attach page content`}
                                   disabled={
-                                    disableInput ||
                                     captureActions.isCapturing ||
                                     fileUploaderService.isProcessingFiles
                                   }
@@ -1927,7 +1900,6 @@ const InputBarContainer = ({
                                   icon={Camera01}
                                   label={t`Take screenshot`}
                                   disabled={
-                                    disableInput ||
                                     captureActions.isCapturing ||
                                     fileUploaderService.isProcessingFiles
                                   }
@@ -1946,7 +1918,6 @@ const InputBarContainer = ({
                                     icon={FilePlus03}
                                     label={t`Save page to Pod`}
                                     disabled={
-                                      disableInput ||
                                       captureActions.isCapturing ||
                                       captureActions.isSavingPageToPod ||
                                       fileUploaderService.isProcessingFiles
@@ -1979,7 +1950,6 @@ const InputBarContainer = ({
                           externalOpen={showKnowledgePicker}
                           onExternalOpenChange={setShowKnowledgePicker}
                           anchorRef={plusButtonRef}
-                          disabled={disableInput}
                         />
                       )}
                     </>
@@ -2003,7 +1973,6 @@ const InputBarContainer = ({
                           owner={owner}
                           buttonSize={INPUT_BAR_BUTTON_SIZE}
                           side={conversation ? "top" : "bottom"}
-                          disabled={disableInput}
                           selectionRef={modelSelectionRef}
                           commitApiRef={modelSelectionCommitRef}
                         />
@@ -2025,7 +1994,6 @@ const InputBarContainer = ({
                       onRecordStop={activeVoiceService.stopRecording}
                       size={INPUT_BAR_BUTTON_SIZE}
                       showStopLabel={!isWidthConstrained}
-                      disabled={disableInput}
                       buttonProps={{ className: "rounded-full" }}
                     />
                   )}

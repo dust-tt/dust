@@ -103,7 +103,6 @@ interface InputBarProps {
   isFloatingWithoutMargin?: boolean;
   isSubmitting?: boolean;
   isAgentBuilder?: boolean;
-  disableInput?: boolean;
   submitBlockMessage?: string | null;
   placeholder?: string;
   effectiveIsCompact?: boolean;
@@ -134,7 +133,6 @@ export const InputBar = React.memo(function InputBar({
   isAgentBuilder = false,
   isFloating = true,
   isSubmitting = false,
-  disableInput = false,
   submitBlockMessage = null,
   placeholder,
   effectiveIsCompact = false,
@@ -608,7 +606,7 @@ export const InputBar = React.memo(function InputBar({
       <div
         onAnimationEnd={() => setIsShaking(false)}
         onClick={(e) => {
-          if (!effectiveIsCompact || disableInput) {
+          if (!effectiveIsCompact) {
             return;
           }
           if (
@@ -628,7 +626,7 @@ export const InputBar = React.memo(function InputBar({
             ? classNames(
                 INPUT_BAR_COMPACT_PILL_CLASSES,
                 INPUT_BAR_COMPACT_ENTER_ANIMATION_CLASSES,
-                !disableInput && "cursor-pointer"
+                "cursor-pointer"
               )
             : classNames(
                 "rounded-squircle-40 w-full overflow-hidden",
@@ -705,7 +703,6 @@ export const InputBar = React.memo(function InputBar({
             getDraft={getDraft}
             user={user}
             disableAgentSelector={isBlockedByAgentSwitch}
-            disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
             placeholder={
               willQueueMessage ? t(INPUT_BAR_QUEUE_PLACEHOLDER) : placeholder
