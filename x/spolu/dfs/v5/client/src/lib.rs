@@ -34,6 +34,7 @@ struct Metric {
     calls: u64,
     errors: u64,
     elapsed_ns: u128,
+    max_ns: u128,
 }
 /// @cc [owner:spolu,label:performance;security] aggregate-client-timing
 /// Timers MUST record only fixed operation names and aggregate durations, without paths or payloads.
@@ -52,6 +53,7 @@ impl Drop for MetricTimer {
         let metric = metrics.entry(self.name).or_default();
         metric.calls += 1;
         metric.elapsed_ns += elapsed.as_nanos();
+        metric.max_ns = metric.max_ns.max(elapsed.as_nanos());
     }
 }
 impl Client {
@@ -108,6 +110,7 @@ impl Client {
         metric.calls += 1;
         metric.errors += u64::from(failed);
         metric.elapsed_ns += elapsed.as_nanos();
+        metric.max_ns = metric.max_ns.max(elapsed.as_nanos());
     }
 }
 #[derive(Clone)]
@@ -140,6 +143,7 @@ impl BlockingClient {
                     serde_json::json!({
                         "calls": metric.calls, "errors": metric.errors,
                         "elapsed_ms": metric.elapsed_ns as f64 / 1_000_000.0,
+                        "max_ms": metric.max_ns as f64 / 1_000_000.0,
                     }),
                 )
             })
