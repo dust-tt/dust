@@ -5150,6 +5150,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await this.update({ visibility: "unlisted" });
   }
 
+  async updateUserMemorySnapshotPath(
+    auth: Authenticator,
+    userMemorySnapshotPath: string
+  ) {
+    await this.update({ userMemorySnapshotPath });
+  }
+
   async updateRequirements(
     auth: Authenticator,
     requestedSpaceIds: number[],
