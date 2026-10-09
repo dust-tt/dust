@@ -4,6 +4,12 @@ export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = "en-US";
 
+/**
+ * @cc [owner:ykmsd,label:product] catalog-locales-added-to-sparkle-and-viz
+ * A locale added to `CATALOG_LOCALES` MUST also be added, with its catalog, to
+ * `SPARKLE_CATALOG_LOCALES` (sparkle/src/lib/i18n/locales.ts) and `VIZ_CATALOG_LOCALES`
+ * (viz/app/lib/i18n/locales.ts).
+ */
 export const CATALOG_LOCALES = [
   "en-US",
   "fr-FR",
