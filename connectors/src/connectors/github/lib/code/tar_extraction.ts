@@ -199,10 +199,10 @@ function parseGitHubPath(
 
 /**
  * @cc [owner:philipperolet,label:performance] stream-bound-to-activity
- * Each chunk delivered by `stream` MUST trigger an activity heartbeat, and no heartbeat may come
- * from elsewhere (e.g. a timer), so that a stalled stream lets the activity's heartbeatTimeout
- * fire. When Temporal cancels the activity, including after one of its timeouts fired, `stream`
- * MUST be destroyed so that the dropped attempt stops instead of running to the end.
+ * The activity MUST heartbeat on each chunk delivered by `stream`, and this function MUST NOT
+ * heartbeat on a timer, so that a stalled stream lets the activity's heartbeatTimeout fire. When
+ * Temporal cancels the activity, including after one of its timeouts fired, `stream` MUST be
+ * destroyed so that the dropped attempt stops instead of running to the end.
  */
 function bindStreamToActivity(stream: Readable, activityContext: Context) {
   // Calling heartbeat on every chunk is cheap: the Temporal SDK throttles what it sends.
