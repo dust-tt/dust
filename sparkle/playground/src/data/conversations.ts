@@ -1,4 +1,5 @@
 import type {
+  Agent,
   Conversation,
   ConversationItem,
   ConversationMessage,
@@ -1492,4 +1493,108 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
   };
 
   return [conversation1, conversation2];
+}
+
+const WELCOME_STEPS = `
+Three things, in this order:
+
+**Connect your data.** Point Dust at where your work already lives — Slack, Notion, Drive, or a folder of files you upload. Everything you connect becomes something agents can read.
+
+**Create a Pod.** A Pod keeps the files, agents and conversations of one team or project in one place, so everyone in it works from the same context.
+
+**Ask a real question.** Something you would otherwise look up yourself. That is the fastest way to see what this workspace knows and where it still needs data.
+`;
+
+function clockTime(date: Date): string {
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * The conversation a brand-new workspace opens on: the generalist agent
+ * pointing at the first things worth doing.
+ */
+export function createWelcomeConversation(
+  locutorId: string,
+  agent: Agent
+): Conversation {
+  const start = new Date(Date.now() - 12 * 60 * 1000);
+  const at = (minutes: number) =>
+    new Date(start.getTime() + minutes * 60 * 1000);
+  const locutor = mockUsers.find((user) => user.id === locutorId);
+
+  const agentGroup = (id: string, minutes: number) => ({
+    id,
+    type: "agent" as const,
+    name: agent.name,
+    timestamp: clockTime(at(minutes)),
+    avatar: { emoji: agent.emoji, backgroundColor: agent.backgroundColor },
+  });
+
+  const messages: ConversationItem[] = [
+    {
+      kind: "message",
+      id: "msg-welcome-1",
+      content:
+        "Welcome to Dust. Your workspace is empty for now, so I answer from the model alone — none of your company's knowledge is behind me yet.",
+      timestamp: at(0),
+      ownerId: agent.id,
+      ownerType: "agent",
+      type: "agent",
+      group: agentGroup("group-welcome-agent-1", 0),
+    },
+    {
+      kind: "message",
+      id: "msg-welcome-2",
+      content: "Where should I start?",
+      timestamp: at(9),
+      ownerId: locutorId,
+      ownerType: "user",
+      type: "user",
+      group: {
+        id: "group-welcome-locutor",
+        type: "locutor",
+        timestamp: clockTime(at(9)),
+        avatar: { visual: locutor?.portrait },
+      },
+    },
+    {
+      kind: "message",
+      id: "msg-welcome-3",
+      markdown: WELCOME_STEPS,
+      timestamp: at(10),
+      ownerId: agent.id,
+      ownerType: "agent",
+      type: "agent",
+      group: agentGroup("group-welcome-agent-2", 10),
+    },
+    {
+      kind: "message",
+      id: "msg-welcome-4",
+      content:
+        "Your Hub already has notes on the first step and on how this workspace is meant to be used.",
+      timestamp: at(10),
+      ownerId: agent.id,
+      ownerType: "agent",
+      type: "agent",
+      group: agentGroup("group-welcome-agent-2", 10),
+    },
+  ];
+
+  return {
+    id: "conv-welcome",
+    title: "Welcome to Dust",
+    createdAt: start,
+    updatedAt: getLastActivityAt(messages, start),
+    userParticipants: [locutorId],
+    agentParticipants: [agent.id],
+    messages,
+    description: "Where to start in a new workspace",
+    // Two answers came in after your question. A single-message unread row
+    // gets a random pile-up count from the Inbox, so this one says its own.
+    workState: "unread",
+    unreadCount: 2,
+  };
 }

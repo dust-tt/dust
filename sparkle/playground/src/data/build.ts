@@ -831,18 +831,21 @@ export const AGENT_INSTRUCTIONS = [
   "Ask one clarifying question when the request is ambiguous, then proceed without asking again.",
 ].join("\n\n");
 
+/** The generalist agent, which every workspace has from its first day. */
+export const DUST_GLOBAL_AGENT: Agent = {
+  id: "agent-global-dust",
+  name: "dust",
+  emoji: "✨",
+  backgroundColor: "bg-primary-100",
+  description: "The generalist agent, with access to every workspace tool.",
+};
+
 /**
  * The default agents Dust ships. They sit in their own tab, cannot be edited,
  * and so are never selectable.
  */
 const GLOBAL_AGENT_SEEDS: Agent[] = [
-  {
-    id: "agent-global-dust",
-    name: "dust",
-    emoji: "✨",
-    backgroundColor: "bg-primary-100",
-    description: "The generalist agent, with access to every workspace tool.",
-  },
+  DUST_GLOBAL_AGENT,
   {
     id: "agent-global-claude",
     name: "claude",

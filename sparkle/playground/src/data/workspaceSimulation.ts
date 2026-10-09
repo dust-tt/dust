@@ -3,6 +3,7 @@ import { MessageChatSquare } from "@dust-tt/sparkle";
 import { registerAgents } from "./agents";
 import {
   AGENT_INSTRUCTIONS,
+  DUST_GLOBAL_AGENT,
   type ManagedAgent,
   type ManagedSkill,
   MOCK_AGENT_TAGS,
@@ -14,6 +15,7 @@ import { mockCompanySpaces } from "./companySpaces";
 import {
   conversationTitles,
   createConversationsWithMessages,
+  createWelcomeConversation,
   generateDescription,
 } from "./conversations";
 import {
@@ -574,13 +576,19 @@ function buildCleanWorkspace(currentUserId: string): WorkspaceModel {
     });
   });
 
+  // The Inbox finds an agent's face by id. The agent stays out of `agents`,
+  // which is what the workspace built, and it has built nothing yet.
+  registerAgents([DUST_GLOBAL_AGENT]);
+
   return finalize({
     profile: "clean",
     pods: [],
     companySpaces: [companyData],
     agents: [],
     skills: [],
-    conversations: [],
+    conversations: [
+      createWelcomeConversation(currentUserId, DUST_GLOBAL_AGENT),
+    ],
     triggeredConversations: [],
     triggers: [],
     wakeUps: [],
