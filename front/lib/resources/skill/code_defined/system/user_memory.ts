@@ -4,10 +4,16 @@ import {
   USER_MEMORY_READ_TOOL_NAME,
   USER_MEMORY_SERVER_NAME,
 } from "@app/lib/api/actions/servers/user_memory/metadata";
-import { isUserMemoryEnabled } from "@app/lib/api/user_memory";
+import {
+  isUserMemoryEnabled,
+  readConversationMemoryFile,
+} from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { SystemSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
+import logger from "@app/logger/logger";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 
 const READ_TOOL_NAME = getPrefixedToolName(
   USER_MEMORY_SERVER_NAME,
@@ -127,3 +133,36 @@ export const userMemorySkill = {
   },
   getAutoEnabledOrEquippedForAgentLoop: () => "enabled",
 } as const satisfies SystemSkillDefinition;
+
+// User-specific, so it goes after the leading skills messages and is named "user": the cache
+// breakpoint on the shared skills message must not cover it.
+export async function renderUserMemoryUserMessage(
+  auth: Authenticator,
+  { conversation }: { conversation: ConversationWithoutContentType }
+): Promise<UserMessageTypeModel | null> {
+  const memoryResult = await readConversationMemoryFile(auth, conversation);
+  if (memoryResult.isErr()) {
+    logger.error(
+      { err: memoryResult.error, conversationId: conversation.sId },
+      "Failed to read the conversation memory file"
+    );
+    return null;
+  }
+
+  const content = memoryResult.value;
+
+  return {
+    role: "user",
+    name: "user",
+    content: [
+      {
+        type: "text",
+        text:
+          `<dust_system>\n` +
+          `The memory of the user, ${auth.getNonNullableUser().fullName()}:\n\n` +
+          `<user_memory>\n${content.length > 0 ? content : "(memory empty)"}\n</user_memory>\n` +
+          `</dust_system>`,
+      },
+    ],
+  };
+}
