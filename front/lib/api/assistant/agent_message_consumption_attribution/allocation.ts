@@ -1,7 +1,12 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { splitRecordedUsageCost } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import type { AgentMessageLlmBillingLine } from "@app/lib/credits/agent_message_billing";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  MICRO_CREDITS_PER_CREDIT,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type {
@@ -18,10 +23,23 @@ export type ReconciledCreditAmounts = {
   byItem: ReadonlyMap<AgentMessageConsumptionItemResource, number>;
 };
 
+export type BillingGroupReconciliation<
+  TUsage extends RunUsageWithRunKeyType = RunUsageWithRunKeyType,
+> = Pick<
+  AgentMessageLlmBillingLine<TUsage>,
+  "runKey" | "providerId" | "modelId"
+> & {
+  costCreditMicro: number;
+  billedCreditMicro: number;
+  roundingCreditMicro: number;
+  usages: Array<{ usage: TUsage; billedCreditMicro: number }>;
+};
+
 export type MessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType = RunUsageWithRunKeyType,
 > = {
   attributionVersion: number;
+  billingGroups: BillingGroupReconciliation<TUsage>[];
   items: AgentMessageConsumptionItemResource[];
   messageUsages: TUsage[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
@@ -49,15 +67,15 @@ type WeightedItem = {
 };
 
 function addWeightedShares({
-  amountMicroUsd,
+  amountCreditMicro,
+  creditMicroByItem,
   entries,
-  sharesMicroUsd,
 }: {
-  amountMicroUsd: number;
+  amountCreditMicro: number;
+  creditMicroByItem: Map<AgentMessageConsumptionItemResource, number>;
   entries: WeightedItem[];
-  sharesMicroUsd: Map<AgentMessageConsumptionItemResource, number>;
 }): boolean {
-  if (amountMicroUsd === 0) {
+  if (amountCreditMicro === 0) {
     return true;
   }
   const totalWeight = entries.reduce((total, { weight }) => total + weight, 0);
@@ -66,9 +84,10 @@ function addWeightedShares({
   }
 
   for (const { item, weight } of entries) {
-    sharesMicroUsd.set(
+    creditMicroByItem.set(
       item,
-      (sharesMicroUsd.get(item) ?? 0) + (amountMicroUsd * weight) / totalWeight
+      (creditMicroByItem.get(item) ?? 0) +
+        (amountCreditMicro * weight) / totalWeight
     );
   }
   return true;
@@ -132,18 +151,20 @@ function mapUsageToNextCall<TUsage extends RunUsageWithRunKeyType>({
 
 /**
  * @cc [owner:sfriquet,label:product;backend] per-call-cost-split
- * Each usage's recorded cost MUST be split between the items it paid for (see
- * `recorded-cost-split`): the output part across its `output` and `reasoning` rows and the
- * tool-call output of the tool rows it emitted, by output tokens; the input part between the tool
- * results it read and its own `system` and `input` rows. Caches match prompts from their start, so
- * the tool results, which end the prompt, MUST take the usage's uncached tokens first and the
- * cached rate for the rest of their tokens, capped to the prompt.
+ * Each usage's billed credits MUST be split between the items it paid for in proportion to its
+ * recorded cost (see `recorded-cost-split`): the output part across its `output` and `reasoning`
+ * rows and the tool-call output of the tool rows it emitted, by output tokens; the input part
+ * between the tool results it read and its own `system` and `input` rows. Caches match prompts from
+ * their start, so the tool results, which end the prompt, MUST take the usage's uncached tokens
+ * first and the cached rate for the rest of their tokens, capped to the prompt.
  */
-function splitCallCosts<TUsage extends RunUsageWithRunKeyType>({
+function splitBilledCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
+  billedCreditMicroByRunUsageModelId,
   items,
   runs,
   usages,
 }: {
+  billedCreditMicroByRunUsageModelId: ReadonlyMap<ModelId, number>;
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
@@ -168,7 +189,10 @@ function splitCallCosts<TUsage extends RunUsageWithRunKeyType>({
     }
   }
 
-  const sharesMicroUsd = new Map<AgentMessageConsumptionItemResource, number>();
+  const creditMicroByItem = new Map<
+    AgentMessageConsumptionItemResource,
+    number
+  >();
   for (const usage of usages) {
     const usageItems = itemsByRunUsageModelId.get(usage.runUsageModelId) ?? [];
     const recordedCostSplit = splitRecordedUsageCost(usage);
@@ -177,6 +201,16 @@ function splitCallCosts<TUsage extends RunUsageWithRunKeyType>({
     }
     const { cachedTokenWeight, inputCostMicroUsd, outputCostMicroUsd } =
       recordedCostSplit;
+    const billedCreditMicro =
+      billedCreditMicroByRunUsageModelId.get(usage.runUsageModelId) ?? 0;
+    const splitCostMicroUsd = outputCostMicroUsd + inputCostMicroUsd;
+    if (splitCostMicroUsd === 0) {
+      if (billedCreditMicro > 0) {
+        return new Err("cost_without_item");
+      }
+      continue;
+    }
+    const creditMicroPerMicroUsd = billedCreditMicro / splitCostMicroUsd;
 
     const toolResults = toolResultsByReadingUsageModelId.get(
       usage.runUsageModelId
@@ -212,7 +246,8 @@ function splitCallCosts<TUsage extends RunUsageWithRunKeyType>({
 
     const isFullySplit =
       addWeightedShares({
-        amountMicroUsd: outputCostMicroUsd,
+        amountCreditMicro: outputCostMicroUsd * creditMicroPerMicroUsd,
+        creditMicroByItem,
         entries: usageItems.flatMap((item) =>
           item.itemType === "output" ||
           item.itemType === "reasoning" ||
@@ -220,39 +255,66 @@ function splitCallCosts<TUsage extends RunUsageWithRunKeyType>({
             ? [{ item, weight: item.outputTokensCount ?? 0 }]
             : []
         ),
-        sharesMicroUsd,
       }) &&
       addWeightedShares({
-        amountMicroUsd: toolResultCostMicroUsd,
+        amountCreditMicro: toolResultCostMicroUsd * creditMicroPerMicroUsd,
+        creditMicroByItem,
         entries: toolResults ?? [],
-        sharesMicroUsd,
       }) &&
       addWeightedShares({
-        amountMicroUsd: inputCostMicroUsd - toolResultCostMicroUsd,
+        amountCreditMicro:
+          (inputCostMicroUsd - toolResultCostMicroUsd) * creditMicroPerMicroUsd,
+        creditMicroByItem,
         entries: usageItems.flatMap((item) =>
           item.itemType === "system" || item.itemType === "input"
             ? [{ item, weight: Math.max(item.inputTokensCount ?? 0, 1) }]
             : []
         ),
-        sharesMicroUsd,
       });
     if (!isFullySplit) {
       return new Err("cost_without_item");
     }
   }
 
-  return new Ok(sharesMicroUsd);
+  return new Ok(creditMicroByItem);
+}
+
+function buildBillingGroupReconciliations<
+  TUsage extends RunUsageWithRunKeyType,
+>(
+  llmBillingLines: AgentMessageLlmBillingLine<TUsage>[]
+): BillingGroupReconciliation<TUsage>[] {
+  return llmBillingLines.map((line) => {
+    const costCreditMicro =
+      (line.providerCostMicroUsd * MICRO_CREDITS_PER_CREDIT) /
+      MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+    const billedCreditMicro = roundCreditsToMicroCredits(line.billedCredits);
+    return {
+      runKey: line.runKey,
+      providerId: line.providerId,
+      modelId: line.modelId,
+      costCreditMicro,
+      billedCreditMicro,
+      roundingCreditMicro: billedCreditMicro - costCreditMicro,
+      usages: (line.usageAllocations ?? []).map(
+        ({ usage, allocatedBilledCreditMicro }) => ({
+          usage,
+          billedCreditMicro: allocatedBilledCreditMicro,
+        })
+      ),
+    };
+  });
 }
 
 /**
  * @cc [owner:sfriquet,label:product;backend] reconcile-to-bill-by-call-cost
- * Every item MUST first receive its exact share of the usages' recorded costs (see
- * `per-call-cost-split`), and reconciliation MUST fail when that is impossible. Tool direct credits
- * MUST keep their stored amounts and MUST NOT exceed the bill. The bill minus direct credits MUST
- * equal, to the micro-credit, the LLM bill that `buildAgentMessageBillingPlan` computes from the
- * usages without origin waivers; reconciliation MUST fail otherwise, so free-origin messages and
- * any unexplained gap fail instead of being absorbed. Only then MUST every other item be scaled by
- * the same factor, which absorbs the per-execution rounding up of the bill, with
+ * Tool direct credits MUST keep their stored amounts and MUST NOT exceed the bill. The bill minus
+ * direct credits MUST equal, to the micro-credit, the LLM bill that `buildAgentMessageBillingPlan`
+ * computes from the usages without origin waivers; reconciliation MUST fail otherwise, so
+ * free-origin messages and any unexplained gap fail instead of being absorbed. Each usage's share
+ * of its billing line (`usageAllocations`) MUST then be split between the items it paid for (see
+ * `per-call-cost-split`), so the rounding up of a billing line stays on the items paid by its own
+ * usages, and reconciliation MUST fail when that is impossible. Item amounts MUST use
  * largest-remainder rounding in item order so the total equals the bill exactly.
  */
 function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
@@ -265,13 +327,13 @@ function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
   usages: TUsage[];
-}): Result<ReconciledCreditAmounts, ReconciliationFailureCode> {
-  const costSharesResult = splitCallCosts({ items, runs, usages });
-  if (costSharesResult.isErr()) {
-    return costSharesResult;
-  }
-  const costSharesMicroUsd = costSharesResult.value;
-
+}): Result<
+  {
+    billingGroups: BillingGroupReconciliation<TUsage>[];
+    reconciledCreditAmounts: ReconciledCreditAmounts;
+  },
+  ReconciliationFailureCode
+> {
   const directCreditAmountByItem = new Map(
     items.map((item) => [item, item.directCreditAmountMicro ?? 0])
   );
@@ -284,27 +346,40 @@ function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   if (llmCreditAmountMicro < 0) {
     return new Err("direct_credits_exceed_bill");
   }
-  const expectedLlmCreditAmountMicro = roundCreditsToMicroCredits(
-    buildAgentMessageBillingPlan({
-      actions: [],
-      contextOrigin: null,
-      runUsages: usages,
-    }).totals.llmBilledCredits
-  );
-  if (llmCreditAmountMicro !== expectedLlmCreditAmountMicro) {
+  const llmBillingPlan = buildAgentMessageBillingPlan({
+    actions: [],
+    contextOrigin: null,
+    getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
+    runUsages: usages,
+  });
+  if (
+    llmCreditAmountMicro !==
+    roundCreditsToMicroCredits(llmBillingPlan.totals.llmBilledCredits)
+  ) {
     return new Err("llm_bill_mismatch");
   }
+  const billingGroups = buildBillingGroupReconciliations(llmBillingPlan.llm);
 
-  const totalCostMicroUsd = [...costSharesMicroUsd.values()].reduce(
-    (total, share) => total + share,
-    0
-  );
+  const creditMicroByItemResult = splitBilledCreditsByCallCost({
+    billedCreditMicroByRunUsageModelId: new Map(
+      billingGroups.flatMap(({ usages: groupUsages }) =>
+        groupUsages.map(
+          ({ usage, billedCreditMicro }) =>
+            [usage.runUsageModelId, billedCreditMicro] as const
+        )
+      )
+    ),
+    items,
+    runs,
+    usages,
+  });
+  if (creditMicroByItemResult.isErr()) {
+    return creditMicroByItemResult;
+  }
+  const creditMicroByItem = creditMicroByItemResult.value;
+
   const allocations = items.map((item, index) => {
-    const exactMicro =
-      totalCostMicroUsd > 0
-        ? ((costSharesMicroUsd.get(item) ?? 0) * llmCreditAmountMicro) /
-          totalCostMicroUsd
-        : 0;
+    const exactMicro = creditMicroByItem.get(item) ?? 0;
     const floorMicro = Math.floor(exactMicro);
     return {
       item,
@@ -329,14 +404,17 @@ function reconcileCreditsByCallCost<TUsage extends RunUsageWithRunKeyType>({
   );
 
   return new Ok({
-    byItem: new Map(
-      allocations.map(({ item, floorMicro }) => [
-        item,
-        (directCreditAmountByItem.get(item) ?? 0) +
-          floorMicro +
-          (allocationsReceivingRemainder.has(item) ? 1 : 0),
-      ])
-    ),
+    billingGroups,
+    reconciledCreditAmounts: {
+      byItem: new Map(
+        allocations.map(({ item, floorMicro }) => [
+          item,
+          (directCreditAmountByItem.get(item) ?? 0) +
+            floorMicro +
+            (allocationsReceivingRemainder.has(item) ? 1 : 0),
+        ])
+      ),
+    },
   });
 }
 
@@ -526,10 +604,11 @@ function buildMessageConsumptionAllocationForVersion<
       },
     });
   }
-  const reconciledCreditAmounts = reconciliationResult.value;
+  const { billingGroups, reconciledCreditAmounts } = reconciliationResult.value;
 
   return new Ok({
     attributionVersion,
+    billingGroups,
     items,
     messageUsages,
     reconciledCreditAmounts,

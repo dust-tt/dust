@@ -22,6 +22,7 @@ type CallSpec = {
   completionTokens: number;
   reasoningTokens?: number;
   recordedCostMicroUsd?: number;
+  runKey?: string;
 };
 
 type ToolSpec = {
@@ -73,10 +74,16 @@ async function allocateMessage({
         { where: { id: createdRun.runUsageModelId, workspaceId: workspace.id } }
       );
     }
+    if (call.runKey !== undefined) {
+      await RunResource.setRunKeyForDustRunIds(auth, {
+        dustRunIds: [createdRun.run.dustRunId],
+        runKey: call.runKey,
+      });
+    }
     createdRuns.push(createdRun);
   }
-  const runs = createdRuns.map(({ run }) => run);
-  const dustRunIds = runs.map((run) => run.dustRunId);
+  const dustRunIds = createdRuns.map(({ run }) => run.dustRunId);
+  const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
     conversation,
@@ -167,6 +174,14 @@ async function allocateMessage({
     createdRuns[callIndex].runUsageModelId;
 
   return {
+    billingGroups: result.isOk()
+      ? result.value.billingGroups.map((group) => ({
+          runKey: group.runKey,
+          costCredits: group.costCreditMicro / 1_000_000,
+          billedCredits: group.billedCreditMicro / 1_000_000,
+          roundingCredits: group.roundingCreditMicro / 1_000_000,
+        }))
+      : [],
     failure: result.isErr() ? result.error.code : null,
     totalCredits:
       [...byItem.values()].reduce((total, amount) => total + amount, 0) /
@@ -228,6 +243,42 @@ describe("buildLatestMessageConsumptionAllocation", () => {
       0.6 * (2 / 1.6),
       5
     );
+  });
+
+  it("keeps the rounding up of each execution on the calls of that execution", async () => {
+    const allocation = await allocateMessage({
+      billedCredits: 6,
+      calls: [
+        {
+          promptTokens: INPUT / 10,
+          completionTokens: OUTPUT / 10,
+          runKey: "execution-1",
+        },
+        {
+          promptTokens: 3 * INPUT,
+          completionTokens: 2 * OUTPUT,
+          runKey: "execution-2",
+        },
+      ],
+      tools: [],
+    });
+
+    expect(allocation.callItemCredits(0, "input")).toBeCloseTo(0.5, 5);
+    expect(allocation.callItemCredits(0, "output")).toBeCloseTo(0.5, 5);
+    expect(allocation.callItemCredits(1, "input")).toBeCloseTo(3, 5);
+    expect(allocation.callItemCredits(1, "output")).toBeCloseTo(2, 5);
+    expect(allocation.billingGroups).toEqual([
+      expect.objectContaining({
+        runKey: "execution-1",
+        billedCredits: 1,
+        roundingCredits: expect.closeTo(0.8, 5),
+      }),
+      expect.objectContaining({
+        runKey: "execution-2",
+        billedCredits: 5,
+        roundingCredits: expect.closeTo(0, 5),
+      }),
+    ]);
   });
 
   it("gives a tool its direct credits and its call output, but no input when no call reads its result", async () => {
