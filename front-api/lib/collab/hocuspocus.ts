@@ -613,16 +613,22 @@ export async function writeLiveSource(
     if (announced) {
       document.on("update", onUpdate);
     }
-    // As a direct connection's change, so `onChange` records `file` as its writer.
-    const comments = replaceYDocContent(document, source, {
-      source: "local",
-      context: file,
-    });
-    if (announced) {
-      document.off("update", onUpdate);
-      document.flush();
-      if (comments.isErr() || !changed) {
-        document.broadcastStateless(agentActivityMessage(agent, "reading"));
+    let comments: Result<DfmComment[], string> = new Err(
+      "The change could not be applied."
+    );
+    try {
+      // As a direct connection's change, so `onChange` records `file` as its writer.
+      comments = replaceYDocContent(document, source, {
+        source: "local",
+        context: file,
+      });
+    } finally {
+      if (announced) {
+        document.off("update", onUpdate);
+        document.flush();
+        if (comments.isErr() || !changed) {
+          document.broadcastStateless(agentActivityMessage(agent, "reading"));
+        }
       }
     }
     if (comments.isErr()) {
