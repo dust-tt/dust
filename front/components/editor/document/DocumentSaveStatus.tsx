@@ -1,7 +1,15 @@
 import type { LiveStatus } from "@app/components/editor/document/types";
 import type { LiveAgentEvent } from "@app/lib/client/live_agents";
-import { liveCaretColor } from "@app/lib/client/live_session";
-import { AlertCircle, Check, Chip, cn, Icon, Spinner } from "@dust-tt/sparkle";
+import type { LiveAgentActivity } from "@app/types/collab";
+import {
+  AlertCircle,
+  Check,
+  Chip,
+  cn,
+  Icon,
+  Spinner,
+  Tooltip,
+} from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -146,30 +154,51 @@ export const DocumentLiveStatus = ({ status }: DocumentLiveStatusProps) => {
   );
 };
 
+const LIVE_AGENT_ACTIVITIES: Record<
+  LiveAgentActivity,
+  {
+    label: MessageDescriptor;
+    describe: (name: string) => MessageDescriptor;
+  }
+> = {
+  reading: {
+    label: msg`reading…`,
+    describe: (name) => msg`${name} is reading`,
+  },
+  editing: {
+    label: msg`writing…`,
+    describe: (name) => msg`${name} is writing`,
+  },
+};
+
 interface DocumentLiveAgentProps {
   activity: LiveAgentEvent;
+  avatar: ReactNode;
 }
 
-/** The agent at work in a live document, in its caret color, beside the session status. */
-export const DocumentLiveAgent = ({ activity }: DocumentLiveAgentProps) => {
+/** The agent at work in a live document: its avatar and what it does, with its name on hover. */
+export const DocumentLiveAgent = ({
+  activity,
+  avatar,
+}: DocumentLiveAgentProps) => {
   const { t } = useLingui();
   const { name } = activity.agent;
+  const { label, describe } = LIVE_AGENT_ACTIVITIES[activity.activity];
   return (
-    <span
-      role="status"
-      className="inline-flex items-center gap-1.5 text-foreground"
-    >
-      <span
-        aria-hidden="true"
-        className="mx-1 size-1.5 shrink-0 animate-pulse rounded-full motion-reduce:animate-none"
-        style={{ backgroundColor: liveCaretColor(activity.agent.agentId) }}
-      />
-      <span className="max-w-48 truncate whitespace-nowrap">
-        {activity.activity === "editing"
-          ? t`${name} is editing`
-          : t`${name} is working`}
-      </span>
-    </span>
+    <Tooltip
+      tooltipTriggerAsChild
+      label={name}
+      trigger={
+        <span
+          role="status"
+          aria-label={t(describe(name))}
+          className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-muted-foreground copy-sm"
+        >
+          {avatar}
+          <span aria-hidden="true">{t(label)}</span>
+        </span>
+      }
+    />
   );
 };
 

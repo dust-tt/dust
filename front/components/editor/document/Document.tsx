@@ -77,6 +77,12 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  * right before the comments button, wherever that button shows; otherwise nothing MUST render
  * for them.
  */
+/**
+ * @cc [owner:tdraier,label:product] document-live-agent-placement
+ * While the session announces an agent at work, its avatar, from `renderCommentAuthorAvatar`, and
+ * its activity MUST show before the participants, wherever the comments button shows, and not
+ * with the save and live statuses.
+ */
 export const Document = (props: DocumentProps) =>
   props.live ? (
     <Suspense
@@ -296,10 +302,20 @@ export const DocumentView = ({
     liveView?.status === "live" ? (liveView.participants ?? []) : [];
   const showParticipants =
     renderLiveParticipants !== undefined && participants.length > 0;
-  const showControls = showCommentsToggle || showParticipants;
+  const agent = liveView?.agent ?? null;
+  const showControls = showCommentsToggle || showParticipants || agent !== null;
   // One element, so the participants keep their place before the button in a shared container.
   const controls = (
     <div className="flex items-center gap-2">
+      {agent && (
+        <DocumentLiveAgent
+          activity={agent}
+          avatar={renderCommentAuthorAvatar(
+            { kind: "agent", id: agent.agent.agentId, name: agent.agent.name },
+            "xs"
+          )}
+        />
+      )}
       {showParticipants && renderLiveParticipants(participants)}
       {showCommentsToggle && (
         <DocumentCommentsToggle
@@ -338,7 +354,6 @@ export const DocumentView = ({
           onRetry={save}
           controls={showControls && !headerControlsContainer && controls}
         >
-          {liveView?.agent && <DocumentLiveAgent activity={liveView.agent} />}
           {liveView && <DocumentLiveStatus status={liveView.status} />}
         </DocumentStatus>
         {editor && showCommentsToggle && (

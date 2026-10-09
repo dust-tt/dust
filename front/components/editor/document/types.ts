@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 /** Ok once the content is stored, Err with a message the editor shows next to Retry. */
 export type DocumentSaveResult = Result<void, string>;
 
-export type DocumentCommentAvatarSize = "xxs" | "3xs";
+export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
 export interface DocumentProps {
   /** The DFM source of the file. Remount with a new key to open another document. */
@@ -39,7 +39,7 @@ export interface DocumentProps {
    * existing comments stay readable without one.
    */
   commentAuthor?: DfmAuthor;
-  /** Renders a comment author's avatar. */
+  /** Renders a comment author's avatar, or the agent at work in a live document's. */
   renderCommentAuthorAvatar: (
     author: DfmAuthor,
     size: DocumentCommentAvatarSize

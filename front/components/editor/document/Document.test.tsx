@@ -778,6 +778,45 @@ describe("Document live participants", () => {
     ).toBe(toggle);
   });
 
+  it("shows the agent at work with its avatar before the participants in the host's container", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const { container: documentRoot } = render(
+      <DocumentView
+        initialContent={SOURCE}
+        headerControlsContainer={container}
+        liveView={{
+          status: "live",
+          participants: PARTICIPANTS,
+          agent: {
+            agent: { agentId: "dust", name: "Dust" },
+            activity: "editing",
+          },
+          binding: null,
+        }}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderCommentBody={(body) => <p>{body}</p>}
+        renderCommentAuthorAvatar={(author, size) => (
+          <span data-testid={`avatar:${author.kind}:${author.id}:${size}`} />
+        )}
+        renderLiveParticipants={() => <span data-testid="participants" />}
+      />
+    );
+
+    const agent = await within(container).findByRole("status", {
+      name: "Dust is writing",
+    });
+    expect(agent.textContent).toBe("writing…");
+    expect(within(agent).getByTestId("avatar:agent:dust:xs")).toBeDefined();
+    expect(agent.nextElementSibling).toBe(
+      within(container).getByTestId("participants")
+    );
+    expect(
+      within(documentRoot).queryByRole("status", { name: "Dust is writing" })
+    ).toBeNull();
+    container.remove();
+  });
+
   it("shows no participants while the session is not live, or has no one else", async () => {
     const { container, rerender } = renderLiveView("offline", PARTICIPANTS);
     await within(container).findByRole("button", { name: /^Comments/ });
