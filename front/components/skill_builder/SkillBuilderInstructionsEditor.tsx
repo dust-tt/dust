@@ -33,8 +33,6 @@ import {
   SKILL_TAG_NAME,
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
-import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
-import { useSkills } from "@app/lib/swr/skill_configurations";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
@@ -245,6 +243,11 @@ export function SkillBuilderInstructionsEditor({
   const referencedSkillsRef = useRef<SkillBuilderFormData["referencedSkills"]>(
     []
   );
+  // Every skill referenced so far, so that undoing the removal of an inline skill reference can
+  // restore it into `referencedSkills`.
+  const knownReferencedSkillsByIdRef = useRef<
+    Map<string, ReferencedSkillFormData>
+  >(new Map());
   const {
     owner,
     user,
@@ -258,24 +261,28 @@ export function SkillBuilderInstructionsEditor({
     () => new Map(mcpServerViews.map((view) => [view.sId, view])),
     [mcpServerViews]
   );
-  // Preloaded by SkillBuilderProvider; needed to resolve inline skill
-  // references the user did not insert through the slash command (e.g. one
-  // added by accepting a suggestion) into `referencedSkills`.
-  const { skills: activeSkills } = useSkills({
-    owner,
-    status: "active",
-    swrOptions: CAPABILITIES_SWR_OPTIONS,
-  });
-  const activeSkillsById = useMemo(
-    () => new Map(activeSkills.map((skill) => [skill.sId, skill])),
-    [activeSkills]
-  );
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
   const areSuggestionsEnabled = useAreSkillSuggestionsEnabled();
+
+  const {
+    suggestions,
+    referencedSkills: suggestedSkills,
+    isSuggestionsLoading,
+  } = useSkillSuggestions({
+    skillId,
+    states: ["pending"],
+    workspaceId: owner.sId,
+    disabled: !skillId || !areSuggestionsEnabled,
+  });
+  // Resolves inline skill references added by accepting a suggestion into `referencedSkills`.
+  const suggestedSkillsById = useMemo(
+    () => new Map(suggestedSkills.map((skill) => [skill.sId, skill])),
+    [suggestedSkills]
+  );
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -316,6 +323,9 @@ export function SkillBuilderInstructionsEditor({
 
   useEffect(() => {
     referencedSkillsRef.current = referencedSkills;
+    for (const skill of referencedSkills) {
+      knownReferencedSkillsByIdRef.current.set(skill.id, skill);
+    }
   }, [referencedSkills]);
 
   const displayError =
@@ -387,8 +397,13 @@ export function SkillBuilderInstructionsEditor({
         [...currentInlineSkillIds]
           .filter((skillId) => !referencedSkillIds.has(skillId))
           .map((skillId) => {
-            const skill = activeSkillsById.get(skillId);
-            return skill ? toReferencedSkill(skill) : null;
+            const knownSkill =
+              knownReferencedSkillsByIdRef.current.get(skillId);
+            if (knownSkill) {
+              return knownSkill;
+            }
+            const suggestedSkill = suggestedSkillsById.get(skillId);
+            return suggestedSkill ? toReferencedSkill(suggestedSkill) : null;
           })
       );
 
@@ -399,7 +414,7 @@ export function SkillBuilderInstructionsEditor({
         ? [...remainingSkills, ...addedSkills]
         : null;
     },
-    [activeSkillsById]
+    [suggestedSkillsById]
   );
 
   const syncInlineReferencesFromEditor = useCallback(
@@ -521,13 +536,6 @@ export function SkillBuilderInstructionsEditor({
   const handleToolDetails = useCallback((tool: MCPServerViewType) => {
     setSelectedServerViewForDetails(tool);
   }, []);
-
-  const { suggestions, isSuggestionsLoading } = useSkillSuggestions({
-    skillId,
-    states: ["pending"],
-    workspaceId: owner.sId,
-    disabled: !skillId || !areSuggestionsEnabled,
-  });
 
   const hasSuggestions = suggestions.length > 0;
   const isReadOnly = instructionsField.disabled ?? false;

@@ -1,6 +1,7 @@
 import { updateSkillSuggestionsState } from "@app/lib/api/skills/update_skill_suggestions_state";
 import { postSkillSuggestionStatusUpdate } from "@app/lib/reinforcement/aggregate_suggestions";
 import { hasReinforcementEnabled } from "@app/lib/reinforcement/workspace_check";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import type {
   GetSkillSuggestionsResponseBody,
@@ -15,6 +16,7 @@ import { skillApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import uniq from "lodash/uniq";
 
 // Mounted at /api/w/:wId/assistant/skills/:sId/suggestions.
 // The `skill` context variable is set by the parent skills/[sId]/index.ts
@@ -58,7 +60,7 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
   }
 
   if (!(await hasReinforcementEnabled(auth))) {
-    return ctx.json({ suggestions: [] });
+    return ctx.json({ suggestions: [], referencedSkills: [] });
   }
 
   const suggestions = await SkillSuggestionResource.listBySkillConfigurationId(
@@ -72,7 +74,29 @@ app.get("/", async (ctx): HandlerResult<GetSkillSuggestionsResponseBody> => {
     }
   );
 
-  return ctx.json({ suggestions: suggestions.map((s) => s.toJSON()) });
+  const referencedSkills = await SkillResource.fetchByIds(
+    auth,
+    uniq(suggestions.flatMap((s) => s.getReferencedSkillIds())),
+    {
+      onlyActive: true,
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    }
+  );
+
+  return ctx.json({
+    suggestions: suggestions.map((s) => s.toJSON()),
+    referencedSkills: referencedSkills.map((referencedSkill) => {
+      const {
+        instructions,
+        instructionsHtml,
+        tools,
+        ...referencedSkillWithoutInstructionsAndTools
+      } = referencedSkill.toJSON(auth);
+      return referencedSkillWithoutInstructionsAndTools;
+    }),
+  });
 });
 
 app.patch(

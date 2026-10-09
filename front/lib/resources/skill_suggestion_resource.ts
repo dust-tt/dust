@@ -10,6 +10,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { extractUniqueSkillReferenceIds } from "@app/lib/skills/format";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration_constants";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -23,9 +24,11 @@ import type {
   SkillSuggestionUpdatedBy,
 } from "@app/types/suggestions/skill_suggestion";
 import {
+  isEditSkillSuggestion,
   parseSkillSuggestionData,
   SkillSuggestionDataSchema,
 } from "@app/types/suggestions/skill_suggestion";
+import uniq from "lodash/uniq";
 import type {
   Attributes,
   CreationAttributes,
@@ -653,6 +656,19 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
       id,
       workspaceId,
     });
+  }
+
+  // Skills referenced inline by the instruction edits of this suggestion.
+  getReferencedSkillIds(): string[] {
+    if (!isEditSkillSuggestion(this)) {
+      return [];
+    }
+
+    return uniq(
+      (this.suggestion.instructionEdits ?? []).flatMap((edit) =>
+        extractUniqueSkillReferenceIds(edit.content)
+      )
+    );
   }
 
   toJSON(): SkillSuggestionType {

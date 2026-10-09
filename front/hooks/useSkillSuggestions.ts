@@ -74,6 +74,7 @@ export function useSkillSuggestions({
 
   return {
     suggestions: data?.suggestions ?? emptyArray(),
+    referencedSkills: data?.referencedSkills ?? emptyArray(),
     isSuggestionsLoading: !error && !data && !disabled,
     isSuggestionsError: !!error,
     isSuggestionsValidating: isValidating,
