@@ -13,7 +13,7 @@ import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { documentCommentMessageHeading } from "@app/lib/resources/skill/code_defined/system/document_comments";
+import { documentCommentMessageHeading } from "@app/lib/resources/skill/code_defined/system/documents";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
