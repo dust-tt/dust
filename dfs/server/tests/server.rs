@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use dfs_api::fdb;
+use dfs_api::storage::fdb;
 use dfs_protocol::{
     ObjectId,
     rpc::{
