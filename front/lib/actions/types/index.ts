@@ -18,6 +18,7 @@ import type {
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
+import type { ReasoningEffort } from "@app/types/assistant/models/types";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
@@ -130,6 +131,9 @@ export type StepContext = {
   resumeState: Record<string, unknown> | null;
   retrievalTopK: number;
   websearchResultCount: number;
+  // Reasoning effort in effect once the conversation's effort changes so far are applied, including
+  // the ones pending from the message's earlier steps (adjust_reasoning_effort).
+  reasoningEffortInEffect?: ReasoningEffort;
 };
 
 type ActionGeneratedFileBase = {

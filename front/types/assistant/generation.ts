@@ -91,6 +91,7 @@ export interface CompactionMessageTypeModel {
 export interface EffortChangeMessageTypeModel {
   role: "effort_change";
   direction: ReasoningEffortDirection;
+  steps: number;
   effort: ReasoningEffort | null;
 }
 
