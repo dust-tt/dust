@@ -88,7 +88,10 @@ export const InputBarContext = createContext<{
   shouldFocusInput: boolean;
   getAndClearSelectedAgent: () => RichAgentMention | null;
   setShouldFocusInput: React.Dispatch<React.SetStateAction<boolean>>;
-  setSelectedAgent: (agentMention: RichAgentMention | null) => void;
+  setSelectedAgent: (
+    agentMention: RichAgentMention | null,
+    options?: { focus?: boolean }
+  ) => void;
   selectedSingleAgent: RichAgentMention | null;
   setSelectedSingleAgent: (agentMention: RichAgentMention | null) => void;
   // When true, new-conversation default agent resolution is skipped (e.g. ?user=).
@@ -239,11 +242,14 @@ export function InputBarContextProvider({
   }, []);
 
   const setSelectedAgentOuter = useCallback(
-    (agentMention: RichAgentMention | null) => {
-      if (agentMention) {
-        setShouldFocusInput(true);
-      } else {
+    (
+      agentMention: RichAgentMention | null,
+      { focus = true }: { focus?: boolean } = {}
+    ) => {
+      if (!agentMention) {
         setShouldFocusInput(false);
+      } else if (focus) {
+        setShouldFocusInput(true);
       }
       setSelectedAgent(agentMention);
     },

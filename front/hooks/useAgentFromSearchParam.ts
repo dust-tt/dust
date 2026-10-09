@@ -75,8 +75,12 @@ export function useAgentFromSearchParam(workspaceId: string) {
       return;
     }
 
+    // The composer autofocuses on mount. Focusing it again once the arrival agent resolves
+    // lands late and scrolls the composer back into view, e.g. away from Discover.
+    const focus = appliedParamRef.current !== null;
+
     if (selectedSingleAgent?.id === agent) {
-      setSelectedAgent(selectedSingleAgent);
+      setSelectedAgent(selectedSingleAgent, { focus });
       return;
     }
 
@@ -84,7 +88,7 @@ export function useAgentFromSearchParam(workspaceId: string) {
       return;
     }
 
-    setSelectedAgent(toRichAgentMentionType(agentConfiguration));
+    setSelectedAgent(toRichAgentMentionType(agentConfiguration), { focus });
   }, [
     agent,
     agentConfiguration,

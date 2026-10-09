@@ -132,7 +132,8 @@ describe("useAgentFromSearchParam", () => {
 
     await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
     expect(setSelectedAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "agent_1", type: "agent" })
+      expect.objectContaining({ id: "agent_1", type: "agent" }),
+      { focus: false }
     );
     expect(replaceMock).not.toHaveBeenCalled();
   });
@@ -184,7 +185,8 @@ describe("useAgentFromSearchParam", () => {
 
     await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
     expect(setSelectedAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "agent_2" })
+      expect.objectContaining({ id: "agent_2" }),
+      { focus: true }
     );
     expect(replaceMock).not.toHaveBeenCalled();
   });
@@ -280,7 +282,8 @@ describe("useAgentFromSearchParam", () => {
 
     await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
     expect(setSelectedAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "agent_1", type: "agent" })
+      expect.objectContaining({ id: "agent_1", type: "agent" }),
+      { focus: false }
     );
     // Mirroring stays off until suppress is cleared by applying the selection.
     expect(replaceMock).not.toHaveBeenCalled();
@@ -302,7 +305,8 @@ describe("useAgentFromSearchParam", () => {
 
     await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
     expect(setSelectedAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "agent_1" })
+      expect.objectContaining({ id: "agent_1" }),
+      { focus: false }
     );
     expect(replaceMock).not.toHaveBeenCalled();
   });
@@ -326,7 +330,8 @@ describe("useAgentFromSearchParam", () => {
 
     await waitFor(() => expect(setSelectedAgent).toHaveBeenCalled());
     expect(setSelectedAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "agent_1" })
+      expect.objectContaining({ id: "agent_1" }),
+      { focus: false }
     );
     expect(replaceMock).not.toHaveBeenCalled();
   });
