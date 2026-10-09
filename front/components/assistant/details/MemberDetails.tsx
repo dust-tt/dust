@@ -58,8 +58,12 @@ function MemberDetailsHeaderSkeleton({ isSelf }: { isSelf: boolean }) {
     <div className="flex flex-col items-center gap-4">
       <LoadingBlock className="h-20 w-20 rounded-full" />
       <div className="flex flex-col items-center gap-1">
-        <LoadingBlock className="h-7 w-32" />
-        <LoadingBlock className="h-5 w-24" />
+        <div className="flex h-7 items-center">
+          <LoadingBlock className="h-5 w-32" />
+        </div>
+        <div className="flex h-5 items-center">
+          <LoadingBlock className="h-3.5 w-24" />
+        </div>
       </div>
       {isSelf && <LoadingBlock className="h-8 w-20 rounded-xl" />}
     </div>
@@ -70,9 +74,13 @@ function MemberDetailsRowSkeleton() {
   return (
     <div className="flex items-center gap-4">
       <LoadingBlock className="h-6 w-6" />
-      <div className="flex flex-col gap-2">
-        <LoadingBlock className="h-4 w-16" />
-        <LoadingBlock className="h-4 w-40" />
+      <div className="flex flex-col">
+        <div className="flex h-5 items-center">
+          <LoadingBlock className="h-3.5 w-16" />
+        </div>
+        <div className="flex h-5 items-center">
+          <LoadingBlock className="h-3.5 w-40" />
+        </div>
       </div>
     </div>
   );
