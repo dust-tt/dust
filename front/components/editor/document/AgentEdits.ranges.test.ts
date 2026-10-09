@@ -1,4 +1,9 @@
-import { insertedTextRanges } from "@app/components/editor/document/AgentEdits";
+import {
+  agentEditGlow,
+  agentEditsPlugin,
+  GLOW_MS,
+  insertedTextRanges,
+} from "@app/components/editor/document/AgentEdits";
 import { documentSchema } from "@app/components/editor/document/content";
 import type { LiveIdRange } from "@app/types/collab";
 import { EditorState } from "@tiptap/pm/state";
@@ -8,7 +13,7 @@ import {
   ySyncPlugin,
   ySyncPluginKey,
 } from "@tiptap/y-tiptap";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
 const SESSION = "session";
@@ -50,6 +55,7 @@ const views: EditorView[] = [];
 
 afterEach(() => {
   views.splice(0).forEach((view) => view.destroy());
+  vi.useRealTimers();
 });
 
 /**
@@ -64,7 +70,10 @@ async function session(blocks: Block[]) {
   const view = new EditorView(document.createElement("div"), {
     state: EditorState.create({
       schema: documentSchema,
-      plugins: [ySyncPlugin(browser.getXmlFragment("body"))],
+      plugins: [
+        ySyncPlugin(browser.getXmlFragment("body")),
+        agentEditsPlugin(),
+      ],
     }),
   });
   views.push(view);
@@ -203,5 +212,29 @@ describe("insertedTextRanges", () => {
     edit.deliver();
 
     expect(glowed(edit.inserted)).toEqual([]);
+  });
+
+  it("glows the agent's text in the editor when announced, then removes it after the fade", async () => {
+    const { server, view, fromAgent } = await session([["paragraph", "One."]]);
+    const edit = fromAgent(() => textAt(server, 0).insert(4, " Indeed"));
+    edit.deliver();
+    vi.useFakeTimers();
+
+    const glow = agentEditGlow(view.state, {
+      type: "agent_edit",
+      agent: { agentId: "agt_1", name: "Writer" },
+      inserted: edit.inserted,
+    });
+    if (glow) {
+      view.dispatch(glow);
+    }
+    const glowing = () =>
+      [...view.dom.querySelectorAll(".animate-agent-edit-settle")].map(
+        (node) => node.textContent
+      );
+
+    expect(glowing()).toEqual([" Indeed"]);
+    vi.advanceTimersByTime(GLOW_MS);
+    expect(glowing()).toEqual([]);
   });
 });

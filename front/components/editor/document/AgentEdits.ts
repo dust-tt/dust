@@ -1,7 +1,11 @@
 import { onLiveAgentEdit } from "@app/lib/client/live_agents";
 import { liveCaretColor } from "@app/lib/client/live_session";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { LiveAgent, LiveIdRange } from "@app/types/collab";
+import type {
+  LiveAgent,
+  LiveAgentEditMessage,
+  LiveIdRange,
+} from "@app/types/collab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { Extension } from "@tiptap/core";
@@ -21,7 +25,7 @@ import * as Y from "yjs";
 
 // The duration of `animate-agent-edit-settle` (theme-extras.css): the browser runs the fade, the
 // plugin only removes the decorations once it is done.
-const GLOW_MS = 3_000;
+export const GLOW_MS = 3_000;
 const GLOW_PERCENT = 25;
 /** Inserted characters past which an edit just shows, without a glow. */
 const MAX_GLOWED_CHARS = 20_000;
@@ -286,10 +290,26 @@ export const agentEditsPlugin = () =>
 
 /**
  * @cc [owner:PopDaph,label:product] live-agent-edit-shown
- * Each agent edit the session announces on `provider` MUST glow the text it inserted
- * (`insertedTextRanges`) in the document as it is when the announcement arrives, unless it inserted
- * more than `MAX_GLOWED_CHARS` characters. A failure resolving it MUST only skip the glow, logged.
+ * Each agent edit the session announces MUST glow the text it inserted (`insertedTextRanges`) in
+ * the document as it is when the announcement arrives, unless it inserted more than
+ * `MAX_GLOWED_CHARS` characters or none of it shows. A failure resolving it MUST only skip the glow,
+ * logged.
  */
+export function agentEditGlow(
+  state: EditorState,
+  { agent, inserted }: LiveAgentEditMessage
+): Transaction | null {
+  const length = inserted.reduce((total, range) => total + range.length, 0);
+  const binding = ySyncPluginKey.getState(state)?.binding;
+  if (length > MAX_GLOWED_CHARS || !(binding instanceof ProsemirrorBinding)) {
+    return null;
+  }
+  const ranges = insertedTextRanges(binding, inserted);
+  return ranges.length > 0
+    ? withAgentEditGlow(state, { agent, ranges, doc: state.doc })
+    : null;
+}
+
 export const agentEdits = (provider: HocuspocusProvider) =>
   Extension.create<Record<string, never>, { unsubscribe: (() => void) | null }>(
     {
@@ -297,27 +317,13 @@ export const agentEdits = (provider: HocuspocusProvider) =>
       addStorage: () => ({ unsubscribe: null }),
       onCreate() {
         this.storage.unsubscribe = onLiveAgentEdit(provider, (edit) => {
-          const length = edit.inserted.reduce(
-            (total, range) => total + range.length,
-            0
-          );
-          if (this.editor.isDestroyed || length > MAX_GLOWED_CHARS) {
+          if (this.editor.isDestroyed) {
             return;
           }
           try {
-            const binding = ySyncPluginKey.getState(this.editor.state)?.binding;
-            if (!(binding instanceof ProsemirrorBinding)) {
-              return;
-            }
-            const ranges = insertedTextRanges(binding, edit.inserted);
-            if (ranges.length > 0) {
-              this.editor.view.dispatch(
-                withAgentEditGlow(this.editor.state, {
-                  agent: edit.agent,
-                  ranges,
-                  doc: this.editor.state.doc,
-                })
-              );
+            const glow = agentEditGlow(this.editor.state, edit);
+            if (glow) {
+              this.editor.view.dispatch(glow);
             }
           } catch (err) {
             datadogLogger.warn(
