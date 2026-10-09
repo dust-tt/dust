@@ -1,5 +1,7 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
+  DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME,
+  DOCUMENTS_READ_DOCUMENT_ACTION_NAME,
   DOCUMENTS_REPLY_TO_COMMENT_ACTION_NAME,
   DOCUMENTS_SERVER_NAME,
 } from "@app/lib/api/actions/servers/documents/metadata";
@@ -56,7 +58,7 @@ describe("markdownDocumentsSkill", () => {
     expect(stateFor(null)).toBe("equipped");
   });
 
-  it("explains images, and comments only for a comment message", () => {
+  it("explains the document tools and images, and comments only for a comment message", () => {
     const plain = getMarkdownDocumentsInstructions("Add a chart to plan.md");
     const comment = getMarkdownDocumentsInstructions(`${HEADING}\n\nThoughts?`);
     const withoutRun = getMarkdownDocumentsInstructions(null);
@@ -67,6 +69,12 @@ describe("markdownDocumentsSkill", () => {
       );
       expect(instructions).toContain(
         getPrefixedToolName(FILES_SERVER_NAME, FILES_RESOLVE_ACTION_NAME)
+      );
+      expect(instructions).toContain(
+        getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_READ_DOCUMENT_ACTION_NAME)
+      );
+      expect(instructions).toContain(
+        getPrefixedToolName(DOCUMENTS_SERVER_NAME, DOCUMENTS_EDIT_DOCUMENT_ACTION_NAME)
       );
     }
     expect(comment).toContain(REPLY_TOOL);
