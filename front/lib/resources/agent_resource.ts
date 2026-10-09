@@ -1727,14 +1727,11 @@ export class AgentResource
     auth: Authenticator,
     prompts: string[]
   ): Promise<void> {
-    await AgentSuggestedPromptsModel.upsert(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentConfigurationId: this.sId,
-        prompts,
-      },
-      { conflictFields: ["workspaceId", "agentConfigurationId"] }
-    );
+    await AgentSuggestedPromptsModel.upsert({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      agentConfigurationId: this.sId,
+      prompts,
+    });
   }
 
   async listEditors(
