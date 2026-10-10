@@ -11,39 +11,19 @@ import type { SupportedLocale } from "@connectors/types/locale";
 import {
   DEFAULT_LOCALE,
   isSupportedLocale,
-  SUPPORTED_LOCALES,
+  matchSupportedLocale,
 } from "@connectors/types/locale";
 import type { APIError, GetMemberLocaleResponseType } from "@dust-tt/client";
 import type { I18n } from "@lingui/core";
 import type { WebClient } from "@slack/web-api";
 
-// Slack has regional variants Dust does not support (e.g. `fr-CA`): fall back to the first supported
-// locale of the same language rather than to another language.
-function toSupportedLocale(
-  locale: string | null | undefined
-): SupportedLocale | null {
-  if (!locale) {
-    return null;
-  }
-  if (isSupportedLocale(locale)) {
-    return locale;
-  }
-  const [language] = locale.split("-");
-  return (
-    SUPPORTED_LOCALES.find(
-      (supportedLocale) => supportedLocale.split("-")[0] === language
-    ) ?? null
-  );
-}
-
 /**
  * @cc [owner:Nils-Fedrigo,label:product] slack-locale-resolution
  * MUST return `DEFAULT_LOCALE` when `dustLocales` is `null` or its `localisationEnabled` is false.
  * Otherwise it MUST return the first of these that is set: the locale the user chose in Dust
- * (`userLocale`) if it is a `SUPPORTED_LOCALES` entry, the user's Slack locale (`slackLocale`) if
- * it is a `SUPPORTED_LOCALES` entry or else the first `SUPPORTED_LOCALES` entry of the same
- * language, the workspace locale (`workspaceLocale`) if it is a `SUPPORTED_LOCALES` entry, and
- * `DEFAULT_LOCALE`.
+ * (`userLocale`) if it is a `SUPPORTED_LOCALES` entry, the `matchSupportedLocale` of the user's
+ * Slack locale (`slackLocale`), the workspace locale (`workspaceLocale`) if it is a
+ * `SUPPORTED_LOCALES` entry, and `DEFAULT_LOCALE`.
  */
 export function resolveSlackLocale({
   dustLocales,
@@ -58,7 +38,7 @@ export function resolveSlackLocale({
   return (
     [
       dustLocales.userLocale,
-      toSupportedLocale(slackLocale),
+      slackLocale ? matchSupportedLocale(slackLocale) : null,
       dustLocales.workspaceLocale,
     ].find(isSupportedLocale) ?? DEFAULT_LOCALE
   );
