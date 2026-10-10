@@ -10,6 +10,8 @@ let esClient: Client | null = null;
 export const ANALYTICS_ALIAS_NAME = "front.agent_message_analytics";
 export const CONSUMPTION_ANALYTICS_ALIAS_NAME =
   "front.agent_message_consumption_analytics";
+export const CONSUMPTION_ANALYTICS_SHADOW_ALIAS_NAME =
+  "front.agent_message_consumption_analytics_shadow";
 export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
@@ -29,6 +31,10 @@ export const INDEX_REGISTRY: Record<
   agents: { directory: "lib/agent_search/indices", version: 1 },
   agent_message_analytics: { directory: "lib/analytics/indices", version: 2 },
   agent_message_consumption_analytics: {
+    directory: "lib/analytics/indices",
+    version: 1,
+  },
+  agent_message_consumption_analytics_shadow: {
     directory: "lib/analytics/indices",
     version: 1,
   },

@@ -1,0 +1,193 @@
+{
+  "properties": {
+    "completed_at": {
+      "type": "date"
+    },
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "conversation_id": {
+      "type": "keyword"
+    },
+    "space_id": {
+      "type": "keyword"
+    },
+    "agent_message_id": {
+      "type": "keyword"
+    },
+    "parent_message_id": {
+      "type": "keyword"
+    },
+    "message_version": {
+      "type": "keyword"
+    },
+    "consumption_key": {
+      "type": "keyword"
+    },
+    "consumption_type": {
+      "type": "keyword"
+    },
+    "attribution_version": {
+      "type": "short"
+    },
+    "run_usage_id": {
+      "type": "keyword"
+    },
+    "agent": {
+      "type": "object",
+      "properties": {
+        "attributed_id": {
+          "type": "keyword"
+        },
+        "id": {
+          "type": "keyword"
+        },
+        "version": {
+          "type": "keyword"
+        },
+        "tag_ids": {
+          "type": "keyword"
+        },
+        "parent_ids": {
+          "type": "keyword"
+        },
+        "direct_parent_id": {
+          "type": "keyword"
+        },
+        "root_id": {
+          "type": "keyword"
+        },
+        "depth": {
+          "type": "short"
+        }
+      }
+    },
+    "model": {
+      "type": "object",
+      "properties": {
+        "provider_id": {
+          "type": "keyword"
+        },
+        "model_id": {
+          "type": "keyword"
+        },
+        "reasoning_effort": {
+          "type": "keyword"
+        },
+        "resolution_method": {
+          "type": "keyword"
+        }
+      }
+    },
+    "user": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "keyword"
+        },
+        "group_ids": {
+          "type": "keyword"
+        },
+        "seat_type": {
+          "type": "keyword"
+        }
+      }
+    },
+    "trigger_id": {
+      "type": "keyword"
+    },
+    "context_origin": {
+      "type": "keyword"
+    },
+    "normalized_origin": {
+      "type": "keyword"
+    },
+    "api_key_name": {
+      "type": "keyword"
+    },
+    "tool": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "keyword"
+        },
+        "server_name": {
+          "type": "keyword"
+        },
+        "parent_server_name": {
+          "type": "keyword"
+        },
+        "action_id": {
+          "type": "keyword"
+        },
+        "attributed_skill_ids": {
+          "type": "keyword"
+        }
+      }
+    },
+    "tokens": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "type": "integer"
+        },
+        "input": {
+          "type": "integer"
+        },
+        "result_footprint": {
+          "type": "integer"
+        },
+        "output": {
+          "type": "integer"
+        },
+        "reasoning": {
+          "type": "integer"
+        }
+      }
+    },
+    "gross_credit_micro": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "type": "long"
+        },
+        "input": {
+          "type": "long"
+        },
+        "result_footprint": {
+          "type": "long"
+        },
+        "output": {
+          "type": "long"
+        },
+        "reasoning": {
+          "type": "long"
+        },
+        "direct": {
+          "type": "long"
+        },
+        "total": {
+          "type": "long"
+        }
+      }
+    },
+    "credit_micro": {
+      "type": "long"
+    },
+    "micro_usd": {
+      "type": "long"
+    },
+    "usage_type": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "step_index": {
+      "type": "short"
+    },
+    "execution_time_ms": {
+      "type": "integer"
+    }
+  }
+}
