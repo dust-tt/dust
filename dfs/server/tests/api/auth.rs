@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{Context, Result};
 use dfs_api::{
     auth::hash_key,
@@ -16,13 +18,14 @@ use dfs_protocol::{
         RevokeSessionRequest, UpdateGrantsRequest, dfs_client::DfsClient,
     },
 };
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, time::sleep};
 use tonic::transport::Channel;
 
 use crate::{MASTER_KEY, error_code, serve, with_authorization};
 
-pub(crate) async fn tenant_authentication_is_shared_across_connections_and_isolated_by_key()
--> Result<()> {
+const CACHE_EXPIRY_TEST_INTERVAL: Duration = Duration::from_secs(16);
+
+pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("http://{}", listener.local_addr()?);
     tokio::spawn(dfs_api::serve(listener, MASTER_KEY, std::future::pending()));
@@ -188,6 +191,22 @@ pub(crate) async fn tenant_authentication_is_shared_across_connections_and_isola
             .err()
             .context("deleted key must fail on a fresh API instance")?;
         assert_eq!(error_code(&fresh)?, ErrorCode::Unauthenticated);
+    }
+
+    // Hits after 16 seconds must not extend the 30-second expiry: both keys fail after 32 seconds.
+    for expected in [ErrorCode::Unsupported, ErrorCode::Unauthenticated] {
+        sleep(CACHE_EXPIRY_TEST_INTERVAL).await;
+        for authorization in [&tenant_authorization, &other_authorization] {
+            let error = reconnected
+                .create_session(with_authorization(
+                    CreateSessionRequest::default(),
+                    authorization,
+                )?)
+                .await
+                .err()
+                .context("expected an authentication error or unimplemented session creation")?;
+            assert_eq!(error_code(&error)?, expected);
+        }
     }
     Ok(())
 }

@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use dfs_protocol::{error::status, rpc::ErrorCode};
 use tonic::{Request, Status};
@@ -9,6 +12,16 @@ use crate::{
 };
 
 use super::API;
+
+const TENANT_KEY_CACHE_TTL_MS: u64 = 30_000;
+
+/// @cc [owner:spolu,label:api;security] tenant-key-cache-expiry
+/// Cached tenants MUST NOT authenticate requests at or after their expiry. Expiry MUST be set to
+/// 30,000 milliseconds after successful FDB authentication and MUST NOT be extended by cache hits.
+pub(super) struct CachedTenant {
+    tenant: Arc<TenantResource>,
+    expires_at: Instant,
+}
 
 /// A parsed credential, not proof of authentication.
 #[derive(Clone)]
@@ -70,8 +83,10 @@ impl API {
         request: &Request<T>,
     ) -> Result<Arc<TenantResource>, Status> {
         let key_hash = credentials(request)?;
-        if let Some(tenant) = self.tenant_key_cache.read().await.get(&key_hash) {
-            return Ok(Arc::clone(tenant));
+        if let Some(cached) = self.tenant_key_cache.read().await.get(&key_hash)
+            && cached.expires_at > Instant::now()
+        {
+            return Ok(Arc::clone(&cached.tenant));
         }
         // Release the cache lock before FDB so a miss cannot block requests for cached tenants.
         let tenant = Arc::new(
@@ -80,10 +95,11 @@ impl API {
             })
             .await?,
         );
-        self.tenant_key_cache
-            .write()
-            .await
-            .insert(key_hash, Arc::clone(&tenant));
+        let cached = CachedTenant {
+            tenant: Arc::clone(&tenant),
+            expires_at: Instant::now() + Duration::from_millis(TENANT_KEY_CACHE_TTL_MS),
+        };
+        self.tenant_key_cache.write().await.insert(key_hash, cached);
         Ok(tenant)
     }
 }

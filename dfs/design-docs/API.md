@@ -165,10 +165,11 @@ authorization state.
 The master key is configured at startup through `DFS_MASTER_KEY` (or `--master-key`) and must contain
 64 visible ASCII characters. Every RPC supplies its bearer, including when reusing a connection.
 The master key is checked against its configured hash in memory. Successful tenant authentication is
-cached by key hash across all connections served by the API instance, until that instance stops.
-A connection may carry several different credentials. Tenant keys currently have no rotation or
-revocation API; adding either requires invalidating these caches across API instances. Session expiry
-and revocation still require current-state checks.
+cached by key hash across all connections served by the API instance for 30 seconds. Cache hits do
+not extend expiry; the next call after expiry authenticates against FDB again. A connection may carry
+several different credentials. Tenant keys currently have no rotation or revocation API; immediate
+invalidation would require clearing these caches across API instances. Session expiry and revocation
+still require current-state checks.
 
 Every RPC request and response is limited to 4 MiB (4,194,304 bytes) of uncompressed protobuf
 payload, including encoding overhead. Response budgets include all results, attributes, metadata,

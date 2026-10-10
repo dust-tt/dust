@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use dfs_protocol::{
     error::status,
@@ -25,7 +25,7 @@ mod errors;
 #[allow(clippy::upper_case_acronyms)]
 pub struct API {
     master_key_hash: KeyHash,
-    tenant_key_cache: RwLock<HashMap<KeyHash, Arc<TenantResource>>>,
+    tenant_key_cache: RwLock<HashMap<KeyHash, auth::CachedTenant>>,
 }
 
 /// @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources
