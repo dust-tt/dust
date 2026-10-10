@@ -20,9 +20,11 @@ mod tests;
 const TENANT_KEY_CACHE_TTL_MS: u64 = 30_000;
 const TENANT_KEY_CACHE_SWEEP_INTERVAL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
 
-/// @cc [owner:spolu,label:api;security] tenant-key-cache-expiry
-/// Cached tenants MUST NOT authenticate requests at or after their expiry. Expiry MUST be set to
-/// 30,000 milliseconds after successful FDB authentication and MUST NOT be extended by cache hits.
+/**
+ * @cc [owner:spolu,label:api;security] tenant-key-cache-expiry
+ * Cached tenants MUST NOT authenticate requests at or after their expiry. Expiry MUST be set to
+ * 30,000 milliseconds after successful FDB authentication and MUST NOT be extended by cache hits.
+ */
 pub(super) struct CachedTenant {
     tenant: Arc<TenantResource>,
     expires_at: Instant,
