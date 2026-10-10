@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
-import { IconButton } from "@sparkle/components/IconButton";
 import { Pagination } from "@sparkle/components/Pagination";
 import {
   radioIndicatorStyles,
@@ -1268,9 +1267,9 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   return (
     <div className={cn("flex items-center space-x-2", className)}>
       <span className="truncate">{children}</span>
-      <IconButton
+      <Button
         icon={isCopied ? ClipboardCheck : Clipboard}
-        variant="outline"
+        variant="ghost-secondary"
         onClick={async (e) => {
           e.stopPropagation();
           await handleCopy();
