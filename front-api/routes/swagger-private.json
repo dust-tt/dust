@@ -7194,7 +7194,7 @@
     "/api/w/{wId}/assistant/conversations/{cId}/consumption": {
       "get": {
         "summary": "Get a conversation credit attribution",
-        "description": "Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution reconciled exclusively through model input rows. In-progress messages are included after they reach a terminal state.",
+        "description": "Returns the latest stable credits billed for completed messages belonging directly to a conversation, plus an additive attribution of that bill, split by the recorded cost of each LLM call. In-progress messages are included after they reach a terminal state.",
         "tags": [
           "Private Conversations"
         ],
@@ -7827,7 +7827,7 @@
                     "details": {
                       "type": "object",
                       "nullable": true,
-                      "description": "Additive attribution reconciled to totalBilledCredits through model input rows. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
+                      "description": "Additive attribution of totalBilledCredits, split by the recorded cost of each LLM call. Each run-agent tool row includes its sub-agent subtree's bill. Null when no stored version is complete.",
                       "required": [
                         "attributionVersion",
                         "agentWorkCredits",
@@ -7840,7 +7840,7 @@
                         },
                         "agentWorkCredits": {
                           "type": "number",
-                          "description": "Non-tool work for the originating message after assigning billing reconciliation exclusively to model input rows."
+                          "description": "Non-tool work for the originating message, split by the recorded cost of each LLM call."
                         },
                         "tools": {
                           "type": "array",
@@ -7871,7 +7871,7 @@
                               },
                               "attributedCredits": {
                                 "type": "number",
-                                "description": "Share of total billed credits after input-only reconciliation. Run-agent tools include their sub-agent subtree's bill."
+                                "description": "Share of total billed credits, split by the recorded cost of each LLM call. Run-agent tools include their sub-agent subtree's bill."
                               },
                               "directCredits": {
                                 "type": "number"
@@ -11505,7 +11505,7 @@
           },
           "attributedCredits": {
             "type": "number",
-            "description": "Share of billed credits after reconciling exclusively through model input rows."
+            "description": "Share of billed credits, split by the recorded cost of each LLM call."
           },
           "directCredits": {
             "type": "number"
@@ -11535,7 +11535,7 @@
           },
           "attributedCredits": {
             "type": "number",
-            "description": "Model attribution after reconciling exclusively through its input rows."
+            "description": "Model attribution, split by the recorded cost of each LLM call."
           }
         }
       },
@@ -11566,7 +11566,7 @@
           },
           "agentWorkCredits": {
             "type": "number",
-            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+            "description": "Agent work's share of the bill, split by the recorded cost of each LLM call."
           },
           "tools": {
             "type": "array",
@@ -11584,7 +11584,7 @@
       },
       "PrivateConversationConsumptionDetails": {
         "type": "object",
-        "description": "Additive attribution reconciled to the authoritative bill exclusively through model input rows. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
+        "description": "Additive attribution of the authoritative bill, split by the recorded cost of each LLM call. Each message uses its newest complete stored attribution version. Null when any billed message has no complete stored attribution.",
         "required": [
           "agentWorkCredits",
           "tools",
@@ -11594,7 +11594,7 @@
         "properties": {
           "agentWorkCredits": {
             "type": "number",
-            "description": "Agent work after assigning billing reconciliation exclusively to model input rows."
+            "description": "Agent work's share of the bill, split by the recorded cost of each LLM call."
           },
           "tools": {
             "type": "array",
