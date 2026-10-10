@@ -116,8 +116,15 @@ does not resolve shows as its alt text. A new resolver applies to images display
 rebuilding the editor. The file preview resolves a file path in
 a conversation or a pod, such as `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read
 from `files.list`, to the file API, which checks the reader's access; it resolves nothing else, so
-an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
-write them.
+an external URL never loads. Users insert one with the `/` menu's Image block; agents and raw
+edits write them.
+
+## Inserting embeds
+
+With the host's `embeddableFiles`, the `/` menu adds an Image block. Picking it turns the menu
+into a search over those files, by name or path, and picking a file replaces the `/` with an image
+of its path whose alt text is the file name. Escape leaves the search. The file preview offers the
+images of the document's own pod or conversation (`useDocumentEmbeddableFiles`).
 
 ## Layout
 
@@ -130,7 +137,7 @@ write them.
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
-| `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
+| `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |
 | `DocumentMarkdownPreview.tsx` | A file that cannot open, rendered read-only under the reason. |

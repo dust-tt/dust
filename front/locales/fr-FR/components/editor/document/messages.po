@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Ajouter un paragraphe"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching files"
+msgstr "Aucun fichier correspondant"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "No matching paragraphs"
 msgstr "Aucun paragraphe correspondant"
 
@@ -369,6 +373,19 @@ msgstr "Séparateur"
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
 msgstr "Séparer les sections"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block embedding an image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/blocks.ts
+msgid "Show an image from the files"
+msgstr "Afficher une image depuis les fichiers"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose an image"
+msgstr "Choisir une image"
 
 #: front/components/editor/document/extensions.ts
 msgid "Untitled"
