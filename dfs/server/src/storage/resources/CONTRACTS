@@ -1,0 +1,4 @@
+@cc [owner:pmilliotte,label:architecture] resource-methods-take-caller-transaction
+Resource methods that read or write FDB MUST take the caller's `&Transaction` and MUST NOT call
+`fdb::with_transaction` or open a transaction themselves, so a caller can combine several resource
+calls in one atomic transaction.
