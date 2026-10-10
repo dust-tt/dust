@@ -25,7 +25,7 @@ mod errors;
 #[allow(clippy::upper_case_acronyms)]
 pub struct API {
     master_key_hash: KeyHash,
-    tenant_cache: Mutex<HashMap<KeyHash, Arc<TenantResource>>>,
+    tenant_key_cache: Mutex<HashMap<KeyHash, Arc<TenantResource>>>,
 }
 
 /// @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources

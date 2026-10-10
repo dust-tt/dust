@@ -45,7 +45,7 @@ impl API {
         );
         Ok(Self {
             master_key_hash: hash_key(master_key),
-            tenant_cache: Default::default(),
+            tenant_key_cache: Default::default(),
         })
     }
 
@@ -66,7 +66,7 @@ impl API {
         request: &Request<T>,
     ) -> Result<Arc<TenantResource>, Status> {
         let key_hash = credentials(request)?;
-        if let Some(tenant) = self.tenant_cache.lock().await.get(&key_hash) {
+        if let Some(tenant) = self.tenant_key_cache.lock().await.get(&key_hash) {
             return Ok(Arc::clone(tenant));
         }
         // Release the cache lock before FDB so a miss cannot block requests for cached tenants.
@@ -76,7 +76,7 @@ impl API {
             })
             .await?,
         );
-        self.tenant_cache
+        self.tenant_key_cache
             .lock()
             .await
             .insert(key_hash, Arc::clone(&tenant));
