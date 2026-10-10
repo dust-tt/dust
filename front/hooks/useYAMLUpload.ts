@@ -44,80 +44,86 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       setIsUploading(true);
-      const yamlContent = await file.text();
-      const response = await clientFetch(
-        `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ yamlContent }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        logger.error(
+      try {
+        const yamlContent = await file.text();
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
           {
-            workspaceId: owner.sId,
-          },
-
-          normalizeError(errorData).message ||
-            "Failed to create agent from YAML file."
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ yamlContent }),
+          }
         );
 
-        sendApiErrorNotification({
-          title: t`Agent creation failed`,
-          error: errorData,
+        if (!response.ok) {
+          const errorData = await response.json();
+          logger.error(
+            {
+              workspaceId: owner.sId,
+            },
+
+            normalizeError(errorData).message ||
+              "Failed to create agent from YAML file."
+          );
+
+          sendApiErrorNotification({
+            title: t`Agent creation failed`,
+            error: errorData,
+          });
+          return;
+        }
+
+        const result = await response.json();
+        const agentName = result.agentConfiguration.name;
+
+        trackEvent({
+          area: TRACKING_AREAS.BUILDER,
+          object: "create_agent",
+          action: TRACKING_ACTIONS.SUBMIT,
+          extra: {
+            agent_id: result.agentConfiguration.sId,
+            source: "yaml_upload",
+            scope: result.agentConfiguration.scope,
+            has_skipped_actions: result.skippedActions?.length > 0,
+          },
         });
-        setIsUploading(false);
-        return;
-      }
 
-      const result = await response.json();
-      const agentName = result.agentConfiguration.name;
-
-      trackEvent({
-        area: TRACKING_AREAS.BUILDER,
-        object: "create_agent",
-        action: TRACKING_ACTIONS.SUBMIT,
-        extra: {
-          agent_id: result.agentConfiguration.sId,
-          source: "yaml_upload",
-          scope: result.agentConfiguration.scope,
-          has_skipped_actions: result.skippedActions?.length > 0,
-        },
-      });
-
-      if (result.skippedActions && result.skippedActions.length > 0) {
-        sendNotification({
-          title: t`Agent created with warnings`,
-          description: t`Agent "${agentName}" was created, but some actions were skipped.`,
-          type: "info",
-        });
-
-        for (const skipped of result.skippedActions) {
-          const actionName = skipped.name;
+        if (result.skippedActions && result.skippedActions.length > 0) {
           sendNotification({
-            title: t`Action skipped: ${actionName}`,
-            description: skipped.reason,
+            title: t`Agent created with warnings`,
+            description: t`Agent "${agentName}" was created, but some actions were skipped.`,
             type: "info",
           });
+
+          for (const skipped of result.skippedActions) {
+            const actionName = skipped.name;
+            sendNotification({
+              title: t`Action skipped: ${actionName}`,
+              description: skipped.reason,
+              type: "info",
+            });
+          }
+        } else {
+          sendNotification({
+            title: t`Agent created successfully`,
+            description: t`Agent "${agentName}" was created from YAML.`,
+            type: "success",
+          });
         }
-      } else {
-        sendNotification({
-          title: t`Agent created successfully`,
-          description: t`Agent "${agentName}" was created from YAML.`,
-          type: "success",
+
+        await router.push(
+          `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
+        );
+      } catch (error) {
+        sendApiErrorNotification({
+          title: t`Agent creation failed`,
+          error,
         });
+      } finally {
+        setIsUploading(false);
       }
-
-      await router.push(
-        `/w/${owner.sId}/builder/agents/${result.agentConfiguration.sId}`
-      );
-
-      setIsUploading(false);
     },
     [owner.sId, router, sendApiErrorNotification, sendNotification, t]
   );
