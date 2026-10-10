@@ -12,9 +12,9 @@ interface SparkleLocaleProviderProps {
  * @cc [owner:ykmsd,label:product;react] sparkle-follows-front-locale
  * Rendered under front's `I18nProvider`, sparkle components MUST render in the sparkle locale that
  * `getSparkleLocale` maps front's active locale to, and switch in the same render as front's
- * messages. Front MUST preload that sparkle locale before activating its own (see
- * `UserLocaleSync`), otherwise sparkle renders English. Every app root that mounts `UserLocaleSync`
- * MUST mount it, otherwise sparkle stays in English while front switches locale.
+ * messages. Front MUST preload that sparkle locale before activating its own (see `LocaleSync`),
+ * otherwise sparkle renders English. Every app root that mounts `LocaleSync` MUST mount it,
+ * otherwise sparkle stays in English while front switches locale.
  */
 /**
  * @cc [owner:ykmsd,label:product] sparkle-formats-in-front-format-locale

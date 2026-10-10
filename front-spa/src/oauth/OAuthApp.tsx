@@ -1,3 +1,5 @@
+import { LocaleSync } from "@dust-tt/front/components/app/LocaleSync";
+import { SparkleLocaleProvider } from "@dust-tt/front/components/app/SparkleLocaleProvider";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { OAuthFinalizePage } from "@dust-tt/front/components/pages/oauth/OAuthFinalizePage";
@@ -39,9 +41,12 @@ export default function OAuthApp() {
     <CellProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <I18nProvider i18n={i18n}>
-          <ErrorBoundary fallback={<GlobalErrorFallback />}>
-            <RouterProvider router={router} />
-          </ErrorBoundary>
+          <SparkleLocaleProvider>
+            <LocaleSync locale={null} />
+            <ErrorBoundary fallback={<GlobalErrorFallback />}>
+              <RouterProvider router={router} />
+            </ErrorBoundary>
+          </SparkleLocaleProvider>
         </I18nProvider>
       </FetcherProvider>
     </CellProvider>

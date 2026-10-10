@@ -1,3 +1,4 @@
+import { LocaleSync } from "@dust-tt/front/components/app/LocaleSync";
 import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 import { AuthErrorPage } from "@spa/app/components/AuthErrorPage";
 import { useAppReadyContext } from "@spa/app/contexts/AppReadyContext";
@@ -11,11 +12,13 @@ export function AuthenticatedPage() {
   const { isAuthenticated, authContextError } = useAuthContext();
   const signalAppReady = useAppReadyContext();
 
+  // Signal that the app is ready on error. Otherwise `LocaleSync` signals it once the locale is
+  // active.
   useEffect(() => {
-    if (isAuthenticated || authContextError) {
+    if (authContextError) {
       signalAppReady();
     }
-  }, [isAuthenticated, authContextError, signalAppReady]);
+  }, [authContextError, signalAppReady]);
 
   if (authContextError) {
     return <AuthErrorPage error={authContextError} />;
@@ -25,5 +28,10 @@ export function AuthenticatedPage() {
     return null;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <LocaleSync locale={null} onReady={signalAppReady} />
+      <Outlet />
+    </>
+  );
 }
