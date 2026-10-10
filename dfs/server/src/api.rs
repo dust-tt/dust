@@ -34,8 +34,8 @@ impl Dfs for API {
         if !root_grants.is_empty() {
             return Err(status(ErrorCode::InvalidInput));
         }
-        // Unlike front's `makeNew`, the tenant is built before the transaction: FDB re-runs the body
-        // on retry, and a fresh key and root per attempt would hide our own earlier commit.
+        // Call `new` before the transaction because FDB may retry its body. Keeping the same key and
+        // root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
         let created = fdb::with_transaction::<_, _, _, tenant::Error>(|tx| {
             let tenant = &tenant;
