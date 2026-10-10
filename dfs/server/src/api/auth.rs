@@ -90,10 +90,12 @@ impl API {
         Ok(())
     }
 
-    /// @cc [owner:spolu,label:api;security] tenant-auth-cache-isolation
-    /// Successful tenant authentication MUST be shared across this API instance's connections only
-    /// for the same key hash and MUST NOT authorize master-key RPCs. Failed authentication MUST NOT
-    /// be cached. Every RPC MUST still supply its bearer.
+    /**
+     * @cc [owner:spolu,label:api;security] tenant-auth-cache-isolation
+     * Successful tenant authentication MUST be shared across this API instance's connections only
+     * for the same key hash and MUST NOT authorize master-key RPCs. Failed authentication MUST NOT
+     * be cached. Every RPC MUST still supply its bearer.
+     */
     /**
      * @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-concurrency
      * Cache hits MUST use shared read access. FDB authentication MUST run without a cache guard.

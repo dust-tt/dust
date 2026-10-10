@@ -69,10 +69,12 @@ impl TenantResource {
         Ok((tenant, tenant_key))
     }
 
-    /// @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
-    /// An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
-    /// the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
-    /// stored record unchanged.
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
+     * An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
+     * the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
+     * stored record unchanged.
+     */
     /**
      * @cc [owner:spolu,label:backend;security] tenant-key-index-consistency
      * A new tenant's record and key-hash lookup MUST be written in the caller's transaction. For a
