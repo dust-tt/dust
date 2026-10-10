@@ -667,11 +667,11 @@ function ActionMenu({
       ]
     : [];
 
-  // In a wide conversation container, side mode buttons float beside the bubble — fade in/out on hover.
-  // In a narrow container (and in bottom mode), buttons sit below the bubble — always visible.
+  // Side mode buttons float beside the bubble — fade in/out on hover, at any container width
+  // (including the narrow extension panel). Bottom mode buttons are always visible.
   const sideItemVisibilityClass = cn(
     "transition-opacity duration-300",
-    mode === "side" && shouldHideActions && "@sm-conversation:opacity-0"
+    mode === "side" && shouldHideActions && "opacity-0 focus-within:opacity-100"
   );
 
   return (
