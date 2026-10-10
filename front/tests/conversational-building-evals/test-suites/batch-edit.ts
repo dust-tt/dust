@@ -151,8 +151,8 @@ export const batchEditSuite: TestSuite = {
 - Score 2 if the five renames are correct and recorded one per call, but some intermediate calls
   were rejected by the tool (e.g. a title that is too long, or an attempt to rename an already
   compliant skill) before being retried or dropped.
-- The closing message must surface the recorded suggestion directives and mention every renamed
-  skill.
+- The closing message must surface the recorded suggestion directives without listing every
+  renamed skill: the suggestion cards show them.
 `.trim(),
     },
     {
@@ -179,8 +179,8 @@ export const batchEditSuite: TestSuite = {
   instructions to say Jira instead of GitHub is fine, and is expected for the block naming GitHub.
 - Score 0-1 if an entity using GitHub is left out, an entity not using it is edited, or the
   GitHub tool is kept alongside Jira.
-- The closing message must surface the recorded suggestion directives and mention every edited
-  skill and agent.
+- The closing message must surface the recorded suggestion directives without listing every
+  edited skill and agent: the suggestion cards show them.
 `.trim(),
     },
   ],
