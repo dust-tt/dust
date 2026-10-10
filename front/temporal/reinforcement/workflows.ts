@@ -96,10 +96,16 @@ const {
 });
 
 // runToolActivity is re-exported from the agent loop so the reinforced skills
-// worker registers it. We proxy it with retry for durability.
+// worker registers it. We proxy it with retry for durability. Only histories
+// recorded before runReinforcedToolActivity existed still call it.
 const { runToolActivity: runRetryableToolActivity } = proxyActivities<
   typeof activities
 >({
+  startToCloseTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+
+const { runReinforcedToolActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
   retry: { maximumAttempts: 3 },
 });
@@ -148,7 +154,8 @@ async function waitForBatch({
 }
 
 interface ReinforcedToolActionInfo {
-  authType: AuthenticatorType;
+  // Only set in activity results recorded before runReinforcedToolActivity existed.
+  authType?: AuthenticatorType;
   agentLoopArgs: AgentLoopArgsWithTiming;
   actionIds: ModelId[];
 }
@@ -168,16 +175,27 @@ interface ReinforcedStepResult {
  * the rendering pipeline injects a placeholder error for the LLM to see.
  */
 async function executeReinforcedToolActions(
+  workspaceId: string,
   toolActionInfo: ReinforcedToolActionInfo
 ): Promise<void> {
   const { authType, agentLoopArgs, actionIds } = toolActionInfo;
   for (const actionId of actionIds) {
     try {
-      await runRetryableToolActivity(authType, {
-        actionId,
-        runAgentArgs: agentLoopArgs,
-        step: 0,
-      });
+      // Results recorded before runReinforcedToolActivity existed carry the auth: replaying their
+      // history must schedule the same activity as the original run.
+      if (authType) {
+        await runRetryableToolActivity(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: 0,
+        });
+      } else {
+        await runReinforcedToolActivity({
+          workspaceId,
+          actionId,
+          agentLoopArgs,
+        });
+      }
     } catch {
       // Tool execution failed after all retries.
       // The AgentMCPActionResource exists but has no output -- the rendering
@@ -190,11 +208,12 @@ async function executeReinforcedToolActions(
  * Shared multi-step streaming loop for reinforced skills operations.
  * Calls the step activity, executes exploratory tools, and loops until terminal.
  *
- * Tool results are stored in the reinforcement conversation by runRetryableToolActivity.
+ * Tool results are stored in the reinforcement conversation by runReinforcedToolActivity.
  * On the next step, the step activity renders the full conversation from DB via
  * renderConversationForModel -- no need to pass continuation messages explicitly.
  */
 async function runMultiStepStreamingLoop(
+  workspaceId: string,
   stepFn: (
     reinforcementConversationId: string | undefined
   ) => Promise<ReinforcedStepResult>
@@ -219,7 +238,7 @@ async function runMultiStepStreamingLoop(
     }
 
     if (result.toolActionInfo) {
-      await executeReinforcedToolActions(result.toolActionInfo);
+      await executeReinforcedToolActions(workspaceId, result.toolActionInfo);
     }
   }
 
@@ -292,7 +311,7 @@ async function aggregateSkillWithMultiStepBatch({
     reinforcementConversationId = result.reinforcementConversationId;
 
     if (result.toolActionInfo) {
-      await executeReinforcedToolActions(result.toolActionInfo);
+      await executeReinforcedToolActions(workspaceId, result.toolActionInfo);
     }
   }
 
@@ -424,10 +443,11 @@ export async function reinforcementWorkspaceWorkflow({
         break;
       }
 
-      // Execute exploratory tools via the agent loop's retryable tool activity.
+      // Execute exploratory tools via runReinforcedToolActivity, which runs the agent loop's tool
+      // activity code.
       for (const c of continuations) {
         if (c.toolActionInfo) {
-          await executeReinforcedToolActions(c.toolActionInfo);
+          await executeReinforcedToolActions(workspaceId, c.toolActionInfo);
         }
       }
 
@@ -473,7 +493,7 @@ export async function reinforcementWorkspaceWorkflow({
     const analysisResults = await concurrentExecutor(
       conversationsWithSkills,
       ({ conversationId, skillIds }) =>
-        runMultiStepStreamingLoop((reinforcementConversationId) =>
+        runMultiStepStreamingLoop(workspaceId, (reinforcementConversationId) =>
           analyzeConversationStepActivity({
             workspaceId,
             conversationId,
@@ -514,12 +534,14 @@ export async function reinforcementWorkspaceWorkflow({
           suggestionsCreated,
           approvedSourceSuggestionIds,
           reinforcementConversationId,
-        } = await runMultiStepStreamingLoop((reinforcementConversationId) =>
-          aggregateSuggestionsForSkillStepActivity({
-            workspaceId,
-            skillId: currentSkillId,
-            reinforcementConversationId,
-          })
+        } = await runMultiStepStreamingLoop(
+          workspaceId,
+          (reinforcementConversationId) =>
+            aggregateSuggestionsForSkillStepActivity({
+              workspaceId,
+              skillId: currentSkillId,
+              reinforcementConversationId,
+            })
         );
         return {
           skillId: currentSkillId,

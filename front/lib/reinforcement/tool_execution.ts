@@ -1,5 +1,5 @@
 import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
-import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import type {
   ExploratoryToolCallInfo,
   ReinforcedSkillsToolCallInfo,
@@ -18,11 +18,16 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 
 /**
- * Info needed by the workflow to call runRetryableToolActivity and
+ * Info needed by the workflow to call runReinforcedToolActivity and
  * then read back the results.
  */
+/**
+ * @cc [owner:philipperolet,label:performance] no-workspace-sized-data
+ * `ReinforcedToolActionInfo` MUST NOT hold data whose size grows with the workspace, such as a
+ * serialized `Authenticator` (its `groupIds` lists every group of the workspace). Activities return
+ * it to the workflow, and Temporal rejects payloads above 2 MB.
+ */
 export interface ReinforcedToolActionInfo {
-  authType: AuthenticatorType;
   agentLoopArgs: {
     agentMessageId: string;
     agentMessageVersion: number;
@@ -138,7 +143,7 @@ async function createReinforcedAction(
 
 /**
  * Create AgentMCPActionResource records for each exploratory tool call.
- * Returns the info needed by the workflow to call runRetryableToolActivity.
+ * Returns the info needed by the workflow to call runReinforcedToolActivity.
  */
 export async function prepareReinforcedToolActions(
   auth: Authenticator,
@@ -182,7 +187,6 @@ export async function prepareReinforcedToolActions(
   }
 
   return {
-    authType: auth.toJSON(),
     agentLoopArgs: {
       agentMessageId: agentMessageId,
       agentMessageVersion: 0,

@@ -92,20 +92,44 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
+import { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
 import {
   launchEmitMetronomeUsageEvents,
   launchTrackProgrammaticUsage,
 } from "@app/temporal/agent_loop/activities/usage_tracking";
 import { ensureReinforcementWorkspaceSchedules } from "@app/temporal/reinforcement/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { REINFORCEMENT_SKILL_SUGGESTION_KINDS } from "@app/types/suggestions/skill_suggestion";
 import { ApplicationFailure } from "@temporalio/common";
 import { Op } from "sequelize";
 
-// Re-export runToolActivity so the reinforced skills worker registers it,
-// allowing the workflow to call it via proxyActivities.
+// Re-export runToolActivity so the reinforced skills worker registers it: workflows replaying a
+// history recorded before runReinforcedToolActivity existed still call it via proxyActivities.
 export { runToolActivity } from "@app/temporal/agent_loop/activities/run_tool";
+
+/**
+ * Run one exploratory tool action prepared by `prepareReinforcedToolActions`.
+ * The auth is rebuilt here rather than passed by the workflow: it lists every group of the
+ * workspace, which in large workspaces exceeds Temporal's payload size limit.
+ */
+export async function runReinforcedToolActivity({
+  workspaceId,
+  actionId,
+  agentLoopArgs,
+}: {
+  workspaceId: string;
+  actionId: ModelId;
+  agentLoopArgs: ReinforcedToolActionInfo["agentLoopArgs"];
+}): Promise<void> {
+  const auth = await getAuthForWorkspace(workspaceId);
+  await runToolActivity(auth.toJSON(), {
+    actionId,
+    runAgentArgs: agentLoopArgs,
+    step: 0,
+  });
+}
 
 /**
  * Report usage for a single self-improvement LLM step to billing and ES
@@ -412,7 +436,7 @@ async function runReinforcedSkillsStep({
     };
   }
 
-  // Prepare tool actions for the workflow to execute via runRetryableToolActivity.
+  // Prepare tool actions for the workflow to execute via runReinforcedToolActivity.
   const toolActionInfo = await prepareReinforcedToolActions(auth, {
     conversation: reinforcementConv.toJSON(),
     exploratoryToolCalls,
