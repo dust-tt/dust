@@ -449,6 +449,10 @@ msgid "Auto"
 msgstr "Auto"
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Automatic ({automaticLocaleLabel})"
+msgstr "Automatic ({automaticLocaleLabel})"
+
+#: front/components/UserSettingsPopover.tsx
 msgid "Cmd + Enter (⌘ + ↵)"
 msgstr "Cmd + Enter (⌘ + ↵)"
 
@@ -483,6 +487,14 @@ msgstr "Language"
 #: front/components/UserSettingsPopover.tsx
 msgid "Language used by Dust for you, across all your workspaces"
 msgstr "Language used by Dust for you, across all your workspaces"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Follows your browser's language"
+msgstr "Follows your browser's language"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Follows your workspace's language"
+msgstr "Follows your workspace's language"
 
 #: front/components/UserSettingsPopover.tsx
 msgid "Theme"
