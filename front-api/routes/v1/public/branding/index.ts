@@ -70,7 +70,7 @@ app.get("/:wId/:asset", validate("param", ParamsSchema), async (ctx) => {
     timeframeSeconds: RATE_LIMIT_WINDOW_SECONDS,
     logger,
   });
-  if (remaining < 0) {
+  if (remaining <= 0) {
     return apiError(ctx, {
       status_code: 429,
       api_error: { type: "rate_limit_error", message: "Too many requests." },

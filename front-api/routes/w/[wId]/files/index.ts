@@ -158,7 +158,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
     timeframeSeconds: 60,
     logger,
   });
-  if (remaining < 0) {
+  if (remaining <= 0) {
     return apiError(ctx, {
       status_code: 429,
       api_error: {
