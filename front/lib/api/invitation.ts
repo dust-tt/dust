@@ -3,12 +3,14 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import config from "@app/lib/api/config";
 import {
   getMembers,
   getWorkspaceAdministrationVersionLock,
 } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import type { EmailRecipient } from "@app/lib/notifications/transactional_emails";
+import { emailRecipientsFromAddresses } from "@app/lib/notifications/transactional_emails";
+import { notifyWorkspaceInvitation } from "@app/lib/notifications/triggers/workspace-invitation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { isEmailValid } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -23,7 +25,6 @@ import type { SubscriptionType } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { sanitizeString } from "@app/types/shared/utils/string_utils";
 import type {
   ActiveRoleType,
@@ -31,51 +32,40 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types/user";
-import sgMail from "@sendgrid/mail";
-import escape from "lodash/escape";
 
 import { MembershipInvitationResource } from "../resources/membership_invitation_resource";
 
 const EMAIL_CONCURRENCY = 8;
 
-async function sendWorkspaceInvitationEmail(
+function sendWorkspaceInvitationEmail(
   owner: WorkspaceType,
   user: UserType,
-  invitation: MembershipInvitationType
-) {
-  // Send invite email.
-  const message = {
-    to: invitation.inviteEmail,
-    from: config.getSupportEmailAddress(),
-    templateId: config.getInvitationEmailTemplate(),
-    dynamic_template_data: {
-      inviteLink: getMembershipInvitationUrl(owner, invitation),
-      // Escape the name to prevent XSS attacks via injected script elements.
-      inviterName: escape(user.fullName),
-      workspaceName: owner.name,
-    },
-  };
-
-  sgMail.setApiKey(config.getSendgridApiKey());
-  await sgMail.send(message);
+  invitation: MembershipInvitationType,
+  recipient: EmailRecipient
+): Promise<Result<void, Error>> {
+  return notifyWorkspaceInvitation({
+    recipient,
+    workspaceId: owner.sId,
+    workspaceName: owner.name,
+    inviterName: user.fullName,
+    inviteLink: getMembershipInvitationUrl(owner, invitation),
+    isReminder: false,
+  });
 }
 
-export async function sendWorkspaceInvitationReminderEmail(
+export function sendWorkspaceInvitationReminderEmail(
   owner: LightWorkspaceType,
-  invitation: MembershipInvitationType
-) {
-  const message = {
-    to: invitation.inviteEmail,
-    from: config.getSupportEmailAddress(),
-    templateId: config.getInvitationReminderEmailTemplate(),
-    dynamic_template_data: {
-      inviteLink: getMembershipInvitationUrl(owner, invitation),
-      workspaceName: owner.name,
-    },
-  };
-
-  sgMail.setApiKey(config.getSendgridApiKey());
-  await sgMail.send(message);
+  invitation: MembershipInvitationType,
+  recipient: EmailRecipient
+): Promise<Result<void, Error>> {
+  return notifyWorkspaceInvitation({
+    recipient,
+    workspaceId: owner.sId,
+    workspaceName: owner.name,
+    inviterName: null,
+    inviteLink: getMembershipInvitationUrl(owner, invitation),
+    isReminder: true,
+  });
 }
 
 /**
@@ -128,7 +118,7 @@ export async function handleMembershipInvitations(
   const { maxUsers } = subscription.plan.limits.users;
 
   // Emails are sent after the transaction commits so the DB transaction is
-  // not held open during SendGrid calls.
+  // not held open during Novu calls.
   const transactionResult = await withTransaction(
     async (
       t
@@ -369,27 +359,31 @@ export async function handleMembershipInvitations(
 
   const { resultsWithoutEmail, invitationsToEmail } = transactionResult.value;
 
+  const recipients = await emailRecipientsFromAddresses(
+    owner,
+    invitationsToEmail.map(({ invitation }) => invitation.inviteEmail)
+  );
   const emailResults = await concurrentExecutor(
     invitationsToEmail,
-    async ({ invitation, email }) => {
-      try {
-        await sendWorkspaceInvitationEmail(owner, user, invitation);
-        return { success: true, email };
-      } catch (e) {
+    async ({ invitation, email }, index) => {
+      const result = await sendWorkspaceInvitationEmail(
+        owner,
+        user,
+        invitation,
+        recipients[index]
+      );
+      if (result.isErr()) {
         logger.error(
-          {
-            error: e,
-            message: "Failed to send invitation email",
-            email,
-          },
+          { error: result.error, email },
           "Failed to send invitation email"
         );
         return {
           success: false,
           email,
-          error_message: normalizeError(e).message,
+          error_message: result.error.message,
         };
       }
+      return { success: true, email };
     },
     { concurrency: EMAIL_CONCURRENCY }
   );

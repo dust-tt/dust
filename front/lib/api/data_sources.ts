@@ -2,7 +2,6 @@
 
 import { default as apiConfig, default as config } from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
-import { sendGitHubDeletionEmail } from "@app/lib/api/email";
 import {
   getLlmCredentials,
   MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE,
@@ -19,6 +18,8 @@ import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAdminsGitHubConnectionDeleted } from "@app/lib/notifications/triggers/github-connection-deleted";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -430,10 +431,17 @@ async function warnPostDeletion(
         roles: ["admin"],
         activeOnly: true,
       });
-      const adminEmails = members.map((u) => u.email);
-      // send email to admins
-      for (const email of adminEmails) {
-        await sendGitHubDeletionEmail(email);
+      const owner = auth.getNonNullableWorkspace();
+      const result = await notifyAdminsGitHubConnectionDeleted({
+        admins: members.map(emailRecipientFromUser),
+        workspaceId: owner.sId,
+        workspaceName: owner.name,
+      });
+      if (result.isErr()) {
+        logger.error(
+          { error: result.error, workspaceId: owner.sId },
+          "Failed to send GitHub connection deletion email"
+        );
       }
       break;
 
