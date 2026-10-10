@@ -37,21 +37,21 @@ fn credentials<T>(request: &Request<T>) -> Result<KeyHash, Status> {
 }
 
 impl API {
-    pub(crate) fn new(server_key: &str) -> anyhow::Result<Self> {
+    pub(crate) fn new(master_key: &str) -> anyhow::Result<Self> {
         anyhow::ensure!(
-            server_key.len() == KEY_LENGTH
-                && server_key.bytes().all(|byte| byte.is_ascii_graphic()),
-            "server key must contain {KEY_LENGTH} visible ASCII characters"
+            master_key.len() == KEY_LENGTH
+                && master_key.bytes().all(|byte| byte.is_ascii_graphic()),
+            "master key must contain {KEY_LENGTH} visible ASCII characters"
         );
         Ok(Self {
-            server_key_hash: hash_key(server_key),
+            master_key_hash: hash_key(master_key),
             tenant_cache: Default::default(),
         })
     }
 
-    pub(super) fn require_server<T>(&self, request: &Request<T>) -> Result<(), Status> {
+    pub(super) fn require_master<T>(&self, request: &Request<T>) -> Result<(), Status> {
         let key_hash = credentials(request)?;
-        if key_hash != self.server_key_hash {
+        if key_hash != self.master_key_hash {
             return Err(status(ErrorCode::Unauthenticated));
         }
         Ok(())
@@ -59,7 +59,7 @@ impl API {
 
     /// @cc [owner:spolu,label:api;security] tenant-auth-cache-isolation
     /// Successful tenant authentication MUST be shared across this API instance's connections only
-    /// for the same key hash and MUST NOT authorize server-key RPCs. Failed authentication MUST NOT
+    /// for the same key hash and MUST NOT authorize master-key RPCs. Failed authentication MUST NOT
     /// be cached. Every RPC MUST still supply its bearer.
     pub(super) async fn require_tenant<T>(
         &self,

@@ -19,22 +19,22 @@ use dfs_protocol::{
 use tokio::net::TcpListener;
 use tonic::transport::Channel;
 
-use crate::{SERVER_KEY, error_code, serve, with_authorization};
+use crate::{MASTER_KEY, error_code, serve, with_authorization};
 
 pub(crate) async fn tenant_authentication_is_shared_across_connections_and_isolated_by_key()
 -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("http://{}", listener.local_addr()?);
-    tokio::spawn(dfs_api::serve(listener, SERVER_KEY, std::future::pending()));
+    tokio::spawn(dfs_api::serve(listener, MASTER_KEY, std::future::pending()));
     let mut client = DfsClient::new(Channel::from_shared(endpoint.clone())?.connect().await?);
-    let server_authorization = format!("Bearer {SERVER_KEY}");
+    let master_authorization = format!("Bearer {MASTER_KEY}");
     let tenant = client
         .create_tenant(with_authorization(
             CreateTenantRequest {
                 tenant_id: ObjectId::new_v7().to_string(),
                 root_grants: vec![],
             },
-            &server_authorization,
+            &master_authorization,
         )?)
         .await?
         .into_inner();
@@ -42,15 +42,15 @@ pub(crate) async fn tenant_authentication_is_shared_across_connections_and_isola
     let (other, other_key) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let other_authorization = format!("Bearer {other_key}");
 
-    // Authenticating as the server must not authorize tenant calls on the same connection.
+    // The master key must not authorize tenant calls on the same connection.
     let error = client
         .create_session(with_authorization(
             CreateSessionRequest::default(),
-            &server_authorization,
+            &master_authorization,
         )?)
         .await
         .err()
-        .context("server key must not authorize a tenant call")?;
+        .context("master key must not authorize a tenant call")?;
     assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
 
     // Each tenant-key RPC must authenticate before returning its current stub response.
@@ -120,7 +120,7 @@ pub(crate) async fn tenant_authentication_is_shared_across_connections_and_isola
         .context("create session is not implemented")?;
     assert_eq!(error_code(&error)?, ErrorCode::Unsupported);
 
-    // Neither a cached tenant nor a previously authenticated server authorizes a different key.
+    // Cached tenant authentication must not authorize tenant creation.
     for authorization in [&tenant_authorization, &other_authorization] {
         let error = client
             .create_tenant(with_authorization(

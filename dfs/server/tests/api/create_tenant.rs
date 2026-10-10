@@ -1,11 +1,11 @@
 use anyhow::Result;
 use dfs_protocol::rpc::{CreateTenantRequest, ErrorCode, Grant, dfs_client::DfsClient};
 
-use crate::{SERVER_KEY, error_code, serve, with_authorization};
+use crate::{MASTER_KEY, error_code, serve, with_authorization};
 
 pub(crate) async fn dfs_rejects_invalid_tenant_creation() -> Result<()> {
     let mut client = DfsClient::new(serve().await?);
-    let authorization = format!("Bearer {SERVER_KEY}");
+    let authorization = format!("Bearer {MASTER_KEY}");
     let inputs = [
         (String::new(), vec![]),
         ("é".repeat(129), vec![]),

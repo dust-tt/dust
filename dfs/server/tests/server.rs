@@ -11,12 +11,12 @@ use tonic_health::pb::{
 
 mod api;
 
-const SERVER_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const MASTER_KEY: &str = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 async fn serve() -> Result<Channel> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
-    tokio::spawn(dfs_api::serve(listener, SERVER_KEY, std::future::pending()));
+    tokio::spawn(dfs_api::serve(listener, MASTER_KEY, std::future::pending()));
     Ok(Channel::from_shared(format!("http://{address}"))?
         .connect()
         .await?)
@@ -59,7 +59,7 @@ async fn health_checks_and_shutdown_work_without_authorization() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let address = listener.local_addr()?;
     let (stop, stopped) = oneshot::channel();
-    let server = tokio::spawn(dfs_api::serve(listener, SERVER_KEY, async {
+    let server = tokio::spawn(dfs_api::serve(listener, MASTER_KEY, async {
         let _ = stopped.await;
     }));
     let channel = Channel::from_shared(format!("http://{address}"))?

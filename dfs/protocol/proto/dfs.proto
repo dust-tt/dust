@@ -45,7 +45,7 @@ package dfs.v1;
 // report either success or an ErrorDetails failure. An element's failure MUST NOT suppress other
 // results. Request-wide failures MUST follow dfs-rpc-errors.
 service Dfs {
-  // Requires the server key; tenant_id names the tenant to create.
+  // Requires the master key; tenant_id names the tenant to create.
   rpc CreateTenant(CreateTenantRequest) returns (Tenant);
 
   // Requires a tenant key, which determines the authenticated tenant.

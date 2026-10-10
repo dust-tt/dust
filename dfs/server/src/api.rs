@@ -24,7 +24,7 @@ mod errors;
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
 pub struct API {
-    server_key_hash: KeyHash,
+    master_key_hash: KeyHash,
     tenant_cache: Mutex<HashMap<KeyHash, Arc<TenantResource>>>,
 }
 
@@ -37,7 +37,7 @@ impl Dfs for API {
         &self,
         request: Request<CreateTenantRequest>,
     ) -> Result<Response<Tenant>, Status> {
-        self.require_server(&request)?;
+        self.require_master(&request)?;
         let CreateTenantRequest {
             tenant_id,
             root_grants,

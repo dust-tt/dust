@@ -27,10 +27,10 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  */
 pub async fn serve(
     listener: TcpListener,
-    server_key: &str,
+    master_key: &str,
     shutdown: impl Future<Output = ()>,
 ) -> Result<()> {
-    let api = api::API::new(server_key)?;
+    let api = api::API::new(master_key)?;
     let (reporter, health) = tonic_health::server::health_reporter();
     reporter.set_serving::<DfsServer<api::API>>().await;
     let service = DfsServer::new(api)
