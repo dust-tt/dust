@@ -9,14 +9,18 @@ const ONE_MINUTE_IN_SECONDS = 60;
 
 /**
  * Limits the requests per minute to the route it is attached to, for each workspace. Attach it to
- * the handler, e.g. `app.get("/", withRateLimit({ maxPerMinute: 60 }), handler)`.
+ * the handler, e.g. `app.get("/", withWorkspaceRateLimit({ maxPerMinute: 60 }), handler)`.
  */
 /**
  * @cc [owner:philipperolet,label:performance;api] counted-per-workspace-and-route
  * Requests MUST be counted per workspace and per route the middleware is attached to: two
  * workspaces, or two routes using it, MUST NOT share a counter.
  */
-export function withWorkspaceRateLimit({ maxPerMinute }: { maxPerMinute: number }) {
+export function withWorkspaceRateLimit({
+  maxPerMinute,
+}: {
+  maxPerMinute: number;
+}) {
   return createMiddleware<PublicApiCtx>(async (ctx, next) => {
     const workspaceId = ctx.get("auth").getNonNullableWorkspace().sId;
     // Attached to a handler, `routePath` is that handler's route, e.g.

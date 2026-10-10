@@ -5,7 +5,7 @@ import { PostConsumptionExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withRateLimit } from "@front-api/middlewares/with_rate_limit";
+import { withWorkspaceRateLimit } from "@front-api/middlewares/with_workspace_rate_limit";
 
 const EXPORT_TIMEOUT_MS = 10_000;
 
@@ -150,7 +150,7 @@ const app = publicApiApp();
  */
 app.post(
   "/",
-  withRateLimit({ maxPerMinute: 60 }),
+  withWorkspaceRateLimit({ maxPerMinute: 60 }),
   validate("json", PostConsumptionExportRequestSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
