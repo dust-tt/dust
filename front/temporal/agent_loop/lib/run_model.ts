@@ -343,6 +343,13 @@ export function buildSpecificationsWithReplayPlaceholders(
 
 // This method is used by the multi-actions execution loop to pick the next action to execute and
 // generate its inputs.
+/**
+ * @cc [owner:sfriquet,label:backend;product] record-attempted-run-before-request
+ * The LLM trace id of every provider attempt MUST be appended to the agent message's
+ * `attemptedRunIds` before the provider request is sent, including attempts that are later retried,
+ * cancelled or killed. The trace id MUST be added to `runIds` only when the step returns it or
+ * surfaces its error through `publishAgentError`.
+ */
 export async function runModel(
   auth: Authenticator,
   {
@@ -814,6 +821,11 @@ export async function runModel(
 
     return null;
   }
+
+  await ConversationResource.appendAgentMessageAttemptedRunId(auth, {
+    agentMessageModelId: agentMessage.agentMessageId,
+    dustRunId: llm.getTraceId(),
+  });
 
   const metadata = llm.getMetadata();
 

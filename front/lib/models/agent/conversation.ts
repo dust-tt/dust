@@ -484,6 +484,12 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare runIds: string[] | null;
+  /**
+   * @cc [owner:sfriquet,label:product] attempted-run-ids-not-billed
+   * `attemptedRunIds` MUST NOT be used as a billing or credit input: it includes attempts that were
+   * retried, cancelled or killed, and billing reads `runIds` only.
+   */
+  declare attemptedRunIds: string[] | null;
   declare status: CreationOptional<AgentMessageStatus>;
 
   declare errorCode: string | null;
@@ -537,6 +543,10 @@ AgentMessageModel.init(
       defaultValue: DataTypes.NOW,
     },
     runIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+    },
+    attemptedRunIds: {
       type: DataTypes.ARRAY(DataTypes.STRING),
       allowNull: true,
     },

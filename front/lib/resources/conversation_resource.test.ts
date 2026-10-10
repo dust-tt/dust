@@ -251,6 +251,60 @@ describe("ConversationResource", () => {
     });
   });
 
+  describe("appendAgentMessageAttemptedRunId", () => {
+    it("appends attempts in order without touching runIds or other workspaces", async () => {
+      const { workspace, authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const { authenticator: otherAuth } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+        name: "Attempted Runs",
+        description: "agent",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agent.sId,
+        messagesCreatedAt: [new Date("2026-01-01T00:00:00.000Z")],
+      });
+      const agentMessageRow = await MessageModel.findOne({
+        where: {
+          conversationId: conversation.id,
+          workspaceId: workspace.id,
+          rank: 1,
+        },
+      });
+      assert(agentMessageRow?.agentMessageId, "Agent message not found");
+      const agentMessageModelId = agentMessageRow.agentMessageId;
+      await AgentMessageModel.update(
+        { runIds: ["llm_trace_committed"] },
+        { where: { id: agentMessageModelId, workspaceId: workspace.id } }
+      );
+
+      await ConversationResource.appendAgentMessageAttemptedRunId(auth, {
+        agentMessageModelId,
+        dustRunId: "llm_trace_lost",
+      });
+      await ConversationResource.appendAgentMessageAttemptedRunId(auth, {
+        agentMessageModelId,
+        dustRunId: "llm_trace_committed",
+      });
+      await ConversationResource.appendAgentMessageAttemptedRunId(otherAuth, {
+        agentMessageModelId,
+        dustRunId: "llm_trace_other_workspace",
+      });
+
+      const agentMessage = await AgentMessageModel.findOne({
+        where: { id: agentMessageModelId, workspaceId: workspace.id },
+      });
+      expect(agentMessage?.attemptedRunIds).toEqual([
+        "llm_trace_lost",
+        "llm_trace_committed",
+      ]);
+      expect(agentMessage?.runIds).toEqual(["llm_trace_committed"]);
+    });
+  });
+
   describe("fetchByModelIds", () => {
     it("should fetch by model ids within workspace", async () => {
       const workspace = await WorkspaceFactory.basic();

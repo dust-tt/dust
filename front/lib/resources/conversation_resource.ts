@@ -1066,6 +1066,31 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * @cc [owner:sfriquet,label:backend] append-attempted-run-id
+   * `dustRunId` MUST be appended at the end of the agent message's `attemptedRunIds`, preserving
+   * the order of earlier attempts, and `runIds` MUST NOT be modified.
+   */
+  static async appendAgentMessageAttemptedRunId(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      dustRunId,
+    }: { agentMessageModelId: ModelId; dustRunId: string }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      {
+        attemptedRunIds: fn("array_append", col("attemptedRunIds"), dustRunId),
+      },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
    * Recursively sums the `costCredits` of every sub-agent spawned by a single
    * origin agent message (one recursive query, `maxDepth`-bounded). Only counts
    * sub-agents whose triggering user message is a `run_agent` agentic origin
