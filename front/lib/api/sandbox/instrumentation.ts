@@ -113,8 +113,9 @@ export type RunningSandboxDeltaReason = "create" | "wake" | "pause" | "kill";
 /**
  * @cc [owner:jdfiquet,label:backend] running-gauge-delta-pairing
  * Emit DogStatsD counter deltas: +1 on provider create or wake, -1 on pause
- * (sleep or approval pause) and on kill of a still-running sandbox. Killing
- * a sandbox that is already paused must not decrement again.
+ * (sleep or entering pending_approval) and on kill of a still-running sandbox.
+ * Entering pending_approval decrements even if provider sleep fails.
+ * Killing an already-paused sandbox must not decrement again.
  */
 export function recordRunningSandboxDelta({
   delta,
