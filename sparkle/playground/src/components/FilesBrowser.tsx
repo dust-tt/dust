@@ -7,6 +7,8 @@ import {
   ButtonsSwitchList,
   CheckDone01,
   CloudArrowLeftRight,
+  Cube01,
+  Database01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -16,22 +18,36 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Edit04,
   EmptyCTA,
   File02,
   Folder,
+  Globe01,
   Icon,
   List,
+  MessageChatSquare,
+  MessagePlusCircle,
   Plus,
   SearchInput,
+  Star01,
   Table,
   Trash01,
   UploadCloud02,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { type DragEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ComponentType,
+  type DragEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type { DataSource } from "../data/types";
 import {
@@ -39,20 +55,30 @@ import {
   getDataSourceIcon,
   getDataSourcesInFolderTree,
   getFolderPath,
+  getIconForFileType,
   getItemTypeLabel,
   isDataSourceFolder,
+  ROOT_FOLDER_ICON,
+  ROOT_FOLDER_LABEL,
   sortDataSourcesForDisplay,
 } from "../data/dataSources";
+import {
+  indexFilesById,
+  isPinnableToSidebar,
+  isPodFolder,
+} from "../data/fileMoves";
 import { getUserById } from "../data/users";
 import { Breadcrumbs, type BreadcrumbsItem } from "./BreadcrumbsDnd";
 import { DataTable } from "./DataTableDnd";
 
-// Shared files browser: one toolbar row (search stretches, view selection,
-// Create on the right) above the responsive files table. Used by the pod
-// Files tab (folders, drag & drop, reveal) and by the conversation "Files"
-// panel (flat list of the conversation's files).
+// Shared files browser: one toolbar row (search or the folder trail on the
+// left, view selection and Create on the right) above the responsive files
+// table. Used by the pod Files tab (folders, drag & drop, reveal), by the
+// conversation "Files" panel (flat list of the conversation's files), and by
+// the workspace Files screen, which carries the search input in its own
+// header instead.
 
-/** Pod-only drag & drop integration; omit it for a static, flat browser. */
+/** Drag & drop integration; omit it for a static, flat browser. */
 export interface FilesBrowserDnd {
   draggingFileId: string | null;
   dropHoverTargetId: string | null;
@@ -68,6 +94,10 @@ export interface FilesBrowserDnd {
     event: DragEvent<HTMLTableRowElement>
   ) => void;
   onFileDragEnd: () => void;
+  /** Rows that can be picked up; defaults to everything but folders. */
+  canDragRow?: (item: DataSource) => boolean;
+  /** Folders that can receive a drop; defaults to all of them. */
+  canDropOn?: (item: DataSource) => boolean;
 }
 
 interface FilesBrowserProps {
@@ -77,17 +107,61 @@ interface FilesBrowserProps {
   /** Folder navigation + breadcrumbs; off for flat lists (conversations). */
   foldersEnabled?: boolean;
   emptyMessage?: string;
+  /** Opens the conversation a conversation folder stands for. */
+  onOpenConversation?: (dataSource: DataSource) => void;
+  /** Opens a conversation with the row in hand. Offered on every row. */
+  onStartConversation?: (dataSource: DataSource) => void;
+  /** Opens the Pod a Pod folder stands for. */
+  onOpenPod?: (dataSource: DataSource) => void;
+  /** Opens what an agent or skill file stands for, where it can be edited. */
+  onEditBuildItem?: (dataSource: DataSource) => void;
   onAddFileToTopbar?: (fileId: string) => void;
+  /** Keeps a row in the sidebar's Files section, or takes it out again. The
+   *  same rows dragging can put there, so the two never disagree. */
+  isPinnedToSidebar?: (dataSource: DataSource) => boolean;
+  onTogglePinnedToSidebar?: (dataSource: DataSource) => void;
+  /** Adds a "Pod" entry to the create menu, creating it in the open folder. */
+  onCreatePod?: () => void;
+  /** Adds the entries that make a file of their own, in the open folder. */
+  onCreateFile?: (fileType: CreatableFileType) => void;
   dnd?: FilesBrowserDnd;
   /** Controlled search/folder (pod: steered by universal search + reveal). */
   searchText?: string;
   onSearchTextChange?: (text: string) => void;
+  /** Off when the parent renders the search input itself; the folder trail
+   *  then takes its place on the toolbar row instead of sitting below it. */
+  hasSearchInput?: boolean;
+  /** What the top of this browser is, and so what the trail starts with: a
+   *  Pod names itself here; left out, it is the workspace's Hub. */
+  root?: { label: string; icon: ComponentType<{ className?: string }> };
+  /** Stands in for the folder trail where the parent has a better way of
+   *  showing where you are — the workspace screen hands over its folder tree
+   *  once it is too narrow for the sidebar. The trail still comes back while a
+   *  file is being dragged, being the only way to drop one on a parent. */
+  trailSlot?: React.ReactNode;
   currentFolderId?: string | null;
   onCurrentFolderIdChange?: (folderId: string | null) => void;
   /** Row to highlight (pod "reveal in files" flow). */
   revealedFileId?: string | null;
   onClearRevealedFile?: () => void;
 }
+
+/** The file types the create menu can make, as opposed to the ones that only
+ *  ever arrive by upload or sync. */
+export type CreatableFileType =
+  | "website"
+  | "database"
+  | "agent"
+  | "skill"
+  | "tool";
+
+/** The file types that stand for something Build owns, and what editing it is
+ *  called. Everything else is just a file. */
+const BUILD_ITEM_LABELS: Record<string, string | undefined> = {
+  agent: "Edit Agent",
+  skill: "Edit Skill",
+  tool: "Edit Tool",
+};
 
 const formatDate = (date: Date): string =>
   date.toLocaleDateString("en-US", {
@@ -96,27 +170,71 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
-function CreateFilesMenu() {
+function CreateFilesMenu({
+  onCreatePod,
+  onCreateFile,
+}: {
+  onCreatePod?: () => void;
+  onCreateFile?: (fileType: CreatableFileType) => void;
+}) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="primary" icon={Plus} label="Create" isSelect />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem icon={File02} label="Doc" onClick={() => {}} />
-        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
-        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
-        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
         <DropdownMenuItem
           icon={UploadCloud02}
-          label="Upload File"
+          label="Upload"
           onClick={() => {}}
         />
         <DropdownMenuItem
           icon={CloudArrowLeftRight}
-          label="From Company data"
+          label="Cloud data"
           onClick={() => {}}
         />
+        {onCreateFile && (
+          <DropdownMenuItem
+            icon={getIconForFileType("website")}
+            label="Website"
+            onClick={() => onCreateFile("website")}
+          />
+        )}
+        <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
+        {onCreatePod && (
+          <DropdownMenuItem icon={Cube01} label="Pod" onClick={onCreatePod} />
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel label="Document" />
+        <DropdownMenuItem icon={File02} label="Text" onClick={() => {}} />
+        <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
+        <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
+        {onCreateFile && (
+          <>
+            <DropdownMenuItem
+              icon={getIconForFileType("database")}
+              label="Database"
+              onClick={() => onCreateFile("database")}
+            />
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel label="Run" />
+            <DropdownMenuItem
+              icon={getIconForFileType("agent")}
+              label="Agent"
+              onClick={() => onCreateFile("agent")}
+            />
+            <DropdownMenuItem
+              icon={getIconForFileType("skill")}
+              label="Skill"
+              onClick={() => onCreateFile("skill")}
+            />
+            <DropdownMenuItem
+              icon={getIconForFileType("tool")}
+              label="Tool"
+              onClick={() => onCreateFile("tool")}
+            />
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -128,10 +246,21 @@ export function FilesBrowser({
   onDeleteFile,
   foldersEnabled = true,
   emptyMessage = "No files yet.",
+  onOpenConversation,
+  onStartConversation,
+  onOpenPod,
+  onEditBuildItem,
   onAddFileToTopbar,
+  isPinnedToSidebar,
+  onTogglePinnedToSidebar,
+  onCreatePod,
+  onCreateFile,
   dnd,
   searchText: controlledSearchText,
   onSearchTextChange,
+  hasSearchInput = true,
+  root,
+  trailSlot,
   currentFolderId: controlledFolderId,
   onCurrentFolderIdChange,
   revealedFileId = null,
@@ -171,7 +300,7 @@ export function FilesBrowser({
 
   // ── Breadcrumbs (folders mode) ────────────────────────────────────────────
   const folderBreadcrumbItems = useMemo((): BreadcrumbsItem[] => {
-    const path = getFolderPath(dataSources, currentFolderId);
+    const path = getFolderPath(indexFilesById(dataSources), currentFolderId);
     const isDragActive = !!dnd && dnd.draggingFileId !== null;
 
     const getDropProps = (
@@ -194,12 +323,14 @@ export function FilesBrowser({
           }
         : {};
 
+    const rootLabel = root?.label ?? ROOT_FOLDER_LABEL;
+    const rootIcon = root?.icon ?? ROOT_FOLDER_ICON;
     const items: BreadcrumbsItem[] = [
       currentFolderId === null
-        ? { label: "Files", icon: Folder }
+        ? { label: rootLabel, icon: rootIcon }
         : {
-            label: "Files",
-            icon: Folder,
+            label: rootLabel,
+            icon: rootIcon,
             onClick: () => {
               setCurrentFolderId(null);
               setSearchText("");
@@ -211,14 +342,15 @@ export function FilesBrowser({
 
     path.forEach((folder, index) => {
       const isLast = index === path.length - 1;
+      const icon = getDataSourceIcon(folder) ?? Folder;
       if (isLast) {
-        items.push({ label: folder.fileName, icon: Folder });
+        items.push({ label: folder.fileName, icon });
         return;
       }
 
       items.push({
         label: folder.fileName,
-        icon: Folder,
+        icon,
         onClick: () => {
           setCurrentFolderId(folder.id);
           onClearRevealedFile?.();
@@ -233,11 +365,109 @@ export function FilesBrowser({
     dataSources,
     dnd,
     onClearRevealedFile,
+    root,
     setCurrentFolderId,
     setSearchText,
   ]);
 
   // ── Table rows ────────────────────────────────────────────────────────────
+  /** What a row offers, from its "..." button and from right-clicking it
+   *  alike — the two are the same menu. */
+  const rowMenuItems = useCallback(
+    (dataSource: DataSource) => {
+      // What the row stands for elsewhere in the workspace, and so what there
+      // is to open: a conversation, a Pod, or an agent or skill Build owns.
+      const buildItemLabel = dataSource.refId
+        ? BUILD_ITEM_LABELS[dataSource.fileType ?? ""]
+        : undefined;
+      const isConversation =
+        dataSource.kind === "folder" &&
+        dataSource.folderType === "conversation" &&
+        !!dataSource.refId;
+
+      return [
+        ...(onOpenConversation && isConversation
+          ? [
+              {
+                kind: "item" as const,
+                label: "Open the conversation",
+                icon: MessageChatSquare,
+                onClick: () => onOpenConversation(dataSource),
+              },
+            ]
+          : []),
+        ...(onStartConversation
+          ? [
+              {
+                kind: "item" as const,
+                label: "Start a conversation",
+                icon: MessagePlusCircle,
+                onClick: () => onStartConversation(dataSource),
+              },
+            ]
+          : []),
+        ...(onOpenPod && isPodFolder(dataSource)
+          ? [
+              {
+                kind: "item" as const,
+                label: "Open Pod",
+                icon: Cube01,
+                onClick: () => onOpenPod(dataSource),
+              },
+            ]
+          : []),
+        ...(onEditBuildItem && buildItemLabel
+          ? [
+              {
+                kind: "item" as const,
+                label: buildItemLabel,
+                icon: Edit04,
+                onClick: () => onEditBuildItem(dataSource),
+              },
+            ]
+          : []),
+        ...(onAddFileToTopbar && dataSource.kind === "file"
+          ? [
+              {
+                kind: "item" as const,
+                label: "Add to Topbar",
+                icon: File02,
+                onClick: () => onAddFileToTopbar(dataSource.id),
+              },
+            ]
+          : []),
+        ...(onTogglePinnedToSidebar && isPinnableToSidebar(dataSource)
+          ? [
+              {
+                kind: "item" as const,
+                label: isPinnedToSidebar?.(dataSource)
+                  ? "Remove from sidebar"
+                  : "Keep in the sidebar",
+                icon: Star01,
+                onClick: () => onTogglePinnedToSidebar(dataSource),
+              },
+            ]
+          : []),
+        {
+          kind: "item" as const,
+          label: "Delete",
+          icon: Trash01,
+          variant: "warning" as const,
+          onClick: () => setDeleteFileId(dataSource.id),
+        },
+      ];
+    },
+    [
+      isPinnedToSidebar,
+      onAddFileToTopbar,
+      onEditBuildItem,
+      onOpenConversation,
+      onOpenPod,
+      onStartConversation,
+      onTogglePinnedToSidebar,
+    ]
+  );
+
   const visibleItems = useMemo(
     () =>
       sortDataSourcesForDisplay(
@@ -264,6 +494,8 @@ export function FilesBrowser({
     return base.map((dataSource) => {
       const item = {
         ...dataSource,
+        // Right-clicking a row opens what its "..." button holds.
+        menuItems: rowMenuItems(dataSource),
         onClick: () => {
           if (isDataSourceFolder(dataSource)) {
             setCurrentFolderId(dataSource.id);
@@ -284,27 +516,34 @@ export function FilesBrowser({
         };
       }
 
-      if (isDataSourceFolder(dataSource)) {
-        return {
-          ...item,
-          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
-            dnd.onDragOverTarget(dataSource.id, event),
-          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
-            event.preventDefault();
-          },
-          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
-            dnd.onDropOnTarget(dataSource.id, dataSource.id, event),
-          isDropHighlight: dnd.dropHoverTargetId === dataSource.id,
-        };
-      }
+      // A folder can be both: somewhere to drop, and something to carry.
+      const isFolder = isDataSourceFolder(dataSource);
+      const canDrag = dnd.canDragRow ? dnd.canDragRow(dataSource) : !isFolder;
+      const canDrop =
+        isFolder && (dnd.canDropOn ? dnd.canDropOn(dataSource) : true);
 
       return {
         ...item,
-        draggable: true,
-        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
-          dnd.onFileDragStart(dataSource.id, dataSource.fileName, event),
-        onDragEnd: dnd.onFileDragEnd,
-        isDragging: dnd.draggingFileId === dataSource.id,
+        ...(canDrag
+          ? {
+              draggable: true,
+              onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onFileDragStart(dataSource.id, dataSource.fileName, event),
+              onDragEnd: dnd.onFileDragEnd,
+              isDragging: dnd.draggingFileId === dataSource.id,
+            }
+          : {}),
+        ...(canDrop
+          ? {
+              onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onDragOverTarget(dataSource.id, event),
+              onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
+                event.preventDefault();
+              },
+              onDrop: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onDropOnTarget(dataSource.id, dataSource.id, event),
+            }
+          : {}),
         isDropHighlight:
           dnd.dropHoverTargetId === dataSource.id ||
           revealedFileId === dataSource.id,
@@ -318,6 +557,7 @@ export function FilesBrowser({
     onClearRevealedFile,
     onFileOpen,
     revealedFileId,
+    rowMenuItems,
     searchScope,
     searchText,
     setCurrentFolderId,
@@ -344,11 +584,16 @@ export function FilesBrowser({
           className: "w-full",
         },
         cell: (info) => {
-          const icon = getDataSourceIcon(info.row.original);
+          const item = info.row.original;
+          const icon = getDataSourceIcon(item);
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
-                {icon && <Icon visual={icon} size="sm" />}
+                {item.avatar ? (
+                  <Avatar size="xxs" {...item.avatar} />
+                ) : (
+                  icon && <Icon visual={icon} size="sm" />
+                )}
                 <span>{info.getValue() as string}</span>
               </div>
             </DataTable.CellContent>
@@ -442,51 +687,73 @@ export function FilesBrowser({
         meta: {
           className: "w-12",
         },
-        cell: (info) => {
-          const dataSource = info.row.original;
-          const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
-              ? [
-                  {
-                    kind: "item" as const,
-                    label: "Add to Topbar",
-                    icon: File02,
-                    onClick: () => onAddFileToTopbar(dataSource.id),
-                  },
-                ]
-              : []),
-            {
-              kind: "item" as const,
-              label: "Delete",
-              icon: Trash01,
-              variant: "warning" as const,
-              onClick: () => setDeleteFileId(dataSource.id),
-            },
-          ];
-
-          return <DataTable.MoreButton menuItems={menuItems} />;
-        },
+        cell: (info) => (
+          <DataTable.MoreButton menuItems={rowMenuItems(info.row.original)} />
+        ),
       },
     ],
-    [onAddFileToTopbar]
+    [rowMenuItems]
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (dataSources.length === 0) {
-    return <EmptyCTA message={emptyMessage} action={<CreateFilesMenu />} />;
+    return (
+      <EmptyCTA
+        message={emptyMessage}
+        action={
+          <CreateFilesMenu
+            onCreatePod={onCreatePod}
+            onCreateFile={onCreateFile}
+          />
+        }
+      />
+    );
   }
+
+  const isDragging = dnd !== undefined && dnd.draggingFileId !== null;
+
+  const breadcrumbTrail = (
+    <div className="flex w-full min-w-0 items-center gap-2">
+      {isDragging && (
+        <AnimatedText variant="muted" className="shrink-0 text-sm italic">
+          Move to
+        </AnimatedText>
+      )}
+      {/* The trail folds its root-most folders away to fit, so it has to be
+          handed the free space rather than size itself to its content. */}
+      <Breadcrumbs
+        items={folderBreadcrumbItems}
+        size="sm"
+        hasLighterFont
+        className="min-w-0 flex-1"
+      />
+    </div>
+  );
+
+  // The slot stands in for the trail wherever it is given, the top level
+  // included: it says where you are in its own way. Dragging is the exception,
+  // the trail being the only way to drop a file on a folder further up.
+  const folderTrail =
+    foldersEnabled &&
+    !isSearchActive &&
+    (trailSlot !== undefined && !isDragging ? trailSlot : breadcrumbTrail);
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      {/* Toolbar: search on the left, view selection and Create on the right. */}
+      {/* Toolbar: search or the folder trail on the left, view selection and
+          Create on the right. */}
       <div className="flex items-center gap-2">
-        <SearchInput
-          name="files-search"
-          value={searchText}
-          onChange={setSearchText}
-          placeholder="Search files..."
-          className="w-full min-w-0 max-w-80"
-        />
+        {hasSearchInput ? (
+          <SearchInput
+            name="files-search"
+            value={searchText}
+            onChange={setSearchText}
+            placeholder="Search files..."
+            className="w-full min-w-0 max-w-80"
+          />
+        ) : (
+          folderTrail
+        )}
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -514,20 +781,14 @@ export function FilesBrowser({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <CreateFilesMenu />
+          <CreateFilesMenu
+            onCreatePod={onCreatePod}
+            onCreateFile={onCreateFile}
+          />
         </div>
       </div>
 
-      {foldersEnabled && !isSearchActive && currentFolderId !== null && (
-        <div className="flex items-center gap-2">
-          {dnd && dnd.draggingFileId !== null && (
-            <AnimatedText variant="muted" className="text-sm italic">
-              Move to
-            </AnimatedText>
-          )}
-          <Breadcrumbs items={folderBreadcrumbItems} size="sm" hasLighterFont />
-        </div>
-      )}
+      {hasSearchInput && folderTrail}
 
       {foldersEnabled && isSearchActive && currentFolderId !== null && (
         <ButtonsSwitchList

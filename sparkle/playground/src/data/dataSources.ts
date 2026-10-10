@@ -1,16 +1,29 @@
 import {
   ActionFrame,
+  BookOpen01,
+  Cube01,
+  Database01,
   File06,
   Folder,
+  Globe01,
   GooglePdfLogo,
+  HardDrive,
   Image01,
+  MessageChatSquare,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
   MicrosoftWordLogo,
+  PuzzlePiece01,
+  Robot,
+  ShapesPlus,
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { DataSource, DataSourceFileType } from "./types";
+import type {
+  DataSource,
+  DataSourceFileType,
+  DataSourceFolderType,
+} from "./types";
 import { mockUsers } from "./users";
 
 // Seeded random function for deterministic randomness
@@ -218,6 +231,9 @@ function generateFileName(
     case "frame":
       nameList = frameNames;
       break;
+    default:
+      nameList = mdNames;
+      break;
   }
 
   const baseName = nameList[Math.floor(random * nameList.length)];
@@ -289,6 +305,10 @@ export function getIconForFileType(
       return MicrosoftExcelLogo;
     case "frame":
       return ActionFrame;
+    case "website":
+      return Globe01;
+    case "database":
+      return Database01;
     case "pptx":
       return MicrosoftPowerpointLogo;
     case "txt":
@@ -296,8 +316,30 @@ export function getIconForFileType(
       return File06;
     case "png":
       return Image01;
+    case "agent":
+      return Robot;
+    case "skill":
+      return PuzzlePiece01;
+    case "tool":
+      return ShapesPlus;
     default:
       return GooglePdfLogo;
+  }
+}
+
+/** The icon a folder carries for what it stands for in the workspace. */
+export function getIconForFolderType(
+  folderType: DataSourceFolderType
+): React.ComponentType<{ className?: string }> {
+  switch (folderType) {
+    case "drive":
+      return HardDrive;
+    case "pod":
+      return Cube01;
+    case "conversation":
+      return MessageChatSquare;
+    default:
+      return Folder;
   }
 }
 
@@ -312,8 +354,45 @@ function getSourceForIndex(index: number, seed: string): DataSource["source"] {
   return seededRandom(seed, index * 5) < 0.3 ? "company" : "pod";
 }
 
+/**
+ * Files a folder of the workspace file system is filled with: same name pools,
+ * type distribution, authors and dates as a space's own files.
+ */
+export function generateFilesInFolder({
+  seed,
+  count,
+  parentId,
+  source,
+}: {
+  seed: string;
+  count: number;
+  parentId: string | null;
+  source: DataSource["source"];
+}): DataSource[] {
+  const files: DataSource[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const fileType = getFileTypeForIndex(i, seed);
+    const { createdAt, updatedAt } = generateDates(i, seed);
+    files.push({
+      id: `ds-${seed}-${i}`,
+      kind: "file",
+      fileName: generateFileName(fileType, i, seed),
+      parentId,
+      source,
+      fileType,
+      createdBy: getRandomUserId(i, seed),
+      createdAt,
+      updatedAt,
+      icon: getIconForFileType(fileType),
+    });
+  }
+
+  return files;
+}
+
 // Generate data sources for a space (folders + files in a tree)
-function generateDataSourcesForSpace(
+export function generateDataSourcesForSpace(
   spaceId: string,
   fileCount: number
 ): DataSource[] {
@@ -448,15 +527,18 @@ export function getDataSourcesInFolderTree(
   return items.filter((item) => isInFolderTree(items, item, folderId));
 }
 
+/**
+ * Takes the id index rather than the file list: the ⌘K palette asks for the
+ * path of every file it lists, and a workspace holds thousands of items.
+ */
 export function getFolderPath(
-  items: DataSource[],
+  itemsById: Map<string, DataSource>,
   folderId: string | null
 ): DataSource[] {
   if (!folderId) {
     return [];
   }
 
-  const itemsById = new Map(items.map((item) => [item.id, item]));
   const path: DataSource[] = [];
   let currentId: string | null = folderId;
 
@@ -472,11 +554,71 @@ export function getFolderPath(
   return path;
 }
 
+/** Where an agent or a skill is filed, as the Build tables report it. */
+export interface ItemLocation {
+  /** The folder holding it, or `null` when it sits at the top level. */
+  folder: DataSource | null;
+  /** The folder's name, or `ROOT_FOLDER_LABEL` at the top level. */
+  label: string;
+  /** The whole trail down to the folder, for a tooltip. */
+  path: string;
+}
+
+/** What the top of the workspace file system is called in the product. */
+export const ROOT_FOLDER_LABEL = "Hub";
+export const ROOT_FOLDER_ICON = BookOpen01;
+
+/**
+ * Every agent's and skill's location, keyed by the `refId` of its file — the
+ * agent or skill id the Build tables hold. Indexed once rather than walking
+ * the list per item, since a mature workspace holds thousands of files.
+ */
+export function getItemLocations(
+  items: DataSource[]
+): Map<string, ItemLocation> {
+  const itemsById = new Map(items.map((item) => [item.id, item]));
+  const locations = new Map<string, ItemLocation>();
+
+  for (const item of items) {
+    if (
+      !item.refId ||
+      (item.fileType !== "agent" && item.fileType !== "skill")
+    ) {
+      continue;
+    }
+
+    const trail: string[] = [];
+    let folder: DataSource | null = null;
+    let currentId = item.parentId;
+
+    while (currentId) {
+      const parent = itemsById.get(currentId);
+      if (!parent || parent.kind !== "folder") {
+        break;
+      }
+      folder = folder ?? parent;
+      trail.unshift(parent.fileName);
+      currentId = parent.parentId;
+    }
+
+    locations.set(item.refId, {
+      folder,
+      label: folder?.fileName ?? ROOT_FOLDER_LABEL,
+      path: [ROOT_FOLDER_LABEL, ...trail].join(" / "),
+    });
+  }
+
+  return locations;
+}
+
 export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
   if (isDataSourceFolder(item)) {
-    return Folder;
+    return (
+      item.icon ??
+      (item.folderType ? getIconForFolderType(item.folderType) : Folder)
+    );
   }
 
   if (item.fileType) {
@@ -486,17 +628,30 @@ export function getDataSourceIcon(
   return item.icon;
 }
 
-export function getFileTypeLabel(fileType: DataSourceFileType): string {
-  if (fileType === "frame") {
-    return "Frame";
-  }
+const NAMED_FILE_TYPE_LABELS: Partial<Record<DataSourceFileType, string>> = {
+  frame: "Frame",
+  website: "Website",
+  database: "Database",
+  agent: "Agent",
+  skill: "Skill",
+  tool: "Tool",
+};
 
-  return fileType.toUpperCase();
+export function getFileTypeLabel(fileType: DataSourceFileType): string {
+  return NAMED_FILE_TYPE_LABELS[fileType] ?? fileType.toUpperCase();
 }
+
+const FOLDER_TYPE_LABELS: Record<DataSourceFolderType, string> = {
+  drive: "Drive",
+  space: "Space",
+  pod: "Pod",
+  conversation: "Conversation",
+  system: "Folder",
+};
 
 export function getItemTypeLabel(item: DataSource): string {
   if (isDataSourceFolder(item)) {
-    return "Folder";
+    return item.folderType ? FOLDER_TYPE_LABELS[item.folderType] : "Folder";
   }
 
   return item.fileType ? getFileTypeLabel(item.fileType) : "File";

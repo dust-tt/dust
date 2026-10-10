@@ -42,13 +42,14 @@ import {
   mockManagedAgents,
   withCurrentUserAsEditor,
 } from "../data/build";
+import type { ItemLocation } from "../data/dataSources";
 import { getUserById } from "../data/users";
-import { AgentDetailsSheet } from "./BuildDetailSheets";
 import { BulkSelectionBar } from "./BulkSelectionBar";
 import { EmptyState } from "./EmptyState";
 import {
   type BatchConfirmCopy,
   BatchConfirmDialog,
+  buildLocationColumn,
   buildSelectionColumn,
   FilterMenu,
 } from "./buildTableShared";
@@ -79,7 +80,9 @@ type RowData = ManagedAgent & { onClick: () => void; menuItems: MenuItem[] };
 
 // ── Columns ──────────────────────────────────────────────────────────────────
 
-function buildColumns(): ColumnDef<RowData>[] {
+function buildColumns(
+  locations: Map<string, ItemLocation> | undefined
+): ColumnDef<RowData>[] {
   return [
     buildSelectionColumn<RowData>("agent"),
     {
@@ -107,6 +110,7 @@ function buildColumns(): ColumnDef<RowData>[] {
       ),
       meta: { className: "w-40 @lg:w-full" },
     },
+    ...(locations ? [buildLocationColumn<RowData>(locations)] : []),
     {
       id: "model",
       accessorFn: (row: RowData) =>
@@ -392,12 +396,23 @@ function AgentBatchBar({
 interface ManageAgentsViewProps {
   /** Whose agents count as "editable by me". */
   currentUserId: string;
+  /** The workspace's own agents; defaults to the shared mock roster. */
+  agents?: ManagedAgent[];
+  /** Where each agent is filed, keyed by agent id. Adds the Location column. */
+  locations?: Map<string, ItemLocation>;
+  /** Opens an agent's details: the panel they open in belongs to the story. */
+  onOpenAgent: (agentId: string) => void;
 }
 
-export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
+export function ManageAgentsView({
+  currentUserId,
+  agents: workspaceAgents,
+  locations,
+  onOpenAgent,
+}: ManageAgentsViewProps) {
   const [agents, setAgents] = useState<ManagedAgent[]>(() =>
     withCurrentUserAsEditor(
-      mockManagedAgents,
+      workspaceAgents ?? mockManagedAgents,
       currentUserId,
       (agent) => agent.canEdit && agent.scope !== "global"
     )
@@ -412,7 +427,6 @@ export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
     pageSize: 25,
   });
   const [pendingBatch, setPendingBatch] = useState<PendingBatch | null>(null);
-  const [detailedAgentId, setDetailedAgentId] = useState<string | null>(null);
 
   const agentsByTab = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -510,13 +524,13 @@ export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
     setPendingBatch(null);
   };
 
-  const columns = useMemo(() => buildColumns(), []);
+  const columns = useMemo(() => buildColumns(locations), [locations]);
 
   const rows: RowData[] = useMemo(
     () =>
       visibleAgents.map((agent) => ({
         ...agent,
-        onClick: () => setDetailedAgentId(agent.id),
+        onClick: () => onOpenAgent(agent.id),
         menuItems: [
           ...(agent.canEdit && agent.status === "active"
             ? [{ kind: "item" as const, label: "Edit", icon: Edit04 }]
@@ -525,7 +539,7 @@ export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
             kind: "item" as const,
             label: "More info",
             icon: Robot,
-            onClick: () => setDetailedAgentId(agent.id),
+            onClick: () => onOpenAgent(agent.id),
           },
           ...(agent.canEdit && agent.status === "active"
             ? [
@@ -547,14 +561,14 @@ export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
             : []),
         ],
       })),
-    [visibleAgents]
+    [onOpenAgent, visibleAgents]
   );
 
   const activeFilterCount = tagFilters.length + modelFilters.length;
 
   return (
     <div className="flex h-full w-full flex-col overflow-y-auto bg-background px-4">
-      <div className="@container mx-auto flex w-full max-w-6xl flex-1 flex-col gap-3 pt-6 pb-8">
+      <div className="@container flex w-full flex-1 flex-col gap-3 pt-6 pb-8">
         <div className="flex items-center gap-2">
           <SearchInput
             name="agents-search"
@@ -676,11 +690,6 @@ export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
         countLabel={`${selectedAgents.length} agent${selectedAgents.length === 1 ? "" : "s"}`}
         onCancel={() => setPendingBatch(null)}
         onConfirm={handleConfirmBatch}
-      />
-
-      <AgentDetailsSheet
-        agentId={detailedAgentId}
-        onClose={() => setDetailedAgentId(null)}
       />
     </div>
   );

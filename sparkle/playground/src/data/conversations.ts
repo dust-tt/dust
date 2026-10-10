@@ -1,9 +1,12 @@
 import type {
+  Agent,
   Conversation,
   ConversationItem,
   ConversationMessage,
   ConversationSpeaker,
   ConversationWorkState,
+  MessageActionCardData,
+  Space,
 } from "./types";
 import { mockAgents } from "./agents";
 import { mockSpaces } from "./spaces";
@@ -75,7 +78,7 @@ function generateConversationParticipants(): {
 }
 
 // Helper function to generate a description based on title
-function generateDescription(title: string): string {
+export function generateDescription(title: string): string {
   const descriptions: Record<string, string> = {
     "Project Kickoff Meeting":
       "Initial discussion to align team on project goals and timeline. We'll be reviewing the scope of work, establishing key milestones, and defining success metrics. The team will also discuss resource allocation, potential challenges, and mitigation strategies. This foundational meeting sets the tone for the entire project lifecycle and ensures everyone is on the same page from day one.",
@@ -296,7 +299,7 @@ export function getLastSpeaker(
 }
 
 // Realistic conversation titles
-const conversationTitles = [
+export const conversationTitles = [
   "Project Kickoff Meeting",
   "Budget Review Discussion",
   "Weekly Sync with Team",
@@ -1492,4 +1495,258 @@ I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topn
   };
 
   return [conversation1, conversation2];
+}
+
+function clockTime(date: Date): string {
+  return date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+interface OnboardingTurn {
+  from: "agent" | "user";
+  /** Minutes after the conversation opened. */
+  minutes: number;
+  content?: string;
+  markdown?: string;
+  actionCards?: MessageActionCardData[];
+}
+
+/**
+ * A first-day conversation between the user and one agent, which opened it a
+ * few minutes ago. Unread: everything the agent said after the user last spoke
+ * is what came in while they were away.
+ */
+function buildOnboardingConversation({
+  id,
+  title,
+  description,
+  locutorId,
+  agent,
+  turns,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  locutorId: string;
+  agent: Agent;
+  turns: OnboardingTurn[];
+}): Conversation {
+  const start = new Date(Date.now() - 12 * 60 * 1000);
+  const locutor = mockUsers.find((user) => user.id === locutorId);
+
+  // Consecutive turns from the same side read as one group, under one name.
+  let groupIndex = 0;
+  const messages: ConversationItem[] = turns.map((turn, index) => {
+    if (index > 0 && turns[index - 1].from !== turn.from) {
+      groupIndex++;
+    }
+    const timestamp = new Date(start.getTime() + turn.minutes * 60 * 1000);
+    const isAgent = turn.from === "agent";
+    return {
+      kind: "message",
+      id: `msg-${id}-${index}`,
+      content: turn.content,
+      markdown: turn.markdown,
+      actionCards: turn.actionCards,
+      timestamp,
+      ownerId: isAgent ? agent.id : locutorId,
+      ownerType: isAgent ? "agent" : "user",
+      type: isAgent ? "agent" : "user",
+      group: isAgent
+        ? {
+            id: `group-${id}-${groupIndex}`,
+            type: "agent",
+            name: agent.name,
+            timestamp: clockTime(timestamp),
+            avatar: {
+              emoji: agent.emoji,
+              backgroundColor: agent.backgroundColor,
+            },
+          }
+        : {
+            id: `group-${id}-${groupIndex}`,
+            type: "locutor",
+            timestamp: clockTime(timestamp),
+            avatar: { visual: locutor?.portrait },
+          },
+    };
+  });
+
+  const lastUserTurn = turns.map((turn) => turn.from).lastIndexOf("user");
+  return {
+    id,
+    title,
+    createdAt: start,
+    updatedAt: getLastActivityAt(messages, start),
+    userParticipants: [locutorId],
+    agentParticipants: [agent.id],
+    messages,
+    description,
+    // A single-message unread row gets a random pile-up count from the Inbox,
+    // so this one says its own.
+    workState: "unread",
+    unreadCount: turns.length - 1 - lastUserTurn,
+  };
+}
+
+function addToolCard(
+  name: string,
+  description: string,
+  visual: MessageActionCardData["visual"]
+): MessageActionCardData {
+  return {
+    id: `action-add-${name.toLowerCase()}`,
+    title: `Add ${name}`,
+    acceptedTitle: `${name} added`,
+    rejectedTitle: `${name} skipped`,
+    description,
+    applyLabel: "Add",
+    rejectLabel: "Not now",
+    cardVariant: "secondary",
+    visual,
+  };
+}
+
+/**
+ * The conversation a brand-new workspace opens on: the generalist agent asks
+ * what the team works in, then proposes the first tools to add and the first
+ * documents to upload.
+ */
+export function createWelcomeConversation(
+  locutorId: string,
+  agent: Agent
+): Conversation {
+  return buildOnboardingConversation({
+    id: "conv-welcome",
+    title: "Welcome to Dust",
+    description: "Set up your workspace",
+    locutorId,
+    agent,
+    turns: [
+      {
+        from: "agent",
+        minutes: 0,
+        content:
+          "Welcome to Dust. Nothing is connected to this workspace yet, so I can only answer from the model. Which tools does your team work in every day? I'll tell you what to add first.",
+      },
+      {
+        from: "user",
+        minutes: 6,
+        content:
+          "Slack for chat, Notion for docs and specs, GitHub for code. Most of our contracts and decks are PDFs on people's laptops.",
+      },
+      {
+        from: "agent",
+        minutes: 7,
+        content:
+          "Start with these three. Once they are added, agents can search them and cite what they find.",
+        actionCards: [
+          addToolCard(
+            "Slack",
+            "Agents read the channels you pick, and can post where you ask them to.",
+            { emoji: "💬", backgroundColor: "bg-violet-100" }
+          ),
+          addToolCard(
+            "Notion",
+            "Agents read the pages and databases you share with Dust.",
+            { emoji: "📝", backgroundColor: "bg-gray-100" }
+          ),
+          addToolCard(
+            "GitHub",
+            "Agents read code, issues and pull requests in the repositories you choose.",
+            { emoji: "🐙", backgroundColor: "bg-slate-200" }
+          ),
+        ],
+      },
+      {
+        from: "agent",
+        minutes: 7,
+        content:
+          "For the PDFs, upload them to the Hub. Files on the Main drive can be read by every agent in the workspace.",
+        actionCards: [
+          {
+            id: "action-upload-documents",
+            title: "Upload your first documents",
+            acceptedTitle: "Documents uploaded to the Main drive",
+            rejectedTitle: "Upload skipped",
+            description: "Contracts, decks and specs, as PDF, Word or text.",
+            applyLabel: "Upload",
+            rejectLabel: "Later",
+            cardVariant: "highlight",
+            visual: { emoji: "📄", backgroundColor: "bg-golden-100" },
+          },
+        ],
+      },
+    ],
+  });
+}
+
+export interface NewMemberSuggestions {
+  pods: Space[];
+  agents: Agent[];
+}
+
+/**
+ * The conversation someone joining a busy workspace opens on: the generalist
+ * agent asks their role, then points to the Pods to join and the agents those
+ * Pods use.
+ */
+export function createNewMemberConversation(
+  locutorId: string,
+  agent: Agent,
+  { pods, agents }: NewMemberSuggestions
+): Conversation {
+  const turns: OnboardingTurn[] = [
+    {
+      from: "agent",
+      minutes: 0,
+      content:
+        "Welcome to Dust. This workspace is already in use, so the quickest way in is to join the few Pods that match your work. What's your role?",
+    },
+    {
+      from: "user",
+      minutes: 5,
+      content: "I just joined as a frontend engineer, on the web team.",
+    },
+    {
+      from: "agent",
+      minutes: 6,
+      content:
+        "Your team works in these Pods. Joining one puts its conversations in your Inbox and its files within reach of your agents.",
+      actionCards: pods.map((pod, index) => ({
+        id: `action-join-${pod.id}`,
+        title: `Join ${pod.name}`,
+        acceptedTitle: `You joined ${pod.name}`,
+        rejectedTitle: `${pod.name} skipped`,
+        description: pod.description,
+        applyLabel: "Join",
+        rejectLabel: "Skip",
+        cardVariant: index === 0 ? "highlight" : "secondary",
+      })),
+    },
+  ];
+  if (agents.length > 0) {
+    turns.push({
+      from: "agent",
+      minutes: 6,
+      markdown: [
+        "These are the agents those Pods use most:",
+        agents
+          .map(({ name, description }) => `- **${name}**: ${description}`)
+          .join("\n"),
+        "Pick one from Agent in the input bar to start a conversation with it.",
+      ].join("\n\n"),
+    });
+  }
+
+  return buildOnboardingConversation({
+    id: "conv-new-member",
+    title: "Find your Pods and agents",
+    description: "Where to start as a frontend engineer",
+    locutorId,
+    agent,
+    turns,
+  });
 }

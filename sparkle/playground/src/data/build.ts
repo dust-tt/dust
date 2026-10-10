@@ -13,8 +13,10 @@ import {
   LinearLogo,
   MagicWand02,
   NotionLogo,
+  PuzzlePiece01,
   SalesforceLogo,
   Server03,
+  ShapesPlus,
   SlackLogo,
   Table,
   Terminal,
@@ -436,6 +438,34 @@ export function getToolById(id: string): MockTool | undefined {
   return mockTools.find((tool) => tool.id === id);
 }
 
+/**
+ * A tool as creating one leaves it: a custom MCP server the workspace has
+ * named but not yet pointed anywhere, so it declares no operation and
+ * authenticates with nothing.
+ */
+export function createMockTool(name: string, editorId: string): MockTool {
+  const tool: MockTool = {
+    id: `tool-created-${Date.now()}`,
+    name,
+    description: "",
+    icon: ShapesPlus,
+    serverUrl: "",
+    iconName: null,
+    isWorkspaceWide: false,
+    spaceIds: [],
+    account: "",
+    isConnected: true,
+    scopes: [],
+    isRestrictedToSkills: false,
+    editorId,
+    updatedAt: new Date(),
+    usedByAgentIds: [],
+    operations: [],
+  };
+  mockTools.push(tool);
+  return tool;
+}
+
 // ── Skills ───────────────────────────────────────────────────────────────────
 
 /** Who can reach for a skill, from its editors alone to every agent. */
@@ -661,6 +691,35 @@ export function getManagedSkillById(id: string): ManagedSkill | undefined {
 }
 
 /**
+ * A skill as creating one leaves it: named, owned by whoever asked for it, and
+ * empty of everything else. Pushed into the shared list, which is where the
+ * detail panel reads a skill back from.
+ */
+export function createManagedSkill(
+  name: string,
+  editorId: string
+): ManagedSkill {
+  const skill: ManagedSkill = {
+    id: `skill-created-${Date.now()}`,
+    name,
+    description: "",
+    icon: PuzzlePiece01,
+    availability: "editors",
+    status: "active",
+    usageCount: 0,
+    usedByAgentIds: [],
+    editorIds: [editorId],
+    updatedAt: new Date(),
+    isDustProvided: false,
+    guidelines: "",
+    toolIds: [],
+    spaceIds: [],
+  };
+  mockManagedSkills.push(skill);
+  return skill;
+}
+
+/**
  * How many skills reach for a tool, read back from the skills' own tool lists
  * — a tool is used by agents and by skills, and the Tools table counts both.
  */
@@ -765,25 +824,28 @@ export function getModelById(id: string): MockModel | undefined {
   return MOCK_MODELS.find((model) => model.id === id);
 }
 
-const AGENT_INSTRUCTIONS = [
+export const AGENT_INSTRUCTIONS = [
   "You are a careful assistant. Answer from the knowledge attached to you, and say so plainly when it does not cover the question.",
   "Keep answers short. Lead with the answer, then the reasoning, and never pad a reply to look thorough.",
   "Always cite the document a figure came from, with its title and the section it sits in.",
   "Ask one clarifying question when the request is ambiguous, then proceed without asking again.",
 ].join("\n\n");
 
+/** The generalist agent, which every workspace has from its first day. */
+export const DUST_GLOBAL_AGENT: Agent = {
+  id: "agent-global-dust",
+  name: "dust",
+  emoji: "✨",
+  backgroundColor: "bg-primary-100",
+  description: "The generalist agent, with access to every workspace tool.",
+};
+
 /**
  * The default agents Dust ships. They sit in their own tab, cannot be edited,
  * and so are never selectable.
  */
 const GLOBAL_AGENT_SEEDS: Agent[] = [
-  {
-    id: "agent-global-dust",
-    name: "dust",
-    emoji: "✨",
-    backgroundColor: "bg-primary-100",
-    description: "The generalist agent, with access to every workspace tool.",
-  },
+  DUST_GLOBAL_AGENT,
   {
     id: "agent-global-claude",
     name: "claude",
@@ -881,6 +943,35 @@ export const mockManagedAgents: ManagedAgent[] = [
 
 export function getManagedAgentById(id: string): ManagedAgent | undefined {
   return mockManagedAgents.find((agent) => agent.id === id);
+}
+
+/** An agent as creating one leaves it, the counterpart of `createManagedSkill`. */
+export function createManagedAgent(
+  name: string,
+  editorId: string
+): ManagedAgent {
+  const agent: ManagedAgent = {
+    id: `agent-created-${Date.now()}`,
+    name,
+    emoji: "🤖",
+    backgroundColor: "bg-primary-100",
+    description: "",
+    scope: "hidden",
+    status: "active",
+    modelId: MOCK_MODELS[0].id,
+    tags: [],
+    editorIds: [editorId],
+    usageCount: 0,
+    feedbackUp: 0,
+    feedbackDown: 0,
+    updatedAt: new Date(),
+    canEdit: true,
+    instructions: "",
+    skillIds: [],
+    spaceIds: [],
+  };
+  mockManagedAgents.push(agent);
+  return agent;
 }
 
 // ── Signed-in user ───────────────────────────────────────────────────────────

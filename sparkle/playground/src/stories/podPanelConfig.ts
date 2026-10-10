@@ -1,7 +1,6 @@
 import {
   ActionIcons,
   MessageChatSquare,
-  CheckCircle,
   Settings01,
   File02,
   Folder,
@@ -10,7 +9,6 @@ import type { ComponentType } from "react";
 
 import type { FreeButtonSwitchContextMenuItem } from "../components/FreeButtonSwitch";
 import {
-  getConversationsBySpaceId,
   getMyPodConversations,
   MY_POD_SPACE,
   type Conversation,
@@ -109,7 +107,11 @@ export function resolvePodContext(
     return {
       variant: "shared",
       space,
-      conversations: getConversationsBySpaceId(p2View.spaceId),
+      // Read from the story's own conversations, the way My Pod does, so a
+      // story that builds its own workspace sees it here too.
+      conversations: allConversations.filter(
+        (conversation) => conversation.spaceId === space.id
+      ),
       spaceId: p2View.spaceId,
     };
   }
@@ -124,7 +126,6 @@ export function getBasePodTabOptions(_variant: PodVariant): PodTabOption[] {
       label: "Conversations",
       icon: MessageChatSquare,
     },
-    { value: "todos", label: "Tasks", icon: CheckCircle },
     { value: "knowledge", label: "Files", icon: Folder },
   ];
 }
