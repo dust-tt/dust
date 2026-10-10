@@ -2,11 +2,16 @@ import { CREATE_CONTENT_MAX_BYTES } from "@app/lib/api/actions/servers/files/met
 import { editHandler } from "@app/lib/api/actions/servers/files/tools/edit";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import {
+  fetchLiveSource,
+  pushLiveSource,
+} from "@app/lib/api/collab/live_source";
+import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { frameContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -15,6 +20,10 @@ vi.mock("@app/lib/file_storage/config", () => ({
 }));
 vi.mock("@app/lib/api/config", () => ({
   default: { getApiBaseUrl: vi.fn(() => "https://dust.tt") },
+}));
+vi.mock("@app/lib/api/collab/live_source", () => ({
+  fetchLiveSource: vi.fn(),
+  pushLiveSource: vi.fn(),
 }));
 
 function mockStoredFile(content: string, contentType: string) {
@@ -28,6 +37,10 @@ function mockStoredFile(content: string, contentType: string) {
 describe("editHandler", () => {
   beforeEach(() => {
     fileStorageMock.reset();
+    vi.mocked(fetchLiveSource)
+      .mockReset()
+      .mockResolvedValue(new Ok({ open: false }));
+    vi.mocked(pushLiveSource).mockReset();
   });
 
   it("replaces a string and writes back with the original content type", async () => {
@@ -259,5 +272,106 @@ describe("editHandler", () => {
       expect(result.error.message).toContain("KB limit");
     }
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  describe("a Markdown document open in a live session", () => {
+    const STORED = "# Notes\n\nShip on Thursday.";
+    // The session is ahead of the file until its next checkpoint.
+    const LIVE = "# Notes\n\nShip on Thursday. Typed live.";
+
+    it("edits it through the session, not the file", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile(STORED, "text/markdown");
+      vi.mocked(fetchLiveSource).mockResolvedValue(
+        new Ok({ open: true, source: LIVE })
+      );
+      vi.mocked(pushLiveSource).mockResolvedValue(new Ok("written"));
+
+      const result = await editHandler(
+        {
+          path: `conversation-${conversation.sId}/notes.md`,
+          old_string: "Typed live.",
+          new_string: "Typed live, then edited.",
+        },
+        makeExtra(auth, conversation)
+      );
+
+      assert(result.isOk());
+      expect(result.value[0]).toMatchObject({
+        type: "text",
+        text: expect.stringContaining("open in a live session"),
+      });
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+      const [, written] = vi.mocked(pushLiveSource).mock.calls[0];
+      expect(written.base).toBe(LIVE);
+      expect(written.source).toContain("Typed live, then edited.");
+    });
+
+    it("looks the session up without a trailing slash", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile(STORED, "text/markdown");
+      vi.mocked(fetchLiveSource).mockResolvedValue(
+        new Ok({ open: true, source: LIVE })
+      );
+      vi.mocked(pushLiveSource).mockResolvedValue(new Ok("written"));
+
+      const result = await editHandler(
+        {
+          path: `conversation-${conversation.sId}/notes.md/`,
+          old_string: "Typed live.",
+          new_string: "Typed live, then edited.",
+        },
+        makeExtra(auth, conversation)
+      );
+
+      assert(result.isOk());
+      expect(vi.mocked(fetchLiveSource).mock.calls[0][1]).toBe(
+        `conversation-${conversation.sId}/notes.md`
+      );
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    });
+
+    it("writes the file when no session holds it", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile(STORED, "text/markdown");
+
+      const result = await editHandler(
+        {
+          path: `conversation-${conversation.sId}/notes.md`,
+          old_string: "Thursday",
+          new_string: "Friday",
+        },
+        makeExtra(auth, conversation)
+      );
+
+      assert(result.isOk());
+      expect(pushLiveSource).not.toHaveBeenCalled();
+      expect(fileStorageMock.saveFileCalls[0].content.toString("utf8")).toBe(
+        "# Notes\n\nShip on Friday."
+      );
+    });
+
+    it("refuses an edit the session's source does not allow, writing nothing", async () => {
+      const { auth, conversation } = await setupProjectConversation();
+      mockStoredFile(STORED, "text/markdown");
+      vi.mocked(fetchLiveSource).mockResolvedValue(
+        new Ok({ open: true, source: LIVE })
+      );
+
+      const result = await editHandler(
+        {
+          path: `conversation-${conversation.sId}/notes.md`,
+          old_string: "Nowhere.",
+          new_string: "Somewhere.",
+        },
+        makeExtra(auth, conversation)
+      );
+
+      assert(result.isErr());
+      // `edit_document`'s wording, not the file path's.
+      expect(result.error.message).toContain("read it again");
+      expect(pushLiveSource).not.toHaveBeenCalled();
+      expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    });
   });
 });

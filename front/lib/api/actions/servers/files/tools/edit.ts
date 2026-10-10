@@ -16,16 +16,81 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/agent_loop_fs";
 import {
   frameSourceUpdatedNotice,
+  getLiveSessionPath,
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { FRAME_SOURCE_MAX_BYTES } from "@app/lib/api/actions/servers/interactive_content/metadata";
+import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
+import { editAgentDocument } from "@app/lib/api/files/dfm_agent_documents";
 import { getUpdatedContentAndOccurrences } from "@app/lib/api/files/utils";
+import type { Authenticator } from "@app/lib/auth";
 import {
+  contentTypeFromFileName,
   isInteractiveContentType,
+  isMarkdownContentType,
   stripMimeParameters,
 } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
+
+/**
+ * @cc [owner:PopDaph,label:product;concurrency] files-edit-live-markdown
+ * A Markdown file a live session holds MUST be edited through `editAgentDocument`, never by
+ * writing the file, with its rules and refusals; a collab server failure MUST refuse the edit
+ * rather than write the file. Without a session, or for a file `editAgentDocument` cannot read
+ * by its name, it MUST return null so the file is edited as before. A session opening between
+ * the check and the write is not covered until the new file system marks open files in their
+ * metadata.
+ */
+async function editLiveMarkdown(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  {
+    path,
+    ...edit
+  }: {
+    path: string;
+    oldString: string;
+    newString: string;
+    expectedReplacements: number;
+  }
+): Promise<ToolHandlerResult | null> {
+  // Checked here as well as in `editAgentDocument`: a closed file keeps the plain string replace,
+  // not `edit_document`'s rules.
+  // TODO(co-edition): a session opening between this check and the plain write loads the file
+  // before the write, and its checkpoints then conflict with it. Fixed once the new file system
+  // marks open files in their metadata.
+  const live = await getLiveSessionPath(auth, path);
+  if (live.isErr()) {
+    return live;
+  }
+  const canonicalPath = live.value;
+  if (
+    canonicalPath === null ||
+    contentTypeFromFileName(canonicalPath) !== "text/markdown"
+  ) {
+    return null;
+  }
+  // Through `edit_document`'s path, which writes the session or, if it closed meanwhile, the file.
+  const edited = await editAgentDocument(auth, dustFs, {
+    scopedPath: canonicalPath,
+    ...edit,
+  });
+  if (edited.isErr()) {
+    return new Err(
+      new MCPError(edited.error.message, {
+        tracked: edited.error.code === "storage_failed",
+      })
+    );
+  }
+  const { replacements } = edited.value;
+  return new Ok([
+    {
+      type: "text",
+      text: `Updated \`${path}\`, open in a live session: made ${replacements} replacement${pluralize(replacements)}.`,
+    },
+  ]);
+}
 
 export async function editHandler(
   {
@@ -71,6 +136,20 @@ export async function editHandler(
   const mimeType = stripMimeParameters(contentType);
   // Frame source files carry the frame content type but hold plain TSX text.
   const isFrameSource = isInteractiveContentType(mimeType);
+
+  // A Markdown document open in a live session is edited there, as `edit_document` does: open
+  // editors see the change, and the session's next checkpoint does not conflict with the file.
+  if (isMarkdownContentType(mimeType)) {
+    const live = await editLiveMarkdown(auth, dustFs, {
+      path,
+      oldString: old_string,
+      newString: new_string,
+      expectedReplacements: expected_replacements ?? 1,
+    });
+    if (live !== null) {
+      return live;
+    }
+  }
 
   if (!isFrameSource && !isReadableAsText(mimeType)) {
     return new Err(

@@ -1,3 +1,8 @@
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  FILES_EDIT_ACTION_NAME,
+  FILES_SERVER_NAME,
+} from "@app/lib/api/actions/servers/files/metadata";
 import { isDustLikeAgent } from "@app/lib/api/assistant/global_agents/prompt_context";
 import { readWorkspacePolicy } from "@app/lib/api/sandbox/egress_policy";
 import {
@@ -61,12 +66,31 @@ function buildSandboxInstructionProse({
   return instructions.join(" ");
 }
 
-function buildFilesSection({ hasPod }: { hasPod: boolean }): string {
+function buildFilesSection({
+  hasPod,
+  hasLiveDocuments,
+}: {
+  hasPod: boolean;
+  hasLiveDocuments: boolean;
+}): string {
   const podMountLine = hasPod
     ? `
 - \`/files/pod\` — the Pod's file system, shared across every conversation
   in the same Pod. Anything you write or delete here is visible to the
   other conversations of that Pod.`
+    : "";
+
+  // Writes from the sandbox bypass the live session of a document open in the editor.
+  // TODO(co-edition): lock such files in the file system instead, once it carries metadata.
+  const liveDocumentsSection = hasLiveDocuments
+    ? `
+
+Exception to defaulting to the sandbox: a \`.md\` file may be open in the
+document editor while people type in it. Read it from the sandbox if you
+like, but change an existing \`.md\` file only with
+\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\`, never by writing it from the sandbox
+(\`cat >\`, \`sed -i\`, a script): such writes skip the editor, the people in
+it do not see them, and the document stops saving.`
     : "";
 
   const podUsageSection = hasPod
@@ -138,7 +162,7 @@ conversation context, and lets you compose pipelines. Reach for the
 \`files\` MCP server only for a trivial one-shot read where spinning up a
 shell command would be heavier than needed. Never re-call a tool just to
 re-read its output: the previous result is already on disk under
-\`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\`.
+\`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\`.${liveDocumentsSection}
 
 Typical workflow when a prior tool returned a large output: locate the most
 recent matching file under \`/files/conversation/${TOOL_OUTPUTS_FOLDER_NAME}/\`, then use
@@ -350,16 +374,21 @@ async function buildSandboxInstructions(
     hasFramesV2,
     hasFramesV2Functions,
     isProject,
+    hasLiveDocuments,
   }: {
     hasDsbxTools: boolean;
     hasFramesV2: boolean;
     hasFramesV2Functions: boolean;
     isProject: boolean;
+    hasLiveDocuments: boolean;
   }
 ): Promise<string> {
   const networkAccessSection = await buildNetworkAccessSection(auth);
   const environmentVariablesSection = buildEnvironmentVariablesSection();
-  const filesSection = buildFilesSection({ hasPod: isProject });
+  const filesSection = buildFilesSection({
+    hasPod: isProject,
+    hasLiveDocuments,
+  });
   const sandboxInstructions = buildSandboxInstructionProse({
     hasDsbxTools,
     hasFramesV2,
@@ -452,6 +481,8 @@ export const sandboxSkill = {
       hasFramesV2,
       hasFramesV2Functions,
       isProject,
+      // Only `co_edition` workspaces open documents in a live editor.
+      hasLiveDocuments: flags.includes("co_edition"),
     });
   },
   mcpServers: [{ name: "sandbox" }],
