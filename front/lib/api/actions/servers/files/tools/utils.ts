@@ -4,11 +4,11 @@ import {
   FILES_CREATE_ACTION_NAME,
   FILES_EDIT_ACTION_NAME,
   FILES_SERVER_NAME,
+  framePublishHint,
 } from "@app/lib/api/actions/servers/files/metadata";
 import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   INTERACTIVE_CONTENT_SERVER_NAME,
-  PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { getGCSPathFromScopedPath } from "@app/lib/api/files/gcs_mount/files";
 import type { Authenticator } from "@app/lib/auth";
@@ -150,19 +150,23 @@ export async function resolveFile(
   );
 }
 
-export function frameFileCreateRejectedError(): MCPError {
+export function frameFileCreateRejectedError(hasFramesV2: boolean): MCPError {
+  const alternative = hasFramesV2
+    ? `Write the Frame's source in the Computer, then publish it with ${framePublishHint(true)}.`
+    : `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`;
+
   return new MCPError(
     `Frame files cannot be created with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CREATE_ACTION_NAME)}\`. ` +
-      `Use \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` instead.`,
+      alternative,
     { tracked: false }
   );
 }
 
-export function frameFileEditRejectedError(): MCPError {
+export function frameFileEditRejectedError(hasFramesV2: boolean): MCPError {
   return new MCPError(
     "Frame files cannot be edited with this tool. " +
       `Edit the Frame's source with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EDIT_ACTION_NAME)}\`, ` +
-      `then publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`,
+      `then publish it with ${framePublishHint(hasFramesV2)}.`,
     { tracked: false }
   );
 }
@@ -171,10 +175,10 @@ export function frameFileEditRejectedError(): MCPError {
  * Notice appended after a write to a Frame source file on the mount. The mount write never
  * changes the rendered Frame directly, the model must publish to rebuild it.
  */
-export function frameSourceUpdatedNotice(): string {
+export function frameSourceUpdatedNotice(hasFramesV2: boolean): string {
   return (
     "This updated the Frame's source only. The rendered Frame is unchanged until you " +
-    `publish it with \`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`.`
+    `publish it with ${framePublishHint(hasFramesV2)}.`
   );
 }
 

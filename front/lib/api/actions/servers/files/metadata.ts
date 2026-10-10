@@ -358,19 +358,38 @@ const FILES_TOOLS_COMMON_METADATA = [
   },
 ] as const;
 
-const EDIT_TOOL = {
-  description:
+/**
+ * @cc [owner:davidebbo,label:product;mcp] frame-publish-hint-matches-frames-v2
+ * When `hasFramesV2` is true, the hint MUST name `dsbx frame publish` and MUST NOT name
+ * `publish_interactive_content_file`, which Frames v2 does not serve. When false, it MUST name
+ * `publish_interactive_content_file` and MUST NOT name `dsbx frame publish`.
+ */
+export function framePublishHint(hasFramesV2: boolean): string {
+  return hasFramesV2
+    ? "`dsbx frame publish /files/<scoped path>` in the Computer " +
+        "(e.g. `dsbx frame publish /files/conversation-<id>/App.tsx`)"
+    : `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\``;
+}
+
+export function filesEditToolDescription(hasFramesV2: boolean): string {
+  return (
     "Edit a text file by replacing an exact string match with new content. " +
     "This is also how to update an existing Frame (interactive dashboard, data visualization, " +
     "chart, or slideshow): make targeted edits to the Frame's source file, then publish it with " +
-    `\`${getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`. ` +
+    `${framePublishHint(hasFramesV2)}. ` +
     "Never create a new Frame or rewrite the whole source to change an existing one. " +
     "`old_string` must match the file content exactly, including whitespace and indentation. " +
     "Fails if `old_string` is not found or if the number of occurrences does not match " +
     "`expected_replacements` (default 1); make `old_string` unique by including surrounding lines. " +
     `Files larger than ${CREATE_CONTENT_MAX_BYTES / 1024} KB cannot be edited with this tool, ` +
     `except Frame source files, which get a higher, ${FRAME_SOURCE_MAX_BYTES / 1024} KB cap. ` +
-    "Editing a Frame source file updates only its source, never the rendered Frame directly.",
+    "Editing a Frame source file updates only its source, never the rendered Frame directly."
+  );
+}
+
+// The static description targets legacy Frames; `createFilesTools` swaps it under Frames v2.
+const EDIT_TOOL = {
+  description: filesEditToolDescription(false),
   schema: {
     path: z
       .string()
