@@ -241,6 +241,7 @@ function AgentBuilderForm({
       triggersToCreate: hydratedValues.triggersToCreate,
       triggersToUpdate: hydratedValues.triggersToUpdate,
       triggersToDelete: hydratedValues.triggersToDelete,
+      suggestedPrompts: hydratedValues.suggestedPrompts,
       agentSettings: {
         ...currentValues.agentSettings,
         slackProvider: hydratedValues.slackProvider,
@@ -403,6 +404,9 @@ function AgentBuilderForm({
       const areSlackChannelsChanged = form.getFieldState(
         "agentSettings.slackChannels"
       ).isDirty;
+      const areSuggestedPromptsChanged =
+        form.getFieldState("suggestedPrompts").isDirty ||
+        (!!duplicateAgentId && formData.suggestedPrompts.length > 0);
 
       const result = await submitAgentBuilderForm({
         user,
@@ -411,6 +415,7 @@ function AgentBuilderForm({
         isDraft: false,
         agentConfigurationId: effectiveAgentConfigurationId,
         areSlackChannelsChanged,
+        areSuggestedPromptsChanged,
         fetcherWithBody,
       });
 

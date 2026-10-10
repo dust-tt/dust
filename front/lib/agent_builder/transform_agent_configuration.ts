@@ -49,6 +49,7 @@ export function transformAgentConfigurationToFormData(
     triggersToCreate: [],
     triggersToUpdate: [], // Will be populated reactively from the hook
     triggersToDelete: [],
+    suggestedPrompts: [],
     maxStepsPerRun: agentConfiguration.maxStepsPerRun || 8,
   };
 }
@@ -88,6 +89,7 @@ export function getDefaultAgentFormData({
     triggersToCreate: [],
     triggersToUpdate: [],
     triggersToDelete: [],
+    suggestedPrompts: [],
     maxStepsPerRun: 8,
   };
 }
