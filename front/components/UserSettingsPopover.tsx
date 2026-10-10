@@ -474,6 +474,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 type ThemeChoice = "light" | "dark" | "system";
 
+const AUTOMATIC_LOCALE = "automatic";
+
+type LocaleChoice = SupportedLocale | typeof AUTOMATIC_LOCALE;
+
 type TranslatableOptionTile<T extends string> = Omit<OptionTile<T>, "label"> & {
   label: MessageDescriptor;
 };
@@ -542,11 +546,17 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
   const {
-    userLocale,
+    storedUserLocale,
+    automaticLocale,
+    automaticLocaleSource,
     isSaving: isSavingLocale,
     doUpdateUserLocale,
   } = useUserLocale({ owner });
-  const [localLocale, setLocalLocale] = useState<SupportedLocale | null>(null);
+  const savedLocaleChoice: LocaleChoice = storedUserLocale ?? AUTOMATIC_LOCALE;
+  const [localLocale, setLocalLocale] = useState<LocaleChoice | null>(null);
+  const localeChoice = localLocale ?? savedLocaleChoice;
+  const automaticLocaleLabel = LOCALE_LABELS[automaticLocale];
+  const automaticLocaleOptionLabel = t`Automatic (${automaticLocaleLabel})`;
 
   const modEnterLabel = isMac ? t`Cmd + Enter (⌘ + ↵)` : t`Ctrl + Enter`;
   const modEnterMenuLabel = isMac ? t`Cmd + Enter` : t`Ctrl + Enter`;
@@ -578,7 +588,7 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
     localAgentsSectionVisible !== isAgentsSectionVisible ||
-    (localLocale !== null && localLocale !== userLocale);
+    localeChoice !== savedLocaleChoice;
 
   const handleSave = () => {
     if (localTheme !== currentTheme) {
@@ -616,8 +626,10 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
           }
         });
     }
-    if (localLocale !== null && localLocale !== userLocale) {
-      void doUpdateUserLocale(localLocale).then((saved) => {
+    if (localeChoice !== savedLocaleChoice) {
+      void doUpdateUserLocale(
+        localeChoice === AUTOMATIC_LOCALE ? null : localeChoice
+      ).then((saved) => {
         if (saved) {
           setLocalLocale(null);
         }
@@ -651,13 +663,27 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
                   <Button
                     variant="outline"
                     size="sm"
-                    label={LOCALE_LABELS[localLocale ?? userLocale]}
+                    label={
+                      localeChoice === AUTOMATIC_LOCALE
+                        ? automaticLocaleOptionLabel
+                        : LOCALE_LABELS[localeChoice]
+                    }
                     isSelect
                     disabled={isSavingLocale}
                   />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent mountPortalContainer={portalContainer}>
-                  <DropdownMenuRadioGroup value={localLocale ?? userLocale}>
+                  <DropdownMenuRadioGroup value={localeChoice}>
+                    <DropdownMenuRadioItem
+                      value={AUTOMATIC_LOCALE}
+                      label={automaticLocaleOptionLabel}
+                      description={
+                        automaticLocaleSource === "browser"
+                          ? t`Follows your browser's language`
+                          : t`Follows your workspace's language`
+                      }
+                      onClick={() => setLocalLocale(AUTOMATIC_LOCALE)}
+                    />
                     {SUPPORTED_LOCALES.map((locale) => (
                       <DropdownMenuRadioItem
                         key={locale}
