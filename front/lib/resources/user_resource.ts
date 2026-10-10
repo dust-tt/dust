@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { FrameTrustResource } from "@app/lib/resources/frame_trust_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
@@ -919,6 +920,8 @@ export class UserResource extends BaseResource<UserModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
+
+    await FrameTrustResource.deleteAllForUser(auth, this);
 
     return;
   }
