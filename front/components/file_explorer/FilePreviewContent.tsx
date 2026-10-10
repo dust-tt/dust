@@ -10,6 +10,7 @@ import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
@@ -406,6 +407,10 @@ function RichMarkdownDocument({
       }),
     ];
   }, [owner, editor.path]);
+  const embeddableFiles = useDocumentEmbeddableFiles({
+    owner,
+    documentPath: editor.path,
+  });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
 
   const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
@@ -449,6 +454,7 @@ function RichMarkdownDocument({
         />
       )}
       renderFrame={(path) => <DocumentFrameEmbed owner={owner} path={path} />}
+      embeddableFiles={embeddableFiles}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

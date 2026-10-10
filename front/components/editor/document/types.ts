@@ -73,6 +73,8 @@ export interface DocumentProps {
   renderFilePreview?: (preview: DocumentFilePreview) => ReactNode;
   /** Renders the Frame a `::frame` line embeds, from its path. Without it, the embed shows its path. */
   renderFrame?: (path: string) => ReactNode;
+  /** Files the `/` menu offers to embed. Without them, it offers no image. */
+  embeddableFiles?: DocumentEmbeddableFile[];
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
   /** Renders the users in the live session, the current one first, such as an avatar stack. */
@@ -86,6 +88,13 @@ export interface DocumentFilePreview {
   path: string;
   title: string | null;
   contentType: string | null;
+}
+
+/** A file of the document's conversation or pod, embedded by its path. */
+export interface DocumentEmbeddableFile {
+  kind: "image";
+  path: string;
+  name: string;
 }
 
 /** Where and as whom a Document joins its live session. */
