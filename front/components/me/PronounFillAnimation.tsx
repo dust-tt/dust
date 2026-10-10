@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 import { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const LETTER_STAGGER_MS = 25;
-const LETTER_MS = 600;
+const LETTER_STAGGER_MS = 20;
+const LETTER_MS = 450;
 
 // Letters show up in these colors, one after the other, then blend into the text color.
 const LETTER_COLOR_CLASSES = [
