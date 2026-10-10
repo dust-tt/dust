@@ -5,6 +5,7 @@ import { PostConsumptionExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { withWorkspaceRateLimit } from "@front-api/middlewares/with_workspace_rate_limit";
 
 const EXPORT_TIMEOUT_MS = 10_000;
 
@@ -142,11 +143,14 @@ const app = publicApiApp();
  *         description: |
  *           The workspace does not have access to the consumption export API, or the API key has no
  *           admin scope and the export is not restricted to groups whose analytics it can read.
+ *       429:
+ *         description: Rate limit exceeded (60 requests per minute per workspace)
  *       500:
  *         description: Internal Server Error
  */
 app.post(
   "/",
+  withWorkspaceRateLimit({ maxPerMinute: 60 }),
   validate("json", PostConsumptionExportRequestSchema),
   async (ctx) => {
     const auth = ctx.get("auth");
