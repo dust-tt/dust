@@ -31,15 +31,15 @@ export function getUntrustedEgressAgent(): ProxyAgent | undefined {
 
 /**
  * Get a proxy agent for static IP egress.
- * Used for MCP requests to domains that require whitelisted IP addresses.
- * Requires PROXY_USER_NAME, PROXY_USER_PASSWORD, PROXY_HOST, and PROXY_PORT
- * environment variables to be configured.
+ * Used for requests to domains that require whitelisted IP addresses.
+ * Returns undefined unless PROXY_USER_NAME, PROXY_USER_PASSWORD, PROXY_HOST, and PROXY_PORT
+ * environment variables are configured (always the case in deployed environments).
  */
 export function getStaticIPProxyAgent(): ProxyAgent | undefined {
-  const user = EnvironmentConfig.getEnvVariable("PROXY_USER_NAME");
-  const pass = EnvironmentConfig.getEnvVariable("PROXY_USER_PASSWORD");
-  const host = EnvironmentConfig.getEnvVariable("PROXY_HOST");
-  const port = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+  const user = EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_NAME");
+  const pass = EnvironmentConfig.getOptionalEnvVariable("PROXY_USER_PASSWORD");
+  const host = EnvironmentConfig.getOptionalEnvVariable("PROXY_HOST");
+  const port = EnvironmentConfig.getOptionalEnvVariable("PROXY_PORT");
 
   if (user && pass && host && port) {
     return createProxyAgent(`http://${user}:${pass}@${host}:${port}`);
