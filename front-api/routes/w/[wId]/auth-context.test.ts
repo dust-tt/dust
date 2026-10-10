@@ -59,12 +59,13 @@ describe("GET /api/w/:wId/auth-context group management", () => {
 });
 
 describe("GET /api/w/:wId/auth-context user locale", () => {
-  async function fetchLocale(workspaceId: string) {
+  async function fetchLocales(workspaceId: string) {
     const response = await honoApp.request(
       `/api/w/${workspaceId}/auth-context`
     );
     expect(response.status).toBe(200);
-    return (await response.json()).locale;
+    const { locale, userLocale } = await response.json();
+    return { locale, userLocale };
   }
 
   it("falls back to the workspace locale", async () => {
@@ -72,17 +73,26 @@ describe("GET /api/w/:wId/auth-context user locale", () => {
     const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
     await workspaceResource?.updateWorkspaceSettings({ locale: "fr-FR" });
 
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchLocales(workspace.sId)).toEqual({
+      locale: "fr-FR",
+      userLocale: null,
+    });
 
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "de-DE");
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchLocales(workspace.sId)).toEqual({
+      locale: "fr-FR",
+      userLocale: null,
+    });
   });
 
   it("returns the locale stored in the user metadata", async () => {
     const { workspace, user } = await createPrivateApiMockRequest();
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
 
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchLocales(workspace.sId)).toEqual({
+      locale: "fr-FR",
+      userLocale: "fr-FR",
+    });
   });
 });
 

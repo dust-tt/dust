@@ -41,4 +41,5 @@ export type GetWorkspaceAuthContextResponseType = {
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
   locale?: SupportedLocale;
+  userLocale?: SupportedLocale | null;
 };
