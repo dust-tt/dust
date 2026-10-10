@@ -1,0 +1,70 @@
+.control {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1rem;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.control:hover:not(:disabled) {
+  background-color: var(--color-primary-100);
+}
+
+.control:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.control:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+@property --glint-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.streaming::after {
+  position: absolute;
+  inset: -1px;
+  border: 1px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(
+      from var(--glint-angle),
+      transparent 0deg 280deg,
+      color-mix(in srgb, var(--color-highlight-300) 15%, transparent) 310deg,
+      color-mix(in srgb, var(--color-highlight-300) 75%, transparent) 340deg,
+      transparent 360deg
+    )
+    border-box;
+  mask:
+    linear-gradient(#fff 0 0) padding-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  content: "";
+  animation: glint 3.2s linear infinite;
+}
+
+@keyframes glint {
+  to {
+    --glint-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .streaming::after {
+    animation: none;
+    --glint-angle: 335deg;
+  }
+}

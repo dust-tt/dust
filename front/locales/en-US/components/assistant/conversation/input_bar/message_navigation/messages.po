@@ -1,0 +1,30 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-07 16:48+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/input_bar/message_navigation/ConversationNavigationPill.tsx
+msgid "Previous user message"
+msgstr "Previous user message"
+
+#: front/components/assistant/conversation/input_bar/message_navigation/ConversationNavigationPill.tsx
+msgid "Jump to latest answer"
+msgstr "Jump to latest answer"
+
+#: front/components/assistant/conversation/input_bar/message_navigation/ConversationNavigationPill.tsx
+msgid "Answer ready, go to bottom"
+msgstr "Answer ready, go to bottom"
+
+#: front/components/assistant/conversation/input_bar/message_navigation/ConversationNavigationPill.tsx
+msgid "Next user message"
+msgstr "Next user message"

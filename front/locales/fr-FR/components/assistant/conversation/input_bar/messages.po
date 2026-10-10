@@ -159,14 +159,6 @@ msgstr "Enregistrer la page dans le Pod"
 msgid "Send message"
 msgstr "Envoyer le message"
 
-#: front/components/assistant/conversation/input_bar/InputBarMessageNavigation.tsx
-msgid "Previous user message"
-msgstr "Message utilisateur précédent"
-
-#: front/components/assistant/conversation/input_bar/InputBarMessageNavigation.tsx
-msgid "Next user message"
-msgstr "Message utilisateur suivant"
-
 #: front/components/assistant/conversation/input_bar/InputBarPlusMenu.tsx
 msgid "More"
 msgstr "Plus"
