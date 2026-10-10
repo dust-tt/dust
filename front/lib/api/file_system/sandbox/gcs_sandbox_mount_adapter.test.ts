@@ -147,7 +147,7 @@ describe("buildMountCommand", () => {
     expect(command).toContain("bucket-x /frames/fil_frame/publications");
   });
 
-  test("sandbox state replica mounts as dust-state without allow_other or list caching", () => {
+  test("sandbox state replica mounts as dust-state without allow_other or list caching, with metadata caching", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
@@ -167,9 +167,10 @@ describe("buildMountCommand", () => {
       "/usr/sbin/runuser -u dust-state -- /usr/bin/gcsfuse"
     );
     expect(command).not.toContain("allow_other");
-    // Restore must never see a cached LTX listing.
+    // Restore must never see a cached LTX listing, but per-file lookups after a
+    // listing must hit the stat cache.
     expect(command).toContain("--kernel-list-cache-ttl-secs=0");
-    expect(command).toContain("--metadata-cache-ttl-secs=0");
+    expect(command).toContain("--metadata-cache-ttl-secs=60");
     expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
     expect(command).toContain("--file-mode=600");
     expect(command).toContain("--dir-mode=700");
