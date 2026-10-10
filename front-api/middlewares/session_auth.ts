@@ -1,4 +1,8 @@
 import type { SessionCtx } from "@front-api/middlewares/ctx";
+import {
+  applyPrivateNoStoreCacheHeader,
+  ensurePrivateNoStoreCache,
+} from "@front-api/middlewares/private_no_store_cache";
 import { resolveSession } from "@front-api/middlewares/session_resolution";
 import { createMiddleware } from "hono/factory";
 
@@ -12,9 +16,10 @@ import { createMiddleware } from "hono/factory";
 export const sessionAuth = createMiddleware<SessionCtx>(async (ctx, next) => {
   const result = await resolveSession(ctx);
   if (result instanceof Response) {
-    return result;
+    return ensurePrivateNoStoreCache(result);
   }
 
   ctx.set("session", result);
   await next();
+  applyPrivateNoStoreCacheHeader(ctx);
 });

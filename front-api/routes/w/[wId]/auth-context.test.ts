@@ -44,6 +44,7 @@ describe("GET /api/w/:wId/auth-context group management", () => {
     await FeatureFlagFactory.basic(adminAuth, "group_management");
     const response = await honoApp.request(url);
     expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     const { groupManagement } = await response.json();
     expect(groupManagement.write).toEqual({
       kind: "ids",
