@@ -8,7 +8,14 @@ import {
 } from "@sparkle/components/Document";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import React from "react";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fireEvent,
+  fn,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 const MAYA: DocumentCommentAuthor = { name: "Maya Chen" };
 const LIAM: DocumentCommentAuthor = {
@@ -135,6 +142,29 @@ const selectFirstParagraph = (editor: HTMLElement) => {
   selectContents(paragraph);
 };
 
+const clickCommentText = (highlight: HTMLElement, offset: number) => {
+  const editor = highlight.closest<HTMLElement>('[contenteditable="true"]');
+  if (!editor) {
+    throw new Error("Expected an editable document");
+  }
+  editor.focus();
+  const ownerDocument = highlight.ownerDocument;
+  const text = ownerDocument
+    .createTreeWalker(highlight, NodeFilter.SHOW_TEXT)
+    .nextNode();
+  if (!text) {
+    throw new Error("Expected comment text");
+  }
+  const range = ownerDocument.createRange();
+  range.setStart(text, offset);
+  range.collapse(true);
+  // Synthetic pointer events need the browser's caret placement supplied explicitly.
+  const selection = ownerDocument.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  fireEvent.click(highlight);
+};
+
 const undoText = async () => {
   const modifier = /Mac|iP(hone|ad|od)/.test(navigator.platform)
     ? "Meta"
@@ -172,6 +202,62 @@ const highlights = (editor: HTMLElement) =>
 
 /** @summary Highlights and margin markers on a reviewed document. */
 export const CommentedDocument: Story = {};
+
+/** @summary Keep typing at the caret while opening comments from highlighted text. */
+export const KeepTypingOnComment: Story = {
+  play: async ({ canvas }) => {
+    const editor = await canvas.findByRole("textbox", {
+      name: "Document content",
+    });
+    const highlight = editor.querySelector<HTMLElement>(
+      '[data-comment-highlight="reach"]'
+    );
+    if (!highlight) {
+      throw new Error("Expected a comment highlight");
+    }
+
+    await expect(getComputedStyle(highlight).cursor).toBe("text");
+    clickCommentText(highlight, "reached ".length);
+    const panel = await canvas.findByRole("complementary", {
+      name: "Comments",
+    });
+    const thread = within(panel).getByRole("article", {
+      name: "Comment by Maya Chen",
+    });
+    await expect(thread).toHaveAttribute("aria-current", "true");
+    await expect(editor).toHaveFocus();
+    await userEvent.keyboard("over ");
+    await expect(editor).toHaveTextContent("reached over 40% of workspaces");
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show comment by Maya Chen" })
+    );
+    await expect(thread).toHaveFocus();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Close comments" })
+    );
+    await waitFor(() => expect(panel).not.toBeVisible());
+
+    const nextHighlight = editor.querySelector<HTMLElement>(
+      '[data-comment-highlight="wording"]'
+    );
+    if (!nextHighlight) {
+      throw new Error("Expected the next comment highlight");
+    }
+    clickCommentText(nextHighlight, "no ".length);
+    const reopenedPanel = await canvas.findByRole("complementary", {
+      name: "Comments",
+    });
+    await expect(
+      within(reopenedPanel).getByRole("article", {
+        name: "Comment by Liam Ortiz",
+      })
+    ).toHaveAttribute("aria-current", "true");
+    await expect(editor).toHaveFocus();
+    await userEvent.keyboard("major ");
+    await expect(editor).toHaveTextContent("no major regressions");
+  },
+};
 
 /** @summary Browse threads in the panel and jump to their text. */
 export const BrowseComments: Story = {

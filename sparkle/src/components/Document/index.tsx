@@ -166,7 +166,9 @@ export const Document = ({
         (comments.quotes.get(b)?.length ?? 0)
     );
     const current = comments.activeId ? ids.indexOf(comments.activeId) : -1;
-    comments.reveal(ids[(current + 1) % ids.length]);
+    comments.reveal(ids[(current + 1) % ids.length], {
+      focusPanel: !editor.isEditable,
+    });
   };
 
   if (unsupportedMarkdown !== null) {
