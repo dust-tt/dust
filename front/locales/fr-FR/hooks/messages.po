@@ -526,7 +526,7 @@ msgstr "Nouvelle notification"
 
 #: front/hooks/useSkillFromSearchParam.ts
 msgid "Use {skillTag} for this request:"
-msgstr "Utilisez {skillTag} pour cette demande :"
+msgstr "Utilise {skillTag} pour cette demande :"
 
 #: front/hooks/useSkillMenuItems.ts
 msgctxt "verb, menu item"

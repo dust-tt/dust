@@ -725,6 +725,18 @@ zod `.describe()`, hidden instructions) MUST NOT be wrapped.
 Catalog freshness and completeness are enforced by `npm run i18n:check`, and Lingui imports in
 server code by the `noClientImportsInServer` lint rule.
 
+@cc [owner:Nils-Fedrigo,label:product] fr-address-form-by-audience
+In `fr-FR` catalogs, copy that addresses the user (UI labels, toasts, errors, settings copy,
+instructions shown to the user) MUST use *vous* (deuxième personne du pluriel de politesse):
+"Utilisez…", "Voulez-vous…", "Réessayez.". Text the UI writes on the user's behalf as a message
+to an agent — prompt starters, prefilled composer text, Discover suggestions the user sends —
+MUST use *tu* (deuxième personne du singulier): "Utilise…", "Aide-moi…", "Résume-moi…". Never
+mix the two in the same audience: "Utilisez {skillTag} pour m'aider…" as a user→agent prompt is
+a violation.
+
+Reviewer: for a new or changed `fr-FR` `msgstr`, check whether the English is UI copy to the user
+or a prompt the user sends to an agent, and require the matching address form.
+
 @cc [owner:sfriquet,label:product;react] ui-intl-through-format-module
 Code under `components/` and `hooks/` MUST NOT reference the `Intl` global: dates, numbers,
 currencies, file sizes, hour cycles, the local time zone and string comparisons go through
