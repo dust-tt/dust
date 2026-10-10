@@ -1,5 +1,6 @@
 import type { DocumentEmbeddableFile } from "@app/components/editor/document/types";
 import {
+  ActionFrame,
   Code01,
   DoubleQuotes,
   Hash01,
@@ -128,6 +129,17 @@ interface DocumentEmbed {
 }
 
 export const EMBEDS: DocumentEmbed[] = [
+  {
+    kind: "frame",
+    name: msg({
+      message: "Frame",
+      context: "slash menu entry embedding a Frame",
+    }),
+    description: msg`Embed a live Frame from the files`,
+    pickerTitle: msg`Choose a Frame`,
+    icon: ActionFrame,
+    keywords: "embed interactive dashboard chart",
+  },
   {
     kind: "image",
     name: msg({

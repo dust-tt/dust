@@ -122,11 +122,12 @@ the Image entry of the `/` menu; agents and raw edits write them.
 
 ## Inserting embeds
 
-With the host's `embeddableFiles`, the `/` menu adds an Image entry. Picking it asks the host to
-load the files and turns the menu into a search over them, by name or path; picking a file
-replaces the `/` with an image of its path whose alt text is the file name. Escape leaves the
-search. The file preview offers the images of the document's own pod or conversation
-(`useDocumentEmbeddableFiles`), and lists that pod's or conversation's files only once Image is
+With the host's `embeddableFiles`, the `/` menu adds a Frame and an Image entry. Picking one asks
+the host to load the files and turns the menu into a search over them, by name or path; picking a
+file replaces the `/` with its embed: a `::frame` line, or an image whose alt text is the file
+name. Escape leaves the search. The file preview offers the Frames and images of the document's
+own pod or conversation, Frames only when they have a linked file, since only those render
+(`useDocumentEmbeddableFiles`), and lists that pod's or conversation's files only once an entry is
 picked.
 
 ## Frames

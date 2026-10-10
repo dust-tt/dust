@@ -359,6 +359,19 @@ msgid "Separate sections"
 msgstr "Séparer les sections"
 
 #: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding a Frame"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr "Intégrer un Frame interactif depuis les fichiers"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
+msgstr "Choisir un Frame"
+
+#: front/components/editor/document/blocks.ts
 msgctxt "slash menu entry embedding an image"
 msgid "Image"
 msgstr "Image"

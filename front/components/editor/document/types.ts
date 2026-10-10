@@ -50,7 +50,7 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
-  /** Files the `/` menu offers to embed. Without them, it offers no image. */
+  /** Files the `/` menu offers to embed. Without them, it offers no Frame or image. */
   embeddableFiles?: DocumentEmbeddableFiles;
   /** Renders the Frame a `::embed_frame` line embeds, from its path. Without it, the embed shows its path. */
   renderFrame?: (path: string) => ReactNode;
@@ -62,7 +62,7 @@ export interface DocumentProps {
 
 /** A file of the document's conversation or pod, embedded by its path. */
 export interface DocumentEmbeddableFile {
-  kind: "image";
+  kind: "frame" | "image";
   path: string;
   name: string;
 }
