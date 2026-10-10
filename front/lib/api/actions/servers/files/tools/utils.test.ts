@@ -1,25 +1,57 @@
 import {
   frameFileCreateRejectedError,
   frameFileEditRejectedError,
+  frameSourceUpdatedNotice,
   isReadableAsText,
 } from "@app/lib/api/actions/servers/files/tools/utils";
 import { describe, expect, it } from "vitest";
 
+const LEGACY_PUBLISH_TOOL =
+  "interactive_content__publish_interactive_content_file";
+
 describe("frameFileCreateRejectedError", () => {
   it("names the files create and interactive_content create tools", () => {
-    expect(frameFileCreateRejectedError().message).toContain("files__create");
-    expect(frameFileCreateRejectedError().message).toContain(
+    const { message } = frameFileCreateRejectedError(false);
+    expect(message).toContain("files__create");
+    expect(message).toContain(
       "interactive_content__create_interactive_content_file"
     );
+  });
+
+  it("points to dsbx frame publish under Frames v2", () => {
+    const { message } = frameFileCreateRejectedError(true);
+    expect(message).toContain("files__create");
+    expect(message).toContain("dsbx frame publish");
+    expect(message).not.toContain("create_interactive_content_file");
   });
 });
 
 describe("frameFileEditRejectedError", () => {
   it("names the files edit and interactive_content publish tools", () => {
-    expect(frameFileEditRejectedError().message).toContain("files__edit");
-    expect(frameFileEditRejectedError().message).toContain(
-      "interactive_content__publish_interactive_content_file"
-    );
+    const { message } = frameFileEditRejectedError(false);
+    expect(message).toContain("files__edit");
+    expect(message).toContain(LEGACY_PUBLISH_TOOL);
+  });
+
+  it("points to dsbx frame publish under Frames v2", () => {
+    const { message } = frameFileEditRejectedError(true);
+    expect(message).toContain("files__edit");
+    expect(message).toContain("dsbx frame publish");
+    expect(message).not.toContain(LEGACY_PUBLISH_TOOL);
+  });
+});
+
+describe("frameSourceUpdatedNotice", () => {
+  it("names the interactive_content publish tool without Frames v2", () => {
+    const notice = frameSourceUpdatedNotice(false);
+    expect(notice).toContain(LEGACY_PUBLISH_TOOL);
+    expect(notice).not.toContain("dsbx frame publish");
+  });
+
+  it("points to dsbx frame publish under Frames v2", () => {
+    const notice = frameSourceUpdatedNotice(true);
+    expect(notice).toContain("dsbx frame publish");
+    expect(notice).not.toContain(LEGACY_PUBLISH_TOOL);
   });
 });
 

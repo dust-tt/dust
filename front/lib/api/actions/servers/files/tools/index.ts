@@ -12,6 +12,7 @@ import {
   FILES_RESOLVE_ACTION_NAME,
   FILES_TOOLS_METADATA,
   FILES_UPLOAD_FROM_URL_ACTION_NAME,
+  filesEditToolDescription,
 } from "@app/lib/api/actions/servers/files/metadata";
 import { catHandler } from "@app/lib/api/actions/servers/files/tools/cat";
 import { copyHandler } from "@app/lib/api/actions/servers/files/tools/copy";
@@ -48,9 +49,19 @@ const HANDLERS = {
  * omitted in favor of the document skills. When disabled, it MUST remain available.
  * Other files tools MUST remain available in both cases.
  */
+/**
+ * @cc [owner:davidebbo,label:product;mcp] edit-description-follows-frames-v2
+ * The files.edit description MUST be `filesEditToolDescription(hasFramesV2)` for the workspace's
+ * effective `frames_v2` flag, so it never points to a Frame tool the workspace does not serve.
+ */
 export async function createFilesTools(auth: Authenticator) {
-  const tools = buildTools(FILES_TOOLS_METADATA, HANDLERS);
   const flags = await getFeatureFlags(auth);
+  const hasFramesV2 = flags.includes("frames_v2");
+  const tools = buildTools(FILES_TOOLS_METADATA, HANDLERS).map((tool) =>
+    tool.name === FILES_EDIT_ACTION_NAME
+      ? { ...tool, description: filesEditToolDescription(hasFramesV2) }
+      : tool
+  );
 
   return isComputerFeatureEnabled(flags)
     ? tools.filter((tool) => tool.name !== FILES_EXTRACT_TEXT_ACTION_NAME)
