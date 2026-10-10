@@ -50,6 +50,7 @@ import {
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { cancelAgentLoop } from "@app/lib/api/assistant/pubsub";
 import config from "@app/lib/api/config";
+import { SCOPED_PREFIX_CONVERSATION } from "@app/lib/api/file_system";
 import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -540,6 +541,16 @@ export const runAgent = async (
     // Clean up trailing commas and empty citations
     text = text.replace(/:cite\[([^\]]*),\]/g, ":cite[$1]");
     text = text.replaceAll(":cite[]", "");
+
+    // Files the sub-agent writes (e.g. from the sandbox) live in its own conversation folder and
+    // often have no file id. The `files` tools mount another conversation from a path argument, so
+    // point the parent at that folder.
+    if (mainConversation.metadata?.useFileSystem === true) {
+      text +=
+        `\n\nFiles created by the sub-agent are in \`${SCOPED_PREFIX_CONVERSATION}${conversationId}/\`. ` +
+        "List them with `files__list` and read them with `files__cat` using that path; use " +
+        "`files__copy` to bring a file into this conversation.";
+    }
 
     return [
       {
