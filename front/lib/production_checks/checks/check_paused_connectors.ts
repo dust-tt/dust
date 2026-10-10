@@ -1,5 +1,8 @@
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import {
+  getConnectorsPrimaryDbConnection,
+  IGNORED_CONNECTOR_IDS,
+} from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -24,9 +27,10 @@ export const checkPausedConnectors: CheckFunction = async (
   // Get all paused connectors that have been paused for more than 15 days.
   // oxlint-disable-next-line dust/noRawSql -- production check uses read replica
   const pausedConnectors: PausedConnector[] = await connectorsDb.query(
-    `SELECT id, "workspaceId", "pausedAt" FROM connectors WHERE "pausedAt" IS NOT NULL AND "pausedAt" < NOW() - INTERVAL '15 day' and "errorType" IS NULL`,
+    `SELECT id, "workspaceId", "pausedAt" FROM connectors WHERE "pausedAt" IS NOT NULL AND "pausedAt" < NOW() - INTERVAL '15 day' and "errorType" IS NULL AND id NOT IN (:ignoredConnectorIds)`,
     {
       type: QueryTypes.SELECT,
+      replacements: { ignoredConnectorIds: IGNORED_CONNECTOR_IDS },
     }
   );
 
