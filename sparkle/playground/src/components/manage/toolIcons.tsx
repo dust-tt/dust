@@ -1,0 +1,66 @@
+import {
+  ActionFrame,
+  AsanaLogo,
+  BigQueryLogo,
+  ConfluenceLogo,
+  DriveLogo,
+  FigmaLogo,
+  GcalLogo,
+  GithubLogo,
+  GmailLogo,
+  GongLogo,
+  Globe01,
+  HubspotLogo,
+  Image01,
+  IntercomLogo,
+  JiraLogo,
+  LinearLogo,
+  MondayLogo,
+  NotionLogo,
+  Robot,
+  SalesforceLogo,
+  SearchLg,
+  SlackLogo,
+  SnowflakeLogo,
+  StripeLogo,
+  Table,
+  ZendeskLogo,
+} from "@dust-tt/sparkle";
+import type { ComponentType } from "react";
+
+const TOOL_ICONS: Record<string, ComponentType<{ className?: string }>> = {
+  salesforce: SalesforceLogo,
+  hubspot: HubspotLogo,
+  slack: SlackLogo,
+  notion: NotionLogo,
+  google_drive: DriveLogo,
+  gmail: GmailLogo,
+  gcal: GcalLogo,
+  github: GithubLogo,
+  jira: JiraLogo,
+  linear: LinearLogo,
+  zendesk: ZendeskLogo,
+  intercom: IntercomLogo,
+  confluence: ConfluenceLogo,
+  snowflake: SnowflakeLogo,
+  bigquery: BigQueryLogo,
+  gong: GongLogo,
+  stripe: StripeLogo,
+  asana: AsanaLogo,
+  figma: FigmaLogo,
+  monday: MondayLogo,
+  web_search: Globe01,
+  browse: Globe01,
+  search: SearchLg,
+  frame: ActionFrame,
+  image_generation: Image01,
+  run_agent: Robot,
+  data_warehouse: Table,
+  extract_data: Table,
+};
+
+export function getToolIcon(
+  toolId: string
+): ComponentType<{ className?: string }> {
+  return TOOL_ICONS[toolId] ?? Table;
+}
