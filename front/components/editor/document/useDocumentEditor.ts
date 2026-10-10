@@ -20,6 +20,7 @@ import { cn } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { AnyExtension, JSONContent } from "@tiptap/core";
+import type { Node } from "@tiptap/pm/model";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
@@ -112,6 +113,12 @@ const logRefusal = (reason: string, source: string) => {
  * live extensions replace them with the session's; keeping comment marks without a thread is up
  * to the live extensions.
  */
+/**
+ * @cc [owner:tdraier,label:performance;react] document-edits-render-free
+ * A local or remote edit MUST NOT re-render the hook's host unless `dirty` or `error` changes, and
+ * MUST NOT serialize the document; only a save does. Re-rendering with unchanged props MUST NOT
+ * hand `useEditor` an option of a new identity, which reapplies every option to the view.
+ */
 export const useDocumentEditor = ({
   initialContent,
   readOnly,
@@ -134,10 +141,11 @@ export const useDocumentEditor = ({
       logRefusal(unsupported.reason, unsupported.source);
     }
   }, [unsupported]);
-  const [baseline, setBaseline] = useState<string | null>(null);
-  const [draft, setDraft] = useState<string | null>(null);
+  const [dirty, setDirtyState] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const dirtyRef = useRef(false);
+  const errorRef = useRef<string | null>(null);
   const savingRef = useRef(false);
   const editable =
     !readOnly &&
@@ -150,12 +158,15 @@ export const useDocumentEditor = ({
     onStateChange,
     editable,
     saveErrorMessage,
+    autosaveDebounceMs,
   });
-  const latestRef = useRef<{ document: JSONContent; content: string } | null>(
-    null
-  );
-  const persistedRef = useRef<string | null>(null);
+  const latestDocumentRef = useRef<Node | null>(null);
+  const persistedDocumentRef = useRef<Node | null>(null);
   const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
+  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
+  const saveRef = useRef<() => Promise<void>>(async () => undefined);
 
   useLayoutEffect(() => {
     persistenceRef.current = {
@@ -163,8 +174,42 @@ export const useDocumentEditor = ({
       onStateChange,
       editable,
       saveErrorMessage,
+      autosaveDebounceMs,
     };
-  }, [persist, onStateChange, editable, saveErrorMessage]);
+  }, [persist, onStateChange, editable, saveErrorMessage, autosaveDebounceMs]);
+
+  // Set only on a change, as edits call them: typing must not re-render the document.
+  const setDirty = useCallback((next: boolean) => {
+    if (dirtyRef.current !== next) {
+      dirtyRef.current = next;
+      setDirtyState(next);
+    }
+  }, []);
+
+  const setError = useCallback((next: string | null) => {
+    if (errorRef.current !== next) {
+      errorRef.current = next;
+      setErrorState(next);
+    }
+  }, []);
+
+  const scheduleAutosave = useCallback(() => {
+    clearTimeout(autosaveTimeoutRef.current);
+    const { editable: canSave, autosaveDebounceMs: delay } =
+      persistenceRef.current;
+    if (
+      !dirtyRef.current ||
+      savingRef.current ||
+      errorRef.current !== null ||
+      !canSave
+    ) {
+      return;
+    }
+    autosaveTimeoutRef.current = setTimeout(
+      () => void saveRef.current(),
+      delay
+    );
+  }, []);
 
   const savedExtensions = useMemo(
     () =>
@@ -172,21 +217,23 @@ export const useDocumentEditor = ({
     [t, resolveSource]
   );
 
-  const editor = useEditor({
-    extensions: live?.extensions ?? savedExtensions,
+  // TipTap compares options by identity on each render, and reapplies them all to the view when
+  // one differs.
+  const isLive = live !== undefined;
+  const content = useMemo(() => {
+    if (!initial.isOk()) {
+      return "";
+    }
     // A live body comes from the shared document; only the threads come from the file.
-    content: !initial.isOk()
-      ? ""
-      : live
-        ? withDocumentJSONComments(
-            { type: "doc", content: [{ type: "paragraph" }] },
-            getDocumentJSONComments(initial.value.content)
-          )
-        : initial.value.content,
-    contentType: "json",
-    immediatelyRender: false,
-    editable,
-    editorProps: {
+    return isLive
+      ? withDocumentJSONComments(
+          { type: "doc", content: [{ type: "paragraph" }] },
+          getDocumentJSONComments(initial.value.content)
+        )
+      : initial.value.content;
+  }, [initial, isLive]);
+  const editorProps = useMemo(
+    () => ({
       attributes: {
         role: "textbox",
         "aria-label": t`Document content`,
@@ -201,31 +248,39 @@ export const useDocumentEditor = ({
           String.raw`[&_.collaboration-carets\_\_label]:absolute [&_.collaboration-carets\_\_label]:-top-[1.4em] [&_.collaboration-carets\_\_label]:-left-px [&_.collaboration-carets\_\_label]:rounded-[3px_3px_3px_0] [&_.collaboration-carets\_\_label]:px-1 [&_.collaboration-carets\_\_label]:py-px [&_.collaboration-carets\_\_label]:text-xs [&_.collaboration-carets\_\_label]:leading-normal [&_.collaboration-carets\_\_label]:font-semibold [&_.collaboration-carets\_\_label]:whitespace-nowrap [&_.collaboration-carets\_\_label]:text-white [&_.collaboration-carets\_\_label]:select-none`
         ),
       },
-    },
+    }),
+    [t]
+  );
+
+  const editor = useEditor({
+    extensions: live?.extensions ?? savedExtensions,
+    content,
+    contentType: "json",
+    immediatelyRender: false,
+    editable,
+    editorProps,
     onCreate: ({ editor }) => {
       if (live) {
         return;
       }
       // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
-      const document = editor.getJSON();
-      const content = JSON.stringify(document);
-      latestRef.current = { document, content };
-      persistedRef.current = content;
-      setBaseline(content);
-      setDraft(content);
+      latestDocumentRef.current = editor.state.doc;
+      persistedDocumentRef.current = editor.state.doc;
     },
-    // TODO(co-edition): a live editor never saves, yet serializes the whole document here on each
-    // remote edit and thread change.
     onUpdate: ({ editor }) => {
-      const document = editor.getJSON();
-      const content = JSON.stringify(document);
-      latestRef.current = { document, content };
-      setDraft(content);
-
-      if (content === baseline) {
+      const persisted = persistedDocumentRef.current;
+      if (live || persisted === null) {
+        return;
+      }
+      const document = editor.state.doc;
+      latestDocumentRef.current = document;
+      const changed = !document.eq(persisted);
+      setDirty(changed);
+      if (!changed) {
         setError(null);
       }
+      scheduleAutosave();
     },
   });
 
@@ -236,11 +291,9 @@ export const useDocumentEditor = ({
     }
   }, [editor, editable]);
 
-  const dirty = baseline !== null && draft !== baseline;
-
-  // Hosts learn the draft state after the fact on purpose: dirty is derived here from the draft
-  // and the saved baseline, which move in four places, so there is no single event to report
-  // from. The callback is read through the ref so its identity cannot restart the effect.
+  // Hosts learn the draft state after the fact on purpose: dirty, saving and error move in several
+  // places, so there is no single event to report from. The callback is read through the ref so
+  // its identity cannot restart the effect.
   useEffect(() => {
     persistenceRef.current.onStateChange?.({ dirty, saving, error });
   }, [dirty, saving, error]);
@@ -250,7 +303,8 @@ export const useDocumentEditor = ({
   // It waits for any save in flight, so an older write can never land after a newer one.
   useEffect(
     () => () => {
-      const latest = latestRef.current;
+      clearTimeout(autosaveTimeoutRef.current);
+      const latest = latestDocumentRef.current;
       const {
         onSave: persist,
         editable: canSave,
@@ -262,10 +316,11 @@ export const useDocumentEditor = ({
       const envelope = initial.value.envelope;
       const flush = async () => {
         await inflightRef.current;
-        if (latest.content === persistedRef.current) {
+        const persisted = persistedDocumentRef.current;
+        if (persisted !== null && latest.eq(persisted)) {
           return;
         }
-        const serialized = saveDfm(envelope, latest.document);
+        const serialized = saveDfm(envelope, latest.toJSON());
         if (serialized.isOk()) {
           await persistDocument(persist, serialized.value, failureMessage);
         }
@@ -281,29 +336,29 @@ export const useDocumentEditor = ({
       editable: canSave,
       saveErrorMessage: failureMessage,
     } = persistenceRef.current;
-    const savedContent = persistedRef.current;
+    const persisted = persistedDocumentRef.current;
 
     if (
       !editor ||
       !persist ||
       !canSave ||
       !initial.isOk() ||
-      savedContent === null ||
+      persisted === null ||
       savingRef.current
     ) {
       return;
     }
 
-    const document = editor.getJSON();
-    const content = JSON.stringify(document);
+    const document = editor.state.doc;
 
-    if (content === savedContent) {
+    if (document.eq(persisted)) {
       return;
     }
 
-    const serialized = saveDfm(initial.value.envelope, document);
+    const serialized = saveDfm(initial.value.envelope, document.toJSON());
     if (serialized.isErr()) {
       setError(serialized.error);
+      scheduleAutosave();
       return;
     }
 
@@ -326,15 +381,17 @@ export const useDocumentEditor = ({
     }
 
     if (result.isOk()) {
-      persistedRef.current = content;
-      setBaseline(content);
-      return;
-    }
-
-    if (JSON.stringify(editor.getJSON()) !== savedContent) {
+      persistedDocumentRef.current = document;
+      setDirty(!editor.state.doc.eq(document));
+    } else if (!editor.state.doc.eq(persisted)) {
       setError(result.error || failureMessage);
     }
-  }, [editor, initial]);
+    scheduleAutosave();
+  }, [editor, initial, setDirty, setError, scheduleAutosave]);
+
+  useLayoutEffect(() => {
+    saveRef.current = save;
+  }, [save]);
 
   const isSavable = useCallback(
     (document: JSONContent) =>
@@ -343,13 +400,8 @@ export const useDocumentEditor = ({
   );
 
   useEffect(() => {
-    if (draft === null || !dirty || saving || error || !editable) {
-      return;
-    }
-
-    const timeout = setTimeout(() => void save(), autosaveDebounceMs);
-    return () => clearTimeout(timeout);
-  }, [draft, dirty, saving, error, editable, save, autosaveDebounceMs]);
+    scheduleAutosave();
+  }, [editable, autosaveDebounceMs, scheduleAutosave]);
 
   return {
     editor,
