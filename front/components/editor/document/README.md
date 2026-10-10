@@ -135,8 +135,8 @@ opens the file through the file API. Without it, the reference shows as its titl
 A line holding exactly `::frame{path="…"}` embeds a Frame: a `frameEmbed` block node keeping its
 path. Anything else on the line, or another attribute, keeps it as text. The host's optional
 `renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
-Frame, never the editor. The file preview renders the Frame inline, as in an agent message, capped
-at 600px high, after loading it from its path through the file API, so only readers of the Frame's
+Frame, never the editor. The file preview renders the Frame inline in a 600px high box, after
+loading it from its path through the file API, so only readers of the Frame's
 file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
 the embed shows its path.
 
