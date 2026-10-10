@@ -1,8 +1,11 @@
+import type { DocumentEmbeddableFile } from "@app/components/editor/document/types";
 import {
+  ActionFrame,
   Code01,
   DoubleQuotes,
   Hash01,
   Heading01,
+  Image01,
   List,
   Minus,
   Type01,
@@ -14,7 +17,14 @@ import { isTextSelection } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
 
-export const getBlockQuery = (state: EditorState) => {
+/**
+ * The `/` query typed alone at the start of a top-level paragraph, before the cursor. Block names
+ * are words, while a file search may hold any character but a line break.
+ */
+export const getBlockQuery = (
+  state: EditorState,
+  { fileSearch = false }: { fileSearch?: boolean } = {}
+) => {
   const { selection } = state;
   if (!isTextSelection(selection) || !selection.empty) {
     return null;
@@ -24,7 +34,7 @@ export const getBlockQuery = (state: EditorState) => {
     return null;
   }
   const text = $from.parent.textBetween(0, $from.parentOffset);
-  const match = /^\/([\w ]*)$/.exec(text);
+  const match = (fileSearch ? /^\/([^\n]*)$/ : /^\/([\w ]*)$/).exec(text);
   return match ? { from: $from.start(), to: $from.pos, query: match[1] } : null;
 };
 
@@ -106,5 +116,39 @@ export const BLOCKS: DocumentBlock[] = [
     icon: Minus,
     keywords: "line horizontal rule",
     apply: (chain: ChainedCommands) => chain.setHorizontalRule().run(),
+  },
+];
+
+interface DocumentEmbedBlock {
+  kind: DocumentEmbeddableFile["kind"];
+  name: MessageDescriptor;
+  description: MessageDescriptor;
+  pickerTitle: MessageDescriptor;
+  icon: ComponentType<{ className?: string }>;
+  keywords: string;
+}
+
+export const EMBED_BLOCKS: DocumentEmbedBlock[] = [
+  {
+    kind: "frame",
+    name: msg({
+      message: "Frame",
+      context: "document block embedding a Frame",
+    }),
+    description: msg`Embed a live Frame from the files`,
+    pickerTitle: msg`Choose a Frame`,
+    icon: ActionFrame,
+    keywords: "embed interactive dashboard chart",
+  },
+  {
+    kind: "image",
+    name: msg({
+      message: "Image",
+      context: "document block embedding an image",
+    }),
+    description: msg`Show an image from the files`,
+    pickerTitle: msg`Choose an image`,
+    icon: Image01,
+    keywords: "picture photo embed",
   },
 ];

@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Add a paragraph"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching files"
+msgstr "No matching files"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "No matching paragraphs"
 msgstr "No matching paragraphs"
 
@@ -369,6 +373,32 @@ msgstr "Divider"
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
 msgstr "Separate sections"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block embedding a Frame"
+msgid "Frame"
+msgstr "Frame"
+
+#: front/components/editor/document/blocks.ts
+msgid "Embed a live Frame from the files"
+msgstr "Embed a live Frame from the files"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose a Frame"
+msgstr "Choose a Frame"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "document block embedding an image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/blocks.ts
+msgid "Show an image from the files"
+msgstr "Show an image from the files"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose an image"
+msgstr "Choose an image"
 
 #: front/components/editor/document/extensions.ts
 msgid "Untitled"

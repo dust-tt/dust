@@ -259,6 +259,7 @@ export const DocumentView = ({
   resolveImageSource,
   renderFilePreview,
   renderFrame,
+  embeddableFiles,
   renderLiveParticipants,
   badge,
 }: DocumentViewProps) => {
@@ -287,7 +288,7 @@ export const DocumentView = ({
   });
   // Live documents are edited through the session: no file saves.
   const canEditFile = editable && liveView === undefined;
-  const blockMenu = useDocumentBlockMenu(editor, editable);
+  const blockMenu = useDocumentBlockMenu(editor, editable, embeddableFiles);
   const comments = useDocumentComments({
     editor,
     canComment: editable,

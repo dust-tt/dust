@@ -118,8 +118,8 @@ read-only preview. The file preview resolves with `resolveMarkdownImageSource`, 
 Markdown surface: a file path in a conversation or a pod, such as
 `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read from `files.list`, or a file id,
 `![Chart](fil_<id>)`, to the file API, which checks the reader's access; it resolves nothing else,
-so an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
-write them.
+so an external URL never loads. Users insert one with the `/` menu's Image block (see Inserting
+embeds); agents and raw edits write them.
 
 ## File previews
 
@@ -140,6 +140,14 @@ loading it from its path through the file API, so only readers of the Frame's
 file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
 the embed shows its path.
 
+## Inserting embeds
+
+With the host's `embeddableFiles`, the `/` menu adds a Frame and an Image block. Picking one turns
+the menu into a search over those files, by name or path, and picking a file replaces the `/` with
+its embed: a `::frame` line, or an image whose alt text is the file name. Escape leaves the search.
+The file preview offers the Frames and images of the document's own pod or conversation, Frames
+only when they have a linked file, since only those render (`useDocumentEmbeddableFiles`).
+
 ## Layout
 
 | File | Owns |
@@ -152,7 +160,7 @@ the embed shows its path.
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
 | `DocumentFilePreview.tsx`, `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `filePreview` and `frameEmbed` nodes, their Markdown, and the host's renderers their views read. |
-| `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
+| `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |
 | `DocumentMarkdownPreview.tsx` | A file that cannot open, rendered read-only under the reason. |
