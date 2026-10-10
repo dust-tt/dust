@@ -132,8 +132,10 @@ impl TenantResource {
         Ok(tenant)
     }
 
-    /// @cc [owner:spolu,label:api;security] tenant-id-validation
-    /// Tenant IDs MUST contain 1-256 UTF-8 bytes and MUST NOT contain NUL.
+    /**
+     * @cc [owner:spolu,label:api;security] tenant-id-validation
+     * Tenant IDs MUST contain 1-256 UTF-8 bytes and MUST NOT contain NUL.
+     */
     fn is_valid_id(tenant_id: &str) -> bool {
         !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES && !tenant_id.contains('\0')
     }

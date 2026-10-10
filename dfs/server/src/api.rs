@@ -28,9 +28,11 @@ pub struct API {
     tenant_key_cache: RwLock<HashMap<KeyHash, auth::CachedTenant>>,
 }
 
-/// @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources
-/// Handlers MUST reach FDB only by calling resource methods inside `fdb::with_transaction`. They
-/// MUST NOT use `foundationdb` APIs or `fdb::database()` directly.
+/**
+ * @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources
+ * Handlers MUST reach FDB only by calling resource methods inside `fdb::with_transaction`. They
+ * MUST NOT use `foundationdb` APIs or `fdb::database()` directly.
+ */
 #[tonic::async_trait]
 impl Dfs for API {
     async fn create_tenant(

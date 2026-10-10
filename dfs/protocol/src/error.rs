@@ -2,10 +2,12 @@ use crate::rpc::{ErrorCode, ErrorDetails};
 use prost::Message;
 use tonic::{Code, Status};
 
-/// @cc [owner:spolu,label:api;error-handling] dfs-status-details
-/// Application failures MUST encode their `ErrorCode` as protobuf `ErrorDetails` in gRPC status
-/// details. Public messages MUST describe the error class without including object data or bearer
-/// credentials.
+/**
+ * @cc [owner:spolu,label:api;error-handling] dfs-status-details
+ * Application failures MUST encode their `ErrorCode` as protobuf `ErrorDetails` in gRPC status
+ * details. Public messages MUST describe the error class without including object data or bearer
+ * credentials.
+ */
 pub fn status(error: ErrorCode) -> Status {
     let (code, message) = match error {
         ErrorCode::Internal => (Code::Internal, "Internal error."),

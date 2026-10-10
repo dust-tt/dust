@@ -26,10 +26,12 @@ pub fn database() -> Result<&'static Database> {
     Ok(DATABASE.get_or_init(|| database))
 }
 
-/// @cc [owner:spolu,label:backend;error-handling] preserve-fdb-retry-errors
-/// FDB failures MUST reach Database::run unchanged so it can decide whether to retry. Resource
-/// failures MUST abort the attempt without committing or retrying and retain their typed error
-/// after the runner returns.
+/**
+ * @cc [owner:spolu,label:backend;error-handling] preserve-fdb-retry-errors
+ * FDB failures MUST reach Database::run unchanged so it can decide whether to retry. Resource
+ * failures MUST abort the attempt without committing or retrying and retain their typed error
+ * after the runner returns.
+ */
 pub async fn with_transaction<F, Fut, T, E>(body: F) -> Result<T, Error<E>>
 where
     F: Fn(RetryableTransaction) -> Fut,

@@ -12,3 +12,7 @@ indexes or offsets, test fixture data, and the array length in a named type defi
 Text authored in error Display implementations MUST use phrases, not sentences, begin with a
 lowercase letter, and have no trailing full stop. This applies to local messages and context
 prefixes; wrapped error text MAY retain its original formatting.
+
+@cc [owner:spolu,label:rust;coding] rust-code-contract-comments
+Rust source code contracts MUST use `/** ... */` documentation blocks, with exactly one `@cc`
+directive per block. Multiple contracts on one declaration MUST use separate adjacent blocks.

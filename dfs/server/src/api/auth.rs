@@ -69,9 +69,11 @@ impl API {
         })
     }
 
-    /// @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-reclamation
-    /// Every sweep MUST remove expired entries and retain unexpired entries. Removing an entry
-    /// MUST release the cache's ownership of the tenant without invalidating outstanding references.
+    /**
+     * @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-reclamation
+     * Every sweep MUST remove expired entries and retain unexpired entries. Removing an entry
+     * MUST release the cache's ownership of the tenant without invalidating outstanding references.
+     */
     pub(crate) async fn sweep_tenant_key_cache(&self) {
         let period = Duration::from_millis(TENANT_KEY_CACHE_SWEEP_INTERVAL_MS);
         let mut sweep = interval_at(tokio::time::Instant::now() + period, period);

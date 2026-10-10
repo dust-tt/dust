@@ -21,10 +21,12 @@ impl From<tenant::Error> for Status {
     }
 }
 
-/// @cc [owner:spolu,label:api;error-handling] storage-status-conversion
-/// Database failures MUST return INTERNAL with protocol ErrorDetails and a generic public message.
-/// Resource failures MUST retain their resource-specific status mapping. Database and transaction
-/// error details MUST NOT be included in the response.
+/**
+ * @cc [owner:spolu,label:api;error-handling] storage-status-conversion
+ * Database failures MUST return INTERNAL with protocol ErrorDetails and a generic public message.
+ * Resource failures MUST retain their resource-specific status mapping. Database and transaction
+ * error details MUST NOT be included in the response.
+ */
 impl<E: Into<Status>> From<storage::Error<E>> for Status {
     fn from(error: storage::Error<E>) -> Self {
         match error {
