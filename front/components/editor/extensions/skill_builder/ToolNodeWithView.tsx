@@ -4,6 +4,7 @@ import {
 } from "@app/components/editor/extensions/skill_builder/ToolChip";
 import { ToolNode } from "@app/components/editor/extensions/skill_builder/ToolNode";
 import type { ToolNodeAttributes } from "@app/components/editor/extensions/skill_builder/ToolNodeTypes";
+import { useIsEditorEditable } from "@app/components/editor/lib/useIsEditorEditable";
 import { useMaybeMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -74,6 +75,7 @@ function ToolNodeView({
     toolName: node.attrs.toolName,
   };
   const display = useToolNodeDisplay(attrs);
+  const isEditable = useIsEditorEditable(editor);
   const view = display.kind === "tool" ? display.view : null;
   const handleClick = () => {
     if (view && onToolDetails) {
@@ -86,7 +88,7 @@ function ToolNodeView({
   };
 
   const isClickable = Boolean((view && onToolDetails) || onToolDetailsById);
-  const onRemove = editor.isEditable ? deleteNode : undefined;
+  const onRemove = isEditable ? deleteNode : undefined;
 
   return (
     <NodeViewWrapper className="inline-flex align-middle">
