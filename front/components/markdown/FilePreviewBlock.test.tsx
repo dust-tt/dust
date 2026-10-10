@@ -186,6 +186,21 @@ describe("getFilePreviewPlugin", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("renders a static citation outside a file preview provider", () => {
+    const FilePreview = getFilePreviewPlugin();
+
+    render(
+      <FilePreview
+        path="pod-p1/README.md"
+        title="README.md"
+        contentType="text/markdown"
+      />
+    );
+
+    expect(screen.getByText("README.md")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "README.md" })).toBeNull();
+  });
+
   it("renders a static citation when there is no conversation", () => {
     const FilePreview = getFilePreviewPlugin();
 
