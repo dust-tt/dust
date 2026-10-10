@@ -17,9 +17,16 @@ interface UseUserLocaleProps {
 
 /**
  * @cc [owner:sfriquet,label:product] user-locale-resolution
- * `userLocale` MUST be the locale the user chose (`userLocale` of the auth context) when non-null,
- * otherwise the `matchBrowserLocale` of the browser's `navigator.languages` when non-null, and the
- * workspace locale (`owner.locale`) otherwise.
+ * `userLocale` MUST be `storedUserLocale`, the locale the user chose (`userLocale` of the auth
+ * context, `null` when they have not chosen one), when non-null, and `automaticLocale` otherwise.
+ * `automaticLocale` MUST be the `matchBrowserLocale` of the browser's `navigator.languages` when
+ * non-null, with `automaticLocaleSource` `browser`, and the workspace locale (`owner.locale`)
+ * otherwise, with `automaticLocaleSource` `workspace`.
+ */
+/**
+ * @cc [owner:sfriquet,label:product] update-null-clears-user-locale
+ * `doUpdateUserLocale(null)` MUST delete the locale the user chose, so that `userLocale` becomes
+ * `automaticLocale`. Any other value MUST be stored as the locale the user chose.
  */
 export function useUserLocale({ owner }: UseUserLocaleProps) {
   const { t } = useLingui();
@@ -31,21 +38,25 @@ export function useUserLocale({ owner }: UseUserLocaleProps) {
     disabled: true,
   });
 
-  const userLocale =
-    storedUserLocale ?? matchBrowserLocale(navigator.languages) ?? owner.locale;
+  const browserLocale = matchBrowserLocale(navigator.languages);
+  const automaticLocale = browserLocale ?? owner.locale;
+  const automaticLocaleSource = browserLocale ? "browser" : "workspace";
+  const userLocale = storedUserLocale ?? automaticLocale;
 
   const doUpdateUserLocale = async (
-    locale: SupportedLocale
+    locale: SupportedLocale | null
   ): Promise<boolean> => {
     setIsSaving(true);
     try {
       const response = await clientFetch(
         `/api/user/metadata/${encodeURIComponent(USER_LOCALE_METADATA_KEY)}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value: locale }),
-        }
+        locale
+          ? {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ value: locale }),
+            }
+          : { method: "DELETE" }
       ).catch(() => null);
 
       if (!response?.ok) {
@@ -64,5 +75,12 @@ export function useUserLocale({ owner }: UseUserLocaleProps) {
     }
   };
 
-  return { userLocale, isSaving, doUpdateUserLocale };
+  return {
+    userLocale,
+    storedUserLocale: storedUserLocale ?? null,
+    automaticLocale,
+    automaticLocaleSource,
+    isSaving,
+    doUpdateUserLocale,
+  };
 }
