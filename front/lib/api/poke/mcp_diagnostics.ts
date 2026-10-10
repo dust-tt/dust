@@ -826,7 +826,7 @@ async function resolveServerContext(
     serverViewResource = await MCPServerViewResource.fetchById(
       auth,
       serverViewId,
-      { includeRestricted: true }
+      { mode: "metadata", includeRestricted: true }
     );
     if (!serverViewResource) {
       return {
@@ -841,7 +841,8 @@ async function resolveServerContext(
   } else {
     const views = await MCPServerViewResource.listByMCPServer(
       auth,
-      mcpServerId
+      mcpServerId,
+      { mode: "metadata" }
     );
     serverViewResource = views[0] ?? null;
   }

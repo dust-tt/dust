@@ -22,13 +22,7 @@ app.get(
     const { svId } = ctx.req.valid("param");
 
     const mcpServerView = await MCPServerViewResource.fetchById(auth, svId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
       // Poke admin surface: surface a restricted server's view too.
       includeRestricted: true,
     });
@@ -51,13 +45,7 @@ app.get(
       auth,
       mcpServerView.mcpServerId,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
     const spaceViews = allViews

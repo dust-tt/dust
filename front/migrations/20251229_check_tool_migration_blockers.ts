@@ -45,7 +45,8 @@ async function checkWorkspace(
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      mcpServerName
+      mcpServerName,
+      { mode: "metadata" }
     );
 
   if (!mcpServerView) {

@@ -39,7 +39,8 @@ async function deleteWorkspacePeopleServerFromWorkspace(
 
   const mcpServerViews = await MCPServerViewResource.listByMCPServer(
     auth,
-    workspacePeopleServerId
+    workspacePeopleServerId,
+    { mode: "metadata" }
   );
 
   const foundToolMetadataCount = await RemoteMCPServerToolMetadataModel.count({

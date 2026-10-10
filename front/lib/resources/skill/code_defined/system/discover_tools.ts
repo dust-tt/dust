@@ -20,7 +20,7 @@ export const discoverToolsSkill = {
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
         auth,
         spaceIds,
-        { includeGlobalSpace: true }
+        { includeGlobalSpace: true, mode: "metadata" }
       );
 
     const availableToolsets = allToolsets.filter(

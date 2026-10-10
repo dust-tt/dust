@@ -118,7 +118,8 @@ describe("GET /api/w/:wId/mcp/", () => {
     });
     const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
       auth,
-      server.sId
+      server.sId,
+      { mode: "metadata" }
     );
     expect(view).not.toBeNull();
     const updateResult = await view!.updateOAuthUseCase(
@@ -175,9 +176,9 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       server: expect.objectContaining({ name: "agent_memory" }),
     });
 
-    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
-      1
-    );
+    expect(
+      await MCPServerViewResource.listForSystemSpace(auth, { mode: "metadata" })
+    ).toHaveLength(1);
   });
 
   it("fails to create an internal MCP server if it already exists", async () => {
@@ -192,9 +193,9 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       { name: "agent_memory", useCase: null }
     );
     expect(internalServer).toBeDefined();
-    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
-      1
-    );
+    expect(
+      await MCPServerViewResource.listForSystemSpace(auth, { mode: "metadata" })
+    ).toHaveLength(1);
 
     const response = await postMcp(workspace, {
       name: "agent_memory" as InternalMCPServerNameType,
@@ -235,9 +236,9 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       { name: "agent_memory", useCase: null }
     );
     expect(internalServer).toBeDefined();
-    expect(await MCPServerViewResource.listForSystemSpace(auth)).toHaveLength(
-      1
-    );
+    expect(
+      await MCPServerViewResource.listForSystemSpace(auth, { mode: "metadata" })
+    ).toHaveLength(1);
 
     const response = await postMcp(workspace, {
       name: "agent_memory" as InternalMCPServerNameType,
@@ -326,7 +327,8 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        existingServer.sId
+        existingServer.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 
@@ -400,13 +402,15 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     const createdSystemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        retryBody.server.sId
+        retryBody.server.sId,
+        { mode: "metadata" }
       );
     expect(createdSystemView?.name).toBe(customName);
 
     const globalViews = await MCPServerViewResource.listBySpace(
       auth,
-      globalSpace
+      globalSpace,
+      { mode: "metadata" }
     );
     expect(
       globalViews.find((view) => view.mcpServerId === retryBody.server.sId)
@@ -539,7 +543,8 @@ describe("POST /api/w/:wId/mcp/ — name conflict", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        existingServer.sId
+        existingServer.sId,
+        { mode: "metadata" }
       );
     expect(systemView).toBeDefined();
 

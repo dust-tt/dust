@@ -426,7 +426,7 @@ app.post(
         const mcpServerViews = await MCPServerViewResource.fetchByIds(
           auth,
           message.context.selectedMCPServerViewIds,
-          { isRestrictedToSkills: false }
+          { mode: "metadata", isRestrictedToSkills: false }
         );
 
         const r = await ConversationResource.upsertMCPServerViews(auth, {

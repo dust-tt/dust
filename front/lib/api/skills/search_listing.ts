@@ -70,7 +70,8 @@ export async function searchSkillListings(
   );
   const mcpServerViews = await MCPServerViewResource.fetchByIds(
     auth,
-    facetIds(facetValues.mcpServerViews)
+    facetIds(facetValues.mcpServerViews),
+    { mode: "metadata" }
   );
   const favoriteIds = await SkillResource.listFavoriteIdsForCurrentUser(auth);
 

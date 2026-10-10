@@ -1701,8 +1701,12 @@ describe("POST /api/w/:wId/skills", () => {
     expect(toolConfigurations).toHaveLength(2);
 
     const serverViewIds = toolConfigurations.map((t) => t.mcpServerViewId);
-    const view1 = await MCPServerViewResource.fetchById(auth, serverView1.sId);
-    const view2 = await MCPServerViewResource.fetchById(auth, serverView2.sId);
+    const view1 = await MCPServerViewResource.fetchById(auth, serverView1.sId, {
+      mode: "metadata",
+    });
+    const view2 = await MCPServerViewResource.fetchById(auth, serverView2.sId, {
+      mode: "metadata",
+    });
     expect(serverViewIds).toContain(view1!.id);
     expect(serverViewIds).toContain(view2!.id);
   });

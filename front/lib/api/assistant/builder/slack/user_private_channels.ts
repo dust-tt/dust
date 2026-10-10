@@ -20,8 +20,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 
 async function isSlackToolsAvailable(auth: Authenticator): Promise<boolean> {
-  const servers = await InternalMCPServerInMemoryResource.listByWorkspace(auth);
-  return servers.some((server) => server.toJSON().name === "slack");
+  const servers = await InternalMCPServerInMemoryResource.listByWorkspace(
+    auth,
+    {
+      includeCredentials: false,
+    }
+  );
+  return servers.some((server) => server.toMetadataJSON().name === "slack");
 }
 
 async function listPrivateChannelsWithToken(

@@ -101,7 +101,8 @@ describe("Dust Lean", () => {
     const autoViews =
       await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
         authenticator,
-        ["common_utilities"]
+        ["common_utilities"],
+        { mode: "metadata" }
       );
     const view = autoViews.get("common_utilities");
     if (!view) {

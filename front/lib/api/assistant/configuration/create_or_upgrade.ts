@@ -76,7 +76,7 @@ export async function createOrUpgradeAgentConfiguration({
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
     assistant.actions.map((action) => action.mcpServerViewId),
-    { isRestrictedToSkills: true }
+    { mode: "metadata", isRestrictedToSkills: true }
   );
   const skillsOnlyViewIds = new Set(skillsOnlyViews.map((view) => view.sId));
   const actions = assistant.actions.filter(

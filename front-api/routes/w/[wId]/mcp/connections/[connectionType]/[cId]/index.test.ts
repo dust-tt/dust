@@ -283,7 +283,9 @@ describe("MCP connections handler", () => {
 
     expect(response.status).toBe(200);
 
-    const views = await MCPServerViewResource.listByMCPServer(auth, server.id);
+    const views = await MCPServerViewResource.listByMCPServer(auth, server.id, {
+      mode: "metadata",
+    });
     expect(views.length).toBeGreaterThan(0);
     expect(views.map((view) => view.oauthScope)).toEqual(views.map(() => null));
   });

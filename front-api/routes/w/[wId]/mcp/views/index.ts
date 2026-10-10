@@ -4,6 +4,7 @@ import {
   withWorkspaceConnectionRequirement,
 } from "@app/lib/api/mcp_oauth_prerequisites";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import type { MCPServerViewFetchMode } from "@app/lib/resources/mcp_server_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -56,14 +57,11 @@ app.get(
     const includeRestrictedToSkills =
       query.includeRestrictedToSkills === "true";
 
-    const listOptions = {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ] as const,
+    const listOptions: {
+      mode: MCPServerViewFetchMode;
+      isRestrictedToSkills: false | undefined;
+    } = {
+      mode: "configuration",
       isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
     };
 

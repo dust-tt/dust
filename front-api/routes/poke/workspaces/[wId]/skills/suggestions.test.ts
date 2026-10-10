@@ -20,7 +20,8 @@ describe("POST /api/poke/workspaces/:wId/skills/suggestions", () => {
     const serverView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "agent_memory"
+        "agent_memory",
+        { mode: "metadata" }
       );
     expect(serverView).not.toBeNull();
     if (!serverView) {

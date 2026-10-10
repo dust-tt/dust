@@ -611,7 +611,8 @@ describe("code-defined skill search", () => {
     const view =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "web_search_&_browse"
+        "web_search_&_browse",
+        { mode: "metadata" }
       );
     assert(view);
     const skill = await SkillFactory.create(auth, {

@@ -340,7 +340,8 @@ async function createMeetingPrepSkill(
   // in one transaction. `makeSuggestion` never adds a creator as editor.
   const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    selectedViewIds
+    selectedViewIds,
+    { mode: "metadata" }
   );
 
   const skillRes = await SkillResource.makeSuggestion(

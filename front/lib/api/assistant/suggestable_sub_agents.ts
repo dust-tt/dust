@@ -16,7 +16,8 @@ export async function fetchRunAgentTool(
 ): Promise<MCPServerViewType | null> {
   const view = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
     auth,
-    "run_agent"
+    "run_agent",
+    { mode: "configuration" }
   );
   if (!view || !auth.can("read", view)) {
     return null;

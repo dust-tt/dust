@@ -252,7 +252,8 @@ makeScript({}, async ({ execute }, logger) => {
   const mcpServerViews =
     await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
       auth,
-      MCP_TOOL_AGENTS.map((agent) => agent.serverName)
+      MCP_TOOL_AGENTS.map((agent) => agent.serverName),
+      { mode: "metadata" }
     );
 
   for (const agent of MCP_TOOL_AGENTS) {

@@ -70,7 +70,8 @@ makeScript(
 
     const originView = await MCPServerViewResource.fetchById(
       auth,
-      originMcpServerViewId
+      originMcpServerViewId,
+      { mode: "configuration" }
     );
     assert(
       originView,
@@ -79,7 +80,8 @@ makeScript(
 
     const destinationView = await MCPServerViewResource.fetchById(
       auth,
-      destinationMcpServerViewId
+      destinationMcpServerViewId,
+      { mode: "configuration" }
     );
     assert(
       destinationView,

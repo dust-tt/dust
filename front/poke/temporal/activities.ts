@@ -131,6 +131,7 @@ export async function scrubMCPServerViewActivity({
     mcpServerViewId,
     {
       includeDeleted: true,
+      mode: "metadata",
     }
   );
   if (!mcpServerView) {
@@ -184,6 +185,7 @@ export async function scrubSpaceActivity({
   // Delete all the mcp server views of the space.
   const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space, {
     includeDeleted: true,
+    mode: "metadata",
   });
   for (const mcpServerView of mcpServerViews) {
     await scrubMCPServerViewActivity({
@@ -637,6 +639,7 @@ export async function deleteSpacesActivity({
       space,
       {
         includeDeleted: true,
+        mode: "metadata",
       }
     );
     for (const mcpServerView of mcpServerViews) {

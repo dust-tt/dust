@@ -396,7 +396,7 @@ async function handleMCPToolCallAuthError(
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
     toolConfiguration.mcpServerViewId,
-    { includeHeavyAttributes: ["authorization"] }
+    { mode: "metadata" }
   );
   const authorization = mcpServerView?.getAuthorization();
   if (!mcpServerView || !authorization) {
@@ -895,7 +895,8 @@ async function connectServerSideMCP(
 ): Promise<Result<Client, ServerSideMCPConnectionError>> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
-    toolConfiguration.mcpServerViewId
+    toolConfiguration.mcpServerViewId,
+    { mode: "metadata" }
   );
   if (!mcpServerView) {
     return new Err({ type: "not_found" });
@@ -1086,7 +1087,8 @@ export async function disambiguateServerNamesBySpace(
   // We fetch the views to get the space names.
   const mcpServerViews = await MCPServerViewResource.fetchByIds(
     auth,
-    viewIdsToFetch
+    viewIdsToFetch,
+    { mode: "metadata" }
   );
   const viewIdToSpaceName = new Map(
     mcpServerViews.map((v) => [v.sId, v.space.name])
@@ -1233,7 +1235,8 @@ export async function tryListMCPTools(
     .map((config) => config.mcpServerViewId);
   const preFetchedViews = await MCPServerViewResource.fetchByIds(
     auth,
-    serverSideViewIds
+    serverSideViewIds,
+    { mode: "metadata" }
   );
   const preFetchedMcpServerViews = new Map(
     preFetchedViews.map((view) => [view.sId, view])

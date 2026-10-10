@@ -67,7 +67,8 @@ async function getAgentSidekickContextViewId(
 ): Promise<string> {
   const view = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
     auth,
-    AGENT_SIDEKICK_CONTEXT_TOOL_NAME
+    AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+    { mode: "metadata" }
   );
   if (!view) {
     throw new Error(

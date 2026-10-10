@@ -69,7 +69,8 @@ export async function searchAgentListings(
   );
   const mcpServerViews = await MCPServerViewResource.fetchByIds(
     auth,
-    facetIds(facetValues.mcpServerViews)
+    facetIds(facetValues.mcpServerViews),
+    { mode: "metadata" }
   );
   const favoriteIds = await AgentResource.listFavoriteIdsForCurrentUser(auth);
 

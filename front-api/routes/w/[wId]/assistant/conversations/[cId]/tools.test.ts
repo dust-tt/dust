@@ -59,7 +59,8 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/tools", () => {
     const systemView1 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        remoteMCPServer1.sId
+        remoteMCPServer1.sId,
+        { mode: "metadata" }
       );
     assert(systemView1, "MCP server view not found");
     const { view: mcpServerView1 } = await MCPServerViewResource.create(auth, {
@@ -69,7 +70,8 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/tools", () => {
     const systemView2 =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        remoteMCPServer2.sId
+        remoteMCPServer2.sId,
+        { mode: "metadata" }
       );
     assert(systemView2, "MCP server view not found");
     const { view: mcpServerView2 } = await MCPServerViewResource.create(auth, {
@@ -119,7 +121,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -151,7 +154,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -191,7 +195,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -231,7 +236,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -280,7 +286,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -320,7 +327,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           auth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(auth, {
@@ -416,7 +424,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
       const systemView =
         await MCPServerViewResource.getMCPServerViewForSystemSpace(
           adminAuth,
-          remoteMCPServer.sId
+          remoteMCPServer.sId,
+          { mode: "metadata" }
         );
       assert(systemView, "MCP server view not found");
       const { view: mcpServerView } = await MCPServerViewResource.create(

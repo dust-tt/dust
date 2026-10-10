@@ -106,13 +106,7 @@ export const conversationHandlers: ConversationHandlers = {
         targetAuthResult.value,
         server_view_id,
         {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
+          mode: "configuration",
         }
       );
       if (!mcpServerView) {
@@ -133,13 +127,7 @@ export const conversationHandlers: ConversationHandlers = {
     const mcpServerViews = await MCPServerViewResource.listByWorkspace(
       targetAuthResult.value,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
 

@@ -562,6 +562,7 @@ export async function runModel(
     const allToolsets =
       await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(auth, [], {
         includeGlobalSpace: true,
+        mode: "metadata",
       });
     const filteredToolsets = allToolsets.filter(
       (toolset) =>
@@ -1232,7 +1233,8 @@ export async function runModel(
       const mcpServerView =
         await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
-          "missing_action_catcher"
+          "missing_action_catcher",
+          { mode: "metadata" }
         );
 
       // Could happen if the internal server has not already been added

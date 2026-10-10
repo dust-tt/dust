@@ -22,7 +22,8 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     const view =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         adminAuth,
-        "common_utilities"
+        "common_utilities",
+        { mode: "metadata" }
       );
     expect(view).not.toBeNull();
     expect(view?.space.kind).toBe("global");

@@ -18,9 +18,15 @@ app.get(
     const space = ctx.get("space");
 
     const spaceMcpServerViews =
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space);
-    const workspaceServerViews =
-      await MCPServerViewResource.listByWorkspace(auth);
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
+        mode: "metadata",
+      });
+    const workspaceServerViews = await MCPServerViewResource.listByWorkspace(
+      auth,
+      {
+        mode: "metadata",
+      }
+    );
 
     // MCP servers that can be added to a space are the ones already
     // activated by the admin (in the system space) but not already in the
@@ -42,16 +48,9 @@ app.get(
 
     // The lists above are fetched without the remote server heavy attributes (filtering only relies
     // on view-level fields) — hydrate the activable subset before serializing it.
-    await MCPServerViewResource.hydrateRemoteServerHeavyAttributes(
+    await MCPServerViewResource.hydrateConfiguration(
       auth,
-      activableMcpServerViews,
-      [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ]
+      activableMcpServerViews
     );
 
     return ctx.json({

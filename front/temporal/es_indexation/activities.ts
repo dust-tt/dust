@@ -194,6 +194,9 @@ export async function indexAgentSearchActivity({
   const editors = await agent.listEditors(auth);
   const skills = await agent.listSkills(auth, {
     permissionFiltering: "redact_unreadable",
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
   });
   const tags = await agent.listTags(auth);
   const actionsByConfigurationId = await fetchMCPServerActionConfigurations(

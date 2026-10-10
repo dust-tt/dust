@@ -52,7 +52,9 @@ export async function listMCPServersWithViews(
         "sharedSecret",
       ],
     }),
-    InternalMCPServerInMemoryResource.listByWorkspace(auth),
+    InternalMCPServerInMemoryResource.listByWorkspace(auth, {
+      includeCredentials: true,
+    }),
   ]);
 
   const servers = [...remoteMCPs, ...internalMCPs]
@@ -62,7 +64,8 @@ export async function listMCPServersWithViews(
   // Batch-fetch all views in a single query instead of N+1.
   const allViews = await MCPServerViewResource.listByMCPServers(
     auth,
-    servers.map((s) => s.sId)
+    servers.map((s) => s.sId),
+    { mode: "metadata" }
   );
 
   const viewsByServerId = new Map<string, MCPServerViewLightType[]>();
@@ -294,7 +297,7 @@ export async function createInternalMCPServer(
   if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
     const installedMCPServers = await MCPServerViewResource.listForSystemSpace(
       auth,
-      { where: { serverType: "internal" } }
+      { mode: "metadata", where: { serverType: "internal" } }
     );
     const alreadyUsed = installedMCPServers.some((mcpServer) =>
       matchesInternalMCPServerName(mcpServer.internalMCPServerId, name)
@@ -417,7 +420,8 @@ async function createGlobalSpaceView(
 ): Promise<Result<void, Error>> {
   const systemView = await MCPServerViewResource.getMCPServerViewForSystemSpace(
     auth,
-    serverId
+    serverId,
+    { mode: "metadata" }
   );
   if (!systemView) {
     return new Err(

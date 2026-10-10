@@ -55,7 +55,7 @@ app.get(
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
           serverId,
-          { includeRestricted: true }
+          { includeCredentials: true, includeRestricted: true }
         );
 
         if (!server) {
@@ -140,7 +140,7 @@ app.patch(
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
       serverId,
-      { includeRestricted: true }
+      { includeCredentials: true, includeRestricted: true }
     );
     if (!internalServer) {
       return apiError(ctx, {
@@ -169,6 +169,7 @@ app.delete(
       serverType === "remote"
         ? await RemoteMCPServerResource.fetchById(auth, serverId)
         : await InternalMCPServerInMemoryResource.fetchById(auth, serverId, {
+            includeCredentials: false,
             includeRestricted: true,
           });
 
@@ -212,13 +213,7 @@ async function enrichServer(
 ): Promise<MCPServerTypeWithViews> {
   const [views, workspaceConnection] = await Promise.all([
     MCPServerViewResource.listByMCPServer(auth, json.sId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
     }),
     MCPServerConnectionResource.findByMCPServer(auth, {
       mcpServerId: json.sId,

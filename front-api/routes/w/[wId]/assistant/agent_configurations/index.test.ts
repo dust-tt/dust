@@ -652,7 +652,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     const systemMcpServerView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        remoteMCPServer.sId
+        remoteMCPServer.sId,
+        { mode: "metadata" }
       );
     expect(systemMcpServerView).not.toBeNull();
 
@@ -712,7 +713,8 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        remoteMCPServer.sId
+        remoteMCPServer.sId,
+        { mode: "metadata" }
       );
     if (!systemView) {
       throw new Error("Expected system MCP server view.");

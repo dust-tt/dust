@@ -134,13 +134,7 @@ app.get(
 
     const serverViews = (
       await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       })
     ).map((view) => view.toJSON());
 
@@ -230,7 +224,8 @@ app.post(
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        mcpServerId
+        mcpServerId,
+        { mode: "metadata" }
       );
 
     if (!systemView) {

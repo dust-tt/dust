@@ -64,7 +64,9 @@ export async function createSandboxChildAction(
     rawInputs: Record<string, unknown>;
   }
 ): Promise<Result<CreateSandboxChildActionResult, Error>> {
-  const view = await MCPServerViewResource.fetchById(auth, serverViewId);
+  const view = await MCPServerViewResource.fetchById(auth, serverViewId, {
+    mode: "metadata",
+  });
   if (!view) {
     return new Err(new Error("MCP server view not found."));
   }

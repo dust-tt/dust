@@ -46,13 +46,15 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     await expect(
       MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       )
     ).resolves.toBeNull();
     await expect(
       MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       )
     ).resolves.toBeNull();
 
@@ -68,12 +70,14 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const systemViewAfterEnable =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       );
     const globalViewAfterEnable =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       );
     expect(systemViewAfterEnable).not.toBeNull();
     expect(globalViewAfterEnable).not.toBeNull();
@@ -99,12 +103,14 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const systemViewAfterReenable =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       );
     const globalViewAfterReenable =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        planModeMCPServerId
+        planModeMCPServerId,
+        { mode: "metadata" }
       );
     expect(systemViewAfterReenable?.sId).toBe(systemViewAfterEnable?.sId);
     expect(globalViewAfterReenable?.sId).toBe(globalViewAfterEnable?.sId);

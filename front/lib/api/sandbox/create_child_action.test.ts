@@ -594,7 +594,8 @@ describe("createSandboxChildAction", () => {
     const websearchView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "web_search_&_browse"
+        "web_search_&_browse",
+        { mode: "metadata" }
       );
     if (!websearchView) {
       throw new Error("Expected the web_search_&_browse view to exist.");

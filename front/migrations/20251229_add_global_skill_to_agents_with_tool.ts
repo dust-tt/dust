@@ -59,7 +59,8 @@ async function migrateToolToSkill(
   const mcpServerView =
     await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      mcpServerName
+      mcpServerName,
+      { mode: "metadata" }
     );
 
   if (!mcpServerView) {

@@ -60,7 +60,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        remoteMCPServer.sId
+        remoteMCPServer.sId,
+        { mode: "metadata" }
       );
     assert(systemView, "MCP server view not found");
     const { view: mcpServerView } = await MCPServerViewResource.create(auth, {

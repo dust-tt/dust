@@ -259,7 +259,8 @@ async function createSuggestedSkills(
         // so the skill starts with no editor.
         const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
-          mcpServerViewIds
+          mcpServerViewIds,
+          { mode: "metadata" }
         );
 
         const skillRes = await SkillResource.makeSuggestion(

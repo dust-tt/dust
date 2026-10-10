@@ -588,7 +588,8 @@ describe("tryCallMCPTool", () => {
     // Get or create the system view
     let systemView = await MCPServerViewResource.getMCPServerViewForSystemSpace(
       auth,
-      mcpServerId
+      mcpServerId,
+      { mode: "metadata" }
     );
 
     if (!systemView) {
@@ -615,7 +616,8 @@ describe("tryCallMCPTool", () => {
     // Check if a view already exists for this space
     const existingViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      mcpServerId
+      mcpServerId,
+      { mode: "metadata" }
     );
     const existingView = existingViews.find(
       (v) => v.vaultId === systemSpace.id

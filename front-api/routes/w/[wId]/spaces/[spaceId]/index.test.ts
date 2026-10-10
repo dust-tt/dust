@@ -133,7 +133,8 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     const autoView =
       await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
-        "common_utilities"
+        "common_utilities",
+        { mode: "metadata" }
       );
     assert(autoView, "auto tool view should exist for the global space");
 

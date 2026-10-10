@@ -434,7 +434,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
           auth,
           spaceIds,
-          { includeGlobalSpace: true, includeHeavyAttributes: ["cachedTools"] }
+          { includeGlobalSpace: true, mode: "configuration" }
         );
 
       const connectedByType = await buildConnectedServerIdsByType(

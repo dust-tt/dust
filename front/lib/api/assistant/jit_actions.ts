@@ -209,7 +209,8 @@ export async function getJITServers(
   const autoInternalViews =
     await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
       auth,
-      Array.from(mcpServersToFetch)
+      Array.from(mcpServersToFetch),
+      { mode: "configuration" }
     );
 
   const [baseServers, conditionalServers] = await Promise.all([

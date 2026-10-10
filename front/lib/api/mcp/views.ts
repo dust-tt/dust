@@ -48,7 +48,9 @@ async function getAllMCPServerViewsInWorkspace(
 ): Promise<
   Result<MCPServerViewResource[], DustError<"mcp_server_view_not_found">>
 > {
-  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId);
+  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId, {
+    mode: "metadata",
+  });
 
   if (views.length === 0) {
     return new Err(
@@ -112,7 +114,7 @@ export async function clearPinnedOAuthScopeForMCPServerViews(
   { mcpServerId }: { mcpServerId: string }
 ): Promise<void> {
   const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId, {
-    includeHeavyAttributes: ["authorization"],
+    mode: "metadata",
   });
 
   // Every view of a server shares its authorization, so one check covers the whole set.
@@ -172,11 +174,7 @@ export async function updateNameAndDescriptionForMCPServerViews(
   if (name) {
     const systemView = views.find((v) => v.space.kind === "system");
     if (systemView) {
-      await MCPServerViewResource.hydrateRemoteServerHeavyAttributes(
-        auth,
-        [systemView],
-        ["cachedTools"]
-      );
+      await MCPServerViewResource.hydrateConfiguration(auth, [systemView]);
       const { hasConflict, conflictDetails } =
         await MCPServerViewResource.hasNameConflictInSpaceByName(
           auth,

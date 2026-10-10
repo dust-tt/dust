@@ -57,7 +57,8 @@ export async function seedMCPTools(
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        globalMCPServer.sId
+        globalMCPServer.sId,
+        { mode: "metadata" }
       );
 
     if (systemView) {
@@ -104,7 +105,8 @@ export async function seedMCPTools(
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        restrictedMCPServer.sId
+        restrictedMCPServer.sId,
+        { mode: "metadata" }
       );
 
     if (systemView) {
