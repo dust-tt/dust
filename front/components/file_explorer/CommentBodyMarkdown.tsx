@@ -6,7 +6,7 @@ import {
 } from "@app/lib/mentions/markdown/plugin";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Markdown } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -31,7 +31,10 @@ interface CommentBodyMarkdownProps {
  * mention chips, as in a conversation message, without depending on the conversation side
  * panel, so it works wherever a document opens.
  */
-export function CommentBodyMarkdown({ owner, body }: CommentBodyMarkdownProps) {
+export const CommentBodyMarkdown = memo(function CommentBodyMarkdown({
+  owner,
+  body,
+}: CommentBodyMarkdownProps) {
   // Only directive tags, which react-markdown's Components does not name.
   const components: Components & Record<string, unknown> = useMemo(
     () => ({
@@ -65,4 +68,4 @@ export function CommentBodyMarkdown({ owner, body }: CommentBodyMarkdownProps) {
       additionalMarkdownPlugins={COMMENT_MARKDOWN_PLUGINS}
     />
   );
-}
+});
