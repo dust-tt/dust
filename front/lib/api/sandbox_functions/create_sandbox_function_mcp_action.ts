@@ -4,6 +4,7 @@ import { buildToolConfigurationsFromRawTools } from "@app/lib/actions/mcp_action
 import type { SandboxFunctionMCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
+import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import {
   buildAuditLogTarget,
@@ -42,6 +43,13 @@ class SandboxFunctionMCPActionError extends Error {
 
 // Resolves a tool for execution from a sandbox function invocation. The tool must exist and be
 // enabled. Tools that need an agent-loop context error at execution based on the run context.
+/**
+ * @cc [owner:davidebbo,label:product] sandbox-tool-name-is-prefixed-function-call-name
+ * The returned configuration's `name` MUST be the prefixed function-call name a conversation
+ * using the view's default server sees (`tryGetPrefixedToolName(view name ?? server name, tool)`),
+ * not the bare tool name. User tool approvals are keyed on `name`, so a bare name would make
+ * "Always allow" given in a conversation invisible to frames and vice versa.
+ */
 async function resolveSandboxFunctionTool(
   auth: Authenticator,
   view: MCPServerViewResource,
@@ -60,6 +68,8 @@ async function resolveSandboxFunctionTool(
     );
   }
 
+  const serverName = viewJSON.name ?? viewJSON.server.name;
+
   // View-default server configuration: there is no agent configuration to inject settings from
   // (same synthesized shape as JIT servers, see `jit/common_utilities.ts`).
   const toolConfigurationsRes = await buildToolConfigurationsFromRawTools(
@@ -69,7 +79,7 @@ async function resolveSandboxFunctionTool(
       id: -1,
       sId: generateRandomModelSId(),
       type: "mcp_server_configuration",
-      name: viewJSON.name ?? viewJSON.server.name,
+      name: serverName,
       description: viewJSON.description ?? viewJSON.server.description,
       dataSources: null,
       tables: null,
@@ -107,7 +117,20 @@ async function resolveSandboxFunctionTool(
     );
   }
 
-  return new Ok(toolConfiguration);
+  // Same alignment as conversation sandbox child calls (see `create_child_action.ts`): approvals
+  // are keyed on the prefixed name the model sees (e.g. `hubspot_personal__update_deal`), while the
+  // sandbox sends the raw tool name.
+  const prefixedToolNameRes = tryGetPrefixedToolName(serverName, tool.name);
+  if (prefixedToolNameRes.isErr()) {
+    return new Err(
+      new SandboxFunctionMCPActionError(
+        "tool_not_available",
+        prefixedToolNameRes.error.message
+      )
+    );
+  }
+
+  return new Ok({ ...toolConfiguration, name: prefixedToolNameRes.value });
 }
 
 /**
