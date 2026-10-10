@@ -281,10 +281,6 @@ impl Provider for MCPConnectionProvider {
             form_data.push(("resource", resource));
         }
 
-        if let Some(ref scope) = metadata.scope {
-            form_data.push(("scope", scope));
-        }
-
         let client = self.client_for(use_static_ip)?;
         let mut req = client
             .post(metadata.token_endpoint)
@@ -589,6 +585,32 @@ mod tests {
             .expect("test token endpoint should start")
     }
 
+    /// Rejects the request with 400 if the form body carries a `scope` parameter, mirroring
+    /// strict servers that disallow `scope` on the authorization_code exchange.
+    async fn token_endpoint_rejecting_scope(body: String) -> (StatusCode, Json<Value>) {
+        let has_scope = url::form_urlencoded::parse(body.as_bytes()).any(|(key, _)| key == "scope");
+        if has_scope {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "must NOT have additional property 'scope'" })),
+            );
+        }
+
+        (
+            StatusCode::OK,
+            Json(json!({ "access_token": "access-token" })),
+        )
+    }
+
+    fn scope_rejecting_token_endpoint_server() -> TestServer {
+        let app = Router::new().route("/token", post(token_endpoint_rejecting_scope));
+
+        TestServer::builder()
+            .http_transport()
+            .build(app)
+            .expect("test token endpoint should start")
+    }
+
     fn test_client() -> Option<reqwest::Client> {
         reqwest::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
@@ -739,6 +761,62 @@ mod tests {
             .await;
 
         assert!(result.is_ok(), "token request was rejected: {result:?}");
+    }
+
+    #[tokio::test]
+    async fn finalize_does_not_send_scope_in_authorization_code_exchange() {
+        // Per RFC 6749 §4.1.3, the authorization_code token exchange must not carry `scope`.
+        // Even with a scope stored in metadata, finalize must omit it from the token request.
+        let server = scope_rejecting_token_endpoint_server();
+        let token_endpoint = server
+            .server_url("/token")
+            .expect("test token endpoint should have a URL");
+        let connection = Connection::new(
+            "connection-id".to_string(),
+            0,
+            ConnectionProvider::Mcp,
+            ConnectionStatus::Pending,
+            json!({
+                "client_id": "client-id",
+                "token_endpoint": token_endpoint,
+                "authorization_endpoint": "https://example.com/oauth/authorize",
+                "code_verifier": "verifier",
+                "code_challenge": "challenge",
+                "scope": "read write"
+            }),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        );
+        let credential_content = json!({ "client_id": "client-id" });
+        let credential = Credential::new(
+            "credential-id".to_string(),
+            0,
+            CredentialProvider::Mcp,
+            CredentialMetadata {
+                workspace_id: "workspace-id".to_string(),
+                user_id: "user-id".to_string(),
+            },
+            seal_str(&credential_content.to_string()).expect("credential content should seal"),
+        );
+
+        let result = MCPConnectionProvider::new()
+            .finalize(
+                &connection,
+                Some(credential),
+                "authorization-code",
+                "https://dust.example.com/oauth/mcp/finalize",
+            )
+            .await;
+
+        assert!(
+            result.is_ok(),
+            "finalize must not send scope in the token exchange: {result:?}"
+        );
     }
 
     #[test]
