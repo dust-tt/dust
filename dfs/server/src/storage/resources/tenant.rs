@@ -92,7 +92,12 @@ impl TenantResource {
                 {
                     return Err(Error::KeyCollision.into());
                 }
-                self.insert(tx);
+                let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
+                tx.set(&Self::tenant_key(&self.tenant_id), &value);
+                tx.set(
+                    &Self::key_hash_key(&self.key_hash),
+                    &pack(&self.tenant_id.as_str()),
+                );
                 Ok(())
             }
         }
@@ -118,15 +123,6 @@ impl TenantResource {
                 .map_err(|_| corrupt())?,
             key_hash: key_hash.try_into().map_err(|_| corrupt())?,
         }))
-    }
-
-    fn insert(&self, tx: &Transaction) {
-        let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
-        tx.set(&Self::tenant_key(&self.tenant_id), &value);
-        tx.set(
-            &Self::key_hash_key(&self.key_hash),
-            &pack(&self.tenant_id.as_str()),
-        );
     }
 
     fn tenant_key(tenant_id: &str) -> Vec<u8> {
