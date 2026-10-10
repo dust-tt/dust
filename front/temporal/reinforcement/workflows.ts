@@ -10,6 +10,7 @@ import {
 import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import {
   ApplicationFailure,
+  patched,
   proxyActivities,
   sleep,
 } from "@temporalio/workflow";
@@ -96,10 +97,21 @@ const {
 });
 
 // runToolActivity is re-exported from the agent loop so the reinforced skills
-// worker registers it. We proxy it with retry for durability.
-const { runToolActivity: runRetryableToolActivity } = proxyActivities<
-  typeof activities
->({
+// worker registers it. We proxy it with retry for durability. It is only
+// scheduled when replaying histories recorded before runReinforcedToolActivity
+// existed. Their `authType` can be missing if an old worker ran that step
+// with a new activity result during the rollout, hence the explicit type.
+const { runToolActivity: runLegacyToolActivity } = proxyActivities<{
+  runToolActivity: (
+    authType: AuthenticatorType | undefined,
+    args: Parameters<typeof activities.runToolActivity>[1]
+  ) => Promise<unknown>;
+}>({
+  startToCloseTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+
+const { runReinforcedToolActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minutes",
   retry: { maximumAttempts: 3 },
 });
@@ -147,8 +159,10 @@ async function waitForBatch({
   );
 }
 
+// Mirrors ReinforcedToolActionInfo in lib/reinforcement/tool_execution.ts, see its contract.
 interface ReinforcedToolActionInfo {
-  authType: AuthenticatorType;
+  // Only set in activity results recorded before runReinforcedToolActivity existed.
+  authType?: AuthenticatorType;
   agentLoopArgs: AgentLoopArgsWithTiming;
   actionIds: ModelId[];
 }
@@ -168,16 +182,27 @@ interface ReinforcedStepResult {
  * the rendering pipeline injects a placeholder error for the LLM to see.
  */
 async function executeReinforcedToolActions(
+  workspaceId: string,
   toolActionInfo: ReinforcedToolActionInfo
 ): Promise<void> {
   const { authType, agentLoopArgs, actionIds } = toolActionInfo;
   for (const actionId of actionIds) {
     try {
-      await runRetryableToolActivity(authType, {
-        actionId,
-        runAgentArgs: agentLoopArgs,
-        step: 0,
-      });
+      // Patch lifecycle: once runs started before this patch can no longer be replayed (a few
+      // days after deploy), replace patched() with deprecatePatch() and drop the legacy branch.
+      if (patched("reinforced-tool-activity")) {
+        await runReinforcedToolActivity({
+          workspaceId,
+          actionId,
+          agentLoopArgs,
+        });
+      } else {
+        await runLegacyToolActivity(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: 0,
+        });
+      }
     } catch {
       // Tool execution failed after all retries.
       // The AgentMCPActionResource exists but has no output -- the rendering
@@ -190,11 +215,12 @@ async function executeReinforcedToolActions(
  * Shared multi-step streaming loop for reinforced skills operations.
  * Calls the step activity, executes exploratory tools, and loops until terminal.
  *
- * Tool results are stored in the reinforcement conversation by runRetryableToolActivity.
+ * Tool results are stored in the reinforcement conversation by runReinforcedToolActivity.
  * On the next step, the step activity renders the full conversation from DB via
  * renderConversationForModel -- no need to pass continuation messages explicitly.
  */
 async function runMultiStepStreamingLoop(
+  workspaceId: string,
   stepFn: (
     reinforcementConversationId: string | undefined
   ) => Promise<ReinforcedStepResult>
@@ -219,7 +245,7 @@ async function runMultiStepStreamingLoop(
     }
 
     if (result.toolActionInfo) {
-      await executeReinforcedToolActions(result.toolActionInfo);
+      await executeReinforcedToolActions(workspaceId, result.toolActionInfo);
     }
   }
 
@@ -292,7 +318,7 @@ async function aggregateSkillWithMultiStepBatch({
     reinforcementConversationId = result.reinforcementConversationId;
 
     if (result.toolActionInfo) {
-      await executeReinforcedToolActions(result.toolActionInfo);
+      await executeReinforcedToolActions(workspaceId, result.toolActionInfo);
     }
   }
 
@@ -424,10 +450,10 @@ export async function reinforcementWorkspaceWorkflow({
         break;
       }
 
-      // Execute exploratory tools via the agent loop's retryable tool activity.
+      // Execute exploratory tools via runReinforcedToolActivity.
       for (const c of continuations) {
         if (c.toolActionInfo) {
-          await executeReinforcedToolActions(c.toolActionInfo);
+          await executeReinforcedToolActions(workspaceId, c.toolActionInfo);
         }
       }
 
@@ -473,7 +499,7 @@ export async function reinforcementWorkspaceWorkflow({
     const analysisResults = await concurrentExecutor(
       conversationsWithSkills,
       ({ conversationId, skillIds }) =>
-        runMultiStepStreamingLoop((reinforcementConversationId) =>
+        runMultiStepStreamingLoop(workspaceId, (reinforcementConversationId) =>
           analyzeConversationStepActivity({
             workspaceId,
             conversationId,
@@ -514,12 +540,14 @@ export async function reinforcementWorkspaceWorkflow({
           suggestionsCreated,
           approvedSourceSuggestionIds,
           reinforcementConversationId,
-        } = await runMultiStepStreamingLoop((reinforcementConversationId) =>
-          aggregateSuggestionsForSkillStepActivity({
-            workspaceId,
-            skillId: currentSkillId,
-            reinforcementConversationId,
-          })
+        } = await runMultiStepStreamingLoop(
+          workspaceId,
+          (reinforcementConversationId) =>
+            aggregateSuggestionsForSkillStepActivity({
+              workspaceId,
+              skillId: currentSkillId,
+              reinforcementConversationId,
+            })
         );
         return {
           skillId: currentSkillId,
