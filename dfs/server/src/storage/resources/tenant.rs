@@ -8,16 +8,21 @@ use foundationdb::{
 
 use crate::{
     auth::{self, KeyHash},
-    storage::{self, resources::keys::tenant_subspace},
+    storage::{
+        self,
+        resources::keys::{namespace_subspace, tenant_subspace},
+    },
 };
 
 const FAMILY: &str = "tenant";
+const KEY_HASH_FAMILY: &str = "tenant-key";
 const TENANT_ID_MAX_BYTES: usize = 256;
 
 #[derive(Debug)]
 pub enum Error {
     InvalidId,
     KeyGeneration,
+    KeyCollision,
     AlreadyExists,
 }
 
@@ -26,6 +31,7 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidId => f.write_str("invalid tenant ID"),
             Self::KeyGeneration => f.write_str("tenant key generation failed"),
+            Self::KeyCollision => f.write_str("tenant key hash already exists"),
             Self::AlreadyExists => f.write_str("tenant already exists"),
         }
     }
@@ -65,12 +71,27 @@ impl TenantResource {
     /// An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
     /// the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
     /// stored record unchanged.
+    /**
+     * @cc [owner:spolu,label:backend;security] tenant-key-index-consistency
+     * A new tenant's record and key-hash lookup MUST be written in the caller's transaction. For a
+     * new tenant ID, an occupied lookup MUST return KeyCollision before staging either write.
+     * Existing tenants MUST leave the lookup unchanged, including on retries and duplicate-ID
+     * failures.
+     */
     pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
         match Self::fetch(tx, &self.tenant_id).await? {
             // A retry after an unknown commit result finds our own record.
             Some(existing) if existing.root_id == self.root_id => Ok(()),
             Some(_) => Err(Error::AlreadyExists.into()),
             None => {
+                if tx
+                    .get(&Self::key_hash_key(&self.key_hash), false)
+                    .await
+                    .map_err(FdbBindingError::from)?
+                    .is_some()
+                {
+                    return Err(Error::KeyCollision.into());
+                }
                 self.insert(tx);
                 Ok(())
             }
@@ -102,9 +123,17 @@ impl TenantResource {
     fn insert(&self, tx: &Transaction) {
         let value = pack(&(self.root_id.as_bytes().as_slice(), self.key_hash.as_slice()));
         tx.set(&Self::tenant_key(&self.tenant_id), &value);
+        tx.set(
+            &Self::key_hash_key(&self.key_hash),
+            &pack(&self.tenant_id.as_str()),
+        );
     }
 
     fn tenant_key(tenant_id: &str) -> Vec<u8> {
         tenant_subspace(tenant_id).pack(&FAMILY)
+    }
+
+    fn key_hash_key(key_hash: &KeyHash) -> Vec<u8> {
+        namespace_subspace().pack(&(KEY_HASH_FAMILY, key_hash.as_slice()))
     }
 }

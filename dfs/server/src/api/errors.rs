@@ -11,6 +11,10 @@ impl From<tenant::Error> for Status {
                 tracing::error!("tenant key generation failed");
                 status(ErrorCode::Internal)
             }
+            tenant::Error::KeyCollision => {
+                tracing::error!("tenant key hash already exists");
+                status(ErrorCode::Internal)
+            }
             tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
         }
     }
