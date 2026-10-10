@@ -9,6 +9,7 @@ import {
 import * as activities from "@app/temporal/credit_consumption/activities";
 import { QUEUE_NAME } from "@app/temporal/credit_consumption/config";
 import type { Context } from "@temporalio/activity";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
@@ -38,6 +39,15 @@ export async function runCreditConsumptionWorker(): Promise<void> {
           };
         },
       ],
+    },
+    bundlerOptions: {
+      // Update the webpack config to use aliases from our tsconfig.json.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 
