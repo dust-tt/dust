@@ -5,6 +5,7 @@ export {
 export type {
   DocumentCommentAvatarSize,
   DocumentDraftState,
+  DocumentFilePreview,
   DocumentLiveParticipant,
   DocumentProps,
   DocumentSaveResult,

@@ -4,6 +4,7 @@ import {
   DocumentCommentMark,
   DocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import { DocumentFilePreview } from "@app/components/editor/document/DocumentFilePreview";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
 import { cn } from "@dust-tt/sparkle";
@@ -91,6 +92,7 @@ const buildSchemaExtensions = ({
   resolveImageSource
     ? DocumentImage.configure({ resolveSource: resolveImageSource })
     : DocumentImage,
+  DocumentFilePreview,
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),

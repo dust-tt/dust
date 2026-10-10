@@ -1,12 +1,18 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
-import type { DocumentProps } from "@app/components/editor/document/types";
+import { DocumentFilePreviewFallback } from "@app/components/editor/document/DocumentFilePreview";
+import type {
+  DocumentFilePreview,
+  DocumentProps,
+} from "@app/components/editor/document/types";
+import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   checkInputBounds,
   extractAnchors,
   parseDfm,
 } from "@app/lib/markdown/dfm";
+import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -17,7 +23,10 @@ interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
   resolveImageSource: DocumentProps["resolveImageSource"];
+  renderFilePreview?: DocumentProps["renderFilePreview"];
 }
+
+const MARKDOWN_PLUGINS = [filePreviewDirective];
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
@@ -55,6 +64,7 @@ export const DocumentMarkdownPreview = ({
   source,
   className,
   resolveImageSource,
+  renderFilePreview,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -69,8 +79,30 @@ export const DocumentMarkdownPreview = ({
     };
   }, [source]);
   const markdownComponents = useMemo(
-    () => ({ img: getMarkdownImagePlugin(resolveImageSource) }),
-    [resolveImageSource]
+    () => ({
+      img: getMarkdownImagePlugin(resolveImageSource),
+      [FILE_PREVIEW_COMPONENT_NAME]: ({
+        path,
+        title,
+        contentType,
+      }: {
+        path: string;
+        title?: string;
+        contentType?: string;
+      }) => {
+        const preview: DocumentFilePreview = {
+          path,
+          title: title ?? null,
+          contentType: contentType ?? null,
+        };
+        return renderFilePreview ? (
+          renderFilePreview(preview)
+        ) : (
+          <DocumentFilePreviewFallback preview={preview} />
+        );
+      },
+    }),
+    [resolveImageSource, renderFilePreview]
   );
 
   return (
@@ -92,6 +124,7 @@ export const DocumentMarkdownPreview = ({
             isStreaming={false}
             optimizeForStreaming={false}
             additionalMarkdownComponents={markdownComponents}
+            additionalMarkdownPlugins={MARKDOWN_PLUGINS}
           />
         ) : (
           <pre

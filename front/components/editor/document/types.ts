@@ -69,12 +69,21 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
+  /** Renders a file reference. Without it, the reference shows as its file name. */
+  renderFilePreview?: (preview: DocumentFilePreview) => ReactNode;
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
   /** Renders the users in the live session, the current one first, such as an avatar stack. */
   renderLiveParticipants?: (
     participants: DocumentLiveParticipant[]
   ) => ReactNode;
+}
+
+/** A file the document references with a `:preview_file` directive. */
+export interface DocumentFilePreview {
+  path: string;
+  title: string | null;
+  contentType: string | null;
 }
 
 /** Where and as whom a Document joins its live session. */

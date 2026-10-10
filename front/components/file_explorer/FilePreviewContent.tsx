@@ -10,6 +10,7 @@ import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFileP
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
 import {
   useDfmMessageVerifier,
@@ -439,6 +440,13 @@ function RichMarkdownDocument({
       )}
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
+      renderFilePreview={(preview) => (
+        <FilePreviewBlock
+          path={preview.path}
+          title={preview.title ?? undefined}
+          contentType={preview.contentType ?? undefined}
+        />
+      )}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}
