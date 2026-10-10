@@ -53,6 +53,11 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 - For an image you generated, or one attached without a path, get its path with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_RESOLVE_ACTION_NAME)}\`.
 - Readers see an image only if they can read its file. In a document of a pod, embed images from the pod: copy a conversation's image into the pod, next to the document, with \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_COPY_ACTION_NAME)}\`, then embed the copy's path.
 - Write alt text that says what the image shows.
+
+**Frames.** To show a Frame itself in a document, live and interactive, embed it on its own line, with a blank line before and after: \`::frame{path="pod-<id>/dashboards/revenue.tsx"}\`.
+- \`path\` is the Frame file's full path, as for images, and the only attribute. Anything else on the line keeps it as text.
+- Readers see the Frame only if they can read its file. In a document of a pod, embed a Frame of the pod.
+- Never write a Frame's code in the document: create the Frame as a file, then embed its path.
 `;
 
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
@@ -90,7 +95,8 @@ export const getMarkdownDocumentsInstructions = (
  * the document ` ``), and MUST be offered to agents to enable in every other agent run, including
  * when skills are resolved without the run's user message. It MUST NOT be offered by itself in
  * other workspaces. Its instructions MUST tell agents how to write a document the editor can open,
- * how to embed an image by the file path `resolveDocumentImageSource` displays, and to read and
+ * how to embed an image by the file path `resolveDocumentImageSource` displays, how to embed a
+ * Frame with the `::frame` line the editor reads, and to read and
  * change an existing document only with the `documents` tools, never the file tools; and, if and
  * only if the run's user message opens as that heading does, how to recognize and answer that
  * message and find the thread it omits in the document. It MUST bring the user mention tools
@@ -101,12 +107,12 @@ export const markdownDocumentsSkill = {
   kind: "global",
   name: "Markdown Document Edition",
   userFacingDescription:
-    "Write and edit Markdown documents that open in the editor, with images from the " +
-    "conversation or pod, and answer their comments.",
+    "Write and edit Markdown documents that open in the editor, with images and Frames " +
+    "from the conversation or pod, and answer their comments.",
   agentFacingDescription:
     "Enable before reading, editing or creating a Markdown (.md) document, including to add an " +
     "image or a comment: explains the document tools to use, the Markdown the document editor " +
-    "opens and how to embed generated or attached images.",
+    "opens and how to embed generated or attached images and Frames.",
   fetchInstructions: async (_auth, { agentLoopData }) =>
     getMarkdownDocumentsInstructions(
       agentLoopData?.userMessage.content ?? null

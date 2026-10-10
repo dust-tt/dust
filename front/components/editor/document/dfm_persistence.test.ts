@@ -558,6 +558,28 @@ describe("saveDfm", () => {
     }
   });
 
+  it("round-trips Frame embeds with their path", () => {
+    for (const source of [
+      '::frame{path="pod-abc/dashboards/revenue.tsx"}\n',
+      '# Report\n\n::frame{path="conversation-c1/a &amp; b.tsx"}\n\nText.\n',
+      'Intro\n\n::frame{path="pod-abc/x.tsx"}\n\n::frame{path="pod-abc/y.tsx"}\n',
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
+  });
+
+  it("reads a Frame embed only from a line holding the directive alone", () => {
+    for (const source of [
+      'See ::frame{path="pod-abc/x.tsx"} here.\n',
+      '::frame{path="pod-abc/x.tsx" title="X"}\n',
+    ]) {
+      expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
+    }
+  });
+
   it("refuses content the editor cannot write as Markdown", () => {
     const saved = saveDfm(
       { frontMatter: null, anchorOrder: [] },

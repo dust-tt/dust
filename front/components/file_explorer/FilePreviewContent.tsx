@@ -5,6 +5,7 @@ import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { DocumentFrameEmbed } from "@app/components/file_explorer/DocumentFrameEmbed";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -434,6 +435,7 @@ function RichMarkdownDocument({
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
       embeddableFiles={embeddableFiles}
+      renderFrame={(path) => <DocumentFrameEmbed owner={owner} path={path} />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

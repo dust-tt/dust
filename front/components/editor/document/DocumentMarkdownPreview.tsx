@@ -1,5 +1,6 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
+import { DocumentFrameFallback } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
@@ -7,17 +8,40 @@ import {
   extractAnchors,
   parseDfm,
 } from "@app/lib/markdown/dfm";
+import {
+  FRAME_EMBED_COMPONENT_NAME,
+  FRAME_EMBED_DIRECTIVE_NAME,
+} from "@app/lib/markdown/frame_embed";
+import { isString } from "@app/types/shared/utils/general";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
+import { visit } from "unist-util-visit";
 
 interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
   resolveImageSource: DocumentProps["resolveImageSource"];
+  renderFrame?: DocumentProps["renderFrame"];
 }
+
+function frameEmbedDirective() {
+  return (tree: any) => {
+    visit(tree, ["leafDirective"], (node) => {
+      const path = node.attributes?.path;
+      if (node.name !== FRAME_EMBED_DIRECTIVE_NAME || !isString(path)) {
+        return;
+      }
+      const data = node.data ?? (node.data = {});
+      data.hName = FRAME_EMBED_COMPONENT_NAME;
+      data.hProperties = { path };
+    });
+  };
+}
+
+const MARKDOWN_PLUGINS = [frameEmbedDirective];
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
@@ -55,6 +79,7 @@ export const DocumentMarkdownPreview = ({
   source,
   className,
   resolveImageSource,
+  renderFrame,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -69,8 +94,19 @@ export const DocumentMarkdownPreview = ({
     };
   }, [source]);
   const markdownComponents = useMemo(
-    () => ({ img: getMarkdownImagePlugin(resolveImageSource) }),
-    [resolveImageSource]
+    () => ({
+      img: getMarkdownImagePlugin(resolveImageSource),
+      [FRAME_EMBED_COMPONENT_NAME]: ({ path }: { path: string }) => (
+        <div className="my-6">
+          {renderFrame ? (
+            renderFrame(path)
+          ) : (
+            <DocumentFrameFallback path={path} />
+          )}
+        </div>
+      ),
+    }),
+    [resolveImageSource, renderFrame]
   );
 
   return (
@@ -92,6 +128,7 @@ export const DocumentMarkdownPreview = ({
             isStreaming={false}
             optimizeForStreaming={false}
             additionalMarkdownComponents={markdownComponents}
+            additionalMarkdownPlugins={MARKDOWN_PLUGINS}
           />
         ) : (
           <pre
