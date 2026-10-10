@@ -130,6 +130,16 @@ drops what the editor does not know. The host's optional `renderFilePreview` dis
 editor and in the read-only preview; the file preview renders the chip agent messages use, which
 opens the file through the file API. Without it, the reference shows as its title or file name.
 
+## Frames
+
+A line holding exactly `::frame{path="…"}` embeds a Frame: a `frameEmbed` block node keeping its
+path. Anything else on the line, or another attribute, keeps it as text. The host's optional
+`renderFrame` displays it, in the editor and in the read-only preview; events inside it go to the
+Frame, never the editor. The file preview renders the Frame inline, as in an agent message, capped
+at 600px high, after loading it from its path through the file API, so only readers of the Frame's
+file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
+the embed shows its path.
+
 ## Layout
 
 | File | Owns |
@@ -141,7 +151,7 @@ opens the file through the file API. Without it, the reference shows as its titl
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
-| `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
+| `DocumentFilePreview.tsx`, `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `filePreview` and `frameEmbed` nodes, their Markdown, and the host's renderers their views read. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |

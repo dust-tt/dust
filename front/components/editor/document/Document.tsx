@@ -258,11 +258,15 @@ export const DocumentView = ({
   commentInputExtensions,
   resolveImageSource,
   renderFilePreview,
+  renderFrame,
   renderLiveParticipants,
   badge,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
-  const embeds = useMemo(() => ({ renderFilePreview }), [renderFilePreview]);
+  const embeds = useMemo(
+    () => ({ renderFilePreview, renderFrame }),
+    [renderFilePreview, renderFrame]
+  );
   const {
     editor,
     editable,
@@ -313,6 +317,7 @@ export const DocumentView = ({
         source={unsupported.source}
         resolveImageSource={resolveImageSource}
         renderFilePreview={renderFilePreview}
+        renderFrame={renderFrame}
       />
     );
   }
