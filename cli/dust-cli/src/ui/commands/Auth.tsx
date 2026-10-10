@@ -300,8 +300,9 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
       // Store the workspace ID
       await TokenStorage.saveWorkspaceId(effectiveWId);
 
-      // Store a default region for API key auth
-      await TokenStorage.saveRegion("us-central1");
+      // Region for API key auth: honor DUST_REGION (e.g. "europe-west1"),
+      // defaulting to "us-central1" so existing setups are unaffected.
+      await TokenStorage.saveRegion(process.env.DUST_REGION ?? "us-central1");
 
       // Reset the dust client to use the new tokens
       resetDustClient();
