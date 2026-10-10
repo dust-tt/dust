@@ -18,6 +18,7 @@ const TENANT_ID_MAX_BYTES: usize = 256;
 pub enum Error {
     InvalidId,
     KeyGeneration,
+    AlreadyExists,
 }
 
 impl fmt::Display for Error {
@@ -25,6 +26,7 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidId => f.write_str("invalid tenant ID"),
             Self::KeyGeneration => f.write_str("tenant key generation failed"),
+            Self::AlreadyExists => f.write_str("tenant already exists"),
         }
     }
 }
@@ -59,14 +61,18 @@ impl TenantResource {
         Ok((tenant, tenant_key))
     }
 
-    /// Stores this tenant; `false` when another tenant already holds its ID.
-    pub async fn create(&self, tx: &Transaction) -> Result<bool, FdbBindingError> {
+    /// @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
+    /// An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
+    /// the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
+    /// stored record unchanged.
+    pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
         match Self::fetch(tx, &self.tenant_id).await? {
             // A retry after an unknown commit result finds our own record.
-            Some(existing) => Ok(existing.root_id == self.root_id),
+            Some(existing) if existing.root_id == self.root_id => Ok(()),
+            Some(_) => Err(Error::AlreadyExists.into()),
             None => {
                 self.insert(tx);
-                Ok(true)
+                Ok(())
             }
         }
     }

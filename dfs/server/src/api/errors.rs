@@ -8,6 +8,7 @@ impl From<tenant::Error> for Status {
         match error {
             tenant::Error::InvalidId => status(ErrorCode::InvalidInput),
             tenant::Error::KeyGeneration => status(ErrorCode::Internal),
+            tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
         }
     }
 }
