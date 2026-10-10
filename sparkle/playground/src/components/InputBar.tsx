@@ -54,7 +54,12 @@ export type InputBarTaskCommand = {
   }>;
 };
 
+export type InputBarMessage = { text: string; files: File[] };
+
 interface InputBarProps {
+  onSubmitMessage?: (message: InputBarMessage) => void;
+  agentLabel?: string;
+  onAgentClick?: () => void;
   placeholder?: string;
   className?: string;
   instructionReference?: { start: number; end: number } | null;
@@ -80,7 +85,12 @@ export function InputBar({
   onInstructionInserted,
   onClose,
   onSend,
+  onSubmitMessage,
+  agentLabel = "Agent",
+  onAgentClick,
 }: InputBarProps) {
+  const [message, setMessage] = useState("");
+  const uploadInput = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [droppedFiles, setDroppedFiles] = useState<DroppedFile[]>([]);
@@ -147,30 +157,50 @@ export function InputBar({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragCounterRef.current = 0;
-    setIsDragOver(false);
-    setIsFocused(true);
-    const files = e.dataTransfer.files;
-    if (!files?.length) return;
-    const newItems: DroppedFile[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      if (file) {
-        const isImage = file.type.startsWith("image/");
-        const objectUrl = isImage ? URL.createObjectURL(file) : undefined;
-        if (objectUrl) objectUrlsRef.current.add(objectUrl);
-        newItems.push({
-          id: `${file.name}-${i}-${Date.now()}`,
-          file,
-          objectUrl,
-        });
+  const addFiles = useCallback((files: File[]) => {
+    const added = files.map((file) => {
+      const objectUrl = file.type.startsWith("image/")
+        ? URL.createObjectURL(file)
+        : undefined;
+      if (objectUrl) {
+        objectUrlsRef.current.add(objectUrl);
       }
-    }
-    setDroppedFiles((prev) => [...prev, ...newItems]);
+      return { id: crypto.randomUUID(), file, objectUrl };
+    });
+    setDroppedFiles((current) => [...current, ...added]);
   }, []);
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+      setIsFocused(true);
+      addFiles(Array.from(event.dataTransfer.files));
+    },
+    [addFiles]
+  );
+
+  const sendMessage = () => {
+    if (!onSubmitMessage) {
+      onSend?.();
+      return;
+    }
+    if (!message.trim() && droppedFiles.length === 0) {
+      return;
+    }
+    onSubmitMessage({
+      text: message.trim(),
+      files: droppedFiles.map((item) => item.file),
+    });
+    richTextAreaRef.current?.setContent("");
+    setMessage("");
+    objectUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    objectUrlsRef.current.clear();
+    setDroppedFiles([]);
+    setSelectedDroppedFile(null);
+  };
 
   const removeFile = useCallback((id: string) => {
     setDroppedFiles((prev) => {
@@ -312,11 +342,24 @@ export function InputBar({
             ))}
           </NewCitationGrid>
         )}
+        <input
+          ref={uploadInput}
+          type="file"
+          multiple
+          className="hidden"
+          aria-label="Attach files"
+          onChange={(event) => {
+            addFiles(Array.from(event.target.files ?? []));
+            event.target.value = "";
+          }}
+        />
         <RichTextArea
           ref={richTextAreaRef}
           placeholder={placeholder}
           autoFocus={autoFocus}
           onFocus={handleFocus}
+          onTextChange={setMessage}
+          onSubmit={onSubmitMessage ? sendMessage : undefined}
           defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
           topBar={
@@ -352,8 +395,9 @@ export function InputBar({
               variant="ghost-secondary"
               icon={Robot}
               size="xs"
-              label="Agent"
-              tooltip="Mention an Agent"
+              label={agentLabel}
+              onClick={onAgentClick}
+              tooltip={onAgentClick ? "Choose an agent" : "Mention an agent"}
               isRounded
               className={cn(
                 INPUT_BAR_PILL_SURFACE_CLASSNAME,
@@ -378,27 +422,37 @@ export function InputBar({
                 <DropdownMenuItem
                   icon={Attachment01}
                   label="Attach a document"
+                  onClick={() => uploadInput.current?.click()}
                 />
-                <DropdownMenuItem icon={ShapesPlus} label="Add tools" />
-                <DropdownMenuItem icon={Planet} label="Spaces" />
+                {!onSubmitMessage && (
+                  <>
+                    <DropdownMenuItem icon={ShapesPlus} label="Add tools" />
+                    <DropdownMenuItem icon={Planet} label="Spaces" />
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
           <div className="grow" />
           <div className="flex items-center gap-2.5">
-            <Button
-              variant="ghost-secondary"
-              icon={OpenaiLogo}
-              size="xs"
-              tooltip="Model picker"
-              className="px-2"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={Microphone01}
-              size="xs"
-              isRounded
-            />
+            {!onSubmitMessage && (
+              <>
+                <Button
+                  variant="ghost-secondary"
+                  icon={OpenaiLogo}
+                  size="xs"
+                  tooltip="Model picker"
+                  className="px-2"
+                />
+                <Button
+                  variant="ghost-secondary"
+                  icon={Microphone01}
+                  tooltip="Voice input"
+                  size="xs"
+                  isRounded
+                />
+              </>
+            )}
             {beforeSendButton}
             <Button
               variant="highlight"
@@ -406,7 +460,12 @@ export function InputBar({
               size="xs"
               tooltip="Send message"
               isRounded
-              onClick={onSend}
+              onClick={sendMessage}
+              disabled={
+                !!onSubmitMessage &&
+                !message.trim() &&
+                droppedFiles.length === 0
+              }
             />
           </div>
         </div>

@@ -16,6 +16,7 @@ import { getDataSourceIcon } from "../data/dataSources";
 
 interface FilePreviewPanelProps {
   dataSource: DataSource;
+  frameDocument?: string;
   variant?: "chrome" | "document";
 }
 
@@ -80,6 +81,7 @@ function getPaneLabel(view: DocumentView): string {
 export function FilePreviewPanel({
   dataSource,
   variant = "chrome",
+  frameDocument,
 }: FilePreviewPanelProps) {
   const [documentView, setDocumentView] = useState<DocumentView>("preview");
   const isFrame = dataSource.fileType === "frame";
@@ -90,7 +92,16 @@ export function FilePreviewPanel({
   if (isFrame) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col">
-        <DocumentPane label="Document Preview" flush />
+        {frameDocument ? (
+          <iframe
+            title={dataSource.fileName}
+            srcDoc={frameDocument}
+            sandbox="allow-scripts"
+            className="min-h-[520px] w-full flex-1 rounded-xl border border-border bg-background"
+          />
+        ) : (
+          <DocumentPane label="Document Preview" flush />
+        )}
       </div>
     );
   }

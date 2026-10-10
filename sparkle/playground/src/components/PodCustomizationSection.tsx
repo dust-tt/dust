@@ -21,7 +21,12 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useState, type ComponentType, type DragEvent } from "react";
+import {
+  useState,
+  type ComponentType,
+  type DragEvent,
+  type ReactNode,
+} from "react";
 
 import type { DataSource } from "../data/types";
 import {
@@ -37,6 +42,7 @@ export type PodTabCustomizationItem = {
   label: string;
   icon: ComponentType;
   iconName?: string;
+  action?: ReactNode;
 };
 
 export interface PodCustomizationSectionProps {
@@ -275,6 +281,7 @@ export function PodCustomizationSection({
                         {tab.label}
                       </button>
                     )}
+                    {tab.action}
                     <Button
                       size="xs"
                       variant="ghost-secondary"
@@ -318,6 +325,7 @@ export function PodCustomizationSection({
               onClick: () => {
                 if (tabToRemove) {
                   onRemove(tabToRemove.value);
+                  setTabToRemove(null);
                 }
               },
             }}

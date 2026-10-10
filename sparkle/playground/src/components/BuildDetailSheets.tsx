@@ -154,7 +154,7 @@ function ProseBlock({ text }: { text: string }) {
   );
 }
 
-function EditorsList({ userIds }: { userIds: string[] }) {
+export function EditorsList({ userIds }: { userIds: string[] }) {
   const editors = userIds.flatMap((id) => {
     const user = getUserById(id);
     return user ? [user] : [];
@@ -371,7 +371,15 @@ export function AgentDetailsSheet({
   );
 }
 
-function AgentInfoTab({ agent }: { agent: ManagedAgent }) {
+export function AgentInfoTab({
+  agent,
+  getSkill = getManagedSkillById,
+  knowledge,
+}: {
+  agent: ManagedAgent;
+  getSkill?: typeof getManagedSkillById;
+  knowledge?: ReactNode;
+}) {
   const model = getModelById(agent.modelId);
 
   return (
@@ -395,7 +403,7 @@ function AgentInfoTab({ agent }: { agent: ManagedAgent }) {
         ) : (
           <div className="flex flex-col divide-y divide-border">
             {agent.skillIds.flatMap((skillId) => {
-              const skill = getManagedSkillById(skillId);
+              const skill = getSkill(skillId);
               return skill
                 ? [
                     <EntityRow
@@ -411,7 +419,7 @@ function AgentInfoTab({ agent }: { agent: ManagedAgent }) {
         )}
       </Section>
       <Section title="Knowledge">
-        <SpacesList spaceIds={agent.spaceIds} />
+        {knowledge ?? <SpacesList spaceIds={agent.spaceIds} />}
       </Section>
       <Section title="Model">
         <EntityRow
@@ -426,7 +434,7 @@ function AgentInfoTab({ agent }: { agent: ManagedAgent }) {
   );
 }
 
-function AgentInsightsTab({ agent }: { agent: ManagedAgent }) {
+export function AgentInsightsTab({ agent }: { agent: ManagedAgent }) {
   const total = agent.feedbackUp + agent.feedbackDown;
 
   return (
@@ -560,7 +568,15 @@ export function SkillDetailsSheet({
   );
 }
 
-function SkillInfoTab({ skill }: { skill: ManagedSkill }) {
+export function SkillInfoTab({
+  skill,
+  getTool = getToolById,
+  getAgent = getManagedAgentById,
+}: {
+  skill: ManagedSkill;
+  getTool?: typeof getToolById;
+  getAgent?: typeof getManagedAgentById;
+}) {
   return (
     <>
       <p className="text-sm text-foreground">{skill.description}</p>
@@ -575,7 +591,7 @@ function SkillInfoTab({ skill }: { skill: ManagedSkill }) {
         ) : (
           <div className="flex flex-col divide-y divide-border">
             {skill.toolIds.flatMap((toolId) => {
-              const tool = getToolById(toolId);
+              const tool = getTool(toolId);
               return tool
                 ? [
                     <EntityRow
@@ -599,7 +615,7 @@ function SkillInfoTab({ skill }: { skill: ManagedSkill }) {
         ) : (
           <div className="flex flex-col divide-y divide-border">
             {skill.usedByAgentIds.flatMap((agentId) => {
-              const agent = getManagedAgentById(agentId);
+              const agent = getAgent(agentId);
               return agent
                 ? [
                     <EntityRow
@@ -632,7 +648,7 @@ type ToolDetailsSheetProps = {
 };
 
 /** Everything the four tabs let an admin change about a tool. */
-type ToolForm = {
+export type ToolForm = {
   name: string;
   description: string;
   /** Null for a built-in tool, whose icon is the platform's own logo. */
@@ -644,7 +660,7 @@ type ToolForm = {
   operations: ToolOperation[];
 };
 
-function formFor(tool: MockTool | undefined): ToolForm {
+export function formFor(tool: MockTool | undefined): ToolForm {
   return {
     name: tool?.name ?? "",
     description: tool?.description ?? "",
@@ -847,7 +863,7 @@ export function ToolDetailsSheet({ toolId, onClose }: ToolDetailsSheetProps) {
  * Its connection lives here too, since an unauthenticated tool does nothing at
  * all and that is the first thing to fix when opening one.
  */
-function ToolGeneralTab({
+export function ToolGeneralTab({
   tool,
   form,
   onPatch,
@@ -856,7 +872,7 @@ function ToolGeneralTab({
   tool: MockTool;
   form: ToolForm;
   onPatch: (changes: Partial<ToolForm>) => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }) {
   return (
     <>
@@ -898,21 +914,25 @@ function ToolGeneralTab({
         </>
       )}
 
-      <Separator />
-      <Section title="Delete">
-        <p className="text-sm text-muted-foreground">
-          Agents and skills that call this tool will stop working. This cannot
-          be undone.
-        </p>
-        <div className="flex w-full flex-col items-start">
-          <Button
-            icon={Trash01}
-            variant="warning"
-            label="Delete tool"
-            onClick={onDelete}
-          />
-        </div>
-      </Section>
+      {onDelete && (
+        <>
+          <Separator />
+          <Section title="Delete">
+            <p className="text-sm text-muted-foreground">
+              Agents and skills that call this tool will stop working. This
+              cannot be undone.
+            </p>
+            <div className="flex w-full flex-col items-start">
+              <Button
+                icon={Trash01}
+                variant="warning"
+                label="Delete tool"
+                onClick={onDelete}
+              />
+            </div>
+          </Section>
+        </>
+      )}
     </>
   );
 }
@@ -1040,7 +1060,7 @@ function ToolAuthSections({
  * declares dozens, hence the search and the selection: the batch bar itself
  * lives up in the sheet, which is the only place it can float over the footer.
  */
-function ToolStakesTab({
+export function ToolStakesTab({
   operations,
   visibleOperations,
   search,
