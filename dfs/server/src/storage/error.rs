@@ -2,9 +2,11 @@ use std::fmt;
 
 use foundationdb::FdbBindingError;
 
-/// @cc [owner:spolu,label:architecture;error-handling] storage-resource-independence
-/// Storage errors MUST carry resource failures generically without depending on concrete resource
-/// error types.
+/**
+ * @cc [owner:spolu,label:architecture;error-handling] storage-resource-independence
+ * Storage errors MUST carry resource failures generically without depending on concrete resource
+ * error types.
+ */
 #[derive(Debug)]
 pub enum Error<E> {
     Open(anyhow::Error),

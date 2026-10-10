@@ -48,6 +48,14 @@ tenant ID from its value. The plaintext bearer key is returned at creation and n
 The global lookup uses the same hash to resolve the tenant ID from the bearer key. Authentication
 reads the tenant record and verifies its matching hash in the same transaction. Tenant creation
 writes the record and lookup atomically, ensuring the hash is not assigned to another tenant.
+The API caches successful tenant lookups by key hash across its connections for 30,000 milliseconds
+(`TENANT_KEY_CACHE_TTL_MS`), measured with a monotonic clock. Cache hits do not extend expiry. Expired
+entries trigger authentication against FDB again and are replaced on success; failed lookups are not
+cached. A sweep every 30,000 milliseconds removes expired entries under a write lock and stops when
+server shutdown begins. Active RPCs retain their own tenant references; removing an entry releases
+only the cache's reference. The map's allocated capacity is retained. Concurrent cache misses may
+each authenticate against FDB; the cache lock is released during the lookup so other tenants can
+continue using the cache.
 
 ## Sessions
 

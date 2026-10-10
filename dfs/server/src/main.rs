@@ -15,6 +15,8 @@ use tokio::{
 struct Config {
     #[arg(long, env = "DFS_LISTEN", default_value = "127.0.0.1:50051")]
     listen: SocketAddr,
+    #[arg(long, env = "DFS_MASTER_KEY", hide_env_values = true)]
+    master_key: String,
 }
 
 #[tokio::main]
@@ -39,7 +41,7 @@ async fn main() -> anyhow::Result<()> {
     let mut terminate = signal(SignalKind::terminate())?;
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %listener.local_addr()?, "dfs-api listening");
-    serve(listener, async {
+    serve(listener, &config.master_key, async {
         tokio::select! {
             _ = interrupt.recv() => {}
             _ = terminate.recv() => {}

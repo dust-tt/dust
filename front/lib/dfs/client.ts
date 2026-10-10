@@ -80,7 +80,7 @@ function attrMatchesTarget(
 
 /**
  * Typed client for the dfs:// API (`dfs/design-docs/API.md`). Each instance authenticates every call
- * with a single bearer key: the server key (`createTenant`), a tenant key (`createSession`,
+ * with a single bearer key: the master key (`createTenant`), a tenant key (`createSession`,
  * `revokeSession` and grant management) or a session key (session refresh, filesystem and search
  * calls). Several clients can share one
  * transport.
@@ -170,7 +170,7 @@ export class DfsClient {
 
   // Tenants and sessions.
 
-  /** Requires the server key. */
+  /** Requires the master key. */
   async createTenant({
     tenantId,
     rootGrants,

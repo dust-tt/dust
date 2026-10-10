@@ -24,6 +24,7 @@ pub enum Error {
     KeyGeneration,
     KeyCollision,
     AlreadyExists,
+    InvalidKey,
 }
 
 impl fmt::Display for Error {
@@ -33,6 +34,7 @@ impl fmt::Display for Error {
             Self::KeyGeneration => f.write_str("tenant key generation failed"),
             Self::KeyCollision => f.write_str("tenant key hash already exists"),
             Self::AlreadyExists => f.write_str("tenant already exists"),
+            Self::InvalidKey => f.write_str("invalid tenant key"),
         }
     }
 }
@@ -67,10 +69,12 @@ impl TenantResource {
         Ok((tenant, tenant_key))
     }
 
-    /// @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
-    /// An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
-    /// the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
-    /// stored record unchanged.
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
+     * An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
+     * the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
+     * stored record unchanged.
+     */
     /**
      * @cc [owner:spolu,label:backend;security] tenant-key-index-consistency
      * A new tenant's record and key-hash lookup MUST be written in the caller's transaction. For a
@@ -103,8 +107,35 @@ impl TenantResource {
         }
     }
 
-    /// @cc [owner:spolu,label:api;security] tenant-id-validation
-    /// Tenant IDs MUST contain 1-256 UTF-8 bytes and MUST NOT contain NUL.
+    /**
+     * @cc [owner:spolu,label:backend;security] tenant-key-authentication
+     * Authentication MUST read both the key-hash index and tenant record in the caller's
+     * transaction and verify the record's hash. Missing entries or a mismatched hash MUST return
+     * InvalidKey. Database and decoding failures MUST propagate as storage failures.
+     */
+    pub async fn authenticate(
+        tx: &Transaction,
+        key_hash: &KeyHash,
+    ) -> Result<Self, storage::Error<Error>> {
+        let value = tx
+            .get(&Self::key_hash_key(key_hash), false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .ok_or(Error::InvalidKey)?;
+        let tenant_id: String = unpack(&value).map_err(FdbBindingError::PackError)?;
+        let tenant = Self::fetch(tx, &tenant_id)
+            .await?
+            .ok_or(Error::InvalidKey)?;
+        if tenant.key_hash != *key_hash {
+            return Err(Error::InvalidKey.into());
+        }
+        Ok(tenant)
+    }
+
+    /**
+     * @cc [owner:spolu,label:api;security] tenant-id-validation
+     * Tenant IDs MUST contain 1-256 UTF-8 bytes and MUST NOT contain NUL.
+     */
     fn is_valid_id(tenant_id: &str) -> bool {
         !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES && !tenant_id.contains('\0')
     }
