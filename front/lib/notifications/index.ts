@@ -19,7 +19,7 @@ import type { ChannelPreference } from "@novu/react";
 import { WebClient } from "@slack/web-api";
 import { createHmac } from "crypto";
 import config from "../api/config";
-import { Authenticator, getFeatureFlags } from "../auth";
+import { Authenticator } from "../auth";
 import { DustError } from "../error";
 import { DataSourceResource } from "../resources/data_source_resource";
 import { MembershipResource } from "../resources/membership_resource";
@@ -104,19 +104,6 @@ export const getUserNotificationDelay = async ({
 
 export const getSlackConnectionIdentifier = (userId: string): string => {
   return `slack_connection_${userId}`;
-};
-
-const isSlackNotificationsFeatureEnabled = async (
-  subscriberId: string,
-  workspaceId: string
-): Promise<boolean> => {
-  const auth = await Authenticator.fromUserIdAndWorkspaceId(
-    subscriberId,
-    workspaceId
-  );
-  const featureFlags = await getFeatureFlags(auth);
-
-  return featureFlags.includes("conversations_slack_notifications");
 };
 
 const isNovuSlackChannelConfigured = async (
@@ -290,15 +277,6 @@ export const ensureSlackNotificationsReady = async (
   isReady: boolean;
 }> => {
   if (!subscriberId || !workspaceId) {
-    return { isReady: false };
-  }
-
-  const isFeatureEnabled = await isSlackNotificationsFeatureEnabled(
-    subscriberId,
-    workspaceId
-  );
-
-  if (!isFeatureEnabled) {
     return { isReady: false };
   }
 
