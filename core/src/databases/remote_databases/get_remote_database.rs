@@ -6,7 +6,8 @@ use crate::{
 };
 
 use super::{
-    bigquery::get_bigquery_remote_database, snowflake::snowflake::SnowflakeRemoteDatabase,
+    bigquery::get_bigquery_remote_database, databricks::DatabricksRemoteDatabase,
+    snowflake::snowflake::SnowflakeRemoteDatabase,
 };
 
 pub async fn get_remote_database(
@@ -22,6 +23,10 @@ pub async fn get_remote_database(
         CredentialProvider::Bigquery => {
             let db = get_bigquery_remote_database(content).await?;
             Ok(db)
+        }
+        CredentialProvider::Databricks => {
+            let db = DatabricksRemoteDatabase::new(content).map_err(|e| anyhow!("{e}"))?;
+            Ok(Box::new(db) as Box<dyn RemoteDatabase + Sync + Send>)
         }
         _ => Err(anyhow!(
             "{:?} is not a supported remote database provider",
