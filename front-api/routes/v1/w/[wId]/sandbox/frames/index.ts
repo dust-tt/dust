@@ -3,6 +3,7 @@ import { notifyPublishedFrameSidePanel } from "@app/lib/api/frames/notify_publis
 import { recordFramePublishAction } from "@app/lib/api/frames/publish_billing";
 import { publishFrameFromSource } from "@app/lib/api/frames/publish_from_source";
 import { isSandboxExecTokenPayload } from "@app/lib/api/sandbox/access_tokens";
+import type { EgressDomainRequestsSummary } from "@app/lib/api/sandbox/egress_domain_requests";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -30,6 +31,7 @@ type FramePublishResponse = {
   publicationId?: string;
   created?: boolean;
   warnings?: ValidationWarning[];
+  egressDomains?: EgressDomainRequestsSummary;
 };
 
 // Mounted at /api/v1/w/:wId/sandbox/frames.
@@ -167,6 +169,9 @@ app.post(
             manifestPath: publication.value.sourcePath,
             publicationId: publication.value.publicationId,
             created: publication.value.created,
+            ...(publication.value.egressDomains
+              ? { egressDomains: publication.value.egressDomains }
+              : {}),
           },
           200
         );

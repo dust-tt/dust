@@ -33,6 +33,7 @@ The manifest declares the UI entry point, every server function, and every datab
   "version": 1,
   "description": "Read and add comments.",
   "uiEntryPoint": "index.tsx",
+  "domains": ["api.example.com"],
   "databases": [
     {
       "name": "comments",
@@ -74,6 +75,12 @@ The manifest declares the UI entry point, every server function, and every datab
   use \`durable\` when it calls \`tools.call\` (or otherwise invokes a Dust tool).
 - \`defaultStake\` defaults to \`low\`. \`never_ask\` runs unattended, \`low\` asks once and can be
   always approved, and \`high\` asks on every call when the function is exposed as a tool.
+- \`domains\` lists every exact domain or \`*.example.com\` wildcard the functions make outbound
+  HTTPS requests to. Publishing files each one as an egress request that a workspace admin reviews
+  (for the Pod when the Frame lives in a Pod, otherwise for the workspace); it never grants access
+  on its own, and a domain already allowed for that scope (or the workspace) is skipped. For a
+  domain discovered after publishing, use \`request_egress_domain\` instead of republishing, and
+  add it to \`domains\` so the next publish stays accurate.
 - Input, output, and caller-identity schemas belong in the function's TypeScript \`schema\` export,
   not in \`manifest.json\`. The build extracts them from source.
 `;
@@ -290,8 +297,9 @@ export default {
 \`tools.call(server, tool, args?)\` takes a plain JSON \`args\` object (no stringification, no CLI
 flags). Transport failures throw; a tool that ran and reported an error resolves with
 \`isError: true\`. Publishing a function that calls Dust tools as \`fast\` is a bug: the runtime
-refuses the tool call. Function \`fetch()\` requests use the same workspace egress allowlist and
-\`DST_*\` / \`DSEC_*\` configuration rules as the Computer.
+refuses the tool call. Function \`fetch()\` requests only reach domains on the egress allowlist
+(workspace, plus the Pod's when the Frame lives in a Pod), so declare them in the manifest's
+\`domains\`; \`DST_*\` / \`DSEC_*\` configuration follows the same rules as the Computer.
 
 ### Knowing who called a function
 
@@ -717,6 +725,11 @@ publish also assigns the Frame identity; republishing the same path updates that
 
 Use \`dsbx frame publish\` instead of \`bun build\` or an ad hoc regex scan: those do not use the
 Frame build context and report unrelated or noisy failures.
+
+The publish output includes \`egressDomains\` when the manifest declares domains: which were
+requested (pending admin approval) and which were already allowed, or why filing them failed.
+Tell the user about pending requests; the functions cannot reach those domains until an admin
+approves them.
 
 After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
 set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds

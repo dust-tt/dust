@@ -54,6 +54,7 @@ import {
   readWorkspacePolicy,
   removeOwnerPolicyDomain,
   requestOwnerPolicyDomain,
+  requestOwnerPolicyDomains,
   writeOwnerPolicy,
   writeWorkspacePolicy,
 } from "./egress_policy";
@@ -579,6 +580,122 @@ describe("pod egress domain requests", () => {
     });
 
     expect(result).toEqual(new Ok({ allowedDomains: ["api.github.com"] }));
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+});
+
+describe("pod egress domain batch requests", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupBucketMocks();
+  });
+
+  it("classifies every domain and files the new ones in a single write", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: [
+        "API.GitHub.COM",
+        "api.stripe.com",
+        "*.Stripe.COM",
+        "hooks.slack.com",
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcomes).toEqual([
+        { domain: "api.github.com", outcome: "already_allowed" },
+        { domain: "api.stripe.com", outcome: "already_requested" },
+        { domain: "*.stripe.com", outcome: "requested" },
+        { domain: "hooks.slack.com", outcome: "requested" },
+      ]);
+      expect(
+        result.value.policy.requestedDomains?.map((request) => request.domain)
+      ).toEqual(["api.stripe.com", "*.stripe.com", "hooks.slack.com"]);
+    }
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports already_allowed for a domain the workspace allows when filing on a Pod", async () => {
+    setGcsObjects({
+      [WORKSPACE_PATH]: { allowedDomains: ["api.stripe.com"] },
+      [OWNER_PATH]: { allowedDomains: [] },
+    });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: ["api.stripe.com", "hooks.slack.com"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.outcomes).toEqual([
+        { domain: "api.stripe.com", outcome: "already_allowed" },
+        { domain: "hooks.slack.com", outcome: "requested" },
+      ]);
+      expect(
+        result.value.policy.requestedDomains?.map((request) => request.domain)
+      ).toEqual(["hooks.slack.com"]);
+    }
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledTimes(1);
+    expect(mockUploadRawContentToBucket.mock.calls[0]?.[0]).toMatchObject({
+      filePath: OWNER_PATH,
+    });
+  });
+
+  it("does not write when nothing new is requested", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: ["api.github.com"],
+        requestedDomains: [{ domain: "api.stripe.com", requestedAtMs: 1 }],
+      },
+    });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: ["api.github.com", "api.stripe.com"],
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("rejects the whole batch when it would exceed the pending cap", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: {
+        allowedDomains: [],
+        requestedDomains: Array.from({ length: 49 }, (_, i) => ({
+          domain: `service-${i}.example.com`,
+          requestedAtMs: 1,
+        })),
+      },
+    });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: ["one.example.com", "two.example.com"],
+    });
+
+    expect(result.isErr()).toBe(true);
+    expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("rejects the batch when any domain is malformed", async () => {
+    setGcsObjects({ [OWNER_PATH]: { allowedDomains: [] } });
+
+    const result = await requestOwnerPolicyDomains(mockAuth, {
+      ownerId: "owner-sid",
+      domains: ["api.stripe.com", "api.*.com"],
+    });
+
+    expect(result.isErr()).toBe(true);
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
   });
 });

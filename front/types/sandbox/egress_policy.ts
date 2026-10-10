@@ -2,6 +2,11 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { z } from "zod";
 
+// Caps the pending-request section of one policy scope: the proxy re-reads
+// the file on every cache miss, so an agent must not be able to grow it
+// unboundedly. Also bounds the domains a Frame manifest may declare.
+export const SANDBOX_POLICY_MAX_REQUESTED_DOMAINS = 50;
+
 // A domain an agent asked to add to a Pod's allowlist, pending admin
 // approval. Lives as a section of the Pod's policy file: the proxy ignores
 // unknown fields, so only allowedDomains is authorization state — this
