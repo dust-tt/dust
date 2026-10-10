@@ -45,6 +45,7 @@ import type { ConversationWithoutContentType } from "@app/types/assistant/conver
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
+  CONTROL_CHAR_RE,
   DustFileSystemError,
   LEGACY_PREFIX_CONVERSATION,
   LEGACY_PREFIX_PROJECT,
@@ -63,8 +64,6 @@ import type { Readable } from "stream";
 export type { FileSystemEntry } from "@app/types/api/file_system/types";
 export type { FileSystemMount } from "@app/types/file_system";
 export { DustFileSystemError } from "@app/types/file_system";
-
-const CONTROL_CHAR_RE = /[\x00-\x1F\x7F-\x9F]/g;
 
 // Strip control characters, replace path separators, trim whitespace, and NFC-normalize.
 // macOS uploads commonly arrive in NFD; NFC normalization keeps paths stable when consumers

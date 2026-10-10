@@ -12,6 +12,8 @@ interface PodFrameVisualizationProps {
   isPodMember?: boolean;
   /** Stable FileResource identity for Frame v2; omitted for legacy Frames. */
   frameId?: string;
+  /** The Frame's file, legacy or v2, whose saved allowlist admits out-of-scope reads. */
+  frameFileId?: string | null;
   /** Canonical path of the Frame file or manifest. */
   framePath?: string | null;
 }
@@ -29,6 +31,7 @@ export function PodFrameVisualization({
   isPodEditor,
   isPodMember,
   frameId,
+  frameFileId,
   framePath,
 }: PodFrameVisualizationProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -51,6 +54,7 @@ export function PodFrameVisualization({
           : null
       }
       frameId={frameId}
+      frameFileId={frameFileId}
       isInDrawer={true}
       isPodEditor={isPodEditor}
       isPodMember={isPodMember}
