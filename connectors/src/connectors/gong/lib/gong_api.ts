@@ -7,12 +7,19 @@ import {
   HTTPError,
   isNotFoundError,
 } from "@connectors/lib/error";
+import {
+  createProxyAgent,
+  getStaticIpProxyUrl,
+  http1Agent,
+} from "@connectors/lib/proxy";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
 import type { ModelId } from "@connectors/types";
 import { isLeft } from "fp-ts/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
+import type { Dispatcher, Response } from "undici";
+import { fetch as undiciFetch } from "undici";
 
 // Pass-through codec that is used to allow unknown properties.
 const CatchAllCodec = t.record(t.string, t.unknown);
@@ -275,6 +282,9 @@ export function clampRetryAfterSeconds(
 
 export class GongClient {
   private readonly baseUrl: string;
+  // Gong requires partner apps to whitelist their egress IPs, so all Gong API calls go through
+  // the static-IP proxy.
+  private readonly dispatcher: Dispatcher;
 
   constructor(
     private readonly authToken: string,
@@ -286,6 +296,8 @@ export class GongClient {
     baseUrlForCustomer: string
   ) {
     this.baseUrl = `${baseUrlForCustomer}/v2`;
+    const proxyUrl = getStaticIpProxyUrl();
+    this.dispatcher = proxyUrl ? createProxyAgent(proxyUrl) : http1Agent;
   }
 
   /**
@@ -390,7 +402,7 @@ export class GongClient {
     body: unknown,
     codec: t.Type<T>
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const response = await undiciFetch(`${this.baseUrl}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.authToken}`,
@@ -399,6 +411,7 @@ export class GongClient {
       body: JSON.stringify(body),
       // Timeout after 30 seconds.
       signal: AbortSignal.timeout(30000),
+      dispatcher: this.dispatcher,
     });
 
     return this.handleResponse(response, endpoint, codec);
@@ -415,7 +428,7 @@ export class GongClient {
         .map(([key, value]) => [key, String(value)])
     );
 
-    const response = await fetch(
+    const response = await undiciFetch(
       `${this.baseUrl}${endpoint}?${urlSearchParams.toString()}`,
       {
         method: "GET",
@@ -425,6 +438,7 @@ export class GongClient {
         },
         // Timeout after 30 seconds.
         signal: AbortSignal.timeout(30000),
+        dispatcher: this.dispatcher,
       }
     );
 

@@ -1,5 +1,6 @@
 import type { ModelId } from "@connectors/types";
 import { safeParseJSON } from "@connectors/types";
+import type { Response } from "undici";
 
 type GongAPIErrorType = "validation_error" | "http_response_error";
 
