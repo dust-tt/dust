@@ -13,10 +13,11 @@ impl From<tenant::Error> for Status {
 }
 
 /// @cc [owner:spolu,label:api;error-handling] storage-status-conversion
-/// Storage failures MUST return INTERNAL with protocol ErrorDetails and a generic public message.
-/// Database and transaction error details MUST NOT be included in the response.
-impl From<storage::Error> for Status {
-    fn from(error: storage::Error) -> Self {
+/// Database failures MUST return INTERNAL with protocol ErrorDetails and a generic public message.
+/// Resource failures MUST retain their resource-specific status mapping. Database and transaction
+/// error details MUST NOT be included in the response.
+impl<E: Into<Status>> From<storage::Error<E>> for Status {
+    fn from(error: storage::Error<E>) -> Self {
         match error {
             storage::Error::Open(error) => {
                 tracing::error!(error = format!("{error:#}"), "fdb database unavailable");
@@ -24,6 +25,7 @@ impl From<storage::Error> for Status {
             storage::Error::Transaction(error) => {
                 tracing::error!(%error, "fdb transaction failed");
             }
+            storage::Error::Resource(error) => return error.into(),
         }
         status(ErrorCode::Internal)
     }

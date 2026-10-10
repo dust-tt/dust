@@ -10,7 +10,10 @@ use dfs_protocol::{
 };
 use tonic::{Request, Response, Status};
 
-use crate::storage::{fdb, resources::tenant::TenantResource};
+use crate::storage::{
+    fdb,
+    resources::tenant::{self, TenantResource},
+};
 
 mod errors;
 
@@ -34,9 +37,9 @@ impl Dfs for API {
         // Unlike front's `makeNew`, the tenant is built before the transaction: FDB re-runs the body
         // on retry, and a fresh key and root per attempt would hide our own earlier commit.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
-        let created = fdb::with_transaction(|tx| {
+        let created = fdb::with_transaction::<_, _, _, tenant::Error>(|tx| {
             let tenant = &tenant;
-            async move { tenant.create(&tx).await }
+            async move { Ok(tenant.create(&tx).await?) }
         })
         .await?;
         if !created {

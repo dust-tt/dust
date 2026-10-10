@@ -27,18 +27,26 @@ pub fn database() -> Result<&'static Database> {
 }
 
 /// @cc [owner:spolu,label:backend;error-handling] preserve-fdb-retry-errors
-/// Transaction failures MUST reach Database::run as FdbBindingError so it can decide whether to
-/// retry. Only the final failure returned by the runner MUST be wrapped in the storage error.
-pub async fn with_transaction<F, Fut, T>(body: F) -> Result<T, Error>
+/// FDB failures MUST reach Database::run unchanged so it can decide whether to retry. Resource
+/// failures MUST abort the attempt without committing or retrying and retain their typed error
+/// after the runner returns.
+pub async fn with_transaction<F, Fut, T, E>(body: F) -> Result<T, Error<E>>
 where
     F: Fn(RetryableTransaction) -> Fut,
-    Fut: Future<Output = Result<T, FdbBindingError>>,
+    Fut: Future<Output = Result<T, Error<E>>>,
+    E: std::error::Error + Send + Sync + 'static,
 {
     let database = database().map_err(Error::Open)?;
     database
-        .run(|tx, _maybe_committed| body(tx))
+        .run(|tx, _maybe_committed| {
+            let future = body(tx);
+            // Database::run only accepts FdbBindingError. Carry resource errors through its
+            // CustomError variant while leaving FDB errors available to the retry logic.
+            async move { future.await.map_err(FdbBindingError::from) }
+        })
         .await
-        .map_err(Error::Transaction)
+        // Recover boxed resource errors so the API can map them to their specific status.
+        .map_err(Error::from)
 }
 
 fn open() -> Result<Database> {

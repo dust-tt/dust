@@ -8,7 +8,7 @@ use foundationdb::{
 
 use crate::{
     auth::{self, KeyHash},
-    storage::resources::keys::tenant_subspace,
+    storage::{self, resources::keys::tenant_subspace},
 };
 
 const FAMILY: &str = "tenant";
@@ -30,6 +30,12 @@ impl fmt::Display for Error {
 }
 
 impl std::error::Error for Error {}
+
+impl From<Error> for storage::Error<Error> {
+    fn from(error: Error) -> Self {
+        Self::Resource(error)
+    }
+}
 
 pub struct TenantResource {
     pub tenant_id: String,
