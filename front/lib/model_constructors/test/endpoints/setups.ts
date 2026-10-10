@@ -50,6 +50,7 @@ import { MistralMistralLarge4GlobalMistralStream } from "@app/lib/model_construc
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
+import { MoonshotAiKimiK3EuropeBlackfuelStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_eu_blackfuel";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
@@ -141,6 +142,7 @@ import { MistralMistralLarge4GlobalMistralStreamSetup } from "@app/lib/model_con
 import { MistralMistralLargeEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_large_eu_mistral.test";
 import { MistralMistralMedium35EuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_medium_3_5_eu_mistral.test";
 import { MistralMistralSmallEuropeMistralStreamSetup } from "@app/lib/model_constructors/test/endpoints/mistral_mistral_small_eu_mistral.test";
+import { MoonshotAiKimiK3EuropeBlackfuelStreamSetup } from "@app/lib/model_constructors/test/endpoints/moonshot_ai_kimi_k3_eu_blackfuel.test";
 import { MoonshotAiKimiK3GlobalFireworksStreamSetup } from "@app/lib/model_constructors/test/endpoints/moonshot_ai_kimi_k3_global_fireworks.test";
 import { NoopNoopGlobalNoopStreamSetup } from "@app/lib/model_constructors/test/endpoints/noop_noop_global_noop.test";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesStreamSetup } from "@app/lib/model_constructors/test/endpoints/openai_gpt_five_dot_five_eu_openai_responses.test";
@@ -264,6 +266,8 @@ export const STREAM_ENDPOINT_SETUPS = {
     ZAiGlmFiveDotThreeFlashGlobalFireworksStreamSetup,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:
     MoonshotAiKimiK3GlobalFireworksStreamSetup,
+  [MoonshotAiKimiK3EuropeBlackfuelStream.id]:
+    MoonshotAiKimiK3EuropeBlackfuelStreamSetup,
   [ThinkingMachinesInklingGlobalFireworksStream.id]:
     ThinkingMachinesInklingGlobalFireworksStreamSetup,
   [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:

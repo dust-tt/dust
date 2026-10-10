@@ -46,6 +46,7 @@ import { MistralMistralLarge4GlobalMistralStream } from "@app/lib/model_construc
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
+import { MoonshotAiKimiK3EuropeBlackfuelStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_eu_blackfuel";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
@@ -168,6 +169,8 @@ export const STREAM_ENDPOINTS = {
     ZAiGlmFiveDotThreeFlashGlobalFireworksStream,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:
     MoonshotAiKimiK3GlobalFireworksStream,
+  [MoonshotAiKimiK3EuropeBlackfuelStream.id]:
+    MoonshotAiKimiK3EuropeBlackfuelStream,
   [ThinkingMachinesInklingGlobalFireworksStream.id]:
     ThinkingMachinesInklingGlobalFireworksStream,
   [GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream.id]:

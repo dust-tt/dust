@@ -14,7 +14,10 @@ import {
   CLAUDE_SONNET_5_5_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
-import { FIREWORKS_GLM_5P3_MODEL_ID } from "@app/types/assistant/models/fireworks";
+import {
+  FIREWORKS_GLM_5P3_MODEL_ID,
+  FIREWORKS_KIMI_K3_MODEL_ID,
+} from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_3_6_FLASH_MODEL_ID,
   GEMINI_3_7_FLASH_MODEL_ID,
@@ -142,11 +145,18 @@ function applyRegionalUplift(pricing: PricingEntry): PricingEntry {
 // is not a flat uplift of it. GLM-5.3: Fireworks globally, Mistral in the EU
 // (1.1x Mistral list, https://docs.mistral.ai/models/zai-glm-5-3, 2026-09-28).
 // Regional inference pricing reference: https://docs.mistral.ai/inference/regional-inference.
+// Kimi K3: Fireworks globally, Blackfuel in the EU (`GET /v1/models` pricing for
+// `moonshotai/Kimi-K3:eu`, 2026-10-05).
 const EU_HOST_MODEL_PRICING = {
   [FIREWORKS_GLM_5P3_MODEL_ID]: {
     input: 1.54,
     output: 4.84,
     cache_read_input_tokens: 0.154,
+  },
+  [FIREWORKS_KIMI_K3_MODEL_ID]: {
+    input: 3,
+    output: 15,
+    cache_read_input_tokens: 0.6,
   },
 } satisfies Partial<Record<StaticModelIdType, PricingEntry>>;
 

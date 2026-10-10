@@ -936,6 +936,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "consumption_export_api"
   | "conversation_consumption_details"
   | "sensitivity_labels"
+  | "blackfuel_inference"
   | "use_vertex_for_supported_models"
   | "workspace_default_agent"
   | "whitelabel_frames"
