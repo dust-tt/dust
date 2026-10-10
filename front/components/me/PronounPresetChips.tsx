@@ -1,6 +1,6 @@
-import type { PronounFlight } from "@app/components/me/PronounFillAnimation";
+import type { PronounFill } from "@app/components/me/PronounFillAnimation";
 import {
-  measurePronounFlight,
+  measurePronounFill,
   PronounFillAnimation,
 } from "@app/components/me/PronounFillAnimation";
 import { Chip } from "@dust-tt/sparkle";
@@ -64,9 +64,9 @@ export function PronounPresetChips({
 }: PronounPresetChipsProps) {
   const { t } = useLingui();
   const shouldReduceMotion = useReducedMotion();
-  const flightCountRef = useRef(0);
-  const [flight, setFlight] = useState<PronounFlight | null>(null);
-  const endFlight = useCallback(() => setFlight(null), []);
+  const fillCountRef = useRef(0);
+  const [fill, setFill] = useState<PronounFill | null>(null);
+  const endFill = useCallback(() => setFill(null), []);
 
   const selectPreset = (label: string, chip: HTMLDivElement | null) => {
     const input = inputRef.current;
@@ -76,10 +76,9 @@ export function PronounPresetChips({
       input &&
       !isPresetSelected(value, label)
     ) {
-      flightCountRef.current += 1;
-      // Measured before `onSelect` so the letters currently in the input can be knocked out.
-      setFlight(
-        measurePronounFlight({ id: flightCountRef.current, chip, input, label })
+      fillCountRef.current += 1;
+      setFill(
+        measurePronounFill({ id: fillCountRef.current, chip, input, label })
       );
     }
     onSelect(label);
@@ -98,12 +97,8 @@ export function PronounPresetChips({
           />
         );
       })}
-      {flight && (
-        <PronounFillAnimation
-          key={flight.id}
-          flight={flight}
-          onDone={endFlight}
-        />
+      {fill && (
+        <PronounFillAnimation key={fill.id} fill={fill} onDone={endFill} />
       )}
     </div>
   );
