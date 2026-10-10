@@ -147,6 +147,17 @@ GOOD:
 - Tooltip \`formatter\` must be a function returning \`[value, name]\`; \`labelFormatter\` must be a function returning a string.
 - Legends should follow the natural flow of the layout. Avoid \`position: absolute\` for legends.
 
+### Architecture And System Diagrams
+
+- Use \`Mermaid\` from \`@dust/mermaid\` for architecture, system, flow, sequence, timeline, and gantt diagrams. Use Recharts for quantitative data charts. Do not use Mermaid \`pie\`, \`xychart-beta\`, or \`sankey\`.
+- Pass the diagram source in the \`chart\` prop as a template literal. Never pass it as children.
+- Prefer \`flowchart LR\` or \`flowchart TB\`. Group services by boundary (zone, VPC, team) with \`subgraph\`, draw datastores as \`[(Database)]\`, and label edges with the protocol or payload, for example \`A -->|HTTPS| B\`.
+- Keep node ids short and alphanumeric, and quote labels that contain punctuation: \`API["API (v2)"]\`.
+- Keep one diagram under about 25 nodes. Split larger systems into several diagrams.
+- Do not add \`%%{init}%%\` directives, \`style\`, or \`classDef\` colors. The theme follows light and dark mode.
+- \`architecture-beta\` is allowed with the built-in icons only: \`cloud\`, \`database\`, \`disk\`, \`internet\`, \`server\`. External icon packs cannot load.
+- Give \`Mermaid\` a width through \`className\`, for example \`className="w-full"\`. The diagram scales down to fit.
+
 ### Data And File Handling
 
 Data for a frame can come from any of these sources:
@@ -232,7 +243,7 @@ These apply to data from any source: the user's prompt, attached files, tool out
 
 - Default output is a single Frame React component with a default export.
 - Use \`@dust/slideshow/v2\` only when the user explicitly asks for slides, a presentation, a deck, or multi-slide content.
-- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, ${hasDocuments ? "`@dust/document/v1`, " : ""}\`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
+- Imports are limited to \`react\`, \`recharts\`, \`lucide-react\`, \`papaparse\`, \`shadcn\`, \`@viz/lib/utils\`, \`@dust/frame\`, \`@dust/mermaid\`, \`@dust/react-hooks\`, \`@dust/slideshow/v2\`, ${hasDocuments ? "`@dust/document/v1`, " : ""}\`motion/react\`, legacy \`@dust/slideshow/v1\` imports only when editing an existing v1 slideshow, and frame file references.
 - No other third-party libraries are installed or available.
 `;
 
@@ -503,5 +514,29 @@ const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
     </Bar>
   </BarChart>
 </ResponsiveContainer>
+\`\`\`
+
+Architecture diagram:
+
+\`\`\`tsx
+import { Mermaid } from "@dust/mermaid";
+
+const ARCHITECTURE = \`flowchart LR
+  Client([Browser]) -->|HTTPS| API
+  subgraph Backend
+    API[API] -->|enqueue| Queue[[Job queue]]
+    Queue --> Worker[Worker]
+  end
+  subgraph Storage
+    DB[(Postgres)]
+    Cache[(Redis)]
+  end
+  API --> Cache
+  API --> DB
+  Worker --> DB\`;
+
+export default function Architecture() {
+  return <Mermaid chart={ARCHITECTURE} className="w-full" />;
+}
 \`\`\`
 `;
