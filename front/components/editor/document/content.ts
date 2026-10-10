@@ -27,6 +27,32 @@ const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
 });
 
+type MarkdownLexer = InstanceType<typeof documentMarkdown.instance.Lexer>;
+type MarkdownTokens = ReturnType<MarkdownLexer["lex"]>;
+
+// MarkdownManager.parse lexes the Markdown, then parses the tokens with that lexer active, a
+// step it keeps private. Doing both steps here parses the tokens the support check walked
+// instead of lexing every document twice.
+const tokenParser = documentMarkdown as unknown as {
+  activeParseLexer: MarkdownLexer | null;
+  parseTokens(
+    tokens: MarkdownTokens,
+    parseImplicitEmptyParagraphs: boolean
+  ): JSONContent[];
+};
+
+interface LexedMarkdown {
+  lexer: MarkdownLexer;
+  tokens: MarkdownTokens;
+}
+
+const lexMarkdown = (markdown: string): LexedMarkdown => {
+  const lexer = new documentMarkdown.instance.Lexer(
+    documentMarkdown.instance.defaults
+  );
+  return { lexer, tokens: lexer.lex(markdown) };
+};
+
 /**
  * @cc [owner:flvndvd,label:architecture] document-markdown-capabilities
  * Supported token names MUST derive from the editor extensions' parse and render handlers, plus
@@ -108,16 +134,13 @@ const unsupportedElement = (
   }
 };
 
-const findUnsupportedToken = (content: string): MarkdownToken | null => {
+const findUnsupportedToken = (tokens: MarkdownTokens): MarkdownToken | null => {
   const unsupported: MarkdownToken[] = [];
-  documentMarkdown.instance.walkTokens(
-    documentMarkdown.instance.lexer(content),
-    (token) => {
-      if (!isSupportedMarkdownToken(token)) {
-        unsupported.push(token);
-      }
+  documentMarkdown.instance.walkTokens(tokens, (token) => {
+    if (!isSupportedMarkdownToken(token)) {
+      unsupported.push(token);
     }
-  );
+  });
   return unsupported[0] ?? null;
 };
 
@@ -125,12 +148,12 @@ const findUnsupportedToken = (content: string): MarkdownToken | null => {
 export const findUnsupportedElement = (
   content: string
 ): UnsupportedElement | null => {
-  const token = findUnsupportedToken(content);
+  const token = findUnsupportedToken(lexMarkdown(content).tokens);
   return token ? unsupportedElement(token) : null;
 };
 
-const hasSupportedMarkdown = (content: string) =>
-  findUnsupportedToken(content) === null;
+const hasSupportedMarkdown = ({ tokens }: LexedMarkdown) =>
+  findUnsupportedToken(tokens) === null;
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   const content = document.content ?? [];
@@ -181,11 +204,24 @@ const imagesInParagraphs = (node: JSONContent): JSONContent => {
   };
 };
 
-const parseMarkdown = (markdown: string): JSONContent =>
-  imagesInParagraphs(documentMarkdown.parse(markdown));
+const parseMarkdown = ({ lexer, tokens }: LexedMarkdown): JSONContent => {
+  const previousLexer = tokenParser.activeParseLexer;
+  tokenParser.activeParseLexer = lexer;
+  try {
+    return imagesInParagraphs({
+      type: "doc",
+      content: tokenParser.parseTokens(tokens, true),
+    });
+  } finally {
+    tokenParser.activeParseLexer = previousLexer;
+  }
+};
 
 /** Compares in the editor's form, comment marks included, as the user would reopen it. */
-const canRoundTripMarkdown = (document: JSONContent, markdown: string) => {
+const canRoundTripMarkdown = (
+  document: JSONContent,
+  markdown: LexedMarkdown
+) => {
   const reopened = anchorsToMarks(parseMarkdown(markdown), documentSchema);
   return (
     reopened.isOk() &&
@@ -260,7 +296,8 @@ const isValidDocument = (document: JSONContent) => {
 export const parseDocumentContent = (
   content: string
 ): Result<MarkedDocument, string> => {
-  const unsupported = findUnsupportedToken(content);
+  const lexed = lexMarkdown(content);
+  const unsupported = findUnsupportedToken(lexed.tokens);
   if (unsupported) {
     const element = unsupportedElement(unsupported);
     const name = element
@@ -273,7 +310,7 @@ export const parseDocumentContent = (
 
   let parsed: JSONContent;
   try {
-    parsed = parseMarkdown(content);
+    parsed = parseMarkdown(lexed);
   } catch {
     return new Err("The Markdown could not be parsed.");
   }
@@ -312,8 +349,8 @@ const serializeReadingBack = (
     if (markdown.isErr()) {
       return markdown;
     }
-    return hasSupportedMarkdown(markdown.value) &&
-      canRoundTripMarkdown(content, markdown.value)
+    const lexed = lexMarkdown(markdown.value);
+    return hasSupportedMarkdown(lexed) && canRoundTripMarkdown(content, lexed)
       ? markdown
       : new Err("The document would not read back the same as Markdown.");
   } catch {
@@ -360,12 +397,13 @@ export const parseInlineMarkdown = (
   if (markdown.trim() === "") {
     return new Ok([]);
   }
-  if (!hasSupportedMarkdown(markdown)) {
+  const lexed = lexMarkdown(markdown);
+  if (!hasSupportedMarkdown(lexed)) {
     return new Err("The suggestion uses formatting the editor cannot keep.");
   }
   let parsed: JSONContent;
   try {
-    parsed = parseMarkdown(markdown);
+    parsed = parseMarkdown(lexed);
   } catch {
     return new Err("The suggestion could not be read.");
   }
