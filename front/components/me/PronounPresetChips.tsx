@@ -1,6 +1,6 @@
 import type { PronounFill } from "@app/components/me/PronounFillAnimation";
 import {
-  measurePronounFill,
+  createPronounFill,
   PronounFillAnimation,
 } from "@app/components/me/PronounFillAnimation";
 import { Chip } from "@dust-tt/sparkle";
@@ -9,7 +9,7 @@ import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useReducedMotion } from "framer-motion";
 import type { RefObject } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 // Shown in the viewer's locale; the translated text is what gets stored when a preset is picked.
 const PRONOUN_PRESETS: MessageDescriptor[] = [
@@ -20,30 +20,6 @@ const PRONOUN_PRESETS: MessageDescriptor[] = [
 
 function isPresetSelected(value: string, label: string): boolean {
   return value.trim().toLowerCase() === label.toLowerCase();
-}
-
-interface PronounPresetChipProps {
-  label: string;
-  isSelected: boolean;
-  onSelect: (label: string, chip: HTMLDivElement | null) => void;
-}
-
-function PronounPresetChip({
-  label,
-  isSelected,
-  onSelect,
-}: PronounPresetChipProps) {
-  const chipRef = useRef<HTMLDivElement>(null);
-
-  return (
-    <Chip
-      ref={chipRef}
-      label={label}
-      size="xs"
-      color={isSelected ? "highlight" : "primary"}
-      onClick={() => onSelect(label, chipRef.current)}
-    />
-  );
 }
 
 interface PronounPresetChipsProps {
@@ -64,22 +40,13 @@ export function PronounPresetChips({
 }: PronounPresetChipsProps) {
   const { t } = useLingui();
   const shouldReduceMotion = useReducedMotion();
-  const fillCountRef = useRef(0);
   const [fill, setFill] = useState<PronounFill | null>(null);
   const endFill = useCallback(() => setFill(null), []);
 
-  const selectPreset = (label: string, chip: HTMLDivElement | null) => {
+  const selectPreset = (label: string) => {
     const input = inputRef.current;
-    if (
-      !shouldReduceMotion &&
-      chip &&
-      input &&
-      !isPresetSelected(value, label)
-    ) {
-      fillCountRef.current += 1;
-      setFill(
-        measurePronounFill({ id: fillCountRef.current, chip, input, label })
-      );
+    if (input && !shouldReduceMotion && !isPresetSelected(value, label)) {
+      setFill(createPronounFill(input, label));
     }
     onSelect(label);
   };
@@ -89,16 +56,17 @@ export function PronounPresetChips({
       {PRONOUN_PRESETS.map((preset) => {
         const label = t(preset);
         return (
-          <PronounPresetChip
+          <Chip
             key={label}
             label={label}
-            isSelected={isPresetSelected(value, label)}
-            onSelect={selectPreset}
+            size="xs"
+            color={isPresetSelected(value, label) ? "highlight" : "primary"}
+            onClick={() => selectPreset(label)}
           />
         );
       })}
       {fill && (
-        <PronounFillAnimation key={fill.id} fill={fill} onDone={endFill} />
+        <PronounFillAnimation key={fill.text} fill={fill} onDone={endFill} />
       )}
     </div>
   );
