@@ -5,4 +5,10 @@ tenant state.
 @cc [owner:pmilliotte,label:coding] no-magic-numbers
 Meaningful numbers (limits, sizes, timeouts, deadlines) MUST be named module-level `const`s with
 their unit in the name or type, derived from any constant they depend on. Exempt: `0`/`1` as
-indexes or offsets, and test fixture data.
+indexes or offsets, test fixture data, and the array length in a named type definition such as
+`type KeyHash = [u8; 32]`, where the type's name gives the length its meaning.
+
+@cc [owner:spolu,label:rust;error-handling] error-display-format
+Text authored in error Display implementations MUST use phrases, not sentences, begin with a
+lowercase letter, and have no trailing full stop. This applies to local messages and context
+prefixes; wrapped error text MAY retain its original formatting.

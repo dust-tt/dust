@@ -11,7 +11,7 @@ mod api;
 pub mod auth;
 pub mod storage;
 
-pub const MAX_MESSAGE_SIZE: usize = 4 * 1024 * 1024;
+const MAX_MESSAGE_SIZE: usize = 4 * 1024 * 1024;
 const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
 
 /**

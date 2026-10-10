@@ -180,15 +180,15 @@ message DenyGrant {
 }
 
 // @cc [owner:spolu,label:api] dfs-create-tenant-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Root grants MUST contain at most 512 distinct grant
-// values; identical values MUST be deduplicated.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Root grants MUST contain at most 512 distinct
+// grant values; identical values MUST be deduplicated.
 message CreateTenantRequest {
   required string tenant_id = 1;
   repeated Grant root_grants = 2;
 }
 
 // @cc [owner:spolu,label:api] dfs-tenant-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Tenant keys MUST contain exactly 64 characters.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Tenant keys MUST contain exactly 64 characters.
 message Tenant {
   required string tenant_id = 1;
   required ObjectId root_id = 2;
@@ -213,9 +213,9 @@ message RevokeSessionRequest {
 }
 
 // @cc [owner:spolu,label:api] dfs-session-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Subjects MUST contain at most 512 unique values, each
-// containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for CreateSession and
-// MUST be empty for CurrentSession and RefreshSession.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Subjects MUST contain at most 512 unique
+// values, each containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for
+// CreateSession and MUST be empty for CurrentSession and RefreshSession.
 message Session {
   required string id = 1;
   required string tenant_id = 2;

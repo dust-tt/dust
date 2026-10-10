@@ -10,7 +10,14 @@ use dfs_protocol::{
 };
 use tonic::{Request, Response, Status};
 
-/// Every RPC answers UNSUPPORTED until its implementation lands.
+use crate::storage::{
+    fdb,
+    resources::tenant::{self, TenantResource},
+};
+
+mod errors;
+
+/// RPCs without an implementation answer UNSUPPORTED.
 #[allow(clippy::upper_case_acronyms)]
 pub struct API;
 
@@ -18,9 +25,31 @@ pub struct API;
 impl Dfs for API {
     async fn create_tenant(
         &self,
-        _request: Request<CreateTenantRequest>,
+        request: Request<CreateTenantRequest>,
     ) -> Result<Response<Tenant>, Status> {
-        Err(status(ErrorCode::Unsupported))
+        let CreateTenantRequest {
+            tenant_id,
+            root_grants,
+        } = request.into_inner();
+        if !root_grants.is_empty() {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        // Call `new` before the transaction because FDB may retry its body. Keeping the same key and
+        // root across attempts lets us recognize our own commit if its outcome was unknown.
+        let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
+        let created = fdb::with_transaction::<_, _, _, tenant::Error>(|tx| {
+            let tenant = &tenant;
+            async move { Ok(tenant.create(&tx).await?) }
+        })
+        .await?;
+        if !created {
+            return Err(status(ErrorCode::AlreadyExists));
+        }
+        Ok(Response::new(Tenant {
+            tenant_id: tenant.tenant_id,
+            root_id: tenant.root_id,
+            tenant_key,
+        }))
     }
 
     async fn create_session(

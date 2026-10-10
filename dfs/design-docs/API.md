@@ -255,8 +255,8 @@ or unusable tree proofs fall back to current FDB authorization. File metadata/co
 search indexing has independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
-filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes. Subject strings contain
-1–1,024 UTF-8 bytes.
+filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes without NUL. Subject
+strings contain 1–1,024 UTF-8 bytes.
 
 Stored basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types
 must be valid and at most 255 bytes. Xattr names contain 1–255 bytes without NUL; combined xattr
