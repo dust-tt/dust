@@ -16,13 +16,13 @@ export function useUserLocale({ owner }: UseUserLocaleProps) {
   const { t } = useLingui();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
-  const { locale: authLocale } = useAuth();
+  const { userLocale: storedUserLocale } = useAuth();
   const { mutateAuthContext } = useAuthContext({
     workspaceId: owner.sId,
     disabled: true,
   });
 
-  const userLocale = authLocale ?? owner.locale;
+  const userLocale = storedUserLocale ?? owner.locale;
 
   const doUpdateUserLocale = async (
     locale: SupportedLocale

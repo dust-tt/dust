@@ -22,6 +22,10 @@ const ParamsSchema = z.object({
 // can't be resolved locally: it falls back to a cross-region lookup so the
 // SPA can redirect to the correct region. We therefore use `sessionAuth`
 // (not `workspaceAuth`) and resolve the `Authenticator` inline.
+/**
+ * @cc [owner:sfriquet,label:product;api] user-locale-response
+ * `userLocale` MUST be the `getStoredLocale` of the user, `null` when they have not chosen one.
+ */
 const app = sessionApp();
 
 /** @ignoreswagger */
@@ -73,7 +77,7 @@ app.get(
 
     const featureFlags = await getFeatureFlags(auth);
     const collabUrl = config.getCollabPublicUrl();
-    const locale = await user.getLocale(workspace.locale);
+    const userLocale = await user.getStoredLocale();
 
     const workspacePermissions = await auth.getWorkspacePermissions();
     let groupManagement: GroupManagementAccess | undefined;
@@ -117,7 +121,7 @@ app.get(
       providersHealth: auth.providersHealth(),
       workspacePermissions,
       ...(groupManagement && { groupManagement }),
-      locale,
+      userLocale,
     });
   }
 );

@@ -40,5 +40,5 @@ export type GetWorkspaceAuthContextResponseType = {
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
-  locale?: SupportedLocale;
+  userLocale: SupportedLocale | null;
 };

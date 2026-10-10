@@ -2,7 +2,6 @@ import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
@@ -59,30 +58,28 @@ describe("GET /api/w/:wId/auth-context group management", () => {
 });
 
 describe("GET /api/w/:wId/auth-context user locale", () => {
-  async function fetchLocale(workspaceId: string) {
+  async function fetchUserLocale(workspaceId: string) {
     const response = await honoApp.request(
       `/api/w/${workspaceId}/auth-context`
     );
     expect(response.status).toBe(200);
-    return (await response.json()).locale;
+    return (await response.json()).userLocale;
   }
 
-  it("falls back to the workspace locale", async () => {
+  it("returns no user locale when none or an unsupported one is stored", async () => {
     const { workspace, user } = await createPrivateApiMockRequest();
-    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
-    await workspaceResource?.updateWorkspaceSettings({ locale: "fr-FR" });
 
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchUserLocale(workspace.sId)).toBeNull();
 
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "de-DE");
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchUserLocale(workspace.sId)).toBeNull();
   });
 
   it("returns the locale stored in the user metadata", async () => {
     const { workspace, user } = await createPrivateApiMockRequest();
     await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
 
-    expect(await fetchLocale(workspace.sId)).toBe("fr-FR");
+    expect(await fetchUserLocale(workspace.sId)).toBe("fr-FR");
   });
 });
 
