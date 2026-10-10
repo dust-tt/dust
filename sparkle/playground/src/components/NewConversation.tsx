@@ -35,7 +35,7 @@ import type { Agent } from "../data/types";
 import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
 import { InputBar } from "./InputBar";
 
-// Mirrors front's new-conversation screen behind `discovery_homepage`: a home
+// Mirrors front's new-conversation screen: a home
 // band with the composer and a few use cases, and a Discover page below it,
 // reached from the button at the bottom of the band.
 

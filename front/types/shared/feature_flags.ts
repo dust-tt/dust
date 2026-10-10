@@ -470,11 +470,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "id13",
   },
-  discovery_homepage: {
-    description: "New homepage optimized for skill and agents discovery",
-    stage: "self_serve",
-    owner: "adrsimon",
-  },
   localisation: {
     description: "Workspace and user language settings for the product UI",
     stage: "dust_only",
