@@ -36,7 +36,7 @@ export interface AuthContextValue {
   providersHealth: ProvidersHealth | null;
   workspacePermissions: WorkspacePermissions;
   groupManagement?: GroupManagementAccess;
-  locale?: SupportedLocale;
+  userLocale?: SupportedLocale | null;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
