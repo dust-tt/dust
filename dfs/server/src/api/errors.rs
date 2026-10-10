@@ -7,7 +7,10 @@ impl From<tenant::Error> for Status {
     fn from(error: tenant::Error) -> Self {
         match error {
             tenant::Error::InvalidId => status(ErrorCode::InvalidInput),
-            tenant::Error::KeyGeneration => status(ErrorCode::Internal),
+            tenant::Error::KeyGeneration => {
+                tracing::error!("tenant key generation failed");
+                status(ErrorCode::Internal)
+            }
             tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
         }
     }
