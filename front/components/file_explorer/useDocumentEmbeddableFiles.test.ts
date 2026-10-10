@@ -20,18 +20,18 @@ const file = (
 });
 
 describe("getDocumentEmbeddableFiles", () => {
-  it("keeps images, by the linked file's type, sorted by name", () => {
+  it("keeps Frames with a linked file and images, by name", () => {
     expect(
       getDocumentEmbeddableFiles([
-        file("pod-p/zoo.png", "image/png", null),
-        file("pod-p/charts/q3.jpg", "image/jpeg"),
+        file("pod-p/Zoo/Zoo.tsx", "application/vnd.dust.frame"),
+        file("pod-p/Clock/Clock.tsx", "application/vnd.dust.frame", null),
+        file("pod-p/chart.png", "image/png", null),
         file(
-          "pod-p/Built.bin",
-          "application/octet-stream",
+          "pod-p/Built.tsx",
+          "text/plain",
           "fil_2",
-          "image/png"
+          "application/vnd.dust.frame"
         ),
-        file("pod-p/Clock/Clock.tsx", "application/vnd.dust.frame"),
         file("pod-p/notes.md", "text/markdown"),
         {
           isDirectory: true,
@@ -42,9 +42,9 @@ describe("getDocumentEmbeddableFiles", () => {
         },
       ])
     ).toEqual([
-      { kind: "image", path: "pod-p/Built.bin", name: "Built.bin" },
-      { kind: "image", path: "pod-p/charts/q3.jpg", name: "q3.jpg" },
-      { kind: "image", path: "pod-p/zoo.png", name: "zoo.png" },
+      { kind: "frame", path: "pod-p/Built.tsx", name: "Built.tsx" },
+      { kind: "image", path: "pod-p/chart.png", name: "chart.png" },
+      { kind: "frame", path: "pod-p/Zoo/Zoo.tsx", name: "Zoo.tsx" },
     ]);
   });
 });

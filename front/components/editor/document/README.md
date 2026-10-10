@@ -142,10 +142,11 @@ the embed shows its path.
 
 ## Inserting embeds
 
-With the host's `embeddableFiles`, the `/` menu adds an Image block. Picking it turns the menu
-into a search over those files, by name or path, and picking a file replaces the `/` with an image
-of its path whose alt text is the file name. Escape leaves the search. The file preview offers the
-images of the document's own pod or conversation (`useDocumentEmbeddableFiles`).
+With the host's `embeddableFiles`, the `/` menu adds a Frame and an Image block. Picking one turns
+the menu into a search over those files, by name or path, and picking a file replaces the `/` with
+its embed: a `::frame` line, or an image whose alt text is the file name. Escape leaves the search.
+The file preview offers the Frames and images of the document's own pod or conversation, Frames
+only when they have a linked file, since only those render (`useDocumentEmbeddableFiles`).
 
 ## Layout
 

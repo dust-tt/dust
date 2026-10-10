@@ -8,8 +8,9 @@ import type React from "react";
 import { afterEach, describe, expect, it } from "vitest";
 
 const FILES: DocumentEmbeddableFile[] = [
+  { kind: "frame", path: "pod-p/Zoo/Zoo.tsx", name: "Zoo.tsx" },
+  { kind: "frame", path: "pod-p/Clock/Clock.tsx", name: "Clock.tsx" },
   { kind: "image", path: "pod-p/charts/q3 chart.png", name: "q3 chart.png" },
-  { kind: "image", path: "pod-p/logo.png", name: "logo.png" },
 ];
 
 const translate = (descriptor: MessageDescriptor) => descriptor.id ?? "";
@@ -47,25 +48,30 @@ const type = (text: string) =>
   });
 
 describe("useDocumentBlockMenu embeds", () => {
-  it("offers Image only with embeddable files", () => {
-    expect(names(renderMenu().result.current.items)).not.toContain("Image");
+  it("offers Frame and Image only with embeddable files", () => {
+    expect(names(renderMenu().result.current.items)).not.toContain("Frame");
     editor?.destroy();
-    expect(names(renderMenu(FILES).result.current.items)).toContain("Image");
+    expect(names(renderMenu(FILES).result.current.items)).toEqual(
+      expect.arrayContaining(["Frame", "Image"])
+    );
   });
 
-  it("searches images after picking Image, by name or path", () => {
+  it("searches Frames after picking Frame, and embeds the chosen one's path", () => {
     const menu = renderMenu(FILES);
-    type("im");
-    pick(menu, "Image");
+    type("fra");
+    pick(menu, "Frame");
 
     expect(menu.result.current.isPicking).toBe(true);
-    expect(names(menu.result.current.items)).toEqual([
-      "q3 chart.png",
-      "logo.png",
-    ]);
+    expect(names(menu.result.current.items)).toEqual(["Zoo.tsx", "Clock.tsx"]);
 
-    type("charts/");
-    expect(names(menu.result.current.items)).toEqual(["q3 chart.png"]);
+    type("clo");
+    expect(names(menu.result.current.items)).toEqual(["Clock.tsx"]);
+    pick(menu, "Clock.tsx");
+
+    expect(menu.result.current.isPicking).toBe(false);
+    expect(editor?.getMarkdown().trimEnd()).toBe(
+      'Intro\n\n::frame{path="pod-p/Clock/Clock.tsx"}'
+    );
   });
 
   it("embeds an image by its path, with its file name as alt text", () => {
@@ -81,7 +87,7 @@ describe("useDocumentBlockMenu embeds", () => {
 
   it("leaves the search without inserting on Escape", () => {
     const menu = renderMenu(FILES);
-    pick(menu, "Image");
+    pick(menu, "Frame");
     act(() =>
       menu.result.current.onKeyDown({
         key: "Escape",

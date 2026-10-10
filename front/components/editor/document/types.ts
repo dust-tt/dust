@@ -73,7 +73,7 @@ export interface DocumentProps {
   renderFilePreview?: (preview: DocumentFilePreview) => ReactNode;
   /** Renders the Frame a `::frame` line embeds, from its path. Without it, the embed shows its path. */
   renderFrame?: (path: string) => ReactNode;
-  /** Files the `/` menu offers to embed. Without them, it offers no image. */
+  /** Files the `/` menu offers to embed. Without them, it offers no Frame or image. */
   embeddableFiles?: DocumentEmbeddableFile[];
   /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
   badge?: ReactNode;
@@ -92,7 +92,7 @@ export interface DocumentFilePreview {
 
 /** A file of the document's conversation or pod, embedded by its path. */
 export interface DocumentEmbeddableFile {
-  kind: "image";
+  kind: "frame" | "image";
   path: string;
   name: string;
 }

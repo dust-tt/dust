@@ -3,6 +3,7 @@ import {
   EMBED_BLOCKS,
   getBlockQuery,
 } from "@app/components/editor/document/blocks";
+import { DOCUMENT_FRAME_NODE_NAME } from "@app/components/editor/document/DocumentFrame";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
 import type { DocumentEmbeddableFile } from "@app/components/editor/document/types";
 import { cn, Icon } from "@dust-tt/sparkle";
@@ -26,18 +27,21 @@ interface DocumentBlockMenuItem {
 const matches = (item: DocumentBlockMenuItem, search: string) =>
   `${item.name} ${item.keywords}`.toLowerCase().includes(search);
 
-const embedContent = (file: DocumentEmbeddableFile): JSONContent => ({
-  type: DOCUMENT_IMAGE_NODE_NAME,
-  attrs: { src: file.path, alt: file.name, title: null },
-});
+const embedContent = (file: DocumentEmbeddableFile): JSONContent =>
+  file.kind === "frame"
+    ? { type: DOCUMENT_FRAME_NODE_NAME, attrs: { path: file.path } }
+    : {
+        type: DOCUMENT_IMAGE_NODE_NAME,
+        attrs: { src: file.path, alt: file.name, title: null },
+      };
 
 /**
  * @cc [owner:tdraier,label:product] document-embed-blocks
- * The `/` menu MUST offer its embed blocks, such as Image, only when the host gives embeddable
+ * The `/` menu MUST offer its embed blocks, Frame and Image, only when the host gives embeddable
  * files. Picking one MUST turn the menu into a search over the host's files of that kind, by name
  * or path, and picking a file MUST replace the `/` query with an embed of exactly that file's
- * path: for an image, an `image` node with the file name as alt text. Escape or removing the `/`
- * MUST leave the search without inserting anything.
+ * path: for a Frame, a `frameEmbed` node; for an image, an `image` node with the file name as alt
+ * text. Escape or removing the `/` MUST leave the search without inserting anything.
  */
 export const useDocumentBlockMenu = (
   editor: Editor | null,
