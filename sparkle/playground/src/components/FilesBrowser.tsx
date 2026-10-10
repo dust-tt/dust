@@ -7,6 +7,7 @@ import {
   ButtonsSwitchList,
   CheckDone01,
   CloudArrowLeftRight,
+  Cube01,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -52,7 +53,7 @@ import { DataTable } from "./DataTableDnd";
 // Files tab (folders, drag & drop, reveal) and by the conversation "Files"
 // panel (flat list of the conversation's files).
 
-/** Pod-only drag & drop integration; omit it for a static, flat browser. */
+/** Drag & drop integration; omit it for a static, flat browser. */
 export interface FilesBrowserDnd {
   draggingFileId: string | null;
   dropHoverTargetId: string | null;
@@ -68,6 +69,10 @@ export interface FilesBrowserDnd {
     event: DragEvent<HTMLTableRowElement>
   ) => void;
   onFileDragEnd: () => void;
+  /** Rows that can be picked up; defaults to everything but folders. */
+  canDragRow?: (item: DataSource) => boolean;
+  /** Folders that can receive a drop; defaults to all of them. */
+  canDropOn?: (item: DataSource) => boolean;
 }
 
 interface FilesBrowserProps {
@@ -78,6 +83,8 @@ interface FilesBrowserProps {
   foldersEnabled?: boolean;
   emptyMessage?: string;
   onAddFileToTopbar?: (fileId: string) => void;
+  /** Adds a "Pod" entry to the create menu, creating it in the open folder. */
+  onCreatePod?: () => void;
   dnd?: FilesBrowserDnd;
   /** Controlled search/folder (pod: steered by universal search + reveal). */
   searchText?: string;
@@ -96,7 +103,7 @@ const formatDate = (date: Date): string =>
     year: "numeric",
   });
 
-function CreateFilesMenu() {
+function CreateFilesMenu({ onCreatePod }: { onCreatePod?: () => void }) {
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
@@ -107,6 +114,9 @@ function CreateFilesMenu() {
         <DropdownMenuItem icon={Table} label="Spreadsheet" onClick={() => {}} />
         <DropdownMenuItem icon={ActionFrame} label="Frame" onClick={() => {}} />
         <DropdownMenuItem icon={Folder} label="Folder" onClick={() => {}} />
+        {onCreatePod && (
+          <DropdownMenuItem icon={Cube01} label="Pod" onClick={onCreatePod} />
+        )}
         <DropdownMenuItem
           icon={UploadCloud02}
           label="Upload File"
@@ -129,6 +139,7 @@ export function FilesBrowser({
   foldersEnabled = true,
   emptyMessage = "No files yet.",
   onAddFileToTopbar,
+  onCreatePod,
   dnd,
   searchText: controlledSearchText,
   onSearchTextChange,
@@ -211,14 +222,15 @@ export function FilesBrowser({
 
     path.forEach((folder, index) => {
       const isLast = index === path.length - 1;
+      const icon = getDataSourceIcon(folder) ?? Folder;
       if (isLast) {
-        items.push({ label: folder.fileName, icon: Folder });
+        items.push({ label: folder.fileName, icon });
         return;
       }
 
       items.push({
         label: folder.fileName,
-        icon: Folder,
+        icon,
         onClick: () => {
           setCurrentFolderId(folder.id);
           onClearRevealedFile?.();
@@ -284,27 +296,34 @@ export function FilesBrowser({
         };
       }
 
-      if (isDataSourceFolder(dataSource)) {
-        return {
-          ...item,
-          onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
-            dnd.onDragOverTarget(dataSource.id, event),
-          onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
-            event.preventDefault();
-          },
-          onDrop: (event: DragEvent<HTMLTableRowElement>) =>
-            dnd.onDropOnTarget(dataSource.id, dataSource.id, event),
-          isDropHighlight: dnd.dropHoverTargetId === dataSource.id,
-        };
-      }
+      // A folder can be both: somewhere to drop, and something to carry.
+      const isFolder = isDataSourceFolder(dataSource);
+      const canDrag = dnd.canDragRow ? dnd.canDragRow(dataSource) : !isFolder;
+      const canDrop =
+        isFolder && (dnd.canDropOn ? dnd.canDropOn(dataSource) : true);
 
       return {
         ...item,
-        draggable: true,
-        onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
-          dnd.onFileDragStart(dataSource.id, dataSource.fileName, event),
-        onDragEnd: dnd.onFileDragEnd,
-        isDragging: dnd.draggingFileId === dataSource.id,
+        ...(canDrag
+          ? {
+              draggable: true,
+              onDragStart: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onFileDragStart(dataSource.id, dataSource.fileName, event),
+              onDragEnd: dnd.onFileDragEnd,
+              isDragging: dnd.draggingFileId === dataSource.id,
+            }
+          : {}),
+        ...(canDrop
+          ? {
+              onDragOver: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onDragOverTarget(dataSource.id, event),
+              onDragLeave: (event: DragEvent<HTMLTableRowElement>) => {
+                event.preventDefault();
+              },
+              onDrop: (event: DragEvent<HTMLTableRowElement>) =>
+                dnd.onDropOnTarget(dataSource.id, dataSource.id, event),
+            }
+          : {}),
         isDropHighlight:
           dnd.dropHoverTargetId === dataSource.id ||
           revealedFileId === dataSource.id,
@@ -445,7 +464,9 @@ export function FilesBrowser({
         cell: (info) => {
           const dataSource = info.row.original;
           const menuItems = [
-            ...(onAddFileToTopbar && dataSource.kind === "file"
+            ...(onAddFileToTopbar &&
+            dataSource.kind === "file" &&
+            dataSource.fileType !== "pod"
               ? [
                   {
                     kind: "item" as const,
@@ -473,7 +494,12 @@ export function FilesBrowser({
 
   // ── Render ────────────────────────────────────────────────────────────────
   if (dataSources.length === 0) {
-    return <EmptyCTA message={emptyMessage} action={<CreateFilesMenu />} />;
+    return (
+      <EmptyCTA
+        message={emptyMessage}
+        action={<CreateFilesMenu onCreatePod={onCreatePod} />}
+      />
+    );
   }
 
   return (
@@ -514,7 +540,7 @@ export function FilesBrowser({
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>
-          <CreateFilesMenu />
+          <CreateFilesMenu onCreatePod={onCreatePod} />
         </div>
       </div>
 

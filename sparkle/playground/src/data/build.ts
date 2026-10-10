@@ -765,7 +765,7 @@ export function getModelById(id: string): MockModel | undefined {
   return MOCK_MODELS.find((model) => model.id === id);
 }
 
-const AGENT_INSTRUCTIONS = [
+export const AGENT_INSTRUCTIONS = [
   "You are a careful assistant. Answer from the knowledge attached to you, and say so plainly when it does not cover the question.",
   "Keep answers short. Lead with the answer, then the reasoning, and never pad a reply to look thorough.",
   "Always cite the document a figure came from, with its title and the section it sits in.",

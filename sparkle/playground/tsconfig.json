@@ -28,6 +28,6 @@
       "@sparkle/*": ["../src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "../src/stories/PlaygroundFileSystem.stories.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

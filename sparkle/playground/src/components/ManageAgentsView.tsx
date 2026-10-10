@@ -392,12 +392,17 @@ function AgentBatchBar({
 interface ManageAgentsViewProps {
   /** Whose agents count as "editable by me". */
   currentUserId: string;
+  /** The workspace's own agents; defaults to the shared mock roster. */
+  agents?: ManagedAgent[];
 }
 
-export function ManageAgentsView({ currentUserId }: ManageAgentsViewProps) {
+export function ManageAgentsView({
+  currentUserId,
+  agents: workspaceAgents,
+}: ManageAgentsViewProps) {
   const [agents, setAgents] = useState<ManagedAgent[]>(() =>
     withCurrentUserAsEditor(
-      mockManagedAgents,
+      workspaceAgents ?? mockManagedAgents,
       currentUserId,
       (agent) => agent.canEdit && agent.scope !== "global"
     )

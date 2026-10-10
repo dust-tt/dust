@@ -53,6 +53,11 @@ interface BuildNavProps {
   onSelectItem: (item: string) => void;
   /** Opens the templates view, reached from the "New agent" menu. */
   onNewAgentFromTemplate?: () => void;
+  /**
+   * The Spaces to list, split here into open and restricted. Defaults to the
+   * shared set; pass the workspace's own so Build and the Work tab agree.
+   */
+  companySpaces?: Space[];
 }
 
 /** Reveals a row's "New" menu on hover, the way the Work tab does. */
@@ -109,7 +114,15 @@ export function BuildNav({
   selectedItem,
   onSelectItem,
   onNewAgentFromTemplate,
+  companySpaces,
 }: BuildNavProps) {
+  const openSpaces = companySpaces
+    ? companySpaces.filter((space) => space.isPublic)
+    : openCompanySpaces;
+  const restrictedSpaces = companySpaces
+    ? companySpaces.filter((space) => !space.isPublic)
+    : restrictedCompanySpaces;
+
   const renderSpaceItem = (space: Space) => (
     <NavigationListItem
       key={space.id}
@@ -201,7 +214,7 @@ export function BuildNav({
             defaultOpen={true}
             action={<NewSpaceButton />}
           >
-            {openCompanySpaces.map(renderSpaceItem)}
+            {openSpaces.map(renderSpaceItem)}
           </NavigationListCollapsibleSection>
         </NavigationList>
 
@@ -212,7 +225,7 @@ export function BuildNav({
             defaultOpen={true}
             action={<NewSpaceButton />}
           >
-            {restrictedCompanySpaces.map(renderSpaceItem)}
+            {restrictedSpaces.map(renderSpaceItem)}
           </NavigationListCollapsibleSection>
         </NavigationList>
       </ScrollArea>

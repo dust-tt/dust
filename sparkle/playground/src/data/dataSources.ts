@@ -1,16 +1,24 @@
 import {
   ActionFrame,
+  Cube01,
   File06,
   Folder,
   GooglePdfLogo,
   Image01,
+  MessageChatSquare,
   MicrosoftExcelLogo,
   MicrosoftPowerpointLogo,
   MicrosoftWordLogo,
+  PuzzlePiece01,
+  Robot,
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import type { DataSource, DataSourceFileType } from "./types";
+import type {
+  DataSource,
+  DataSourceFileType,
+  DataSourceFolderType,
+} from "./types";
 import { mockUsers } from "./users";
 
 // Seeded random function for deterministic randomness
@@ -218,6 +226,9 @@ function generateFileName(
     case "frame":
       nameList = frameNames;
       break;
+    default:
+      nameList = mdNames;
+      break;
   }
 
   const baseName = nameList[Math.floor(random * nameList.length)];
@@ -296,8 +307,28 @@ export function getIconForFileType(
       return File06;
     case "png":
       return Image01;
+    case "agent":
+      return Robot;
+    case "pod":
+      return Cube01;
+    case "skill":
+      return PuzzlePiece01;
     default:
       return GooglePdfLogo;
+  }
+}
+
+/** The icon a folder carries for what it stands for in the workspace. */
+export function getIconForFolderType(
+  folderType: DataSourceFolderType
+): React.ComponentType<{ className?: string }> {
+  switch (folderType) {
+    case "pod":
+      return Cube01;
+    case "conversation":
+      return MessageChatSquare;
+    default:
+      return Folder;
   }
 }
 
@@ -312,8 +343,45 @@ function getSourceForIndex(index: number, seed: string): DataSource["source"] {
   return seededRandom(seed, index * 5) < 0.3 ? "company" : "pod";
 }
 
+/**
+ * Files a folder of the workspace file system is filled with: same name pools,
+ * type distribution, authors and dates as a space's own files.
+ */
+export function generateFilesInFolder({
+  seed,
+  count,
+  parentId,
+  source,
+}: {
+  seed: string;
+  count: number;
+  parentId: string | null;
+  source: DataSource["source"];
+}): DataSource[] {
+  const files: DataSource[] = [];
+
+  for (let i = 0; i < count; i++) {
+    const fileType = getFileTypeForIndex(i, seed);
+    const { createdAt, updatedAt } = generateDates(i, seed);
+    files.push({
+      id: `ds-${seed}-${i}`,
+      kind: "file",
+      fileName: generateFileName(fileType, i, seed),
+      parentId,
+      source,
+      fileType,
+      createdBy: getRandomUserId(i, seed),
+      createdAt,
+      updatedAt,
+      icon: getIconForFileType(fileType),
+    });
+  }
+
+  return files;
+}
+
 // Generate data sources for a space (folders + files in a tree)
-function generateDataSourcesForSpace(
+export function generateDataSourcesForSpace(
   spaceId: string,
   fileCount: number
 ): DataSource[] {
@@ -476,7 +544,10 @@ export function getDataSourceIcon(
   item: DataSource
 ): React.ComponentType<{ className?: string }> | undefined {
   if (isDataSourceFolder(item)) {
-    return Folder;
+    return (
+      item.icon ??
+      (item.folderType ? getIconForFolderType(item.folderType) : Folder)
+    );
   }
 
   if (item.fileType) {
@@ -486,17 +557,27 @@ export function getDataSourceIcon(
   return item.icon;
 }
 
-export function getFileTypeLabel(fileType: DataSourceFileType): string {
-  if (fileType === "frame") {
-    return "Frame";
-  }
+const NAMED_FILE_TYPE_LABELS: Partial<Record<DataSourceFileType, string>> = {
+  pod: "Pod",
+  frame: "Frame",
+  agent: "Agent",
+  skill: "Skill",
+};
 
-  return fileType.toUpperCase();
+export function getFileTypeLabel(fileType: DataSourceFileType): string {
+  return NAMED_FILE_TYPE_LABELS[fileType] ?? fileType.toUpperCase();
 }
+
+const FOLDER_TYPE_LABELS: Record<DataSourceFolderType, string> = {
+  space: "Space",
+  pod: "Pod",
+  conversation: "Conversation",
+  system: "Folder",
+};
 
 export function getItemTypeLabel(item: DataSource): string {
   if (isDataSourceFolder(item)) {
-    return "Folder";
+    return item.folderType ? FOLDER_TYPE_LABELS[item.folderType] : "Folder";
   }
 
   return item.fileType ? getFileTypeLabel(item.fileType) : "File";

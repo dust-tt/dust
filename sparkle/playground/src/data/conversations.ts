@@ -75,7 +75,7 @@ function generateConversationParticipants(): {
 }
 
 // Helper function to generate a description based on title
-function generateDescription(title: string): string {
+export function generateDescription(title: string): string {
   const descriptions: Record<string, string> = {
     "Project Kickoff Meeting":
       "Initial discussion to align team on project goals and timeline. We'll be reviewing the scope of work, establishing key milestones, and defining success metrics. The team will also discuss resource allocation, potential challenges, and mitigation strategies. This foundational meeting sets the tone for the entire project lifecycle and ensures everyone is on the same page from day one.",
@@ -296,7 +296,7 @@ export function getLastSpeaker(
 }
 
 // Realistic conversation titles
-const conversationTitles = [
+export const conversationTitles = [
   "Project Kickoff Meeting",
   "Budget Review Discussion",
   "Weekly Sync with Team",

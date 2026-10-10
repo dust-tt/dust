@@ -191,9 +191,19 @@ export type DataSourceFileType =
   | "txt"
   | "md"
   | "png"
-  | "frame";
+  | "frame"
+  | "pod"
+  | "agent"
+  | "skill";
 
 export type DataSourceSource = "pod" | "company";
+
+/**
+ * What a folder stands for in the workspace file system: a Company Space, a
+ * Pod, a conversation, or a Dust-owned folder such as `Agents` / `Skills`.
+ * Plain folders leave it unset.
+ */
+export type DataSourceFolderType = "space" | "pod" | "conversation" | "system";
 
 export interface DataSource {
   id: string;
@@ -206,6 +216,9 @@ export interface DataSource {
   createdAt: Date;
   updatedAt: Date;
   icon?: React.ComponentType<{ className?: string }>; // Icon component
+  folderType?: DataSourceFolderType;
+  /** The Pod, conversation, agent or skill this item stands for. */
+  refId?: string;
 }
 
 /**

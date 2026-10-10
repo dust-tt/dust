@@ -149,8 +149,17 @@ function citationFileType(icon?: string): DataSourceFileType {
 // citations.
 export function conversationFilesFor(
   conversation: Conversation | null | undefined,
-  pool: Conversation[]
+  pool: Conversation[],
+  /** The workspace file system's own files, when the story has one. */
+  filesByConversationId?: Map<string, DataSource[]>
 ): DataSource[] {
+  const ownFiles = conversation
+    ? filesByConversationId?.get(conversation.id)
+    : undefined;
+  if (ownFiles) {
+    return ownFiles;
+  }
+
   const messageSources = conversation?.messages?.length ? [conversation] : pool;
   const seen = new Set<string>();
   const files: DataSource[] = [];
@@ -231,11 +240,13 @@ export function sidePanelContent({
   setView,
   filesSource,
   conversationPool,
+  filesByConversationId,
 }: {
   view: SidePanelView;
   setView: (view: SidePanelView) => void;
   filesSource: Conversation | null | undefined;
   conversationPool: Conversation[];
+  filesByConversationId?: Map<string, DataSource[]>;
 }) {
   switch (view.kind) {
     case "citation":
@@ -247,7 +258,11 @@ export function sidePanelContent({
     case "files":
       return (
         <ConversationFilesPanel
-          files={conversationFilesFor(filesSource, conversationPool)}
+          files={conversationFilesFor(
+            filesSource,
+            conversationPool,
+            filesByConversationId
+          )}
           onFileOpen={(dataSource) => setView({ kind: "file", dataSource })}
         />
       );
