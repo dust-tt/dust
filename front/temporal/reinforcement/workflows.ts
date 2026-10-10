@@ -10,6 +10,7 @@ import {
 import type { WorkflowInterceptorsFactory } from "@temporalio/workflow";
 import {
   ApplicationFailure,
+  patched,
   proxyActivities,
   sleep,
 } from "@temporalio/workflow";
@@ -96,11 +97,16 @@ const {
 });
 
 // runToolActivity is re-exported from the agent loop so the reinforced skills
-// worker registers it. We proxy it with retry for durability. Only histories
-// recorded before runReinforcedToolActivity existed still call it.
-const { runToolActivity: runRetryableToolActivity } = proxyActivities<
-  typeof activities
->({
+// worker registers it. We proxy it with retry for durability. It is only
+// scheduled when replaying histories recorded before runReinforcedToolActivity
+// existed. Their `authType` can be missing if an old worker ran that step
+// with a new activity result during the rollout, hence the explicit type.
+const { runToolActivity: runLegacyToolActivity } = proxyActivities<{
+  runToolActivity: (
+    authType: AuthenticatorType | undefined,
+    args: Parameters<typeof activities.runToolActivity>[1]
+  ) => Promise<unknown>;
+}>({
   startToCloseTimeout: "10 minutes",
   retry: { maximumAttempts: 3 },
 });
@@ -153,6 +159,7 @@ async function waitForBatch({
   );
 }
 
+// Mirrors ReinforcedToolActionInfo in lib/reinforcement/tool_execution.ts, see its contract.
 interface ReinforcedToolActionInfo {
   // Only set in activity results recorded before runReinforcedToolActivity existed.
   authType?: AuthenticatorType;
@@ -181,19 +188,19 @@ async function executeReinforcedToolActions(
   const { authType, agentLoopArgs, actionIds } = toolActionInfo;
   for (const actionId of actionIds) {
     try {
-      // Results recorded before runReinforcedToolActivity existed carry the auth: replaying their
-      // history must schedule the same activity as the original run.
-      if (authType) {
-        await runRetryableToolActivity(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: 0,
-        });
-      } else {
+      // Patch lifecycle: once runs started before this patch can no longer be replayed (a few
+      // days after deploy), replace patched() with deprecatePatch() and drop the legacy branch.
+      if (patched("reinforced-tool-activity")) {
         await runReinforcedToolActivity({
           workspaceId,
           actionId,
           agentLoopArgs,
+        });
+      } else {
+        await runLegacyToolActivity(authType, {
+          actionId,
+          runAgentArgs: agentLoopArgs,
+          step: 0,
         });
       }
     } catch {
@@ -443,8 +450,7 @@ export async function reinforcementWorkspaceWorkflow({
         break;
       }
 
-      // Execute exploratory tools via runReinforcedToolActivity, which runs the agent loop's tool
-      // activity code.
+      // Execute exploratory tools via runReinforcedToolActivity.
       for (const c of continuations) {
         if (c.toolActionInfo) {
           await executeReinforcedToolActions(workspaceId, c.toolActionInfo);

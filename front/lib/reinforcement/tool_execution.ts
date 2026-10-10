@@ -25,7 +25,8 @@ import type { ModelId } from "@app/types/shared/model_id";
  * @cc [owner:philipperolet,label:performance] no-workspace-sized-data
  * `ReinforcedToolActionInfo` MUST NOT hold data whose size grows with the workspace, such as a
  * serialized `Authenticator` (its `groupIds` lists every group of the workspace). Activities return
- * it to the workflow, and Temporal rejects payloads above 2 MB.
+ * it to the workflow, which passes its fields to tool activities, and Temporal rejects payloads
+ * above 2 MB.
  */
 export interface ReinforcedToolActionInfo {
   agentLoopArgs: {
