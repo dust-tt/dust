@@ -5,10 +5,12 @@ import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
   ConnectionCredentials,
   CredentialsProvider,
+  DfsTenantCredentials,
   OAuthConnectionType,
   OAuthProvider,
   OauthAPIGetCredentialsResponse,
   OauthAPIPostConnectionCredentialsResponse,
+  OauthAPIPostDfsTenantCredentialsResponse,
   OauthAPIPostModelProviderCredentialsResponse,
 } from "../oauth/lib";
 import type { LoggerInterface } from "../shared/logger";
@@ -50,6 +52,11 @@ type CrendentialsMetadata = {
 export type ModelProviderPostCredentialsBody = {
   provider: ByokModelProviderIdType;
   credentials: ApiKeyCredentialsType;
+};
+
+export type DfsTenantPostCredentialsBody = {
+  provider: "dfs";
+  credentials: DfsTenantCredentials;
 };
 
 export class OAuthAPI {
@@ -245,14 +252,24 @@ export class OAuthAPI {
     userId,
     workspaceId,
     credentials,
+  }: CrendentialsMetadata & DfsTenantPostCredentialsBody): Promise<
+    OAuthAPIResponse<OauthAPIPostDfsTenantCredentialsResponse>
+  >;
+  async postCredentials({
+    provider,
+    userId,
+    workspaceId,
+    credentials,
   }: CrendentialsMetadata &
     (
       | { provider: CredentialsProvider; credentials: ConnectionCredentials }
       | ModelProviderPostCredentialsBody
+      | DfsTenantPostCredentialsBody
     )): Promise<
     OAuthAPIResponse<
       | OauthAPIPostConnectionCredentialsResponse
       | OauthAPIPostModelProviderCredentialsResponse
+      | OauthAPIPostDfsTenantCredentialsResponse
     >
   > {
     const response = await this._fetchWithError(`${this._url}/credentials`, {
