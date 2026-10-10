@@ -107,10 +107,12 @@ impl TenantResource {
         }
     }
 
-    /// @cc [owner:spolu,label:backend;security] tenant-key-authentication
-    /// Authentication MUST read both the key-hash index and tenant record in the caller's
-    /// transaction and verify the record's hash. Missing entries or a mismatched hash MUST return
-    /// InvalidKey. Database and decoding failures MUST propagate as storage failures.
+    /**
+     * @cc [owner:spolu,label:backend;security] tenant-key-authentication
+     * Authentication MUST read both the key-hash index and tenant record in the caller's
+     * transaction and verify the record's hash. Missing entries or a mismatched hash MUST return
+     * InvalidKey. Database and decoding failures MUST propagate as storage failures.
+     */
     pub async fn authenticate(
         tx: &Transaction,
         key_hash: &KeyHash,
