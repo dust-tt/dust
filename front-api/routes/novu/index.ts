@@ -4,11 +4,14 @@ import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { consumptionExportReadyWorkflow } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import { creditUsageAlertWorkflow } from "@app/lib/notifications/workflows/credit-usage-alert";
 import {
   frameLoginCodeWorkflow,
   frameSharedWorkflow,
 } from "@app/lib/notifications/workflows/frame-sharing";
+import { gitHubConnectionDeletedWorkflow } from "@app/lib/notifications/workflows/github-connection-deleted";
 import { manualActionRequiredWorkflow } from "@app/lib/notifications/workflows/manual-action-required";
+import { mcpGlobalSharingReconfigurationWorkflow } from "@app/lib/notifications/workflows/mcp-global-sharing-reconfiguration";
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
@@ -96,6 +99,9 @@ const options: ServeHandlerOptions = {
     subscriptionReactivatedWorkflow,
     subscriptionPaymentFailedWorkflow,
     workspaceDataDeletionWorkflow,
+    creditUsageAlertWorkflow,
+    gitHubConnectionDeletedWorkflow,
+    mcpGlobalSharingReconfigurationWorkflow,
     accessRequestWorkflow,
   ],
 };
