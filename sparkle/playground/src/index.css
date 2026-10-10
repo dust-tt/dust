@@ -82,3 +82,34 @@
 .tippy-box[data-theme~="sparkle"] > .tippy-arrow {
   display: none;
 }
+
+/* ── Production app-shell utilities ─────────────────────────────────────────
+   Mirrors of `front/styles/theme-extras.css` (h-title / h-panel) and the
+   `transition-width` utility used by `front/components/navigation/Navigation.tsx`,
+   so playground shells that reproduce the app layout can reuse production class
+   names verbatim. `--panel-height` in front is `100dvh - 1rem` on desktop (the
+   `my-2` margins around the panel) minus banner/dev-bar heights, which the
+   playground does not have. */
+@utility h-title {
+  height: 3rem;
+}
+@utility h-panel {
+  height: calc(100dvh - 1rem);
+}
+@utility min-h-panel {
+  min-height: calc(100dvh - 1rem);
+}
+@utility transition-width {
+  transition-property: width;
+}
+
+/* Empty-state hero entrance (greeting words, composer, "Chat with…"), copied
+   from `front/styles/theme-extras.css`. Driven by the `--hero-entrance-y` /
+   `--hero-entrance-blur` variables set inline by the animating element. */
+@keyframes fade-rise-blur-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--hero-entrance-y));
+    filter: blur(var(--hero-entrance-blur));
+  }
+}
