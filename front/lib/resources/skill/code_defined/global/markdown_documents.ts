@@ -57,6 +57,11 @@ Markdown documents (\`.md\`) in the conversation's or pod's files open in an edi
 **Files.** To point readers to a file of the conversation or pod, such as a PDF, a spreadsheet or a Frame, reference it inline: \`:preview_file{path="pod-<id>/reports/q3.pdf" title="Q3 report"}\`. It shows as a chip that opens the file.
 - \`path\` is the file's full path, as for images. \`title\` is optional and defaults to the file name; \`contentType\` is the only other attribute. Quote every value, and keep the directive on one line.
 - Readers open the file only if they can read it.
+
+**Frames.** To show a Frame itself in a document, live and interactive, embed it on its own line, with a blank line before and after: \`::frame{path="pod-<id>/dashboards/revenue.tsx"}\`.
+- \`path\` is the Frame file's full path, as for images, and the only attribute. Anything else on the line keeps it as text.
+- Readers see the Frame only if they can read its file. In a document of a pod, embed a Frame of the pod.
+- Never write a Frame's code in the document: create the Frame as a file, then embed its path. To only point readers to a Frame, reference it with \`:preview_file\` instead.
 `;
 
 const DOCUMENT_COMMENTS_INSTRUCTIONS = `
@@ -95,7 +100,8 @@ export const getMarkdownDocumentsInstructions = (
  * when skills are resolved without the run's user message. It MUST NOT be offered by itself in
  * other workspaces. Its instructions MUST tell agents how to write a document the editor can open,
  * how to embed an image by the file path `resolveDocumentImageSource` displays, how to reference a
- * file with the `:preview_file` directive the editor reads, and to read and
+ * file with the `:preview_file` directive and embed a Frame with the `::frame` line the editor
+ * reads, and to read and
  * change an existing document only with the `documents` tools, never the file tools; and, if and
  * only if the run's user message opens as that heading does, how to recognize and answer that
  * message and find the thread it omits in the document. It MUST bring the user mention tools
@@ -106,12 +112,12 @@ export const markdownDocumentsSkill = {
   kind: "global",
   name: "Markdown Document Edition",
   userFacingDescription:
-    "Write and edit Markdown documents that open in the editor, with images and files from " +
-    "the conversation or pod, and answer their comments.",
+    "Write and edit Markdown documents that open in the editor, with images, files and Frames " +
+    "from the conversation or pod, and answer their comments.",
   agentFacingDescription:
     "Enable before reading, editing or creating a Markdown (.md) document, including to add an " +
     "image or a comment: explains the document tools to use, the Markdown the document editor " +
-    "opens and how to embed generated or attached images and reference files.",
+    "opens and how to embed generated or attached images, reference files and embed Frames.",
   fetchInstructions: async (_auth, { agentLoopData }) =>
     getMarkdownDocumentsInstructions(
       agentLoopData?.userMessage.content ?? null

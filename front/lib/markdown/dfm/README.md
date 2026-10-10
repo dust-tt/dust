@@ -65,7 +65,8 @@ with its path as the destination, `![Revenue](pod-<id>/charts/revenue.png)`, or 
 `![Chart](fil_<id>)`. A file of the conversation or pod is referenced inline with the
 `:preview_file` directive agents also write in messages,
 `:preview_file{path="pod-<id>/reports/q3.pdf" title="Q3 report"}`, which the codec passes through
-like any other.
+like any other. A Frame is embedded on a line of its own, `::frame{path="pod-<id>/dashboards/revenue.tsx"}`
+(`lib/markdown/frame_embed.ts`).
 
 **3. Annotations** is a `:::annotations` container at the very end of the file. It holds one
 `::comment{id status}` per thread, `status` being `open` or `resolved`, followed by one

@@ -4,6 +4,7 @@ import { createMentionSuggestion } from "@app/components/editor/input_bar/mentio
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { DocumentFrameEmbed } from "@app/components/file_explorer/DocumentFrameEmbed";
 import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
@@ -447,6 +448,7 @@ function RichMarkdownDocument({
           contentType={preview.contentType ?? undefined}
         />
       )}
+      renderFrame={(path) => <DocumentFrameEmbed owner={owner} path={path} />}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

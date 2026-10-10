@@ -1305,3 +1305,63 @@ describe("Document file previews", () => {
     ).toHaveLength(2);
   });
 });
+
+describe("Document Frame embeds", () => {
+  const SOURCE_WITH_FRAME =
+    'Intro\n\n::frame{path="pod-abc/dashboards/revenue.tsx"}\n\nOutro\n';
+
+  const renderFrames = async (renderFrame?: DocumentProps["renderFrame"]) => {
+    const { container } = render(
+      <Document
+        initialContent={SOURCE_WITH_FRAME}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={renderFrame}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows a Frame through the host's renderer", async () => {
+    const dom = await renderFrames((path) => (
+      <iframe title={`Frame ${path}`} />
+    ));
+
+    expect(
+      await within(dom).findByTitle("Frame pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("shows a Frame as its path without a renderer", async () => {
+    const dom = await renderFrames();
+
+    expect(
+      await within(dom).findByText("pod-abc/dashboards/revenue.tsx")
+    ).toBeDefined();
+  });
+
+  it("keeps a Frame's path when its HTML is pasted back", async () => {
+    const dom = await renderFrames();
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(/::frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
+    ).toHaveLength(2);
+  });
+});
