@@ -22,6 +22,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { terminateScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
+import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -109,6 +110,11 @@ async function provisionCreditPricedFreePlan(
     enableStripeBilling: false,
     planCode: CREDIT_PRICED_FREE_PLAN_CODE,
     displayedName: `Free Business ${currency.toUpperCase()}`,
+    // Skip the inline seat sync: it reads rate-limited Metronome seat endpoints
+    // (`getSubscriptionSeatsHistory`, `seatBalances/list`) and a transient 429
+    // there would abort signup after the contract was already created. Seats are
+    // reconciled out-of-band via the immediate seat-sync workflow launched below.
+    enableSeatSync: false,
     // We create the subscription row ourselves right below via
     // `createSubscriptionFromCheckout`. Stamp the contract so the
     // contract.start webhook skips its own subscription swap instead of
@@ -138,6 +144,24 @@ async function provisionCreditPricedFreePlan(
   }
 
   await invalidateContractCache(owner.sId);
+
+  // Seat sync was skipped inline (see `enableSeatSync: false` above). Now that
+  // the contract and subscription row exist, reconcile the seat out-of-band —
+  // `immediate` skips the debounce so the free seat is assigned promptly, and
+  // the workflow's Temporal retries ride out any transient seat-endpoint 429s
+  // without blocking signup. Best-effort: a launch failure is backstopped by the
+  // debounced sync from the earlier membership seat change.
+  const seatSyncResult = await launchMetronomeSeatCountSyncWorkflow({
+    workspaceId: owner.sId,
+    immediate: true,
+  });
+  if (seatSyncResult.isErr()) {
+    logger.warn(
+      { workspaceId: owner.sId, err: seatSyncResult.error },
+      "[Metronome] Failed to launch immediate seat-count sync after free-plan provisioning"
+    );
+  }
+
   await restoreWorkspaceAfterSubscription(auth);
 }
 
