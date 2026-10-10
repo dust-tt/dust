@@ -1,4 +1,4 @@
-use std::{future::Future, time::Duration};
+use std::{future::Future, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result};
 use dfs_protocol::rpc::dfs_server::DfsServer;
@@ -25,15 +25,20 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  * Bearer validation MUST apply only to DFS RPCs. The gRPC health Check and Watch methods MUST
  * respond without authorization metadata.
  */
+/**
+ * @cc [owner:spolu,label:concurrency] dfs-cache-sweep-lifecycle
+ * Cache maintenance MUST stop when shutdown begins and MUST NOT outlive `serve`, including when
+ * the server fails or the serving future is dropped.
+ */
 pub async fn serve(
     listener: TcpListener,
     master_key: &str,
     shutdown: impl Future<Output = ()>,
 ) -> Result<()> {
-    let api = api::API::new(master_key)?;
+    let api = Arc::new(api::API::new(master_key)?);
     let (reporter, health) = tonic_health::server::health_reporter();
     reporter.set_serving::<DfsServer<api::API>>().await;
-    let service = DfsServer::new(api)
+    let service = DfsServer::from_arc(Arc::clone(&api))
         .max_decoding_message_size(MAX_MESSAGE_SIZE)
         .max_encoding_message_size(MAX_MESSAGE_SIZE);
     let (stop, stopped) = oneshot::channel();
@@ -47,6 +52,7 @@ pub async fn serve(
     tokio::select! {
         result = &mut server => return Ok(result?),
         _ = shutdown => {}
+        _ = api.sweep_tenant_key_cache() => {}
     }
 
     tracing::info!("dfs-api draining");

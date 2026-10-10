@@ -4,6 +4,7 @@ use std::{
 };
 
 use dfs_protocol::{error::status, rpc::ErrorCode};
+use tokio::time::{MissedTickBehavior, interval_at};
 use tonic::{Request, Status};
 
 use crate::{
@@ -13,7 +14,11 @@ use crate::{
 
 use super::API;
 
+#[cfg(test)]
+mod tests;
+
 const TENANT_KEY_CACHE_TTL_MS: u64 = 30_000;
+const TENANT_KEY_CACHE_SWEEP_INTERVAL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
 
 /// @cc [owner:spolu,label:api;security] tenant-key-cache-expiry
 /// Cached tenants MUST NOT authenticate requests at or after their expiry. Expiry MUST be set to
@@ -60,6 +65,21 @@ impl API {
             master_key_hash: hash_key(master_key),
             tenant_key_cache: Default::default(),
         })
+    }
+
+    /// @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-reclamation
+    /// Every sweep MUST remove expired entries and retain unexpired entries. Removing an entry
+    /// MUST release the cache's ownership of the tenant without invalidating outstanding references.
+    pub(crate) async fn sweep_tenant_key_cache(&self) {
+        let period = Duration::from_millis(TENANT_KEY_CACHE_SWEEP_INTERVAL_MS);
+        let mut sweep = interval_at(tokio::time::Instant::now() + period, period);
+        sweep.set_missed_tick_behavior(MissedTickBehavior::Skip);
+        loop {
+            sweep.tick().await;
+            let mut cache = self.tenant_key_cache.write().await;
+            let now = Instant::now();
+            cache.retain(|_, cached| cached.expires_at > now);
+        }
     }
 
     pub(super) fn require_master<T>(&self, request: &Request<T>) -> Result<(), Status> {
