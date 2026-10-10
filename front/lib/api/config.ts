@@ -177,21 +177,6 @@ const config = {
       email: "support@dust.tt",
     };
   },
-  getInvitationEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_INVITATION_EMAIL_TEMPLATE_ID"
-    );
-  },
-  getInvitationReminderEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_INVITATION_REMINDER_EMAIL_TEMPLATE_ID"
-    );
-  },
-  getGenericEmailTemplate: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "SENDGRID_GENERIC_EMAIL_TEMPLATE_ID"
-    );
-  },
   getStripePublishableKey: (): string => {
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
