@@ -55,7 +55,8 @@ describe("useLiveSession", () => {
     await server.listen();
     const { result, unmount } = renderSession();
     await waitFor(() => expect(result.current.status).toBe("live"));
-    expect(result.current.syncing).toBe(false);
+    // Joining sends the provider's own sync messages, confirmed shortly after going live.
+    await waitFor(() => expect(result.current.syncing).toBe(false));
 
     hold = true;
     act(() => {
