@@ -136,7 +136,6 @@ describe("PUT /api/w/[wId]/groups/[groupId]/shared_usage_limit", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     const grant = await GroupPermissionResource.grantToUser(adminAuth, {
       user: delegate.toJSON(),
       grantType: "group_manager",

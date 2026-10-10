@@ -67,12 +67,10 @@ export const NavigationSidebar = React.forwardRef<
   }, [router.isReady, router.pathname]);
 
   const { hasFeature } = useFeatureFlags();
-  const { featureFlags, groupManagement } = useAuth();
+  const { groupManagement } = useAuth();
   const { hasPermission } = useWorkspacePermissions();
 
-  const hasManagedGroups =
-    featureFlags.includes("group_management") &&
-    hasGroupManagementScope(groupManagement?.read_usage);
+  const hasManagedGroups = hasGroupManagementScope(groupManagement?.read_usage);
   const adminSectionHref = getAdminSectionHref(
     owner,
     hasPermission,

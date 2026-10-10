@@ -2,7 +2,7 @@ import { GroupManagersField } from "@app/components/groups/GroupManagersField";
 import { useGroupManagerAppointmentReview } from "@app/components/groups/useGroupManagerAppointmentReview";
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupWithAllowedActions } from "@app/types/api/groups";
 import type { GroupType } from "@app/types/groups";
@@ -122,7 +122,6 @@ function GroupForm({
   const [initialMemberIds, setInitialMemberIds] = useState(
     () => new Set(initialMembers.map((member) => member.sId))
   );
-  const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
   const [name, setName] = useState(initialName);
   const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(
@@ -138,7 +137,7 @@ function GroupForm({
     !groupId || group?.allowedActions?.canEditDetails === true;
   const canAssignManagers = groupId
     ? group?.allowedActions?.canAssignManagers === true
-    : isManager && hasFeature("group_management");
+    : isManager;
   const managerGroup = group ?? {
     name: name.trim(),
     kind: "regular_manual" as const,
@@ -272,11 +271,9 @@ function GroupForm({
             autoFocus
           />
           <div className="flex flex-col gap-2">
-            {hasFeature("group_management") && (
-              <h3 className="text-sm font-semibold">
-                <Trans>Group members ({selectedMemberCount})</Trans>
-              </h3>
-            )}
+            <h3 className="text-sm font-semibold">
+              <Trans>Group members ({selectedMemberCount})</Trans>
+            </h3>
             <MemberSelectionTable
               owner={owner}
               selectedMemberIds={selectedMemberIds}

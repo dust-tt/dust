@@ -91,10 +91,8 @@ app.get(
       withMembers === "true"
         ? await GroupResource.fetchJSONWithMembers(auth, groups)
         : await GroupResource.toJSONWithMemberCounts(auth, groups);
-    const isGroupManagementEnabled =
-      await auth.hasFeatureFlag("group_management");
     const managersByGroup =
-      withManagers === "true" && isGroupManagementEnabled
+      withManagers === "true"
         ? await getGroupManagersForGroups(auth, groups)
         : null;
     const groupsById = new Map(groups.map((group) => [group.sId, group]));
@@ -109,11 +107,7 @@ app.get(
               ({ sId, fullName, image }) => ({ sId, fullName, image })
             ),
           }),
-          allowedActions: getGroupAllowedActions(
-            auth,
-            group,
-            isGroupManagementEnabled
-          ),
+          allowedActions: getGroupAllowedActions(auth, group),
         };
       }),
     });
@@ -128,19 +122,6 @@ app.post(
   async (ctx): HandlerResult<PostGroupResponseBody> => {
     const auth = ctx.get("auth");
     const { name, memberIds, managerIds } = ctx.req.valid("json");
-
-    if (
-      managerIds?.length &&
-      !(await auth.hasFeatureFlag("group_management"))
-    ) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Group management is not enabled for this workspace.",
-        },
-      });
-    }
 
     const groupRes = await createGroup(auth, {
       name,
