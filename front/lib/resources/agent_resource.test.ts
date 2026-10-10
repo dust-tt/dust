@@ -33,6 +33,7 @@ import type {
   AgentStatus,
 } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import assert from "assert";
 import type { JSONSchema7 } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -2981,6 +2982,31 @@ describe("AgentResource", () => {
       expect(customAgent?.modelConfiguration).toEqual(
         (await AgentResource.fetchById(authenticator, custom.sId))
           ?.modelConfiguration
+      );
+    });
+
+    it("greets a new agent's builder in their locale once localisation is on", async () => {
+      const { authenticator, user } = testContext;
+      const globalAgentContext = {
+        userMessageRank: 0,
+        sidekickIsNewAgentFromScratch: true,
+      };
+      const fetchStaticResponse = async () => {
+        const [sidekick] = await AgentResource.fetchByIds(
+          authenticator,
+          [GLOBAL_AGENTS_SID.SIDEKICK],
+          // The agent loop fetches its agent with actions, the only variant with sidekick context.
+          { globalAgentContext, withActions: true }
+        );
+        return sidekick?.modelConfiguration.metaData?.staticResponse;
+      };
+
+      await user.setMetadata(USER_LOCALE_METADATA_KEY, "fr-FR");
+      expect(await fetchStaticResponse()).toMatch(/^(Need|Want|Not sure)/);
+
+      await FeatureFlagFactory.basic(authenticator, "localisation");
+      expect(await fetchStaticResponse()).toMatch(
+        /^(Besoin|Envie|Vous ne savez pas)/
       );
     });
   });
