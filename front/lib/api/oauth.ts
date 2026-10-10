@@ -694,6 +694,12 @@ export async function finalizeConnection(
   });
 }
 
+/**
+ * @cc [owner:frankaloia,label:security;api] check-connection-user-ownership
+ * Callers MUST verify that a caller-supplied connection ID (con_ prefix) belongs to
+ * the acting user and workspace before forwarding it to downstream services. Use
+ * checkConnectionOwnership and reject with 403 on Err.
+ */
 export async function checkConnectionOwnership(
   auth: Authenticator,
   connectionId: string
@@ -714,6 +720,36 @@ export async function checkConnectionOwnership(
       auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:frankaloia,label:security;api] check-credential-workspace-ownership
+ * Callers MUST verify that a caller-supplied credential ID (cred_ prefix) belongs to
+ * the acting workspace before forwarding it to downstream services. Use
+ * checkCredentialOwnership and reject with 403 on Err.
+ */
+export async function checkCredentialOwnership(
+  auth: Authenticator,
+  credentialId: string
+): Promise<Result<undefined, Error>> {
+  if (!credentialId || !credentialId.startsWith("cred_")) {
+    return new Ok(undefined);
+  }
+
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const credentialRes = await oauthAPI.getCredentials({
+    credentialsId: credentialId,
+  });
+
+  if (
+    credentialRes.isErr() ||
+    credentialRes.value.credential.metadata.workspace_id !==
+      auth.workspace()?.sId
+  ) {
+    return new Err(new Error("Invalid credential"));
   }
 
   return new Ok(undefined);
