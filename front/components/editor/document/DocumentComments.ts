@@ -7,7 +7,13 @@ import type { Node } from "@tiptap/pm/model";
 import { Fragment, Mark as ProseMirrorMark, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
+import {
+  AddMarkStep,
+  Mapping,
+  RemoveMarkStep,
+  ReplaceStep,
+  StepMap,
+} from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { z } from "zod";
@@ -360,12 +366,55 @@ const buildDecorations = (
       : []),
   ]);
 
+/** The replacement of `before` by `after`, narrowed to where their content differs. */
+const diffMap = (before: Node, after: Node): StepMap => {
+  const start = before.content.findDiffStart(after.content);
+  if (start === null) {
+    return StepMap.empty;
+  }
+  const end = before.content.findDiffEnd(after.content);
+  if (end === null) {
+    return StepMap.empty;
+  }
+  // When the change repeats the text next to it, the common prefix and suffix overlap; moving both
+  // ends past the start keeps the replaced ranges from inverting.
+  const overlap = Math.max(0, start - Math.min(end.a, end.b));
+  return new StepMap([start, end.a + overlap - start, end.b + overlap - start]);
+};
+
+const narrowedMappings = new WeakMap<Transaction, Mapping>();
+
+/**
+ * The transaction's mapping, with each step that replaces the whole document narrowed to where
+ * it changed it. y-tiptap applies every remote change as one such step, which would otherwise
+ * make every remote keystroke change the whole document.
+ */
+const narrowedMapping = (transaction: Transaction): Mapping => {
+  const cached = narrowedMappings.get(transaction);
+  if (cached) {
+    return cached;
+  }
+  const mapping = new Mapping(
+    transaction.steps.map((step, index) => {
+      const before = transaction.docs[index];
+      return step instanceof ReplaceStep &&
+        step.from === 0 &&
+        step.to === before.content.size
+        ? diffMap(before, transaction.docs[index + 1] ?? transaction.doc)
+        : step.getMap();
+    })
+  );
+  narrowedMappings.set(transaction, mapping);
+  return mapping;
+};
+
 /** Where the transactions changed content or marks, in the last one's document. */
 const changedRanges = (transactions: readonly Transaction[]) => {
   let ranges: CommentRange[] = [];
   for (const transaction of transactions) {
-    for (const step of transaction.steps) {
-      const map = step.getMap();
+    const { maps } = narrowedMapping(transaction);
+    for (const [index, step] of transaction.steps.entries()) {
+      const map = maps[index];
       ranges = ranges.map(({ from, to }) => ({
         from: map.map(from, -1),
         to: map.map(to, 1),
@@ -404,7 +453,8 @@ const toTextblocks = (doc: Node, { from, to }: CommentRange): CommentRange => {
  * @cc [owner:tdraier,label:performance] document-comment-highlights-local
  * Unless a comments command runs or the threads or the active comment change, a transaction
  * MUST only rebuild the comment highlights of the textblocks it changes, content or marks, and
- * map the others and the draft highlight.
+ * map the others and the draft highlight. A step replacing the whole document, as y-tiptap
+ * applies every remote change, changes only the textblocks whose content or marks differ.
  */
 const updateDecorations = (
   previous: DecorationSet,
@@ -413,7 +463,7 @@ const updateDecorations = (
 ) => {
   const { doc } = transaction;
   const comments = commentsById(doc);
-  let decorations = previous.map(transaction.mapping, doc);
+  let decorations = previous.map(narrowedMapping(transaction), doc);
   for (const changed of changedRanges([transaction])) {
     const { from, to } = toTextblocks(doc, changed);
     decorations = decorations
@@ -1063,8 +1113,9 @@ export const DocumentComments = Extension.create({
 
           let { activeId, draft } = previous;
           if (draft && transaction.docChanged) {
-            const from = transaction.mapping.map(draft.from, 1);
-            const to = transaction.mapping.map(draft.to, -1);
+            const mapping = narrowedMapping(transaction);
+            const from = mapping.map(draft.from, 1);
+            const to = mapping.map(draft.to, -1);
             draft = from < to ? { from, to } : null;
           }
 
