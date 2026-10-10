@@ -1,29 +1,53 @@
 # dfs:// storage proposal
 
-FoundationDB stores sessions, objects, directory entries, contents, and grants. [API.md](API.md)
-defines observable behavior. Initially, authorization reads session state, topology, and grants from FDB.
-Search and a full in-memory authorization index are future work.
+FoundationDB stores tenants, sessions, objects, directory entries, contents, and grants.
+[API.md](API.md) defines observable behavior. Initially, authorization reads session state, tree
+structure, and grants from FDB. Search and a full in-memory authorization index are future work
+(depending on approach chosen for search).
 
 ## Key layout
 
-Keys below show the full logical shape; separators and family names are illustrative. The namespace
-prefix is `dfs-v1-{env}`, where `env` is `test` or `prod`: `dfs-v1-test` and `dfs-v1-prod` isolate the
-two environments within an FDB cluster.
+Keys below show the full logical shape; slashes separate components in the notation, not in the
+stored bytes. The namespace prefix is `dfs-v1-{env}`, where `env` is `test` or `prod`: `dfs-v1-test`
+and `dfs-v1-prod` isolate the two environments within an FDB cluster. The implementation currently
+fixes `env` to `test` until deployment configuration is available.
 
 ```text
 dfs-v1-{env}/tenants/<tenantId>/<family>/...
 ```
 
+The tenant subspace is defined in [keys.rs](../server/src/storage/resources/keys.rs) as the FDB
+tuple `("dfs-v1-{env}", "tenants", tenantId)`. Each component is encoded separately by the tuple
+layer, which supplies type tags, terminators, and escaping. Tenant IDs contain 1–256 UTF-8 bytes
+without NUL; a slash in an ID remains part of that tuple component and cannot introduce another key
+component.
+
 The authenticated tenant key or session determines `tenantId`. Object IDs are stored as 16-byte
 UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and session expiry timestamps
-use big-endian `u64` encoding; expiry timestamps are Unix milliseconds.
-Variable-length components need unambiguous boundaries and must preserve ordering where required
-for pagination. Exact family tags and value encodings remain to be chosen.
+use big-endian `u64` encoding; expiry timestamps are Unix milliseconds. Variable-length components
+need unambiguous boundaries and must preserve ordering where required for pagination. Apart from the
+tenant record below, family tags and value encodings remain proposals.
 
-UUIDv7 tends to cluster newly created objects within each family or reverse grant prefix.
-Directory entries cluster by parent and sort by name; blocks cluster by file and sort by offset.
-Subtrees are not contiguous, and allocation order does not establish commit order. Locality gains
-and write concentration need measurement.
+UUIDv7 tends to cluster newly created objects within each family or reverse grant prefix. Directory
+entries cluster by parent and sort by name; blocks cluster by file and sort by offset. Subtrees are
+not contiguous, and allocation order does not establish commit order. Locality gains and write
+concentration need measurement.
+
+## Tenants
+
+| Key | Value | Rationale |
+| --- | --- | --- |
+| `dfs-v1-{env}/tenants/<tenantId>/tenant` | FDB tuple `(root_id_bytes, key_hash_bytes)`. | Stores the tenant's real root ID and credential hash. |
+| `dfs-v1-{env}/tenant-key/<keyHash>` | Tenant ID. | Resolves an opaque tenant key before the tenant is known. |
+
+The tenant record key is the FDB tuple `("dfs-v1-{env}", "tenants", tenantId, "tenant")`, built by
+`TenantResource::tenant_key`. Both value fields are tuple byte strings: the root is 16 UUIDv7 bytes,
+and the hash is 32 bytes of SHA-256 over the bearer key's UTF-8 bytes. The tenant record omits the
+tenant ID from its value. The plaintext bearer key is returned at creation and never persisted.
+
+The global lookup uses the same hash to resolve the tenant ID from the bearer key. Authentication
+reads the tenant record and verifies its matching hash in the same transaction. Tenant creation
+writes the record and lookup atomically, ensuring the hash is not assigned to another tenant.
 
 ## Sessions
 
@@ -64,7 +88,6 @@ a refreshed session. Authentication rejects expired sessions even before cleanup
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenants/<tenantId>/tenant` | Root ID and tenant credential hash. | Resolves durable tenant identity and its root. |
 | `dfs-v1-{env}/tenants/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
 | `dfs-v1-{env}/tenants/<tenantId>/metadata/<objectId>` | Creation time, MIME type, and xattrs. | Keeps optional metadata out of ordinary traversal. |
 | `dfs-v1-{env}/tenants/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
@@ -116,8 +139,10 @@ Authorization and structural checks use the same transaction. Conflict-tracked r
 existence, source/destination bindings, directory emptiness, and move-cycle checks.
 
 Within `Apply`, each operation validates before staging writes; failed operations leave no changes.
-Later operations see earlier successes, and all successes commit together. Storage or commit failures
-fail the attempt. Retry only definitely uncommitted transactions, recomputing reads and decisions.
+Later operations see earlier successes, and all successes commit together. Storage or commit
+failures fail the attempt. Retry definitely uncommitted transactions, recomputing reads and
+decisions. Retrying an unknown commit result requires operation-specific idempotency, as for tenant
+creation.
 
 The 4 MiB RPC ceiling and 1 MiB `Apply` request budget are separate from FDB transaction accounting.
 Budget index maintenance, metadata, blocks, and required responses before commit. Scans use bounded
@@ -148,8 +173,8 @@ provide these without a RAM tree; indexed ACLs are never authoritative. Results 
 
 ### Full in-memory authorization index
 
-We may never build this. A complete tenant tree with compact parent slots and explicit grants
-could accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and recovery machinery.
+We may never build this. A complete tenant tree with compact parent slots and explicit grants could
+accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and recovery machinery.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
@@ -161,6 +186,7 @@ could accelerate ancestry walks, at the cost of memory, bootstrap, freshness, an
 | `dfs-v1-{env}/tenants/<tenantId>/tree-deleted-count` | Retained tombstone count. | Bounds retention without scanning tombstones. |
 
 Each object retains one head and at most one current update. Source mutations replace these
-atomically, ordered by FDB's 10-byte commit versionstamp and object ID. Records omit names, contents,
-and inherited permissions; explicit grants are read at the same snapshot. Replicas publish coherent
-generations with tenant-wide authorization versions and fall back to FDB when unavailable or stale.
+atomically, ordered by FDB's 10-byte commit versionstamp and object ID. Records omit names,
+contents, and inherited permissions; explicit grants are read at the same snapshot. Replicas publish
+coherent generations with tenant-wide authorization versions and fall back to FDB when unavailable
+or stale.
