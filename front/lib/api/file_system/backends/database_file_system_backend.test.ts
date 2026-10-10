@@ -35,7 +35,7 @@ async function databaseFileSystem() {
   assert(result.isOk());
   const scope = new FileSystemScope(
     result.value.getMounts().flatMap((mount) =>
-      mount.kind === "user"
+      mount.kind === "user" || mount.kind === "conversation_metadata"
         ? []
         : [
             {

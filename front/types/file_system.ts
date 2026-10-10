@@ -5,14 +5,20 @@
  * `pod-{pId}/data.csv`, or `user-{uId}/memory.md`. Every public interface accepts and
  * returns scoped paths.
  *
- * FileSystemMount: one logical namespace (conversation, pod, or user) with its scoped
- * prefix, sandbox mount point, backward-compat aliases, and per-mount permissions.
+ * FileSystemMount: one logical namespace (conversation, conversation metadata, pod, or user) with
+ * its scoped prefix, sandbox mount point, backward-compat aliases, and per-mount permissions.
  */
 
-export type FileSystemMountKind = "conversation" | "pod" | "user";
+export type FileSystemMountKind =
+  | "conversation"
+  | "conversation_metadata"
+  | "pod"
+  | "user";
 
 /** Canonical scoped-path prefixes (include the trailing dash). */
 export const SCOPED_PREFIX_CONVERSATION = "conversation-" as const;
+export const SCOPED_PREFIX_CONVERSATION_METADATA =
+  "conversation_metadata-" as const;
 export const SCOPED_PREFIX_POD = "pod-" as const;
 export const SCOPED_PREFIX_USER = "user-" as const;
 
@@ -112,6 +118,16 @@ export function conversationScopedPath({
   rel: string;
 }): string {
   return `${SCOPED_PREFIX_CONVERSATION}${conversationId}/${rel}`;
+}
+
+export function conversationMetadataScopedPath({
+  conversationId,
+  rel,
+}: {
+  conversationId: string;
+  rel: string;
+}): string {
+  return `${SCOPED_PREFIX_CONVERSATION_METADATA}${conversationId}/${rel}`;
 }
 
 export function podScopedPath(spaceId: string, rel: string): string {
