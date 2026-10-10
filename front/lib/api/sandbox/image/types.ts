@@ -180,7 +180,7 @@ export interface ToolManifest {
  * The Docker image must actually have the corresponding tooling installed. The capability tag tells
  * orchestration it is safe to attempt the feature.
  */
-export type SandboxCapability = "dust_filesystem" | "gcsfuse";
+export type SandboxCapability = "gcsfuse";
 
 // ---------------------------------------------------------------------------
 // Base Image

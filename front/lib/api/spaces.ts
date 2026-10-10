@@ -7,12 +7,10 @@ import {
 } from "@app/lib/api/agent_data_sources";
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { hardDeleteApp } from "@app/lib/api/apps";
-import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects/connector";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { listActiveConfigurationsRequestingSpace } from "@app/lib/resources/agent_configuration_rows";
 import { updateAgentRequestedSpaceIdsInPlace } from "@app/lib/resources/agent_requested_spaces";
@@ -616,19 +614,6 @@ export async function createSpaceAndGroup(
   const { name: rawName, isRestricted, spaceKind } = params;
   const name = rawName.trim();
   const { memberIds = [], groupIds = [] } = params;
-
-  if (
-    spaceKind === "project" &&
-    isDatabaseFileSystemPodName(name) &&
-    !(await hasFeatureFlag(auth, "dust_filesystem"))
-  ) {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "The database-backed filesystem is not enabled for this workspace."
-      )
-    );
-  }
 
   const result = await withTransaction(async (t) => {
     await getWorkspaceAdministrationVersionLock(owner, t);

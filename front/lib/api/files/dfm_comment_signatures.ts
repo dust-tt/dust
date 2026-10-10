@@ -560,11 +560,7 @@ export async function validateMarkdownCommentsForWrite(
     isMarkdownContentType(requestContentType) ||
     isMarkdownContentType(stored?.contentType);
   if (!isMarkdown) {
-    const classifiedRevision = stored
-      ? stored.revision
-      : dustFs.isGCSBacked()
-        ? ABSENT_FILE_REVISION
-        : undefined;
+    const classifiedRevision = stored ? stored.revision : ABSENT_FILE_REVISION;
     if (classifiedRevision !== undefined) {
       if (stored) {
         // The content of a write that is not validated is never read, nor the errors of its stream.
