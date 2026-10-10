@@ -9,8 +9,8 @@ import { fromMarkdown } from "mdast-util-from-markdown";
  */
 
 export interface Range {
-  start: number;
-  end: number;
+  readonly start: number;
+  readonly end: number;
 }
 
 /**
@@ -118,12 +118,7 @@ export function isEscaped(text: string, index: number): boolean {
   return backslashes % 2 === 1;
 }
 
-/**
- * Character ranges of code blocks and code spans in `text`, in order: fenced and indented
- * blocks, including inside blockquotes and lists, and inline spans wherever CommonMark places
- * them.
- */
-export function codeRanges(text: string): Range[] {
+function parseCodeRanges(text: string): Range[] {
   const ranges: Range[] = [];
   for (const { node } of nodes(text)) {
     if (node.type !== "code" && node.type !== "inlineCode") {
@@ -134,6 +129,31 @@ export function codeRanges(text: string): Range[] {
     if (start !== undefined && end !== undefined) {
       ranges.push({ start, end });
     }
+  }
+  return ranges;
+}
+
+// Saving or loading a file asks for the code of its body several times, in between the file
+// after its front matter and the body probed for an open fence, each a full parse of the
+// document. Comment messages parse in well under a millisecond and would only push those out.
+const MEMOIZED_TEXT_MIN_LENGTH = 4096;
+const MEMOIZED_TEXTS = 3;
+const memoizedCodeRanges: { text: string; ranges: readonly Range[] }[] = [];
+
+/**
+ * Character ranges of code blocks and code spans in `text`, in order: fenced and indented
+ * blocks, including inside blockquotes and lists, and inline spans wherever CommonMark places
+ * them.
+ */
+export function codeRanges(text: string): readonly Range[] {
+  const memoized = memoizedCodeRanges.find((entry) => entry.text === text);
+  if (memoized) {
+    return memoized.ranges;
+  }
+  const ranges = parseCodeRanges(text);
+  if (text.length >= MEMOIZED_TEXT_MIN_LENGTH) {
+    memoizedCodeRanges.unshift({ text, ranges });
+    memoizedCodeRanges.splice(MEMOIZED_TEXTS);
   }
   return ranges;
 }
