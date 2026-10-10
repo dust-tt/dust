@@ -1319,6 +1319,17 @@ describe("useDocumentComments", () => {
     expect(result.current.comments.quotes.get("c2")).toBe("b c d e");
   });
 
+  it("quotes comments in separate list items each without a separator", async () => {
+    const thread = (id: string) =>
+      `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`;
+    const { result } = await renderCommentedEditor(
+      `- :comment-start{id=c1}one:comment-end{id=c1}\n- :comment-start{id=c2}two:comment-end{id=c2}\n\n:::annotations\n${thread("c1")}${thread("c2")}:::\n`
+    );
+
+    expect(result.current.comments.quotes.get("c1")).toBe("one");
+    expect(result.current.comments.quotes.get("c2")).toBe("two");
+  });
+
   it("highlights a resolved comment while its thread is selected", async () => {
     const scrollIntoView = vi.fn();
     Element.prototype.scrollIntoView = scrollIntoView;

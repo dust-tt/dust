@@ -1,6 +1,9 @@
 // @vitest-environment node: signs with node:crypto and checks with WebCrypto, as browsers do.
 
 import { generateKeyPairSync, sign, verify } from "node:crypto";
+import { documentSchema } from "@app/components/editor/document/content";
+import { loadDfm } from "@app/components/editor/document/dfm_persistence";
+import { getCommentedTexts } from "@app/components/editor/document/DocumentComments";
 import { validateCommentSignatures } from "@app/lib/api/files/dfm_comment_signatures";
 import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
@@ -276,5 +279,47 @@ describe("validateCommentSignatures", () => {
     expect(result.isOk() && result.value).toEqual([
       { commentId: "c1", quote: "there", message: reply },
     ]);
+  });
+
+  describe("quotes", () => {
+    const reply = signedMessage("c1", [TOM], {
+      author: { kind: "user", id: "usr_tom", name: "Tom Draier" },
+      createdAt: "2026-10-05T12:05:00.000Z",
+      body: "Ping :mention[dust]{sId=dust}",
+    });
+    const withBody = (body: string) =>
+      file(TOM, reply).replace(
+        "Hi :comment-start{id=c1}there:comment-end{id=c1}",
+        body
+      );
+
+    it("quote the plain text, its blocks separated by a space, as the editor does", () => {
+      const source = withBody(
+        "Hi :comment-start{id=c1}**there**.\n\nAnd here:comment-end{id=c1} too."
+      );
+      const result = validate(file(TOM), source);
+      const loaded = loadDfm(source);
+      if (loaded.isErr()) {
+        throw new Error(loaded.error);
+      }
+
+      expect(result.isOk() && result.value[0].quote).toBe("there. And here");
+      expect(
+        getCommentedTexts(
+          documentSchema.nodeFromJSON(loaded.value.content)
+        ).get("c1")
+      ).toBe("there. And here");
+    });
+
+    it("quote code by its text", () => {
+      const result = validate(
+        file(TOM),
+        withBody(
+          "Hi :comment-start{id=c1}run `npm test`:comment-end{id=c1} now."
+        )
+      );
+
+      expect(result.isOk() && result.value[0].quote).toBe("run npm test");
+    });
   });
 });
