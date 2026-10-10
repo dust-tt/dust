@@ -28,6 +28,7 @@ import { AgentMessageConsumptionEventModel } from "@app/lib/models/agent/agent_m
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentSuggestedPromptsModel } from "@app/lib/models/agent/agent_suggested_prompts";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
@@ -226,6 +227,7 @@ export function loadAllModels() {
     AgentModel,
     AgentConfigurationModel,
     AgentUserRelationModel,
+    AgentSuggestedPromptsModel,
     GlobalAgentSettingsModel,
     TagAgentModel,
     RemoteMCPServerModel,
