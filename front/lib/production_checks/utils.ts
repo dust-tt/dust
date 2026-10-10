@@ -1,6 +1,9 @@
 import config from "@app/lib/production_checks/config";
 import { Sequelize } from "sequelize";
 
+// Connectors in the h1-pentest workspace, which is a test we don't want to alert on.
+export const IGNORED_CONNECTOR_IDS = [55901, 55902];
+
 // Variables to hold the singleton instances.
 let connectorsReplicaDbInstance: Sequelize | null = null;
 let connectorsPrimaryDbInstance: Sequelize | null = null;

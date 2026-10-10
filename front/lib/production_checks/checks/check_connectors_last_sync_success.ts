@@ -3,16 +3,16 @@ import {
   isBotTypeProvider,
   isWebhookBasedProvider,
 } from "@app/lib/connector_providers";
-import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import {
+  getConnectorsPrimaryDbConnection,
+  IGNORED_CONNECTOR_IDS,
+} from "@app/lib/production_checks/utils";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { ActionLink, CheckFunction } from "@app/types/production_checks";
 import { QueryTypes } from "sequelize";
-
-// Connectors in the h1-pentest workspace, which is a test we don't want to alert on.
-const IGNORED_CONNECTOR_IDS = [55901, 55902];
 
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
