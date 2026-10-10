@@ -16,7 +16,7 @@ const ONE_MINUTE_IN_SECONDS = 60;
  * Requests MUST be counted per workspace and per route the middleware is attached to: two
  * workspaces, or two routes using it, MUST NOT share a counter.
  */
-export function withRateLimit({ maxPerMinute }: { maxPerMinute: number }) {
+export function withWorkspaceRateLimit({ maxPerMinute }: { maxPerMinute: number }) {
   return createMiddleware<PublicApiCtx>(async (ctx, next) => {
     const workspaceId = ctx.get("auth").getNonNullableWorkspace().sId;
     // Attached to a handler, `routePath` is that handler's route, e.g.
