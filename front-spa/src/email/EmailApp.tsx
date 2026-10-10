@@ -1,3 +1,5 @@
+import { LocaleSync } from "@dust-tt/front/components/app/LocaleSync";
+import { SparkleLocaleProvider } from "@dust-tt/front/components/app/SparkleLocaleProvider";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { GlobalErrorFallback } from "@dust-tt/front/components/error_boundary/GlobalErrorFallback";
 import { ValidationPage } from "@dust-tt/front/components/pages/email/ValidationPage";
@@ -9,9 +11,12 @@ export default function EmailApp() {
   return (
     <CellProvider>
       <I18nProvider i18n={i18n}>
-        <ErrorBoundary fallback={<GlobalErrorFallback />}>
-          <ValidationPage />
-        </ErrorBoundary>
+        <SparkleLocaleProvider>
+          <LocaleSync locale={null} />
+          <ErrorBoundary fallback={<GlobalErrorFallback />}>
+            <ValidationPage />
+          </ErrorBoundary>
+        </SparkleLocaleProvider>
       </I18nProvider>
     </CellProvider>
   );
