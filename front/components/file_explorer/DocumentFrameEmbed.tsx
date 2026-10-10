@@ -18,8 +18,7 @@ interface DocumentFrameEmbedProps {
  * @cc [owner:tdraier,label:product;security] document-frame-embed-access
  * A Frame embedded in a document MUST load only through the file API from its path, so it shows
  * only to a reader who can read the Frame's file; a path the API refuses or that is not a Frame
- * MUST show as the path. It MUST render as a regular, non-editable Frame, inline, its height
- * capped as in a message.
+ * MUST show as the path. It MUST render as a regular, non-editable Frame, inline, 600px high.
  */
 export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
   const vizUrl = useContext(AuthContext)?.vizUrl;
@@ -49,23 +48,28 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
 
   const scope = parseCanonicalScopedPath(path)?.scope;
   return (
-    <AuthenticatedVisualizationActionIframe
-      agentConfigurationId={null}
-      workspaceId={owner.sId}
-      vizUrl={vizUrl}
-      visualization={{
-        code: fileContent,
-        complete: true,
-        identifier: `viz-document-frame-${fileId}`,
-      }}
-      conversationId={
-        scope?.kind === "canonical-conversation" ? scope.id : null
-      }
-      spaceId={scope?.kind === "canonical-pod" ? scope.id : undefined}
-      framePackageRoot={path.slice(0, path.lastIndexOf("/"))}
-      frameId={
-        getFrameFunctionReferenceKind(contentType) === "v2" ? fileId : undefined
-      }
-    />
+    <div className="h-[600px] overflow-hidden rounded-xl ring-1 ring-border/60">
+      <AuthenticatedVisualizationActionIframe
+        agentConfigurationId={null}
+        workspaceId={owner.sId}
+        vizUrl={vizUrl}
+        visualization={{
+          code: fileContent,
+          complete: true,
+          identifier: `viz-document-frame-${fileId}`,
+        }}
+        conversationId={
+          scope?.kind === "canonical-conversation" ? scope.id : null
+        }
+        spaceId={scope?.kind === "canonical-pod" ? scope.id : undefined}
+        framePackageRoot={path.slice(0, path.lastIndexOf("/"))}
+        frameId={
+          getFrameFunctionReferenceKind(contentType) === "v2"
+            ? fileId
+            : undefined
+        }
+        isInDrawer
+      />
+    </div>
   );
 }
