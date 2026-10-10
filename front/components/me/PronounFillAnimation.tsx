@@ -50,12 +50,6 @@ interface PronounFillAnimationProps {
   onDone: () => void;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] input-text-hidden-while-mounted
- * While mounted, the input's own text MUST be invisible and unmounting MUST restore it. `onDone`
- * MUST be called once the animation has ended or the user types in the input, and callers MUST
- * unmount the component when it is.
- */
 export function PronounFillAnimation({
   fill,
   onDone,

@@ -29,10 +29,6 @@ interface PronounPresetChipsProps {
   inputRef: RefObject<HTMLInputElement>;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] no-fill-animation-with-reduced-motion
- * Picking a preset MUST NOT play the fill animation when the user prefers reduced motion.
- */
 export function PronounPresetChips({
   value,
   onSelect,
