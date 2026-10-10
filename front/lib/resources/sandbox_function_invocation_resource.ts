@@ -8,6 +8,10 @@ import {
   generateExecId,
   generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
+import {
+  collectEgressDenials,
+  withBlockedEgressHint,
+} from "@app/lib/api/sandbox/egress_deny_log";
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import type { EnsureSandboxReadyResult } from "@app/lib/api/sandbox/lifecycle";
@@ -35,6 +39,7 @@ import {
 } from "@app/lib/resources/sandbox_function_invocation/blob_stage";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
@@ -1000,13 +1005,39 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       if (normalized.ok) {
         await this.succeed(normalized.output);
       } else {
-        await this.fail(normalized.error);
+        await this.fail(
+          await this.withBlockedEgressDomains(auth, sandbox, normalized.error)
+        );
       }
 
       return new Ok(undefined);
     } catch (error) {
       return new Err(normalizeError(error));
     }
+  }
+
+  // Names the domains the egress allowlist blocked during a failed run, so a
+  // bare "fetch failed" tells the agent what to declare. Failures only: the
+  // read is a root exec round-trip kept off the fast-function happy path, and
+  // a function that swallowed a blocked fetch already chose what its caller
+  // sees. The deny log is sandbox-global, so under concurrent invocations the
+  // domains are "blocked since the last read", not strictly this run's.
+  private async withBlockedEgressDomains(
+    auth: Authenticator,
+    sandbox: SandboxResource,
+    error: SandboxFunctionCallError
+  ): Promise<SandboxFunctionCallError> {
+    const denials = await collectEgressDenials(
+      auth,
+      sandbox,
+      this.observabilityContext(auth)
+    );
+    if (!denials || denials.blockedDomains.length === 0) {
+      return error;
+    }
+    return withBlockedEgressHint(error, {
+      blockedDomains: denials.blockedDomains,
+    });
   }
 
   static modelIdToSId({

@@ -299,7 +299,9 @@ flags). Transport failures throw; a tool that ran and reported an error resolves
 \`isError: true\`. Publishing a function that calls Dust tools as \`fast\` is a bug: the runtime
 refuses the tool call. Function \`fetch()\` requests only reach domains on the egress allowlist
 (workspace, plus the Pod's when the Frame lives in a Pod), so declare them in the manifest's
-\`domains\`; \`DST_*\` / \`DSEC_*\` configuration follows the same rules as the Computer.
+\`domains\`. A function that fails because a fetch was blocked reports the blocked domains in its
+error; add them to \`domains\` and republish. \`DST_*\` / \`DSEC_*\` configuration follows the same
+rules as the Computer.
 
 ### Knowing who called a function
 
