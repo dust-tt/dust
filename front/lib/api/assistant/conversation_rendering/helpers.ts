@@ -455,6 +455,12 @@ export async function getSteps(
   );
 }
 
+// User-provided values are rendered inside `<dust_system>`: drop tag delimiters and line breaks so
+// they can neither close the block nor forge additional metadata lines.
+function sanitizeDustSystemValue(value: string): string {
+  return value.replace(/[<>]/g, "").replace(/\s+/g, " ").trim();
+}
+
 /**
  * Renders a user message with metadata
  */
@@ -494,6 +500,13 @@ export function renderUserMessage(
 
   if (identityTokens.length > 0) {
     metadataItems.push(`- Sender: ${identityTokens.join(" ")}`);
+  }
+
+  const sanitizedPronouns = m.user?.pronouns
+    ? sanitizeDustSystemValue(m.user.pronouns)
+    : "";
+  if (sanitizedPronouns) {
+    metadataItems.push(`- Sender pronouns: ${sanitizedPronouns}`);
   }
 
   // TODO(2026-02-01 flav): Move this to another system message.
