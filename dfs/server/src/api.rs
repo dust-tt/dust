@@ -10,7 +10,7 @@ use dfs_protocol::{
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tonic::{Request, Response, Status};
 
 use crate::{
@@ -25,7 +25,7 @@ mod errors;
 #[allow(clippy::upper_case_acronyms)]
 pub struct API {
     master_key_hash: KeyHash,
-    tenant_key_cache: Mutex<HashMap<KeyHash, Arc<TenantResource>>>,
+    tenant_key_cache: RwLock<HashMap<KeyHash, Arc<TenantResource>>>,
 }
 
 /// @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources

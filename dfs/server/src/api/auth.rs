@@ -61,12 +61,16 @@ impl API {
     /// Successful tenant authentication MUST be shared across this API instance's connections only
     /// for the same key hash and MUST NOT authorize master-key RPCs. Failed authentication MUST NOT
     /// be cached. Every RPC MUST still supply its bearer.
+    /**
+     * @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-concurrency
+     * Cache hits MUST use shared read access. FDB authentication MUST run without a cache guard.
+     */
     pub(super) async fn require_tenant<T>(
         &self,
         request: &Request<T>,
     ) -> Result<Arc<TenantResource>, Status> {
         let key_hash = credentials(request)?;
-        if let Some(tenant) = self.tenant_key_cache.lock().await.get(&key_hash) {
+        if let Some(tenant) = self.tenant_key_cache.read().await.get(&key_hash) {
             return Ok(Arc::clone(tenant));
         }
         // Release the cache lock before FDB so a miss cannot block requests for cached tenants.
@@ -77,7 +81,7 @@ impl API {
             .await?,
         );
         self.tenant_key_cache
-            .lock()
+            .write()
             .await
             .insert(key_hash, Arc::clone(&tenant));
         Ok(tenant)
