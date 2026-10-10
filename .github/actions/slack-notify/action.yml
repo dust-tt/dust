@@ -56,7 +56,7 @@ runs:
       id: author
       shell: bash
       run: |
-        AUTHOR_NAME="${{ github.actor }}"
+        AUTHOR_NAME="${GITHUB_ACTOR}"
 
         if ! EMAIL=$(grep "^$AUTHOR_NAME: " .authors | cut -d' ' -f2); then
           echo "GitHub handle $AUTHOR_NAME not found in authors file" >&2

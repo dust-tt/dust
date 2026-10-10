@@ -33,6 +33,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
@@ -51,18 +53,21 @@ jobs:
           DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
           DATADOG_SERVICE: extension
           COMMIT_HASH: ${{ steps.short_sha.outputs.short_sha }}
+          INPUTS_TARGET: ${{ inputs.target }}
         run: |
           set -a
           source ../.github/configs/us-central1/.env.prod
           # shellcheck disable=SC2034  # exported via set -a, consumed by the extension build
           BUILD_DATE=$(date +%s)
           set +a
-          npm run package:${{ inputs.target }}
+          npm run "package:${INPUTS_TARGET}"
 
       - name: Resolve artifact name
         id: artifact
         working-directory: extension/packages
-        run: echo "name=$(basename ./*.zip .zip)-${{ steps.short_sha.outputs.short_sha }}" >> "$GITHUB_OUTPUT"
+        run: echo "name=$(basename ./*.zip .zip)-${STEPS_SHORT_SHA_OUTPUTS_SHORT_SHA}" >> "$GITHUB_OUTPUT"
+        env:
+          STEPS_SHORT_SHA_OUTPUTS_SHORT_SHA: ${{ steps.short_sha.outputs.short_sha }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

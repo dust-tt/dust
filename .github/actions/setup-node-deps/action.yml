@@ -31,7 +31,9 @@ runs:
 
     - name: Upgrade npm
       shell: bash
-      run: npm install -g npm@11.19.0
+      # Pin a specific npm for reproducible CI; not lockfile-managed. TODO: move to a
+      # packageManager/Corepack pin when the monorepo standardizes on one.
+      run: npm install -g npm@11.19.0 # zizmor: ignore[adhoc-packages]
 
     - name: Cache node_modules
       id: cache-node-modules

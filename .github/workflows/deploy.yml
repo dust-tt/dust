@@ -110,6 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           sparse-checkout: |
             /.authors
             /.github/actions/deploy-card/
@@ -174,6 +175,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Build Image
@@ -213,16 +215,19 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
 
       - name: Set project ID
         id: project
         run: |
-          if [ "${{ matrix.region }}" = "us-central1" ]; then
+          if [ "${MATRIX_REGION}" = "us-central1" ]; then
             echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           else
             echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> "$GITHUB_OUTPUT"
           fi
+        env:
+          MATRIX_REGION: ${{ matrix.region }}
 
       - name: Build Image
         id: build
@@ -261,6 +266,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           sparse-checkout: .github/actions/slack-notify
 
       - name: Generate token
@@ -377,6 +383,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          persist-credentials: false
           sparse-checkout: .github/actions/slack-notify
 
       - uses: ./.github/actions/slack-notify
