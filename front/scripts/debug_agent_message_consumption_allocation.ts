@@ -26,10 +26,15 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-  splitRecordedUsageCost,
+  splitRecordedCostIntoInputAndOutput,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { Authenticator } from "@app/lib/auth";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
+import {
+  MICRO_CREDITS_PER_CREDIT,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
@@ -256,11 +261,29 @@ async function analyzeAgentMessage(
     contextOrigin: creditContext.triggeringUserMessageOrigin,
     runUsages: usages,
   });
-  const llmCreditsWithoutWaivers = buildAgentMessageBillingPlan({
+  const llmBillingPlanWithoutWaivers = buildAgentMessageBillingPlan({
     actions: [],
     contextOrigin: null,
+    getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
     runUsages: usages,
-  }).totals.llmBilledCredits;
+  });
+  const llmCreditsWithoutWaivers =
+    llmBillingPlanWithoutWaivers.totals.llmBilledCredits;
+  const billingGroups = llmBillingPlanWithoutWaivers.llm.map((line) => {
+    const costCreditMicro =
+      (line.providerCostMicroUsd * MICRO_CREDITS_PER_CREDIT) /
+      MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+    const billedCreditMicro = roundCreditsToMicroCredits(line.billedCredits);
+    return {
+      runKey: line.runKey,
+      providerId: line.providerId,
+      modelId: line.modelId,
+      usageAllocations: line.usageAllocations ?? [],
+      costCreditMicro,
+      billedCreditMicro,
+      roundingCreditMicro: billedCreditMicro - costCreditMicro,
+    };
+  });
 
   const allocationResult = buildLatestMessageConsumptionAllocation({
     actions,
@@ -277,14 +300,11 @@ async function analyzeAgentMessage(
   > = allocationResult.isOk()
     ? allocationResult.value.reconciledCreditAmounts.byItem
     : new Map();
-  const billingGroups = allocationResult.isOk()
-    ? allocationResult.value.billingGroups
-    : [];
   const billedCreditMicroByRunUsageModelId = new Map(
     billingGroups.flatMap((group) =>
-      group.usages.map(
-        ({ usage, billedCreditMicro }) =>
-          [usage.runUsageModelId, billedCreditMicro] as const
+      group.usageAllocations.map(
+        ({ usage, allocatedBilledCreditMicro }) =>
+          [usage.runUsageModelId, allocatedBilledCreditMicro] as const
       )
     )
   );
@@ -388,7 +408,7 @@ async function analyzeAgentMessage(
         cacheBeyondPreviousCallTokens !== null &&
         cacheBeyondPreviousCallTokens >
           MIN_CACHE_WARMED_BY_UNBILLED_REQUEST_TOKENS,
-      recordedCostSplit: splitRecordedUsageCost(usage),
+      recordedCostSplit: splitRecordedCostIntoInputAndOutput(usage),
     };
   });
 
@@ -459,13 +479,13 @@ async function analyzeAgentMessage(
     },
   ]);
 
-  console.log("\nBilling groups (recomputed: this branch)");
+  console.log("\nBilling groups");
   console.table(
     billingGroups.map((group) => ({
       runKey: group.runKey,
       provider: group.providerId,
       model: group.modelId,
-      calls: group.usages.length,
+      calls: group.usageAllocations.length,
       costCredits: credits(Math.round(group.costCreditMicro)),
       billedCredits: credits(group.billedCreditMicro),
       roundingCredits: credits(Math.round(group.roundingCreditMicro)),
@@ -514,11 +534,11 @@ async function analyzeAgentMessage(
           uncachedTokens,
           completionTokens: usage.completionTokens,
           costMicroUsd: usage.costMicroUsd,
-          inputCostMicroUsd: recordedCostSplit
-            ? Math.round(recordedCostSplit.inputCostMicroUsd)
+          inputCostMicroUsd: recordedCostSplit.isOk()
+            ? Math.round(recordedCostSplit.value.inputCostMicroUsd)
             : "n/a",
-          outputCostMicroUsd: recordedCostSplit
-            ? Math.round(recordedCostSplit.outputCostMicroUsd)
+          outputCostMicroUsd: recordedCostSplit.isOk()
+            ? Math.round(recordedCostSplit.value.outputCostMicroUsd)
             : "exceeds recorded cost",
           billedCredits: credits(
             billedCreditMicroByRunUsageModelId.get(usage.runUsageModelId)
