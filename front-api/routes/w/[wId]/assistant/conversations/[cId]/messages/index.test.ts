@@ -177,6 +177,23 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     expect(unchanged.visibility).toBe("test");
   });
 
+  it("rejects the server-only reinforced_skill_notification origin", async () => {
+    const { workspace, conversation, user } = await setupTest("admin");
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+        origin: "reinforced_skill_notification",
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 404 when conversation doesn't exist", async () => {
     const { workspace } = await setupTest("admin");
 
