@@ -1,7 +1,15 @@
+import type { PronounFill } from "@app/components/me/PronounFillAnimation";
+import {
+  createPronounFill,
+  PronounFillAnimation,
+} from "@app/components/me/PronounFillAnimation";
 import { Chip } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
+import { useReducedMotion } from "framer-motion";
+import type { RefObject } from "react";
+import { useCallback, useState } from "react";
 
 // Shown in the viewer's locale; the translated text is what gets stored when a preset is picked.
 const PRONOUN_PRESETS: MessageDescriptor[] = [
@@ -10,16 +18,34 @@ const PRONOUN_PRESETS: MessageDescriptor[] = [
   msg({ message: "They/Them", context: "pronouns" }),
 ];
 
+function isPresetSelected(value: string, label: string): boolean {
+  return value.trim().toLowerCase() === label.toLowerCase();
+}
+
 interface PronounPresetChipsProps {
   value: string;
   onSelect: (pronouns: string) => void;
+  // The input showing `value`, which picked presets animate into.
+  inputRef: RefObject<HTMLInputElement>;
 }
 
 export function PronounPresetChips({
   value,
   onSelect,
+  inputRef,
 }: PronounPresetChipsProps) {
   const { t } = useLingui();
+  const shouldReduceMotion = useReducedMotion();
+  const [fill, setFill] = useState<PronounFill | null>(null);
+  const endFill = useCallback(() => setFill(null), []);
+
+  const selectPreset = (label: string) => {
+    const input = inputRef.current;
+    if (input && !shouldReduceMotion && !isPresetSelected(value, label)) {
+      setFill(createPronounFill(input, label));
+    }
+    onSelect(label);
+  };
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -30,15 +56,14 @@ export function PronounPresetChips({
             key={label}
             label={label}
             size="xs"
-            color={
-              value.trim().toLowerCase() === label.toLowerCase()
-                ? "highlight"
-                : "primary"
-            }
-            onClick={() => onSelect(label)}
+            color={isPresetSelected(value, label) ? "highlight" : "primary"}
+            onClick={() => selectPreset(label)}
           />
         );
       })}
+      {fill && (
+        <PronounFillAnimation key={fill.text} fill={fill} onDone={endFill} />
+      )}
     </div>
   );
 }
