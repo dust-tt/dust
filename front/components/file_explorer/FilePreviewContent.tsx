@@ -12,6 +12,7 @@ import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
+import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import { useResolveMarkdownImageUrl } from "@app/components/markdown/MarkdownImage";
 import { useCollabTicket } from "@app/hooks/useCollabTicket";
 import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
@@ -440,6 +441,13 @@ function RichMarkdownDocument({
       resolveImageSource={resolveImageSource}
       embeddableFiles={embeddableFiles}
       renderFrame={renderFrame}
+      renderFilePreview={(preview) => (
+        <FilePreviewBlock
+          path={preview.path}
+          title={preview.title ?? undefined}
+          contentType={preview.contentType ?? undefined}
+        />
+      )}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

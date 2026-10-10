@@ -150,6 +150,15 @@ loading it from its path through the file API, so only readers of the Frame's
 file see it (`DocumentFrameEmbed`). Without a renderer, or for a path that is not a readable Frame,
 the embed shows its path.
 
+## File previews
+
+A `:preview_file{path="…" title="…" contentType="…"}` directive, as agents write in messages, is
+read as an inline `filePreview` node keeping its three attributes; `title` and `contentType` are
+optional. A directive with any other attribute, or spread over lines, stays text, so a save never
+drops what the editor does not know. The host's optional `renderFilePreview` displays it, in the
+editor and in the read-only preview; the file preview renders the chip agent messages use, which
+opens the file through the file API. Without it, the reference shows as its title or file name.
+
 ## Layout
 
 | File | Owns |
@@ -164,6 +173,7 @@ the embed shows its path.
 | `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
 | `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
 | `DocumentImageMenu.tsx` | The width slider, reset and remove menu over a hovered image. |
+| `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |

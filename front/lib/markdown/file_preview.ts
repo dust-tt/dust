@@ -14,6 +14,7 @@ export const FILE_PREVIEW_DIRECTIVE_EXAMPLE =
   ':preview_file{path="conversation-<id>/report.pdf" title="report.pdf" contentType="application/pdf"}';
 
 type ParsedFilePreviewDirective = {
+  attributeNames: string[];
   contentType?: string;
   path: string;
   raw: string;
@@ -120,6 +121,7 @@ export function parseFilePreviewMarkdownDirective(
   }
 
   return {
+    attributeNames: Object.keys(attributes),
     contentType: attributes.contentType,
     path,
     raw: src.slice(0, index + 1),
@@ -182,11 +184,27 @@ export function getFilePreviewMarkdownDirective({
   path: string;
   title?: string;
 }): string {
-  const fileName = title || getFileNameFromScopedPath(path);
-  const attributes = [
-    `path=${quoteDirectiveAttribute(path)}`,
-    `title=${quoteDirectiveAttribute(fileName)}`,
-  ];
+  return serializeFilePreviewMarkdownDirective({
+    contentType,
+    path,
+    title: title || getFileNameFromScopedPath(path),
+  });
+}
+
+/** The directive with exactly the attributes given, in the order the parser documents them. */
+export function serializeFilePreviewMarkdownDirective({
+  contentType,
+  path,
+  title,
+}: {
+  contentType?: string;
+  path: string;
+  title?: string;
+}): string {
+  const attributes = [`path=${quoteDirectiveAttribute(path)}`];
+  if (title) {
+    attributes.push(`title=${quoteDirectiveAttribute(title)}`);
+  }
   if (contentType) {
     attributes.push(`contentType=${quoteDirectiveAttribute(contentType)}`);
   }

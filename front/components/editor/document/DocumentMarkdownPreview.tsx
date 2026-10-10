@@ -2,7 +2,12 @@ import type { UnsupportedElement } from "@app/components/editor/document/content
 import { findUnsupportedElement } from "@app/components/editor/document/content";
 import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
-import type { DocumentProps } from "@app/components/editor/document/types";
+import { DocumentFilePreviewFallback } from "@app/components/editor/document/DocumentFilePreview";
+import type {
+  DocumentFilePreview,
+  DocumentProps,
+} from "@app/components/editor/document/types";
+import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
   checkInputBounds,
@@ -14,6 +19,7 @@ import {
   FRAME_EMBED_DIRECTIVE_NAME,
   parseFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
+import { FILE_PREVIEW_COMPONENT_NAME } from "@app/lib/markdown/file_preview";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -24,6 +30,7 @@ interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
   resolveImageSource: DocumentProps["resolveImageSource"];
+  renderFilePreview?: DocumentProps["renderFilePreview"];
 }
 
 interface MarkdownNode {
@@ -94,7 +101,7 @@ function frameEmbedDirective() {
     withFrameEmbeds(tree, String(file.value), false, false);
 }
 
-const MARKDOWN_PLUGINS = [frameEmbedDirective];
+const MARKDOWN_PLUGINS = [frameEmbedDirective, filePreviewDirective];
 
 const FrameEmbed = ({ path }: DocumentFramePathProps) => (
   <div className="my-6">
@@ -138,6 +145,7 @@ export const DocumentMarkdownPreview = ({
   source,
   className,
   resolveImageSource,
+  renderFilePreview,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -155,8 +163,28 @@ export const DocumentMarkdownPreview = ({
     () => ({
       img: getMarkdownImagePlugin(resolveImageSource),
       [FRAME_EMBED_COMPONENT_NAME]: FrameEmbed,
+      [FILE_PREVIEW_COMPONENT_NAME]: ({
+        path,
+        title,
+        contentType,
+      }: {
+        path: string;
+        title?: string;
+        contentType?: string;
+      }) => {
+        const preview: DocumentFilePreview = {
+          path,
+          title: title ?? null,
+          contentType: contentType ?? null,
+        };
+        return renderFilePreview ? (
+          renderFilePreview(preview)
+        ) : (
+          <DocumentFilePreviewFallback preview={preview} />
+        );
+      },
     }),
-    [resolveImageSource]
+    [resolveImageSource, renderFilePreview]
   );
 
   return (

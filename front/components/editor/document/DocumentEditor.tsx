@@ -253,11 +253,15 @@ export const DocumentView = ({
   resolveImageSource,
   embeddableFiles,
   renderFrame,
+  renderFilePreview,
   renderCollabParticipants,
   badge,
 }: DocumentViewProps) => {
   const live = collabEditorMode(collabView);
-  const embeds = useMemo(() => ({ renderFrame }), [renderFrame]);
+  const embeds = useMemo(
+    () => ({ renderFrame, renderFilePreview }),
+    [renderFrame, renderFilePreview]
+  );
   const { editor, editable, unsupported, isSavable } = useDocumentEditor({
     initialContent,
     readOnly: readOnly || live.waiting,
@@ -292,6 +296,7 @@ export const DocumentView = ({
           className={className}
           source={unsupported.source}
           resolveImageSource={resolveImageSource}
+          renderFilePreview={renderFilePreview}
         />
       </DocumentEmbedsContext.Provider>
     );
