@@ -113,10 +113,12 @@ An image is ordinary Markdown, `![alt](destination "title")`, read as an inline 
 keeps its alt text, destination and title as written. The editor loads nothing by itself: the
 host's required `resolveImageSource` turns a destination into the URL to display, and an image it
 does not resolve shows as its alt text. A new resolver applies to images displayed after it, without
-rebuilding the editor. The file preview resolves a file path in
-a conversation or a pod, such as `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read
-from `files.list`, to the file API, which checks the reader's access; it resolves nothing else, so
-an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
+rebuilding the editor. A file the editor refuses shows its images through the same resolver in its
+read-only preview. The file preview resolves with `resolveMarkdownImageSource`, shared with every
+Markdown surface: a file path in a conversation or a pod, such as
+`![Revenue](pod-<id>/charts/revenue.png)`, the path agents read from `files.list`, or a file id,
+`![Chart](fil_<id>)`, to the file API, which checks the reader's access; it resolves nothing else,
+so an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
 write them.
 
 ## Layout
