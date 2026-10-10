@@ -52,12 +52,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "davidebbo",
   },
-  frame_documents: {
-    description:
-      "Expose editable Document guidance and examples in the Frame skill. Superseded by dust_documents (co-edition): do not roll out to other workspaces.",
-    stage: "dust_only",
-    owner: "flvndvd",
-  },
   advanced_notion_management: {
     description:
       "Advanced features for Notion workspace management shown to admins",

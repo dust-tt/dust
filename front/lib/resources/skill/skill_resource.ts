@@ -2656,7 +2656,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         codeDefinedSkillId: def.sId,
         mcpServerConfigurations,
         fileAttachments: [],
-        files: def.fetchFiles ? await def.fetchFiles(auth) : (def.files ?? []),
+        files: def.files ?? [],
       }
     );
   }
