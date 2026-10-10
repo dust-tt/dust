@@ -27,3 +27,20 @@ export const CATALOG_LOCALE_BY_LOCALE: Record<SupportedLocale, CatalogLocale> =
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return SUPPORTED_LOCALES.some((locale) => locale === value);
 }
+
+function getLanguage(locale: string): string {
+  return locale.toLowerCase().replace(/-.*$/, "");
+}
+
+export function matchSupportedLocale(locale: string): SupportedLocale | null {
+  return (
+    SUPPORTED_LOCALES.find(
+      (supportedLocale) =>
+        supportedLocale.toLowerCase() === locale.toLowerCase()
+    ) ??
+    SUPPORTED_LOCALES.find(
+      (supportedLocale) => getLanguage(supportedLocale) === getLanguage(locale)
+    ) ??
+    null
+  );
+}
