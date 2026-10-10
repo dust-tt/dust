@@ -51,6 +51,10 @@ import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
+// Each store serializes and uploads the whole `.md`, its only durable copy for now: a crash loses up
+// to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown checkpoints them first.
+const STORE_DEBOUNCE_MS = 5 * 1000;
+const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
@@ -189,6 +193,9 @@ export async function authenticateConnection(
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const hocuspocus = new Hocuspocus<LiveFile>({
+    debounce: STORE_DEBOUNCE_MS,
+    maxDebounce: STORE_MAX_DEBOUNCE_MS,
+
     // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const parsed = parseLiveDocumentName(documentName);
@@ -242,7 +249,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       }
     },
 
-    // TODO(co-edition): this writes the `.md` on every debounced store, about every 2 to 10 seconds
+    // TODO(co-edition): this writes the `.md` on every debounced store, about every 5 to 30 seconds
     // while people type. LIVE_SESSION.md keeps the Yjs state in a durable store between
     // checkpoints instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
