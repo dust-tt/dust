@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::Arc};
+
 use dfs_protocol::{
     error::status,
     rpc::{
@@ -8,15 +10,23 @@ use dfs_protocol::{
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
+use tokio::sync::Mutex;
 use tonic::{Request, Response, Status};
 
-use crate::storage::{fdb, resources::tenant::TenantResource};
+use crate::{
+    auth::KeyHash,
+    storage::{fdb, resources::tenant::TenantResource},
+};
 
+pub(crate) mod auth;
 mod errors;
 
-/// RPCs without an implementation answer UNSUPPORTED.
+/// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
-pub struct API;
+pub struct API {
+    server_key_hash: KeyHash,
+    tenant_cache: Mutex<HashMap<KeyHash, Arc<TenantResource>>>,
+}
 
 /// @cc [owner:pmilliotte,label:architecture] api-fdb-access-thru-resources
 /// Handlers MUST reach FDB only by calling resource methods inside `fdb::with_transaction`. They
@@ -27,6 +37,7 @@ impl Dfs for API {
         &self,
         request: Request<CreateTenantRequest>,
     ) -> Result<Response<Tenant>, Status> {
+        self.require_server(&request)?;
         let CreateTenantRequest {
             tenant_id,
             root_grants,
@@ -51,8 +62,9 @@ impl Dfs for API {
 
     async fn create_session(
         &self,
-        _request: Request<CreateSessionRequest>,
+        request: Request<CreateSessionRequest>,
     ) -> Result<Response<Session>, Status> {
+        self.require_tenant(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
@@ -62,9 +74,9 @@ impl Dfs for API {
 
     async fn revoke_session(
         &self,
-        _request: Request<RevokeSessionRequest>,
+        request: Request<RevokeSessionRequest>,
     ) -> Result<Response<Empty>, Status> {
-        // TODO(spolu): Authenticate the tenant API key before revoking a session in that tenant.
+        self.require_tenant(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
@@ -74,15 +86,17 @@ impl Dfs for API {
 
     async fn list_grants(
         &self,
-        _request: Request<ListGrantsRequest>,
+        request: Request<ListGrantsRequest>,
     ) -> Result<Response<GrantPage>, Status> {
+        self.require_tenant(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn update_grants(
         &self,
-        _request: Request<UpdateGrantsRequest>,
+        request: Request<UpdateGrantsRequest>,
     ) -> Result<Response<Empty>, Status> {
+        self.require_tenant(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 

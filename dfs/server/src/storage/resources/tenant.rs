@@ -24,6 +24,7 @@ pub enum Error {
     KeyGeneration,
     KeyCollision,
     AlreadyExists,
+    InvalidKey,
 }
 
 impl fmt::Display for Error {
@@ -33,6 +34,7 @@ impl fmt::Display for Error {
             Self::KeyGeneration => f.write_str("tenant key generation failed"),
             Self::KeyCollision => f.write_str("tenant key hash already exists"),
             Self::AlreadyExists => f.write_str("tenant already exists"),
+            Self::InvalidKey => f.write_str("invalid tenant key"),
         }
     }
 }
@@ -101,6 +103,29 @@ impl TenantResource {
                 Ok(())
             }
         }
+    }
+
+    /// @cc [owner:spolu,label:backend;security] tenant-key-authentication
+    /// Authentication MUST read both the key-hash index and tenant record in the caller's
+    /// transaction and verify the record's hash. Missing entries or a mismatched hash MUST return
+    /// InvalidKey. Database and decoding failures MUST propagate as storage failures.
+    pub async fn authenticate(
+        tx: &Transaction,
+        key_hash: &KeyHash,
+    ) -> Result<Self, storage::Error<Error>> {
+        let value = tx
+            .get(&Self::key_hash_key(key_hash), false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .ok_or(Error::InvalidKey)?;
+        let tenant_id: String = unpack(&value).map_err(FdbBindingError::PackError)?;
+        let tenant = Self::fetch(tx, &tenant_id)
+            .await?
+            .ok_or(Error::InvalidKey)?;
+        if tenant.key_hash != *key_hash {
+            return Err(Error::InvalidKey.into());
+        }
+        Ok(tenant)
     }
 
     /// @cc [owner:spolu,label:api;security] tenant-id-validation

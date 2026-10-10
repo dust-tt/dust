@@ -16,6 +16,7 @@ impl From<tenant::Error> for Status {
                 status(ErrorCode::Internal)
             }
             tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            tenant::Error::InvalidKey => status(ErrorCode::Unauthenticated),
         }
     }
 }

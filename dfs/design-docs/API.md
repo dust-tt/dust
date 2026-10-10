@@ -162,6 +162,14 @@ authorization state.
 
 ## Authorization and common limits
 
+The server key is configured at startup through `DFS_SERVER_KEY` (or `--server-key`) and must contain
+64 visible ASCII characters. Every RPC supplies its bearer, including when reusing a connection.
+The server key is checked against its configured hash in memory. Successful tenant authentication is
+cached by key hash across all connections served by the API instance, until that instance stops.
+A connection may carry several different credentials. Tenant keys currently have no rotation or
+revocation API; adding either requires invalidating these caches across API instances. Session expiry
+and revocation still require current-state checks.
+
 Every RPC request and response is limited to 4 MiB (4,194,304 bytes) of uncompressed protobuf
 payload, including encoding overhead. Response budgets include all results, attributes, metadata,
 errors, and cursors. gRPC framing and transport headers are excluded. Servers reject oversized

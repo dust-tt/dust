@@ -12,5 +12,8 @@ fn resources() -> Result<()> {
         .enable_all()
         .build()?;
 
-    runtime.block_on(tenant::tenant_key_collisions_preserve_the_existing_owner())
+    runtime.block_on(async {
+        tenant::tenant_key_collisions_preserve_the_existing_owner().await?;
+        tenant::authentication_requires_a_matching_index_and_tenant_record().await
+    })
 }

@@ -25,16 +25,21 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  * Bearer validation MUST apply only to DFS RPCs. The gRPC health Check and Watch methods MUST
  * respond without authorization metadata.
  */
-pub async fn serve(listener: TcpListener, shutdown: impl Future<Output = ()>) -> Result<()> {
+pub async fn serve(
+    listener: TcpListener,
+    server_key: &str,
+    shutdown: impl Future<Output = ()>,
+) -> Result<()> {
+    let api = api::API::new(server_key)?;
     let (reporter, health) = tonic_health::server::health_reporter();
     reporter.set_serving::<DfsServer<api::API>>().await;
-    let service = DfsServer::new(api::API)
+    let service = DfsServer::new(api)
         .max_decoding_message_size(MAX_MESSAGE_SIZE)
         .max_encoding_message_size(MAX_MESSAGE_SIZE);
     let (stop, stopped) = oneshot::channel();
     let server = Server::builder()
         .add_service(health)
-        .add_service(InterceptedService::new(service, auth::bearer_auth))
+        .add_service(InterceptedService::new(service, api::auth::bearer_auth))
         .serve_with_incoming_shutdown(TcpListenerStream::new(listener), async {
             let _ = stopped.await;
         });
