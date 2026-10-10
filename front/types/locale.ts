@@ -46,3 +46,43 @@ export const USER_LOCALE_METADATA_KEY = "locale";
 export function isSupportedLocale(value: unknown): value is SupportedLocale {
   return SUPPORTED_LOCALES.some((locale) => locale === value);
 }
+
+function getLanguage(locale: string): string {
+  return locale.toLowerCase().replace(/-.*$/, "");
+}
+
+/**
+ * @cc [owner:sfriquet,label:product] supported-locale-match
+ * `matchSupportedLocale` MUST return the `SUPPORTED_LOCALES` entry equal to `locale` ignoring case,
+ * otherwise the first `SUPPORTED_LOCALES` entry of the same language (e.g. `fr-FR` for `fr-CA` or
+ * `fr`, `en-US` for `en-AU`), and `null` when no entry has its language.
+ */
+export function matchSupportedLocale(locale: string): SupportedLocale | null {
+  return (
+    SUPPORTED_LOCALES.find(
+      (supportedLocale) =>
+        supportedLocale.toLowerCase() === locale.toLowerCase()
+    ) ??
+    SUPPORTED_LOCALES.find(
+      (supportedLocale) => getLanguage(supportedLocale) === getLanguage(locale)
+    ) ??
+    null
+  );
+}
+
+/**
+ * @cc [owner:sfriquet,label:product] browser-locale-match
+ * `matchBrowserLocale` MUST return the `matchSupportedLocale` of the first of `languages` (in the
+ * browser's order of preference) that has one, and `null` when none has.
+ */
+export function matchBrowserLocale(
+  languages: readonly string[]
+): SupportedLocale | null {
+  for (const language of languages) {
+    const locale = matchSupportedLocale(language);
+    if (locale) {
+      return locale;
+    }
+  }
+  return null;
+}
