@@ -121,6 +121,15 @@ Markdown surface: a file path in a conversation or a pod, such as
 so an external URL never loads. Images are not inserted from the editor yet: agents and raw edits
 write them.
 
+## File previews
+
+A `:preview_file{path="…" title="…" contentType="…"}` directive, as agents write in messages, is
+read as an inline `filePreview` node keeping its three attributes; `title` and `contentType` are
+optional. A directive with any other attribute, or spread over lines, stays text, so a save never
+drops what the editor does not know. The host's optional `renderFilePreview` displays it, in the
+editor and in the read-only preview; the file preview renders the chip agent messages use, which
+opens the file through the file API. Without it, the reference shows as its title or file name.
+
 ## Layout
 
 | File | Owns |
@@ -132,6 +141,7 @@ write them.
 | `content.ts` | Markdown parse and serialize for the body, with the round-trip checks. |
 | `extensions.ts` | The schema: StarterKit, Markdown, placeholders and heading anchors. |
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
+| `DocumentFilePreview.tsx`, `DocumentEmbeds.ts` | The `filePreview` node, its Markdown, and the host's renderers its view reads. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the save status with Retry, and the save error under it. |

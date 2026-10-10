@@ -57,6 +57,7 @@ describe("getFilePreviewMarkdownDirective", () => {
     });
 
     expect(parseFilePreviewMarkdownDirective(directive)).toEqual({
+      attributeNames: ["path", "title", "contentType"],
       contentType: "application/pdf",
       path: "conversation-c1/booklet.pdf",
       raw: directive,

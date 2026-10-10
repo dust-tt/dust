@@ -8,6 +8,7 @@ import {
   DocumentCommentsList,
   DocumentCommentsToggle,
 } from "@app/components/editor/document/DocumentCommentsList";
+import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentEmbeds";
 import { DocumentMarkdownPreview } from "@app/components/editor/document/DocumentMarkdownPreview";
 import {
   DocumentLiveAgent,
@@ -31,7 +32,7 @@ import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import { cn } from "@dust-tt/sparkle";
 import type { AnyExtension, Editor } from "@tiptap/core";
 import type React from "react";
-import { lazy, Suspense, useId, useRef } from "react";
+import { lazy, Suspense, useId, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 
 // Loaded only for a live document, so other editors never download Yjs and its provider.
@@ -256,10 +257,12 @@ export const DocumentView = ({
   renderCommentBody,
   commentInputExtensions,
   resolveImageSource,
+  renderFilePreview,
   renderLiveParticipants,
   badge,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
+  const embeds = useMemo(() => ({ renderFilePreview }), [renderFilePreview]);
   const {
     editor,
     editable,
@@ -309,6 +312,7 @@ export const DocumentView = ({
         className={className}
         source={unsupported.source}
         resolveImageSource={resolveImageSource}
+        renderFilePreview={renderFilePreview}
       />
     );
   }
@@ -432,7 +436,9 @@ export const DocumentView = ({
           role="presentation"
           onClick={(event) => comments.revealClicked(event.target)}
         >
-          <EditorContent editor={editor} />
+          <DocumentEmbedsContext.Provider value={embeds}>
+            <EditorContent editor={editor} />
+          </DocumentEmbedsContext.Provider>
         </div>
         {editor && (
           <DocumentCommentCard

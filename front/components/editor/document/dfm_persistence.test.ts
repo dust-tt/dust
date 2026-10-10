@@ -524,6 +524,31 @@ describe("saveDfm", () => {
     }
   });
 
+  it("round-trips file previews with their attributes", () => {
+    for (const source of [
+      ':preview_file{path="pod-abc/report.pdf"}\n',
+      'See :preview_file{path="pod-abc/report.pdf" title="Q3 report" contentType="application/pdf"} for details.\n',
+      '- :preview_file{path="conversation-c1/a &amp; b.md" title="&quot;A&quot; &amp; B"}\n',
+      ':comment-start{id=c1}Read :preview_file{path="pod-abc/x.pdf"} first.:comment-end{id=c1}\n\n' +
+        OPEN_THREAD,
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+      expect(() =>
+        documentSchema.nodeFromJSON(load(source).content).check()
+      ).not.toThrow();
+    }
+  });
+
+  it("keeps a file preview with another attribute as text", () => {
+    const source =
+      ':preview_file{path="pod-abc/x.pdf" mimeType="application/pdf"}\n';
+
+    const reopened = load(roundTrip(source)).content;
+
+    expect(JSON.stringify(reopened)).not.toContain("filePreview");
+    expect(reopened.content?.[0]?.content?.[0]?.text).toBe(source.trimEnd());
+  });
+
   it("refuses content the editor cannot write as Markdown", () => {
     const saved = saveDfm(
       { frontMatter: null, anchorOrder: [] },

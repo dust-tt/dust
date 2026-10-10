@@ -1237,3 +1237,71 @@ describe("Document Escape inside a host dialog", () => {
     expect(screen.queryByRole("article", { name: "New comment" })).toBeNull();
   });
 });
+
+describe("Document file previews", () => {
+  const SOURCE_WITH_PREVIEWS =
+    'Read :preview_file{path="pod-abc/report.pdf" title="Q3 report"} and :preview_file{path="pod-abc/notes.md"}.\n';
+
+  const renderPreviews = async (
+    renderFilePreview?: DocumentProps["renderFilePreview"]
+  ) => {
+    const { container } = render(
+      <Document
+        initialContent={SOURCE_WITH_PREVIEWS}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFilePreview={renderFilePreview}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  it("shows each file preview through the host's renderer", async () => {
+    const dom = await renderPreviews((preview) => (
+      <button type="button">{`${preview.title ?? "-"} @ ${preview.path}`}</button>
+    ));
+
+    expect(
+      await within(dom).findByRole("button", {
+        name: "Q3 report @ pod-abc/report.pdf",
+      })
+    ).toBeDefined();
+    expect(
+      within(dom).getByRole("button", { name: "- @ pod-abc/notes.md" })
+    ).toBeDefined();
+  });
+
+  it("shows a file preview as its title or file name without a renderer", async () => {
+    const dom = await renderPreviews();
+
+    expect(await within(dom).findByText("Q3 report")).toBeDefined();
+    expect(within(dom).getByText("notes.md")).toBeDefined();
+  });
+
+  it("keeps a file preview's attributes when its HTML is pasted back", async () => {
+    const dom = await renderPreviews();
+    const html = dom.editor.getHTML();
+
+    act(() => {
+      dom.editor.commands.insertContentAt(
+        dom.editor.state.doc.content.size,
+        html
+      );
+    });
+
+    expect(
+      dom.editor
+        .getMarkdown()
+        .match(
+          /:preview_file\{path="pod-abc\/report\.pdf" title="Q3 report"\}/g
+        )
+    ).toHaveLength(2);
+  });
+});
