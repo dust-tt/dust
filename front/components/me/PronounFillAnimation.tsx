@@ -1,11 +1,21 @@
+import { cn } from "@dust-tt/sparkle";
 import type { CSSProperties } from "react";
 import { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-const LETTER_STAGGER_MS = 15;
+const LETTER_STAGGER_MS = 20;
 const LETTER_ENTER_MS = 220;
+const LETTER_COLOR_MS = 520;
 // How far each letter starts from its slot, towards the chip it comes from.
 const LETTER_TRAVEL_PX = 8;
+
+// Letters show up in these colors, one after the other, before settling to the text color.
+const LETTER_COLOR_CLASSES = [
+  "text-blue-500",
+  "text-green-500",
+  "text-golden-500",
+  "text-rose-500",
+];
 
 const EASE_OUT_CUBIC = "cubic-bezier(0.215, 0.61, 0.355, 1)";
 
@@ -16,6 +26,7 @@ interface PronounLetter {
   fromX: number;
   fromY: number;
   delayMs: number;
+  colorClassName: string;
 }
 
 export interface PronounFill {
@@ -106,6 +117,8 @@ export function measurePronounFill({
         fromX: (toChipX / distancePx) * LETTER_TRAVEL_PX,
         fromY: (toChipY / distancePx) * LETTER_TRAVEL_PX,
         delayMs: index * LETTER_STAGGER_MS,
+        colorClassName:
+          LETTER_COLOR_CLASSES[index % LETTER_COLOR_CLASSES.length],
       };
     });
 
@@ -124,7 +137,7 @@ export function measurePronounFill({
     lineTop,
     lineHeight,
     letters,
-    endMs: (letters.length - 1) * LETTER_STAGGER_MS + LETTER_ENTER_MS,
+    endMs: (letters.length - 1) * LETTER_STAGGER_MS + LETTER_COLOR_MS,
   };
 }
 
@@ -138,33 +151,55 @@ function PronounLetterGlyph({ fill, letter }: PronounLetterGlyphProps) {
 
   useLayoutEffect(() => {
     const element = letterRef.current;
-    if (!element) {
+    const overlay = element?.parentElement;
+    if (!element || !overlay) {
       return;
     }
 
-    const animation = element.animate(
-      [
-        {
-          transform: `translate(${letter.fromX}px, ${letter.fromY}px)`,
-          opacity: 0,
-        },
-        { transform: "translate(0px, 0px)", opacity: 1 },
-      ],
-      {
-        duration: LETTER_ENTER_MS,
-        delay: letter.delayMs,
-        easing: EASE_OUT_CUBIC,
-        fill: "both",
-      }
-    );
+    const letterColor = window.getComputedStyle(element).color;
+    const textColor = window.getComputedStyle(overlay).color;
 
-    return () => animation.cancel();
+    const animations = [
+      element.animate(
+        [
+          {
+            transform: `translate(${letter.fromX}px, ${letter.fromY}px)`,
+            opacity: 0,
+          },
+          { transform: "translate(0px, 0px)", opacity: 1 },
+        ],
+        {
+          duration: LETTER_ENTER_MS,
+          delay: letter.delayMs,
+          easing: EASE_OUT_CUBIC,
+          fill: "both",
+        }
+      ),
+      element.animate(
+        [
+          { offset: 0, color: letterColor },
+          { offset: 0.35, color: letterColor },
+          { offset: 1, color: textColor },
+        ],
+        {
+          duration: LETTER_COLOR_MS,
+          delay: letter.delayMs,
+          easing: "ease",
+          fill: "both",
+        }
+      ),
+    ];
+
+    return () => animations.forEach((animation) => animation.cancel());
   }, [letter]);
 
   return (
     <span
       ref={letterRef}
-      className="absolute flex items-center justify-center"
+      className={cn(
+        "absolute flex items-center justify-center",
+        letter.colorClassName
+      )}
       style={{
         left: letter.left,
         top: fill.lineTop,
