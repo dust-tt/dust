@@ -38,7 +38,6 @@ import {
   Button,
   Chip,
   Folder,
-  IconButton,
   Label,
   LinkExternal01,
   PopoverContent,
@@ -570,7 +569,7 @@ function DataSourceViewSelectedNodes({
         className="whitespace-nowrap"
         actions={
           <div className="mr-8 flex flex-row gap-2">
-            <IconButton
+            <Button
               size="xs"
               icon={LinkExternal01}
               onClick={() => openSourceUrl(sourceUrl)}
@@ -578,9 +577,9 @@ function DataSourceViewSelectedNodes({
                 sourceUrl ? "" : "pointer-events-none opacity-0"
               )}
               disabled={!sourceUrl}
-              variant="ghost"
+              variant="ghost-secondary"
             />
-            <IconButton
+            <Button
               size="xs"
               icon={Brackets}
               onClick={() => {
@@ -593,7 +592,7 @@ function DataSourceViewSelectedNodes({
                 node.type === "document" ? "" : "pointer-events-none opacity-0"
               )}
               disabled={node.type !== "document"}
-              variant="outline"
+              variant="ghost-secondary"
             />
           </div>
         }

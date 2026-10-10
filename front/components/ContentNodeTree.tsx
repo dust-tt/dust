@@ -16,7 +16,6 @@ import {
   Brackets,
   Button,
   CheckDone01,
-  IconButton,
   LinkExternal01,
   SearchInput,
   Spinner,
@@ -342,7 +341,7 @@ function ContentNodeTreeChildren({
                   />
                 )}
                 {onDocumentViewClick && (
-                  <IconButton
+                  <Button
                     size="xs"
                     icon={Brackets}
                     onClick={() => {
@@ -356,7 +355,7 @@ function ContentNodeTreeChildren({
                         : "pointer-events-none opacity-0"
                     )}
                     disabled={n.type !== "document"}
-                    variant="outline"
+                    variant="ghost-secondary"
                   />
                 )}
               </div>

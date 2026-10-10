@@ -7,9 +7,9 @@ import type { MembershipOriginType } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { RoleType, UserType } from "@app/types/user";
 import {
+  Button,
   Chip,
   DataTable,
-  IconButton,
   LoadingBlock,
   XClose,
 } from "@dust-tt/sparkle";
@@ -200,9 +200,10 @@ export function MembersList({
         cell: (info: Info) => (
           <DataTable.CellContent>
             {info.row.original.canRemove && (
-              <IconButton
+              <Button
                 icon={XClose}
                 onClick={info.row.original.onRemoveMemberClick}
+                variant="ghost-secondary"
               />
             )}
           </DataTable.CellContent>

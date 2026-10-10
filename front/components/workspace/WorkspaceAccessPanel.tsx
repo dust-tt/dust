@@ -19,7 +19,6 @@ import {
   Chip,
   DataTable,
   EmptyCTA,
-  IconButton,
   LoadingBlock,
   Page,
   Plus,
@@ -232,10 +231,10 @@ function DomainVerificationTable({
         meta: { className: "w-12" },
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
-            <IconButton
+            <Button
               icon={XClose}
               size="xs"
-              variant="ghost"
+              variant="warning-ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
               tooltip={t`Delete domain`}
             />
