@@ -204,15 +204,19 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
         .is_none()
     );
 
-    tx.set(
-        &session_subspace.pack(&"state"),
-        &pack(&(&[0u8; 31][..], expires_at_ms)),
-    );
-    assert!(matches!(
-        owner.create(&tx).await,
-        Err(storage::Error::Transaction(FdbBindingError::CustomError(error)))
-            if error.is::<dfs_api::auth::InvalidKeyHash>()
-    ));
+    let result = fdb::with_transaction(|tx| {
+        let owner = &owner;
+        let session_subspace = &session_subspace;
+        async move {
+            tx.set(
+                &session_subspace.pack(&"state"),
+                &pack(&(&[0u8; 31][..], expires_at_ms)),
+            );
+            owner.create(&tx).await
+        }
+    })
+    .await;
+    assert!(matches!(result, Err(storage::Error::InvalidKeyHash(_))));
 
     for tenant in [&tenant, &other_tenant] {
         let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
