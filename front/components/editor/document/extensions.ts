@@ -6,10 +6,15 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
+import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import { cn } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
-import type { AnyExtension } from "@tiptap/core";
+import type { AnyExtension, MarkdownTokenizer } from "@tiptap/core";
+import {
+  ORDERED_LIST_MARKER_PATTERN,
+  OrderedList,
+} from "@tiptap/extension-list";
 import { Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { StarterKitOptions } from "@tiptap/starter-kit";
@@ -36,7 +41,7 @@ const starterKitOptions: Partial<StarterKitOptions> = {
   paragraph: { HTMLAttributes: { class: "my-2.5" } },
   bold: { HTMLAttributes: { class: "font-semibold" } },
   bulletList: { HTMLAttributes: { class: "my-3 list-disc pl-6" } },
-  orderedList: { HTMLAttributes: { class: "my-3 list-decimal pl-6" } },
+  orderedList: false,
   listItem: {
     HTMLAttributes: {
       class:
@@ -74,6 +79,36 @@ const starterKitOptions: Partial<StarterKitOptions> = {
   },
 };
 
+// TipTap's ORDERED_LIST_ITEM_REGEX, the line its ordered list tokenizer starts a list with.
+const ORDERED_LIST_ITEM = new RegExp(
+  `^(\\s*)(${ORDERED_LIST_MARKER_PATTERN})([.)])\\s+(.*)$`
+);
+
+const startsWithOrderedListItem = (src: string) => {
+  const lineEnd = src.indexOf("\n");
+  return ORDERED_LIST_ITEM.test(lineEnd === -1 ? src : src.slice(0, lineEnd));
+};
+
+// TipTap's tokenizer splits all the Markdown left into lines at every block before checking its
+// first line, which makes parsing quadratic in the document's length.
+const withOrderedListFirstLineCheck = (
+  tokenizer: MarkdownTokenizer
+): MarkdownTokenizer => ({
+  ...tokenizer,
+  tokenize: (src, tokens, lexer) =>
+    startsWithOrderedListItem(src)
+      ? tokenizer.tokenize(src, tokens, lexer)
+      : undefined,
+});
+
+const tiptapOrderedListTokenizer = OrderedList.config.markdownTokenizer;
+
+const DocumentOrderedList = OrderedList.extend({
+  markdownTokenizer:
+    tiptapOrderedListTokenizer &&
+    withOrderedListFirstLineCheck(tiptapOrderedListTokenizer),
+}).configure({ HTMLAttributes: { class: "my-3 list-decimal pl-6" } });
+
 /** The schema; a live document protects comment marks without a thread and drops StarterKit's undo. */
 const buildSchemaExtensions = ({
   live,
@@ -94,7 +129,8 @@ const buildSchemaExtensions = ({
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),
-  Markdown,
+  DocumentOrderedList,
+  Markdown.configure({ marked: createDocumentMarked() }),
 ];
 
 export const documentExtensions = buildSchemaExtensions({ live: false });

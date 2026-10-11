@@ -314,6 +314,15 @@ describe("saveDfm", () => {
     expect(parseDfm(saved).isOk()).toBe(true);
   });
 
+  it.each([
+    "Intro.\n\n1. one\n2. two\n\nAfter.\n",
+    "3. three\n4. four\n",
+    "1. one\n   1. nested\n2. two\n",
+    "- a\n- b\n\n1. c\n",
+  ])("round-trips ordered lists: %j", (source) => {
+    expect(roundTrip(source)).toBe(source);
+  });
+
   it("saves underlined text and opens it underlined again", () => {
     const source = "Hello ++brave++ world.\n";
 
