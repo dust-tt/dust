@@ -26,7 +26,7 @@ The authenticated tenant key or session determines `tenantId`. Object IDs are st
 UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and the session expiry index
 use big-endian `u64` encoding; expiry timestamps are Unix milliseconds. Variable-length components
 need unambiguous boundaries and must preserve ordering where required for pagination. Apart from the
-tenant and session records below, family tags and value encodings remain proposals.
+tenant, session, and root object records below, family tags and value encodings remain proposals.
 
 UUIDv7 tends to cluster newly created objects within each family or reverse grant prefix. Directory
 entries cluster by parent and sort by name; blocks cluster by file and sort by offset. Subtrees are
@@ -41,9 +41,9 @@ concentration need measurement.
 | `dfs-v1-{env}/tenant-key/<keyHash>` | Tenant ID as an FDB tuple string. | Resolves an opaque tenant key before the tenant is known. |
 
 The root is 16 UUIDv7 bytes; `keyHash` is SHA-256 of the bearer key's UTF-8 bytes. Plaintext keys are
-returned at creation and never persisted. Creation writes the record and lookup atomically,
-checking credential uniqueness. Authentication resolves the lookup and verifies the tenant record's
-matching hash in the same transaction.
+returned at creation and never persisted. Creation atomically writes the record, lookup, and root
+object, checking credential uniqueness. Authentication resolves the lookup and verifies the tenant
+record's matching hash in the same transaction.
 
 Each API instance caches successful authentication by key hash for 30 seconds. Cache hits do not
 extend expiry; failures are not cached. A shared sweep removes expired tenant and session cache
@@ -96,6 +96,13 @@ index entries are also removed. Authentication rejects expired sessions independ
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
+
+Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
+attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
+enum's integer value. Base metadata is `(created_at_ms, mime_type)`. Tenant creation writes an empty
+root directory with no parent, an empty name, both versions at 1, and MIME type `inode/directory`.
+Retries that find the tenant already created leave its root unchanged. Root grants remain to be
+implemented.
 
 Each xattr name is a separate tuple component. An empty value denotes a present xattr with empty
 bytes; a missing key denotes an absent xattr. Extended metadata reads combine the base entry and

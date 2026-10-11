@@ -3,7 +3,7 @@ use tonic::Status;
 
 use crate::storage::{
     self,
-    resources::{session, tenant},
+    resources::{object, session, tenant},
 };
 
 impl From<tenant::Error> for Status {
@@ -20,6 +20,32 @@ impl From<tenant::Error> for Status {
             }
             tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
             tenant::Error::InvalidKey => status(ErrorCode::Unauthenticated),
+        }
+    }
+}
+
+/**
+ * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
+ * Errors from different resources in one transaction MUST retain their API status mapping.
+ * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
+ */
+pub(super) fn transaction_error<E: Into<Status>>(
+    error: storage::Error<E>,
+) -> storage::Error<Status> {
+    match error {
+        storage::Error::Transaction(error) => storage::Error::Transaction(error),
+        error => storage::Error::Resource(error.into()),
+    }
+}
+
+impl From<object::Error> for Status {
+    fn from(error: object::Error) -> Self {
+        match error {
+            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            object::Error::TimestampGeneration | object::Error::MissingMetadata => {
+                tracing::error!(%error, "object creation failed");
+                status(ErrorCode::Internal)
+            }
         }
     }
 }
@@ -73,10 +99,38 @@ impl<E: Into<Status>> From<storage::Error<E>> for Status {
 #[cfg(test)]
 mod tests {
     use dfs_protocol::{InvalidId, rpc::ErrorDetails};
+    use foundationdb::{FdbBindingError, FdbError};
     use prost::Message;
 
     use super::*;
     use crate::auth::InvalidKeyHash;
+
+    #[test]
+    fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), prost::DecodeError>
+    {
+        let error: storage::Error<tenant::Error> =
+            FdbBindingError::from(FdbError::from_code(1020)).into();
+        let error = FdbBindingError::from(transaction_error(error));
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+
+        for (error, expected) in [
+            (
+                transaction_error(storage::Error::Resource(tenant::Error::InvalidId)),
+                ErrorCode::InvalidInput,
+            ),
+            (
+                transaction_error(storage::Error::Resource(object::Error::AlreadyExists)),
+                ErrorCode::AlreadyExists,
+            ),
+        ] {
+            // Follow the runner's boxing and unboxing before translating the final API response.
+            let error = FdbBindingError::from(error);
+            let error = storage::Error::<Status>::from(error);
+            let status: Status = error.into();
+            assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
+        }
+        Ok(())
+    }
 
     #[test]
     fn decoding_errors_return_generic_internal_details() -> Result<(), prost::DecodeError> {
