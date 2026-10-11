@@ -140,19 +140,25 @@ impl TenantResource {
         !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES && !tenant_id.contains('\0')
     }
 
-    async fn fetch(tx: &Transaction, tenant_id: &str) -> Result<Option<Self>, FdbBindingError> {
-        let Some(value) = tx.get(&Self::tenant_key(tenant_id), false).await? else {
+    async fn fetch(
+        tx: &Transaction,
+        tenant_id: &str,
+    ) -> Result<Option<Self>, storage::Error<Error>> {
+        let Some(value) = tx
+            .get(&Self::tenant_key(tenant_id), false)
+            .await
+            .map_err(FdbBindingError::from)?
+        else {
             return Ok(None);
         };
         let (root_id, key_hash): (Vec<u8>, Vec<u8>) =
             unpack(&value).map_err(FdbBindingError::PackError)?;
-        let corrupt =
-            || FdbBindingError::CustomError(format!("corrupt tenant {tenant_id:?}").into());
         Ok(Some(Self {
             tenant_id: tenant_id.to_owned(),
-            root_id: ObjectId::from_bytes(root_id.try_into().map_err(|_| corrupt())?)
-                .map_err(|_| corrupt())?,
-            key_hash: key_hash.try_into().map_err(|_| corrupt())?,
+            root_id: ObjectId::try_from(root_id.as_slice())
+                .map_err(storage::Error::InvalidObjectId)?,
+            key_hash: auth::key_hash_from_bytes(&key_hash)
+                .map_err(storage::Error::InvalidKeyHash)?,
         }))
     }
 

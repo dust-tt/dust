@@ -1,3 +1,5 @@
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 use anyhow::{Context, Result};
 use dfs_api::storage::{
     self, fdb,
@@ -37,6 +39,20 @@ pub(crate) async fn authentication_requires_a_matching_index_and_tenant_record()
             ));
 
             tx.set(&lookup, &pack(&owner.tenant_id.as_str()));
+            let record = tenant_subspace(&owner.tenant_id).pack(&"tenant");
+            tx.set(
+                &record,
+                &pack(&(owner.root_id.as_bytes().as_slice(), &[0u8; 31][..])),
+            );
+            assert!(matches!(
+                tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
+                Err(storage::Error::InvalidKeyHash(_))
+            ));
+            tx.set(&record, &pack(&(&[0u8; 15][..], owner.key_hash.as_slice())));
+            assert!(matches!(
+                tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
+                Err(storage::Error::InvalidObjectId(_))
+            ));
             tx.clear(&tenant_subspace(&owner.tenant_id).pack(&"tenant"));
             assert!(matches!(
                 tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
@@ -65,6 +81,57 @@ pub(crate) async fn authentication_requires_a_matching_index_and_tenant_record()
         }
     })
     .await?;
+    Ok(())
+}
+
+pub(crate) async fn decoding_errors_abort_creation_and_retain_their_type() -> Result<()> {
+    let (tenant, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
+    let record = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
+    let lookup = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
+
+    for invalid_key_hash in [true, false] {
+        let value = if invalid_key_hash {
+            pack(&(tenant.root_id.as_bytes().as_slice(), &[0u8; 31][..]))
+        } else {
+            pack(&(&[0u8; 15][..], tenant.key_hash.as_slice()))
+        };
+        let attempts = AtomicUsize::new(0);
+        let result = fdb::with_transaction(|tx| {
+            attempts.fetch_add(1, Ordering::Relaxed);
+            let tenant = &tenant;
+            let record = &record;
+            let value = &value;
+            async move {
+                tenant.create(&tx).await?;
+                tx.set(record, value);
+                tenant.create(&tx).await
+            }
+        })
+        .await;
+
+        let (record_exists, lookup_exists) = fdb::database()?
+            .run(|tx, _| {
+                let record = &record;
+                let lookup = &lookup;
+                async move {
+                    let record_exists = tx.get(record, false).await?.is_some();
+                    let lookup_exists = tx.get(lookup, false).await?.is_some();
+                    tx.clear(record);
+                    tx.clear(lookup);
+                    Ok((record_exists, lookup_exists))
+                }
+            })
+            .await?;
+
+        if invalid_key_hash {
+            assert!(matches!(result, Err(storage::Error::InvalidKeyHash(_))));
+        } else {
+            assert!(matches!(result, Err(storage::Error::InvalidObjectId(_))));
+        }
+        assert_eq!(attempts.load(Ordering::Relaxed), 1);
+        assert!(!record_exists);
+        assert!(!lookup_exists);
+    }
     Ok(())
 }
 

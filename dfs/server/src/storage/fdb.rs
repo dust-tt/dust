@@ -28,9 +28,9 @@ pub fn database() -> Result<&'static Database> {
 
 /**
  * @cc [owner:spolu,label:backend;error-handling] preserve-fdb-retry-errors
- * FDB failures MUST reach Database::run unchanged so it can decide whether to retry. Resource
- * failures MUST abort the attempt without committing or retrying and retain their typed error
- * after the runner returns.
+ * FDB failures MUST reach Database::run unchanged so it can decide whether to retry. Resource and
+ * decoding failures MUST abort the attempt without committing or retrying and retain their typed
+ * error after the runner returns.
  */
 pub async fn with_transaction<F, Fut, T, E>(body: F) -> Result<T, Error<E>>
 where
@@ -42,12 +42,12 @@ where
     database
         .run(|tx, _maybe_committed| {
             let future = body(tx);
-            // Database::run only accepts FdbBindingError. Carry resource errors through its
-            // CustomError variant while leaving FDB errors available to the retry logic.
+            // Database::run only accepts FdbBindingError. Carry resource and decoding errors through
+            // its CustomError variant while leaving FDB errors available to the retry logic.
             async move { future.await.map_err(FdbBindingError::from) }
         })
         .await
-        // Recover boxed resource errors so the API can map them to their specific status.
+        // Recover boxed errors so the API can map each variant to its specific status.
         .map_err(Error::from)
 }
 

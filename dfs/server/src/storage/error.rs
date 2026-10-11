@@ -1,6 +1,9 @@
 use std::fmt;
 
+use dfs_protocol::InvalidId;
 use foundationdb::FdbBindingError;
+
+use crate::auth::InvalidKeyHash;
 
 /**
  * @cc [owner:spolu,label:architecture;error-handling] storage-resource-independence
@@ -11,6 +14,8 @@ use foundationdb::FdbBindingError;
 pub enum Error<E> {
     Open(anyhow::Error),
     Transaction(FdbBindingError),
+    InvalidKeyHash(InvalidKeyHash),
+    InvalidObjectId(InvalidId),
     Resource(E),
 }
 
@@ -19,6 +24,8 @@ impl<E: fmt::Display> fmt::Display for Error<E> {
         match self {
             Self::Open(error) => write!(f, "opening database: {error}"),
             Self::Transaction(error) => write!(f, "transaction failed: {error}"),
+            Self::InvalidKeyHash(error) => error.fmt(f),
+            Self::InvalidObjectId(error) => error.fmt(f),
             Self::Resource(error) => error.fmt(f),
         }
     }
@@ -29,6 +36,8 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
         match self {
             Self::Open(error) => Some(error.as_ref()),
             Self::Transaction(error) => Some(error),
+            Self::InvalidKeyHash(error) => Some(error),
+            Self::InvalidObjectId(error) => Some(error),
             Self::Resource(error) => Some(error),
         }
     }
