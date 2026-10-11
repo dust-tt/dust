@@ -367,9 +367,12 @@ const buildDecorations = (
       : []),
   ]);
 
-// Past this many tokens changed, a remote change maps as one replacement: diffing further would
-// cost more than rebuilding the highlights it spans.
+// Past this many tokens changed, or this long spent diffing, a remote change maps as one
+// replacement: diffing further would cost more than rebuilding the highlights it spans. Diffing
+// costs the edit length times the diffed size, so many changes across a large document need the
+// time bound.
 const MAX_DIFFED_EDIT_LENGTH = 512;
+const MAX_DIFF_DURATION_MS = 10;
 
 const markTokens = (marks: readonly ProseMirrorMark[]) =>
   marks.map((mark) => `${mark.type.name}${JSON.stringify(mark.attrs)}`).join();
@@ -428,7 +431,7 @@ const diffMap = (before: Node, after: Node): StepMap => {
   const changes = diffArrays(
     positionTokens(before, start, endBefore),
     positionTokens(after, start, endAfter),
-    { maxEditLength: MAX_DIFFED_EDIT_LENGTH }
+    { maxEditLength: MAX_DIFFED_EDIT_LENGTH, timeout: MAX_DIFF_DURATION_MS }
   );
   if (!changes) {
     return new StepMap([start, endBefore - start, endAfter - start]);
