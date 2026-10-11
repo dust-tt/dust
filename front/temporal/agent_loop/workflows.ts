@@ -10,6 +10,7 @@ import type * as compactionActivities from "@app/temporal/agent_loop/activities/
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
+import type * as finalizeLostToolActivities from "@app/temporal/agent_loop/activities/finalize_lost_tool";
 import type * as finalizeSandboxChildToolActivities from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import type * as ongoingAgentLoopActivities from "@app/temporal/agent_loop/activities/ongoing_agent_loops";
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
@@ -24,6 +25,7 @@ import { waitForAllPromises } from "@app/temporal/agent_loop/lib/wait_for_all_pr
 import {
   isRunModelLLMUnresponsiveError,
   isTerminalRunModelTimeout,
+  isTerminalToolTimeout,
 } from "@app/temporal/agent_loop/lib/workflow_failures";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import {
@@ -39,6 +41,7 @@ import type {
 } from "@app/types/assistant/agent_run";
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
 import type {
@@ -178,6 +181,12 @@ const {
   finalizeErroredAgentLoopActivity,
   finalizeCreditSpendCheckpointPausedAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
+  startToCloseTimeout: "1 minute",
+});
+
+const { finalizeLostToolActivity } = proxyActivities<
+  typeof finalizeLostToolActivities
+>({
   startToCloseTimeout: "1 minute",
 });
 
@@ -582,19 +591,13 @@ async function executeStepIteration({
   // Execute tools and collect any deferred events.
   deprecatePatch("wait-for-all-tool-activities-before-finalization");
   const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) =>
-    retryPolicy === "no_retry"
-      ? runToolActivityWithExplicitCancellation(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
-      : runRetryableToolActivityWithExplicitCancellation(authType, {
-          actionId,
-          runAgentArgs: agentLoopArgs,
-          step: currentStep,
-          runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-        })
+    runToolOrFinalizeLost(authType, {
+      actionId,
+      retryPolicy,
+      runAgentArgs: agentLoopArgs,
+      step: currentStep,
+      runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+    })
   );
   const toolResults: ToolExecutionResult[] =
     await waitForAllPromises(toolActivityPromises);
@@ -624,6 +627,46 @@ async function executeStepIteration({
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
     creditSpendCheckpointCrossed,
   };
+}
+
+// A tool whose activity was lost (its worker died or froze, or it stalled without heartbeating)
+// becomes a tool error the model can see, instead of failing the whole agent message.
+/**
+ * @cc [owner:philipperolet,label:error-handling] only-lost-tools-become-tool-errors
+ * Only a terminal heartbeat or start-to-close timeout of the tool activity MAY be turned into a
+ * tool error. Any other failure, including cancellation, MUST propagate unchanged.
+ */
+async function runToolOrFinalizeLost(
+  authType: AuthenticatorType,
+  {
+    retryPolicy,
+    ...toolActivityArgs
+  }: {
+    actionId: ModelId;
+    retryPolicy: MCPToolRetryPolicyType;
+    runAgentArgs: AgentLoopArgsWithTiming;
+    step: number;
+    runIds: string[];
+  }
+): Promise<ToolExecutionResult> {
+  try {
+    return retryPolicy === "no_retry"
+      ? await runToolActivityWithExplicitCancellation(
+          authType,
+          toolActivityArgs
+        )
+      : await runRetryableToolActivityWithExplicitCancellation(
+          authType,
+          toolActivityArgs
+        );
+  } catch (error) {
+    if (!isTerminalToolTimeout(error) || !patched("lost-tool-as-tool-error")) {
+      throw error;
+    }
+
+    await finalizeLostToolActivity(authType, toolActivityArgs);
+    return { deferredEvents: [] };
+  }
 }
 
 export async function runSandboxChildToolWorkflow({

@@ -4,6 +4,12 @@ import {
   runSandboxChildToolWorkflow,
 } from "@app/temporal/agent_loop/workflows";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
+import {
+  ActivityFailure,
+  RetryState,
+  TimeoutFailure,
+  TimeoutType,
+} from "@temporalio/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -12,6 +18,7 @@ const {
   checkCreditsActivity,
   finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
+  finalizeLostToolActivity,
   finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
   runRetryableToolActivity,
@@ -29,6 +36,7 @@ const {
   checkCreditsActivity: vi.fn(),
   finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
+  finalizeLostToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
   runRetryableToolActivity: vi.fn(),
@@ -80,6 +88,7 @@ vi.mock("@temporalio/workflow", () => {
       finalizeErroredAgentLoopActivity: unusedActivity,
       finalizeErroredSandboxChildToolActivity,
       finalizeGracefullyStoppedAgentLoopActivity: unusedActivity,
+      finalizeLostToolActivity,
       finalizeInterruptedAgentLoopActivity: unusedActivity,
       finalizeSuccessfulAgentLoopActivity,
       upsertOngoingAgentLoopActivity,
@@ -455,5 +464,69 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
       expect.objectContaining({ agentMessageId: "am123" })
     );
     expect(finalizeSuccessfulAgentLoopActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("agentLoopWorkflow lost tool activity", () => {
+  const heartbeatTimeout = new ActivityFailure(
+    "Activity task timed out",
+    "runToolActivity",
+    "activity-id",
+    RetryState.MAXIMUM_ATTEMPTS_REACHED,
+    "worker-id",
+    new TimeoutFailure("activity timed out", undefined, TimeoutType.HEARTBEAT)
+  );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+    });
+    runToolActivityWithExplicitCancellation.mockRejectedValue(heartbeatTimeout);
+    checkCreditsActivity
+      .mockResolvedValueOnce({ shouldStop: false, reason: null })
+      .mockResolvedValue({ shouldStop: true, reason: "credits_exhausted" });
+  });
+
+  it("finalizes a tool lost to a heartbeat timeout and runs the next step", async () => {
+    patched.mockReturnValue(true);
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(patched).toHaveBeenCalledWith("lost-tool-as-tool-error");
+    expect(finalizeLostToolActivity).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ actionId: "action-1", step: 0 })
+    );
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+  });
+
+  it("fails the workflow when replaying without the patch marker", async () => {
+    patched.mockReturnValue(false);
+
+    await expect(
+      agentLoopWorkflow({
+        agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+        authType,
+        initialStartTime: 0,
+        startStep: 0,
+      })
+    ).rejects.toBe(heartbeatTimeout);
+
+    expect(finalizeLostToolActivity).not.toHaveBeenCalled();
   });
 });

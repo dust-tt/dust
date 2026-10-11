@@ -11,14 +11,7 @@ import {
 import { isRunModelLLMUnresponsiveFailureType } from "./run_model_errors";
 
 export const RUN_MODEL_ACTIVITY_NAME = "runModelAndCreateActionsActivity";
-
-function isRunModelActivityFailure(error: unknown): error is ActivityFailure {
-  if (!(error instanceof ActivityFailure)) {
-    return false;
-  }
-
-  return error.activityType === RUN_MODEL_ACTIVITY_NAME;
-}
+export const RUN_TOOL_ACTIVITY_NAME = "runToolActivity";
 
 function isTerminalRetryState(retryState: RetryState): boolean {
   return (
@@ -30,7 +23,25 @@ function isTerminalRetryState(retryState: RetryState): boolean {
 export function isTerminalRunModelTimeout(
   error: unknown
 ): error is ActivityFailure {
-  if (!isRunModelActivityFailure(error)) {
+  return isTerminalActivityTimeout(error, RUN_MODEL_ACTIVITY_NAME);
+}
+
+// A tool activity whose worker died or froze, or that stalled without heartbeating, ends with a
+// terminal heartbeat or start-to-close timeout.
+export function isTerminalToolTimeout(
+  error: unknown
+): error is ActivityFailure {
+  return isTerminalActivityTimeout(error, RUN_TOOL_ACTIVITY_NAME);
+}
+
+function isTerminalActivityTimeout(
+  error: unknown,
+  activityType: string
+): error is ActivityFailure {
+  if (
+    !(error instanceof ActivityFailure) ||
+    error.activityType !== activityType
+  ) {
     return false;
   }
 

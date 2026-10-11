@@ -22,6 +22,7 @@ import {
   finalizeInterruptedAgentLoopActivity,
   finalizeSuccessfulAgentLoopActivity,
 } from "@app/temporal/agent_loop/activities/finalize";
+import { finalizeLostToolActivity } from "@app/temporal/agent_loop/activities/finalize_lost_tool";
 import { finalizeErroredSandboxChildToolActivity } from "@app/temporal/agent_loop/activities/finalize_sandbox_child_tool";
 import {
   deleteOngoingAgentLoopActivity,
@@ -120,6 +121,7 @@ async function runAgentLoopWorkerForQueue({
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
       finalizeErroredSandboxChildToolActivity,
+      finalizeLostToolActivity,
       upsertOngoingAgentLoopActivity,
       deleteOngoingAgentLoopActivity,
       checkCreditsActivity,
