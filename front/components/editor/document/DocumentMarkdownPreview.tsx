@@ -109,6 +109,12 @@ const FrameEmbed = ({ path }: DocumentFramePathProps) => (
   </div>
 );
 
+interface FilePreviewDirectiveProps {
+  path: string;
+  title?: string;
+  contentType?: string;
+}
+
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
     table_extra_cells: msg`This document can't be edited here because a table row has more cells than its header.`,
@@ -167,11 +173,7 @@ export const DocumentMarkdownPreview = ({
         path,
         title,
         contentType,
-      }: {
-        path: string;
-        title?: string;
-        contentType?: string;
-      }) => {
+      }: FilePreviewDirectiveProps) => {
         const preview: DocumentFilePreview = {
           path,
           title: title ?? null,

@@ -86,7 +86,7 @@ export function parseFilePreviewMarkdownDirective(
   }
 
   let index = prefix.length;
-  const attributes: Record<string, string> = {};
+  const attributes = new Map<string, string>();
 
   while (index < src.length && src[index] !== "}") {
     while (index < src.length && src[index] === " ") {
@@ -107,7 +107,7 @@ export function parseFilePreviewMarkdownDirective(
       return null;
     }
 
-    attributes[key] = parsedValue.value;
+    attributes.set(key, parsedValue.value);
     index = parsedValue.endIndex;
   }
 
@@ -115,17 +115,17 @@ export function parseFilePreviewMarkdownDirective(
     return null;
   }
 
-  const path = attributes.path;
+  const path = attributes.get("path");
   if (!path) {
     return null;
   }
 
   return {
-    attributeNames: Object.keys(attributes),
-    contentType: attributes.contentType,
+    attributeNames: [...attributes.keys()],
+    contentType: attributes.get("contentType"),
     path,
     raw: src.slice(0, index + 1),
-    title: attributes.title,
+    title: attributes.get("title"),
   };
 }
 
@@ -185,13 +185,13 @@ export function getFilePreviewMarkdownDirective({
   title?: string;
 }): string {
   return serializeFilePreviewMarkdownDirective({
-    contentType,
+    contentType: contentType || undefined,
     path,
     title: title || getFileNameFromScopedPath(path),
   });
 }
 
-/** The directive with exactly the attributes given, in the order the parser documents them. */
+/** The directive with exactly the attributes given, empty ones included, in the order the parser documents them. */
 export function serializeFilePreviewMarkdownDirective({
   contentType,
   path,
@@ -202,10 +202,10 @@ export function serializeFilePreviewMarkdownDirective({
   title?: string;
 }): string {
   const attributes = [`path=${quoteDirectiveAttribute(path)}`];
-  if (title) {
+  if (title !== undefined) {
     attributes.push(`title=${quoteDirectiveAttribute(title)}`);
   }
-  if (contentType) {
+  if (contentType !== undefined) {
     attributes.push(`contentType=${quoteDirectiveAttribute(contentType)}`);
   }
 

@@ -111,8 +111,3 @@ export function useFilePreviewContext() {
   }
   return context;
 }
-
-/** The file preview context, or null outside a `FilePreviewProvider`. */
-export function useOptionalFilePreviewContext() {
-  return useContext(FilePreviewContext);
-}

@@ -3,7 +3,7 @@ import type {
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import { useOptionalFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
+import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import {
   isFrameContentType,
@@ -39,11 +39,6 @@ interface PreviewableCitationProps {
   variant?: "card" | "chip" | "inline";
 }
 
-/**
- * @cc [owner:tdraier,label:react] previewable-citation-without-provider
- * Outside a `FilePreviewProvider`, the citation MUST render static, without a preview action,
- * instead of failing, so any surface can show one.
- */
 export function PreviewableCitation({
   containerClassName,
   contentType,
@@ -62,19 +57,16 @@ export function PreviewableCitation({
   variant = "card",
 }: PreviewableCitationProps) {
   // Previews render in the side panel, so without one the citation is static.
-  const filePreview = useOptionalFilePreviewContext();
-  const canPreview = filePreview?.canPreview ?? false;
+  const { canPreview, openFilePreview, openFramePreview } =
+    useFilePreviewContext();
 
   const handleClick = async () => {
-    if (!filePreview) {
-      return;
-    }
     if (isFrameContentType(contentType)) {
-      await filePreview.openFramePreview({ fileId, filePath });
+      await openFramePreview({ fileId, filePath });
       return;
     }
 
-    filePreview.openFilePreview({ fileId, filePath, contentType });
+    openFilePreview({ fileId, filePath, contentType });
   };
 
   if (variant === "inline") {

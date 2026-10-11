@@ -30,11 +30,13 @@ const filePreviewOf = (attrs: Record<string, unknown>): FilePreview | null =>
 const filePreviewLabel = ({ path, title }: FilePreview) =>
   title || getFileNameFromScopedPath(path);
 
+interface DocumentFilePreviewFallbackProps {
+  preview: FilePreview;
+}
+
 export const DocumentFilePreviewFallback = ({
   preview,
-}: {
-  preview: FilePreview;
-}) => (
+}: DocumentFilePreviewFallbackProps) => (
   <span className="rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground">
     {filePreviewLabel(preview)}
   </span>
@@ -92,8 +94,8 @@ export const DocumentFilePreview = Node.create({
       "span",
       {
         [FILE_PREVIEW_PATH_ATTRIBUTE]: preview?.path ?? "",
-        ...(preview?.title ? { "data-title": preview.title } : {}),
-        ...(preview?.contentType
+        ...(preview?.title != null ? { "data-title": preview.title } : {}),
+        ...(preview?.contentType != null
           ? { "data-content-type": preview.contentType }
           : {}),
       },
@@ -124,8 +126,8 @@ export const DocumentFilePreview = Node.create({
         raw: parsed.raw,
         attrs: {
           path: parsed.path,
-          title: parsed.title || null,
-          contentType: parsed.contentType || null,
+          title: parsed.title ?? null,
+          contentType: parsed.contentType ?? null,
         },
       };
     },

@@ -373,6 +373,11 @@ interface RichMarkdownDocumentProps {
   statusContainer?: HTMLElement | null;
 }
 
+/**
+ * @cc [owner:tdraier,label:react] rich-document-in-file-preview-provider
+ * The document MUST render inside a `FilePreviewProvider`: its file references render as
+ * `FilePreviewBlock`, which requires one.
+ */
 function RichMarkdownDocument({
   editor,
   owner,

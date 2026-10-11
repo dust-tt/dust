@@ -64,6 +64,14 @@ describe("getFilePreviewMarkdownDirective", () => {
       title: "booklet.pdf",
     });
   });
+
+  it("reports every attribute name, prototype keys included", () => {
+    expect(
+      parseFilePreviewMarkdownDirective(
+        ':preview_file{path="pod-abc/x.pdf" __proto__="x" constructor="y"}'
+      )?.attributeNames
+    ).toEqual(["path", "__proto__", "constructor"]);
+  });
 });
 
 describe("getFilePreviewContentType", () => {

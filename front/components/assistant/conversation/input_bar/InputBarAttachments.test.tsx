@@ -15,17 +15,13 @@ const { mockOpenFilePreview } = vi.hoisted(() => ({
 
 vi.mock(
   import("@app/components/assistant/conversation/FilePreviewContext"),
-  () => {
-    const filePreview = {
+  () => ({
+    useFilePreviewContext: () => ({
       canPreview: true,
       openFilePreview: mockOpenFilePreview,
       openFramePreview: vi.fn(),
-    };
-    return {
-      useFilePreviewContext: () => filePreview,
-      useOptionalFilePreviewContext: () => filePreview,
-    };
-  }
+    }),
+  })
 );
 
 vi.mock(import("@app/components/sparkle/ThemeContext"), () => ({

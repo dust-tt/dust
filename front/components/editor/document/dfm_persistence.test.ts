@@ -579,6 +579,7 @@ describe("saveDfm", () => {
       '- :preview_file{path="conversation-c1/a &amp; b.md" title="&quot;A&quot; &amp; B"}\n',
       ':comment-start{id=c1}Read :preview_file{path="pod-abc/x.pdf"} first.:comment-end{id=c1}\n\n' +
         OPEN_THREAD,
+      ':preview_file{path="pod-abc/x.pdf" title="" contentType=""}\n',
     ]) {
       expect(roundTrip(source)).toBe(source);
       expect(() =>
