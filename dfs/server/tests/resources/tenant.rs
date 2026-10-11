@@ -37,6 +37,21 @@ pub(crate) async fn authentication_requires_a_matching_index_and_tenant_record()
             ));
 
             tx.set(&lookup, &pack(&owner.tenant_id.as_str()));
+            let record = tenant_subspace(&owner.tenant_id).pack(&"tenant");
+            tx.set(
+                &record,
+                &pack(&(owner.root_id.as_bytes().as_slice(), &[0u8; 31][..])),
+            );
+            assert!(matches!(
+                tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
+                Err(storage::Error::Transaction(FdbBindingError::CustomError(error)))
+                    if error.is::<dfs_api::auth::InvalidKeyHash>()
+            ));
+            tx.set(&record, &pack(&(&[0u8; 15][..], owner.key_hash.as_slice())));
+            assert!(matches!(
+                tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
+                Err(storage::Error::Transaction(FdbBindingError::CustomError(_)))
+            ));
             tx.clear(&tenant_subspace(&owner.tenant_id).pack(&"tenant"));
             assert!(matches!(
                 tenant::TenantResource::authenticate(&tx, &owner.key_hash).await,
