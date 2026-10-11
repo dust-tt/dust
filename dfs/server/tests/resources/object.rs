@@ -58,7 +58,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
             .get(&metadata_key, false)
             .await?
             .context("missing root metadata")?;
-        let (created_at_ms, mime_type): (u64, String) = unpack(&metadata)?;
+        let (created_at_ms, mime_type): (u64, Option<String>) = unpack(&metadata)?;
         assert_eq!(parent_id, None);
         assert!(name.is_empty());
         assert_eq!(kind, i32::from(ObjectKind::Directory));
@@ -68,7 +68,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert_eq!(atime_ms, Some(created_at_ms));
         assert_eq!(mtime_ms, atime_ms);
         assert_eq!(ctime_ms, atime_ms);
-        assert!(mime_type.is_empty());
+        assert_eq!(mime_type, None);
     }
 
     // Both tenants retain separate objects despite sharing an object ID and an ID string prefix.

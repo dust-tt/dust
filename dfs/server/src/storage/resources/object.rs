@@ -58,15 +58,14 @@ pub struct ObjectResource {
 
 pub struct Metadata {
     pub created_at_ms: u64,
-    /// Empty when no MIME type is assigned.
-    pub mime_type: String,
+    pub mime_type: Option<String>,
 }
 
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] tenant-root-initial-state
-     * A new root MUST use the tenant's root ID and be an empty directory with no parent and an
-     * empty name and MIME type. Both versions MUST start at 1. Creation, access, modification, and
+     * A new root MUST use the tenant's root ID and be an empty directory with no parent, no MIME
+     * type, and an empty name. Both versions MUST start at 1. Creation, access, modification, and
      * change times MUST be initialized to the same server timestamp.
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
@@ -90,7 +89,7 @@ impl ObjectResource {
             content_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type: String::new(),
+                mime_type: None,
             }),
         })
     }
@@ -130,7 +129,7 @@ impl ObjectResource {
         );
         tx.set(
             &Self::metadata_key(&self.tenant_id, &self.object_id),
-            &pack(&(metadata.created_at_ms, metadata.mime_type.as_str())),
+            &pack(&(metadata.created_at_ms, metadata.mime_type.as_deref())),
         );
         Ok(())
     }

@@ -92,15 +92,16 @@ index entries are also removed. Authentication rejects expired sessions independ
 | Key | Value | Rationale |
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
-| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and MIME type. | Keeps optional metadata out of ordinary traversal. |
+| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and optional MIME type. | Keeps optional metadata out of ordinary traversal. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
 
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
 attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
-enum's integer value. Base metadata is `(created_at_ms, mime_type)`. Tenant creation writes an empty
-root directory with no parent, an empty name and MIME type, and both versions at 1.
+enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
+Tenant creation writes an empty root directory with no parent or MIME type, an empty name, and both
+versions at 1.
 Retries that find the tenant already created leave its root unchanged. Root grants remain to be
 implemented.
 
