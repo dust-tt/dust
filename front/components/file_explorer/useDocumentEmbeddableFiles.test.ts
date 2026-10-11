@@ -30,6 +30,10 @@ describe("getDocumentEmbeddableFiles", () => {
           fileResourceContentType: "image/png",
         }),
         FileSystemEntryFactory.file({
+          path: "pod-p/Revenue/manifest.json",
+          contentType: "application/vnd.dust.frame.v2+json",
+        }),
+        FileSystemEntryFactory.file({
           path: "pod-p/notes.md",
           contentType: "text/markdown",
         }),
@@ -39,6 +43,7 @@ describe("getDocumentEmbeddableFiles", () => {
       { kind: "image", path: "pod-p/Built.bin", name: "Built.bin" },
       { kind: "frame", path: "pod-p/Built.tsx", name: "Built.tsx" },
       { kind: "image", path: "pod-p/chart.png", name: "chart.png" },
+      { kind: "frame", path: "pod-p/Revenue/manifest.json", name: "Revenue" },
       { kind: "frame", path: "pod-p/Zoo/Zoo.tsx", name: "Zoo.tsx" },
     ]);
   });
