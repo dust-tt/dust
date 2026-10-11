@@ -115,9 +115,10 @@ const logRefusal = (reason: string, source: string) => {
  */
 /**
  * @cc [owner:tdraier,label:performance;react] document-edits-render-free
- * A local or remote edit MUST NOT re-render the hook's host unless `dirty` or `error` changes, and
- * MUST NOT serialize the document; only a save does. Re-rendering with unchanged props MUST NOT
- * hand `useEditor` an option of a new identity, which reapplies every option to the view.
+ * A local or remote edit MUST NOT set the hook's state unless `dirty` or `error` changes, and MUST
+ * NOT make the hook serialize the document; only a save or an `isSavable` call does. Re-rendering
+ * with unchanged props MUST NOT hand `useEditor` an option of a new identity, which reapplies
+ * every option to the view.
  */
 export const useDocumentEditor = ({
   initialContent,
