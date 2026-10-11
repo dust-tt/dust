@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Add a paragraph"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Loading files…"
+msgstr "Loading files…"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "No matching files"
 msgstr "No matching files"
 

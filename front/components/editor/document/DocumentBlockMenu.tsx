@@ -4,7 +4,10 @@ import {
   getBlockQuery,
 } from "@app/components/editor/document/blocks";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
-import type { DocumentEmbeddableFile } from "@app/components/editor/document/types";
+import type {
+  DocumentEmbeddableFile,
+  DocumentEmbeddableFiles,
+} from "@app/components/editor/document/types";
 import { cn, Icon } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor, JSONContent } from "@tiptap/core";
@@ -35,15 +38,16 @@ const embedContent = (file: DocumentEmbeddableFile): JSONContent => ({
 /**
  * @cc [owner:tdraier,label:product] document-slash-embeds
  * The `/` menu MUST offer its embed entries, such as Image, only when the host gives embeddable
- * files. Picking one MUST turn the menu into a search over the host's files of that kind, by name
- * or path, and picking a file MUST replace the `/` query with an embed of exactly that file's
+ * files, and MUST ask the host to load them only once one is picked. Picking one MUST turn the menu
+ * into a search over the host's files of that kind, by name or path, showing that they load while
+ * none has arrived, and picking a file MUST replace the `/` query with an embed of exactly that file's
  * path: for an image, an `image` node with the file name as alt text. Escape or removing the `/`
  * MUST leave the search without inserting anything.
  */
 export const useDocumentBlockMenu = (
   editor: Editor | null,
   editable: boolean,
-  embeddableFiles?: DocumentEmbeddableFile[]
+  embeddableFiles?: DocumentEmbeddableFiles
 ) => {
   const [highlight, setHighlight] = useState({ queryKey: "", index: 0 });
   const [dismissedQuery, setDismissedQuery] = useState<string | null>(null);
@@ -111,6 +115,7 @@ export const useDocumentBlockMenu = (
                 .focus()
                 .deleteRange({ from: query.from + 1, to: query.to })
                 .run();
+              embeddableFiles.load();
               setPicker({ kind: embed.kind, from: query.from });
               setHighlight({ queryKey: "", index: 0 });
             }
@@ -123,7 +128,7 @@ export const useDocumentBlockMenu = (
     ? EMBEDS.find((embed) => embed.kind === activePicker.kind)
     : undefined;
   const fileItems: DocumentBlockMenuItem[] = pickerEmbed
-    ? (embeddableFiles ?? [])
+    ? (embeddableFiles?.files ?? [])
         .filter((file) => file.kind === pickerEmbed.kind)
         .map((file) => ({
           key: file.path,
@@ -203,6 +208,7 @@ export const useDocumentBlockMenu = (
     items,
     title: pickerEmbed ? t(pickerEmbed.pickerTitle) : null,
     isPicking: activePicker !== null,
+    isLoadingFiles: !!pickerEmbed && !!embeddableFiles?.isLoading,
     activeIndex,
     show,
     insertBlock,
@@ -297,7 +303,9 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
           ))}
           {menu.items.length === 0 && (
             <div className="px-2.5 py-6 text-muted-foreground copy-sm">
-              {menu.isPicking ? (
+              {menu.isLoadingFiles ? (
+                <Trans>Loading files…</Trans>
+              ) : menu.isPicking ? (
                 <Trans>No matching files</Trans>
               ) : (
                 <Trans>No matching paragraphs</Trans>

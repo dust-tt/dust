@@ -1,4 +1,7 @@
-import type { DocumentEmbeddableFile } from "@app/components/editor/document";
+import type {
+  DocumentEmbeddableFile,
+  DocumentEmbeddableFiles,
+} from "@app/components/editor/document";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { compareStrings } from "@app/lib/i18n/format";
 import { usePodFiles } from "@app/lib/swr/pods";
@@ -9,7 +12,7 @@ import {
 } from "@app/types/files";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 /**
  * @cc [owner:tdraier,label:product] document-embeddable-files
@@ -34,26 +37,48 @@ export function getDocumentEmbeddableFiles(
     .sort((a, b) => compareStrings(a.name, b.name, { sensitivity: "base" }));
 }
 
-/** The images of the conversation or pod holding the document at `documentPath`. */
+/**
+ * @cc [owner:tdraier,label:performance] document-embeddable-files-lazy
+ * No file list MUST be requested before `load` is called. Once it is, only the pod's files MUST be
+ * requested for a document in a pod, and only the conversation's for one in a conversation.
+ */
 export function useDocumentEmbeddableFiles({
   owner,
   documentPath,
 }: {
   owner: LightWorkspaceType;
   documentPath: string;
-}): DocumentEmbeddableFile[] {
+}): DocumentEmbeddableFiles {
+  const [requested, setRequested] = useState(false);
   const scope = parseCanonicalScopedPath(documentPath)?.scope;
   const podId = scope?.kind === "canonical-pod" ? scope.id : null;
   const conversationId =
     scope?.kind === "canonical-conversation" ? scope.id : null;
-  const { files: podFiles } = usePodFiles({ owner, podId });
-  const { sandboxFiles } = useConversationSandboxFiles({
+  const { files: podFiles, isPodFilesLoading } = usePodFiles({
+    owner,
+    podId,
+    disabled: !requested || !podId,
+  });
+  const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
     owner,
     conversationId,
+    options: { disabled: !requested || !conversationId },
   });
+  const load = useCallback(() => setRequested(true), []);
 
   return useMemo(
-    () => getDocumentEmbeddableFiles(podId ? podFiles : sandboxFiles),
-    [podId, podFiles, sandboxFiles]
+    () => ({
+      files: getDocumentEmbeddableFiles(podId ? podFiles : sandboxFiles),
+      isLoading: podId ? isPodFilesLoading : isSandboxFilesLoading,
+      load,
+    }),
+    [
+      podId,
+      podFiles,
+      sandboxFiles,
+      isPodFilesLoading,
+      isSandboxFilesLoading,
+      load,
+    ]
   );
 }

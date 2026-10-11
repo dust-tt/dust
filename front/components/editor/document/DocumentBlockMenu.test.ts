@@ -1,11 +1,14 @@
 import { useDocumentBlockMenu } from "@app/components/editor/document/DocumentBlockMenu";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
-import type { DocumentEmbeddableFile } from "@app/components/editor/document/types";
+import type {
+  DocumentEmbeddableFile,
+  DocumentEmbeddableFiles,
+} from "@app/components/editor/document/types";
 import type { MessageDescriptor } from "@lingui/core";
 import { act, renderHook } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import type React from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const FILES: DocumentEmbeddableFile[] = [
   { kind: "image", path: "pod-p/charts/q3 chart.png", name: "q3 chart.png" },
@@ -21,7 +24,16 @@ afterEach(() => {
   editor = null;
 });
 
-function renderMenu(files?: DocumentEmbeddableFile[]) {
+const embeddable = (
+  overrides: Partial<DocumentEmbeddableFiles> = {}
+): DocumentEmbeddableFiles => ({
+  files: FILES,
+  isLoading: false,
+  load: vi.fn(),
+  ...overrides,
+});
+
+function renderMenu(files?: DocumentEmbeddableFiles) {
   editor = new Editor({
     extensions: buildDocumentEditorExtensions(translate, {
       resolveImageSource: () => null,
@@ -50,11 +62,24 @@ describe("useDocumentBlockMenu embeds", () => {
   it("offers Image only with embeddable files", () => {
     expect(names(renderMenu().result.current.items)).not.toContain("Image");
     editor?.destroy();
-    expect(names(renderMenu(FILES).result.current.items)).toContain("Image");
+    expect(names(renderMenu(embeddable()).result.current.items)).toContain(
+      "Image"
+    );
+  });
+
+  it("loads the files only once Image is picked, and says so while they load", () => {
+    const files = embeddable({ files: [], isLoading: true });
+    const menu = renderMenu(files);
+    expect(files.load).not.toHaveBeenCalled();
+
+    pick(menu, "Image");
+
+    expect(files.load).toHaveBeenCalledOnce();
+    expect(menu.result.current.isLoadingFiles).toBe(true);
   });
 
   it("searches images after picking Image, by name or path", () => {
-    const menu = renderMenu(FILES);
+    const menu = renderMenu(embeddable());
     type("im");
     pick(menu, "Image");
 
@@ -69,7 +94,7 @@ describe("useDocumentBlockMenu embeds", () => {
   });
 
   it("embeds an image by its path, with its file name as alt text", () => {
-    const menu = renderMenu(FILES);
+    const menu = renderMenu(embeddable());
     pick(menu, "Image");
     type("q3 ch");
     pick(menu, "q3 chart.png");
@@ -80,7 +105,7 @@ describe("useDocumentBlockMenu embeds", () => {
   });
 
   it("leaves the search without inserting on Escape", () => {
-    const menu = renderMenu(FILES);
+    const menu = renderMenu(embeddable());
     pick(menu, "Image");
     act(() =>
       menu.result.current.onKeyDown({

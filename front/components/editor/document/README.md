@@ -121,10 +121,12 @@ raw edits write them.
 
 ## Inserting embeds
 
-With the host's `embeddableFiles`, the `/` menu adds an Image entry. Picking it turns the menu
-into a search over those files, by name or path, and picking a file replaces the `/` with an image
-of its path whose alt text is the file name. Escape leaves the search. The file preview offers the
-images of the document's own pod or conversation (`useDocumentEmbeddableFiles`).
+With the host's `embeddableFiles`, the `/` menu adds an Image entry. Picking it asks the host to
+load the files and turns the menu into a search over them, by name or path; picking a file
+replaces the `/` with an image of its path whose alt text is the file name. Escape leaves the
+search. The file preview offers the images of the document's own pod or conversation
+(`useDocumentEmbeddableFiles`), and lists that pod's or conversation's files only once Image is
+picked.
 
 ## Layout
 
