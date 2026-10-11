@@ -131,8 +131,7 @@ impl SessionResource {
         {
             let (key_hash, _expires_at_ms): (Vec<u8>, u64) =
                 unpack(&value).map_err(FdbBindingError::PackError)?;
-            let key_hash =
-                auth::key_hash_from_bytes(&key_hash).map_err(storage::Error::InvalidKeyHash)?;
+            let key_hash = auth::key_hash_from_bytes(&key_hash)?;
             if key_hash == self.key_hash {
                 // A retry after an unknown commit result finds our own record.
                 return Ok(());

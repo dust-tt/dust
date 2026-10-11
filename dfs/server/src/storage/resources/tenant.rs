@@ -157,8 +157,7 @@ impl TenantResource {
             tenant_id: tenant_id.to_owned(),
             root_id: ObjectId::try_from(root_id.as_slice())
                 .map_err(storage::Error::InvalidObjectId)?,
-            key_hash: auth::key_hash_from_bytes(&key_hash)
-                .map_err(storage::Error::InvalidKeyHash)?,
+            key_hash: auth::key_hash_from_bytes(&key_hash)?,
         }))
     }
 
