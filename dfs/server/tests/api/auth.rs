@@ -14,8 +14,8 @@ use dfs_api::{
 use dfs_protocol::{
     ObjectId,
     rpc::{
-        CreateTenantRequest, ErrorCode, ListGrantsRequest, RevokeSessionRequest,
-        UpdateGrantsRequest, dfs_client::DfsClient,
+        CreateTenantRequest, ErrorCode, ListGrantsRequest, UpdateGrantsRequest,
+        dfs_client::DfsClient,
     },
 };
 use tokio::{net::TcpListener, time::sleep};
@@ -47,8 +47,12 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
 
     // The master key must not authorize tenant calls on the same connection.
     let error = client
-        .revoke_session(with_authorization(
-            RevokeSessionRequest::default(),
+        .list_grants(with_authorization(
+            ListGrantsRequest {
+                object_id: tenant.root_id,
+                after: None,
+                limit: 1,
+            },
             &master_authorization,
         )?)
         .await
@@ -62,14 +66,6 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         (&other_authorization, ErrorCode::Unauthenticated),
     ] {
         let errors = [
-            client
-                .revoke_session(with_authorization(
-                    RevokeSessionRequest::default(),
-                    authorization,
-                )?)
-                .await
-                .err()
-                .context("revoke session is not implemented")?,
             client
                 .list_grants(with_authorization(
                     ListGrantsRequest {
@@ -106,13 +102,17 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     })
     .await?;
     let error = client
-        .revoke_session(with_authorization(
-            RevokeSessionRequest::default(),
+        .list_grants(with_authorization(
+            ListGrantsRequest {
+                object_id: tenant.root_id,
+                after: None,
+                limit: 1,
+            },
             &other_authorization,
         )?)
         .await
         .err()
-        .context("revoke session is not implemented")?;
+        .context("list grants is not implemented")?;
     assert_eq!(error_code(&error)?, ErrorCode::Unsupported);
 
     // Cached tenant authentication must not authorize tenant creation.
@@ -128,7 +128,11 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
     }
     let error = client
-        .revoke_session(RevokeSessionRequest::default())
+        .list_grants(ListGrantsRequest {
+            object_id: tenant.root_id,
+            after: None,
+            limit: 1,
+        })
         .await
         .err()
         .context("cached authentication still requires a bearer")?;
@@ -157,26 +161,38 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     let mut fresh_instance = DfsClient::new(serve().await?);
     for authorization in [&tenant_authorization, &other_authorization] {
         let cached = client
-            .revoke_session(with_authorization(
-                RevokeSessionRequest::default(),
+            .list_grants(with_authorization(
+                ListGrantsRequest {
+                    object_id: tenant.root_id,
+                    after: None,
+                    limit: 1,
+                },
                 authorization,
             )?)
             .await
             .err()
-            .context("revoke session is not implemented")?;
+            .context("list grants is not implemented")?;
         assert_eq!(error_code(&cached)?, ErrorCode::Unsupported);
         let shared = reconnected
-            .revoke_session(with_authorization(
-                RevokeSessionRequest::default(),
+            .list_grants(with_authorization(
+                ListGrantsRequest {
+                    object_id: tenant.root_id,
+                    after: None,
+                    limit: 1,
+                },
                 authorization,
             )?)
             .await
             .err()
-            .context("revoke session is not implemented")?;
+            .context("list grants is not implemented")?;
         assert_eq!(error_code(&shared)?, ErrorCode::Unsupported);
         let fresh = fresh_instance
-            .revoke_session(with_authorization(
-                RevokeSessionRequest::default(),
+            .list_grants(with_authorization(
+                ListGrantsRequest {
+                    object_id: tenant.root_id,
+                    after: None,
+                    limit: 1,
+                },
                 authorization,
             )?)
             .await
@@ -190,13 +206,17 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         sleep(CACHE_EXPIRY_TEST_INTERVAL).await;
         for authorization in [&tenant_authorization, &other_authorization] {
             let error = reconnected
-                .revoke_session(with_authorization(
-                    RevokeSessionRequest::default(),
+                .list_grants(with_authorization(
+                    ListGrantsRequest {
+                        object_id: tenant.root_id,
+                        after: None,
+                        limit: 1,
+                    },
                     authorization,
                 )?)
                 .await
                 .err()
-                .context("expected an authentication error or unimplemented session revocation")?;
+                .context("expected an authentication error or unimplemented grant listing")?;
             assert_eq!(error_code(&error)?, expected);
         }
     }

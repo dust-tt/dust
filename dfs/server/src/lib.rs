@@ -52,7 +52,7 @@ pub async fn serve(
     tokio::select! {
         result = &mut server => return Ok(result?),
         _ = shutdown => {}
-        _ = api.sweep_tenant_key_cache() => {}
+        _ = api.sweep_key_caches() => {}
     }
 
     tracing::info!("dfs-api draining");

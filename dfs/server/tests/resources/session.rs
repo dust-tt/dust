@@ -23,6 +23,7 @@ use foundationdb::{
 
 const SESSION_TTL_MS: u128 = 3_600_000;
 const REFRESH_EXTENSION_MS: u64 = 10_000;
+const FDB_NOT_COMMITTED: i32 = 1020;
 
 pub(crate) fn subjects_are_exact_deduplicated_and_bounded() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
@@ -95,6 +96,15 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
         async move { owner.create(&tx).await }
     })
     .await?;
+
+    let authenticated = fdb::with_transaction(|tx| {
+        let key_hash = &owner.key_hash;
+        async move { SessionResource::authenticate(&tx, key_hash).await }
+    })
+    .await?;
+    assert_eq!(authenticated.subjects, owner.subjects);
+    assert_eq!(authenticated.tenant_id, owner.tenant_id);
+    assert_eq!(authenticated.session_id, owner.session_id);
 
     for (candidate, key_collision_expected) in [(&key_collision, true), (&id_collision, false)] {
         let result = fdb::with_transaction(|tx| async move { candidate.create(&tx).await }).await;
@@ -226,6 +236,152 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
     tx.clear(&lookup);
     tx.clear(&refreshed_expiry);
     tx.commit().await?;
+    Ok(())
+}
+
+pub(crate) async fn authentication_and_refresh_require_active_matching_state() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let (mut session, _) = SessionResource::new(&tenant, vec!["u:test".to_owned()])?;
+    let tx = fdb::database()?.create_trx()?;
+    session.create(&tx).await?;
+
+    let lookup = namespace_subspace().pack(&("session-key", session.key_hash.as_slice()));
+    let state =
+        tenant_subspace(&tenant.tenant_id).pack(&("session", session.session_id.as_str(), "state"));
+    for value in [
+        pack(&(&[0u8; 32][..], session.expires_at_ms)),
+        pack(&(session.key_hash.as_slice(), 0u64)),
+    ] {
+        tx.set(&state, &value);
+        assert!(matches!(
+            SessionResource::authenticate(&tx, &session.key_hash).await,
+            Err(storage::Error::Resource(session::Error::InvalidKey))
+        ));
+        assert!(matches!(
+            SessionResource::refresh(&tx, &session.key_hash).await,
+            Err(storage::Error::Resource(session::Error::InvalidKey))
+        ));
+    }
+    tx.set(&state, &pack(&(&[0u8; 31][..], session.expires_at_ms)));
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::InvalidKeyHash(_))
+    ));
+    tx.clear(&state);
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::Resource(session::Error::InvalidKey))
+    ));
+    tx.clear(&lookup);
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::Resource(session::Error::InvalidKey))
+    ));
+
+    // An expiry already beyond now plus one hour must never be shortened by refresh.
+    tx.clear(&expiry_key(&session, session.expires_at_ms));
+    session.expires_at_ms += REFRESH_EXTENSION_MS;
+    session.create(&tx).await?;
+    let refreshed = SessionResource::refresh(&tx, &session.key_hash).await?;
+    assert_eq!(refreshed.expires_at_ms, session.expires_at_ms);
+    assert_eq!(refreshed.subjects, session.subjects);
+    assert_eq!(refreshed.key_hash, session.key_hash);
+    assert_eq!(refreshed.session_id, session.session_id);
+    assert_eq!(refreshed.tenant_id, session.tenant_id);
+    assert!(
+        tx.get(&expiry_key(&session, session.expires_at_ms), false)
+            .await?
+            .is_some()
+    );
+    Ok(())
+}
+
+pub(crate) async fn refresh_and_revocation_conflict_in_both_orders() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    for refresh_commits_first in [true, false] {
+        let (mut session, _) = SessionResource::new(&tenant, vec!["u:race".to_owned()])?;
+        session.expires_at_ms -= REFRESH_EXTENSION_MS;
+        fdb::with_transaction(|tx| {
+            let session = &session;
+            async move { session.create(&tx).await }
+        })
+        .await?;
+        let stale = fdb::database()?.create_trx()?;
+        let refreshed;
+        if refresh_commits_first {
+            SessionResource::revoke(&stale, &tenant, &session.session_id).await?;
+            refreshed = fdb::with_transaction(|tx| {
+                let key_hash = &session.key_hash;
+                async move { SessionResource::refresh(&tx, key_hash).await }
+            })
+            .await?;
+        } else {
+            refreshed = SessionResource::refresh(&stale, &session.key_hash).await?;
+            fdb::with_transaction(|tx| {
+                let tenant = &tenant;
+                let session = &session;
+                async move { SessionResource::revoke(&tx, tenant, &session.session_id).await }
+            })
+            .await?;
+        }
+        assert!(refreshed.expires_at_ms > session.expires_at_ms);
+        let conflict = stale
+            .commit()
+            .await
+            .err()
+            .context("expected a commit conflict")?;
+        assert_eq!(conflict.code(), FDB_NOT_COMMITTED);
+
+        if refresh_commits_first {
+            let tx = fdb::database()?.create_trx()?;
+            assert!(
+                tx.get(&expiry_key(&session, session.expires_at_ms), false)
+                    .await?
+                    .is_none()
+            );
+            assert!(
+                tx.get(&expiry_key(&refreshed, refreshed.expires_at_ms), false)
+                    .await?
+                    .is_some()
+            );
+            fdb::with_transaction(|tx| {
+                let tenant = &tenant;
+                let session = &session;
+                async move { SessionResource::revoke(&tx, tenant, &session.session_id).await }
+            })
+            .await?;
+        }
+        let result = fdb::with_transaction(|tx| {
+            let key_hash = &session.key_hash;
+            async move { SessionResource::refresh(&tx, key_hash).await }
+        })
+        .await;
+        assert!(matches!(
+            result,
+            Err(storage::Error::Resource(session::Error::InvalidKey))
+        ));
+        let tx = fdb::database()?.create_trx()?;
+        assert!(
+            read_prefix(&tx, &tenant_subspace(&tenant.tenant_id))
+                .await?
+                .is_empty()
+        );
+        assert!(
+            tx.get(
+                &namespace_subspace().pack(&("session-key", session.key_hash.as_slice())),
+                false
+            )
+            .await?
+            .is_none()
+        );
+        for expiry_ms in [session.expires_at_ms, refreshed.expires_at_ms] {
+            assert!(
+                tx.get(&expiry_key(&session, expiry_ms), false)
+                    .await?
+                    .is_none()
+            );
+        }
+    }
     Ok(())
 }
 

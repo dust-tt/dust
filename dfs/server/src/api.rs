@@ -29,6 +29,7 @@ mod errors;
 pub struct API {
     master_key_hash: KeyHash,
     tenant_key_cache: RwLock<HashMap<KeyHash, auth::CachedTenant>>,
+    session_key_cache: RwLock<HashMap<KeyHash, auth::CachedSession>>,
 }
 
 /**
@@ -94,20 +95,46 @@ impl Dfs for API {
         }))
     }
 
-    async fn current_session(&self, _request: Request<Empty>) -> Result<Response<Session>, Status> {
-        Err(status(ErrorCode::Unsupported))
+    async fn current_session(&self, request: Request<Empty>) -> Result<Response<Session>, Status> {
+        let session = self.require_session(&request).await?;
+        Ok(Response::new(Session::from(session.as_ref())))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] revoke-session-authentication
+     * Revocation MUST authenticate a tenant key before validating the request and MUST derive the
+     * tenant exclusively from that authentication. Local cache eviction MUST follow the FDB commit.
+     */
     async fn revoke_session(
         &self,
         request: Request<RevokeSessionRequest>,
     ) -> Result<Response<Empty>, Status> {
-        self.require_tenant(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let tenant = self.require_tenant(&request).await?;
+        let session_id = request.into_inner().session_id;
+        let key_hash = fdb::with_transaction(|tx| {
+            let tenant = tenant.as_ref();
+            let session_id = &session_id;
+            async move { SessionResource::revoke(&tx, tenant, session_id).await }
+        })
+        .await?;
+        self.session_key_cache.write().await.remove(&key_hash);
+        Ok(Response::new(Empty {}))
     }
 
-    async fn refresh_session(&self, _request: Request<Empty>) -> Result<Response<Session>, Status> {
-        Err(status(ErrorCode::Unsupported))
+    /**
+     * @cc [owner:spolu,label:api;security] refresh-session-bypasses-cache
+     * Refresh MUST authenticate and extend expiry in one FDB transaction. Cached authentication
+     * MUST NOT authorize refresh. The local cache entry MUST be evicted after a successful commit.
+     */
+    async fn refresh_session(&self, request: Request<Empty>) -> Result<Response<Session>, Status> {
+        let key_hash = auth::credentials(&request)?;
+        let session =
+            fdb::with_transaction(
+                |tx| async move { SessionResource::refresh(&tx, &key_hash).await },
+            )
+            .await?;
+        self.session_key_cache.write().await.remove(&key_hash);
+        Ok(Response::new(Session::from(&session)))
     }
 
     async fn list_grants(
@@ -171,5 +198,22 @@ impl Dfs for API {
         _request: Request<SearchRequest>,
     ) -> Result<Response<SearchResults>, Status> {
         Err(status(ErrorCode::Unsupported))
+    }
+}
+
+/**
+ * @cc [owner:spolu,label:api;security] stored-session-response-key
+ * Responses built from stored session resources MUST leave session_key empty. Only CreateSession
+ * may return the newly generated bearer key.
+ */
+impl From<&SessionResource> for Session {
+    fn from(session: &SessionResource) -> Self {
+        Self {
+            id: session.session_id.clone(),
+            tenant_id: session.tenant_id.clone(),
+            subjects: session.subjects.iter().cloned().collect(),
+            session_key: String::new(),
+            expires_at: session.expires_at_ms,
+        }
     }
 }

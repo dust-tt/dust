@@ -1,12 +1,12 @@
 use std::{
     collections::BTreeSet,
     fmt,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use foundationdb::{
-    FdbBindingError, Transaction,
-    tuple::{pack, unpack},
+    FdbBindingError, RangeOption, Transaction,
+    tuple::{Subspace, pack, unpack},
 };
 
 use crate::{
@@ -26,6 +26,7 @@ const EXPIRY_FAMILY: &str = "session-expiry";
 const SUBJECT_MAX_BYTES: usize = 1_024;
 const MAX_SUBJECTS: usize = 512;
 const SESSION_TTL_MS: u64 = 3_600_000;
+const SESSION_ID_LENGTH: usize = 32;
 
 #[derive(Debug)]
 pub enum Error {
@@ -35,6 +36,9 @@ pub enum Error {
     ExpiryGeneration,
     AlreadyExists,
     KeyCollision,
+    InvalidId,
+    InvalidKey,
+    NotFound,
 }
 
 impl fmt::Display for Error {
@@ -46,6 +50,9 @@ impl fmt::Display for Error {
             Self::ExpiryGeneration => f.write_str("session expiry generation failed"),
             Self::AlreadyExists => f.write_str("session already exists"),
             Self::KeyCollision => f.write_str("session key hash already exists"),
+            Self::InvalidId => f.write_str("invalid session ID"),
+            Self::InvalidKey => f.write_str("invalid or expired session key"),
+            Self::NotFound => f.write_str("session not found"),
         }
     }
 }
@@ -91,13 +98,7 @@ impl SessionResource {
             return Err(Error::TooManySubjects);
         }
 
-        let now_ms: u64 = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| Error::ExpiryGeneration)?
-            .as_millis()
-            .try_into()
-            .map_err(|_| Error::ExpiryGeneration)?;
-        let expires_at_ms = now_ms
+        let expires_at_ms = now_ms()?
             .checked_add(SESSION_TTL_MS)
             .ok_or(Error::ExpiryGeneration)?;
         let session_key = auth::new_key().map_err(|_| Error::KeyGeneration)?;
@@ -151,11 +152,9 @@ impl SessionResource {
             &session_key,
             &pack(&(self.key_hash.as_slice(), self.expires_at_ms)),
         );
+        let subjects = Self::subject_subspace(&self.tenant_id, &self.session_id);
         for subject in &self.subjects {
-            tx.set(
-                &Self::subject_key(&self.tenant_id, &self.session_id, subject),
-                &[],
-            );
+            tx.set(&subjects.pack(subject), &[]);
         }
         tx.set(
             &Self::key_hash_key(&self.key_hash),
@@ -168,12 +167,161 @@ impl SessionResource {
         Ok(())
     }
 
+    /**
+     * @cc [owner:spolu,label:security;error-handling] session-key-authentication
+     * Authentication MUST verify the lookup's matching hash and unexpired session state in the same
+     * transaction. Missing entries, mismatched hashes, and expired sessions MUST return InvalidKey.
+     * Decoding failures MUST retain their storage error. Subjects MUST come from the stored session.
+     */
+    pub async fn authenticate(
+        tx: &Transaction,
+        key_hash: &KeyHash,
+    ) -> Result<Self, storage::Error<Error>> {
+        let value = tx
+            .get(&Self::key_hash_key(key_hash), false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .ok_or(Error::InvalidKey)?;
+        let (tenant_id, session_id): (String, String) =
+            unpack(&value).map_err(FdbBindingError::PackError)?;
+        let session = Self::fetch(tx, &tenant_id, &session_id)
+            .await?
+            .ok_or(Error::InvalidKey)?;
+        if session.key_hash != *key_hash {
+            return Err(Error::InvalidKey.into());
+        }
+        session.remaining_ttl()?;
+        Ok(session)
+    }
+
+    pub fn remaining_ttl(&self) -> Result<Duration, Error> {
+        let remaining_ms = self
+            .expires_at_ms
+            .checked_sub(now_ms()?)
+            .filter(|remaining_ms| *remaining_ms > 0)
+            .ok_or(Error::InvalidKey)?;
+        Ok(Duration::from_millis(remaining_ms))
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] session-refresh
+     * Refresh MUST authenticate against conflict-tracked FDB state and MUST NOT revive missing or
+     * expired sessions. It MUST atomically replace the expiry index and set expiry to the maximum
+     * of its current value and server time plus one hour, preserving identity, hash, and subjects.
+     */
+    pub async fn refresh(
+        tx: &Transaction,
+        key_hash: &KeyHash,
+    ) -> Result<Self, storage::Error<Error>> {
+        let mut session = Self::authenticate(tx, key_hash).await?;
+        let now_ms = now_ms()?;
+        if session.expires_at_ms <= now_ms {
+            return Err(Error::InvalidKey.into());
+        }
+        let expires_at_ms = session.expires_at_ms.max(
+            now_ms
+                .checked_add(SESSION_TTL_MS)
+                .ok_or(Error::ExpiryGeneration)?,
+        );
+        tx.clear(&Self::expiry_key(
+            session.expires_at_ms,
+            &session.tenant_id,
+            &session.session_id,
+        ));
+        tx.set(
+            &Self::session_key(&session.tenant_id, &session.session_id),
+            &pack(&(session.key_hash.as_slice(), expires_at_ms)),
+        );
+        tx.set(
+            &Self::expiry_key(expires_at_ms, &session.tenant_id, &session.session_id),
+            &[],
+        );
+        session.expires_at_ms = expires_at_ms;
+        Ok(session)
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] session-revocation
+     * Revocation MUST resolve the session only under the supplied authenticated tenant and return
+     * NotFound for unknown or cross-tenant IDs. It MUST atomically remove state, subjects, key
+     * lookup, and expiry index. Concurrent refresh MUST conflict and MUST NOT undo revocation.
+     */
+    pub async fn revoke(
+        tx: &Transaction,
+        tenant: &TenantResource,
+        session_id: &str,
+    ) -> Result<KeyHash, storage::Error<Error>> {
+        if session_id.is_empty() {
+            return Err(Error::InvalidId.into());
+        }
+        if session_id.len() != SESSION_ID_LENGTH {
+            return Err(Error::NotFound.into());
+        }
+        let tenant_id = &tenant.tenant_id;
+        let session = Self::fetch(tx, tenant_id, session_id)
+            .await?
+            .ok_or(Error::NotFound)?;
+        let (begin, end) = tenant_subspace(tenant_id)
+            .subspace(&(FAMILY, session_id))
+            .range();
+        tx.clear_range(&begin, &end);
+        tx.clear(&Self::key_hash_key(&session.key_hash));
+        tx.clear(&Self::expiry_key(
+            session.expires_at_ms,
+            tenant_id,
+            session_id,
+        ));
+        Ok(session.key_hash)
+    }
+
+    async fn fetch(
+        tx: &Transaction,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<Option<Self>, storage::Error<Error>> {
+        let Some(value) = tx
+            .get(&Self::session_key(tenant_id, session_id), false)
+            .await
+            .map_err(FdbBindingError::from)?
+        else {
+            return Ok(None);
+        };
+        let (key_hash, expires_at_ms): (Vec<u8>, u64) =
+            unpack(&value).map_err(FdbBindingError::PackError)?;
+        let key_hash = auth::key_hash_from_bytes(&key_hash)?;
+        let prefix = Self::subject_subspace(tenant_id, session_id);
+        let mut subjects = BTreeSet::new();
+        let mut range = Some(RangeOption::from(prefix.range()));
+        let mut iteration = 1;
+        while let Some(current) = range {
+            let batch = tx
+                .get_range(&current, iteration, false)
+                .await
+                .map_err(FdbBindingError::from)?;
+            range = current.next_range(&batch);
+            for entry in &batch {
+                let subject: String = prefix
+                    .unpack(entry.key())
+                    .map_err(FdbBindingError::PackError)?;
+                subjects.insert(subject);
+            }
+            iteration += 1;
+        }
+        Ok(Some(Self {
+            session_id: session_id.to_owned(),
+            tenant_id: tenant_id.to_owned(),
+            subjects,
+            key_hash,
+            expires_at_ms,
+        }))
+    }
+
     fn session_key(tenant_id: &str, session_id: &str) -> Vec<u8> {
         tenant_subspace(tenant_id).pack(&(FAMILY, session_id, "state"))
     }
 
-    fn subject_key(tenant_id: &str, session_id: &str, subject: &str) -> Vec<u8> {
-        tenant_subspace(tenant_id).pack(&(FAMILY, session_id, "subject", subject))
+    fn subject_subspace(tenant_id: &str, session_id: &str) -> Subspace {
+        tenant_subspace(tenant_id).subspace(&(FAMILY, session_id, "subject"))
     }
 
     fn key_hash_key(key_hash: &KeyHash) -> Vec<u8> {
@@ -188,4 +336,13 @@ impl SessionResource {
             session_id,
         ))
     }
+}
+
+fn now_ms() -> Result<u64, Error> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| Error::ExpiryGeneration)?
+        .as_millis()
+        .try_into()
+        .map_err(|_| Error::ExpiryGeneration)
 }
