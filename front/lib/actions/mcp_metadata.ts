@@ -815,12 +815,13 @@ async function connectWithTimeout(
   // answers the `notifications/initialized` POST stalls the connection until undici's 300s
   // headers timeout, far beyond the agent loop activity heartbeat timeout.
   const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(
-        new McpError(ErrorCode.RequestTimeout, "MCP connection timed out")
-      );
-      void mcpClient.close();
-    }, DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS);
+    timeoutId = setTimeout(
+      () =>
+        reject(
+          new McpError(ErrorCode.RequestTimeout, "MCP connection timed out")
+        ),
+      DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS
+    );
   });
 
   try {
@@ -831,6 +832,10 @@ async function connectWithTimeout(
       }),
       timeoutPromise,
     ]);
+  } catch (error) {
+    // Aborts the request still pending on timeout. On other failures, the SDK already closed it.
+    void mcpClient.close();
+    throw error;
   } finally {
     clearTimeout(timeoutId);
   }
