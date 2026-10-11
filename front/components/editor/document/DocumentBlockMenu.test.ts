@@ -1,18 +1,15 @@
 import { useDocumentBlockMenu } from "@app/components/editor/document/DocumentBlockMenu";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
-import type {
-  DocumentEmbeddableFile,
-  DocumentEmbeddableFiles,
-} from "@app/components/editor/document/types";
+import type { DocumentEmbeddableFiles } from "@app/components/editor/document/types";
+import { DocumentEmbeddableFileFactory } from "@app/tests/utils/DocumentEmbeddableFileFactory";
 import type { MessageDescriptor } from "@lingui/core";
 import { act, renderHook } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
-import type React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const FILES: DocumentEmbeddableFile[] = [
-  { kind: "image", path: "pod-p/charts/q3 chart.png", name: "q3 chart.png" },
-  { kind: "image", path: "pod-p/logo.png", name: "logo.png" },
+const FILES = [
+  DocumentEmbeddableFileFactory.image("pod-p/charts/q3 chart.png"),
+  DocumentEmbeddableFileFactory.image("pod-p/img_01.png", "Company logo"),
 ];
 
 const translate = (descriptor: MessageDescriptor) => descriptor.id ?? "";
@@ -26,12 +23,12 @@ afterEach(() => {
 
 const embeddable = (
   overrides: Partial<DocumentEmbeddableFiles> = {}
-): DocumentEmbeddableFiles => ({
-  files: FILES,
-  isLoading: false,
-  load: vi.fn(),
-  ...overrides,
-});
+): DocumentEmbeddableFiles =>
+  DocumentEmbeddableFileFactory.files({
+    files: FILES,
+    load: vi.fn(),
+    ...overrides,
+  });
 
 function renderMenu(files?: DocumentEmbeddableFiles) {
   editor = new Editor({
@@ -86,11 +83,20 @@ describe("useDocumentBlockMenu embeds", () => {
     expect(menu.result.current.isPicking).toBe(true);
     expect(names(menu.result.current.items)).toEqual([
       "q3 chart.png",
-      "logo.png",
+      "Company logo",
     ]);
 
     type("charts/");
     expect(names(menu.result.current.items)).toEqual(["q3 chart.png"]);
+
+    act(() => {
+      editor?.commands.deleteRange({
+        from: editor.state.selection.from - "charts/".length,
+        to: editor.state.selection.from,
+      });
+    });
+    type("company");
+    expect(names(menu.result.current.items)).toEqual(["Company logo"]);
   });
 
   it("embeds an image by its path, with its file name as alt text", () => {
@@ -112,7 +118,7 @@ describe("useDocumentBlockMenu embeds", () => {
         key: "Escape",
         preventDefault: () => {},
         stopPropagation: () => {},
-      } as React.KeyboardEvent<HTMLElement>)
+      })
     );
 
     expect(menu.result.current.isPicking).toBe(false);

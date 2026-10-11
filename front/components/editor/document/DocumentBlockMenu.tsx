@@ -35,6 +35,97 @@ const embedContent = (file: DocumentEmbeddableFile): JSONContent => ({
   attrs: { src: file.path, alt: file.name, title: null },
 });
 
+type BlockQuery = NonNullable<ReturnType<typeof getBlockQuery>>;
+type AtQuery = (
+  apply: (editor: Editor, query: BlockQuery) => void
+) => () => void;
+type Translate = ReturnType<typeof useLingui>["t"];
+type DocumentBlockMenuKeyEvent = Pick<
+  React.KeyboardEvent<HTMLElement>,
+  "key" | "preventDefault" | "stopPropagation"
+>;
+
+const NAVIGATION_KEYS = new Set(["ArrowDown", "ArrowUp", "Enter"]);
+
+const stepIndex = (index: number, key: string, length: number) =>
+  (index + (key === "ArrowDown" ? 1 : -1) + length) % length;
+
+const buildMenuItems = ({
+  t,
+  atQuery,
+  embeddableFiles,
+  onInserted,
+  onPick,
+}: {
+  t: Translate;
+  atQuery: AtQuery;
+  embeddableFiles: DocumentEmbeddableFiles | undefined;
+  onInserted: () => void;
+  onPick: (kind: DocumentEmbeddableFile["kind"], from: number) => void;
+}): DocumentBlockMenuItem[] => [
+  ...BLOCKS.map((block) => ({
+    key: block.keywords,
+    name: t(block.name),
+    description: t(block.description),
+    icon: block.icon,
+    keywords: block.keywords,
+    run: atQuery((editor, query) => {
+      block.apply(
+        editor.chain().focus().deleteRange({ from: query.from, to: query.to })
+      );
+      onInserted();
+    }),
+  })),
+  ...(embeddableFiles ? EMBEDS : []).map((embed) => ({
+    key: embed.kind,
+    name: t(embed.name),
+    description: t(embed.description),
+    icon: embed.icon,
+    keywords: embed.keywords,
+    run: atQuery((editor, query) => {
+      // Keep the `/`, so what follows it searches the files.
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from: query.from + 1, to: query.to })
+        .run();
+      onPick(embed.kind, query.from);
+    }),
+  })),
+];
+
+const buildFileItems = ({
+  embed,
+  files,
+  atQuery,
+  onInserted,
+}: {
+  embed: (typeof EMBEDS)[number];
+  files: DocumentEmbeddableFile[];
+  atQuery: AtQuery;
+  onInserted: () => void;
+}): DocumentBlockMenuItem[] =>
+  files
+    .filter((file) => file.kind === embed.kind)
+    .map((file) => ({
+      key: file.path,
+      name: file.name,
+      description: file.path,
+      keywords: file.path,
+      icon: embed.icon,
+      run: atQuery((editor, query) => {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt(
+            { from: query.from, to: query.to },
+            embedContent(file)
+          )
+          .run();
+        onInserted();
+      }),
+    }));
+
 /**
  * @cc [owner:tdraier,label:product] document-slash-embeds
  * The `/` menu MUST offer its embed entries, such as Image, only when the host gives embeddable
@@ -80,76 +171,33 @@ export const useDocumentBlockMenu = (
     setDismissedQuery(null);
     setHighlight({ queryKey: "", index: 0 });
   };
+  const atQuery: AtQuery = (apply) => () => {
+    if (editor && query) {
+      apply(editor, query);
+    }
+  };
 
-  const menuItems: DocumentBlockMenuItem[] = [
-    ...BLOCKS.map((block) => ({
-      key: block.keywords,
-      name: t(block.name),
-      description: t(block.description),
-      icon: block.icon,
-      keywords: block.keywords,
-      run: () => {
-        if (editor && query) {
-          block.apply(
-            editor
-              .chain()
-              .focus()
-              .deleteRange({ from: query.from, to: query.to })
-          );
-          reset();
-        }
-      },
-    })),
-    ...(embeddableFiles
-      ? EMBEDS.map((embed) => ({
-          key: embed.kind,
-          name: t(embed.name),
-          description: t(embed.description),
-          icon: embed.icon,
-          keywords: embed.keywords,
-          run: () => {
-            if (editor && query) {
-              // Keep the `/`, so what follows it searches the files.
-              editor
-                .chain()
-                .focus()
-                .deleteRange({ from: query.from + 1, to: query.to })
-                .run();
-              embeddableFiles.load();
-              setPicker({ kind: embed.kind, from: query.from });
-              setHighlight({ queryKey: "", index: 0 });
-            }
-          },
-        }))
-      : []),
-  ];
-
+  const menuItems = buildMenuItems({
+    t,
+    atQuery,
+    embeddableFiles,
+    onInserted: reset,
+    onPick: (kind, from) => {
+      embeddableFiles?.load();
+      setPicker({ kind, from });
+      setHighlight({ queryKey: "", index: 0 });
+    },
+  });
   const pickerEmbed = activePicker
     ? EMBEDS.find((embed) => embed.kind === activePicker.kind)
     : undefined;
-  const fileItems: DocumentBlockMenuItem[] = pickerEmbed
-    ? (embeddableFiles?.files ?? [])
-        .filter((file) => file.kind === pickerEmbed.kind)
-        .map((file) => ({
-          key: file.path,
-          name: file.name,
-          description: file.path,
-          keywords: file.path,
-          icon: pickerEmbed.icon,
-          run: () => {
-            if (editor && query) {
-              editor
-                .chain()
-                .focus()
-                .insertContentAt(
-                  { from: query.from, to: query.to },
-                  embedContent(file)
-                )
-                .run();
-              reset();
-            }
-          },
-        }))
+  const fileItems = pickerEmbed
+    ? buildFileItems({
+        embed: pickerEmbed,
+        files: embeddableFiles?.files ?? [],
+        atQuery,
+        onInserted: reset,
+      })
     : [];
 
   const items = (pickerEmbed ? fileItems : menuItems).filter((item) =>
@@ -168,39 +216,33 @@ export const useDocumentBlockMenu = (
 
   const highlightBlock = (index: number) => setHighlight({ queryKey, index });
 
-  const onKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+  const onKeyDown = (event: DocumentBlockMenuKeyEvent) => {
     if (!show) {
-      if (dismissedQuery !== null) {
-        setDismissedQuery(null);
-      }
-
+      setDismissedQuery(null);
       return;
     }
-
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
       setPicker(null);
       // Leaving the search dismisses the menu the remaining `/` would show.
       setDismissedQuery(keyOf("menu"));
-    } else if (
-      items.length > 0 &&
-      ["ArrowDown", "ArrowUp", "Enter"].includes(event.key)
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.key === "Enter") {
-        insertBlock(activeIndex);
-      } else {
-        const index =
-          (activeIndex + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
-          items.length;
-        highlightBlock(index);
-        document
-          .getElementById(`${menuId}-${index}`)
-          ?.scrollIntoView({ block: "nearest" });
-      }
+      return;
     }
+    if (items.length === 0 || !NAVIGATION_KEYS.has(event.key)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.key === "Enter") {
+      insertBlock(activeIndex);
+      return;
+    }
+    const index = stepIndex(activeIndex, event.key, items.length);
+    highlightBlock(index);
+    document
+      .getElementById(`${menuId}-${index}`)
+      ?.scrollIntoView({ block: "nearest" });
   };
 
   return {
