@@ -11,8 +11,8 @@ import {
 import {
   FRAME_EMBED_COMPONENT_NAME,
   FRAME_EMBED_DIRECTIVE_NAME,
+  parseFrameEmbedDirective,
 } from "@app/lib/markdown/frame_embed";
-import { isString } from "@app/types/shared/utils/general";
 import { cn, Markdown } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -32,34 +32,60 @@ interface FrameEmbedProps {
 interface MarkdownNode {
   type: string;
   name?: string;
-  attributes?: Record<string, string | null | undefined> | null;
+  value?: string;
+  position?: {
+    start: { column: number; offset?: number };
+    end: { offset?: number };
+  };
   data?: object;
   children?: MarkdownNode[];
 }
 
-function withFrameEmbeds<T extends MarkdownNode>(node: T): T {
-  const path = node.attributes?.path;
+// The renderer reads any `::frame` leaf directive; the editor reads only the exact line
+// `parseFrameEmbedDirective` accepts, at the start of a top-level line, so the preview re-reads the
+// directive's source the same way and shows anything else as the text the editor keeps.
+function withFrameEmbeds(
+  node: MarkdownNode,
+  source: string,
+  isTopLevel: boolean
+): MarkdownNode {
   if (
     node.type === "leafDirective" &&
-    node.name === FRAME_EMBED_DIRECTIVE_NAME &&
-    isString(path)
+    node.name === FRAME_EMBED_DIRECTIVE_NAME
   ) {
+    const start = node.position?.start;
+    const end = node.position?.end.offset;
+    if (start?.offset === undefined || end === undefined) {
+      return node;
+    }
+    const raw = source.slice(start.offset, end);
+    const parsed =
+      !isTopLevel || start.column === 1 ? parseFrameEmbedDirective(raw) : null;
+    if (!parsed) {
+      return { type: "paragraph", children: [{ type: "text", value: raw }] };
+    }
     return {
       ...node,
       data: {
         ...node.data,
         hName: FRAME_EMBED_COMPONENT_NAME,
-        hProperties: { path },
+        hProperties: { path: parsed.path },
       },
     };
   }
   return node.children
-    ? { ...node, children: node.children.map(withFrameEmbeds) }
+    ? {
+        ...node,
+        children: node.children.map((child) =>
+          withFrameEmbeds(child, source, node.type === "root")
+        ),
+      }
     : node;
 }
 
 function frameEmbedDirective() {
-  return (tree: MarkdownNode) => withFrameEmbeds(tree);
+  return (tree: MarkdownNode, file: { value: unknown }) =>
+    withFrameEmbeds(tree, String(file.value), false);
 }
 
 const MARKDOWN_PLUGINS = [frameEmbedDirective];

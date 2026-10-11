@@ -1444,4 +1444,29 @@ describe("Document Frame embeds", () => {
       frame
     );
   });
+
+  it("shows in the read-only preview only the Frames the editor reads", async () => {
+    const rejected = [
+      '::frame{path="pod-abc/b.tsx" title="B"}',
+      "::frame{path=pod-abc/c.tsx}",
+      '::frame[D]{path="pod-abc/d.tsx"}',
+      '   ::frame{path="pod-abc/e.tsx"}',
+    ];
+    render(
+      <Document
+        initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::frame{path="pod-abc/quoted.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+
+    await screen.findByTitle("Frame pod-abc/dashboards/revenue.tsx");
+    expect(screen.getByTitle("Frame pod-abc/quoted.tsx")).toBeDefined();
+    expect(screen.getAllByTitle(/^Frame /)).toHaveLength(2);
+    for (const line of rejected) {
+      expect(screen.getByText(line.trim())).toBeDefined();
+    }
+  });
 });
