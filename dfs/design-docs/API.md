@@ -278,6 +278,7 @@ key/value bytes are limited to 32 KiB.
 ### CreateTenant
 
 Creates a tenant with an empty root directory. Requires the **master key**.
+The root directory starts without a MIME type.
 
 **Arguments**
 
