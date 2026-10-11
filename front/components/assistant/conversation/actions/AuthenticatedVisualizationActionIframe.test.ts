@@ -1,5 +1,32 @@
-import { getAuthenticatedFrameUserIdentity } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
-import { describe, expect, it } from "vitest";
+import {
+  AuthenticatedVisualizationActionIframe,
+  getAuthenticatedFrameUserIdentity,
+} from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
+import type { VisualizationActionIframeProps } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { setupI18n } from "@lingui/core";
+import { I18nProvider } from "@lingui/react";
+import { cleanup, render } from "@testing-library/react";
+import { createElement } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  renderIframe: vi.fn<(props: VisualizationActionIframeProps) => void>(),
+}));
+
+vi.mock(
+  "@app/components/assistant/conversation/actions/VisualizationActionIframe",
+  () => ({
+    VisualizationActionIframe: (props: VisualizationActionIframeProps) => {
+      mocks.renderIframe(props);
+      return null;
+    },
+  })
+);
+
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 const authContext = {
   workspace: { role: "user" as const, sId: "w_current" },
@@ -62,5 +89,41 @@ describe("getAuthenticatedFrameUserIdentity", () => {
         "w_current"
       )
     ).toBeUndefined();
+  });
+});
+
+describe("AuthenticatedVisualizationActionIframe", () => {
+  function renderedLocale(activeLocale: string) {
+    const i18n = setupI18n({
+      locale: activeLocale,
+      messages: { [activeLocale]: {} },
+    });
+    render(
+      createElement(
+        I18nProvider,
+        { i18n },
+        createElement(AuthenticatedVisualizationActionIframe, {
+          agentConfigurationId: null,
+          conversationId: null,
+          visualization: {
+            code: "export default function Frame() {}",
+            complete: true,
+            identifier: "viz-fil_frame",
+          },
+          vizUrl: "https://viz.dust.tt",
+          workspaceId: "w_current",
+        })
+      )
+    );
+    return mocks.renderIframe.mock.lastCall?.[0].locale;
+  }
+
+  it("passes front's active locale to the Frame", () => {
+    expect(renderedLocale("fr-FR")).toBe("fr-FR");
+    expect(renderedLocale("en-GB")).toBe("en-GB");
+  });
+
+  it("falls back to the default locale for the pseudo-locale", () => {
+    expect(renderedLocale("pseudo")).toBe("en-US");
   });
 });
