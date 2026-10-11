@@ -158,10 +158,7 @@ impl Dfs for API {
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn lookup(
-        &self,
-        request: Request<LookupRequest>,
-    ) -> Result<Response<AttrBatch>, Status> {
+    async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
