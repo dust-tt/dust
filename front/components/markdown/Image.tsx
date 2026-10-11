@@ -16,6 +16,7 @@ import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Citation, CitationImage } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
+import { useState } from "react";
 import { visit } from "unist-util-visit";
 
 interface ImgProps {
@@ -31,6 +32,7 @@ interface PathImgProps {
 }
 
 function PathImg({ source, alt, owner }: PathImgProps) {
+  const [isImageLoading, setIsImageLoading] = useState(true);
   const fileName = getFileNameFromScopedPath(source.filePath);
   const contentType = getFilePreviewContentType({ fileName });
 
@@ -38,15 +40,29 @@ function PathImg({ source, alt, owner }: PathImgProps) {
     return <FilePreviewBlock path={source.filePath} title={alt || undefined} />;
   }
 
+  // The citation shows a spinner instead of its image while loading, so a hidden image tracks the
+  // load.
   return (
-    <PreviewableCitation
-      filePath={source.filePath}
-      contentType={contentType}
-      title={alt || fileName}
-      thumbnailUrl={source.url}
-      downloadUrl={getFilePathDownloadUrl(owner, source.filePath)}
-      containerClassName="aspect-square w-48"
-    />
+    <>
+      {isImageLoading && (
+        <img
+          src={source.url}
+          alt=""
+          hidden
+          onLoad={() => setIsImageLoading(false)}
+          onError={() => setIsImageLoading(false)}
+        />
+      )}
+      <PreviewableCitation
+        filePath={source.filePath}
+        contentType={contentType}
+        title={alt || fileName}
+        thumbnailUrl={source.url}
+        downloadUrl={getFilePathDownloadUrl(owner, source.filePath)}
+        isLoading={isImageLoading}
+        containerClassName="aspect-square w-48"
+      />
+    </>
   );
 }
 
@@ -65,7 +81,7 @@ function Img({ src, alt, owner }: ImgProps) {
   }
 
   if (source.kind === "file_path") {
-    return <PathImg source={source} alt={alt} owner={owner} />;
+    return <PathImg key={source.url} source={source} alt={alt} owner={owner} />;
   }
 
   const baseUrl = config.getApiBaseUrl();

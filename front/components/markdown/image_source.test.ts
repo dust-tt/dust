@@ -46,6 +46,8 @@ describe("resolveMarkdownImageSource", () => {
       "pod-p1/",
       "pod-p1/../../members",
       "pod-p1/%2E%2E/x.png",
+      "pod-p1/%2E%2E/fil_abcdefghij.png",
+      "https://example.com/../fil_abcdefghij",
       "pod-p1/%E0%A4%A.png",
       "fil_short",
       "fil_abcdefghij/fil_klmnopqrst",
