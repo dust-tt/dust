@@ -56,11 +56,12 @@ async fn resource_errors_abort_staged_writes() -> Result<()> {
     let subspace = tenant_subspace(&tenant_id);
     let key = subspace.pack(&"resource-error-test");
     let (tenant, _) = tenant::TenantResource::new(tenant_id.clone())?;
-    fdb::with_transaction(|tx| {
+    let created = fdb::with_transaction(|tx| {
         let tenant = &tenant;
         async move { tenant.create(&tx).await }
     })
     .await?;
+    assert!(created);
 
     let (duplicate, _) = tenant::TenantResource::new(tenant_id)?;
     let (pending, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
@@ -79,11 +80,12 @@ async fn resource_errors_abort_staged_writes() -> Result<()> {
     .await;
 
     // Reusing the original identity succeeds, as on a retry after an unknown commit result.
-    fdb::with_transaction(|tx| {
+    let created = fdb::with_transaction(|tx| {
         let tenant = &tenant;
         async move { tenant.create(&tx).await }
     })
     .await?;
+    assert!(!created);
 
     let lookup_key = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
     let duplicate_lookup_key =

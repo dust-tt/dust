@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+mod object;
 mod session;
 mod tenant;
 
@@ -14,6 +15,10 @@ fn resources() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        object::root_creation_persists_isolated_records().await?;
+        object::object_collisions_preserve_records_and_abort_staged_writes().await?;
+        object::invalid_xattr_names_fail_before_staging_writes().await?;
+        object::xattr_size_limit_counts_all_names_and_values().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::authentication_and_refresh_require_active_matching_state().await?;

@@ -281,6 +281,7 @@ may be absent or empty; nonempty values must be valid and at most 255 bytes. Xat
 ### CreateTenant
 
 Creates a tenant with an empty root directory. Requires the **master key**.
+The root directory starts without a MIME type.
 
 **Arguments**
 
