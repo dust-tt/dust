@@ -168,8 +168,10 @@ The master key is checked against its configured hash in memory. Successful tena
 cached by key hash across all connections served by the API instance for 30 seconds. Cache hits do
 not extend expiry; the next call after expiry authenticates against FDB again. A connection may carry
 several different credentials. Tenant keys currently have no rotation or revocation API; immediate
-invalidation would require clearing these caches across API instances. Session expiry and revocation
-still require current-state checks.
+invalidation would require clearing these caches across API instances. Session authentication is
+also cached for at most 30 seconds, capped by the session's absolute expiry. Cache hits do not extend
+either deadline. Revocation can take up to 30 seconds to prevent new admissions across all servers;
+already admitted RPCs may finish. Refresh always checks current session state in FDB.
 
 Every RPC request and response is limited to 4 MiB (4,194,304 bytes) of uncompressed protobuf
 payload, including encoding overhead. Response budgets include all results, attributes, metadata,
@@ -353,8 +355,10 @@ RevokeSessionRequest {
 }
 ```
 
-**Returns:** `Empty {}` after admitted mutations finish and the session is invalidated.
-Revocation prevents new admissions; subsequent calls using that session key fail authentication.
+**Returns:** `Empty {}` after the session and its indexes are removed from FDB.
+Servers may continue admitting RPCs through cached session state for up to 30 seconds after
+revocation commits. After that window, calls using the session key fail authentication. Already
+admitted RPCs may finish.
 Unknown sessions and sessions belonging to another tenant return `NOT_FOUND`. A concurrent refresh
 cannot undo revocation.
 

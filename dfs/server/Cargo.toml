@@ -17,6 +17,7 @@ tonic = "0.14"
 tonic-health = "0.14"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v7"] }
 
 [dev-dependencies]
 prost = "0.14"

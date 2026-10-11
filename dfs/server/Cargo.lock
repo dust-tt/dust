@@ -345,6 +345,7 @@ dependencies = [
  "tonic-health",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]

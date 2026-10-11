@@ -206,8 +206,9 @@ message CreateSessionRequest {
 // @cc [owner:spolu,label:api;security] dfs-session-revocation
 // The tenant MUST be derived from the authenticated tenant key. The session ID MUST be nonempty
 // and identify a session in that tenant. Unknown sessions and sessions in another tenant MUST
-// return NOT_FOUND. Success MUST prevent new admissions, drain admitted mutations, and invalidate
-// the session key. Concurrent refresh MUST NOT undo revocation.
+// return NOT_FOUND. Success MUST remove the session from FDB. Cached authentication MUST stop new
+// admissions within 30 seconds of revocation; already admitted RPCs MAY finish. Concurrent refresh
+// MUST NOT undo revocation.
 message RevokeSessionRequest {
   required string session_id = 1;
 }
