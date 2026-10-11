@@ -793,7 +793,7 @@ describe("comment threads in a live session", () => {
   }
 
   it("serves the threads, applies a command for every connection and checkpoints it", async () => {
-    const { writer, url } = await start();
+    const { writer, hocuspocus, url } = await start();
     const { channel: mine } = await join(url, writer);
     const { channel: theirs } = await join(url, writer);
     expect(mine.getThreads()).toEqual([THREAD]);
@@ -811,12 +811,11 @@ describe("comment threads in a live session", () => {
     await vi.waitFor(() =>
       expect(theirs.getThreads()).toEqual([THREAD, CREATED])
     );
-    await vi.waitFor(
-      () =>
-        expect(
-          vi.mocked(checkpointLiveDocument).mock.calls.at(-1)?.[1].comments
-        ).toEqual([THREAD, CREATED]),
-      { timeout: 5_000 }
+    hocuspocus.flushPendingStores();
+    await vi.waitFor(() =>
+      expect(
+        vi.mocked(checkpointLiveDocument).mock.calls.at(-1)?.[1].comments
+      ).toEqual([THREAD, CREATED])
     );
 
     const refused = await theirs.send({
@@ -866,15 +865,13 @@ describe("comment threads in a live session", () => {
     });
     expect(added.isOk()).toBe(true);
 
-    await vi.waitFor(
-      () => {
-        const [through, live] =
-          vi.mocked(checkpointLiveDocument).mock.calls.at(-1) ?? [];
-        expect(live?.comments).toEqual([THREAD, CREATED]);
-        expect(through).toBe(editor);
-      },
-      { timeout: 5_000 }
-    );
+    hocuspocus.flushPendingStores();
+    await vi.waitFor(() => {
+      const [through, live] =
+        vi.mocked(checkpointLiveDocument).mock.calls.at(-1) ?? [];
+      expect(live?.comments).toEqual([THREAD, CREATED]);
+      expect(through).toBe(editor);
+    });
     await editing.disconnect();
   }, 15_000);
 
