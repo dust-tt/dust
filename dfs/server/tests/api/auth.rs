@@ -41,6 +41,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         )?)
         .await?
         .into_inner();
+    let missing_object_id = ObjectId::new_v7();
     let tenant_authorization = format!("Bearer {}", tenant.tenant_key);
     let (other, other_key) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let other_authorization = format!("Bearer {other_key}");
@@ -49,7 +50,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     let error = client
         .list_grants(with_authorization(
             ListGrantsRequest {
-                object_id: tenant.root_id,
+                object_id: missing_object_id,
                 after: None,
                 limit: 1,
             },
@@ -60,16 +61,16 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         .context("master key must not authorize a tenant call")?;
     assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
 
-    // Each tenant-key RPC must authenticate before returning its current stub response.
+    // Each tenant-key RPC must authenticate before looking up the requested object.
     for (authorization, expected) in [
-        (&tenant_authorization, ErrorCode::Unsupported),
+        (&tenant_authorization, ErrorCode::NotFound),
         (&other_authorization, ErrorCode::Unauthenticated),
     ] {
         let errors = [
             client
                 .list_grants(with_authorization(
                     ListGrantsRequest {
-                        object_id: tenant.root_id,
+                        object_id: missing_object_id,
                         after: None,
                         limit: 1,
                     },
@@ -77,18 +78,18 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
                 )?)
                 .await
                 .err()
-                .context("list grants is not implemented")?,
+                .context("missing object must fail")?,
             client
                 .update_grants(with_authorization(
                     UpdateGrantsRequest {
-                        object_id: tenant.root_id,
+                        object_id: missing_object_id,
                         changes: vec![],
                     },
                     authorization,
                 )?)
                 .await
                 .err()
-                .context("update grants is not implemented")?,
+                .context("missing object must fail")?,
         ];
         for error in errors {
             assert_eq!(error_code(&error)?, expected);
@@ -104,7 +105,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     let error = client
         .list_grants(with_authorization(
             ListGrantsRequest {
-                object_id: tenant.root_id,
+                object_id: missing_object_id,
                 after: None,
                 limit: 1,
             },
@@ -112,8 +113,8 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         )?)
         .await
         .err()
-        .context("list grants is not implemented")?;
-    assert_eq!(error_code(&error)?, ErrorCode::Unsupported);
+        .context("missing object must fail")?;
+    assert_eq!(error_code(&error)?, ErrorCode::NotFound);
 
     // Cached tenant authentication must not authorize tenant creation.
     for authorization in [&tenant_authorization, &other_authorization] {
@@ -129,7 +130,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     }
     let error = client
         .list_grants(ListGrantsRequest {
-            object_id: tenant.root_id,
+            object_id: missing_object_id,
             after: None,
             limit: 1,
         })
@@ -163,7 +164,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
         let cached = client
             .list_grants(with_authorization(
                 ListGrantsRequest {
-                    object_id: tenant.root_id,
+                    object_id: missing_object_id,
                     after: None,
                     limit: 1,
                 },
@@ -171,12 +172,12 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
             )?)
             .await
             .err()
-            .context("list grants is not implemented")?;
-        assert_eq!(error_code(&cached)?, ErrorCode::Unsupported);
+            .context("missing object must fail")?;
+        assert_eq!(error_code(&cached)?, ErrorCode::NotFound);
         let shared = reconnected
             .list_grants(with_authorization(
                 ListGrantsRequest {
-                    object_id: tenant.root_id,
+                    object_id: missing_object_id,
                     after: None,
                     limit: 1,
                 },
@@ -184,12 +185,12 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
             )?)
             .await
             .err()
-            .context("list grants is not implemented")?;
-        assert_eq!(error_code(&shared)?, ErrorCode::Unsupported);
+            .context("missing object must fail")?;
+        assert_eq!(error_code(&shared)?, ErrorCode::NotFound);
         let fresh = fresh_instance
             .list_grants(with_authorization(
                 ListGrantsRequest {
-                    object_id: tenant.root_id,
+                    object_id: missing_object_id,
                     after: None,
                     limit: 1,
                 },
@@ -202,13 +203,13 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
     }
 
     // Hits after 16 seconds must not extend the 30-second expiry: both keys fail after 32 seconds.
-    for expected in [ErrorCode::Unsupported, ErrorCode::Unauthenticated] {
+    for expected in [ErrorCode::NotFound, ErrorCode::Unauthenticated] {
         sleep(CACHE_EXPIRY_TEST_INTERVAL).await;
         for authorization in [&tenant_authorization, &other_authorization] {
             let error = reconnected
                 .list_grants(with_authorization(
                     ListGrantsRequest {
-                        object_id: tenant.root_id,
+                        object_id: missing_object_id,
                         after: None,
                         limit: 1,
                     },
@@ -216,7 +217,7 @@ pub(crate) async fn tenant_key_cache_is_shared_across_connections_and_expires() 
                 )?)
                 .await
                 .err()
-                .context("expected an authentication error or unimplemented grant listing")?;
+                .context("expected an authentication or missing object error")?;
             assert_eq!(error_code(&error)?, expected);
         }
     }

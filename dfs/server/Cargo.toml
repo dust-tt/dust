@@ -6,6 +6,7 @@ publish = false
 
 [dependencies]
 anyhow = "1"
+base64 = "0.22"
 clap = { version = "4", features = ["derive", "env"] }
 dfs-protocol = { path = "../protocol" }
 foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
