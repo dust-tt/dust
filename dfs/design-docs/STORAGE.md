@@ -1,9 +1,9 @@
 # dfs:// storage proposal
 
 FoundationDB stores tenants, sessions, objects, directory entries, contents, and grants.
-[API.md](API.md) defines observable behavior. Initially, authorization reads session state, tree
-structure, and grants from FDB. Search and a full in-memory authorization index are future work
-(depending on approach chosen for search).
+[API.md](API.md) defines observable behavior. Session authentication uses a bounded cache backed by
+FDB; object authorization reads tree structure and grants from FDB. Search and a full in-memory
+authorization index are future work (depending on approach chosen for search).
 
 ## Key layout
 
@@ -23,10 +23,10 @@ without NUL; a slash in an ID remains part of that tuple component and cannot in
 component.
 
 The authenticated tenant key or session determines `tenantId`. Object IDs are stored as 16-byte
-UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and session expiry timestamps
+UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and the session expiry index
 use big-endian `u64` encoding; expiry timestamps are Unix milliseconds. Variable-length components
 need unambiguous boundaries and must preserve ordering where required for pagination. Apart from the
-tenant record below, family tags and value encodings remain proposals.
+tenant and session records below, family tags and value encodings remain proposals.
 
 UUIDv7 tends to cluster newly created objects within each family or reverse grant prefix. Directory
 entries cluster by parent and sort by name; blocks cluster by file and sort by offset. Subtrees are
@@ -65,28 +65,40 @@ one hour. Its root is resolved from tenant state.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenant/<tenantId>/session/<sessionId>/state` | Credential hash and `expires_at`. | Authoritative session state; supports tenant-scoped revocation by session ID. |
-| `dfs-v1-{env}/tenant/<tenantId>/session/<sessionId>/subject/<subject>` | Membership marker. | Stores the exact, deduplicated subject set under the session prefix. |
-| `dfs-v1-{env}/session-key/<keyHash>` | Tenant ID and session ID. | Resolves an opaque session key before the tenant is known. |
-| `dfs-v1-{env}/session-expiry/<expiresAtMs>/<tenantId>/<sessionId>` | Expiry marker. | Finds expired sessions across tenants in bounded batches. |
+| `dfs-v1-{env}/tenant/<tenantId>/session/<sessionId>/state` | FDB tuple `(key_hash_bytes, expires_at_ms)`. | Authoritative session state; supports tenant-scoped revocation by session ID. |
+| `dfs-v1-{env}/tenant/<tenantId>/session/<sessionId>/subject/<subject>` | Empty value. | Stores the exact, deduplicated subject set under the session prefix. |
+| `dfs-v1-{env}/session-key/<keyHash>` | FDB tuple `(tenant_id, session_id)` of strings. | Resolves an opaque session key before the tenant is known. |
+| `dfs-v1-{env}/session-expiry/<expiresAtMs>/<tenantId>/<sessionId>` | Empty value. | Finds expired sessions across tenants in bounded batches. |
+
+Session IDs are UUIDv7 strings in lowercase 32-digit hex. Key components use the FDB tuple layer;
+the expiry index encodes its timestamp as an eight-byte big-endian byte string to preserve order.
+`SessionResource::new` validates and deduplicates subjects and generates the ID, bearer key, and
+one-hour expiry before entering a retrying transaction. `create` writes all records atomically.
 
 `keyHash` is SHA-256 of the bearer key. Plaintext keys are returned only by `CreateSession` and are
 never persisted. The global lookup only locates the tenant-scoped record; authentication verifies
 the matching hash and unexpired state in the same transaction before using its tenant and subjects.
+Successful session authentication is cached by key hash across an API instance's connections for at
+most 30 seconds, capped by the session's absolute expiry. Cache hits do not extend this deadline.
+The cache deadline is measured from the start of the FDB lookup, so an in-flight lookup cannot
+extend the revocation window. Expired cache entries are periodically swept, as for tenant keys.
 Subjects have separate keys because the allowed set can exceed FDB's
 [100,000-byte value limit](https://apple.github.io/foundationdb/known-limitations.html).
 
 Creation writes the state, subjects, credential lookup, and expiry entry atomically, checking that
-the session ID and credential hash are unused. `RefreshSession` reads an existing active session and
+the session ID and credential hash are unused. An existing session ID with the same hash succeeds
+without rewriting state or indexes, allowing a retry to recognize its own commit. A different hash
+returns `AlreadyExists`; an occupied credential lookup for a new session returns `KeyCollision`.
+`RefreshSession` reads an existing active session directly from FDB, bypassing cached state, and
 sets expiry to the maximum of its current value and server time plus one hour, replacing the expiry
 entry in the same transaction. It preserves the session ID, subjects, and credential hash.
 
 `RevokeSession` derives the tenant from the authenticated tenant key and resolves the session ID
 under that tenant. An unknown or cross-tenant ID returns `NOT_FOUND`. Revocation atomically clears
 the session prefix, credential lookup, and expiry entry. Refresh uses conflict-tracked reads, so
-it cannot recreate a revoked session. Mutations likewise read session state with conflict tracking
-in the transaction that performs their writes, preventing commits authorized by a revoked session.
-Coordination to drain admitted RPCs remains part of the server lifecycle design.
+it cannot recreate a revoked session. Cached sessions may authorize new RPCs for up to 30 seconds
+after revocation commits; already admitted RPCs may finish. Mutations do not re-read session state
+on a cache hit, but still check object permissions in their transaction.
 
 Expiry cleanup reads bounded batches from the global expiry index and rechecks the current session
 state before deleting it and its indexes in one transaction. An obsolete expiry entry cannot delete

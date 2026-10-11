@@ -43,6 +43,12 @@ impl<E: std::error::Error + 'static> std::error::Error for Error<E> {
     }
 }
 
+impl<E> From<InvalidKeyHash> for Error<E> {
+    fn from(error: InvalidKeyHash) -> Self {
+        Self::InvalidKeyHash(error)
+    }
+}
+
 impl<E: std::error::Error + Send + Sync + 'static> From<Error<E>> for FdbBindingError {
     fn from(error: Error<E>) -> Self {
         match error {

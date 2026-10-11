@@ -196,7 +196,8 @@ export class DfsClient {
 
   /**
    * Requires the tenant key. Invalidates the session `sessionId` (the `id` returned by
-   * `createSession`, not its key) once its admitted mutations finish.
+   * `createSession`, not its key). Cached sessions may admit RPCs for up to 30 seconds after
+   * revocation; already admitted RPCs may finish.
    */
   async revokeSession({
     sessionId,

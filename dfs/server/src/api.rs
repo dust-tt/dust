@@ -15,7 +15,10 @@ use tonic::{Request, Response, Status};
 
 use crate::{
     auth::KeyHash,
-    storage::{fdb, resources::tenant::TenantResource},
+    storage::{
+        fdb,
+        resources::{session::SessionResource, tenant::TenantResource},
+    },
 };
 
 pub(crate) mod auth;
@@ -47,10 +50,12 @@ impl Dfs for API {
         if !root_grants.is_empty() {
             return Err(status(ErrorCode::InvalidInput));
         }
-        // Call `new` before the transaction because FDB may retry its body. Keeping the same key and
-        // root across attempts lets us recognize our own commit if its outcome was unknown.
+        // Call `new` before the transaction because FDB may retry its body. Keeping the same key
+        // and root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
         fdb::with_transaction(|tx| {
+            // TODO: Once object resources exist, create the tenant's root object and assign root
+            // grants in the tenant creation transaction.
             let tenant = &tenant;
             async move { tenant.create(&tx).await }
         })
@@ -62,12 +67,31 @@ impl Dfs for API {
         }))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] create-session-authentication
+     * CreateSession MUST authenticate a tenant key before validating or persisting a session.
+     * The session's tenant MUST come exclusively from that authentication.
+     */
     async fn create_session(
         &self,
         request: Request<CreateSessionRequest>,
     ) -> Result<Response<Session>, Status> {
-        self.require_tenant(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let tenant = self.require_tenant(&request).await?;
+        let CreateSessionRequest { subjects } = request.into_inner();
+        // Construct before the transaction so retries retain the session's ID, key, and expiry.
+        let (session, session_key) = SessionResource::new(&tenant, subjects)?;
+        fdb::with_transaction(|tx| {
+            let session = &session;
+            async move { session.create(&tx).await }
+        })
+        .await?;
+        Ok(Response::new(Session {
+            id: session.session_id,
+            tenant_id: session.tenant_id,
+            subjects: session.subjects.into_iter().collect(),
+            session_key,
+            expires_at: session.expires_at_ms,
+        }))
     }
 
     async fn current_session(&self, _request: Request<Empty>) -> Result<Response<Session>, Status> {
