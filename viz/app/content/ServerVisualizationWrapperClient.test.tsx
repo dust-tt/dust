@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { cleanup, render } from "@testing-library/react";
+import { getVizCatalog } from "@viz/app/lib/i18n/catalogs";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -58,6 +59,7 @@ describe("shared-view file access", () => {
           allowedOrigins={["https://app.dust.tt"]}
           isAuthenticatedMember={isAuthenticatedMember}
           isPdfMode={isPdfMode}
+          catalog={getVizCatalog("en-US")}
           prefetchedCode="Published code"
           prefetchedFiles={[
             {

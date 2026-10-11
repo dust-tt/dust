@@ -11,6 +11,8 @@ import {
 } from "@viz/app/lib/data-apis/cache-data-api";
 import { HybridDataAPI } from "@viz/app/lib/data-apis/hybrid-data-api";
 import { RPCDataAPI } from "@viz/app/lib/data-apis/rpc-data-api";
+import type { VizCatalog } from "@viz/app/lib/i18n/catalogs";
+import { VizI18nProvider } from "@viz/app/lib/i18n/VizI18nProvider";
 import type { VisualizationConfig } from "@viz/app/lib/visualization-api";
 import { useMemo } from "react";
 
@@ -24,6 +26,7 @@ interface ServerVisualizationWrapperClientProps {
   isAuthenticatedMember?: boolean;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  catalog: VizCatalog;
   prefetchedCode?: string;
   prefetchedFiles?: PreFetchedFile[];
 }
@@ -51,6 +54,7 @@ export function ServerVisualizationWrapperClient({
   isAuthenticatedMember = false,
   isFullHeight = false,
   isPdfMode = false,
+  catalog,
   prefetchedCode,
   prefetchedFiles = [],
 }: ServerVisualizationWrapperClientProps) {
@@ -84,8 +88,10 @@ export function ServerVisualizationWrapperClient({
   };
 
   return (
-    <NavigationProvider trustedDomains={TRUSTED_NAVIGATION_DOMAINS}>
-      <VisualizationWrapperWithErrorBoundary config={config} />
-    </NavigationProvider>
+    <VizI18nProvider catalog={catalog}>
+      <NavigationProvider trustedDomains={TRUSTED_NAVIGATION_DOMAINS}>
+        <VisualizationWrapperWithErrorBoundary config={config} />
+      </NavigationProvider>
+    </VizI18nProvider>
   );
 }
