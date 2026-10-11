@@ -6,6 +6,62 @@ use crate::storage::{
     resources::{object, session, tenant},
 };
 
+// A transaction that calls several resources needs one error type. API closures use
+// `storage::Error<Status>` so each resource call can use `?` despite returning a different error enum.
+//
+// Conversions into `storage::Error<Status>` preserve `Transaction` errors unchanged: `Database::run`
+// must see the original FDB failure to decide whether to retry. Other errors become `Status` and are
+// carried in `storage::Error::Resource`. The runner boxes them through `FdbBindingError::CustomError`,
+// aborting without committing or retrying. The handler's outer `.await?` returns the recovered status.
+//
+// This replaces the original resource or decoding error variant with its API status inside the
+// transaction closure. Resource modules still return typed errors and remain independent of tonic.
+
+impl From<object::Error> for Status {
+    fn from(error: object::Error) -> Self {
+        match error {
+            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            object::Error::TimestampGeneration | object::Error::MissingMetadata => {
+                tracing::error!(%error, "object creation failed");
+                status(ErrorCode::Internal)
+            }
+        }
+    }
+}
+
+/**
+ * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
+ * Errors from different resources in one transaction MUST retain their API status mapping.
+ * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
+ */
+impl From<storage::Error<object::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<object::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
+    }
+}
+
+impl From<session::Error> for Status {
+    fn from(error: session::Error) -> Self {
+        match error {
+            session::Error::InvalidId
+            | session::Error::InvalidSubject
+            | session::Error::TooManySubjects => status(ErrorCode::InvalidInput),
+            session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
+            session::Error::NotFound => status(ErrorCode::NotFound),
+            session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            session::Error::KeyGeneration
+            | session::Error::ExpiryGeneration
+            | session::Error::KeyCollision => {
+                tracing::error!(%error, "session creation failed");
+                status(ErrorCode::Internal)
+            }
+        }
+    }
+}
+
 impl From<tenant::Error> for Status {
     fn from(error: tenant::Error) -> Self {
         match error {
@@ -34,51 +90,6 @@ impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
         match error {
             storage::Error::Transaction(error) => Self::Transaction(error),
             error => Self::Resource(error.into()),
-        }
-    }
-}
-
-/**
- * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
- * Errors from different resources in one transaction MUST retain their API status mapping.
- * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
- */
-impl From<storage::Error<object::Error>> for storage::Error<Status> {
-    fn from(error: storage::Error<object::Error>) -> Self {
-        match error {
-            storage::Error::Transaction(error) => Self::Transaction(error),
-            error => Self::Resource(error.into()),
-        }
-    }
-}
-
-impl From<object::Error> for Status {
-    fn from(error: object::Error) -> Self {
-        match error {
-            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            object::Error::TimestampGeneration | object::Error::MissingMetadata => {
-                tracing::error!(%error, "object creation failed");
-                status(ErrorCode::Internal)
-            }
-        }
-    }
-}
-
-impl From<session::Error> for Status {
-    fn from(error: session::Error) -> Self {
-        match error {
-            session::Error::InvalidId
-            | session::Error::InvalidSubject
-            | session::Error::TooManySubjects => status(ErrorCode::InvalidInput),
-            session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
-            session::Error::NotFound => status(ErrorCode::NotFound),
-            session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            session::Error::KeyGeneration
-            | session::Error::ExpiryGeneration
-            | session::Error::KeyCollision => {
-                tracing::error!(%error, "session creation failed");
-                status(ErrorCode::Internal)
-            }
         }
     }
 }
