@@ -110,6 +110,7 @@
     "@tiptap/extension-emoji": "^3.31.3",
     "@tiptap/extension-heading": "^3.31.3",
     "@tiptap/extension-link": "^3.31.3",
+    "@tiptap/extension-list": "^3.31.3",
     "@tiptap/extension-mention": "^3.31.3",
     "@tiptap/extension-unique-id": "^3.31.3",
     "@tiptap/extensions": "^3.31.3",
