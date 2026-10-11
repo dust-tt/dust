@@ -92,7 +92,7 @@ index entries are also removed. Authentication rejects expired sessions independ
 | Key | Value | Rationale |
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
-| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and MIME type. | Keeps optional metadata out of ordinary traversal. |
+| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and optional MIME type. | Keeps optional metadata out of ordinary traversal. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
@@ -102,6 +102,10 @@ bytes; a missing key denotes an absent xattr. Extended metadata reads combine th
 xattr entries from the same transaction. Xattr changes commit with `attr_version` and preserve the
 32 KiB limit on combined xattr name/value bytes. Object deletion clears both the base metadata entry
 and all xattr entries.
+
+The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
+A create or update request with `mime_type: ""` clears it by storing `None`, and subsequent metadata
+reads omit the field.
 
 The stored parent and basename support inheritance and namespace maintenance. They change
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
