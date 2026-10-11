@@ -16,7 +16,8 @@ import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
-import { describe, expect, it } from "vitest";
+import { MarkdownManager } from "@tiptap/markdown";
+import { describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
 const THREAD = `:::annotations\n::comment{id=c1 status=resolved}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nKept as is.\n:::\n`;
@@ -348,6 +349,15 @@ describe("saveDfm", () => {
     "- a\n- b\n\n1. c\n",
   ])("round-trips ordered lists: %j", (source) => {
     expect(roundTrip(source)).toBe(source);
+  });
+
+  it("parses the tokens it checked instead of lexing the Markdown again", () => {
+    const parse = vi.spyOn(MarkdownManager.prototype, "parse");
+
+    roundTrip(`# Title\n\nSome **bold** text.\n\n${THREAD}`);
+
+    expect(parse).not.toHaveBeenCalled();
+    parse.mockRestore();
   });
 
   it("saves underlined text and opens it underlined again", () => {

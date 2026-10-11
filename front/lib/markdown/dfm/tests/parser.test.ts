@@ -189,14 +189,14 @@ describe("structure", () => {
 describe("codeRanges", () => {
   it("parses a long text once while other texts are asked for in between", () => {
     const body = longBody("memoized");
+    parser.mockClear();
     const ranges = codeRanges(body);
     codeRanges(`${body}\n\nzz`);
     codeRanges("A comment message with `code`.");
     codeRanges(`${body}\n\n:::annotations\n:::`);
-    parser.mockClear();
 
     expect(codeRanges(body)).toBe(ranges);
-    expect(parser).not.toHaveBeenCalled();
+    expect(parser.mock.calls.filter(([text]) => text === body)).toHaveLength(1);
   });
 
   it("parses the body of a document serializeDfm writes once", () => {

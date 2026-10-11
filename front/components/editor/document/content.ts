@@ -40,18 +40,27 @@ const documentMarkdown = new MarkdownManager({
 type MarkdownLexer = InstanceType<typeof documentMarkdown.instance.Lexer>;
 type MarkdownTokens = ReturnType<MarkdownLexer["lex"]>;
 
-// MarkdownManager.parse lexes the Markdown, then parses the tokens with that lexer active, a
-// step it keeps private. Doing both steps here parses the tokens the support check walked
-// instead of lexing every document twice.
-const tokenParser = documentMarkdown as unknown as {
+interface TokenParser {
   activeParseLexer: MarkdownLexer | null;
   parseTokens(
     tokens: MarkdownTokens,
     parseImplicitEmptyParagraphs: boolean
   ): JSONContent[];
-};
+}
+
+const isTokenParser = (manager: object): manager is TokenParser =>
+  "activeParseLexer" in manager &&
+  "parseTokens" in manager &&
+  typeof manager.parseTokens === "function";
+
+// MarkdownManager.parse lexes the Markdown, then parses the tokens with that lexer active, a
+// step it keeps private. Doing both steps here parses the tokens the support check walked
+// instead of lexing every document twice; a TipTap without that step parses through `parse`.
+const markdownManager: object = documentMarkdown;
+const tokenParser = isTokenParser(markdownManager) ? markdownManager : null;
 
 interface LexedMarkdown {
+  markdown: string;
   lexer: MarkdownLexer;
   tokens: MarkdownTokens;
 }
@@ -60,7 +69,7 @@ const lexMarkdown = (markdown: string): LexedMarkdown => {
   const lexer = new documentMarkdown.instance.Lexer(
     documentMarkdown.instance.defaults
   );
-  return { lexer, tokens: lexer.lex(markdown) };
+  return { markdown, lexer, tokens: lexer.lex(markdown) };
 };
 
 /**
@@ -269,20 +278,27 @@ const framesOpeningListItemsAsText = (node: JSONContent): JSONContent => {
   return { ...node, content };
 };
 
-const parseMarkdown = ({ lexer, tokens }: LexedMarkdown): JSONContent => {
+const parseMarkdownTokens = ({
+  markdown,
+  lexer,
+  tokens,
+}: LexedMarkdown): JSONContent => {
+  if (!tokenParser) {
+    return documentMarkdown.parse(markdown);
+  }
   const previousLexer = tokenParser.activeParseLexer;
   tokenParser.activeParseLexer = lexer;
   try {
-    return framesOpeningListItemsAsText(
-      imagesInParagraphs({
-        type: "doc",
-        content: tokenParser.parseTokens(tokens, true),
-      })
-    );
+    return { type: "doc", content: tokenParser.parseTokens(tokens, true) };
   } finally {
     tokenParser.activeParseLexer = previousLexer;
   }
 };
+
+const parseMarkdown = (markdown: LexedMarkdown): JSONContent =>
+  framesOpeningListItemsAsText(
+    imagesInParagraphs(parseMarkdownTokens(markdown))
+  );
 
 const withoutEdgeSpaces = (inlines: JSONContent[]): JSONContent[] => {
   const trimmed = [...inlines];
