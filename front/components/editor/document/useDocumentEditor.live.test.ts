@@ -11,6 +11,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -439,7 +440,7 @@ describe("useDocumentEditor in a live session", () => {
       t: (descriptor) => descriptor.id ?? "",
       document,
       awareness: null,
-      user: { id: "daph", name: "Daph", color: "#0ea5e9" },
+      user: LiveUserFactory.build(),
       comments: fakeCommentChannel().channel,
       resolveImageSource: () => null,
     });

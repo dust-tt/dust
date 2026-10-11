@@ -259,6 +259,41 @@ describe("useDocumentEditor", () => {
       expect(result.current.dirty).toBe(false);
     });
 
+    it("does not autosave after unmount once the save in flight settles", async () => {
+      let release: (result: DocumentSaveResult) => void = () => undefined;
+      const onSave = vi
+        .fn()
+        .mockReturnValueOnce(
+          new Promise<DocumentSaveResult>((resolve) => {
+            release = resolve;
+          })
+        )
+        .mockResolvedValue(new Ok(undefined));
+      const { result, unmount } = renderEditor(onSave, undefined, {
+        autosaveDebounceMs: 3_000,
+      });
+      const editor = await mountedEditor(result);
+      vi.useFakeTimers();
+
+      act(() => {
+        editor.commands.insertContent("First ");
+      });
+      let saved: Promise<void> = Promise.resolve();
+      act(() => {
+        saved = result.current.save();
+      });
+      act(() => {
+        editor.commands.insertContent("Second ");
+      });
+      unmount();
+      release(new Ok(undefined));
+      await saved;
+      await vi.advanceTimersByTimeAsync(3_000);
+
+      expect(onSave).toHaveBeenCalledTimes(2);
+      expect(onSave.mock.calls[1][0]).toContain("Second");
+    });
+
     it("re-renders only when dirty flips, and never reapplies the editor's options", async () => {
       let renders = 0;
       const { result, rerender } = renderEditor(

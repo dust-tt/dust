@@ -167,6 +167,7 @@ export const useDocumentEditor = ({
     undefined
   );
   const saveRef = useRef<() => Promise<void>>(async () => undefined);
+  const unmountedRef = useRef(false);
 
   useLayoutEffect(() => {
     persistenceRef.current = {
@@ -195,9 +196,10 @@ export const useDocumentEditor = ({
 
   const scheduleAutosave = useCallback(() => {
     clearTimeout(autosaveTimeoutRef.current);
-    const { editable: canSave, autosaveDebounceMs: delay } =
+    const { editable: canSave, autosaveDebounceMs: delayMs } =
       persistenceRef.current;
     if (
+      unmountedRef.current ||
       !dirtyRef.current ||
       savingRef.current ||
       errorRef.current !== null ||
@@ -207,7 +209,7 @@ export const useDocumentEditor = ({
     }
     autosaveTimeoutRef.current = setTimeout(
       () => void saveRef.current(),
-      delay
+      delayMs
     );
   }, []);
 
@@ -301,8 +303,11 @@ export const useDocumentEditor = ({
   // Unmounting inside the autosave delay must not drop the edit. The editor is gone by then,
   // so this last attempt cannot report a failure; hosts hold close and navigation while dirty.
   // It waits for any save in flight, so an older write can never land after a newer one.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    unmountedRef.current = false;
+    return () => {
+      // A save in flight re-arms autosave when it settles; the flush below owns the last write.
+      unmountedRef.current = true;
       clearTimeout(autosaveTimeoutRef.current);
       const latest = latestDocumentRef.current;
       const {
@@ -326,9 +331,8 @@ export const useDocumentEditor = ({
         }
       };
       void flush();
-    },
-    [initial]
-  );
+    };
+  }, [initial]);
 
   const save = useCallback(async () => {
     const {
