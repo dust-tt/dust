@@ -16,7 +16,7 @@ use foundationdb::{
 
 use crate::storage::{
     self,
-    resources::{keys::tenant_subspace, tenant::TenantResource},
+    resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
 };
 
 const FAMILY: &str = "object";
@@ -31,7 +31,6 @@ const REVERSE_GRANT_FAMILY: &str = "grant-object";
 const ALLOW: &str = "ALLOW";
 const DENY: &str = "DENY";
 const GRANTS_MAX_COUNT: usize = 512;
-const GRANT_SUBJECT_MAX_BYTES: usize = 1024;
 const GRANT_MODE_MASK: u32 = 0o6;
 
 #[derive(Debug)]
@@ -391,7 +390,7 @@ impl ObjectResource {
         match &grant.kind {
             Some(grant::Kind::Allow(AllowGrant { subject, mode }))
                 if !subject.is_empty()
-                    && subject.len() <= GRANT_SUBJECT_MAX_BYTES
+                    && subject.len() <= SUBJECT_MAX_BYTES
                     && mode & !GRANT_MODE_MASK == 0 =>
             {
                 Ok((

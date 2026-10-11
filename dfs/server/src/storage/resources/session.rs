@@ -15,6 +15,7 @@ use crate::{
     storage::{
         self,
         resources::{
+            SUBJECT_MAX_BYTES,
             keys::{namespace_subspace, tenant_subspace},
             tenant::TenantResource,
         },
@@ -24,7 +25,6 @@ use crate::{
 const FAMILY: &str = "session";
 const KEY_HASH_FAMILY: &str = "session-key";
 const EXPIRY_FAMILY: &str = "session-expiry";
-const SUBJECT_MAX_BYTES: usize = 1_024;
 const MAX_SUBJECTS: usize = 512;
 const SESSION_TTL_MS: u64 = 3_600_000;
 const SESSION_ID_LENGTH: usize = 32;
