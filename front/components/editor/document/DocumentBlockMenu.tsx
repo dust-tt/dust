@@ -1,6 +1,6 @@
 import {
   BLOCKS,
-  EMBED_BLOCKS,
+  EMBEDS,
   getBlockQuery,
 } from "@app/components/editor/document/blocks";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
@@ -33,8 +33,8 @@ const embedContent = (file: DocumentEmbeddableFile): JSONContent => ({
 });
 
 /**
- * @cc [owner:tdraier,label:product] document-embed-blocks
- * The `/` menu MUST offer its embed blocks, such as Image, only when the host gives embeddable
+ * @cc [owner:tdraier,label:product] document-slash-embeds
+ * The `/` menu MUST offer its embed entries, such as Image, only when the host gives embeddable
  * files. Picking one MUST turn the menu into a search over the host's files of that kind, by name
  * or path, and picking a file MUST replace the `/` query with an embed of exactly that file's
  * path: for an image, an `image` node with the file name as alt text. Escape or removing the `/`
@@ -77,7 +77,7 @@ export const useDocumentBlockMenu = (
     setHighlight({ queryKey: "", index: 0 });
   };
 
-  const blockItems: DocumentBlockMenuItem[] = [
+  const menuItems: DocumentBlockMenuItem[] = [
     ...BLOCKS.map((block) => ({
       key: block.keywords,
       name: t(block.name),
@@ -97,12 +97,12 @@ export const useDocumentBlockMenu = (
       },
     })),
     ...(embeddableFiles
-      ? EMBED_BLOCKS.map((block) => ({
-          key: block.kind,
-          name: t(block.name),
-          description: t(block.description),
-          icon: block.icon,
-          keywords: block.keywords,
+      ? EMBEDS.map((embed) => ({
+          key: embed.kind,
+          name: t(embed.name),
+          description: t(embed.description),
+          icon: embed.icon,
+          keywords: embed.keywords,
           run: () => {
             if (editor && query) {
               // Keep the `/`, so what follows it searches the files.
@@ -111,7 +111,7 @@ export const useDocumentBlockMenu = (
                 .focus()
                 .deleteRange({ from: query.from + 1, to: query.to })
                 .run();
-              setPicker({ kind: block.kind, from: query.from });
+              setPicker({ kind: embed.kind, from: query.from });
               setHighlight({ queryKey: "", index: 0 });
             }
           },
@@ -119,18 +119,18 @@ export const useDocumentBlockMenu = (
       : []),
   ];
 
-  const pickerBlock = activePicker
-    ? EMBED_BLOCKS.find((block) => block.kind === activePicker.kind)
+  const pickerEmbed = activePicker
+    ? EMBEDS.find((embed) => embed.kind === activePicker.kind)
     : undefined;
-  const fileItems: DocumentBlockMenuItem[] = pickerBlock
+  const fileItems: DocumentBlockMenuItem[] = pickerEmbed
     ? (embeddableFiles ?? [])
-        .filter((file) => file.kind === pickerBlock.kind)
+        .filter((file) => file.kind === pickerEmbed.kind)
         .map((file) => ({
           key: file.path,
           name: file.name,
           description: file.path,
           keywords: file.path,
-          icon: pickerBlock.icon,
+          icon: pickerEmbed.icon,
           run: () => {
             if (editor && query) {
               editor
@@ -147,12 +147,12 @@ export const useDocumentBlockMenu = (
         }))
     : [];
 
-  const items = (pickerBlock ? fileItems : blockItems).filter((item) =>
+  const items = (pickerEmbed ? fileItems : menuItems).filter((item) =>
     matches(item, search)
   );
   const keyOf = (mode: string) =>
     query ? `${mode}:${query.from}:${query.query}` : "";
-  const queryKey = keyOf(activePicker?.kind ?? "block");
+  const queryKey = keyOf(activePicker?.kind ?? "menu");
   const activeIndex =
     highlight.queryKey === queryKey
       ? Math.min(highlight.index, items.length - 1)
@@ -176,8 +176,8 @@ export const useDocumentBlockMenu = (
       event.preventDefault();
       event.stopPropagation();
       setPicker(null);
-      // Leaving the search dismisses the blocks menu the remaining `/` would show.
-      setDismissedQuery(keyOf("block"));
+      // Leaving the search dismisses the menu the remaining `/` would show.
+      setDismissedQuery(keyOf("menu"));
     } else if (
       items.length > 0 &&
       ["ArrowDown", "ArrowUp", "Enter"].includes(event.key)
@@ -201,7 +201,7 @@ export const useDocumentBlockMenu = (
   return {
     menuId,
     items,
-    title: pickerBlock ? t(pickerBlock.pickerTitle) : null,
+    title: pickerEmbed ? t(pickerEmbed.pickerTitle) : null,
     isPicking: activePicker !== null,
     activeIndex,
     show,

@@ -17,8 +17,8 @@ import type { EditorState } from "@tiptap/pm/state";
 import type { ComponentType } from "react";
 
 /**
- * The `/` query typed alone at the start of a top-level paragraph, before the cursor. Block names
- * are words, while a file search may hold any character but a line break.
+ * The `/` query typed alone at the start of a top-level paragraph, before the cursor. Menu entry
+ * names are words, while a file search may hold any character but a line break.
  */
 export const getBlockQuery = (
   state: EditorState,
@@ -118,7 +118,7 @@ export const BLOCKS: DocumentBlock[] = [
   },
 ];
 
-interface DocumentEmbedBlock {
+interface DocumentEmbed {
   kind: DocumentEmbeddableFile["kind"];
   name: MessageDescriptor;
   description: MessageDescriptor;
@@ -127,12 +127,12 @@ interface DocumentEmbedBlock {
   keywords: string;
 }
 
-export const EMBED_BLOCKS: DocumentEmbedBlock[] = [
+export const EMBEDS: DocumentEmbed[] = [
   {
     kind: "image",
     name: msg({
       message: "Image",
-      context: "document block embedding an image",
+      context: "slash menu entry embedding an image",
     }),
     description: msg`Show an image from the files`,
     pickerTitle: msg`Choose an image`,
