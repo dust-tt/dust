@@ -23,7 +23,9 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
 import assert from "assert";
 import ConvertAPI from "convertapi";
-import { marked } from "marked";
+import { Marked } from "marked";
+
+const fileMarked = new Marked();
 
 const handlers: ToolHandlers<
   ReturnType<typeof getFileGenerationToolsMetadata>
@@ -164,7 +166,7 @@ const handlers: ToolHandlers<
         switch (source_format) {
           case "markdown": {
             // Parse markdown to HTML
-            const parsedMarkdown = await marked.parse(file_content);
+            const parsedMarkdown = await fileMarked.parse(file_content);
             htmlContent = `<!DOCTYPE html>
 <html>
 <head>

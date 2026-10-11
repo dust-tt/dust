@@ -18,8 +18,10 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
-import { marked } from "marked";
+import { Marked } from "marked";
 import sanitizeHtml from "sanitize-html";
+
+const emailMarked = new Marked();
 
 /**
  * Reconstructs a minimal InboundEmail from the stored context.
@@ -227,7 +229,7 @@ export async function sendEmailReplyOnCompletion(
 
   // Render the agent message content as HTML.
   const htmlContent = sanitizeHtml(
-    await marked.parse(agentMessage.content ?? ""),
+    await emailMarked.parse(agentMessage.content ?? ""),
     {
       allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
     }

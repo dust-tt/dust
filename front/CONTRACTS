@@ -811,3 +811,8 @@ are not shown to users (logger arguments, RPC payloads sent to a Frame).
 The `dust/noRawErrorMessageInUi` oxlint rule enforces the `<x>.error.message` shape. The files that
 turn it off in `.oxlintrc.json` are a migration baseline: remove a file from the list once it is
 migrated, and never add one.
+
+@cc [owner:tdraier,label:architecture] marked-own-instances
+Code rendering Markdown with `marked` MUST use its own `Marked` instance, never the package's
+global one (`marked`, `parse`, `use`, `setOptions`, ...): TipTap's Markdown extension registers
+editor tokenizers on its global instance, and options set globally apply to every caller.

@@ -155,12 +155,14 @@ import {
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { marked } from "marked";
+import { Marked } from "marked";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+
+const messageMarked = new Marked();
 
 interface MessageInfoChipProps {
   children: ReactNode;
@@ -720,7 +722,8 @@ export function AgentMessage({
     }
 
     const markdownText = processedMessageContent + footnotesMarkdown;
-    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+    const htmlContent =
+      (await messageMarked.parse(processedMessageContent)) + footnotesHtml;
 
     await copy(
       new ClipboardItem({
