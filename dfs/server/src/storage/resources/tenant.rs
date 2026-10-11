@@ -72,8 +72,8 @@ impl TenantResource {
     /**
      * @cc [owner:spolu,label:backend;error-handling] tenant-create-idempotency
      * An existing tenant with a different root MUST return AlreadyExists. An existing tenant with
-     * the same root MUST succeed with false so a retry can recognize its own commit. Both cases
-     * MUST leave the stored record unchanged. A new tenant MUST return true.
+     * the same root MUST succeed so a retry can recognize its own commit. Both cases MUST leave the
+     * stored record unchanged.
      */
     /**
      * @cc [owner:spolu,label:backend;security] tenant-key-index-consistency
@@ -82,10 +82,10 @@ impl TenantResource {
      * Existing tenants MUST leave the lookup unchanged, including on retries and duplicate-ID
      * failures.
      */
-    pub async fn create(&self, tx: &Transaction) -> Result<bool, storage::Error<Error>> {
+    pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
         match Self::fetch(tx, &self.tenant_id).await? {
             // A retry after an unknown commit result finds our own record.
-            Some(existing) if existing.root_id == self.root_id => Ok(false),
+            Some(existing) if existing.root_id == self.root_id => Ok(()),
             Some(_) => Err(Error::AlreadyExists.into()),
             None => {
                 if tx
@@ -102,7 +102,7 @@ impl TenantResource {
                     &Self::key_hash_key(&self.key_hash),
                     &pack(&self.tenant_id.as_str()),
                 );
-                Ok(true)
+                Ok(())
             }
         }
     }

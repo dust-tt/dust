@@ -16,8 +16,8 @@ use tonic::{Request, Response, Status};
 use crate::{
     auth::KeyHash,
     storage::{
-        self, fdb,
-        resources::{object::ObjectResource, session::SessionResource, tenant::TenantResource},
+        fdb,
+        resources::{session::SessionResource, tenant::TenantResource},
     },
 };
 
@@ -39,11 +39,6 @@ pub struct API {
  */
 #[tonic::async_trait]
 impl Dfs for API {
-    /**
-     * @cc [owner:spolu,label:backend] tenant-root-atomicity
-     * Tenant creation MUST commit the tenant record, key-hash lookup, root object, and root metadata
-     * together. A retry that recognizes its own tenant MUST leave the existing root unchanged.
-     */
     async fn create_tenant(
         &self,
         request: Request<CreateTenantRequest>,
@@ -59,18 +54,11 @@ impl Dfs for API {
         // Call `new` before the transaction because FDB may retry its body. Keeping the same key
         // and root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
-        let root = ObjectResource::new_root(&tenant)?;
         fdb::with_transaction(|tx| {
-            // TODO: Assign root grants in the tenant creation transaction.
+            // TODO: Once object resources exist, create the tenant's root object and assign root
+            // grants in the tenant creation transaction.
             let tenant = &tenant;
-            let root = &root;
-            async move {
-                let created = tenant.create(&tx).await?;
-                if created {
-                    root.create(&tx).await?;
-                }
-                Ok::<_, storage::Error<Status>>(())
-            }
+            async move { tenant.create(&tx).await }
         })
         .await?;
         Ok(Response::new(Tenant {
