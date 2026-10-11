@@ -51,6 +51,7 @@ fn server() -> Result<()> {
         health_checks_and_shutdown_work_without_authorization().await?;
         dfs_rejects_a_missing_or_malformed_authorization_as_unauthenticated().await?;
         api::create_tenant::dfs_rejects_invalid_tenant_creation().await?;
+        api::create_session::creates_durable_sessions_for_authenticated_tenants().await?;
         api::auth::tenant_key_cache_is_shared_across_connections_and_expires().await
     })
 }

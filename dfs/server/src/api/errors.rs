@@ -1,7 +1,10 @@
 use dfs_protocol::{error::status, rpc::ErrorCode};
 use tonic::Status;
 
-use crate::storage::{self, resources::tenant};
+use crate::storage::{
+    self,
+    resources::{session, tenant},
+};
 
 impl From<tenant::Error> for Status {
     fn from(error: tenant::Error) -> Self {
@@ -17,6 +20,23 @@ impl From<tenant::Error> for Status {
             }
             tenant::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
             tenant::Error::InvalidKey => status(ErrorCode::Unauthenticated),
+        }
+    }
+}
+
+impl From<session::Error> for Status {
+    fn from(error: session::Error) -> Self {
+        match error {
+            session::Error::InvalidSubject | session::Error::TooManySubjects => {
+                status(ErrorCode::InvalidInput)
+            }
+            session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            session::Error::KeyGeneration
+            | session::Error::ExpiryGeneration
+            | session::Error::KeyCollision => {
+                tracing::error!(%error, "session creation failed");
+                status(ErrorCode::Internal)
+            }
         }
     }
 }
