@@ -18,6 +18,7 @@ use crate::{
 use super::API;
 
 #[cfg(test)]
+#[path = "../../tests/api/auth_cache.rs"]
 mod tests;
 
 const TENANT_KEY_CACHE_TTL_MS: u64 = 30_000;
