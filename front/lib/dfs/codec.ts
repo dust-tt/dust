@@ -212,7 +212,7 @@ const WireReadViewSchema = z
 const WireExtendedMetadataSchema = z
   .object({
     created: WireNumberUint64Schema,
-    mimeType: z.string(),
+    mimeType: z.string().optional(),
     xattrs: z.record(WireBytesSchema).optional(),
   })
   .transform((m): DfsExtendedMetadata => ({

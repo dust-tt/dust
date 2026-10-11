@@ -137,11 +137,12 @@ message Attr {
 }
 
 // @cc [owner:spolu,label:api] dfs-extended-metadata-limits
-// MIME types MUST be valid and at most 255 UTF-8 bytes. Xattr names MUST contain 1-255 UTF-8 bytes
-// without NUL. Combined xattr key/value byte lengths MUST NOT exceed 32 KiB (32,768 bytes).
+// MIME types MAY be absent or empty. Nonempty MIME types MUST be valid and at most 255 UTF-8 bytes.
+// Xattr names MUST contain 1-255 UTF-8 bytes without NUL. Combined xattr key/value byte lengths MUST
+// NOT exceed 32 KiB (32,768 bytes).
 message ExtendedMetadata {
   required uint64 created = 1;
-  required string mime_type = 3;
+  optional string mime_type = 3;
   map<string, bytes> xattrs = 4;
 }
 
