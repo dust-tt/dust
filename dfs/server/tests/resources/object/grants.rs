@@ -65,7 +65,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
-    let root = ObjectResource::fetch(&tx, &tenant.tenant_id, &tenant.root_id)
+    let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
         .await?
         .context("missing root")?;
     assert!(root.metadata.is_none());
@@ -172,6 +172,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
     for grant in expected {
         if let Some(grant::Kind::Allow(allow)) = grant.kind {
             let key = reverse.pack(&(
+                "ALLOW",
                 allow.subject.as_str(),
                 root.object_id.as_bytes().as_slice(),
                 allow.mode,
@@ -287,7 +288,7 @@ pub(crate) async fn grant_pagination_handles_full_pages_and_object_deletion() ->
     root.create(&tx, &grants).await?;
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
-    let root = ObjectResource::fetch(&tx, &tenant.tenant_id, &tenant.root_id)
+    let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
         .await?
         .context("missing root")?;
     let page = root.list_grants(&tx, None, 512).await?;
@@ -320,12 +321,12 @@ pub(crate) async fn grant_pagination_handles_full_pages_and_object_deletion() ->
     assert_eq!(error.code(), 1020);
     let tx = fdb::database()?.create_trx()?;
     assert!(
-        ObjectResource::fetch(&tx, &tenant.tenant_id, &tenant.root_id)
+        ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
             .await?
             .is_none()
     );
     assert!(matches!(
-        ObjectResource::fetch(&tx, &tenant.tenant_id, &ObjectId::default()).await,
+        ObjectResource::fetch(&tx, &tenant, &ObjectId::default()).await,
         Err(storage::Error::Resource(object::Error::InvalidId))
     ));
     assert!(

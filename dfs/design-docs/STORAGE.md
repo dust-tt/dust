@@ -142,7 +142,7 @@ grant values.
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/object-grant/<objectId>/ALLOW/<subject>/<mode>` | Attachment marker. | Reads and paginates explicit ALLOW grants by subject, then mode. |
 | `dfs-v1-{env}/tenant/<tenantId>/object-grant/<objectId>/DENY/<mode>` | Attachment marker. | Reads and paginates subjectless DENY grants by mode. |
-| `dfs-v1-{env}/tenant/<tenantId>/grant-object/<subject>/<objectId>/<mode>` | Attachment marker. | Finds ALLOW candidates for `/shared` without scanning all objects. |
+| `dfs-v1-{env}/tenant/<tenantId>/grant-object/ALLOW/<subject>/<objectId>/<mode>` | Attachment marker. | Finds ALLOW candidates for `/shared` without scanning all objects. |
 
 The forward index also serves `ListGrants`: variants sort ALLOW before DENY, subjects in UTF-8 byte
 order, and modes numerically. Subject encoding preserves that order while delimiting subsequent

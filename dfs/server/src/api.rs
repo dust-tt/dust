@@ -158,10 +158,10 @@ impl Dfs for API {
             limit,
         } = request.into_inner();
         let page = fdb::with_transaction(|tx| {
-            let tenant = &tenant;
+            let tenant = tenant.as_ref();
             let after = &after;
             async move {
-                let object = ObjectResource::fetch(&tx, &tenant.tenant_id, &object_id)
+                let object = ObjectResource::fetch(&tx, tenant, &object_id)
                     .await?
                     .ok_or(object::Error::NotFound)?;
                 object.list_grants(&tx, after.as_deref(), limit).await
@@ -178,10 +178,10 @@ impl Dfs for API {
         let tenant = self.require_tenant(&request).await?;
         let UpdateGrantsRequest { object_id, changes } = request.into_inner();
         fdb::with_transaction(|tx| {
-            let tenant = &tenant;
+            let tenant = tenant.as_ref();
             let changes = &changes;
             async move {
-                let object = ObjectResource::fetch(&tx, &tenant.tenant_id, &object_id)
+                let object = ObjectResource::fetch(&tx, tenant, &object_id)
                     .await?
                     .ok_or(object::Error::NotFound)?;
                 object.update_grants(&tx, changes)

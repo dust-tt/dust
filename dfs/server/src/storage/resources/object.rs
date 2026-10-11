@@ -114,18 +114,19 @@ type StoredAttributes = (
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] object-fetch-attributes
-     * Fetch MUST read only the requested tenant's object attributes with conflict tracking and
-     * leave metadata unloaded. An invalid object ID MUST return InvalidId; a missing object MUST
-     * return None. Stored-data decoding failures MUST propagate as storage failures.
+     * Fetch MUST derive tenant scope from the supplied TenantResource, read object attributes with
+     * conflict tracking, and leave metadata unloaded. An invalid object ID MUST return InvalidId;
+     * a missing object MUST return None. Stored-data decoding failures MUST propagate as storage
+     * failures.
      */
     pub async fn fetch(
         tx: &Transaction,
-        tenant_id: &str,
+        tenant: &TenantResource,
         object_id: &ObjectId,
     ) -> Result<Option<Self>, storage::Error<Error>> {
         object_id.validate().map_err(|_| Error::InvalidId)?;
         let Some(value) = tx
-            .get(&Self::object_key(tenant_id, object_id), false)
+            .get(&Self::object_key(&tenant.tenant_id, object_id), false)
             .await
             .map_err(FdbBindingError::from)?
         else {
@@ -143,7 +144,7 @@ impl ObjectResource {
             content_version,
         ): StoredAttributes = unpack(&value).map_err(FdbBindingError::PackError)?;
         Ok(Some(Self {
-            tenant_id: tenant_id.to_owned(),
+            tenant_id: tenant.tenant_id.clone(),
             object_id: *object_id,
             parent_id: parent_id
                 .map(|bytes| ObjectId::try_from(bytes.as_slice()))
@@ -384,6 +385,7 @@ impl ObjectResource {
      * Grants MUST select one variant and use only mode bits 0o6, including zero. ALLOW subjects
      * MUST contain 1-1024 UTF-8 bytes, preserved exactly. Invalid grants MUST return InvalidGrant.
      * Keys MUST preserve the complete grant identity, including distinct modes for one subject.
+     * Reverse ALLOW keys MUST place the ALLOW tag before the subject.
      */
     fn grant_keys(&self, grant: &Grant) -> Result<(Vec<u8>, Option<Vec<u8>>), Error> {
         let prefix = self.grant_subspace();
@@ -397,6 +399,7 @@ impl ObjectResource {
                     prefix.pack(&(ALLOW, subject.as_str(), *mode)),
                     Some(tenant_subspace(&self.tenant_id).pack(&(
                         REVERSE_GRANT_FAMILY,
+                        ALLOW,
                         subject.as_str(),
                         self.object_id.as_bytes().as_slice(),
                         *mode,

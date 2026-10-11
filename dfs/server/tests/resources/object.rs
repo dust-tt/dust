@@ -88,7 +88,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert_eq!(mime_type, None);
         // Attribute fetches do not need to decode or read the optional metadata.
         tx.set(&metadata_key, &[0xff]);
-        let fetched = ObjectResource::fetch(&tx, &tenant.tenant_id, &tenant.root_id)
+        let fetched = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
             .await?
             .context("missing fetched root")?;
         assert_eq!(fetched.object_id, root.object_id);
