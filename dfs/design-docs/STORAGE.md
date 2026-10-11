@@ -100,16 +100,17 @@ index entries are also removed. Authentication rejects expired sessions independ
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
 attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
-Tenant creation writes an empty root directory with no parent or MIME type, an empty name, and both
-versions at 1.
+Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, an empty name,
+and both versions at 1.
 Retries that find the tenant already created leave its root unchanged. Root grants remain to be
 implemented.
 
-Each xattr name is a separate tuple component. An empty value denotes a present xattr with empty
-bytes; a missing key denotes an absent xattr. Extended metadata reads combine the base entry and
-xattr entries from the same transaction. Xattr changes commit with `attr_version` and preserve the
-32 KiB limit on combined xattr name/value bytes. Object deletion clears both the base metadata entry
-and all xattr entries.
+Object creation validates all xattrs before staging writes and stores them with attributes and base
+metadata in the same transaction. Each xattr name is a separate tuple component. An empty value
+denotes a present xattr with empty bytes; a missing key denotes an absent xattr. Extended metadata
+reads combine the base entry and xattr entries from the same transaction. Xattr changes commit with
+`attr_version` and preserve the 32 KiB limit on combined xattr name/value bytes. Object deletion clears
+both the base metadata entry and all xattr entries.
 
 The MIME type in base metadata is optional (`Option<String>`); `None` is encoded as FDB tuple null.
 A create or update request with `mime_type: ""` clears it by storing `None`, and subsequent metadata

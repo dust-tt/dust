@@ -39,11 +39,6 @@ pub struct API {
  */
 #[tonic::async_trait]
 impl Dfs for API {
-    /**
-     * @cc [owner:spolu,label:backend] tenant-root-atomicity
-     * Tenant creation MUST commit the tenant record, key-hash lookup, root object, and root metadata
-     * together. A retry that recognizes its own tenant MUST leave the existing root unchanged.
-     */
     async fn create_tenant(
         &self,
         request: Request<CreateTenantRequest>,
@@ -65,6 +60,8 @@ impl Dfs for API {
             let tenant = &tenant;
             let root = &root;
             async move {
+                // A false result means a retry found our earlier commit. Its root already exists,
+                // so skip creation to preserve it and avoid an AlreadyExists error.
                 let created = tenant.create(&tx).await?;
                 if created {
                     root.create(&tx).await?;

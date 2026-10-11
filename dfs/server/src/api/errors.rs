@@ -20,6 +20,9 @@ use crate::storage::{
 impl From<object::Error> for Status {
     fn from(error: object::Error) -> Self {
         match error {
+            object::Error::InvalidXattrName | object::Error::XattrsTooLarge => {
+                status(ErrorCode::InvalidInput)
+            }
             object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
             object::Error::TimestampGeneration | object::Error::MissingMetadata => {
                 tracing::error!(%error, "object creation failed");
@@ -148,6 +151,18 @@ mod tests {
                     object::Error::AlreadyExists,
                 )),
                 ErrorCode::AlreadyExists,
+            ),
+            (
+                storage::Error::<Status>::from(storage::Error::Resource(
+                    object::Error::InvalidXattrName,
+                )),
+                ErrorCode::InvalidInput,
+            ),
+            (
+                storage::Error::<Status>::from(storage::Error::Resource(
+                    object::Error::XattrsTooLarge,
+                )),
+                ErrorCode::InvalidInput,
             ),
         ] {
             // Follow the runner's boxing and unboxing before translating the final API response.
