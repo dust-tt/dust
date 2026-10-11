@@ -10,6 +10,7 @@ use tonic_health::ServingStatus;
 mod api;
 pub mod auth;
 pub mod storage;
+mod sweep;
 
 const MAX_MESSAGE_SIZE: usize = 4 * 1024 * 1024;
 const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
@@ -27,8 +28,8 @@ const SHUTDOWN_TIMEOUT_SECONDS: u64 = 30;
  */
 /**
  * @cc [owner:spolu,label:concurrency] dfs-cache-sweep-lifecycle
- * Cache maintenance MUST stop when shutdown begins and MUST NOT outlive `serve`, including when
- * the server fails or the serving future is dropped.
+ * Cache and expired-session maintenance MUST stop when shutdown begins and MUST NOT outlive
+ * `serve`, including when the server fails or the serving future is dropped.
  */
 pub async fn serve(
     listener: TcpListener,
@@ -53,6 +54,7 @@ pub async fn serve(
         result = &mut server => return Ok(result?),
         _ = shutdown => {}
         _ = api.sweep_key_caches() => {}
+        _ = sweep::sweep_expired_sessions() => {}
     }
 
     tracing::info!("dfs-api draining");

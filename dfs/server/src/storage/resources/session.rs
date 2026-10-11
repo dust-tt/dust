@@ -6,6 +6,7 @@ use std::{
 
 use foundationdb::{
     FdbBindingError, RangeOption, Transaction,
+    options::StreamingMode,
     tuple::{Subspace, pack, unpack},
 };
 
@@ -27,6 +28,7 @@ const SUBJECT_MAX_BYTES: usize = 1_024;
 const MAX_SUBJECTS: usize = 512;
 const SESSION_TTL_MS: u64 = 3_600_000;
 const SESSION_ID_LENGTH: usize = 32;
+const EXPIRY_SWEEP_BATCH_SIZE: usize = 100;
 
 #[derive(Debug)]
 pub enum Error {
@@ -261,17 +263,81 @@ impl SessionResource {
         let session = Self::fetch(tx, tenant_id, session_id)
             .await?
             .ok_or(Error::NotFound)?;
+        Self::clear(
+            tx,
+            tenant_id,
+            session_id,
+            &session.key_hash,
+            session.expires_at_ms,
+        );
+        Ok(session.key_hash)
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] session-expiry-cleanup
+     * Cleanup MUST inspect at most 100 expiry entries through cutoff_ms in the caller's transaction.
+     * It MUST re-read session state with conflict tracking and remove the session and its indexes
+     * only when its stored expiry is at or before cutoff_ms. Stale or orphaned expiry entries MUST
+     * be removed without deleting an unexpired session. The result MUST count processed index
+     * entries and actually revoked sessions separately, as `(processed, revoked)`.
+     */
+    pub async fn revoke_expired(
+        tx: &Transaction,
+        cutoff_ms: u64,
+    ) -> Result<(usize, usize), storage::Error<Error>> {
+        let prefix = namespace_subspace().subspace(&EXPIRY_FAMILY);
+        let begin = prefix.range().0;
+        let end = prefix
+            .subspace(&cutoff_ms.to_be_bytes().as_slice())
+            .range()
+            .1;
+        let range = RangeOption {
+            limit: Some(EXPIRY_SWEEP_BATCH_SIZE),
+            mode: StreamingMode::WantAll,
+            ..RangeOption::from((begin, end))
+        };
+        let entries = tx
+            .get_range(&range, 1, false)
+            .await
+            .map_err(FdbBindingError::from)?;
+        let processed = entries.len();
+        let mut revoked = 0;
+        // Own each row across the awaited state read.
+        for entry in entries {
+            let (_expiry_bytes, tenant_id, session_id): (Vec<u8>, String, String) = prefix
+                .unpack(entry.key())
+                .map_err(FdbBindingError::PackError)?;
+            if let Some(value) = tx
+                .get(&Self::session_key(&tenant_id, &session_id), false)
+                .await
+                .map_err(FdbBindingError::from)?
+            {
+                let (key_hash, expires_at_ms): (Vec<u8>, u64) =
+                    unpack(&value).map_err(FdbBindingError::PackError)?;
+                let key_hash = auth::key_hash_from_bytes(&key_hash)?;
+                if expires_at_ms <= cutoff_ms {
+                    Self::clear(tx, &tenant_id, &session_id, &key_hash, expires_at_ms);
+                    revoked += 1;
+                }
+            }
+            tx.clear(entry.key());
+        }
+        Ok((processed, revoked))
+    }
+
+    fn clear(
+        tx: &Transaction,
+        tenant_id: &str,
+        session_id: &str,
+        key_hash: &KeyHash,
+        expires_at_ms: u64,
+    ) {
         let (begin, end) = tenant_subspace(tenant_id)
             .subspace(&(FAMILY, session_id))
             .range();
         tx.clear_range(&begin, &end);
-        tx.clear(&Self::key_hash_key(&session.key_hash));
-        tx.clear(&Self::expiry_key(
-            session.expires_at_ms,
-            tenant_id,
-            session_id,
-        ));
-        Ok(session.key_hash)
+        tx.clear(&Self::key_hash_key(key_hash));
+        tx.clear(&Self::expiry_key(expires_at_ms, tenant_id, session_id));
     }
 
     async fn fetch(

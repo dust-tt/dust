@@ -332,6 +332,7 @@ tenant. The root directory ID belongs to tenant state, not session state.
 Subjects may be included before any ALLOW grants reference them. Sessions are stored in FoundationDB
 and survive server restarts. They initially expire after one hour; an active session can extend its
 expiry through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
+Expired sessions fail authentication immediately and are removed asynchronously by periodic cleanup.
 
 ### CurrentSession
 
