@@ -153,50 +153,58 @@ impl Dfs for API {
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn stat(&self, _request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {
+    async fn stat(&self, request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn lookup(
         &self,
-        _request: Request<LookupRequest>,
+        request: Request<LookupRequest>,
     ) -> Result<Response<AttrBatch>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn list(&self, _request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {
+    async fn list(&self, request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
-    async fn read(&self, _request: Request<ReadRequest>) -> Result<Response<ReadData>, Status> {
+    async fn read(&self, request: Request<ReadRequest>) -> Result<Response<ReadData>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn read_files(
         &self,
-        _request: Request<ReadFilesRequest>,
+        request: Request<ReadFilesRequest>,
     ) -> Result<Response<FilesBatch>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn validate(
         &self,
-        _request: Request<ValidateRequest>,
+        request: Request<ValidateRequest>,
     ) -> Result<Response<ValidationBatch>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn apply(
         &self,
-        _request: Request<ApplyRequest>,
+        request: Request<ApplyRequest>,
     ) -> Result<Response<OperationBatch>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 
     async fn search(
         &self,
-        _request: Request<SearchRequest>,
+        request: Request<SearchRequest>,
     ) -> Result<Response<SearchResults>, Status> {
+        self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
 }
