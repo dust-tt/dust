@@ -1,5 +1,6 @@
 import Maximize01 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/Maximize01";
 import Minimize01 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/Minimize01";
+import { useLingui } from "@lingui/react/macro";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
   SLIDESHOW_ICON_CLASS_NAME,
@@ -28,7 +29,8 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [isPending, setIsPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { t } = useLingui();
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     setIsSupported(document.fullscreenEnabled === true);
@@ -50,7 +52,7 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
       return;
     }
     setIsPending(true);
-    setError(null);
+    setHasError(false);
     try {
       if (document.fullscreenElement === container) {
         await document.exitFullscreen();
@@ -58,13 +60,13 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
         await container.requestFullscreen({ navigationUI: "hide" });
       }
     } catch {
-      setError("Fullscreen could not be changed. Please try again.");
+      setHasError(true);
     } finally {
       setIsPending(false);
     }
   };
 
-  const label = isFullscreen ? "Exit fullscreen" : "Enter fullscreen";
+  const label = isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`;
   const Icon = isPending
     ? LoaderCircle
     : isFullscreen
@@ -82,7 +84,7 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
         aria-pressed={isFullscreen}
         aria-busy={isPending}
         title={
-          isSupported ? label : "Fullscreen is unavailable in this browser"
+          isSupported ? label : t`Fullscreen is unavailable in this browser`
         }
         disabled={!isSupported || isPending}
         onClick={() => {
@@ -94,14 +96,14 @@ export function FullscreenButton({ containerRef }: FullscreenButtonProps) {
           aria-hidden="true"
         />
       </Button>
-      {error &&
+      {hasError &&
         containerRef.current &&
         createPortal(
           <div
             role="alert"
             className="absolute bottom-20 left-1/2 z-50 max-w-full -translate-x-1/2 rounded-xl bg-background px-4 py-2 text-sm text-foreground shadow-md"
           >
-            {error}
+            {t`Fullscreen could not be changed. Please try again.`}
           </div>,
           containerRef.current
         )}

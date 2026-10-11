@@ -12,3 +12,129 @@ msgstr ""
 "Last-Translator: \n"
 "Language-Team: \n"
 "Plural-Forms: \n"
+
+#: app/components/EditableFrame.tsx
+msgid "Click to edit"
+msgstr "Cliquer pour modifier"
+
+#: app/components/EditableFrame.tsx
+msgid "Double-click to edit"
+msgstr "Double-cliquer pour modifier"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "External link warning"
+msgstr "Lien externe"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "You are about to navigate to an external website. Please verify the URL before proceeding."
+msgstr "Vous êtes sur le point d’ouvrir un site externe. Vérifiez l’URL avant de continuer."
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "Destination URL:"
+msgstr "URL de destination :"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "Domain:"
+msgstr "Domaine :"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "This connection is not secure"
+msgstr "Cette connexion n’est pas sécurisée"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: app/components/NavigationWarningDialog.tsx
+msgid "Continue"
+msgstr "Continuer"
+
+#: app/components/VisualizationWrapper.tsx
+msgid "Failed to export as SVG. This can happen when the content references external images."
+msgstr "Impossible d’exporter en SVG. Cela peut arriver quand le contenu utilise des images externes."
+
+#: app/components/VisualizationWrapper.tsx
+msgid "Download screenshot"
+msgstr "Télécharger une capture d’écran"
+
+#: app/components/VisualizationWrapper.tsx
+msgid "Download SVG"
+msgstr "Télécharger en SVG"
+
+#: app/components/VisualizationWrapper.tsx
+msgid "Show code"
+msgstr "Afficher le code"
+
+#: app/components/VisualizationWrapper.tsx
+msgid "Code"
+msgstr "Code"
+
+#: components/dust/slideshow/FullscreenButton.tsx
+msgid "Exit fullscreen"
+msgstr "Quitter le plein écran"
+
+#: components/dust/slideshow/FullscreenButton.tsx
+msgid "Enter fullscreen"
+msgstr "Afficher en plein écran"
+
+#: components/dust/slideshow/FullscreenButton.tsx
+msgid "Fullscreen is unavailable in this browser"
+msgstr "Le plein écran n’est pas disponible dans ce navigateur"
+
+#: components/dust/slideshow/FullscreenButton.tsx
+msgid "Fullscreen could not be changed. Please try again."
+msgstr "Impossible de changer le mode plein écran. Veuillez réessayer."
+
+#: components/dust/slideshow/SlideshowControls.tsx
+msgid "Slideshow controls"
+msgstr "Commandes du diaporama"
+
+#: components/dust/slideshow/SlideshowControls.tsx
+msgid "Previous slide"
+msgstr "Diapositive précédente"
+
+#: components/dust/slideshow/SlideshowControls.tsx
+msgid "Previous slide (←)"
+msgstr "Diapositive précédente (←)"
+
+#: components/dust/slideshow/SlideshowControls.tsx
+#: components/dust/slideshow/v1/index.tsx
+msgid "Slide {slideNumber} of {total}"
+msgstr "Diapositive {slideNumber} sur {total}"
+
+#: components/dust/slideshow/SlideshowControls.tsx
+msgid "Next slide"
+msgstr "Diapositive suivante"
+
+#: components/dust/slideshow/SlideshowControls.tsx
+msgid "Next slide (→)"
+msgstr "Diapositive suivante (→)"
+
+#: components/dust/slideshow/SlideshowGrid.tsx
+msgid "Show slide previews"
+msgstr "Afficher les aperçus des diapositives"
+
+#: components/dust/slideshow/SlideshowGrid.tsx
+msgid "Slide previews"
+msgstr "Aperçus des diapositives"
+
+#: components/dust/slideshow/SlideshowGrid.tsx
+msgid "Choose a slide to jump to it."
+msgstr "Choisissez une diapositive pour y accéder."
+
+#: components/dust/slideshow/SlideshowGrid.tsx
+msgid "Close slide previews"
+msgstr "Fermer les aperçus des diapositives"
+
+#: components/dust/slideshow/SlideshowGrid.tsx
+msgid "Go to slide {slideNumber}"
+msgstr "Aller à la diapositive {slideNumber}"
+
+#: components/dust/slideshow/v1/index.tsx
+msgid "No slides available"
+msgstr "Aucune diapositive disponible"
+
+#: components/dust/slideshow/v1/index.tsx
+#: components/dust/slideshow/v2/index.tsx
+msgid "Slideshow"
+msgstr "Diaporama"

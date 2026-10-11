@@ -1,5 +1,6 @@
 import LayoutGrid02 from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/LayoutGrid02";
 import XClose from "@dust-tt/sparkle/dist/esm/icons/v2-stroke/XClose";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { SlideThumbnail } from "@viz/components/dust/slideshow/SlideThumbnail";
 import {
   SLIDESHOW_BUTTON_CLASS_NAME,
@@ -51,6 +52,7 @@ export function SlideshowGrid({
   onSlideSelect,
   slideshowRef,
 }: SlideshowGridProps) {
+  const { t } = useLingui();
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [isNearLeftEdge, setIsNearLeftEdge] = useState(false);
@@ -108,8 +110,8 @@ export function SlideshowGrid({
           )}
         >
           <DrawerTrigger
-            aria-label="Show slide previews"
-            title="Show slide previews"
+            aria-label={t`Show slide previews`}
+            title={t`Show slide previews`}
             tabIndex={isClosing ? -1 : undefined}
           >
             <LayoutGrid02
@@ -138,9 +140,11 @@ export function SlideshowGrid({
           }
         }}
       >
-        <DrawerTitle className="sr-only">Slide previews</DrawerTitle>
+        <DrawerTitle className="sr-only">
+          <Trans>Slide previews</Trans>
+        </DrawerTitle>
         <DrawerDescription className="sr-only">
-          Choose a slide to jump to it.
+          <Trans>Choose a slide to jump to it.</Trans>
         </DrawerDescription>
         <div
           className={cn(
@@ -155,8 +159,8 @@ export function SlideshowGrid({
             className={SLIDESHOW_BUTTON_CLASS_NAME}
           >
             <DrawerClose
-              aria-label="Close slide previews"
-              title="Close slide previews"
+              aria-label={t`Close slide previews`}
+              title={t`Close slide previews`}
             >
               <span className="relative size-5" aria-hidden="true">
                 <XClose
@@ -204,6 +208,7 @@ function SlidePreviewList({
   activeIndex,
   onSlideSelect,
 }: Omit<SlideshowGridProps, "slideshowRef">) {
+  const { t } = useLingui();
   const previewListRef = useRef<HTMLOListElement>(null);
   const activePreviewRef = useRef<HTMLButtonElement>(null);
 
@@ -217,44 +222,47 @@ function SlidePreviewList({
   return (
     <ScrollArea className="min-h-0 flex-1">
       <ol ref={previewListRef} className="flex flex-col gap-4 px-4 py-6">
-        {Children.map(slides, (slide, index) => (
-          <li className="group/preview relative flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className={cn(
-                "w-4 shrink-0 text-right font-sans text-base font-medium leading-6 tabular-nums underline-offset-4 transition-colors group-has-[:focus-visible]/preview:underline",
-                index === activeIndex
-                  ? "text-stone-900 dark:text-stone-200"
-                  : "text-stone-600 group-hover/preview:text-stone-900 dark:text-stone-400 dark:group-hover/preview:text-stone-200"
-              )}
-            >
-              {index + 1}
-            </span>
-            <div
-              className={cn(
-                "relative min-w-0 flex-1 overflow-hidden rounded-2xl transition-shadow",
-                index === activeIndex
-                  ? "ring-2 ring-stone-400 ring-offset-2 ring-offset-white dark:ring-stone-300 dark:ring-offset-stone-800"
-                  : "group-hover/preview:ring-1 group-hover/preview:ring-black/10 dark:group-hover/preview:ring-white/10"
-              )}
-            >
-              <SlideThumbnail slide={slide} />
-            </div>
-            <Button
-              asChild
-              variant="ghost"
-              className="absolute inset-0 h-full w-full scroll-my-1 rounded-2xl p-0 transition-colors hover:bg-transparent focus-visible:ring-0 dark:hover:bg-transparent motion-reduce:transition-none"
-              onClick={() => onSlideSelect(index)}
-            >
-              <button
-                type="button"
-                ref={index === activeIndex ? activePreviewRef : undefined}
-                aria-label={`Go to slide ${index + 1}`}
-                aria-current={index === activeIndex ? "true" : undefined}
-              />
-            </Button>
-          </li>
-        ))}
+        {Children.map(slides, (slide, index) => {
+          const slideNumber = index + 1;
+          return (
+            <li className="group/preview relative flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "w-4 shrink-0 text-right font-sans text-base font-medium leading-6 tabular-nums underline-offset-4 transition-colors group-has-[:focus-visible]/preview:underline",
+                  index === activeIndex
+                    ? "text-stone-900 dark:text-stone-200"
+                    : "text-stone-600 group-hover/preview:text-stone-900 dark:text-stone-400 dark:group-hover/preview:text-stone-200"
+                )}
+              >
+                {slideNumber}
+              </span>
+              <div
+                className={cn(
+                  "relative min-w-0 flex-1 overflow-hidden rounded-2xl transition-shadow",
+                  index === activeIndex
+                    ? "ring-2 ring-stone-400 ring-offset-2 ring-offset-white dark:ring-stone-300 dark:ring-offset-stone-800"
+                    : "group-hover/preview:ring-1 group-hover/preview:ring-black/10 dark:group-hover/preview:ring-white/10"
+                )}
+              >
+                <SlideThumbnail slide={slide} />
+              </div>
+              <Button
+                asChild
+                variant="ghost"
+                className="absolute inset-0 h-full w-full scroll-my-1 rounded-2xl p-0 transition-colors hover:bg-transparent focus-visible:ring-0 dark:hover:bg-transparent motion-reduce:transition-none"
+                onClick={() => onSlideSelect(index)}
+              >
+                <button
+                  type="button"
+                  ref={index === activeIndex ? activePreviewRef : undefined}
+                  aria-label={t`Go to slide ${slideNumber}`}
+                  aria-current={index === activeIndex ? "true" : undefined}
+                />
+              </Button>
+            </li>
+          );
+        })}
       </ol>
     </ScrollArea>
   );
