@@ -84,7 +84,6 @@
   "jwks-rsa",
   "lodash",
   "lru-memoizer",
-  "marked",
   "marklassian",
   "mathjs",
   "openai",
