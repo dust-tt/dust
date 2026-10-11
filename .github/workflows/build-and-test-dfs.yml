@@ -64,11 +64,14 @@ jobs:
           sudo apt-get install -y --no-install-recommends libclang-dev \
             "./foundationdb-clients_${FDB_VERSION}-1_amd64.deb" \
             "./foundationdb-server_${FDB_VERSION}-1_amd64.deb"
-          timeout 60s bash -c '
-            until fdbcli -C "$FDB_CLUSTER_FILE" --timeout 5 --exec "status minimal" | grep -q "The database is available"; do
-              sleep 1
-            done
-          '
+          ready_deadline_seconds=$((SECONDS + 60))
+          until fdbcli -C "$FDB_CLUSTER_FILE" --timeout 5 --exec "status minimal" | grep -q "The database is available"; do
+            if (( SECONDS >= ready_deadline_seconds )); then
+              echo "Timed out waiting for FoundationDB." >&2
+              exit 1
+            fi
+            sleep 1
+          done
 
       - name: Setup Rust Cache
         uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
