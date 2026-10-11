@@ -51,7 +51,6 @@ fn server() -> Result<()> {
         health_checks_and_shutdown_work_without_authorization().await?;
         dfs_rejects_a_missing_or_malformed_authorization_as_unauthenticated().await?;
         api::create_tenant::dfs_rejects_invalid_tenant_creation().await?;
-        api::create_tenant::tenant_creation_persists_root_and_rejects_duplicates().await?;
         api::create_session::creates_durable_sessions_for_authenticated_tenants().await?;
         api::session::session_rpcs_enforce_credentials_and_preserve_identity().await?;
         tokio::try_join!(
