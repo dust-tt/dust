@@ -43,6 +43,7 @@
     "clsx": "^2.1.1",
     "crossws": "^0.4.12",
     "date-fns": "^4.1.0",
+    "diff": "^8.0.2",
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.0",
     "mdast-util-from-markdown": "^2.0.3",
