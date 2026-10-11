@@ -24,6 +24,9 @@ describe("frame embed directive", () => {
     '::frame{path=""}',
     '::frame{path="pod-abc/x.tsx"} trailing',
     ':frame{path="pod-abc/x.tsx"}',
+    '::frame{path="pod-abc/<draft>.tsx"}',
+    '::frame{path="pod-abc/a & b.tsx"}',
+    '::frame{path="pod-abc/it\'s.tsx"}',
   ])("does not read %j", (src) => {
     expect(parseFrameEmbedDirective(src)).toBeNull();
   });

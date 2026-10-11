@@ -1423,4 +1423,25 @@ describe("Document Frame embeds", () => {
         .match(/::frame\{path="pod-abc\/dashboards\/revenue\.tsx"\}/g)
     ).toHaveLength(2);
   });
+  it("keeps a Frame mounted when the read-only preview re-renders", async () => {
+    const renderPreview = () => (
+      <Document
+        initialContent={`${SOURCE_WITH_FRAME}\n| A |\n| --- |\n| 1 |\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFrame={(path) => <iframe title={`Frame ${path}`} />}
+      />
+    );
+    const { rerender } = render(renderPreview());
+    const frame = await screen.findByTitle(
+      "Frame pod-abc/dashboards/revenue.tsx"
+    );
+
+    rerender(renderPreview());
+
+    expect(screen.getByTitle("Frame pod-abc/dashboards/revenue.tsx")).toBe(
+      frame
+    );
+  });
 });

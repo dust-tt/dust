@@ -14,24 +14,36 @@ export const DOCUMENT_FRAME_NODE_NAME = "frameEmbed";
 
 const FRAME_PATH_ATTRIBUTE = "data-document-frame";
 
-export const DocumentFrameFallback = ({ path }: { path: string }) => (
+interface DocumentFrameFallbackProps {
+  path: string;
+}
+
+export const DocumentFrameFallback = ({ path }: DocumentFrameFallbackProps) => (
   <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
     {path}
   </p>
 );
 
-const DocumentFrameView = ({ node }: NodeViewProps) => {
+interface DocumentFrameDisplayProps {
+  path: string;
+}
+
+export const DocumentFrameDisplay = ({ path }: DocumentFrameDisplayProps) => {
   const { renderFrame } = useContext(DocumentEmbedsContext);
+
+  return renderFrame ? (
+    <>{renderFrame(path)}</>
+  ) : (
+    <DocumentFrameFallback path={path} />
+  );
+};
+
+const DocumentFrameView = ({ node }: NodeViewProps) => {
   const path = isString(node.attrs.path) ? node.attrs.path : null;
 
   return (
     <NodeViewWrapper contentEditable={false} className="my-6">
-      {path &&
-        (renderFrame ? (
-          renderFrame(path)
-        ) : (
-          <DocumentFrameFallback path={path} />
-        ))}
+      {path && <DocumentFrameDisplay path={path} />}
     </NodeViewWrapper>
   );
 };

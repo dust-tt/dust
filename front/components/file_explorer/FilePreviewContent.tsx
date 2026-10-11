@@ -40,7 +40,7 @@ import { msg, plural } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { parse } from "csv-parse/browser/esm/sync";
-import { useContext, useMemo } from "react";
+import { useCallback, useContext, useMemo } from "react";
 
 const MAX_CSV_ROWS = 200;
 const MAX_TEXT_CHARS = 100_000;
@@ -404,6 +404,10 @@ function RichMarkdownDocument({
     documentPath: editor.path,
   });
   const resolveImageSource = useResolveMarkdownImageUrl(owner);
+  const renderFrame = useCallback(
+    (path: string) => <DocumentFrameEmbed owner={owner} path={path} />,
+    [owner]
+  );
 
   const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
@@ -435,7 +439,7 @@ function RichMarkdownDocument({
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
       embeddableFiles={embeddableFiles}
-      renderFrame={(path) => <DocumentFrameEmbed owner={owner} path={path} />}
+      renderFrame={renderFrame}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

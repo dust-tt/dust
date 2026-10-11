@@ -284,12 +284,13 @@ export const DocumentView = ({
 
   if (unsupported !== null) {
     return (
-      <DocumentMarkdownPreview
-        className={className}
-        source={unsupported.source}
-        resolveImageSource={resolveImageSource}
-        renderFrame={renderFrame}
-      />
+      <DocumentEmbedsContext.Provider value={embeds}>
+        <DocumentMarkdownPreview
+          className={className}
+          source={unsupported.source}
+          resolveImageSource={resolveImageSource}
+        />
+      </DocumentEmbedsContext.Provider>
     );
   }
 

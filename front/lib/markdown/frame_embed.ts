@@ -5,7 +5,7 @@ export const FRAME_EMBED_DIRECTIVE_NAME = "frame";
 export const FRAME_EMBED_COMPONENT_NAME = "frame_embed";
 
 const FRAME_EMBED_DIRECTIVE_REGEX = new RegExp(
-  String.raw`^::${FRAME_EMBED_DIRECTIVE_NAME}\{path="([^"\n]+)"\}[ \t]*(?:\n|$)`
+  String.raw`^::${FRAME_EMBED_DIRECTIVE_NAME}\{path="((?:[^"&<>'\n]|&(?:amp|lt|gt|quot|#39);)+)"\}[ \t]*(?:\n|$)`
 );
 
 const FRAME_EMBED_DIRECTIVE_START_REGEX = new RegExp(

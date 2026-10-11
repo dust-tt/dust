@@ -22,7 +22,7 @@ interface DocumentFrameEmbedProps {
  */
 export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
   const vizUrl = useContext(AuthContext)?.vizUrl;
-  const { fileId, fileContent, fileContentType, isLoading } =
+  const { fileId, fileContent, fileContentType, isLoading, error } =
     usePodFrameRenderableContent({ owner, framePath: path });
 
   if (isLoading) {
@@ -37,6 +37,7 @@ export function DocumentFrameEmbed({ owner, path }: DocumentFrameEmbedProps) {
     ? stripMimeParameters(fileContentType)
     : null;
   if (
+    error ||
     !vizUrl ||
     !fileId ||
     !fileContent ||

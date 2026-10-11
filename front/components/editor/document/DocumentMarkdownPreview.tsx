@@ -1,6 +1,6 @@
 import type { UnsupportedElement } from "@app/components/editor/document/content";
 import { findUnsupportedElement } from "@app/components/editor/document/content";
-import { DocumentFrameFallback } from "@app/components/editor/document/DocumentFrame";
+import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
@@ -18,30 +18,57 @@ import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
-import { visit } from "unist-util-visit";
 
 interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
   resolveImageSource: DocumentProps["resolveImageSource"];
-  renderFrame?: DocumentProps["renderFrame"];
+}
+
+interface FrameEmbedProps {
+  path: string;
+}
+
+interface MarkdownNode {
+  type: string;
+  name?: string;
+  attributes?: Record<string, string | null | undefined> | null;
+  data?: object;
+  children?: MarkdownNode[];
+}
+
+function withFrameEmbeds<T extends MarkdownNode>(node: T): T {
+  const path = node.attributes?.path;
+  if (
+    node.type === "leafDirective" &&
+    node.name === FRAME_EMBED_DIRECTIVE_NAME &&
+    isString(path)
+  ) {
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        hName: FRAME_EMBED_COMPONENT_NAME,
+        hProperties: { path },
+      },
+    };
+  }
+  return node.children
+    ? { ...node, children: node.children.map(withFrameEmbeds) }
+    : node;
 }
 
 function frameEmbedDirective() {
-  return (tree: any) => {
-    visit(tree, ["leafDirective"], (node) => {
-      const path = node.attributes?.path;
-      if (node.name !== FRAME_EMBED_DIRECTIVE_NAME || !isString(path)) {
-        return;
-      }
-      const data = node.data ?? (node.data = {});
-      data.hName = FRAME_EMBED_COMPONENT_NAME;
-      data.hProperties = { path };
-    });
-  };
+  return (tree: MarkdownNode) => withFrameEmbeds(tree);
 }
 
 const MARKDOWN_PLUGINS = [frameEmbedDirective];
+
+const FrameEmbed = ({ path }: FrameEmbedProps) => (
+  <div className="my-6">
+    <DocumentFrameDisplay path={path} />
+  </div>
+);
 
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
@@ -79,7 +106,6 @@ export const DocumentMarkdownPreview = ({
   source,
   className,
   resolveImageSource,
-  renderFrame,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -96,17 +122,9 @@ export const DocumentMarkdownPreview = ({
   const markdownComponents = useMemo(
     () => ({
       img: getMarkdownImagePlugin(resolveImageSource),
-      [FRAME_EMBED_COMPONENT_NAME]: ({ path }: { path: string }) => (
-        <div className="my-6">
-          {renderFrame ? (
-            renderFrame(path)
-          ) : (
-            <DocumentFrameFallback path={path} />
-          )}
-        </div>
-      ),
+      [FRAME_EMBED_COMPONENT_NAME]: FrameEmbed,
     }),
-    [resolveImageSource, renderFrame]
+    [resolveImageSource]
   );
 
   return (
