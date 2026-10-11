@@ -18,6 +18,8 @@ fn resources() -> Result<()> {
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::authentication_and_refresh_require_active_matching_state().await?;
         session::refresh_and_revocation_conflict_in_both_orders().await?;
+        session::expiry_cleanup_is_bounded_and_preserves_live_sessions().await?;
+        session::expiry_cleanup_conflicts_with_concurrent_changes().await?;
         tenant::tenant_key_collisions_preserve_the_existing_owner().await?;
         tenant::decoding_errors_abort_creation_and_retain_their_type().await?;
         tenant::authentication_requires_a_matching_index_and_tenant_record().await

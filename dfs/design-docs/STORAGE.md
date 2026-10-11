@@ -104,10 +104,16 @@ sessions on other servers or from in-flight lookups may authorize new RPCs for u
 after revocation commits; already admitted RPCs may finish. Mutations do not re-read session state
 on a cache hit, but still check object permissions in their transaction.
 
-Durable expiry cleanup remains follow-up work. It will read bounded batches from the global expiry
-index and recheck the current session state before deleting it and its indexes in one transaction.
-An obsolete expiry entry must not delete a refreshed session. Authentication already rejects expired
-sessions, and the tenant can revoke them to remove their stored records.
+Each server waits a fresh random delay between one and five minutes before each durable expiry
+sweep, including the first. A pass fixes its expiration cutoff and drains the global expiry
+index in transactions of at most 100 entries. Each transaction rechecks authoritative session state
+with conflict tracking before clearing the expired session prefix, key lookup, and expiry index.
+Subject keys are cleared without loading their contents. Stale and orphaned expiry entries are
+removed; a stale entry cannot delete a session whose current expiry is beyond the cutoff. Overlapping
+sweepers or refreshes conflict and retry through the FDB transaction runner. Jitter reduces overlap
+between instances without requiring a leader or lease. Failed passes are logged and retried on the
+next jittered schedule. The sweep stops when server shutdown begins. Authentication rejects expired
+sessions immediately, independently of when cleanup removes their stored records.
 
 ## Objects and contents
 
