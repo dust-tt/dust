@@ -68,7 +68,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert_eq!(atime_ms, Some(created_at_ms));
         assert_eq!(mtime_ms, atime_ms);
         assert_eq!(ctime_ms, atime_ms);
-        assert_eq!(mime_type, "inode/directory");
+        assert!(mime_type.is_empty());
     }
 
     // Both tenants retain separate objects despite sharing an object ID and an ID string prefix.

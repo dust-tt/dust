@@ -149,7 +149,7 @@ fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
     );
     object.metadata = Some(rpc::ExtendedMetadata {
         created: 0,
-        mime_type: "inode/directory".into(),
+        mime_type: String::new(),
         xattrs: Default::default(),
     });
     assert_eq!(

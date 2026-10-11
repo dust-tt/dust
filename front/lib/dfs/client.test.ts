@@ -104,7 +104,7 @@ describe("DfsClient", () => {
               attrVersion: MAX_UINT64.toString(),
               metadata: {
                 created: "1600000000000",
-                mimeType: "text/plain",
+                mimeType: "",
                 xattrs: { "user.tag": Buffer.from("v") },
               },
             }),
@@ -148,7 +148,7 @@ describe("DfsClient", () => {
         attrVersion: MAX_UINT64,
         contentVersion: BigInt("2"),
         view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
-        metadata: { createdMs: 1600000000000, mimeType: "text/plain" },
+        metadata: { createdMs: 1600000000000, mimeType: "" },
       },
     });
     if (file.status === "ok") {

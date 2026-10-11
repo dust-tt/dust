@@ -16,7 +16,7 @@ use tonic::{Request, Response, Status};
 use crate::{
     auth::KeyHash,
     storage::{
-        fdb,
+        self, fdb,
         resources::{object::ObjectResource, session::SessionResource, tenant::TenantResource},
     },
 };
@@ -65,14 +65,11 @@ impl Dfs for API {
             let tenant = &tenant;
             let root = &root;
             async move {
-                let created = tenant
-                    .create(&tx)
-                    .await
-                    .map_err(errors::transaction_error)?;
+                let created = tenant.create(&tx).await?;
                 if created {
-                    root.create(&tx).await.map_err(errors::transaction_error)?;
+                    root.create(&tx).await?;
                 }
-                Ok(())
+                Ok::<_, storage::Error<Status>>(())
             }
         })
         .await?;

@@ -100,7 +100,7 @@ index entries are also removed. Authentication rejects expired sessions independ
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
 attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`. Tenant creation writes an empty
-root directory with no parent, an empty name, both versions at 1, and MIME type `inode/directory`.
+root directory with no parent, an empty name and MIME type, and both versions at 1.
 Retries that find the tenant already created leave its root unchanged. Root grants remain to be
 implemented.
 

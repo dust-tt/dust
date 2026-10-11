@@ -58,6 +58,7 @@ pub struct ObjectResource {
 
 pub struct Metadata {
     pub created_at_ms: u64,
+    /// Empty when no MIME type is assigned.
     pub mime_type: String,
 }
 
@@ -65,8 +66,8 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] tenant-root-initial-state
      * A new root MUST use the tenant's root ID and be an empty directory with no parent and an
-     * empty name. Both versions MUST start at 1. Creation, access, modification, and change times
-     * MUST be initialized to the same server timestamp.
+     * empty name and MIME type. Both versions MUST start at 1. Creation, access, modification, and
+     * change times MUST be initialized to the same server timestamp.
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
         let now_ms = SystemTime::now()
@@ -89,7 +90,7 @@ impl ObjectResource {
             content_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type: "inode/directory".to_owned(),
+                mime_type: String::new(),
             }),
         })
     }

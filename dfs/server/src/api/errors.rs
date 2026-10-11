@@ -29,12 +29,26 @@ impl From<tenant::Error> for Status {
  * Errors from different resources in one transaction MUST retain their API status mapping.
  * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
  */
-pub(super) fn transaction_error<E: Into<Status>>(
-    error: storage::Error<E>,
-) -> storage::Error<Status> {
-    match error {
-        storage::Error::Transaction(error) => storage::Error::Transaction(error),
-        error => storage::Error::Resource(error.into()),
+impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<tenant::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
+    }
+}
+
+/**
+ * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
+ * Errors from different resources in one transaction MUST retain their API status mapping.
+ * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
+ */
+impl From<storage::Error<object::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<object::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
     }
 }
 
@@ -110,16 +124,18 @@ mod tests {
     {
         let error: storage::Error<tenant::Error> =
             FdbBindingError::from(FdbError::from_code(1020)).into();
-        let error = FdbBindingError::from(transaction_error(error));
+        let error = FdbBindingError::from(storage::Error::<Status>::from(error));
         assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
 
         for (error, expected) in [
             (
-                transaction_error(storage::Error::Resource(tenant::Error::InvalidId)),
+                storage::Error::<Status>::from(storage::Error::Resource(tenant::Error::InvalidId)),
                 ErrorCode::InvalidInput,
             ),
             (
-                transaction_error(storage::Error::Resource(object::Error::AlreadyExists)),
+                storage::Error::<Status>::from(storage::Error::Resource(
+                    object::Error::AlreadyExists,
+                )),
                 ErrorCode::AlreadyExists,
             ),
         ] {
