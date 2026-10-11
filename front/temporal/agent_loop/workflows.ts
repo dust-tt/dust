@@ -188,6 +188,10 @@ const { finalizeLostToolActivity } = proxyActivities<
   typeof finalizeLostToolActivities
 >({
   startToCloseTimeout: "1 minute",
+  retry: {
+    // If the lost tool cannot be finalized, fail the workflow as before.
+    maximumAttempts: 3,
+  },
 });
 
 const { finalizeErroredSandboxChildToolActivity } = proxyActivities<
@@ -664,7 +668,9 @@ async function runToolOrFinalizeLost(
       throw error;
     }
 
-    await finalizeLostToolActivity(authType, toolActivityArgs);
+    await CancellationScope.nonCancellable(() =>
+      finalizeLostToolActivity(authType, toolActivityArgs)
+    );
     return { deferredEvents: [] };
   }
 }
