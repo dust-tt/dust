@@ -248,14 +248,18 @@ pub(crate) async fn session_cache_bounds_revocation_and_absolute_expiry() -> Res
             assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
         }
     }
-    other_server
+    // The background sweep may already have removed this expired fixture.
+    if let Err(error) = other_server
         .revoke_session(with_authorization(
             RevokeSessionRequest {
                 session_id: short.session_id,
             },
             &format!("Bearer {}", tenant.tenant_key),
         )?)
-        .await?;
+        .await
+    {
+        assert_eq!(error_code(&error)?, ErrorCode::NotFound);
+    }
     clear_tenant(&tenant).await?;
     Ok(())
 }

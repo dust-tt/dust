@@ -6,12 +6,13 @@ use tokio::time::sleep;
 
 use crate::storage::{fdb, resources::session::SessionResource};
 
-const SESSION_SWEEP_MIN_INTERVAL_MS: u64 = 60_000;
-const SESSION_SWEEP_MAX_INTERVAL_MS: u64 = 300_000;
+const SESSION_SWEEP_MIN_INTERVAL_MS: u64 = 1_000;
+const SESSION_SWEEP_MAX_INTERVAL_MS: u64 = 60_000;
+const SESSION_SWEEP_GRACE_PERIOD_MS: u64 = 60_000;
 
 /**
  * @cc [owner:spolu,label:backend;concurrency] session-sweep-scheduling
- * Every pass, including the first, MUST wait a fresh random delay between one and five minutes
+ * Every pass, including the first, MUST wait a fresh random delay between one and sixty seconds
  * before accessing FDB. A failed pass MUST be logged and wait again before retrying.
  */
 pub(crate) async fn sweep_expired_sessions() {
@@ -26,6 +27,11 @@ pub(crate) async fn sweep_expired_sessions() {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:backend;concurrency] session-sweep-cutoff
+ * A pass MUST only consider sessions expired for at least one minute and MUST use the same cutoff
+ * for every batch.
+ */
 async fn sweep() -> Result<()> {
     let mut random = [0; size_of::<u64>()];
     SystemRandom::new()
@@ -35,17 +41,27 @@ async fn sweep() -> Result<()> {
         % (SESSION_SWEEP_MAX_INTERVAL_MS - SESSION_SWEEP_MIN_INTERVAL_MS + 1);
     sleep(Duration::from_millis(jitter_ms)).await;
 
-    // Keep the cutoff fixed while draining this pass in bounded transactions.
-    let cutoff_ms = SystemTime::now()
+    // Keep the cutoff fixed and commit batches without another delay until the index is drained.
+    let now_ms: u64 = SystemTime::now()
         .duration_since(UNIX_EPOCH)?
         .as_millis()
         .try_into()?;
+    let cutoff_ms = now_ms.saturating_sub(SESSION_SWEEP_GRACE_PERIOD_MS);
+    let mut processed_entries = 0;
+    let mut revoked_sessions = 0;
     loop {
-        let processed = fdb::with_transaction(|tx| async move {
+        let (processed, revoked) = fdb::with_transaction(|tx| async move {
             SessionResource::revoke_expired(&tx, cutoff_ms).await
         })
         .await?;
+        processed_entries += processed;
+        revoked_sessions += revoked;
         if processed == 0 {
+            tracing::info!(
+                processed_entries,
+                revoked_sessions,
+                "expired session cleanup completed"
+            );
             return Ok(());
         }
     }

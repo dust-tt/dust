@@ -411,15 +411,18 @@ pub(crate) async fn expiry_cleanup_is_bounded_and_preserves_live_sessions() -> R
     let orphan_index = expiry_key(&orphan, cutoff_ms);
     tx.set(&orphan_index, &[]);
 
-    let mut processed = SessionResource::revoke_expired(&tx, cutoff_ms).await?;
+    let (mut processed, mut revoked) = SessionResource::revoke_expired(&tx, cutoff_ms).await?;
     assert!((1..=100).contains(&processed));
-    let mut total = processed;
+    let mut total_processed = processed;
+    let mut total_revoked = revoked;
     while processed > 0 {
-        processed = SessionResource::revoke_expired(&tx, cutoff_ms).await?;
+        (processed, revoked) = SessionResource::revoke_expired(&tx, cutoff_ms).await?;
         assert!(processed <= 100);
-        total += processed;
+        total_processed += processed;
+        total_revoked += revoked;
     }
-    assert_eq!(total, expired.len() + 2);
+    assert_eq!(total_processed, expired.len() + 2);
+    assert_eq!(total_revoked, expired.len());
     for session in &expired {
         let session_prefix =
             tenant_subspace(&session.tenant_id).subspace(&("session", session.session_id.as_str()));
@@ -480,7 +483,9 @@ pub(crate) async fn expiry_cleanup_conflicts_with_concurrent_changes() -> Result
         })
         .await?;
         let stale = fdb::database()?.create_trx()?;
-        assert!(SessionResource::revoke_expired(&stale, 0).await? > 0);
+        let (processed, revoked) = SessionResource::revoke_expired(&stale, 0).await?;
+        assert!(processed > 0);
+        assert!(revoked > 0);
 
         if extend_expiry {
             // Model a refresh that read the old state before expiry and commits after the sweep read.
@@ -515,7 +520,7 @@ pub(crate) async fn expiry_cleanup_conflicts_with_concurrent_changes() -> Result
                 |tx| async move { SessionResource::revoke_expired(&tx, 0).await }
             )
             .await?,
-            0,
+            (0, 0),
         );
 
         if extend_expiry {

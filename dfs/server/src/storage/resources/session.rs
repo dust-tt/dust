@@ -278,12 +278,13 @@ impl SessionResource {
      * Cleanup MUST inspect at most 100 expiry entries through cutoff_ms in the caller's transaction.
      * It MUST re-read session state with conflict tracking and remove the session and its indexes
      * only when its stored expiry is at or before cutoff_ms. Stale or orphaned expiry entries MUST
-     * be removed without deleting an unexpired session. The result counts processed index entries.
+     * be removed without deleting an unexpired session. The result MUST count processed index
+     * entries and actually revoked sessions separately, as `(processed, revoked)`.
      */
     pub async fn revoke_expired(
         tx: &Transaction,
         cutoff_ms: u64,
-    ) -> Result<usize, storage::Error<Error>> {
+    ) -> Result<(usize, usize), storage::Error<Error>> {
         let prefix = namespace_subspace().subspace(&EXPIRY_FAMILY);
         let begin = prefix.range().0;
         let end = prefix
@@ -300,6 +301,7 @@ impl SessionResource {
             .await
             .map_err(FdbBindingError::from)?;
         let processed = entries.len();
+        let mut revoked = 0;
         // Own each row across the awaited state read.
         for entry in entries {
             let (_expiry_bytes, tenant_id, session_id): (Vec<u8>, String, String) = prefix
@@ -315,11 +317,12 @@ impl SessionResource {
                 let key_hash = auth::key_hash_from_bytes(&key_hash)?;
                 if expires_at_ms <= cutoff_ms {
                     Self::clear(tx, &tenant_id, &session_id, &key_hash, expires_at_ms);
+                    revoked += 1;
                 }
             }
             tx.clear(entry.key());
         }
-        Ok(processed)
+        Ok((processed, revoked))
     }
 
     fn clear(
