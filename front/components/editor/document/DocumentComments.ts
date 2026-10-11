@@ -16,6 +16,7 @@ import {
 } from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { diffArrays } from "diff";
 import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
@@ -366,7 +367,50 @@ const buildDecorations = (
       : []),
   ]);
 
-/** The replacement of `before` by `after`, narrowed to where their content differs. */
+// Past this many tokens changed, a remote change maps as one replacement: diffing further would
+// cost more than rebuilding the highlights it spans.
+const MAX_DIFFED_EDIT_LENGTH = 512;
+
+const markTokens = (marks: readonly ProseMirrorMark[]) =>
+  marks.map((mark) => `${mark.type.name}${JSON.stringify(mark.attrs)}`).join();
+
+const nodeToken = (node: Node) =>
+  `${node.type.name}${JSON.stringify(node.attrs)}${markTokens(node.marks)}`;
+
+/** One token per position of `doc` between `from` and `to`: characters and node boundaries. */
+const positionTokens = (doc: Node, from: number, to: number): string[] => {
+  const tokens: string[] = [];
+  const visit = (fragment: Fragment, start: number) => {
+    fragment.forEach((node, offset) => {
+      const pos = start + offset;
+      const end = pos + node.nodeSize;
+      if (end <= from || pos >= to) {
+        return;
+      }
+      if (node.isText) {
+        const marks = markTokens(node.marks);
+        const text = node.text ?? "";
+        for (let at = Math.max(from, pos); at < Math.min(to, end); at++) {
+          tokens.push(`${marks}\u0000${text[at - pos]}`);
+        }
+      } else if (node.isLeaf) {
+        tokens.push(nodeToken(node));
+      } else {
+        if (pos >= from) {
+          tokens.push(`<${nodeToken(node)}`);
+        }
+        visit(node.content, pos + 1);
+        if (end - 1 < to) {
+          tokens.push(`>${node.type.name}`);
+        }
+      }
+    });
+  };
+  visit(doc.content, 0);
+  return tokens;
+};
+
+/** The replacement of `before` by `after`, as one replaced range per place their content differs. */
 const diffMap = (before: Node, after: Node): StepMap => {
   const start = before.content.findDiffStart(after.content);
   if (start === null) {
@@ -379,7 +423,33 @@ const diffMap = (before: Node, after: Node): StepMap => {
   // When the change repeats the text next to it, the common prefix and suffix overlap; moving both
   // ends past the start keeps the replaced ranges from inverting.
   const overlap = Math.max(0, start - Math.min(end.a, end.b));
-  return new StepMap([start, end.a + overlap - start, end.b + overlap - start]);
+  const endBefore = end.a + overlap;
+  const endAfter = end.b + overlap;
+  const changes = diffArrays(
+    positionTokens(before, start, endBefore),
+    positionTokens(after, start, endAfter),
+    { maxEditLength: MAX_DIFFED_EDIT_LENGTH }
+  );
+  if (!changes) {
+    return new StepMap([start, endBefore - start, endAfter - start]);
+  }
+  const ranges: number[] = [];
+  let pos = start;
+  for (const { added, removed, count } of changes) {
+    if (!added && !removed) {
+      pos += count;
+      continue;
+    }
+    const last = ranges.length - 3;
+    if (last < 0 || ranges[last] + ranges[last + 1] !== pos) {
+      ranges.push(pos, 0, 0);
+    }
+    ranges[ranges.length - (added ? 1 : 2)] += count;
+    if (removed) {
+      pos += count;
+    }
+  }
+  return new StepMap(ranges);
 };
 
 const narrowedMappings = new WeakMap<Transaction, Mapping>();

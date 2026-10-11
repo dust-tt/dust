@@ -1260,6 +1260,47 @@ describe("useDocumentComments", () => {
           { from: 1, to: 3 }
         );
       });
+
+      it("rebuild nothing in an unchanged paragraph between two changed ones", async () => {
+        const editor = await renderTwoComments();
+        const built = vi.spyOn(Decoration, "inline");
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Very ", 22);
+          tr.insertText("Oh ", 1);
+        });
+
+        expect(
+          built.mock.calls.map(
+            ([, , attrs]) => attrs?.["data-comment-highlight"]
+          )
+        ).toEqual(["c1"]);
+        expect(highlightOf(editor, "c1")).toBe("there");
+        expect(highlightOf(editor, "c2")).toBe("friend");
+      });
+
+      it("keep a pending draft over unchanged text changed on both sides", async () => {
+        const editor = await renderTwoComments();
+        act(() => {
+          editor
+            .chain()
+            .setTextSelection({ from: 23, to: 26 })
+            .startCommentDraft()
+            .run();
+        });
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Y", 27);
+          tr.insertText("X", 22);
+        });
+
+        expect(
+          editor.view.dom.querySelector("[data-comment-draft]")?.textContent
+        ).toBe("lai");
+        expect(documentCommentsPluginKey.getState(editor.state)?.draft).toEqual(
+          { from: 24, to: 27 }
+        );
+      });
     });
   });
 
