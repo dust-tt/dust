@@ -40,28 +40,19 @@ concentration need measurement.
 | `dfs-v1-{env}/tenant/<tenantId>/tenant` | FDB tuple `(root_id_bytes, key_hash_bytes)`. | Stores the tenant's real root ID and credential hash. |
 | `dfs-v1-{env}/tenant-key/<keyHash>` | Tenant ID as an FDB tuple string. | Resolves an opaque tenant key before the tenant is known. |
 
-The tenant record key is the FDB tuple `("dfs-v1-{env}", "tenant", tenantId, "tenant")`, built by
-`TenantResource::tenant_key`. Both value fields are tuple byte strings: the root is 16 UUIDv7 bytes,
-and the hash is 32 bytes of SHA-256 over the bearer key's UTF-8 bytes. The tenant record omits the
-tenant ID from its value. The plaintext bearer key is returned at creation and never persisted.
+The root is 16 UUIDv7 bytes; `keyHash` is SHA-256 of the bearer key's UTF-8 bytes. Plaintext keys are
+returned at creation and never persisted. Creation writes the record and lookup atomically,
+checking credential uniqueness. Authentication resolves the lookup and verifies the tenant record's
+matching hash in the same transaction.
 
-The global lookup uses the same hash to resolve the tenant ID from the bearer key. Authentication
-reads the tenant record and verifies its matching hash in the same transaction. Tenant creation
-writes the record and lookup atomically, ensuring the hash is not assigned to another tenant.
-The API caches successful tenant lookups by key hash across its connections for 30,000 milliseconds
-(`TENANT_KEY_CACHE_TTL_MS`), measured with a monotonic clock. Cache hits do not extend expiry. Expired
-entries trigger authentication against FDB again and are replaced on success; failed lookups are not
-cached. A sweep every 30,000 milliseconds removes expired entries under a write lock and stops when
-server shutdown begins. Active RPCs retain their own tenant references; removing an entry releases
-only the cache's reference. The map's allocated capacity is retained. Concurrent cache misses may
-each authenticate against FDB; the cache lock is released during the lookup so other tenants can
-continue using the cache.
+Each API instance caches successful authentication by key hash for 30 seconds. Cache hits do not
+extend expiry; failures are not cached. A shared sweep removes expired tenant and session cache
+entries every 30 seconds.
 
 ## Sessions
 
-Sessions are durable FDB state shared by all API servers and survive server restarts. They are
-independent of HTTP/2 connections. Each session has a fixed subject set and initially expires after
-one hour. Its root is resolved from tenant state.
+Sessions persist in FDB across server restarts and HTTP/2 connections. Each has a fixed subject set,
+an initial one-hour expiry, and a root resolved from tenant state.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
@@ -70,62 +61,47 @@ one hour. Its root is resolved from tenant state.
 | `dfs-v1-{env}/session-key/<keyHash>` | FDB tuple `(tenant_id, session_id)` of strings. | Resolves an opaque session key before the tenant is known. |
 | `dfs-v1-{env}/session-expiry/<expiresAtMs>/<tenantId>/<sessionId>` | Empty value. | Finds expired sessions across tenants in bounded batches. |
 
-Session IDs are UUIDv7 strings in lowercase 32-digit hex. Key components use the FDB tuple layer;
-the expiry index encodes its timestamp as an eight-byte big-endian byte string to preserve order.
-`SessionResource::new` validates and deduplicates subjects and generates the ID, bearer key, and
-one-hour expiry before entering a retrying transaction. `create` writes all records atomically.
-
-`keyHash` is SHA-256 of the bearer key. Plaintext keys are returned only by `CreateSession` and are
-never persisted. The global lookup only locates the tenant-scoped record; authentication verifies
-the matching hash and unexpired state in the same transaction before using its tenant and subjects.
-Successful session authentication is cached by key hash across an API instance's connections for at
-most 30 seconds, capped by the session's absolute expiry. Cache hits do not extend this deadline.
-The cache deadline is measured from the start of the FDB lookup, so an in-flight lookup cannot
-extend the revocation window. Tenant and session cache hits use shared read locks, and FDB lookups
-run without holding a cache lock. A shared sweep every 30,000 milliseconds removes expired entries
-from both caches and stops when server shutdown begins.
-Subjects have separate keys because the allowed set can exceed FDB's
+Session IDs are UUIDv7 strings in lowercase 32-digit hex. Keys use the FDB tuple layer; expiry index
+timestamps are eight-byte big-endian byte strings. Bearer keys are hashed as for tenants and never
+persisted in plaintext. Subjects have separate keys because the set can exceed FDB's
 [100,000-byte value limit](https://apple.github.io/foundationdb/known-limitations.html).
 
-Creation writes the state, subjects, credential lookup, and expiry entry atomically, checking that
-the session ID and credential hash are unused. An existing session ID with the same hash succeeds
-without rewriting state or indexes, allowing a retry to recognize its own commit. A different hash
-returns `AlreadyExists`; an occupied credential lookup for a new session returns `KeyCollision`.
-`RefreshSession` reads an existing active session directly from FDB, bypassing cached state, and
-sets expiry to the maximum of its current value and server time plus one hour, replacing the expiry
-entry in the same transaction. It preserves the session ID, subjects, and credential hash. After
-commit, the API evicts its local cache entry so the next `CurrentSession` loads the updated expiry.
+Creation atomically writes state, subjects, credential lookup, and expiry entry, rejecting ID or key
+collisions. IDs and keys are generated before the retrying transaction; an existing ID with the same
+hash succeeds without rewriting state, allowing retries to recognize their own commit.
 
-`RevokeSession` derives the tenant from the authenticated tenant key and resolves the session ID
-under that tenant. An unknown or cross-tenant ID returns `NOT_FOUND`. Revocation atomically clears
-the session prefix, credential lookup, and expiry entry. Refresh uses conflict-tracked reads, so
-it cannot recreate a revoked session. The revoking API evicts its local entry after commit. Cached
-sessions on other servers or from in-flight lookups may authorize new RPCs for up to 30 seconds
-after revocation commits; already admitted RPCs may finish. Mutations do not re-read session state
-on a cache hit, but still check object permissions in their transaction.
+Authentication resolves the lookup and verifies the matching hash and unexpired state in one
+transaction. Successful results are cached per API instance for at most 30 seconds from the start
+of the lookup, capped by session expiry; hits do not extend this deadline. Revocation can therefore
+take up to 30 seconds to prevent new RPCs across servers; already admitted RPCs may finish.
 
-Each server waits a fresh random delay between one and sixty seconds before each durable expiry
-sweep, including the first. A pass fixes its expiration cutoff at one minute before its start,
-leaving a grace period after expiry, and drains the global expiry index in transactions of at most
-100 entries without a delay between batches. Each transaction rechecks authoritative session state
-with conflict tracking before clearing the expired session prefix, key lookup, and expiry index.
-Subject keys are cleared without loading their contents. Stale and orphaned expiry entries are
-removed; a stale entry cannot delete a session whose current expiry is beyond the cutoff. Overlapping
-sweepers or refreshes conflict and retry through the FDB transaction runner. Jitter reduces overlap
-between instances without requiring a leader or lease. Failed passes are logged and retried on the
-next jittered schedule. Completed passes log processed index entries and revoked sessions separately;
-stale and orphaned entries do not count as revoked. The sweep stops when server shutdown begins.
-Authentication rejects expired sessions immediately, independently of when cleanup removes their
-stored records.
+`RefreshSession` reads active state directly from FDB and atomically replaces the expiry index entry,
+extending expiry to the later of its current value and server time plus one hour. It never revives
+expired or revoked sessions. `RevokeSession` uses the authenticated tenant to locate the session,
+then atomically clears its prefix, credential lookup, and expiry entry. Both operations use
+conflict-tracked reads and evict the local cache entry after commit.
+
+Each server waits a fresh random 1–60 seconds before each expiry sweep, including the first. A pass
+fixes its cutoff at one minute before its start and drains the expiry index in fresh transactions
+of at most 100 entries. Each batch rechecks session state with conflict tracking before deletion,
+protecting refreshed sessions and allowing concurrent sweepers to retry safely. Stale and orphaned
+index entries are also removed. Authentication rejects expired sessions independently of cleanup.
 
 ## Objects and contents
 
 | Key | Value | Rationale |
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
-| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time, MIME type, and xattrs. | Keeps optional metadata out of ordinary traversal. |
+| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and MIME type. | Keeps optional metadata out of ordinary traversal. |
+| `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
+
+Each xattr name is a separate tuple component. An empty value denotes a present xattr with empty
+bytes; a missing key denotes an absent xattr. Extended metadata reads combine the base entry and
+xattr entries from the same transaction. Xattr changes commit with `attr_version` and preserve the
+32 KiB limit on combined xattr name/value bytes. Object deletion clears both the base metadata entry
+and all xattr entries.
 
 The stored parent and basename support inheritance and namespace maintenance. They change
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
