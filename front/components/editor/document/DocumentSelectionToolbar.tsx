@@ -22,9 +22,10 @@ import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import { isTextSelection } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
+import type { BubbleMenuProps } from "@tiptap/react/menus";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface DocumentSelectionToolbarProps {
   editor: Editor;
@@ -38,6 +39,27 @@ const TEXT_STYLES = BLOCKS.filter(
 const LIST_STYLES = BLOCKS.filter(
   ({ selectionToolbarMenu }) => selectionToolbarMenu === "list"
 );
+
+// BubbleMenu reapplies its options to the editor whenever `shouldShow` or `options` changes
+// identity, so both stay stable across renders.
+const showSelectionToolbar: NonNullable<BubbleMenuProps["shouldShow"]> = ({
+  editor,
+  view,
+  state,
+  from,
+  to,
+}) =>
+  editor.isEditable &&
+  isTextSelection(state.selection) &&
+  !state.selection.empty &&
+  state.doc.textBetween(from, to).length > 0 &&
+  !documentCommentsPluginKey.getState(state)?.draft &&
+  (editor.isFocused ||
+    // The view's own document: TipTap fires this from a timer that can outlive the page and
+    // the editor, whose `view` getter throws once destroyed.
+    !!view.dom.ownerDocument.activeElement?.closest(
+      "[data-document-selection]"
+    ));
 
 /** Keeps the editor's selection, and so the toolbar, while a control is pressed. */
 const keepSelection = (event: React.MouseEvent) => event.preventDefault();
@@ -151,6 +173,14 @@ export const DocumentSelectionToolbar = ({
 }: DocumentSelectionToolbarProps) => {
   const { t } = useLingui();
   const [editingLink, setEditingLink] = useState(false);
+  const menuOptions = useMemo(
+    (): BubbleMenuProps["options"] => ({
+      placement: "top",
+      offset: 8,
+      onHide: () => setEditingLink(false),
+    }),
+    []
+  );
   const selection = useEditorState({
     editor,
     selector: ({ editor }) => ({
@@ -216,25 +246,9 @@ export const DocumentSelectionToolbar = ({
   return (
     <BubbleMenu
       editor={editor}
-      options={{
-        placement: "top",
-        offset: 8,
-        onHide: () => setEditingLink(false),
-      }}
+      options={menuOptions}
       className="relative z-50 font-sans text-foreground antialiased print:hidden"
-      shouldShow={({ editor, view, state, from, to }) =>
-        editor.isEditable &&
-        isTextSelection(state.selection) &&
-        !state.selection.empty &&
-        state.doc.textBetween(from, to).length > 0 &&
-        !documentCommentsPluginKey.getState(state)?.draft &&
-        (editor.isFocused ||
-          // The view's own document: TipTap fires this from a timer that can outlive the page and
-          // the editor, whose `view` getter throws once destroyed.
-          !!view.dom.ownerDocument.activeElement?.closest(
-            "[data-document-selection]"
-          ))
-      }
+      shouldShow={showSelectionToolbar}
     >
       <div
         role="toolbar"

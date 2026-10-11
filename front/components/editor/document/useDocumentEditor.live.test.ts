@@ -11,6 +11,7 @@ import { useDocumentEditor } from "@app/components/editor/document/useDocumentEd
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -431,5 +432,46 @@ describe("useDocumentEditor in a live session", () => {
     });
     expect(result.current.dirty).toBe(false);
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("neither re-renders nor reapplies the editor's options on remote edits or renders", async () => {
+    const { document } = sharedDocumentFor(FIXTURE);
+    const extensions = buildLiveDocumentExtensions({
+      t: (descriptor) => descriptor.id ?? "",
+      document,
+      awareness: null,
+      user: LiveUserFactory.build(),
+      comments: fakeCommentChannel().channel,
+      resolveImageSource: () => null,
+    });
+    let renders = 0;
+    const { result, rerender } = renderHook(() => {
+      renders++;
+      return useDocumentEditor({
+        initialContent: FIXTURE,
+        readOnly: false,
+        autosaveDebounceMs: 0,
+        onSave: vi.fn(),
+        onStateChange: undefined,
+        resolveImageSource: () => null,
+        live: { extensions, connected: true },
+      });
+    });
+    await waitFor(() => expect(result.current.editor).not.toBeNull());
+    const editor = result.current.editor;
+    if (!editor) {
+      return;
+    }
+    const setOptions = vi.spyOn(editor, "setOptions");
+    renders = 0;
+
+    act(() => remoteEdit(document, "Theirs. "));
+    act(() => remoteEdit(document, "Again. "));
+    expect(editor.getText()).toContain("Again. Theirs.");
+    expect(renders).toBe(0);
+
+    rerender();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+    expect(setOptions).not.toHaveBeenCalled();
   });
 });

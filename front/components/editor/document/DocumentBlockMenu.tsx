@@ -3,6 +3,7 @@ import { cn, Icon } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
+import type { BubbleMenuProps } from "@tiptap/react/menus";
 import { BubbleMenu } from "@tiptap/react/menus";
 import type React from "react";
 import { useId, useState } from "react";
@@ -98,6 +99,18 @@ export const useDocumentBlockMenu = (
   };
 };
 
+// BubbleMenu reapplies its options to the editor whenever `shouldShow` or `options` changes
+// identity, so both stay stable across renders.
+const BLOCK_MENU_OPTIONS: BubbleMenuProps["options"] = {
+  placement: "bottom-start",
+  offset: 8,
+};
+
+const showBlockMenu: NonNullable<BubbleMenuProps["shouldShow"]> = ({
+  editor,
+  state,
+}) => editor.isEditable && editor.isFocused && getBlockQuery(state) !== null;
+
 interface DocumentBlockMenuProps {
   editor: Editor;
   menu: ReturnType<typeof useDocumentBlockMenu>;
@@ -111,11 +124,9 @@ export const DocumentBlockMenu = ({ editor, menu }: DocumentBlockMenuProps) => {
       editor={editor}
       pluginKey="document-block-menu"
       updateDelay={0}
-      options={{ placement: "bottom-start", offset: 8 }}
+      options={BLOCK_MENU_OPTIONS}
       className="relative z-50 font-sans text-foreground antialiased print:hidden"
-      shouldShow={({ editor, state }) =>
-        editor.isEditable && editor.isFocused && getBlockQuery(state) !== null
-      }
+      shouldShow={showBlockMenu}
     >
       <div
         hidden={!menu.show}

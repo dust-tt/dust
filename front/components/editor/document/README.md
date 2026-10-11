@@ -143,5 +143,5 @@ write them.
 | `commentInputExtensions.ts` | The message field's schema, its Markdown and its keys. |
 
 Tests: `dfm_persistence.test.ts` for the load and save boundary, `useDocumentEditor.test.ts`
-for the save on unmount, `useDocumentComments.test.ts` for comments through the editor. The editor's interaction tests lived in Sparkle stories and are not
+for dirty tracking, autosave and the save on unmount, `useDocumentComments.test.ts` for comments through the editor. The editor's interaction tests lived in Sparkle stories and are not
 ported yet.
