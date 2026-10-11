@@ -803,15 +803,17 @@ export async function connectToMCPServer(
 /**
  * @cc [owner:philipperolet,label:performance] bounded-connect
  * The returned promise MUST settle within `DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS`, including the
- * `notifications/initialized` message sent after `initialize`. On timeout, it MUST reject and
- * close `mcpClient` so the pending request is aborted.
+ * `notifications/initialized` message sent after `initialize`. On failure, including timeout, it
+ * MUST close `mcpClient` before rejecting, so that a pending request is aborted and the client can
+ * be reused by the SSE fallback.
  */
-async function connectWithTimeout(
+// Exported for tests.
+export async function connectWithTimeout(
   mcpClient: Client,
   transport: Transport
 ): Promise<void> {
   let timeoutId: NodeJS.Timeout | undefined;
-  // The SDK's connect `timeout` only bounds the `initialize` request: a server that never
+  // The SDK's connect `timeout` option only bounds the `initialize` request: a server that never
   // answers the `notifications/initialized` POST stalls the connection until undici's 300s
   // headers timeout, far beyond the agent loop activity heartbeat timeout.
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -825,16 +827,11 @@ async function connectWithTimeout(
   });
 
   try {
-    await Promise.race([
-      mcpClient.connect(transport, {
-        // The default timeout is 60 seconds, which may exceed the heartbeat timeout.
-        timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
-      }),
-      timeoutPromise,
-    ]);
+    await Promise.race([mcpClient.connect(transport), timeoutPromise]);
   } catch (error) {
-    // Aborts the request still pending on timeout. On other failures, the SDK already closed it.
-    void mcpClient.close();
+    // Aborts the request still pending on timeout. The SDK does not close the transport when it
+    // fails to start (e.g. an SSE stream that errored), so this also detaches it.
+    await mcpClient.close();
     throw error;
   } finally {
     clearTimeout(timeoutId);
