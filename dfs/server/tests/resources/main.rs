@@ -14,6 +14,7 @@ fn resources() -> Result<()> {
 
     runtime.block_on(async {
         tenant::tenant_key_collisions_preserve_the_existing_owner().await?;
+        tenant::decoding_errors_abort_creation_and_retain_their_type().await?;
         tenant::authentication_requires_a_matching_index_and_tenant_record().await
     })
 }
