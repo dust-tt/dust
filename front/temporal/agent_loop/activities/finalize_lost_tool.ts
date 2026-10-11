@@ -25,9 +25,9 @@ const LOST_TOOL_ERROR_CONTENT: CallToolResult["content"] = [
 /**
  * @cc [owner:philipperolet,label:product] lost-tool-as-tool-error
  * When the action is not in a final status, it MUST be marked `errored` with an output telling
- * the model the tool's result is unknown, and an `agent_action_success` event MUST be published
- * for it, as for a tool that returned an error. An action already in a final status MUST be left
- * unchanged.
+ * the model the tool's result is unknown, and an `agent_action_success` event MUST be emitted for
+ * it through `updateResourceAndPublishEvent`, as for a tool that returned an error. An action
+ * already in a final status MUST be left unchanged.
  */
 export async function finalizeLostToolActivity(
   authType: AuthenticatorType,

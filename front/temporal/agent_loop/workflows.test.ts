@@ -6,6 +6,7 @@ import {
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import {
   ActivityFailure,
+  CancelledFailure,
   RetryState,
   TimeoutFailure,
   TimeoutType,
@@ -513,6 +514,30 @@ describe("agentLoopWorkflow lost tool activity", () => {
     expect(
       runModelAndCreateActionsActivityWithExplicitCancellation
     ).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not finalize a cancelled tool as lost", async () => {
+    patched.mockReturnValue(true);
+    const cancelled = new ActivityFailure(
+      "Activity cancelled",
+      "runToolActivity",
+      "activity-id",
+      RetryState.CANCEL_REQUESTED,
+      "worker-id",
+      new CancelledFailure("cancelled")
+    );
+    runToolActivityWithExplicitCancellation.mockRejectedValue(cancelled);
+
+    await expect(
+      agentLoopWorkflow({
+        agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+        authType,
+        initialStartTime: 0,
+        startStep: 0,
+      })
+    ).rejects.toBe(cancelled);
+
+    expect(finalizeLostToolActivity).not.toHaveBeenCalled();
   });
 
   it("fails the workflow when replaying without the patch marker", async () => {
