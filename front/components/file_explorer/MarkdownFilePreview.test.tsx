@@ -160,4 +160,22 @@ describe("MarkdownFilePreview", () => {
     expect(screen.queryByRole("img", { name: "Logo" })).toBeNull();
     expect(screen.getByText("Logo")).toBeDefined();
   });
+
+  it("loads an unresolved external image only once clicked, without a referrer", () => {
+    render(
+      <MarkdownFilePreview
+        content={"![Logo](https://example.com/logo.png)\n\n![Chart](chart.png)"}
+        viewMode="preview"
+        resolveImageUrl={NO_IMAGE_URL}
+      />
+    );
+
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Chart" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Logo" }));
+
+    const image = screen.getByRole("img", { name: "Logo" });
+    expect(image).toHaveAttribute("src", "https://example.com/logo.png");
+    expect(image).toHaveAttribute("referrerpolicy", "no-referrer");
+  });
 });

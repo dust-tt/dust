@@ -3,26 +3,42 @@ import { FilePreviewBlock } from "@app/components/markdown/FilePreviewBlock";
 import type { MarkdownImageSource } from "@app/components/markdown/image_source";
 import { resolveMarkdownImageSource } from "@app/components/markdown/image_source";
 import config from "@app/lib/api/config";
-import {
-  getFileNameFromScopedPath,
-  getFilePreviewContentType,
-} from "@app/lib/markdown/file_preview";
+import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import {
   getFilePathDownloadUrl,
   getProcessedFileDownloadUrl,
   useFileMetadata,
+  useFileMetadataFromPath,
 } from "@app/lib/swr/files";
 import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Citation, CitationImage } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
-import { useState } from "react";
 import { visit } from "unist-util-visit";
 
 interface ImgProps {
   src: string;
   alt: string;
   owner: LightWorkspaceType;
+}
+
+interface LoadingImgProps {
+  imgSrc: string;
+  downloadUrl: string;
+  title: string;
+}
+
+function LoadingImg({ imgSrc, downloadUrl, title }: LoadingImgProps) {
+  return (
+    <Citation containerClassName="aspect-square w-48">
+      <CitationImage
+        imgSrc={imgSrc}
+        downloadUrl={downloadUrl}
+        title={title}
+        isLoading={true}
+      />
+    </Citation>
+  );
 }
 
 interface PathImgProps {
@@ -32,37 +48,40 @@ interface PathImgProps {
 }
 
 function PathImg({ source, alt, owner }: PathImgProps) {
-  const [isImageLoading, setIsImageLoading] = useState(true);
-  const fileName = getFileNameFromScopedPath(source.filePath);
-  const contentType = getFilePreviewContentType({ fileName });
+  const { t } = useLingui();
+  const { metadata, isFileMetadataLoading } = useFileMetadataFromPath({
+    owner,
+    filePath: source.filePath,
+  });
+  const downloadUrl = getFilePathDownloadUrl(owner, source.filePath);
 
-  if (!isSupportedImageContentType(contentType)) {
+  if (isFileMetadataLoading) {
+    return (
+      <LoadingImg
+        imgSrc={source.url}
+        downloadUrl={downloadUrl}
+        title={alt || t`Loading...`}
+      />
+    );
+  }
+
+  if (!metadata) {
+    return null;
+  }
+
+  if (!isSupportedImageContentType(metadata.contentType)) {
     return <FilePreviewBlock path={source.filePath} title={alt || undefined} />;
   }
 
-  // The citation shows a spinner instead of its image while loading, so a hidden image tracks the
-  // load.
   return (
-    <>
-      {isImageLoading && (
-        <img
-          src={source.url}
-          alt=""
-          hidden
-          onLoad={() => setIsImageLoading(false)}
-          onError={() => setIsImageLoading(false)}
-        />
-      )}
-      <PreviewableCitation
-        filePath={source.filePath}
-        contentType={contentType}
-        title={alt || fileName}
-        thumbnailUrl={source.url}
-        downloadUrl={getFilePathDownloadUrl(owner, source.filePath)}
-        isLoading={isImageLoading}
-        containerClassName="aspect-square w-48"
-      />
-    </>
+    <PreviewableCitation
+      filePath={source.filePath}
+      contentType={metadata.contentType}
+      title={alt || getFileNameFromScopedPath(source.filePath)}
+      thumbnailUrl={source.url}
+      downloadUrl={downloadUrl}
+      containerClassName="aspect-square w-48"
+    />
   );
 }
 
@@ -81,7 +100,7 @@ function Img({ src, alt, owner }: ImgProps) {
   }
 
   if (source.kind === "file_path") {
-    return <PathImg key={source.url} source={source} alt={alt} owner={owner} />;
+    return <PathImg source={source} alt={alt} owner={owner} />;
   }
 
   const baseUrl = config.getApiBaseUrl();
@@ -93,14 +112,11 @@ function Img({ src, alt, owner }: ImgProps) {
   // Loading state while fetching metadata: render a CitationImage placeholder.
   if (isFileMetadataLoading) {
     return (
-      <Citation containerClassName="aspect-square w-48">
-        <CitationImage
-          imgSrc={viewURL.toString()}
-          downloadUrl={downloadURL.toString()}
-          title={alt || t`Loading...`}
-          isLoading={true}
-        />
-      </Citation>
+      <LoadingImg
+        imgSrc={viewURL.toString()}
+        downloadUrl={downloadURL.toString()}
+        title={alt || t`Loading...`}
+      />
     );
   }
 
