@@ -2,6 +2,7 @@ import config from "@app/lib/api/config";
 import { canAccessFrame } from "@app/lib/api/files/frame_access";
 import type { FrameExportError } from "@app/lib/api/files/pdf_export";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
+import { getFrameExportLocale } from "@app/lib/api/viz/frame_locale";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
@@ -76,6 +77,7 @@ export async function screenshotInteractiveContentFile(
   const params = new URLSearchParams({
     accessToken,
     identifier: `viz-${fileId}`,
+    locale: await getFrameExportLocale(auth),
   });
   const targetUrl = `${config.getVizPublicUrl()}/content?${params.toString()}`;
 
