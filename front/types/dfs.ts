@@ -52,7 +52,7 @@ export interface DfsReadView {
 
 export interface DfsExtendedMetadata {
   createdMs: number;
-  mimeType: string;
+  mimeType?: string;
   xattrs: Record<string, Uint8Array>;
 }
 

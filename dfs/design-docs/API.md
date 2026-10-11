@@ -39,7 +39,7 @@ Attr {
 
 ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
-  mime_type: string
+  mime_type?: string
   xattrs: map<string, bytes>
 }
 
@@ -94,6 +94,8 @@ Optional `metadata` contains creation time, MIME type, and xattrs; absence means
 fetched, while a present metadata object with an empty xattr map means it was fetched and no xattrs
 exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. `Search` may include it
 in `SearchAttr`. Other responses omit it unless explicitly specified.
+
+An omitted MIME type means none is assigned.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
@@ -270,8 +272,8 @@ filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes w
 strings contain 1–1,024 UTF-8 bytes.
 
 Stored basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types
-must be valid and at most 255 bytes. Xattr names contain 1–255 bytes without NUL; combined xattr
-key/value bytes are limited to 32 KiB.
+may be absent or empty; nonempty values must be valid and at most 255 bytes. Xattr names contain
+1–255 bytes without NUL; combined xattr key/value bytes are limited to 32 KiB.
 
 ## Tenants and sessions
 
