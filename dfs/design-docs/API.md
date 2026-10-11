@@ -95,7 +95,8 @@ fetched, while a present metadata object with an empty xattr map means it was fe
 exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. `Search` may include it
 in `SearchAttr`. Other responses omit it unless explicitly specified.
 
-An omitted MIME type means none is assigned.
+In returned metadata, an omitted MIME type means none is assigned. Setting `mime_type` to `""` in a
+create or update operation clears it and stores `None`; subsequent metadata reads omit the field.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
@@ -797,7 +798,7 @@ Applies a metadata patch to an authorized object. Omitted optional fields remain
 ```text
 UpdateOperation {
   object_id: ObjectId
-  mime_type?: string
+  mime_type?: string             // Omitted leaves unchanged; "" clears it and stores None.
   xattrs: XattrChange[]           // Changes to individual keys; not a full replacement map.
   atime?: Timestamp
   mtime?: Timestamp
