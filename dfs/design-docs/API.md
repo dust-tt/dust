@@ -341,6 +341,7 @@ Returns information about the authenticated session. Requires the **session key*
 
 **Returns:** `Session`, with the fields defined above. `session_key` is an empty string; this call
 never reissues the credential. The session's subject set and expiration are unchanged.
+The response may reflect cached state for up to 30 seconds after a refresh on another server.
 
 ### RevokeSession
 

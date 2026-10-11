@@ -27,9 +27,11 @@ impl From<tenant::Error> for Status {
 impl From<session::Error> for Status {
     fn from(error: session::Error) -> Self {
         match error {
-            session::Error::InvalidSubject | session::Error::TooManySubjects => {
-                status(ErrorCode::InvalidInput)
-            }
+            session::Error::InvalidId
+            | session::Error::InvalidSubject
+            | session::Error::TooManySubjects => status(ErrorCode::InvalidInput),
+            session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
+            session::Error::NotFound => status(ErrorCode::NotFound),
             session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
             session::Error::KeyGeneration
             | session::Error::ExpiryGeneration

@@ -9,7 +9,10 @@ use tonic::{Request, Status};
 
 use crate::{
     auth::{KEY_LENGTH, KeyHash, hash_key},
-    storage::{fdb, resources::tenant::TenantResource},
+    storage::{
+        fdb,
+        resources::{session::SessionResource, tenant::TenantResource},
+    },
 };
 
 use super::API;
@@ -18,7 +21,8 @@ use super::API;
 mod tests;
 
 const TENANT_KEY_CACHE_TTL_MS: u64 = 30_000;
-const TENANT_KEY_CACHE_SWEEP_INTERVAL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
+const SESSION_KEY_CACHE_TTL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
+const KEY_CACHE_SWEEP_INTERVAL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
 
 /**
  * @cc [owner:spolu,label:api;security] tenant-key-cache-expiry
@@ -28,6 +32,28 @@ const TENANT_KEY_CACHE_SWEEP_INTERVAL_MS: u64 = TENANT_KEY_CACHE_TTL_MS;
 pub(super) struct CachedTenant {
     tenant: Arc<TenantResource>,
     expires_at: Instant,
+}
+
+/**
+ * @cc [owner:spolu,label:api;security] session-key-cache-expiry
+ * Cached sessions MUST NOT authenticate at or after either their absolute expiry or 30,000
+ * milliseconds from the start of the FDB lookup. Cache hits MUST NOT extend either deadline.
+ */
+pub(super) struct CachedSession {
+    session: Arc<SessionResource>,
+    expires_at: Instant,
+}
+
+impl CachedSession {
+    fn new(session: Arc<SessionResource>, lookup_started: Instant) -> Result<Self, Status> {
+        let now = Instant::now();
+        let remaining = session.remaining_ttl()?;
+        Ok(Self {
+            session,
+            expires_at: (lookup_started + Duration::from_millis(SESSION_KEY_CACHE_TTL_MS))
+                .min(now + remaining),
+        })
+    }
 }
 
 /// A parsed credential, not proof of authentication.
@@ -48,7 +74,7 @@ pub(crate) fn bearer_auth(mut request: Request<()>) -> Result<Request<()>, Statu
     Ok(request)
 }
 
-fn credentials<T>(request: &Request<T>) -> Result<KeyHash, Status> {
+pub(super) fn credentials<T>(request: &Request<T>) -> Result<KeyHash, Status> {
     let key = request
         .extensions()
         .get::<BearerKeyHash>()
@@ -66,23 +92,31 @@ impl API {
         Ok(Self {
             master_key_hash: hash_key(master_key),
             tenant_key_cache: Default::default(),
+            session_key_cache: Default::default(),
         })
     }
 
     /**
-     * @cc [owner:spolu,label:performance;concurrency] tenant-key-cache-reclamation
+     * @cc [owner:spolu,label:performance;concurrency] key-cache-reclamation
      * Every sweep MUST remove expired entries and retain unexpired entries. Removing an entry
-     * MUST release the cache's ownership of the tenant without invalidating outstanding references.
+     * MUST release the cache's ownership of the resource without invalidating outstanding references.
      */
-    pub(crate) async fn sweep_tenant_key_cache(&self) {
-        let period = Duration::from_millis(TENANT_KEY_CACHE_SWEEP_INTERVAL_MS);
+    pub(crate) async fn sweep_key_caches(&self) {
+        let period = Duration::from_millis(KEY_CACHE_SWEEP_INTERVAL_MS);
         let mut sweep = interval_at(tokio::time::Instant::now() + period, period);
         sweep.set_missed_tick_behavior(MissedTickBehavior::Skip);
         loop {
             sweep.tick().await;
-            let mut cache = self.tenant_key_cache.write().await;
+            {
+                let mut cache = self.tenant_key_cache.write().await;
+                let now = Instant::now();
+                cache.retain(|_, cached| cached.expires_at > now);
+            }
+            let mut cache = self.session_key_cache.write().await;
             let now = Instant::now();
-            cache.retain(|_, cached| cached.expires_at > now);
+            cache.retain(|_, cached| {
+                cached.expires_at > now && cached.session.remaining_ttl().is_ok()
+            });
         }
     }
 
@@ -127,5 +161,43 @@ impl API {
         };
         self.tenant_key_cache.write().await.insert(key_hash, cached);
         Ok(tenant)
+    }
+
+    /**
+     * @cc [owner:spolu,label:api;security] session-auth-cache-isolation
+     * Cached authentication MUST be scoped to the supplied session key hash and MUST NOT authorize
+     * tenant or master RPCs. Failed authentication MUST NOT be cached. Every RPC MUST supply a bearer.
+     */
+    /**
+     * @cc [owner:spolu,label:performance;concurrency] session-key-cache-concurrency
+     * Cache hits MUST use shared read access. FDB authentication MUST run without a cache guard.
+     */
+    pub(super) async fn require_session<T>(
+        &self,
+        request: &Request<T>,
+    ) -> Result<Arc<SessionResource>, Status> {
+        let key_hash = credentials(request)?;
+        if let Some(cached) = self.session_key_cache.read().await.get(&key_hash)
+            && cached.expires_at > Instant::now()
+        {
+            cached.session.remaining_ttl()?;
+            return Ok(Arc::clone(&cached.session));
+        }
+        let lookup_started = Instant::now();
+        let session = Arc::new(
+            fdb::with_transaction(|tx| async move {
+                SessionResource::authenticate(&tx, &key_hash).await
+            })
+            .await?,
+        );
+        let cached = CachedSession::new(Arc::clone(&session), lookup_started)?;
+        if cached.expires_at <= Instant::now() {
+            return Err(status(ErrorCode::Unauthenticated));
+        }
+        self.session_key_cache
+            .write()
+            .await
+            .insert(key_hash, cached);
+        Ok(session)
     }
 }

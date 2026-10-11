@@ -52,7 +52,12 @@ fn server() -> Result<()> {
         dfs_rejects_a_missing_or_malformed_authorization_as_unauthenticated().await?;
         api::create_tenant::dfs_rejects_invalid_tenant_creation().await?;
         api::create_session::creates_durable_sessions_for_authenticated_tenants().await?;
-        api::auth::tenant_key_cache_is_shared_across_connections_and_expires().await
+        api::session::session_rpcs_enforce_credentials_and_preserve_identity().await?;
+        tokio::try_join!(
+            api::auth::tenant_key_cache_is_shared_across_connections_and_expires(),
+            api::session::session_cache_bounds_revocation_and_absolute_expiry(),
+        )?;
+        Ok(())
     })
 }
 

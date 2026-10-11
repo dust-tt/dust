@@ -81,7 +81,9 @@ the matching hash and unexpired state in the same transaction before using its t
 Successful session authentication is cached by key hash across an API instance's connections for at
 most 30 seconds, capped by the session's absolute expiry. Cache hits do not extend this deadline.
 The cache deadline is measured from the start of the FDB lookup, so an in-flight lookup cannot
-extend the revocation window. Expired cache entries are periodically swept, as for tenant keys.
+extend the revocation window. Tenant and session cache hits use shared read locks, and FDB lookups
+run without holding a cache lock. A shared sweep every 30,000 milliseconds removes expired entries
+from both caches and stops when server shutdown begins.
 Subjects have separate keys because the allowed set can exceed FDB's
 [100,000-byte value limit](https://apple.github.io/foundationdb/known-limitations.html).
 
@@ -91,18 +93,21 @@ without rewriting state or indexes, allowing a retry to recognize its own commit
 returns `AlreadyExists`; an occupied credential lookup for a new session returns `KeyCollision`.
 `RefreshSession` reads an existing active session directly from FDB, bypassing cached state, and
 sets expiry to the maximum of its current value and server time plus one hour, replacing the expiry
-entry in the same transaction. It preserves the session ID, subjects, and credential hash.
+entry in the same transaction. It preserves the session ID, subjects, and credential hash. After
+commit, the API evicts its local cache entry so the next `CurrentSession` loads the updated expiry.
 
 `RevokeSession` derives the tenant from the authenticated tenant key and resolves the session ID
 under that tenant. An unknown or cross-tenant ID returns `NOT_FOUND`. Revocation atomically clears
 the session prefix, credential lookup, and expiry entry. Refresh uses conflict-tracked reads, so
-it cannot recreate a revoked session. Cached sessions may authorize new RPCs for up to 30 seconds
+it cannot recreate a revoked session. The revoking API evicts its local entry after commit. Cached
+sessions on other servers or from in-flight lookups may authorize new RPCs for up to 30 seconds
 after revocation commits; already admitted RPCs may finish. Mutations do not re-read session state
 on a cache hit, but still check object permissions in their transaction.
 
-Expiry cleanup reads bounded batches from the global expiry index and rechecks the current session
-state before deleting it and its indexes in one transaction. An obsolete expiry entry cannot delete
-a refreshed session. Authentication rejects expired sessions even before cleanup runs.
+Durable expiry cleanup remains follow-up work. It will read bounded batches from the global expiry
+index and recheck the current session state before deleting it and its indexes in one transaction.
+An obsolete expiry entry must not delete a refreshed session. Authentication already rejects expired
+sessions, and the tenant can revoke them to remove their stored records.
 
 ## Objects and contents
 
