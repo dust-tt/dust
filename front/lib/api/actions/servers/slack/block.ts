@@ -9,6 +9,8 @@ import slackifyMarkdown from "slackify-markdown";
  */
 export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
+const MAX_SLACK_MARKDOWN_BLOCK_LENGTH = 12_000;
+
 // Mirrors connectors/src/connectors/slack/chat/blocks.ts::makeMarkdownBlock.
 // The newer `markdown` block renders tables, headers, lists, but is
 // not supported alongside file uploads — those fall back to a legacy mrkdwn
@@ -26,7 +28,7 @@ export function makeMarkdownBlocks(
     return [
       {
         type: "markdown",
-        text: truncate(text, MAX_SLACK_MESSAGE_LENGTH),
+        text: truncate(text, MAX_SLACK_MARKDOWN_BLOCK_LENGTH),
       },
     ];
   }
