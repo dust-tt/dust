@@ -478,9 +478,7 @@ export async function getOnboardingLanguage(
     return storedLocale.split("-")[0];
   }
 
-  return (
-    browserLanguage ?? auth.getNonNullableWorkspace().locale.split("-")[0]
-  );
+  return browserLanguage ?? auth.getNonNullableWorkspace().locale.split("-")[0];
 }
 
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
