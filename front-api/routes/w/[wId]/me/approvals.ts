@@ -46,7 +46,7 @@ app.get("/", async (ctx): HandlerResult<GetUserApprovalsResponseBody> => {
           validation.mcpServerId,
           { includeRestricted: true }
         );
-        serverName = server?.toJSON().name || "Unknown Internal Server";
+        serverName = server?.toMetadataJSON().name || "Unknown Internal Server";
       } else if (serverType === "remote") {
         const server = await RemoteMCPServerResource.fetchById(
           auth,

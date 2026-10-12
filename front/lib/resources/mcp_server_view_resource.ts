@@ -128,6 +128,11 @@ export type PostMCPServerViewResponseBody = {
  *   checked at runtime). `loadConfiguration` upgrades views already fetched as `metadata`.
  * Neither is enough to run a tool: `connectToMCPServer` reads the plaintext secrets itself.
  */
+/**
+ * @cc [owner:aubin-tchoi,label:security;backend] metadata-mode-loads-no-secrets
+ * `metadata` views MUST NOT carry server secrets: no remote `sharedSecret` or `customHeaders`,
+ * and no internal server credentials (never decrypted). Only `loadConfiguration` loads them.
+ */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
 const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
@@ -246,8 +251,12 @@ export class MCPServerViewResource<
           "Internal server not found, it might have been deleted from the list of internal servers."
         );
       }
+      await InternalMCPServerInMemoryResource.loadCredentials(auth, [
+        internalServer,
+      ]);
       resource.internalMCPServer = internalServer;
     }
+    // A new view has no tool permissions of its own yet.
     resource.fetchMode = "configuration";
 
     return resource;
@@ -538,13 +547,11 @@ export class MCPServerViewResource<
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       mode,
-      includeMetadata = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -623,14 +630,33 @@ export class MCPServerViewResource<
       }
     }
 
-    if (includeMetadata && filteredViews.length > 0) {
-      await this.populateToolsMetadata(auth, filteredViews, transaction);
+    if (mode === "configuration" && filteredViews.length > 0) {
+      await this.loadCredentialsAndToolPermissions(
+        auth,
+        filteredViews,
+        transaction
+      );
     }
     for (const view of filteredViews) {
       view.fetchMode = mode ?? "metadata";
     }
 
     return filteredViews.filter(MCPServerViewResource.isFetchedAs(mode));
+  }
+
+  /**
+   * The part of the `configuration` that the remote server row does not carry.
+   */
+  private static async loadCredentialsAndToolPermissions(
+    auth: Authenticator,
+    views: MCPServerViewResource[],
+    transaction?: Transaction
+  ): Promise<void> {
+    await InternalMCPServerInMemoryResource.loadCredentials(
+      auth,
+      removeNulls(views.map((v) => v.internalMCPServer ?? null))
+    );
+    await this.populateToolsMetadata(auth, views, transaction);
   }
 
   /**
@@ -767,11 +793,9 @@ export class MCPServerViewResource<
     ids: ModelId[],
     {
       mode,
-      includeMetadata = true,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
       transaction?: Transaction;
     } = {}
   ): Promise<MCPServerViewResource<TMode>[]> {
@@ -784,7 +808,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { mode, includeMetadata, transaction }
+      { mode, transaction }
     );
 
     return views ?? [];
@@ -1617,7 +1641,7 @@ export class MCPServerViewResource<
         };
       }
       case "internal": {
-        const server = this.getInternalMCPServerResource().toJSON();
+        const server = this.getInternalMCPServerResource().toMetadataJSON();
         return {
           name: server.name,
           description: server.description,
@@ -1638,7 +1662,7 @@ export class MCPServerViewResource<
   getServerTools(): readonly MCPToolType[] {
     return this.serverType === "remote"
       ? this.getRemoteMCPServerResource().getCachedTools()
-      : this.getInternalMCPServerResource().toJSON().tools;
+      : this.getInternalMCPServerResource().toMetadataJSON().tools;
   }
 
   /**
@@ -1655,7 +1679,7 @@ export class MCPServerViewResource<
       return !this.getRemoteMCPServerResource().cachedToolsRequireConfiguration;
     }
     return !mcpToolsRequireConfiguration(
-      this.getInternalMCPServerResource().toJSON().tools
+      this.getInternalMCPServerResource().toMetadataJSON().tools
     );
   }
 
@@ -1667,7 +1691,7 @@ export class MCPServerViewResource<
     const authorization =
       this.serverType === "remote"
         ? this.getRemoteMCPServerResource().getAuthorization()
-        : this.getInternalMCPServerResource().toJSON().authorization;
+        : this.getInternalMCPServerResource().toMetadataJSON().authorization;
     if (this.oauthScope !== null && authorization) {
       return { ...authorization, scope: this.oauthScope };
     }
@@ -1732,6 +1756,11 @@ export class MCPServerViewResource<
         auth,
         removeNulls(metadataViews.map((v) => v.remoteMCPServer ?? null)),
         CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
+        transaction
+      );
+      await this.loadCredentialsAndToolPermissions(
+        auth,
+        metadataViews,
         transaction
       );
       for (const view of metadataViews) {
@@ -2113,6 +2142,10 @@ export class MCPServerViewResource<
   }
 
   private get allToolsMetadata(): Attributes<RemoteMCPServerToolMetadataModel>[] {
+    assert(
+      this.fetchMode === "configuration",
+      "MCP server view tool permissions require `loadConfiguration`"
+    );
     return [
       ...(this.internalToolsMetadata ?? []),
       ...(this.remoteToolsMetadata ?? []),
@@ -2151,12 +2184,21 @@ export class MCPServerViewResource<
     }));
   }
 
+  private getInternalMCPServerResourceWithCredentials(
+    this: MCPServerViewResource<"configuration">
+  ): InternalMCPServerInMemoryResource<"withCredentials"> {
+    const server = this.getInternalMCPServerResource();
+    // `loadConfiguration` loads the credentials of the internal server.
+    assert(InternalMCPServerInMemoryResource.hasCredentials(server));
+    return server;
+  }
+
   // Serialization.
   toJSON(this: MCPServerViewResource<"configuration">): MCPServerViewType {
     const server =
       this.serverType === "remote"
         ? this.getRemoteMCPServerResource().toJSON()
-        : this.getInternalMCPServerResource().toJSON();
+        : this.getInternalMCPServerResourceWithCredentials().toJSON();
 
     // Override the server's default authorization scope with the admin-configured
     // restriction if one has been set. This ensures personal connections and
@@ -2207,7 +2249,8 @@ export class MCPServerViewResource<
         tools: [],
       };
     } else {
-      const internalServer = this.getInternalMCPServerResource().toJSON();
+      const internalServer =
+        this.getInternalMCPServerResource().toMetadataJSON();
       server = {
         sId: internalServer.sId,
         name: internalServer.name,

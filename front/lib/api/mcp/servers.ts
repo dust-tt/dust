@@ -52,12 +52,15 @@ export async function listMCPServersWithViews(
         "sharedSecret",
       ],
     }),
-    InternalMCPServerInMemoryResource.listByWorkspace(auth),
+    InternalMCPServerInMemoryResource.listByWorkspace(auth).then((servers) =>
+      InternalMCPServerInMemoryResource.loadCredentials(auth, servers)
+    ),
   ]);
 
-  const servers = [...remoteMCPs, ...internalMCPs]
-    .map((r) => r.toJSON())
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const servers = [
+    ...remoteMCPs.map((r) => r.toJSON()),
+    ...internalMCPs.map((r) => r.toJSON()),
+  ].sort((a, b) => a.name.localeCompare(b.name));
 
   // Batch-fetch all views in a single query instead of N+1.
   const allViews = await MCPServerViewResource.listByMCPServers(

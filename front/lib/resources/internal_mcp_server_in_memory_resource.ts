@@ -43,17 +43,37 @@ import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactSecret } from "@app/types/shared/utils/string_utils";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
+import assert from "assert";
 import { Op } from "sequelize";
 
-export class InternalMCPServerInMemoryResource {
+type InternalMCPServerCredentialType = {
+  sharedSecret: string | null;
+  customHeaders: Record<string, string> | null;
+};
+
+/**
+ * Whether an internal MCP server carries its credentials. Fetches return servers
+ * `withoutCredentials`; `loadCredentials` decrypts them, only needed to serialize them redacted
+ * with `toJSON`. Connecting to a server reads them with `fetchDecryptedCredentials`.
+ */
+export type InternalMCPServerCredentialsState =
+  | "withCredentials"
+  | "withoutCredentials";
+
+export class InternalMCPServerInMemoryResource<
+  TCredentials extends InternalMCPServerCredentialsState =
+    InternalMCPServerCredentialsState,
+> {
+  declare private readonly credentialsState: TCredentials;
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   >;
-  private internalServerCredential: {
-    sharedSecret: string | null;
-    customHeaders: Record<string, string> | null;
-  } | null;
+  // `undefined` when the credentials were not loaded, `null` when the server has none.
+  private internalServerCredential:
+    | InternalMCPServerCredentialType
+    | null
+    | undefined;
 
   constructor(
     readonly id: string,
@@ -68,20 +88,29 @@ export class InternalMCPServerInMemoryResource {
         documentationUrl: null,
         tools: [],
       },
-      internalServerCredential = null,
+      internalServerCredential,
     }: {
       metadata?: Omit<
         MCPServerType,
         "sId" | "allowMultipleInstances" | "availability"
       >;
-      internalServerCredential?: {
-        sharedSecret: string | null;
-        customHeaders: Record<string, string> | null;
-      } | null;
+      internalServerCredential?: InternalMCPServerCredentialType | null;
     } = {}
   ) {
     this.metadata = metadata;
     this.internalServerCredential = internalServerCredential;
+  }
+
+  static hasCredentials(
+    server: InternalMCPServerInMemoryResource
+  ): server is InternalMCPServerInMemoryResource<"withCredentials"> {
+    return server.internalServerCredential !== undefined;
+  }
+
+  private static lacksCredentials(
+    server: InternalMCPServerInMemoryResource
+  ): server is InternalMCPServerInMemoryResource<"withoutCredentials"> {
+    return server.internalServerCredential === undefined;
   }
 
   private static async computeEnabledServerNames(
@@ -229,13 +258,16 @@ export class InternalMCPServerInMemoryResource {
     }
 
     const serverMetadata = getInternalMCPServerMetadata(serverName);
-    const server = new this(sid, getAvailabilityOfInternalMCPServerById(sid), {
+    const created = new this(sid, getAvailabilityOfInternalMCPServerById(sid), {
       metadata: {
         ...serverMetadata.serverInfo,
         tools: serverMetadata.tools,
       },
+      // A new server has no credentials yet.
       internalServerCredential: null,
     });
+    assert(InternalMCPServerInMemoryResource.hasCredentials(created));
+    const server = created;
 
     await MCPServerViewModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -315,7 +347,7 @@ export class InternalMCPServerInMemoryResource {
     auth: Authenticator,
     id: string,
     { includeRestricted = false }: { includeRestricted?: boolean } = {}
-  ) {
+  ): Promise<InternalMCPServerInMemoryResource<"withoutCredentials"> | null> {
     const results = await this.fetchByIds(auth, [id], { includeRestricted });
 
     return results[0] ?? null;
@@ -330,7 +362,7 @@ export class InternalMCPServerInMemoryResource {
     auth: Authenticator,
     ids: string[],
     { includeRestricted = false }: { includeRestricted?: boolean } = {}
-  ): Promise<InternalMCPServerInMemoryResource[]> {
+  ): Promise<InternalMCPServerInMemoryResource<"withoutCredentials">[]> {
     if (ids.length === 0) {
       return [];
     }
@@ -392,22 +424,7 @@ export class InternalMCPServerInMemoryResource {
       ? resolvedIds
       : resolvedIds.filter(({ name }) => enabledServerNames.has(name));
 
-    // Fetch the credentials (API keys, headers) for MCP servers that have some.
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
-      auth,
-      permittedIds.map(({ id }) => id)
-    );
-    const credentialsById = new Map(
-      decryptedCredentials.map((credential) => [
-        credential.internalMCPServerId,
-        {
-          sharedSecret: credential.sharedSecret,
-          customHeaders: credential.customHeaders,
-        },
-      ])
-    );
-
-    return permittedIds.map(({ id, name }) => {
+    const resources = permittedIds.map(({ id, name }) => {
       if (includeRestricted && !enabledServerNames.has(name)) {
         logger.info(
           {
@@ -424,12 +441,15 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
-        internalServerCredential: credentialsById.get(id) ?? null,
       });
     });
+
+    return resources.filter(InternalMCPServerInMemoryResource.lacksCredentials);
   }
 
-  static async listAvailableInternalMCPServers(auth: Authenticator) {
+  static async listAvailableInternalMCPServers(
+    auth: Authenticator
+  ): Promise<InternalMCPServerInMemoryResource<"withoutCredentials">[]> {
     const enabledServerNames = await this.computeEnabledServerNames(
       auth,
       AVAILABLE_INTERNAL_MCP_SERVER_NAMES
@@ -447,21 +467,7 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
-      auth,
-      ids
-    );
-    const credentialsById = new Map(
-      decryptedCredentials.map((credential) => [
-        credential.internalMCPServerId,
-        {
-          sharedSecret: credential.sharedSecret,
-          customHeaders: credential.customHeaders,
-        },
-      ])
-    );
-
-    return names.map((name, index) => {
+    const resources = names.map((name, index) => {
       const id = ids[index];
       const serverMetadata = getInternalMCPServerMetadata(name);
       return new this(id, getAvailabilityOfInternalMCPServerById(id), {
@@ -469,12 +475,15 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
-        internalServerCredential: credentialsById.get(id) ?? null,
       });
     });
+
+    return resources.filter(InternalMCPServerInMemoryResource.lacksCredentials);
   }
 
-  static async listByWorkspace(auth: Authenticator) {
+  static async listByWorkspace(
+    auth: Authenticator
+  ): Promise<InternalMCPServerInMemoryResource<"withoutCredentials">[]> {
     // In case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -508,21 +517,7 @@ export class InternalMCPServerInMemoryResource {
       auth,
       resolvedIds.map(({ name }) => name)
     );
-    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
-      auth,
-      resolvedIds.map(({ id }) => id)
-    );
-    const credentialsById = new Map(
-      decryptedCredentials.map((credential) => [
-        credential.internalMCPServerId,
-        {
-          sharedSecret: credential.sharedSecret,
-          customHeaders: credential.customHeaders,
-        },
-      ])
-    );
-
-    return resolvedIds.map(({ id, name }) => {
+    const resources = resolvedIds.map(({ id, name }) => {
       if (!enabledServerNames.has(name)) {
         logger.info(
           {
@@ -539,9 +534,37 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
-        internalServerCredential: credentialsById.get(id) ?? null,
       });
     });
+
+    return resources.filter(InternalMCPServerInMemoryResource.lacksCredentials);
+  }
+
+  /**
+   * Decrypts the credentials (API keys, headers) of the given servers, for `toJSON`.
+   */
+  static async loadCredentials(
+    auth: Authenticator,
+    servers: InternalMCPServerInMemoryResource[]
+  ): Promise<InternalMCPServerInMemoryResource<"withCredentials">[]> {
+    const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
+      auth,
+      servers.map((server) => server.id)
+    );
+    const credentialsById = new Map(
+      decryptedCredentials.map((credential) => [
+        credential.internalMCPServerId,
+        {
+          sharedSecret: credential.sharedSecret,
+          customHeaders: credential.customHeaders,
+        },
+      ])
+    );
+    for (const server of servers) {
+      server.internalServerCredential = credentialsById.get(server.id) ?? null;
+    }
+
+    return servers.filter(InternalMCPServerInMemoryResource.hasCredentials);
   }
 
   async upsertCredentials(
@@ -615,7 +638,9 @@ export class InternalMCPServerInMemoryResource {
     return new Ok(undefined);
   }
 
-  private getRedactedCredentials(): {
+  private getRedactedCredentials(
+    this: InternalMCPServerInMemoryResource<"withCredentials">
+  ): {
     sharedSecret: string | null;
     customHeaders: Record<string, string> | null;
   } {
@@ -714,15 +739,27 @@ export class InternalMCPServerInMemoryResource {
   }
 
   // Serialization.
-  toJSON(): MCPServerType {
+
+  /**
+   * The server without its credentials.
+   */
+  toMetadataJSON(): Omit<MCPServerType, "sharedSecret" | "customHeaders"> {
     return {
       sId: this.id,
       ...this.metadata,
-      ...this.getRedactedCredentials(),
       availability: this.availability,
       allowMultipleInstances: allowsMultipleInstancesOfInternalMCPServerById(
         this.id
       ),
+    };
+  }
+
+  toJSON(
+    this: InternalMCPServerInMemoryResource<"withCredentials">
+  ): MCPServerType {
+    return {
+      ...this.toMetadataJSON(),
+      ...this.getRedactedCredentials(),
     };
   }
 }

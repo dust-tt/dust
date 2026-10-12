@@ -68,7 +68,13 @@ app.get(
           });
         }
 
-        return ctx.json({ server: await enrichServer(auth, server.toJSON()) });
+        const [serverWithCredentials] =
+          await InternalMCPServerInMemoryResource.loadCredentials(auth, [
+            server,
+          ]);
+        return ctx.json({
+          server: await enrichServer(auth, serverWithCredentials.toJSON()),
+        });
       }
       case "remote": {
         const server = await RemoteMCPServerResource.fetchById(auth, serverId, {
@@ -151,7 +157,11 @@ app.patch(
         },
       });
     }
-    return handleInternalPatch(ctx, auth, internalServer, body);
+    const [internalServerWithCredentials] =
+      await InternalMCPServerInMemoryResource.loadCredentials(auth, [
+        internalServer,
+      ]);
+    return handleInternalPatch(ctx, auth, internalServerWithCredentials, body);
   }
 );
 
@@ -283,7 +293,7 @@ async function handleRemotePatch(
 async function handleInternalPatch(
   ctx: Context,
   auth: Authenticator,
-  server: InternalMCPServerInMemoryResource,
+  server: InternalMCPServerInMemoryResource<"withCredentials">,
   body: PatchMCPServerBody
 ): HandlerResult<PatchMCPServerResponseBody> {
   if ("icon" in body) {
