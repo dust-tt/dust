@@ -312,14 +312,19 @@ function AvatarRow({ people, max }: { people: DocPresence[]; max?: number }) {
  * writing (or thinking) at full opacity with what they do, then everyone
  * else faded, two avatars and a "+N".
  */
+/** Where "writing..." goes: after the avatars, or before them. */
+type ActivityLabelSide = "after" | "before";
+
 function DocPresences({
   writing,
   thinking,
   others,
+  labelSide,
 }: {
   writing: DocPresence[];
   thinking: DocPresence[];
   others: DocPresence[];
+  labelSide: ActivityLabelSide;
 }) {
   const active = [
     { label: "writing...", people: writing },
@@ -334,8 +339,9 @@ function DocPresences({
           aria-label={`${people.map((p) => p.name).join(", ")} ${label.replace("...", "")}`}
           className="flex items-center gap-1 text-xs text-muted-foreground"
         >
+          {labelSide === "before" && <span aria-hidden>{label}</span>}
           <AvatarRow people={people} />
-          <span aria-hidden>{label}</span>
+          {labelSide === "after" && <span aria-hidden>{label}</span>}
         </div>
       ))}
       {others.length > 0 && (
@@ -396,6 +402,9 @@ export function DocumentPanel({
   // The agent whose edit is being written on screen.
   const [typingAgent, setTypingAgent] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  // Prototype option: "writing..." after or before the avatars.
+  const [activityLabelSide, setActivityLabelSide] =
+    useState<ActivityLabelSide>("after");
   const [isCommentsListOpen, setIsCommentsListOpen] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DocDraft | null>(null);
@@ -1339,6 +1348,7 @@ export function DocumentPanel({
                 {/* Who is on the document, before the actions. */}
                 <div className="mr-3">
                   <DocPresences
+                    labelSide={activityLabelSide}
                     writing={writing}
                     thinking={thinking}
                     others={others}
@@ -1396,6 +1406,18 @@ export function DocumentPanel({
                       label="The document saves slowly"
                       disabled={isSaving}
                       onClick={simulateSlowSave}
+                    />
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel label="“writing...” label" />
+                    <DropdownMenuItem
+                      label="After the avatars"
+                      icon={activityLabelSide === "after" ? Check : undefined}
+                      onClick={() => setActivityLabelSide("after")}
+                    />
+                    <DropdownMenuItem
+                      label="Before the avatars"
+                      icon={activityLabelSide === "before" ? Check : undefined}
+                      onClick={() => setActivityLabelSide("before")}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
