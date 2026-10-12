@@ -184,7 +184,13 @@ describe("relocation secrets re-encryption", () => {
   });
 
   it("never stages plaintext or source-encrypted values", async () => {
-    const { workspace, mcpCredential, dustAppSecret } = await seedSecrets();
+    const {
+      workspace,
+      mcpCredential,
+      dustAppSecret,
+      workspaceEnvVar,
+      podEnvVar,
+    } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
       ...CELLS,
@@ -199,6 +205,8 @@ describe("relocation secrets re-encryption", () => {
       "pod-var-value",
       mcpCredential.encryptedKey!,
       dustAppSecret.hash,
+      workspaceEnvVar.encryptedValue,
+      podEnvVar.encryptedValue,
     ]) {
       expect(staged).not.toContain(forbidden);
     }
@@ -232,13 +240,23 @@ describe("relocation secrets re-encryption", () => {
   });
 
   it("updates no row and keeps the staged object when a staged row is missing", async () => {
-    const { workspace, dustAppSecret, workspaceEnvVar } = await seedSecrets();
+    const {
+      workspace,
+      mcpCredential,
+      dustAppSecret,
+      workspaceEnvVar,
+      podEnvVar,
+    } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
       ...CELLS,
       workspaceId: workspace.sId,
     });
-    const sourceEncryptedHash = dustAppSecret.hash;
+    const sourceValues = {
+      mcpCredential: mcpCredential.encryptedKey,
+      dustAppSecret: dustAppSecret.hash,
+      podEnvVar: podEnvVar.encryptedValue,
+    };
     await SandboxEnvVarModel.destroy({
       where: { id: workspaceEnvVar.id, workspaceId: workspace.id },
     });
@@ -252,8 +270,14 @@ describe("relocation secrets re-encryption", () => {
       })
     ).rejects.toThrow("workspace_sandbox_env_vars");
 
+    await mcpCredential.reload();
     await dustAppSecret.reload();
-    expect(dustAppSecret.hash).toBe(sourceEncryptedHash);
+    await podEnvVar.reload();
+    expect({
+      mcpCredential: mcpCredential.encryptedKey,
+      dustAppSecret: dustAppSecret.hash,
+      podEnvVar: podEnvVar.encryptedValue,
+    }).toEqual(sourceValues);
     expect(stagedObjects.has(dataPath!)).toBe(true);
 
     await deleteStagedSecretsInDestinationRegion({ dataPath: dataPath! });

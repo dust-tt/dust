@@ -17,6 +17,7 @@ import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
+  CancellationScope,
   continueAsNew,
   executeChild,
   proxyActivities,
@@ -178,9 +179,12 @@ export async function workspaceRelocateFrontWorkflow({
         workspaceId,
       });
     } finally {
-      await destinationCellActivities.deleteStagedSecretsInDestinationRegion({
-        dataPath: secretsDataPath,
-      });
+      // Cleanup must still run when the workflow is cancelled.
+      await CancellationScope.nonCancellable(() =>
+        destinationCellActivities.deleteStagedSecretsInDestinationRegion({
+          dataPath: secretsDataPath,
+        })
+      );
     }
   }
 
