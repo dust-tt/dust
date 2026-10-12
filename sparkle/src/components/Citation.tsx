@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { Card, type CardProps } from "@sparkle/components/Card";
 import { ImagePreview } from "@sparkle/components/ImagePreview";
@@ -198,6 +199,7 @@ interface CitationCloseProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 /** Close button for a dismissable Citation, typically passed as its `action`. */
 const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
   ({ className, onClick, ...props }, ref) => {
+    const { t } = useLingui();
     return (
       <Button
         ref={ref}
@@ -205,6 +207,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
         size="icon"
         className={className}
         icon={XClose}
+        tooltip={t`Remove`}
         onClick={(e) => {
           e.stopPropagation();
           onClick?.(e);

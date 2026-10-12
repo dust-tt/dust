@@ -123,6 +123,7 @@ const AgentActionsMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label="More actions"
           icon={DotsHorizontal}
           onClick={(event) => {
             event.currentTarget.focus();
@@ -169,10 +170,18 @@ export const WithCustomHeader: Story = {
               </SheetDescription>
             </div>
             <div className="flex gap-2">
-              <Button icon={Star01} variant={"outline"} />
+              <Button
+                tooltip="Add to favorites"
+                icon={Star01}
+                variant={"outline"}
+              />
               <Separator orientation="vertical" />
-              <Button icon={Edit04} variant={"outline"} />
-              <Button icon={Trash01} variant={"outline"} />
+              <Button tooltip="Edit agent" icon={Edit04} variant={"outline"} />
+              <Button
+                tooltip="Delete agent"
+                icon={Trash01}
+                variant={"outline"}
+              />
               <AgentActionsMenu />
             </div>
           </div>

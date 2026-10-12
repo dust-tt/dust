@@ -49,11 +49,31 @@ export const Default: Story = {
   args: {
     children: (
       <>
-        <Button icon={Heading01} size="icon" variant="ghost-secondary" />
-        <Button icon={Bold01} size="icon" variant="ghost-secondary" />
-        <Button icon={Italic01} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Add heading"
+          icon={Heading01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Bold"
+          icon={Bold01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Italic"
+          icon={Italic01}
+          size="icon"
+          variant="ghost-secondary"
+        />
         <HoveringBar.Separator />
-        <Button icon={Link01} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Insert link"
+          icon={Link01}
+          size="icon"
+          variant="ghost-secondary"
+        />
       </>
     ),
   },
@@ -166,18 +186,63 @@ export const WithOverflow: Story = {
     className: "w-full",
     children: (
       <>
-        <Button icon={Heading01} size="icon" variant="ghost-secondary" />
-        <Button icon={Bold01} size="icon" variant="ghost-secondary" />
-        <Button icon={Italic01} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Add heading"
+          icon={Heading01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Bold"
+          icon={Bold01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Italic"
+          icon={Italic01}
+          size="icon"
+          variant="ghost-secondary"
+        />
         <HoveringBar.Separator />
-        <Button icon={Link01} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Insert link"
+          icon={Link01}
+          size="icon"
+          variant="ghost-secondary"
+        />
         <HoveringBar.Separator />
-        <Button icon={CheckDone01} size="icon" variant="ghost-secondary" />
-        <Button icon={List} size="icon" variant="ghost-secondary" />
-        <Button icon={DoubleQuotes} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Add checklist"
+          icon={CheckDone01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Add bulleted list"
+          icon={List}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Add quote"
+          icon={DoubleQuotes}
+          size="icon"
+          variant="ghost-secondary"
+        />
         <HoveringBar.Separator />
-        <Button icon={Code01} size="icon" variant="ghost-secondary" />
-        <Button icon={CodeSquare01} size="icon" variant="ghost-secondary" />
+        <Button
+          tooltip="Format as code"
+          icon={Code01}
+          size="icon"
+          variant="ghost-secondary"
+        />
+        <Button
+          tooltip="Add code block"
+          icon={CodeSquare01}
+          size="icon"
+          variant="ghost-secondary"
+        />
       </>
     ),
   },

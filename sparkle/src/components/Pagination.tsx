@@ -1,4 +1,4 @@
-import { Plural, Trans } from "@lingui/react/macro";
+import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import { ChevronLeft, ChevronRight } from "@sparkle/icons/v2-stroke";
 import { formatNumber, useFormatLocale } from "@sparkle/lib/i18n/format";
 import type { SparkleFormatLocale } from "@sparkle/lib/i18n/locales";
@@ -51,6 +51,7 @@ export function Pagination({
   setPagination,
   disablePaginationNumbers = false,
 }: PaginationProps) {
+  const { t } = useLingui();
   // pageIndex is 0-based
   const { pageIndex, pageSize } = pagination;
 
@@ -105,6 +106,7 @@ export function Pagination({
           size="xs"
           disabled={!canPreviousPage}
           icon={ChevronLeft}
+          tooltip={t`Previous page`}
           onClick={previousPage}
         />
 
@@ -123,6 +125,7 @@ export function Pagination({
           size="xs"
           disabled={!canNextPage}
           icon={ChevronRight}
+          tooltip={t`Next page`}
           onClick={nextPage}
         />
       </div>

@@ -91,6 +91,7 @@ function ImageZoomDialog({
               variant="ghost"
               size="sm"
               icon={ChevronLeft}
+              tooltip={t`Previous image`}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onPrevious();
@@ -123,6 +124,7 @@ function ImageZoomDialog({
                     variant="outline"
                     size="xs"
                     icon={XClose}
+                    aria-label={t`Close`}
                     className="absolute right-2 top-2"
                   />
                 </DialogClose>
@@ -146,6 +148,7 @@ function ImageZoomDialog({
               variant="ghost"
               size="sm"
               icon={ChevronRight}
+              tooltip={t`Next image`}
               onClick={(e) => {
                 e.stopPropagation();
                 navigation.onNext();

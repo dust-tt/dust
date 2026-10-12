@@ -285,7 +285,12 @@ export function ConversationActions({
       {/* Fake conversation menu — options are listed but do nothing. */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="ghost-secondary" icon={DotsHorizontal} />
+          <Button
+            aria-label="More actions"
+            size="sm"
+            variant="ghost-secondary"
+            icon={DotsHorizontal}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent collisionPadding={8}>
           <DropdownMenuItem label="Rename" icon={Edit04} />

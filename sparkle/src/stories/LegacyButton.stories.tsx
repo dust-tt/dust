@@ -134,7 +134,7 @@ export const ExampleButton: Story = {
 };
 
 export const MiniButton: Story = {
-  render: () => <Button size="mini" icon={Plus} />,
+  render: () => <Button tooltip="Add" size="mini" icon={Plus} />,
 };
 
 const ButtonBySize = ({
