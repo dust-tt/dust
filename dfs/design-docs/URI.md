@@ -81,6 +81,13 @@ The client returns the resolved or created object's canonical URI, `dfs://<name>
 current name percent-encoded and no path. That URI is built from the returned `Attr`. Clients store the ID it
 contains, never the URI they passed in.
 
+Writes keep the file's object ID. Content that fits in one `Apply` is written atomically in that
+`Apply`. Larger content is written by creating or truncating the file, then writing it chunk by
+chunk: this is not atomic, and readers can see partial content until the last chunk is written.
+Multi-chunk reads compare each chunk's `content_version` and fail instead of mixing two versions.
+`Attr` does not expose an object's parent, so the usual atomic replacement (upload to a temporary
+sibling, then rename it over the target) is not possible for a URI without a path.
+
 ## Example: front and a pod
 
 1. When a pod is created, front creates its folder under its owner's user folder (see
@@ -108,7 +115,7 @@ under its owner's user folder:
 ```text
 <tenant-root>/
   users/
-    user-<userSId>/
+    spolu@dust.tt/
       pods/
         pod-<podSId>/
       conversations/
@@ -119,9 +126,9 @@ Only user folders are created from the tenant root. Pod and conversation folders
 their owner's user folder ID, which front already stores:
 
 ```text
-create dfs://<tenant-root-id>/users/user-<userSId>
-create dfs://user-<userSId>--<user-folder-id>/pods/pod-<podSId>
-create dfs://user-<userSId>--<user-folder-id>/conversations/conv-<conversationSId>
+create dfs://<tenant-root-id>/users/spolu%40dust.tt
+create dfs://spolu%40dust.tt--<user-folder-id>/pods/pod-<podSId>
+create dfs://spolu%40dust.tt--<user-folder-id>/conversations/conv-<conversationSId>
 ```
 
 - **Layout:** namespace folders (`users/`, `pods/`, `conversations/`) keep listings small and leave
@@ -136,8 +143,10 @@ create dfs://user-<userSId>--<user-folder-id>/conversations/conv-<conversationSI
   workspace, so a user who belongs to several workspaces has one folder per workspace, and its ID is
   stored per user and workspace, not on the global user. Deleting a user's folder deletes the pods
   and conversations it contains.
-- **Names:** folder names derive from the owning resource's sId, which is unique and never
-  changes. Two contexts can therefore never claim the same name.
+- **Names:** user folders are named after the user's email, which is unique in the workspace and
+  readable in sandboxes; `@` is percent-encoded in URIs (`%40`). If the email changes, front renames
+  the folder; stored IDs are unaffected. Pod and conversation folders derive from their sId, which
+  never changes. Two contexts can therefore never claim the same name.
 - **Retries:** `Apply` has no idempotency key, so a lost response leaves the outcome unknown. A
   retry that fails with `ALREADY_EXISTS` looks the name up under the same parent folder and uses the
   existing folder's ID. This recovery is the only case where front resolves an existing context
@@ -175,12 +184,14 @@ sandbox for conversation C, in pod P:
 - Mounting an anchor grants no access. The sandbox's session grants still apply to every object
   under each mount point.
 
+When a sandbox starts, it receives a session key and a list of `{mountPath, objectId}` pairs built
+by front. It creates one FUSE mount per pair, each rooted at that object ID: the mount resolves
+every path under `mountPath` from its anchor, exactly like a URI with a path. This needs no
+synthetic root and no server change. The mount point names (`/conversation`, `/pod`, ...) are still
+to be decided. (This implementation may be open to change as write it).
+
 ## Open questions
 
-- **Display paths:** `Attr` exposes no parent, so a client cannot build a path such as
-  `pod/data/plan.md` from an ID alone. For now, UIs only show paths they walked down to themselves.
-  A server "ancestors of an object" call would be needed for more.
-- **Who owns sandbox mounts:** the mount-point mapping can be passed to the FUSE mount when it
-  starts, which needs no server change. Later, it could be declared on the dfs session as virtual
-  mounts, so every client of that session sees the same view. That would bring the virtual `root`
-  back in scope.
+- **Atomic large writes:** without the parent, a client cannot replace a large file atomically
+  through its ID. This needs a server-side mechanism, for instance staging content in a temporary
+  object and swapping it into the target in one operation that keeps the target's object ID.
