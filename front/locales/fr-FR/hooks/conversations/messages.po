@@ -87,4 +87,4 @@ msgstr "Impossible d’envoyer le message de suivi"
 
 #: front/hooks/conversations/useVisualizationRevert.ts
 msgid "Please revert the previous change in {fileId}"
-msgstr "Veuillez annuler la modification précédente dans {fileId}"
+msgstr "Annule la modification précédente dans {fileId}"
