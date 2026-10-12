@@ -234,13 +234,42 @@ export interface AgentActivity {
  * step badge (a grey outline with a blue arc sweeping it) and "saving"; once
  * saved, only a grey check, with no text.
  */
-function SaveStatus({ isSaving }: { isSaving: boolean }) {
+function SaveStatus({
+  isSaving,
+  hasFailed,
+  onRetry,
+}: {
+  isSaving: boolean;
+  /** The last save failed: a "!" in a circle, which retries on click. */
+  hasFailed: boolean;
+  onRetry: () => void;
+}) {
   return (
     <span
       role="status"
       className="inline-flex items-center gap-1 text-xs text-muted-foreground"
     >
-      {isSaving ? (
+      {hasFailed && !isSaving ? (
+        // As production's "Not saved" state (DocumentSaveStatus).
+        <Tooltip
+          label="Not saved. Click to retry"
+          tooltipTriggerAsChild
+          trigger={
+            <button
+              type="button"
+              aria-label="Not saved. Retry"
+              className="inline-flex rounded-full text-warning-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              onClick={onRetry}
+            >
+              <Icon
+                visual={AlertCircle}
+                size="xs"
+                className="animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
+              />
+            </button>
+          }
+        />
+      ) : isSaving ? (
         <>
           <span className="relative size-4 shrink-0 rounded-full border border-faint">
             {/* A ~130° arc on the outline, as the plan's running step. */}
@@ -421,6 +450,7 @@ export function DocumentPanel({
   // The agent whose edit is being written on screen.
   const [typingAgent, setTypingAgent] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
   // Prototype option: "writing..." after or before the avatars.
   const [activityLabelSide, setActivityLabelSide] =
     useState<ActivityLabelSide>("after");
@@ -1120,6 +1150,20 @@ export function DocumentPanel({
     });
 
   // Prototype: a slow save, to see the save status load then settle.
+  // Prototype: a save that fails, then a retry that works.
+  const simulateFailedSave = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      setSaveFailed(true);
+    }, SAVE_MS);
+  };
+  const retrySave = () => {
+    setSaveFailed(false);
+    setIsSaving(true);
+    setTimeout(() => setIsSaving(false), SAVE_MS);
+  };
+
   const simulateSlowSave = () => {
     setIsSaving(true);
     setTimeout(() => setIsSaving(false), SLOW_SAVE_MS);
@@ -1360,7 +1404,14 @@ export function DocumentPanel({
           close. Prototype-only controls sit behind "…", first. */}
           {/* Next to the file name: the save status. */}
           {titleSlot &&
-            createPortal(<SaveStatus isSaving={isSaving} />, titleSlot)}
+            createPortal(
+              <SaveStatus
+                isSaving={isSaving}
+                hasFailed={saveFailed}
+                onRetry={retrySave}
+              />,
+              titleSlot
+            )}
           {toolbarSlot &&
             createPortal(
               <>
@@ -1425,6 +1476,12 @@ export function DocumentPanel({
                       label="The document saves slowly"
                       disabled={isSaving}
                       onClick={simulateSlowSave}
+                    />
+                    <DropdownMenuItem
+                      icon={AlertCircle}
+                      label="Saving fails"
+                      disabled={isSaving || saveFailed}
+                      onClick={simulateFailedSave}
                     />
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel label="“writing...” label" />
