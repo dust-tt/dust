@@ -2,15 +2,23 @@
 import { DfsFileSystem } from "@app/lib/dfs/file_system";
 import { formatDfsUri } from "@app/lib/dfs/uri";
 import { InMemoryDfs } from "@app/tests/utils/dfs/InMemoryDfs";
+import type { DfsObjectId } from "@app/types/dfs";
 import { describe, expect, it } from "vitest";
 
-function setup() {
-  const dfs = new InMemoryDfs();
-  const fs = new DfsFileSystem(dfs);
+const READ_CHUNK_BYTES = 3;
+
+function setup(options: ConstructorParameters<typeof InMemoryDfs>[0] = {}) {
+  const dfs = new InMemoryDfs(options);
+  const fs = new DfsFileSystem(dfs, { readChunkBytes: READ_CHUNK_BYTES });
   // A URI anchored at the tenant root, e.g. `at("a/b")` is `dfs://<root-id>/a/b`.
   const at = (path: string) =>
     formatDfsUri(dfs.rootId, { path: path ? path.split("/") : [] });
   return { dfs, fs, at };
+}
+
+async function readText(fs: DfsFileSystem, uri: string) {
+  const res = await fs.readBuffer(uri);
+  return res.isOk() ? res.value.toString() : `error:${res.error.code}`;
 }
 
 describe("DfsFileSystem", () => {
@@ -78,5 +86,47 @@ describe("DfsFileSystem", () => {
     expect(throughFile.isErr() && throughFile.error.code).toBe("not_directory");
     const missing = await fs.stat(at("nope.txt"));
     expect(missing.isOk() && missing.value).toBe(null);
+  });
+
+  it("streams a file in chunks", async () => {
+    const { dfs, fs, at } = setup();
+    dfs.createFile(dfs.rootId, "f.txt", "abcdefg");
+
+    const stream = await fs.readStream(at("f.txt"));
+    expect(stream.isOk()).toBe(true);
+    if (!stream.isOk()) {
+      return;
+    }
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream.value) {
+      chunks.push(chunk);
+    }
+
+    expect(Buffer.concat(chunks).toString()).toBe("abcdefg");
+    // 3 + 3 + 1 bytes; the short read ends the stream.
+    expect(dfs.readCalls.map((call) => call.offset)).toEqual([0, 3, 6]);
+  });
+
+  it("fails a read when the file changes between chunks", async () => {
+    let fileId: DfsObjectId | undefined;
+    const { dfs, fs, at } = setup({
+      beforeRead: (callIndex) => {
+        if (callIndex === 1 && fileId) {
+          dfs.overwrite(fileId, Buffer.from("ABCDEFG"));
+        }
+      },
+    });
+    fileId = dfs.createFile(dfs.rootId, "f.txt", "abcdefg");
+
+    expect(await readText(fs, at("f.txt"))).toBe("error:content_changed");
+  });
+
+  it("refuses to read a directory", async () => {
+    const { dfs, fs, at } = setup();
+    dfs.createDirectory(dfs.rootId, "dir");
+
+    const res = await fs.readBuffer(at("dir"));
+
+    expect(res.isErr() && res.error.code).toBe("is_directory");
   });
 });

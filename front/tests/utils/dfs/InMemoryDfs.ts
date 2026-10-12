@@ -10,6 +10,7 @@ import type {
   DfsObjectId,
   DfsObjectKind,
   DfsObjectRef,
+  DfsReadData,
 } from "@app/types/dfs";
 import { DfsError } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
@@ -40,9 +41,15 @@ class OperationError extends Error {
  */
 export class InMemoryDfs implements DfsFileSystemClient {
   readonly rootId: DfsObjectId;
+  readonly readCalls: { objectId: DfsObjectId; offset: number }[] = [];
   private readonly nodes = new Map<DfsObjectId, FakeNode>();
 
-  constructor() {
+  constructor(
+    private readonly options: {
+      // Runs before each `read` is served, e.g. to modify the file concurrently.
+      beforeRead?: (callIndex: number) => void;
+    } = {}
+  ) {
     this.rootId = newDfsObjectId();
     this.nodes.set(
       this.rootId,
@@ -135,6 +142,13 @@ export class InMemoryDfs implements DfsFileSystemClient {
 
   // Test helpers.
 
+  /** Replaces the content of `objectId` outside any `apply`, advancing its content version. */
+  overwrite(objectId: DfsObjectId, data: Buffer): void {
+    const node = this.node(objectId);
+    node.data = data;
+    this.touch(node, { content: true });
+  }
+
   /** Creates an empty directory outside any `apply`, e.g. to race a pending write. */
   createDirectory(parentId: DfsObjectId, name: string): DfsObjectId {
     const parent = this.directory(parentId);
@@ -219,6 +233,29 @@ export class InMemoryDfs implements DfsFileSystemClient {
           ),
         })),
         nextAfter: names.length > limit ? page.at(-1) : undefined,
+      };
+    });
+  }
+
+  async read({
+    objectId,
+    offset,
+    length,
+  }: {
+    objectId: DfsObjectId;
+    offset: number;
+    length: number;
+  }): Promise<Result<DfsReadData, DfsError>> {
+    const callIndex = this.readCalls.push({ objectId, offset }) - 1;
+    this.options.beforeRead?.(callIndex);
+    return this.run(() => {
+      const node = this.node(objectId);
+      if (node.kind === "directory") {
+        throw new OperationError("is_directory");
+      }
+      return {
+        data: node.data.subarray(offset, offset + length),
+        object: this.attr(node),
       };
     });
   }
