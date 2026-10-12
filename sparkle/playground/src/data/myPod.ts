@@ -5,8 +5,7 @@ export const MY_POD_SPACE_ID = "my-pod";
 export const MY_POD_SPACE: Space = {
   id: MY_POD_SPACE_ID,
   name: "My Pod",
-  description:
-    "Your personal workspace for private conversations, tasks, and files.",
+  description: "Your personal workspace for private conversations and files.",
 };
 
 export type MyPodConversationFilter = "all" | "mine" | "group" | "triggered";

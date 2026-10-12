@@ -60,20 +60,6 @@ export interface MessageActionCardData {
   };
 }
 
-export interface MessageTaskSuggestionItemData {
-  id: string;
-  text: string;
-  groupTitle?: string;
-  groupUserId?: string;
-}
-
-export interface MessageTaskSuggestionBoxData {
-  id: string;
-  title: string;
-  variant: "created" | "suggestions";
-  items: MessageTaskSuggestionItemData[];
-}
-
 export interface MessageInfoChipData {
   icon: "bolt";
 }
@@ -95,7 +81,6 @@ export interface ConversationMessage {
   markdown?: string;
   attachments?: MessageAttachmentData[];
   actionCards?: MessageActionCardData[];
-  taskSuggestionBoxes?: MessageTaskSuggestionBoxData[];
   citations?: MessageCitationData[];
   reactions?: MessageReactionData[];
   timestamp: Date;
@@ -191,9 +176,34 @@ export type DataSourceFileType =
   | "txt"
   | "md"
   | "png"
-  | "frame";
+  | "frame"
+  | "website"
+  | "database"
+  | "agent"
+  | "skill"
+  | "tool";
 
 export type DataSourceSource = "pod" | "company";
+
+/**
+ * What a folder stands for in the workspace file system: one of the two drives
+ * the tree is split into, a Company Space, a Pod, a conversation, or a
+ * Dust-owned folder such as `Conversations`. Plain folders leave it unset.
+ */
+export type DataSourceFolderType =
+  | "drive"
+  | "space"
+  | "pod"
+  | "conversation"
+  | "system";
+
+/** An agent's or a skill's own avatar, as the `Avatar` component takes it. */
+export interface DataSourceAvatar {
+  emoji?: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  backgroundColor?: string;
+  iconColor?: string;
+}
 
 export interface DataSource {
   id: string;
@@ -206,6 +216,11 @@ export interface DataSource {
   createdAt: Date;
   updatedAt: Date;
   icon?: React.ComponentType<{ className?: string }>; // Icon component
+  /** Shown instead of `icon`, for the items that carry an avatar of their own. */
+  avatar?: DataSourceAvatar;
+  folderType?: DataSourceFolderType;
+  /** The Pod, conversation, agent or skill this item stands for. */
+  refId?: string;
 }
 
 /**

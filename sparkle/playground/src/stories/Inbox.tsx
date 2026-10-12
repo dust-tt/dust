@@ -1277,9 +1277,25 @@ function Inbox() {
   const p2Content = (() => {
     if (p2View.kind === "build") {
       if (p2View.section === "agents")
-        return <ManageAgentsView currentUserId={user.id} />;
+        return (
+          <ManageAgentsView
+            currentUserId={user.id}
+            onOpenAgent={(agentId) => {
+              setP3View({ kind: "agent", agentId });
+              setP4View(null);
+            }}
+          />
+        );
       if (p2View.section === "skills")
-        return <ManageSkillsView currentUserId={user.id} />;
+        return (
+          <ManageSkillsView
+            currentUserId={user.id}
+            onOpenSkill={(skillId) => {
+              setP3View({ kind: "skill", skillId });
+              setP4View(null);
+            }}
+          />
+        );
       return <ManageToolsView />;
     }
     if (p2View.kind === "profile" && user) return <ProfilePanel user={user} />;

@@ -16,11 +16,14 @@ import { ChevronRight } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib";
 import { cva } from "class-variance-authority";
 import type { ComponentType } from "react";
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 
 const DEFAULT_LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const DEFAULT_LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
+// The trail folds from the left, but never the root: it is the only drop target
+// for moving an item back to the top level (the folder tree has no row for it).
+const PINNED_HEAD_COUNT = 1;
 
 const breadcrumbTextVariants = cva("", {
   variants: {
@@ -197,18 +200,51 @@ function BreadcrumbItemRenderer({
 
   if (item.icon) {
     return (
-      <div className="shrink0 label-sm inline-flex h-9 items-center gap-2 border border-transparent px-3">
+      <div className="label-sm inline-flex h-9 min-w-0 items-center gap-2 border border-transparent px-3">
         <Icon
           visual={item.icon}
           size={ICON_SIZE_MAP[size]}
-          className={cn("-mx-0.5")}
+          className={cn("-mx-0.5 shrink-0")}
         />
-        <div className={textClassName}>{item.label}</div>
+        <div className={cn(isLast && "truncate", textClassName)}>
+          {item.label}
+        </div>
       </div>
     );
   }
 
-  return <div className={cn("px-2 py-1.5", textClassName)}>{item.label}</div>;
+  return (
+    <div
+      className={cn("px-2 py-1.5", isLast && "min-w-0 truncate", textClassName)}
+    >
+      {item.label}
+    </div>
+  );
+}
+
+/** One segment plus its trailing chevron; only the last one may shrink. */
+function BreadcrumbSegment({
+  isLast,
+  size,
+  ...props
+}: BreadcrumbItemRendererProps) {
+  return (
+    <div
+      className={cn(
+        "flex flex-row items-center gap-0",
+        isLast ? "min-w-0 shrink" : "shrink-0"
+      )}
+    >
+      <BreadcrumbItemRenderer isLast={isLast} size={size} {...props} />
+      {isLast ? null : (
+        <Icon
+          visual={ChevronRight}
+          className="shrink-0 text-faint"
+          size={size === "xs" ? "xs" : "sm"}
+        />
+      )}
+    </div>
+  );
 }
 
 interface BreadcrumbProps {
@@ -221,9 +257,65 @@ interface BreadcrumbProps {
   truncateLengthEnd?: number;
 }
 
-interface BreadcrumbsAccumulator {
-  itemsShown: BreadcrumbsItem[];
-  itemsHidden: BreadcrumbsItem[];
+/**
+ * How many segments after the root still fit, measured on a hidden copy of the
+ * full trail: reading the rendered one would feed its own collapsed width back
+ * into the next measurement. Needs a container with a width of its own — give
+ * it `flex-1` rather than letting it size to its content.
+ */
+function useVisibleTailCount(
+  items: BreadcrumbsItem[],
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  measureRef: React.RefObject<HTMLDivElement | null>
+) {
+  const tailLength = Math.max(items.length - PINNED_HEAD_COUNT, 0);
+  const [visibleTailCount, setVisibleTailCount] = useState(tailLength);
+  const trailKey = items.map((item) => item.label).join("\u0000");
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    const measure = measureRef.current;
+    if (!container || !measure) {
+      return;
+    }
+
+    const recompute = () => {
+      const [ellipsisWidth, ...widths] = Array.from(measure.children).map(
+        (child) => child.getBoundingClientRect().width
+      );
+      const headWidth = widths
+        .slice(0, PINNED_HEAD_COUNT)
+        .reduce((total, width) => total + width, 0);
+      const tailWidths = widths.slice(PINNED_HEAD_COUNT);
+      const available = container.clientWidth;
+
+      if (
+        headWidth + tailWidths.reduce((total, width) => total + width, 0) <=
+        available
+      ) {
+        setVisibleTailCount(tailWidths.length);
+        return;
+      }
+
+      let used = headWidth + ellipsisWidth;
+      let shown = 0;
+      for (let index = tailWidths.length - 1; index >= 0; index--) {
+        used += tailWidths[index];
+        if (used > available && shown > 0) {
+          break;
+        }
+        shown++;
+      }
+      setVisibleTailCount(shown);
+    };
+
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [containerRef, measureRef, trailKey]);
+
+  return Math.min(visibleTailCount, tailLength);
 }
 
 export function Breadcrumbs({
@@ -235,49 +327,62 @@ export function Breadcrumbs({
   truncateLengthMiddle,
   truncateLengthEnd,
 }: BreadcrumbProps) {
-  const { itemsShown, itemsHidden } = items.reduce(
-    (acc: BreadcrumbsAccumulator, item, index) => {
-      if (items.length <= 5 || index < 2 || index >= items.length - 2) {
-        acc.itemsShown.push(item);
-      } else if (index === 2) {
-        acc.itemsShown.push({ label: ELLIPSIS_STRING });
-        acc.itemsHidden.push(item);
-      } else {
-        acc.itemsHidden.push(item);
-      }
-      return acc;
-    },
-    { itemsShown: [], itemsHidden: [] }
-  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const visibleTailCount = useVisibleTailCount(items, containerRef, measureRef);
+
+  const tail = items.slice(PINNED_HEAD_COUNT);
+  const itemsHidden = tail.slice(0, tail.length - visibleTailCount);
+  const itemsShown: BreadcrumbsItem[] = [
+    ...items.slice(0, PINNED_HEAD_COUNT),
+    ...(itemsHidden.length > 0 ? [{ label: ELLIPSIS_STRING }] : []),
+    ...tail.slice(tail.length - visibleTailCount),
+  ];
+
+  const sharedProps = {
+    size,
+    buttonVariant,
+    hasLighterFont,
+    truncateLengthMiddle,
+    truncateLengthEnd,
+  };
 
   return (
-    <div className={cn("flex flex-row items-center gap-0", className)}>
-      {itemsShown.map((item, index) => {
-        return (
-          <div
-            key={`breadcrumbs-${index}`}
-            className="flex flex-row items-center gap-0"
-          >
-            <BreadcrumbItemRenderer
-              item={item}
-              isLast={index === itemsShown.length - 1}
-              itemsHidden={itemsHidden}
-              size={size}
-              buttonVariant={buttonVariant}
-              hasLighterFont={hasLighterFont}
-              truncateLengthMiddle={truncateLengthMiddle}
-              truncateLengthEnd={truncateLengthEnd}
-            />
-            {index === itemsShown.length - 1 ? null : (
-              <Icon
-                visual={ChevronRight}
-                className="text-faint"
-                size={size === "xs" ? "xs" : "sm"}
-              />
-            )}
-          </div>
-        );
-      })}
+    <div
+      ref={containerRef}
+      className={cn(
+        "relative flex min-w-0 flex-row items-center gap-0",
+        className
+      )}
+    >
+      {itemsShown.map((item, index) => (
+        <BreadcrumbSegment
+          key={`breadcrumbs-${index}`}
+          item={item}
+          isLast={index === itemsShown.length - 1}
+          itemsHidden={itemsHidden}
+          {...sharedProps}
+        />
+      ))}
+      <div
+        ref={measureRef}
+        aria-hidden
+        className="pointer-events-none invisible absolute left-0 top-0 flex w-max flex-row items-center gap-0"
+      >
+        <BreadcrumbSegment
+          item={{ label: ELLIPSIS_STRING }}
+          isLast={false}
+          {...sharedProps}
+        />
+        {items.map((item, index) => (
+          <BreadcrumbSegment
+            key={`breadcrumbs-measure-${index}`}
+            item={item}
+            isLast={index === items.length - 1}
+            {...sharedProps}
+          />
+        ))}
+      </div>
     </div>
   );
 }

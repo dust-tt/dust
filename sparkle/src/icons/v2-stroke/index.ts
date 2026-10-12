@@ -107,6 +107,7 @@ export { default as GitBranch01 } from "./GitBranch01";
 export { default as Globe01 } from "./Globe01";
 export { default as GlobeSlated02 } from "./GlobeSlated02";
 export { default as GraduationHat01 } from "./GraduationHat01";
+export { default as HardDrive } from "./HardDrive";
 export { default as Hash01 } from "./Hash01";
 export { default as Hash02 } from "./Hash02";
 export { default as Heading01 } from "./Heading01";

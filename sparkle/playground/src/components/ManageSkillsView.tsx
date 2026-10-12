@@ -37,13 +37,14 @@ import {
   type SkillAvailability,
   withCurrentUserAsEditor,
 } from "../data/build";
+import type { ItemLocation } from "../data/dataSources";
 import { getUserById } from "../data/users";
-import { SkillDetailsSheet } from "./BuildDetailSheets";
 import { BulkSelectionBar } from "./BulkSelectionBar";
 import { EmptyState } from "./EmptyState";
 import {
   type BatchConfirmCopy,
   BatchConfirmDialog,
+  buildLocationColumn,
   buildSelectionColumn,
   FilterMenu,
   UsedByCell,
@@ -70,7 +71,9 @@ type RowData = ManagedSkill & { onClick: () => void; menuItems: MenuItem[] };
 
 // ── Columns ──────────────────────────────────────────────────────────────────
 
-function buildColumns(): ColumnDef<RowData>[] {
+function buildColumns(
+  locations: Map<string, ItemLocation> | undefined
+): ColumnDef<RowData>[] {
   return [
     buildSelectionColumn<RowData>("skill"),
     {
@@ -99,6 +102,7 @@ function buildColumns(): ColumnDef<RowData>[] {
       ),
       meta: { className: "w-40 @lg:w-full" },
     },
+    ...(locations ? [buildLocationColumn<RowData>(locations)] : []),
     {
       id: "availability",
       accessorKey: "availability",
@@ -287,12 +291,23 @@ function SkillBatchBar({
 interface ManageSkillsViewProps {
   /** Whose skills count as "editable by me". */
   currentUserId: string;
+  /** The workspace's own skills; defaults to the shared mock catalog. */
+  skills?: ManagedSkill[];
+  /** Where each skill is filed, keyed by skill id. Adds the Location column. */
+  locations?: Map<string, ItemLocation>;
+  /** Opens a skill's details: the panel they open in belongs to the story. */
+  onOpenSkill: (skillId: string) => void;
 }
 
-export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
+export function ManageSkillsView({
+  currentUserId,
+  skills: workspaceSkills,
+  locations,
+  onOpenSkill,
+}: ManageSkillsViewProps) {
   const [skills, setSkills] = useState<ManagedSkill[]>(() =>
     withCurrentUserAsEditor(
-      mockManagedSkills,
+      workspaceSkills ?? mockManagedSkills,
       currentUserId,
       (skill) => !skill.isDustProvided
     )
@@ -306,7 +321,6 @@ export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
     pageSize: 25,
   });
   const [pendingBatch, setPendingBatch] = useState<PendingBatch | null>(null);
-  const [detailedSkillId, setDetailedSkillId] = useState<string | null>(null);
 
   const skillsByTab = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -377,13 +391,13 @@ export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
     setPendingBatch(null);
   };
 
-  const columns = useMemo(() => buildColumns(), []);
+  const columns = useMemo(() => buildColumns(locations), [locations]);
 
   const rows: RowData[] = useMemo(
     () =>
       visibleSkills.map((skill) => ({
         ...skill,
-        onClick: () => setDetailedSkillId(skill.id),
+        onClick: () => onOpenSkill(skill.id),
         menuItems: [
           ...(isSkillSelectable(skill)
             ? [{ kind: "item" as const, label: "Edit", icon: Edit04 }]
@@ -392,7 +406,7 @@ export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
             kind: "item" as const,
             label: "More info",
             icon: PuzzlePiece01,
-            onClick: () => setDetailedSkillId(skill.id),
+            onClick: () => onOpenSkill(skill.id),
           },
           ...(isSkillSelectable(skill)
             ? [
@@ -414,12 +428,12 @@ export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
             : []),
         ],
       })),
-    [visibleSkills]
+    [onOpenSkill, visibleSkills]
   );
 
   return (
     <div className="flex h-full w-full flex-col overflow-y-auto bg-background px-4">
-      <div className="@container mx-auto flex w-full max-w-6xl flex-1 flex-col gap-3 pt-6 pb-8">
+      <div className="@container flex w-full flex-1 flex-col gap-3 pt-6 pb-8">
         <div className="flex items-center gap-2">
           <SearchInput
             name="skills-search"
@@ -524,11 +538,6 @@ export function ManageSkillsView({ currentUserId }: ManageSkillsViewProps) {
         countLabel={`${selectedIds.length} skill${selectedIds.length === 1 ? "" : "s"}`}
         onCancel={() => setPendingBatch(null)}
         onConfirm={handleConfirmBatch}
-      />
-
-      <SkillDetailsSheet
-        skillId={detailedSkillId}
-        onClose={() => setDetailedSkillId(null)}
       />
     </div>
   );

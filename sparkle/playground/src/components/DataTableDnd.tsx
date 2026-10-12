@@ -859,7 +859,8 @@ DataTable.Row = function Row({
           (onClick || onDoubleClick) &&
             "cursor-pointer [&:hover:not(:has(input:hover)):not(:has(button:hover))]:bg-muted-background",
           rowData?.isDragging && "opacity-50",
-          rowData?.isDropHighlight && widthClassName,
+          rowData?.isDropHighlight && "bg-selected",
+          widthClassName,
           className
         )}
         draggable={rowData?.draggable}

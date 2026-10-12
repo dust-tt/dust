@@ -106,7 +106,7 @@ function App() {
 
   // Read initial hash from URL
   useEffect(() => {
-    const hash = window.location.hash.slice(1); // Remove the #
+    const hash = decodeURIComponent(window.location.hash.slice(1));
     if (hash && stories.some((s) => s.name === hash)) {
       setCurrentStory(hash);
     }
@@ -124,7 +124,7 @@ function App() {
   // Listen for hash changes (back button)
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
+      const hash = decodeURIComponent(window.location.hash.slice(1));
       if (hash && stories.some((s) => s.name === hash)) {
         setCurrentStory(hash);
       } else {

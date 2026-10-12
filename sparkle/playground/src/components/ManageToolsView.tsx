@@ -20,7 +20,7 @@ import {
 } from "../data/build";
 import { getCompanySpaceById } from "../data/companySpaces";
 import { getUserById } from "../data/users";
-import { ToolDetailsSheet } from "./BuildDetailSheets";
+import { ToolDetailsSheet } from "./BuildDetails";
 import { EmptyState } from "./EmptyState";
 import { UsedByCell } from "./buildTableShared";
 
