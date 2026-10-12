@@ -103,9 +103,9 @@ export async function ensureConversationMemoryFile(
 
 /**
  * @cc [owner:aubin-tchoi,label:product;performance] read-from-conversation-memory-file
- * Returns the content of the conversation's memory file, read from GCS at the path returned by
- * `ensureConversationMemoryFile`, never from the live user memory, whichever participant runs the
- * loop. Returns null when there is no file, i.e. the user had no memory when it was copied.
+ * The returned content MUST be read from the conversation's memory file, at the path returned by
+ * `ensureConversationMemoryFile`, never from the live user memory. It is null when there is no
+ * file, i.e. there was no memory to copy when the path was recorded.
  */
 export async function readConversationMemoryFile(
   auth: Authenticator,
