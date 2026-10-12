@@ -51,8 +51,8 @@ entries every 30 seconds.
 
 ## Sessions
 
-Sessions persist in FDB across server restarts and HTTP/2 connections. Each has a fixed subject set,
-an initial one-hour expiry, and a root resolved from tenant state.
+Sessions persist in FDB across server restarts and HTTP/2 connections. Each has a fixed subject set
+and an initial one-hour expiry. A session resource holds its tenant resource, including its root ID.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
@@ -76,11 +76,11 @@ session and tenant are cached together per API instance for at most 30 seconds f
 the lookup, capped by session expiry; hits do not extend this deadline. Revocation can therefore take
 up to 30 seconds to prevent new RPCs across servers; already admitted RPCs may finish.
 
-`RefreshSession` reads active state directly from FDB and atomically replaces the expiry index entry,
-extending expiry to the later of its current value and server time plus one hour. It never revives
-expired or revoked sessions. `RevokeSession` uses the authenticated tenant to locate the session,
-then atomically clears its prefix, credential lookup, and expiry entry. Both operations use
-conflict-tracked reads and evict the local cache entry after commit.
+`RefreshSession` reads the tenant and active session state directly from FDB and atomically replaces
+the expiry index entry, extending expiry to the later of its current value and server time plus one
+hour. It rejects missing tenants and never revives expired or revoked sessions. `RevokeSession` uses
+the authenticated tenant to locate the session, then atomically clears its prefix, credential lookup,
+and expiry entry. Both operations use conflict-tracked reads and evict the local cache entry after commit.
 
 Each server waits a fresh random 1–60 seconds before each expiry sweep, including the first. A pass
 fixes its cutoff at one minute before its start and drains the expiry index in fresh transactions

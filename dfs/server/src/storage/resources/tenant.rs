@@ -47,6 +47,7 @@ impl From<Error> for storage::Error<Error> {
     }
 }
 
+#[derive(Clone)]
 pub struct TenantResource {
     pub tenant_id: String,
     pub root_id: ObjectId,
@@ -140,15 +141,16 @@ impl TenantResource {
         !tenant_id.is_empty() && tenant_id.len() <= TENANT_ID_MAX_BYTES && !tenant_id.contains('\0')
     }
 
+    // This lookup has no domain failures, so its storage errors can use the caller's resource type.
     /**
      * @cc [owner:spolu,label:backend] tenant-fetch-state
      * Fetch MUST read the supplied tenant ID's record with conflict tracking and return None when
-     * it is missing. Stored-data decoding failures MUST propagate as storage failures.
+     * it is missing. Failures MUST be storage failures, never resource errors.
      */
-    pub async fn fetch(
+    pub async fn fetch<E: std::error::Error + Send + Sync + 'static>(
         tx: &Transaction,
         tenant_id: &str,
-    ) -> Result<Option<Self>, storage::Error<Error>> {
+    ) -> Result<Option<Self>, storage::Error<E>> {
         let Some(value) = tx
             .get(&Self::tenant_key(tenant_id), false)
             .await

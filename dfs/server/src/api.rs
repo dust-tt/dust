@@ -98,7 +98,7 @@ impl Dfs for API {
         .await?;
         Ok(Response::new(Session {
             id: session.session_id,
-            tenant_id: session.tenant_id,
+            tenant_id: session.tenant.tenant_id,
             subjects: session.subjects.into_iter().collect(),
             session_key,
             expires_at: session.expires_at_ms,
@@ -106,7 +106,7 @@ impl Dfs for API {
     }
 
     async fn current_session(&self, request: Request<Empty>) -> Result<Response<Session>, Status> {
-        let (session, _) = self.require_session(&request).await?;
+        let session = self.require_session(&request).await?;
         Ok(Response::new(Session::from(session.as_ref())))
     }
 
@@ -253,7 +253,7 @@ impl From<&SessionResource> for Session {
     fn from(session: &SessionResource) -> Self {
         Self {
             id: session.session_id.clone(),
-            tenant_id: session.tenant_id.clone(),
+            tenant_id: session.tenant.tenant_id.clone(),
             subjects: session.subjects.iter().cloned().collect(),
             session_key: String::new(),
             expires_at: session.expires_at_ms,

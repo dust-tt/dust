@@ -67,7 +67,6 @@ async fn periodic_sweeps_reclaim_expired_entries_and_preserve_live_references() 
             expired_session.key_hash,
             CachedSession {
                 session: expired_session,
-                tenant: Arc::clone(&held),
                 expires_at: now,
             },
         ),
@@ -75,13 +74,12 @@ async fn periodic_sweeps_reclaim_expired_entries_and_preserve_live_references() 
             expired_state.key_hash,
             CachedSession {
                 session: Arc::new(expired_state),
-                tenant: Arc::clone(&held),
                 expires_at: now + Duration::from_millis(SESSION_KEY_CACHE_TTL_MS),
             },
         ),
         (
             live_session.key_hash,
-            CachedSession::new(Arc::clone(&live_session), Arc::clone(&held), now)?,
+            CachedSession::new(Arc::clone(&live_session), now)?,
         ),
     ]);
 
@@ -101,9 +99,10 @@ async fn periodic_sweeps_reclaim_expired_entries_and_preserve_live_references() 
     assert_eq!(api.session_key_cache.read().await.len(), 1);
     assert!(expired_session_reference.upgrade().is_none());
     assert_eq!(Arc::strong_count(&live_session), 2);
-    assert_eq!(Arc::strong_count(&held), 2);
+    assert_eq!(Arc::strong_count(&held), 1);
     drop(held);
-    assert!(held_reference.upgrade().is_some());
+    assert!(held_reference.upgrade().is_none());
+    assert_eq!(live_session.tenant.tenant_id, "held");
 
     api.tenant_key_cache
         .write()
@@ -122,7 +121,6 @@ async fn periodic_sweeps_reclaim_expired_entries_and_preserve_live_references() 
     assert!(api.tenant_key_cache.read().await.is_empty());
     assert!(live_reference.upgrade().is_none());
     assert!(api.session_key_cache.read().await.is_empty());
-    assert!(held_reference.upgrade().is_none());
     assert_eq!(Arc::strong_count(&live_session), 1);
     drop(live_session);
     assert!(live_session_reference.upgrade().is_none());
@@ -138,7 +136,7 @@ fn session_cache_deadline_starts_before_the_lookup() -> Result<()> {
     let (session, _) = SessionResource::new(&tenant, vec![])?;
     let session = Arc::new(session);
     let lookup_started = Instant::now() - Duration::from_millis(SESSION_KEY_CACHE_TTL_MS);
-    let cached = CachedSession::new(session, Arc::new(tenant), lookup_started)?;
+    let cached = CachedSession::new(session, lookup_started)?;
     assert_eq!(
         cached.expires_at,
         lookup_started + Duration::from_millis(SESSION_KEY_CACHE_TTL_MS)
@@ -153,9 +151,8 @@ async fn session_cache_hits_return_matching_resources() -> Result<()> {
     for tenant_id in ["first", "second"] {
         let (tenant, _) = TenantResource::new(tenant_id.to_owned())?;
         let (session, session_key) = SessionResource::new(&tenant, vec![])?;
-        let tenant = Arc::new(tenant);
         let session = Arc::new(session);
-        let cached = CachedSession::new(Arc::clone(&session), Arc::clone(&tenant), Instant::now())?;
+        let cached = CachedSession::new(Arc::clone(&session), Instant::now())?;
         let expires_at = cached.expires_at;
         api.session_key_cache
             .write()
@@ -167,9 +164,10 @@ async fn session_cache_hits_return_matching_resources() -> Result<()> {
             .metadata_mut()
             .insert("authorization", format!("Bearer {session_key}").parse()?);
         let request = super::bearer_auth(request)?;
-        let (actual_session, actual_tenant) = api.require_session(&request).await?;
+        let actual_session = api.require_session(&request).await?;
         assert!(Arc::ptr_eq(&actual_session, &session));
-        assert!(Arc::ptr_eq(&actual_tenant, &tenant));
+        assert_eq!(actual_session.tenant.tenant_id, tenant.tenant_id);
+        assert_eq!(actual_session.tenant.root_id, tenant.root_id);
         assert_eq!(
             api.session_key_cache
                 .read()

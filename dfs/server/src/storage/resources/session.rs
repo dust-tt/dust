@@ -69,7 +69,7 @@ impl From<Error> for storage::Error<Error> {
 
 pub struct SessionResource {
     pub session_id: String,
-    pub tenant_id: String,
+    pub tenant: TenantResource,
     pub subjects: BTreeSet<String>,
     pub key_hash: KeyHash,
     pub expires_at_ms: u64,
@@ -83,7 +83,7 @@ impl SessionResource {
      */
     /**
      * @cc [owner:spolu,label:backend;security] session-creation-state
-     * A new session MUST belong to the supplied tenant and expire one hour after construction.
+     * A new session MUST retain the supplied tenant and expire one hour after construction.
      * The plaintext bearer key MUST be returned separately and MUST NOT be stored in the resource.
      * Callers MUST construct the resource outside retrying transactions so its ID, key, subjects,
      * and expiry remain stable across attempts.
@@ -106,7 +106,7 @@ impl SessionResource {
         let session_key = auth::new_key().map_err(|_| Error::KeyGeneration)?;
         let session = Self {
             session_id: uuid::Uuid::now_v7().simple().to_string(),
-            tenant_id: tenant.tenant_id.clone(),
+            tenant: tenant.clone(),
             subjects,
             key_hash: auth::hash_key(&session_key),
             expires_at_ms,
@@ -126,7 +126,7 @@ impl SessionResource {
      * KeyCollision before staging any writes. Plaintext bearer keys MUST NOT be persisted.
      */
     pub async fn create(&self, tx: &Transaction) -> Result<(), storage::Error<Error>> {
-        let session_key = Self::session_key(&self.tenant_id, &self.session_id);
+        let session_key = Self::session_key(&self.tenant.tenant_id, &self.session_id);
         if let Some(value) = tx
             .get(&session_key, false)
             .await
@@ -154,16 +154,16 @@ impl SessionResource {
             &session_key,
             &pack(&(self.key_hash.as_slice(), self.expires_at_ms)),
         );
-        let subjects = Self::subject_subspace(&self.tenant_id, &self.session_id);
+        let subjects = Self::subject_subspace(&self.tenant.tenant_id, &self.session_id);
         for subject in &self.subjects {
             tx.set(&subjects.pack(subject), &[]);
         }
         tx.set(
             &Self::key_hash_key(&self.key_hash),
-            &pack(&(self.tenant_id.as_str(), self.session_id.as_str())),
+            &pack(&(self.tenant.tenant_id.as_str(), self.session_id.as_str())),
         );
         tx.set(
-            &Self::expiry_key(self.expires_at_ms, &self.tenant_id, &self.session_id),
+            &Self::expiry_key(self.expires_at_ms, &self.tenant.tenant_id, &self.session_id),
             &[],
         );
         Ok(())
@@ -171,8 +171,9 @@ impl SessionResource {
 
     /**
      * @cc [owner:spolu,label:security;error-handling] session-key-authentication
-     * Authentication MUST verify the lookup's matching hash and unexpired session state in the same
-     * transaction. Missing entries, mismatched hashes, and expired sessions MUST return InvalidKey.
+     * Authentication MUST load the tenant from the lookup's tenant ID and verify the matching hash
+     * and unexpired session state in the same transaction. Missing tenants or session entries,
+     * mismatched hashes, and expired sessions MUST return InvalidKey.
      * Decoding failures MUST retain their storage error. Subjects MUST come from the stored session.
      */
     pub async fn authenticate(
@@ -186,7 +187,10 @@ impl SessionResource {
             .ok_or(Error::InvalidKey)?;
         let (tenant_id, session_id): (String, String) =
             unpack(&value).map_err(FdbBindingError::PackError)?;
-        let session = Self::fetch(tx, &tenant_id, &session_id)
+        let tenant = TenantResource::fetch(tx, &tenant_id)
+            .await?
+            .ok_or(Error::InvalidKey)?;
+        let session = Self::fetch(tx, &tenant, &session_id)
             .await?
             .ok_or(Error::InvalidKey)?;
         if session.key_hash != *key_hash {
@@ -227,15 +231,19 @@ impl SessionResource {
         );
         tx.clear(&Self::expiry_key(
             session.expires_at_ms,
-            &session.tenant_id,
+            &session.tenant.tenant_id,
             &session.session_id,
         ));
         tx.set(
-            &Self::session_key(&session.tenant_id, &session.session_id),
+            &Self::session_key(&session.tenant.tenant_id, &session.session_id),
             &pack(&(session.key_hash.as_slice(), expires_at_ms)),
         );
         tx.set(
-            &Self::expiry_key(expires_at_ms, &session.tenant_id, &session.session_id),
+            &Self::expiry_key(
+                expires_at_ms,
+                &session.tenant.tenant_id,
+                &session.session_id,
+            ),
             &[],
         );
         session.expires_at_ms = expires_at_ms;
@@ -260,7 +268,7 @@ impl SessionResource {
             return Err(Error::NotFound.into());
         }
         let tenant_id = &tenant.tenant_id;
-        let session = Self::fetch(tx, tenant_id, session_id)
+        let session = Self::fetch(tx, tenant, session_id)
             .await?
             .ok_or(Error::NotFound)?;
         Self::clear(
@@ -342,9 +350,10 @@ impl SessionResource {
 
     async fn fetch(
         tx: &Transaction,
-        tenant_id: &str,
+        tenant: &TenantResource,
         session_id: &str,
     ) -> Result<Option<Self>, storage::Error<Error>> {
+        let tenant_id = &tenant.tenant_id;
         let Some(value) = tx
             .get(&Self::session_key(tenant_id, session_id), false)
             .await
@@ -375,7 +384,7 @@ impl SessionResource {
         }
         Ok(Some(Self {
             session_id: session_id.to_owned(),
-            tenant_id: tenant_id.to_owned(),
+            tenant: tenant.clone(),
             subjects,
             key_hash,
             expires_at_ms,
