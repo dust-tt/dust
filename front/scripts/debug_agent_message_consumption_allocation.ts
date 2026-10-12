@@ -6,10 +6,7 @@
  * This script is read-only and never logs tool result contents. `--compareOpenAI` and
  * `--compareGemini` send the rendered tool results to the provider's token-count endpoint.
  *
- * npx tsx scripts/debug_agent_message_consumption_allocation.ts \
- *   --workspaceId 8DpNy5tEUG \
- *   --agentMessageId Ut5LbnRe3M \
- *   --execute
+ * npx tsx scripts/debug_agent_message_consumption_allocation.ts -w 8DpNy5tEUG -m Ut5LbnRe3M
  */
 
 import { TOOL_OUTPUT_OFFLOAD_META_KEY } from "@app/lib/actions/action_output_limits";
@@ -81,11 +78,13 @@ const TOKENIZER_OVERESTIMATE_RATIO = 1.2;
 const TOKENIZER_UNDERESTIMATE_RATIO = 0.7;
 const MIN_TOKENIZER_GAP_TOKENS = 100;
 
-const ALTERNATIVE_TOKENIZER_BASES = [
-  "o200k_base",
-  "cl100k_base",
-  "anthropic_base",
-] as const satisfies TiktokenTokenizerBase[];
+const ALTERNATIVE_TOKENIZERS = [
+  { label: "o200k", base: "o200k_base" },
+  { label: "cl100k", base: "cl100k_base" },
+  { label: "anthropic", base: "anthropic_base" },
+] as const satisfies Array<{ label: string; base: TiktokenTokenizerBase }>;
+
+type Cell = string | number | boolean | null | undefined;
 
 type Finding = {
   flag: string;
@@ -133,6 +132,59 @@ function ratio(numerator: number, denominator: number): number | "n/a" {
   return denominator > 0
     ? Math.round((numerator / denominator) * 100) / 100
     : "n/a";
+}
+
+function formatCell(value: Cell): string {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+  if (typeof value === "boolean") {
+    return value ? "yes" : "no";
+  }
+  return String(value);
+}
+
+function printTable(title: string, rows: Array<Record<string, Cell>>): void {
+  console.log(`\n${title}`);
+  if (rows.length === 0) {
+    console.log("(none)");
+    return;
+  }
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const widths = columns.map((column) =>
+    Math.max(
+      column.length,
+      ...rows.map((row) => formatCell(row[column]).length)
+    )
+  );
+  const formatLine = (cells: Cell[]) =>
+    cells
+      .map((cell, index) =>
+        typeof cell === "number"
+          ? formatCell(cell).padStart(widths[index])
+          : formatCell(cell).padEnd(widths[index])
+      )
+      .join("  ")
+      .trimEnd();
+  console.log(formatLine(columns));
+  console.log(formatLine(widths.map((width) => "-".repeat(width))));
+  for (const row of rows) {
+    console.log(formatLine(columns.map((column) => row[column])));
+  }
+}
+
+function printRecord(title: string, record: Record<string, Cell>): void {
+  printTable(
+    title,
+    Object.entries(record).map(([key, value]) => ({
+      key,
+      value: formatCell(value),
+    }))
+  );
+}
+
+function timeOf(date: Date): string {
+  return date.toISOString().slice(11, 23);
 }
 
 /** Mirrors `toolResultShareOfInputCost`: tool results sit at the end of the reading call's prompt. */
@@ -274,14 +326,15 @@ async function printAttributionWorkflowHistory(message: {
 
   try {
     const client = await getTemporalClientForFrontNamespace();
-    const executionRows: Array<Record<string, unknown>> = [];
-    const eventRows: Array<Record<string, unknown>> = [];
+    const executionRows: Array<Record<string, Cell>> = [];
+    const eventRows: Array<Record<string, Cell>> = [];
     let failedActivities = 0;
 
     for await (const execution of client.workflow.list({
       query: `WorkflowId = ${JSON.stringify(workflowId)}`,
     })) {
       const handle = client.workflow.getHandle(workflowId, execution.runId);
+      const executionNumber = executionRows.length + 1;
       const [description, history] = await Promise.all([
         handle.describe(),
         handle.fetchHistory(),
@@ -290,13 +343,13 @@ async function printAttributionWorkflowHistory(message: {
 
       for (const event of history.events ?? []) {
         const eventAt = event.eventTime
-          ? tsToDate(event.eventTime).toISOString()
+          ? timeOf(tsToDate(event.eventTime))
           : "n/a";
         const signal = event.workflowExecutionSignaledEventAttributes;
         if (signal) {
           eventRows.push({
-            runId: execution.runId,
-            eventAt,
+            execution: executionNumber,
+            at: eventAt,
             event: "signal",
             detail: signal.signalName ?? "unknown",
           });
@@ -307,8 +360,8 @@ async function printAttributionWorkflowHistory(message: {
           const activity = scheduled.activityType?.name ?? "unknown";
           activityByScheduledEventId.set(String(event.eventId), activity);
           eventRows.push({
-            runId: execution.runId,
-            eventAt,
+            execution: executionNumber,
+            at: eventAt,
             event: "activity_scheduled",
             detail: activity,
           });
@@ -328,8 +381,8 @@ async function printAttributionWorkflowHistory(message: {
             failedActivities++;
           }
           eventRows.push({
-            runId: execution.runId,
-            eventAt,
+            execution: executionNumber,
+            at: eventAt,
             event: event.activityTaskCompletedEventAttributes
               ? "activity_completed"
               : event.activityTaskFailedEventAttributes
@@ -346,20 +399,19 @@ async function printAttributionWorkflowHistory(message: {
 
       const pendingActivity = description.raw.pendingActivities?.[0];
       executionRows.push({
+        execution: executionNumber,
         runId: execution.runId,
         status: execution.status.name,
-        startTime: execution.startTime.toISOString(),
-        closeTime: execution.closeTime?.toISOString() ?? "running",
-        pendingActivity: pendingActivity?.activityType?.name ?? "none",
-        pendingAttempt: pendingActivity?.attempt ?? "none",
-        pendingFailure: pendingActivity?.lastFailure?.message || "none",
+        start: execution.startTime.toISOString(),
+        close: execution.closeTime?.toISOString() ?? "running",
+        pending: pendingActivity?.activityType?.name ?? "none",
+        attempt: pendingActivity?.attempt ?? "-",
+        failure: pendingActivity?.lastFailure?.message || "none",
       });
     }
 
-    console.log(`\nAttribution workflow executions (${workflowId})`);
-    console.table(executionRows);
-    console.log("\nAttribution workflow events");
-    console.table(eventRows);
+    printTable(`Attribution workflow ${workflowId}`, executionRows);
+    printTable("Attribution workflow events (UTC times)", eventRows);
 
     const findings: Finding[] = [];
     if (executionRows.length === 0) {
@@ -369,7 +421,7 @@ async function printAttributionWorkflowHistory(message: {
       });
     }
     const pendingFailures = executionRows.filter(
-      (row) => row.pendingFailure !== "none"
+      (row) => row.failure !== "none"
     );
     if (failedActivities > 0 || pendingFailures.length > 0) {
       findings.push({
@@ -382,8 +434,10 @@ async function printAttributionWorkflowHistory(message: {
     return findings;
   } catch (error) {
     const { message: errorMessage } = normalizeError(error);
-    console.log("\nAttribution workflow history unavailable");
-    console.table([{ workflowId, error: errorMessage }]);
+    printRecord("Attribution workflow history unavailable", {
+      workflowId,
+      error: errorMessage,
+    });
     return [{ flag: "temporal_unavailable", detail: errorMessage }];
   }
 }
@@ -399,12 +453,12 @@ async function printAgentLoopModelActivityAttempts(message: {
     const client = await getTemporalClientForAgentNamespace();
     const history = await client.workflow.getHandle(workflowId).fetchHistory();
     const activityByScheduledEventId = new Map<string, string>();
-    const rows: Array<Record<string, unknown>> = [];
+    const rows: Array<Record<string, Cell>> = [];
     let retriedAttempts = 0;
 
     for (const event of history.events ?? []) {
       const eventAt = event.eventTime
-        ? tsToDate(event.eventTime).toISOString()
+        ? timeOf(tsToDate(event.eventTime))
         : "n/a";
       const scheduled = event.activityTaskScheduledEventAttributes;
       if (scheduled) {
@@ -424,7 +478,7 @@ async function printAgentLoopModelActivityAttempts(message: {
         if (attempt > 1) {
           retriedAttempts++;
         }
-        rows.push({ eventAt, event: "started", attempt });
+        rows.push({ at: eventAt, event: "started", attempt });
       }
 
       const outcome =
@@ -438,7 +492,7 @@ async function printAgentLoopModelActivityAttempts(message: {
           "runModelAndCreateActionsActivity"
       ) {
         rows.push({
-          eventAt,
+          at: eventAt,
           event: event.activityTaskCompletedEventAttributes
             ? "completed"
             : event.activityTaskFailedEventAttributes
@@ -446,13 +500,12 @@ async function printAgentLoopModelActivityAttempts(message: {
               : event.activityTaskTimedOutEventAttributes
                 ? "timed_out"
                 : "canceled",
-          attempt: "n/a",
+          attempt: "-",
         });
       }
     }
 
-    console.log("\nAgent loop: runModelAndCreateActionsActivity attempts");
-    console.table(rows);
+    printTable("Agent loop model activity attempts (UTC times)", rows);
     return retriedAttempts > 0
       ? [
           {
@@ -463,8 +516,10 @@ async function printAgentLoopModelActivityAttempts(message: {
       : [];
   } catch (error) {
     const { message: errorMessage } = normalizeError(error);
-    console.log("\nAgent loop history unavailable");
-    console.table([{ workflowId, error: errorMessage }]);
+    printRecord("Agent loop history unavailable", {
+      workflowId,
+      error: errorMessage,
+    });
     return [{ flag: "temporal_unavailable", detail: errorMessage }];
   }
 }
@@ -472,11 +527,13 @@ async function printAgentLoopModelActivityAttempts(message: {
 makeScript(
   {
     workspaceId: {
+      alias: "w",
       type: "string",
       demandOption: true,
       description: "Workspace sId.",
     },
     agentMessageId: {
+      alias: "m",
       type: "string",
       demandOption: true,
       description: "Agent message sId.",
@@ -493,19 +550,13 @@ makeScript(
       description:
         "Send rendered tool results to Gemini's countTokens endpoint; its count includes request framing.",
     },
+    execute: {
+      type: "boolean",
+      default: true,
+      hidden: true,
+    },
   },
-  async ({
-    agentMessageId,
-    compareGemini,
-    compareOpenAI,
-    execute,
-    workspaceId,
-  }) => {
-    if (!execute) {
-      console.log("Read-only diagnostic. Pass --execute to run it.");
-      return;
-    }
-
+  async ({ agentMessageId, compareGemini, compareOpenAI, workspaceId }) => {
     const findings: Finding[] = [];
 
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
@@ -571,31 +622,28 @@ makeScript(
       });
     }
 
-    console.log("\nResult");
-    console.table([
-      {
-        agentMessageId,
-        conversationId,
-        status: creditContext.status,
-        completedAt:
-          analyticsContext.agentMessage.completedAt?.toISOString() ?? "none",
-        origin: creditContext.triggeringUserMessageOrigin ?? "none",
-        billedCredits: billedCredits ?? "none",
-        result: allocationResult.isOk()
-          ? "reconciled"
-          : allocationResult.error.code,
-        attributionVersion: allocationResult.isOk()
-          ? allocationResult.value.attributionVersion
-          : "n/a",
-        ...(allocationResult.isErr() ? allocationResult.error.context : {}),
-      },
-    ]);
+    printRecord("Result", {
+      agentMessageId,
+      conversationId,
+      status: creditContext.status,
+      completedAt:
+        analyticsContext.agentMessage.completedAt?.toISOString() ?? "none",
+      origin: creditContext.triggeringUserMessageOrigin ?? "none",
+      billedCredits: billedCredits ?? "none",
+      result: allocationResult.isOk()
+        ? "reconciled"
+        : allocationResult.error.code,
+      attributionVersion: allocationResult.isOk()
+        ? allocationResult.value.attributionVersion
+        : "n/a",
+      ...(allocationResult.isErr() ? allocationResult.error.context : {}),
+    });
 
     const attributionVersions = [
       ...new Set(items.map(({ attributionVersion }) => attributionVersion)),
     ].sort((left, right) => right - left);
-    console.log("\nStored attribution versions, newest first");
-    console.table(
+    printTable(
+      "Stored attribution versions, newest first",
       attributionVersions.map((attributionVersion) => {
         const versionItems = items.filter(
           (item) => item.attributionVersion === attributionVersion
@@ -610,7 +658,7 @@ makeScript(
           usages,
         });
         return {
-          attributionVersion,
+          version: attributionVersion,
           items: versionItems.length,
           result: versionResult.isOk()
             ? "reconciled"
@@ -681,19 +729,20 @@ makeScript(
       return {
         usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
         runUsageId: usage.runUsageModelId,
+        model: usage.modelId,
         input: itemTypes.has("input"),
         output: itemTypes.has("output"),
-        reasoning: needsReasoning ? itemTypes.has("reasoning") : "not_needed",
+        reasoning: needsReasoning ? itemTypes.has("reasoning") : "-",
         complete:
           itemTypes.has("input") &&
           itemTypes.has("output") &&
           (!needsReasoning || itemTypes.has("reasoning")),
       };
     });
-    console.log(
-      "\nEvidence: every usage needs input, output and, when reported, reasoning items"
+    printTable(
+      "Usages (numbered in run order) and their model items: input, output, reasoning when reported",
+      modelEvidenceRows
     );
-    console.table(modelEvidenceRows);
     const usagesMissingModelItems = modelEvidenceRows.filter(
       ({ complete }) => !complete
     );
@@ -730,10 +779,9 @@ makeScript(
         action: action.sId,
         tool: action.toolName,
         status: action.status,
-        sandboxChild: isSandboxChildActionInfo(
+        child: isSandboxChildActionInfo(
           action.stepContext.sandboxChildActionInfo
         ),
-        createdAt: action.createdAt.toISOString(),
         updatedAt: action.updatedAt.toISOString(),
         item: item
           ? item.completedAt === null
@@ -749,17 +797,14 @@ makeScript(
         item.agentMCPActionId !== null &&
         !actionSIdByModelId.has(item.agentMCPActionId)
     );
-    console.log(
-      `\nEvidence: every tool call of a run with usage needs a tool item ` +
-        `(${toolEvidenceRows.filter(({ gap }) => gap === "ok").length}/${actions.length} actions ok, ` +
-        `${itemsWithoutAction.length} items without action)`
-    );
     const toolEvidenceGapRows = toolEvidenceRows.filter(
       ({ gap }) => gap !== "ok"
     );
-    if (toolEvidenceGapRows.length > 0) {
-      console.table(toolEvidenceGapRows);
-    }
+    printTable(
+      `Tool items: ${actions.length - toolEvidenceGapRows.length}/${actions.length} actions ok, ` +
+        `${itemsWithoutAction.length} items without action. Actions with a gap:`,
+      toolEvidenceGapRows
+    );
     const blockingToolGaps = toolEvidenceGapRows.filter(
       ({ gap }) =>
         gap === "missing_item" || gap === "pending_item_for_final_action"
@@ -801,38 +846,36 @@ makeScript(
         ? null
         : llmBilledCreditMicro - recomputedLlmBilledCreditMicro;
 
-    console.log("\nStep 1: the LLM part of the bill must match its usages");
-    console.table([
+    printTable("Step 1: the LLM part of the bill must match its usages", [
       {
         quantity: "bill",
         credits: billedCredits ?? "n/a",
-        meaning: "What the message was charged",
+        meaning: "charged to the message",
       },
       {
         quantity: "tool_fees",
         credits: credits(toolFeesCreditMicro),
-        meaning: "Direct credits of the tool items, kept as billed",
+        meaning: "tool items' direct credits",
       },
       {
         quantity: "llm_bill",
         credits: credits(llmBilledCreditMicro),
-        meaning: "Bill minus tool fees, to split across the LLM usages",
+        meaning: "bill - tool_fees",
       },
       {
-        quantity: "llm_bill_from_usages",
+        quantity: "llm_from_usages",
         credits: credits(recomputedLlmBilledCreditMicro),
-        meaning:
-          "Recorded cost of each billing group rounded up, before any free-origin waiver",
+        meaning: "usages' cost rounded up per group",
       },
       {
-        quantity: "llm_bill_charged_from_usages",
+        quantity: "llm_charged",
         credits: chargedLlmBilledCredits,
-        meaning: "Same, after the free-origin waiver (0 for free origins)",
+        meaning: "same, after free-origin waiver",
       },
       {
         quantity: "llm_bill_gap",
         credits: credits(llmBillGapCreditMicro),
-        meaning: "llm_bill minus llm_bill_from_usages, must be 0",
+        meaning: "llm_bill - llm_from_usages, must be 0",
       },
     ]);
     if (llmBillGapCreditMicro !== null && llmBillGapCreditMicro !== 0) {
@@ -884,15 +927,17 @@ makeScript(
         {
           action: actionSIdByModelId.get(item.agentMCPActionId) ?? "n/a",
           item: item.completedAt === null ? "pending" : "complete",
-          storedFeeCredits: credits(item.directCreditAmountMicro),
-          billingPlanFeeCredits: credits(planned?.creditMicro),
+          stored: credits(item.directCreditAmountMicro),
+          planned: credits(planned?.creditMicro),
           disposition: planned?.billingDisposition ?? "no_billing_line",
           matches: storedCreditMicro === plannedCreditMicro,
         },
       ];
     });
-    console.log("\nTool fees: stored on the items vs the billing plan");
-    console.table(toolFeeRows);
+    printTable(
+      "Tool fees (credits): stored on the items vs the billing plan",
+      toolFeeRows
+    );
     const mismatchedToolFees = toolFeeRows.filter(({ matches }) => !matches);
     if (mismatchedToolFees.length > 0) {
       findings.push({
@@ -901,8 +946,8 @@ makeScript(
       });
     }
 
-    console.log("\nStep 2: each billing group's bill is shared by its usages");
-    console.table(
+    printTable(
+      "Step 2 (credits): each billing group's bill is shared by its usages",
       llmBillingPlan.llm.map((line) => {
         const costCreditMicro = creditMicroFromCostMicroUsd(
           line.providerCostMicroUsd
@@ -912,12 +957,11 @@ makeScript(
         );
         return {
           runKey: line.runKey,
-          provider: line.providerId,
           model: line.modelId,
           usages: line.usageAllocations?.length ?? 0,
-          recordedCostCredits: credits(costCreditMicro),
-          billedCredits: credits(billedCreditMicro),
-          roundingCredits: credits(billedCreditMicro - costCreditMicro),
+          cost: credits(costCreditMicro),
+          billed: credits(billedCreditMicro),
+          rounding: credits(billedCreditMicro - costCreditMicro),
         };
       })
     );
@@ -995,10 +1039,9 @@ makeScript(
       };
     });
 
-    console.log(
-      "\nStep 3: each usage's recorded cost splits into output, tool results read, and prompt"
-    );
-    console.table(
+    printTable(
+      "Step 3: each usage's recorded cost splits into output, tool results read and prompt " +
+        "(tokens, then credits)",
       usageRows.map(
         ({
           usage,
@@ -1008,31 +1051,26 @@ makeScript(
           cachedTokensBeyondPreviousUsage,
         }) => ({
           usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
-          runUsageId: usage.runUsageModelId,
-          runKey: usage.runKey ?? "none",
-          model: usage.modelId,
-          promptTokens: usage.promptTokens,
-          cachedTokens: usage.cachedTokens ?? 0,
-          cacheWriteTokens: usage.cacheCreationTokens ?? 0,
-          completionTokens: usage.completionTokens,
-          toolResultTokensRead: toolResultTokensCount,
-          cacheWarmedByUnbilledRequest:
+          prompt: usage.promptTokens,
+          cached: usage.cachedTokens ?? 0,
+          cacheWrite: usage.cacheCreationTokens ?? 0,
+          completion: usage.completionTokens,
+          resultsRead: toolResultTokensCount,
+          warmedElsewhere:
             cachedTokensBeyondPreviousUsage !== null &&
             cachedTokensBeyondPreviousUsage >
               MIN_CACHE_WARMED_BY_UNBILLED_REQUEST_TOKENS,
-          recordedCostCredits: credits(
-            creditMicroFromCostMicroUsd(usage.costMicroUsd)
-          ),
-          outputCostCredits: costSplit.isOk()
+          cost: credits(creditMicroFromCostMicroUsd(usage.costMicroUsd)),
+          outputCost: costSplit.isOk()
             ? credits(
                 creditMicroFromCostMicroUsd(costSplit.value.outputCostMicroUsd)
               )
             : costSplit.error,
-          toolResultCostCredits:
+          resultsCost:
             toolResultCostMicroUsd === null
               ? "n/a"
               : credits(creditMicroFromCostMicroUsd(toolResultCostMicroUsd)),
-          promptCostCredits:
+          promptCost:
             costSplit.isOk() && toolResultCostMicroUsd !== null
               ? credits(
                   creditMicroFromCostMicroUsd(
@@ -1044,10 +1082,8 @@ makeScript(
       )
     );
 
-    console.log(
-      "\nStep 4: each usage's billed share is split in proportion to those costs"
-    );
-    console.table(
+    printTable(
+      "Step 4 (credits): each usage's billed share is split in proportion to those costs",
       usageRows.map(
         ({
           usage,
@@ -1068,8 +1104,8 @@ makeScript(
               : "n/a";
           return {
             usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
-            billedCredits: credits(billedCreditMicro),
-            billedOverRecordedCost:
+            billed: credits(billedCreditMicro),
+            billedOverCost:
               costMicroUsd > 0 && billedCreditMicro !== undefined
                 ? Math.round(
                     (billedCreditMicro /
@@ -1077,20 +1113,20 @@ makeScript(
                       10_000
                   ) / 10_000
                 : "n/a",
-            outputCredits: costSplit.isOk()
+            output: costSplit.isOk()
               ? creditMicroOf(costSplit.value.outputCostMicroUsd)
               : "n/a",
-            toolResultCredits:
+            results:
               toolResultCostMicroUsd === null
                 ? "n/a"
                 : creditMicroOf(toolResultCostMicroUsd),
-            promptCredits:
+            prompt:
               costSplit.isOk() && toolResultCostMicroUsd !== null
                 ? creditMicroOf(
                     costSplit.value.inputCostMicroUsd - toolResultCostMicroUsd
                   )
                 : "n/a",
-            outputItemsWeight,
+            outputWeight: outputItemsWeight,
             promptItems,
             allocation,
           };
@@ -1140,60 +1176,53 @@ makeScript(
       }
     }
 
-    console.log(
-      "\nStep 5: items receive their usages' shares, plus their tool fees (before rounding: each usage shares its recorded cost instead of its billed share)"
-    );
-    console.table(
+    printTable(
+      "Step 5 (credits): items receive their usages' shares plus their tool fees " +
+        "(unrounded: each usage shares its recorded cost instead of its billed share)",
       reportedItems.map((item) => {
         const readingRunUsageModelId = readingRunUsageModelIdByItem.get(item);
         return {
-          itemId: item.id,
+          item: item.id,
           type: item.itemType,
-          version: item.attributionVersion,
           action:
             item.agentMCPActionId === null
               ? "n/a"
               : (actionSIdByModelId.get(item.agentMCPActionId) ?? "n/a"),
           usage: usageNumberByRunUsageModelId.get(item.runUsageId) ?? "n/a",
-          resultReadByUsage:
+          readBy:
             readingRunUsageModelId === undefined
-              ? "n/a"
+              ? "-"
               : (usageNumberByRunUsageModelId.get(readingRunUsageModelId) ??
                 "n/a"),
-          inputTokens: item.inputTokensCount ?? "n/a",
-          outputTokens: item.outputTokensCount ?? "n/a",
-          grossCredits: credits(item.grossAttributedCreditAmountMicro),
-          toolFeeCredits: credits(item.directCreditAmountMicro),
-          reconciledCreditsBeforeRounding: credits(
-            creditMicroBeforeRoundingByItem?.get(item)
-          ),
-          reconciledCredits: credits(reconciledCreditMicroByItem?.get(item)),
+          inTokens: item.inputTokensCount,
+          outTokens: item.outputTokensCount,
+          gross: credits(item.grossAttributedCreditAmountMicro),
+          fee: credits(item.directCreditAmountMicro),
+          unrounded: credits(creditMicroBeforeRoundingByItem?.get(item)),
+          reconciled: credits(reconciledCreditMicroByItem?.get(item)),
         };
       })
     );
 
-    console.log("\nTotal");
-    console.table([
-      {
-        bill: billedCredits ?? "n/a",
-        reconciledCreditsBeforeRounding: creditMicroBeforeRoundingByItem
-          ? credits(
-              sumCreditMicro(
-                reportedItems,
-                (item) => creditMicroBeforeRoundingByItem?.get(item) ?? 0
-              )
+    printRecord("Total (credits)", {
+      bill: billedCredits ?? "n/a",
+      unrounded: creditMicroBeforeRoundingByItem
+        ? credits(
+            sumCreditMicro(
+              reportedItems,
+              (item) => creditMicroBeforeRoundingByItem?.get(item) ?? 0
             )
-          : "n/a",
-        reconciledCredits: reconciledCreditMicroByItem
-          ? credits(
-              sumCreditMicro(
-                reportedItems,
-                (item) => reconciledCreditMicroByItem.get(item) ?? 0
-              )
+          )
+        : "n/a",
+      reconciled: reconciledCreditMicroByItem
+        ? credits(
+            sumCreditMicro(
+              reportedItems,
+              (item) => reconciledCreditMicroByItem.get(item) ?? 0
             )
-          : "n/a",
-      },
-    ]);
+          )
+        : "n/a",
+    });
 
     // Tool results are read by the first call of the next run, so the growth of that call's prompt
     // over the first call of the emitting run is the provider's own count of what the tool results
@@ -1226,23 +1255,22 @@ makeScript(
         );
         return [
           {
-            readingUsage: usageNumberByRunUsageModelId.get(
+            reader: usageNumberByRunUsageModelId.get(
               readingUsage.runUsageModelId
             ),
-            emittingUsage: usageNumberByRunUsageModelId.get(
+            emitter: usageNumberByRunUsageModelId.get(
               emittingUsage.runUsageModelId
             ),
-            model: readingUsage.modelId,
-            toolResults: toolResults.length,
-            estimatedTokens,
-            observedMinTokens,
-            observedMaxTokens,
-            estimatedOverObserved: ratio(estimatedTokens, observedMaxTokens),
-            uncachedPromptTokens: segments.uncachedTokens,
-            pricedFreshTokens: segments.inFreshTokens,
-            pricedCacheWriteTokens: segments.inCacheWriteTokens,
-            pricedCacheReadTokens: segments.inCachedTokens,
-            beyondPromptTokens: segments.beyondPromptTokens,
+            results: toolResults.length,
+            estimated: estimatedTokens,
+            observedMin: observedMinTokens,
+            observedMax: observedMaxTokens,
+            ratio: ratio(estimatedTokens, observedMaxTokens),
+            uncached: segments.uncachedTokens,
+            atFresh: segments.inFreshTokens,
+            atWrite: segments.inCacheWriteTokens,
+            atCached: segments.inCachedTokens,
+            beyond: segments.beyondPromptTokens,
             verdict: tokenizerVerdict({
               estimatedTokens,
               observedMinTokens,
@@ -1252,29 +1280,30 @@ makeScript(
         ];
       }
     );
-    console.log(
-      "\nTokenizer: tool result tokens estimated vs observed by the reading call " +
-        "(observed = prompt growth minus the emitting call's output; max assumes its reasoning was not re-sent)"
+    printTable(
+      "Tokenizer: tool result tokens estimated vs observed by the reading usage\n" +
+        "observed = reader's prompt - emitter's prompt - emitter's output (max: reasoning not re-sent)\n" +
+        "at*: where the estimate was priced in the reader's prompt; beyond: dropped past the prompt",
+      toolResultReadRows
     );
-    console.table(toolResultReadRows);
     for (const row of toolResultReadRows) {
-      const where = `Usage ${row.readingUsage} read ${row.estimatedTokens} estimated tool result tokens, observed ${row.observedMinTokens}-${row.observedMaxTokens}`;
+      const where = `Usage ${row.reader} read ${row.estimated} estimated tool result tokens, observed ${row.observedMin}-${row.observedMax}`;
       if (
         row.verdict === "tokenizer_overestimates" ||
         row.verdict === "tokenizer_underestimates"
       ) {
         findings.push({ flag: row.verdict, detail: `${where}.` });
       }
-      if (row.pricedCacheReadTokens > 0) {
+      if (row.atCached > 0) {
         findings.push({
           flag: "tool_results_priced_as_cache_reads",
-          detail: `${where}: ${row.pricedCacheReadTokens} estimated tokens exceed the ${row.uncachedPromptTokens} uncached prompt tokens and are priced as cache reads.`,
+          detail: `${where}: ${row.atCached} estimated tokens exceed the ${row.uncached} uncached prompt tokens and are priced as cache reads.`,
         });
       }
-      if (row.beyondPromptTokens > 0) {
+      if (row.beyond > 0) {
         findings.push({
           flag: "tool_results_exceed_reading_prompt",
-          detail: `${where}: ${row.beyondPromptTokens} estimated tokens exceed the whole prompt and are dropped.`,
+          detail: `${where}: ${row.beyond} estimated tokens exceed the whole prompt and are dropped.`,
         });
       }
     }
@@ -1360,7 +1389,7 @@ makeScript(
               enabledSkillInputTextByActionId.get(toolCall.action.sId)
             ).inputText
         );
-        for (const base of ALTERNATIVE_TOKENIZER_BASES) {
+        for (const { label, base } of ALTERNATIVE_TOKENIZERS) {
           const countsResult = await tokenCountForTexts(
             inputTexts,
             {
@@ -1371,7 +1400,7 @@ makeScript(
             credentials
           );
           if (countsResult.isOk()) {
-            alternativeCountsByTokenizer.set(base, countsResult.value);
+            alternativeCountsByTokenizer.set(label, countsResult.value);
           }
         }
         if (compareOpenAI && model.providerId === "openai") {
@@ -1389,7 +1418,7 @@ makeScript(
               })
             );
           }
-          alternativeCountsByTokenizer.set("openai_endpoint", counts);
+          alternativeCountsByTokenizer.set("openai", counts);
         }
         if (compareGemini && model.providerId === "google_ai_studio") {
           if (!credentials.GOOGLE_AI_STUDIO_API_KEY) {
@@ -1406,7 +1435,7 @@ makeScript(
               await countGeminiInputTokens({ client, input, modelId })
             );
           }
-          alternativeCountsByTokenizer.set("gemini_endpoint", counts);
+          alternativeCountsByTokenizer.set("gemini", counts);
         }
       }
 
@@ -1438,32 +1467,32 @@ makeScript(
         {
           action: action.sId,
           tool: action.toolName,
-          model: usage.modelId,
-          tokenizer: tokenizer ? `${tokenizer.type}:${tokenizer.base}` : "n/a",
-          readByUsage:
+          tokenizer: tokenizer?.base ?? "n/a",
+          readBy:
             readingRunUsageModelId === undefined
               ? "not_read"
               : (usageNumberByRunUsageModelId.get(readingRunUsageModelId) ??
                 "n/a"),
-          storedResultTokens: item.inputTokensCount ?? "pending",
-          recomputedResultTokens: footprint?.recomputedResultTokens ?? "n/a",
+          stored: item.inputTokensCount ?? "pending",
+          now: footprint?.recomputedResultTokens ?? "n/a",
           ...footprint?.resultTokensByTokenizer,
-          storedCallTokens: item.outputTokensCount ?? "n/a",
-          recomputedCallTokens: footprint?.recomputedCallTokens ?? "n/a",
-          offloadedBlocks: countOffloadedBlocks(enrichedAction),
+          callStored: item.outputTokensCount ?? "n/a",
+          callNow: footprint?.recomputedCallTokens ?? "n/a",
+          offloaded: countOffloadedBlocks(enrichedAction),
         },
       ];
     });
-    console.log(
-      "\nTokenizer: each tool item's stored footprint vs recomputed now, and with other tokenizers"
+    printTable(
+      "Tokenizer: each tool item's result tokens stored vs recomputed now, then with other tokenizers, " +
+        "and its call tokens",
+      toolItemFootprintRows
     );
-    console.table(toolItemFootprintRows);
     const driftedFootprints = toolItemFootprintRows.filter(
       (row) =>
-        row.readByUsage !== "not_read" &&
-        row.storedResultTokens !== "pending" &&
-        row.recomputedResultTokens !== "n/a" &&
-        row.storedResultTokens !== row.recomputedResultTokens
+        row.readBy !== "not_read" &&
+        row.stored !== "pending" &&
+        row.now !== "n/a" &&
+        row.stored !== row.now
     );
     if (driftedFootprints.length > 0) {
       findings.push({
@@ -1498,28 +1527,27 @@ makeScript(
       return [
         {
           usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
-          model: usage.modelId,
-          toolCalls: toolItems.length,
-          measuredCallTokens,
-          storedCallTokens: toolItems.reduce(
+          calls: toolItems.length,
+          measured: measuredCallTokens,
+          stored: toolItems.reduce(
             (total, item) => total + (item.outputTokensCount ?? 0),
             0
           ),
-          outputBudgetTokens,
-          measuredOverBudget: ratio(measuredCallTokens, outputBudgetTokens),
+          budget: outputBudgetTokens,
+          ratio: ratio(measuredCallTokens, outputBudgetTokens),
           scaledDown: measuredCallTokens > outputBudgetTokens,
         },
       ];
     });
-    console.log(
-      "\nTokenizer: tool call tokens measured vs the usage's non-reasoning output"
+    printTable(
+      "Tokenizer: tool call tokens measured vs the usage's non-reasoning output (budget)",
+      toolCallBudgetRows
     );
-    console.table(toolCallBudgetRows);
     for (const row of toolCallBudgetRows) {
       if (row.scaledDown) {
         findings.push({
           flag: "tool_calls_exceed_output_budget",
-          detail: `Usage ${row.usage} measured ${row.measuredCallTokens} tool call tokens for ${row.outputBudgetTokens} non-reasoning output tokens: tool calls were scaled down and the output item got the rest.`,
+          detail: `Usage ${row.usage} measured ${row.measured} tool call tokens for ${row.budget} non-reasoning output tokens: tool calls were scaled down and the output item got the rest.`,
         });
       }
     }
@@ -1533,40 +1561,34 @@ makeScript(
       runAttempts.push(attempt);
       attemptsByRunModelId.set(attempt.runModelId, runAttempts);
     }
-    console.log("\nRun usage attempts, in run order");
-    console.table(
+    printTable(
+      "Runs, in order",
+      orderedRuns.map((run, runIndex) => ({
+        run: runIndex + 1,
+        dustRunId: run.dustRunId,
+        runKey: run.runKey,
+        createdAt: run.createdAt.toISOString(),
+        attempts: attemptsByRunModelId.get(run.id)?.length ?? 0,
+      }))
+    );
+    printTable(
+      "Run usage attempts (tokens, then credits)",
       orderedRuns.flatMap((run, runIndex) => {
         const runAttempts = attemptsByRunModelId.get(run.id) ?? [];
-        if (runAttempts.length === 0) {
-          return [
-            {
-              run: runIndex + 1,
-              dustRunId: run.dustRunId,
-              runKey: run.runKey,
-              runCreatedAt: run.createdAt.toISOString(),
-              attempt: "none",
-            },
-          ];
-        }
         return runAttempts.map((attempt, attemptIndex) => ({
           run: runIndex + 1,
-          dustRunId: run.dustRunId,
-          runKey: run.runKey,
-          runCreatedAt: run.createdAt.toISOString(),
           attempt: `${attemptIndex + 1}/${runAttempts.length}`,
           usage:
             usageNumberByRunUsageModelId.get(attempt.runUsageModelId) ??
             "not_billed",
           state: attempt.usageState ?? "null",
           model: attempt.modelId,
-          promptTokens: attempt.promptTokens,
-          cachedTokens: attempt.cachedTokens ?? 0,
-          cacheWriteTokens: attempt.cacheCreationTokens ?? 0,
-          completionTokens: attempt.completionTokens,
-          reasoningTokens: attempt.reasoningTokens ?? 0,
-          costCredits: credits(
-            creditMicroFromCostMicroUsd(attempt.costMicroUsd)
-          ),
+          prompt: attempt.promptTokens,
+          cached: attempt.cachedTokens ?? 0,
+          cacheWrite: attempt.cacheCreationTokens ?? 0,
+          completion: attempt.completionTokens,
+          reasoning: attempt.reasoningTokens ?? 0,
+          cost: credits(creditMicroFromCostMicroUsd(attempt.costMicroUsd)),
         }));
       })
     );
@@ -1585,7 +1607,7 @@ makeScript(
     if (runsWithoutUsage.length > 0) {
       findings.push({
         flag: "run_without_reported_usage",
-        detail: `Runs ${runsWithoutUsage.map((run) => run.dustRunId).join(", ")} reported no usage.`,
+        detail: `Runs ${runsWithoutUsage.map((run) => (runIndexByModelId.get(run.id) ?? 0) + 1).join(", ")} reported no usage.`,
       });
     }
     const unreportedAttempts = attempts.filter(
@@ -1603,10 +1625,11 @@ makeScript(
     findings.push(...(await printAgentLoopModelActivityAttempts(messageRef)));
 
     console.log("\nDiagnosis");
-    console.table(
-      findings.length > 0
-        ? findings
-        : [{ flag: "none", detail: "No anomaly found." }]
-    );
+    if (findings.length === 0) {
+      console.log("No anomaly found.");
+    }
+    for (const { flag, detail } of findings) {
+      console.log(`- ${flag}: ${detail}`);
+    }
   }
 );
