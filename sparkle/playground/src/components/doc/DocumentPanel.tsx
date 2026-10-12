@@ -272,8 +272,8 @@ function SaveStatus({ isSaving }: { isSaving: boolean }) {
             <span className="inline-flex">
               <Icon
                 visual={Check}
-                size="sm"
-                className="animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
+                size="xs"
+                className="text-faint animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
               />
               <span className="sr-only">Saved</span>
             </span>
