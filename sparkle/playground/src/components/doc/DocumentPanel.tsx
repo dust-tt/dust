@@ -3,7 +3,6 @@ import {
   Button,
   Avatar,
   Check,
-  CheckCircle,
   Chip,
   cn,
   ContentMessage,
@@ -231,10 +230,50 @@ export interface AgentActivity {
 }
 
 /**
- * The save status next to the file name: a spinning icon and "saving" while
- * changes are saved, then only a check.
+ * The save status next to the file name, with the plan steps' badge
+ * (Sparkle's TaskStepBadge): while saving, its grey outline with a blue arc
+ * sweeping it (the running step) and "saving"; once saved, it fills blue and
+ * its check zooms in (the done step), with no text.
  */
 function SaveStatus({ isSaving }: { isSaving: boolean }) {
+  const badge = (
+    <span
+      className={cn(
+        "relative flex size-4 shrink-0 items-center justify-center rounded-full border",
+        "transition-colors duration-300 motion-reduce:transition-none",
+        isSaving
+          ? "border-faint"
+          : "border-highlight-50 bg-highlight-50 text-highlight-500"
+      )}
+    >
+      {isSaving ? (
+        // A ~130° arc on the outline, as the plan's running step.
+        <svg
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden
+          className="pointer-events-none absolute -inset-px animate-spin text-highlight-500 motion-reduce:animate-none"
+        >
+          <circle
+            cx="8"
+            cy="8"
+            r="7.5"
+            stroke="currentColor"
+            strokeWidth="1"
+            strokeLinecap="round"
+            pathLength="100"
+            strokeDasharray="36 64"
+          />
+        </svg>
+      ) : (
+        <Icon
+          visual={Check}
+          size="2xs"
+          className="animate-in fade-in zoom-in-50 duration-300 motion-reduce:animate-none"
+        />
+      )}
+    </span>
+  );
   return (
     <span
       role="status"
@@ -242,11 +281,7 @@ function SaveStatus({ isSaving }: { isSaving: boolean }) {
     >
       {isSaving ? (
         <>
-          <Icon
-            visual={RefreshCw05}
-            size="sm"
-            className="animate-spin motion-reduce:animate-none"
-          />
+          {badge}
           saving
         </>
       ) : (
@@ -255,7 +290,7 @@ function SaveStatus({ isSaving }: { isSaving: boolean }) {
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex">
-              <Icon visual={CheckCircle} size="sm" />
+              {badge}
               <span className="sr-only">Saved</span>
             </span>
           }
