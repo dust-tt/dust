@@ -8,9 +8,12 @@ import type React from "react";
 
 export const EmailLayout = ({
   workspace,
+  showNotificationPreferences = true,
   children,
 }: {
   workspace: { id: string; name: string };
+  // Off for emails sent to people outside the workspace or that cannot be turned off.
+  showNotificationPreferences?: boolean;
   children: React.ReactNode;
 }) => {
   const { i18n, t } = useLingui();
@@ -60,19 +63,21 @@ export const EmailLayout = ({
           <div>
             <Trans>This is an automated email. Please do not reply.</Trans>
           </div>
-          <div>
-            <Trans>
-              You can manage your notification preferences from{" "}
-              <a
-                href={workspaceUrl}
-                target="_blank"
-                style={{ color: "#1C91FF" }}
-              >
-                your workspace
-              </a>
-              .
-            </Trans>
-          </div>
+          {showNotificationPreferences && (
+            <div>
+              <Trans>
+                You can manage your notification preferences from{" "}
+                <a
+                  href={workspaceUrl}
+                  target="_blank"
+                  style={{ color: "#1C91FF" }}
+                >
+                  your workspace
+                </a>
+                .
+              </Trans>
+            </div>
+          )}
         </div>
       </body>
     </Html>
