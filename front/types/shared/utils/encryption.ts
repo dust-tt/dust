@@ -1,8 +1,12 @@
+import { config as cellConfig } from "@app/lib/api/cells/config";
 import config from "@app/lib/api/config";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import crypto from "crypto";
 
-type EncryptionUseCase = "developer_secret" | "mcp_server_credentials";
+export type EncryptionUseCase =
+  | "developer_secret"
+  | "mcp_server_credentials"
+  | "relocation_transport";
 
 export function md5(str: string): string {
   return crypto.createHash("md5").update(str).digest("hex");
@@ -18,6 +22,10 @@ function getSecretForUseCase(useCase: EncryptionUseCase): string {
       return config.getDeveloperSecretsSecret();
     case "mcp_server_credentials":
       return config.getMCPServerCredentialsSecret();
+    case "relocation_transport":
+      // Reuses the one secret every cell already shares, labelled so the derived key differs from
+      // the bearer token it is used as elsewhere.
+      return `relocation_transport:${cellConfig.getLookupApiSecret()}`;
     default:
       assertNever(useCase);
   }

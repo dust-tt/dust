@@ -156,7 +156,24 @@ export async function workspaceRelocateFrontWorkflow({
     });
   }
 
-  // 3) Relocate the associated files from the file storage to the destination cell.
+  // 3) Re-encrypt secrets copied above, since each cell encrypts them with its own secrets. It
+  // must run before anything in the destination cell reads them.
+  const secretsDataPath =
+    await sourceCellActivities.readSecretsFromSourceRegion({
+      destCell,
+      sourceCell,
+      workspaceId,
+    });
+  if (secretsDataPath) {
+    await destinationCellActivities.reencryptSecretsInDestinationRegion({
+      dataPath: secretsDataPath,
+      destCell,
+      sourceCell,
+      workspaceId,
+    });
+  }
+
+  // 4) Relocate the associated files from the file storage to the destination cell.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
     workflowId: `workspaceRelocateFrontFileStorageWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
@@ -169,7 +186,7 @@ export async function workspaceRelocateFrontWorkflow({
     ],
   });
 
-  // 4) Recreate Elasticsearch indices in the destination cell.
+  // 5) Recreate Elasticsearch indices in the destination cell.
   await executeChild(workspaceRelocateFrontEsIndexationWorkflow, {
     workflowId: `workspaceRelocateFrontEsIndexationWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,

@@ -46,6 +46,7 @@ export default async function setup() {
     REGION: "us-central1",
     CELL: "cell-00000",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
+    REGION_RESOLVER_SECRET: "test-region-resolver-secret",
     WORKOS_CLIENT_ID: "test-workos-client-id",
     WORKOS_AUTHKIT_DOMAIN: "https://test.authkit.app",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
