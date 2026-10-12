@@ -116,15 +116,6 @@ pub struct Metadata {
     pub xattrs: HashMap<String, Vec<u8>>,
 }
 
-pub struct ObjectCreateParams {
-    pub object_id: ObjectId,
-    pub parent_id: Option<ObjectId>,
-    pub name: String,
-    pub kind: ObjectKind,
-    pub mime_type: Option<String>,
-    pub xattrs: HashMap<String, Vec<u8>>,
-}
-
 type StoredAttributes = (
     Option<Vec<u8>>,
     String,
@@ -205,24 +196,35 @@ impl ObjectResource {
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
-        let root = ObjectCreateParams {
-            object_id: tenant.root_id,
-            parent_id: None,
-            name: String::new(),
-            kind: ObjectKind::Directory,
-            mime_type: None,
-            xattrs: HashMap::new(),
-        };
-        Ok(Self::new(&tenant.tenant_id, root, now_ms))
+        Ok(Self::new(
+            &tenant.tenant_id,
+            tenant.root_id,
+            None,
+            String::new(),
+            ObjectKind::Directory,
+            None,
+            HashMap::new(),
+            now_ms,
+        ))
     }
 
-    pub fn new(tenant_id: &str, object: ObjectCreateParams, now_ms: u64) -> Self {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        tenant_id: &str,
+        object_id: ObjectId,
+        parent_id: Option<ObjectId>,
+        name: String,
+        kind: ObjectKind,
+        mime_type: Option<String>,
+        xattrs: HashMap<String, Vec<u8>>,
+        now_ms: u64,
+    ) -> Self {
         Self {
             tenant_id: tenant_id.to_owned(),
-            object_id: object.object_id,
-            parent_id: object.parent_id,
-            name: object.name,
-            kind: object.kind,
+            object_id,
+            parent_id,
+            name,
+            kind,
             size: EMPTY_SIZE_BYTES,
             atime_ms: Some(now_ms),
             mtime_ms: Some(now_ms),
@@ -231,8 +233,8 @@ impl ObjectResource {
             content_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type: object.mime_type,
-                xattrs: object.xattrs,
+                mime_type,
+                xattrs,
             }),
         }
     }

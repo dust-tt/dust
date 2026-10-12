@@ -12,7 +12,7 @@ use crate::{
         self,
         resources::{
             keys::tenant_subspace,
-            object::{self, ObjectCreateParams, ObjectResource},
+            object::{self, ObjectResource},
             page,
         },
     },
@@ -78,14 +78,6 @@ impl From<storage::Error<object::Error>> for storage::Error<Error> {
     }
 }
 
-pub struct ChildCreateParams {
-    pub object_id: ObjectId,
-    pub name: String,
-    pub kind: ObjectKind,
-    pub mime_type: Option<String>,
-    pub xattrs: HashMap<String, Vec<u8>>,
-}
-
 pub struct ChildEntry {
     pub name: String,
     pub object_id: ObjectId,
@@ -108,13 +100,17 @@ impl DirectoryResource {
     pub async fn create_child(
         &mut self,
         tx: &Transaction,
-        child: ChildCreateParams,
+        object_id: ObjectId,
+        name: String,
+        kind: ObjectKind,
+        mime_type: Option<String>,
+        xattrs: HashMap<String, Vec<u8>>,
     ) -> Result<ObjectResource, storage::Error<Error>> {
-        validate_name(&child.name)?;
-        if child.kind == ObjectKind::Symlink {
+        validate_name(&name)?;
+        if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());
         }
-        let entry_key = self.child_key(&child.name);
+        let entry_key = self.child_key(&name);
         let name_taken = tx
             .get(&entry_key, false)
             .await
@@ -127,14 +123,12 @@ impl DirectoryResource {
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
         let object = ObjectResource::new(
             &self.object.tenant_id,
-            ObjectCreateParams {
-                object_id: child.object_id,
-                parent_id: Some(self.object.object_id),
-                name: child.name,
-                kind: child.kind,
-                mime_type: child.mime_type,
-                xattrs: child.xattrs,
-            },
+            object_id,
+            Some(self.object.object_id),
+            name,
+            kind,
+            mime_type,
+            xattrs,
             now_ms,
         );
         object.create(tx, &[]).await?;

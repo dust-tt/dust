@@ -5,7 +5,7 @@ use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use dfs_api::storage::{
     self, fdb,
     resources::{
-        directory::{self, ChildCreateParams, ChildPage, DirectoryResource},
+        directory::{self, ChildPage, DirectoryResource},
         keys::tenant_subspace,
         object::{self, ObjectResource},
         tenant::TenantResource,
@@ -14,14 +14,22 @@ use dfs_api::storage::{
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
-fn child_params(name: &str, kind: ObjectKind) -> ChildCreateParams {
-    ChildCreateParams {
-        object_id: ObjectId::new_v7(),
-        name: name.to_owned(),
-        kind,
-        mime_type: None,
-        xattrs: HashMap::new(),
-    }
+async fn create_child(
+    tx: &Transaction,
+    directory: &mut DirectoryResource,
+    name: &str,
+    kind: ObjectKind,
+) -> Result<ObjectResource> {
+    Ok(directory
+        .create_child(
+            tx,
+            ObjectId::new_v7(),
+            name.to_owned(),
+            kind,
+            None,
+            HashMap::new(),
+        )
+        .await?)
 }
 
 async fn create_tenant_root() -> Result<TenantResource> {
@@ -69,21 +77,12 @@ async fn clear_tenant(tenant: &TenantResource) -> Result<()> {
 pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -> Result<()> {
     let tenant = create_tenant_root().await?;
     let longest_name = format!("{}x", "é".repeat(127));
-    let children_params = [
-        child_params("notes.txt", ObjectKind::File),
-        child_params(&longest_name, ObjectKind::Directory),
-    ];
-    let expected_ids: Vec<ObjectId> = children_params
-        .iter()
-        .map(|child| child.object_id)
-        .collect();
-
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
-    let mut created = Vec::new();
-    for child_params in children_params {
-        created.push(root.create_child(&tx, child_params).await?);
-    }
+    let created = [
+        create_child(&tx, &mut root, "notes.txt", ObjectKind::File).await?,
+        create_child(&tx, &mut root, &longest_name, ObjectKind::Directory).await?,
+    ];
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
@@ -100,7 +99,7 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
     assert_eq!(stored_root.ctime_ms, last_child.ctime_ms);
 
     let subspace = tenant_subspace(&tenant.tenant_id);
-    for (child, expected_id) in created.iter().zip(expected_ids) {
+    for child in &created {
         let entry_key = subspace.pack(&(
             "child",
             tenant.root_id.as_bytes().as_slice(),
@@ -108,9 +107,9 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
         ));
         let entry = tx.get(&entry_key, false).await?.context("missing entry")?;
         let entry_id: Vec<u8> = unpack(&entry)?;
-        assert_eq!(entry_id, expected_id.as_bytes());
+        assert_eq!(entry_id, child.object_id.as_bytes());
 
-        let stored = ObjectResource::fetch(&tx, &tenant, &expected_id)
+        let stored = ObjectResource::fetch(&tx, &tenant, &child.object_id)
             .await?
             .context("missing child")?;
         assert_eq!(stored.parent_id, Some(tenant.root_id));
@@ -123,37 +122,54 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
 
 pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Result<()> {
     let tenant = create_tenant_root().await?;
-    let existing_params = child_params("existing", ObjectKind::File);
-    let existing_id = existing_params.object_id;
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
-    root.create_child(&tx, existing_params).await?;
+    let existing_id = create_child(&tx, &mut root, "existing", ObjectKind::File)
+        .await?
+        .object_id;
     tx.commit().await?;
 
     let too_long = "é".repeat(128);
     let rejections = [
-        (child_params("", ObjectKind::File), "InvalidName"),
-        (child_params(".", ObjectKind::File), "InvalidName"),
-        (child_params("..", ObjectKind::File), "InvalidName"),
-        (child_params("a/b", ObjectKind::File), "InvalidName"),
-        (child_params("a\0b", ObjectKind::File), "InvalidName"),
-        (child_params(&too_long, ObjectKind::File), "NameTooLong"),
-        (child_params("link", ObjectKind::Symlink), "UnsupportedKind"),
-        (child_params("existing", ObjectKind::File), "AlreadyExists"),
+        (ObjectId::new_v7(), "", ObjectKind::File, "InvalidName"),
+        (ObjectId::new_v7(), ".", ObjectKind::File, "InvalidName"),
+        (ObjectId::new_v7(), "..", ObjectKind::File, "InvalidName"),
+        (ObjectId::new_v7(), "a/b", ObjectKind::File, "InvalidName"),
+        (ObjectId::new_v7(), "a\0b", ObjectKind::File, "InvalidName"),
         (
-            ChildCreateParams {
-                object_id: existing_id,
-                ..child_params("other", ObjectKind::File)
-            },
+            ObjectId::new_v7(),
+            &too_long,
+            ObjectKind::File,
+            "NameTooLong",
+        ),
+        (
+            ObjectId::new_v7(),
+            "link",
+            ObjectKind::Symlink,
+            "UnsupportedKind",
+        ),
+        (
+            ObjectId::new_v7(),
+            "existing",
+            ObjectKind::File,
+            "AlreadyExists",
+        ),
+        (
+            existing_id,
+            "other",
+            ObjectKind::File,
             "ObjectAlreadyExists",
         ),
     ];
-    for (child, expected) in rejections {
+    for (object_id, name, kind, expected) in rejections {
         let tx = fdb::database()?.create_trx()?;
         let before = tenant_records(&tx, &tenant).await?;
         let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
 
-        let error = match root.create_child(&tx, child).await {
+        let result = root
+            .create_child(&tx, object_id, name.to_owned(), kind, None, HashMap::new())
+            .await;
+        let error = match result {
             Err(storage::Error::Resource(error)) => error,
             other => anyhow::bail!("expected {expected}, got {:?}", other.err()),
         };
@@ -173,21 +189,18 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
 
 pub(crate) async fn child_lookup_resolves_names_within_each_directory() -> Result<()> {
     let tenant = create_tenant_root().await?;
-    let root_file_params = child_params("a.txt", ObjectKind::File);
-    let docs_params = child_params("docs", ObjectKind::Directory);
-    let docs_file_params = child_params("a.txt", ObjectKind::File);
-    let (root_file_id, docs_id, docs_file_id) = (
-        root_file_params.object_id,
-        docs_params.object_id,
-        docs_file_params.object_id,
-    );
-
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
-    root.create_child(&tx, root_file_params).await?;
-    root.create_child(&tx, docs_params).await?;
+    let root_file_id = create_child(&tx, &mut root, "a.txt", ObjectKind::File)
+        .await?
+        .object_id;
+    let docs_id = create_child(&tx, &mut root, "docs", ObjectKind::Directory)
+        .await?
+        .object_id;
     let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
-    docs.create_child(&tx, docs_file_params).await?;
+    let docs_file_id = create_child(&tx, &mut docs, "a.txt", ObjectKind::File)
+        .await?
+        .object_id;
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
@@ -221,19 +234,18 @@ fn page_names(page: &ChildPage) -> Vec<&str> {
 
 pub(crate) async fn child_listing_pages_through_entries_in_name_order() -> Result<()> {
     let tenant = create_tenant_root().await?;
-    let docs_params = child_params("docs", ObjectKind::Directory);
-    let empty_params = child_params("empty", ObjectKind::Directory);
-    let (docs_id, empty_id) = (docs_params.object_id, empty_params.object_id);
-
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
     for name in ["b.txt", "é.txt", "a.txt", "B.txt", "c.txt"] {
-        root.create_child(&tx, child_params(name, ObjectKind::File))
-            .await?;
+        create_child(&tx, &mut root, name, ObjectKind::File).await?;
     }
-    root.create_child(&tx, docs_params).await?;
+    let docs_id = create_child(&tx, &mut root, "docs", ObjectKind::Directory)
+        .await?
+        .object_id;
     let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
-    docs.create_child(&tx, empty_params).await?;
+    let empty_id = create_child(&tx, &mut docs, "empty", ObjectKind::Directory)
+        .await?
+        .object_id;
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
@@ -266,16 +278,14 @@ pub(crate) async fn child_listing_pages_through_entries_in_name_order() -> Resul
 
 pub(crate) async fn child_listing_rejects_invalid_limits_and_cursors() -> Result<()> {
     let tenant = create_tenant_root().await?;
-    let docs_params = child_params("docs", ObjectKind::Directory);
-    let docs_id = docs_params.object_id;
-
     let tx = fdb::database()?.create_trx()?;
     let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
-    root.create_child(&tx, docs_params).await?;
+    let docs_id = create_child(&tx, &mut root, "docs", ObjectKind::Directory)
+        .await?
+        .object_id;
     let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
     for name in ["a.txt", "b.txt"] {
-        docs.create_child(&tx, child_params(name, ObjectKind::File))
-            .await?;
+        create_child(&tx, &mut docs, name, ObjectKind::File).await?;
     }
     tx.commit().await?;
 
