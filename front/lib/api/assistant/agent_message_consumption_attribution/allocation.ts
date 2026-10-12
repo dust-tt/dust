@@ -99,7 +99,7 @@ function roundToMicroCredits(shares: ItemCreditShare[]): ItemCreditShare[] {
   }));
 }
 
-function usageCostPartPayingFor(
+export function usageCostPartPayingFor(
   itemType: AgentMessageConsumptionItemType
 ): "output" | "input" | null {
   switch (itemType) {

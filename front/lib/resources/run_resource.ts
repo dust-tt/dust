@@ -76,6 +76,10 @@ export interface RunUsageAttemptType extends RunUsageType {
   useWorkspaceCredentials: boolean;
 }
 
+export interface RunUsageAttemptWithRunType extends RunUsageAttemptType {
+  runModelId: ModelId;
+}
+
 interface PendingRunUsageParameters {
   inferenceProvider: string;
   modelId: ModelIdType;
@@ -753,12 +757,22 @@ export class RunResource extends BaseResource<RunModel> {
     return usages.map(({ runModelId, ...usage }) => usage);
   }
 
-  async listRunUsageAttempts(
-    auth: Authenticator
-  ): Promise<RunUsageAttemptType[]> {
+  static async listRunUsageAttemptsForRuns(
+    auth: Authenticator,
+    {
+      runs,
+    }: {
+      runs: RunResource[];
+    }
+  ): Promise<RunUsageAttemptWithRunType[]> {
+    const runModelIds = runs.map((run) => run.id);
+    if (runModelIds.length === 0) {
+      return [];
+    }
+
     const usages = await RunUsageModel.findAll({
       where: {
-        runId: this.id,
+        runId: { [Op.in]: runModelIds },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       order: [["id", "ASC"]],
@@ -766,6 +780,7 @@ export class RunResource extends BaseResource<RunModel> {
 
     return usages.map((usage) => ({
       runUsageModelId: usage.id,
+      runModelId: usage.runId,
       completionTokens: usage.completionTokens,
       reasoningTokens: usage.reasoningTokens,
       inferenceProvider: usage.inferenceProvider,
@@ -782,6 +797,16 @@ export class RunResource extends BaseResource<RunModel> {
       useWorkspaceCredentials: usage.useWorkspaceCredentials,
       usageState: usage.usageState,
     }));
+  }
+
+  async listRunUsageAttempts(
+    auth: Authenticator
+  ): Promise<RunUsageAttemptType[]> {
+    const attempts = await RunResource.listRunUsageAttemptsForRuns(auth, {
+      runs: [this],
+    });
+
+    return attempts.map(({ runModelId, ...attempt }) => attempt);
   }
 }
 
