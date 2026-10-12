@@ -103,6 +103,7 @@ enum ObjectKind {
 
 // Optional timestamps distinguish absence from zero; all timestamps are Unix milliseconds.
 message Attr {
+  // Virtual root returns the tenant's real root ID; shared retains its virtual reference.
   required ObjectRef id = 1;
   // @cc [owner:spolu,label:api] dfs-attribute-name
   // Real non-root objects MUST report their stored basename, independent of the access alias.
@@ -128,9 +129,9 @@ message Attr {
   optional uint64 atime = 6;
   optional uint64 mtime = 7;
   optional uint64 ctime = 8;
-  // Grant changes do not advance this version, including changes to visible mode.
+  // Grant changes do not advance this version, including changes to visible mode. Shared stays at 1.
   required uint64 attr_version = 9;
-  // Directory entry versions track topology changes; grant changes do not advance them.
+  // Real directories and virtual root track topology changes, not grants. Shared stays fixed at 1.
   required uint64 content_version = 10;
   required ReadView view = 11;
   optional ExtendedMetadata metadata = 12;

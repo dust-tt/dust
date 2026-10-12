@@ -59,7 +59,6 @@ pub enum Error {
     InvalidStoredGrant,
     InvalidAncestry,
     UnsupportedKind,
-    UnsupportedReference,
 }
 
 impl fmt::Display for Error {
@@ -81,7 +80,6 @@ impl fmt::Display for Error {
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
-            Self::UnsupportedReference => f.write_str("unsupported object reference"),
         }
     }
 }
