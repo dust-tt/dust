@@ -45,9 +45,10 @@ export async function reencryptSecretsInDestinationRegion({
 }) {
   const localLogger = logger.child({ destCell, sourceCell, workspaceId });
 
-  const blob = await readFromRelocationStorage<SecretsRelocationBlob>(dataPath);
-
-  const workspace = await getWorkspaceInfos(workspaceId);
+  const [blob, workspace] = await Promise.all([
+    readFromRelocationStorage<SecretsRelocationBlob>(dataPath),
+    getWorkspaceInfos(workspaceId),
+  ]);
   assert(workspace, "Workspace not found");
 
   const secretsByTable = new Map<
