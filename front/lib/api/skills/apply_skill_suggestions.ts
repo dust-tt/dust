@@ -231,7 +231,7 @@ async function resolveInstructionAttachments(
   Result<
     {
       attachedKnowledge: SkillAttachedKnowledge[];
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
     },
     DustError<"invalid_request_error">
   >
@@ -290,7 +290,13 @@ async function resolveInstructionAttachments(
     );
   }
 
-  return new Ok({ attachedKnowledge, mcpServerViews });
+  return new Ok({
+    attachedKnowledge,
+    mcpServerViews: await MCPServerViewResource.loadConfiguration(
+      auth,
+      mcpServerViews
+    ),
+  });
 }
 
 /**

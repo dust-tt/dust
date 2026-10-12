@@ -72,6 +72,11 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/mcp_server_views", () => {
       success: true,
       serverViews: expect.any(Array),
     });
-    expect(data.serverViews).toEqual([view1.toJSON(), view2.toJSON()]);
+    const [configuredView1, configuredView2] =
+      await MCPServerViewResource.loadConfiguration(auth, [view1, view2]);
+    expect(data.serverViews).toEqual([
+      configuredView1.toJSON(),
+      configuredView2.toJSON(),
+    ]);
   });
 });

@@ -133,15 +133,10 @@ app.get(
     const { availability = "manual" } = r.data;
 
     const serverViews = (
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      })
+      await MCPServerViewResource.loadConfiguration(
+        auth,
+        await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space)
+      )
     ).map((view) => view.toJSON());
 
     const filteredServerViews = serverViews.filter(

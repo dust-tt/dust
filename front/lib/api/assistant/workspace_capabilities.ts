@@ -153,27 +153,19 @@ export async function listAvailableTools(
 
   // Fetch all MCP server views from those spaces.
   const mcpServerViews =
-    await MCPServerViewResource.listBySpacesEnsuringAutoViews(
-      auth,
-      userSpaces,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
-    );
+    await MCPServerViewResource.listBySpacesEnsuringAutoViews(auth, userSpaces);
+  const availableViews = mcpServerViews.filter((v) => {
+    const { availability } = v.getServerDisplayMetadata();
+    return availability === "manual" || availability === "auto";
+  });
+  const configuredViews = await MCPServerViewResource.loadConfiguration(
+    auth,
+    availableViews
+  );
 
-  return mcpServerViews
+  return configuredViews
     .map((v) => v.toJSON())
     .filter((v): v is MCPServerViewType => v !== null)
-    .filter(
-      (v) =>
-        v.server.availability === "manual" || v.server.availability === "auto"
-    )
     .filter((v) => !isToolWithKnowledge(v))
     .map((mcpServerView) => ({
       sId: mcpServerView.sId,
@@ -213,21 +205,16 @@ export async function describeMcpServer(
   auth: Authenticator,
   mcpId: string
 ): Promise<MCPServerType | null> {
-  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId], {
-    includeHeavyAttributes: [
-      "authorization",
-      "cachedTools",
-      "customHeaders",
-      "lastError",
-      "sharedSecret",
-    ],
-  });
+  const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId]);
   // A view the caller cannot read or admin is reported like an unknown id, so that the tool names and
   // schemas of restricted spaces are not disclosed.
   if (!view || !(auth.can("read", view) || auth.can("admin", view))) {
     return null;
   }
-  return view.toJSON()?.server ?? null;
+  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
+    view,
+  ]);
+  return configuredView.toJSON()?.server ?? null;
 }
 
 /**

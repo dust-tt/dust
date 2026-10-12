@@ -111,9 +111,7 @@ export async function clearPinnedOAuthScopeForMCPServerViews(
   auth: Authenticator,
   { mcpServerId }: { mcpServerId: string }
 ): Promise<void> {
-  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId, {
-    includeHeavyAttributes: ["authorization"],
-  });
+  const views = await MCPServerViewResource.listByMCPServer(auth, mcpServerId);
 
   // Every view of a server shares its authorization, so one check covers the whole set.
   if (
@@ -172,18 +170,15 @@ export async function updateNameAndDescriptionForMCPServerViews(
   if (name) {
     const systemView = views.find((v) => v.space.kind === "system");
     if (systemView) {
-      await MCPServerViewResource.hydrateRemoteServerHeavyAttributes(
-        auth,
-        [systemView],
-        ["cachedTools"]
-      );
+      const [configuredSystemView] =
+        await MCPServerViewResource.loadConfiguration(auth, [systemView]);
       const { hasConflict, conflictDetails } =
         await MCPServerViewResource.hasNameConflictInSpaceByName(
           auth,
           name,
-          systemView.space,
-          systemView.getServerTools(),
-          { excludedMCPServerViewId: systemView.sId }
+          configuredSystemView.space,
+          configuredSystemView.getServerTools(),
+          { excludedMCPServerViewId: configuredSystemView.sId }
         );
 
       if (hasConflict) {

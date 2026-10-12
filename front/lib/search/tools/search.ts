@@ -149,12 +149,12 @@ async function searchServerView(
     return [];
   }
 
-  const serverJson = serverView.toJSON();
+  const serverDisplayMetadata = serverView.getServerDisplayMetadata();
   return rawResults.map((rawResult) => ({
     ...rawResult,
     serverViewId: serverView.sId,
-    serverName: serverJson.server.name,
-    serverIcon: serverJson.server.icon,
+    serverName: serverDisplayMetadata.name,
+    serverIcon: serverDisplayMetadata.icon,
   }));
 }
 

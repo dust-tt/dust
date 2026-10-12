@@ -3,6 +3,7 @@ import {
   SkillFileAttachmentModel,
   SkillVersionModel,
 } from "@app/lib/models/skill";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { USER_FACING_DESCRIPTION_MAX_LENGTH } from "@app/lib/skills/labels";
@@ -261,6 +262,10 @@ describe("GET /api/w/:wId/skills/:sId", () => {
       server.sId,
       restrictedSpace
     );
+    const [configuredServerView] =
+      await MCPServerViewResource.loadConfiguration(skillOwnerAuth, [
+        serverView,
+      ]);
     const file = await FileFactory.create(skillOwnerAuth, skillOwner, {
       contentType: "text/plain",
       fileName: "secret.txt",
@@ -275,7 +280,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
       instructions: "Secret guidelines",
       icon: null,
       attachedKnowledge: [],
-      mcpServerViews: [serverView],
+      mcpServerViews: [configuredServerView],
       fileAttachments: [file],
       requestedSpaceIds: [restrictedSpace.id],
       manuallyRequestedSpaceIds: [],

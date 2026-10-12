@@ -22,25 +22,21 @@ export async function fetchSuggestableTools(
   }
 
   const views = await MCPServerViewResource.fetchByIds(auth, toolIds, {
-    includeHeavyAttributes: [
-      "authorization",
-      "cachedTools",
-      "customHeaders",
-      "lastError",
-      "sharedSecret",
-    ],
     isRestrictedToSkills: false,
   });
+  const accessibleViews = views.filter(
+    (view) =>
+      auth.can("read", view) &&
+      (view.space.kind === "global" || view.space.kind === "regular") &&
+      view.space.isMember(auth)
+  );
+  const configuredViews = await MCPServerViewResource.loadConfiguration(
+    auth,
+    accessibleViews
+  );
 
   const suggestable = new Map<string, MCPServerViewType>();
-  for (const view of views) {
-    if (
-      !auth.can("read", view) ||
-      (view.space.kind !== "global" && view.space.kind !== "regular") ||
-      !view.space.isMember(auth)
-    ) {
-      continue;
-    }
+  for (const view of configuredViews) {
     const json = view.toJSON();
     if (
       json &&

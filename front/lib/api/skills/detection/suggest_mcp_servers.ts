@@ -22,15 +22,18 @@ async function detectServerNames(
 export async function suggestMCPServersForDetectedSkill(
   auth: Authenticator,
   skill: DetectedSkill
-): Promise<MCPServerViewResource[]> {
+): Promise<MCPServerViewResource<"configuration">[]> {
   const serverNames = await detectServerNames(skill);
 
   if (serverNames.length === 0) {
     return [];
   }
 
-  return MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+  return MCPServerViewResource.loadConfiguration(
     auth,
-    serverNames
+    await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+      auth,
+      serverNames
+    )
   );
 }

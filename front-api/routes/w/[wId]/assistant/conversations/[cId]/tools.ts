@@ -47,18 +47,9 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const mcpServerViewIds = conversationMCPServerViews.map(
     (v) => v.mcpServerViewId
   );
-  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
+  const mcpServerViews = await MCPServerViewResource.loadConfiguration(
     auth,
-    mcpServerViewIds,
-    {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
-    }
+    await MCPServerViewResource.fetchByModelIds(auth, mcpServerViewIds)
   );
 
   const tools = mcpServerViews.map((v) => v.toJSON());

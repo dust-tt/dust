@@ -49,10 +49,7 @@ async function resolveToolSuggestion(
   // Create a map from server name to MCPServerView sId
   const serverNameToViewId = new Map<string, string>();
   for (const view of mcpServerViews) {
-    const viewJson = view.toJSON();
-    if (viewJson) {
-      serverNameToViewId.set(viewJson.server.name, viewJson.sId);
-    }
+    serverNameToViewId.set(view.getServerDisplayMetadata().name, view.sId);
   }
 
   // Resolve the tool IDs
@@ -106,10 +103,7 @@ async function resolveSubAgentSuggestion(
 
     const serverNameToViewId = new Map<string, string>();
     for (const view of mcpServerViews) {
-      const viewJson = view.toJSON();
-      if (viewJson) {
-        serverNameToViewId.set(viewJson.server.name, viewJson.sId);
-      }
+      serverNameToViewId.set(view.getServerDisplayMetadata().name, view.sId);
     }
 
     const toolId = serverNameToViewId.get(suggestion.toolId);

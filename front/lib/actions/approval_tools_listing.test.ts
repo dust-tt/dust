@@ -1,6 +1,7 @@
 import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -58,6 +59,10 @@ async function listedToolNames({
     origin,
   });
 
+  const [configuredView] = await MCPServerViewResource.loadConfiguration(
+    authenticator,
+    [view]
+  );
   const serverToolsAndInstructions = await tryListMCPTools(
     authenticator,
     {
@@ -69,7 +74,9 @@ async function listedToolNames({
     },
     {
       jitServers: [
-        buildServerSideMCPServerConfiguration({ mcpServerView: view }),
+        buildServerSideMCPServerConfiguration({
+          mcpServerView: configuredView,
+        }),
       ],
       skillServers: [],
       systemSkillServers: [],

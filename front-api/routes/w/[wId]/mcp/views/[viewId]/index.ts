@@ -34,15 +34,7 @@ app.get(
 
     const { viewId } = ctx.req.valid("param");
 
-    const serverView = await MCPServerViewResource.fetchById(auth, viewId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
-    });
+    const serverView = await MCPServerViewResource.fetchById(auth, viewId);
 
     if (!serverView) {
       return apiError(ctx, {
@@ -54,9 +46,11 @@ app.get(
       });
     }
 
+    const [configuredServerView] =
+      await MCPServerViewResource.loadConfiguration(auth, [serverView]);
     return ctx.json({
       success: true as const,
-      serverView: serverView.toJSON(),
+      serverView: configuredServerView.toJSON(),
     });
   }
 );
@@ -142,16 +136,7 @@ app.patch(
 
     const updatedSystemView = await MCPServerViewResource.fetchById(
       auth,
-      viewId,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      viewId
     );
 
     if (!updatedSystemView) {
@@ -164,9 +149,11 @@ app.patch(
       });
     }
 
+    const [configuredSystemView] =
+      await MCPServerViewResource.loadConfiguration(auth, [updatedSystemView]);
     return ctx.json({
       success: true as const,
-      serverView: updatedSystemView.toJSON(),
+      serverView: configuredSystemView.toJSON(),
     });
   }
 );

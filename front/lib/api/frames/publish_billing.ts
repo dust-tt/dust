@@ -71,11 +71,15 @@ export async function recordFramePublishAction(
     );
   }
 
+  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
+    view,
+  ]);
+
   const toolName = getFramePublishBillingToolName(publication);
   const toolConfigurations = await buildToolConfigurationsFromRawTools(
     auth,
     view.mcpServerId,
-    buildServerSideMCPServerConfiguration({ mcpServerView: view }),
+    buildServerSideMCPServerConfiguration({ mcpServerView: configuredView }),
     [{ name: toolName, description: "" }],
     null
   );

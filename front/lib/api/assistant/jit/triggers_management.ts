@@ -36,19 +36,20 @@ export async function getTriggersManagementServer(
     return null;
   }
 
-  const triggersManagementViewJSON = triggersManagementView.toJSON();
+  const serverDisplayMetadata =
+    triggersManagementView.getServerDisplayMetadata();
 
   return {
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name:
-      triggersManagementViewJSON.name ??
-      triggersManagementViewJSON.server.name ??
+      triggersManagementView.name ??
+      serverDisplayMetadata.name ??
       "triggers_management",
     description:
-      triggersManagementViewJSON.description ??
-      triggersManagementViewJSON.server.description ??
+      triggersManagementView.description ??
+      serverDisplayMetadata.description ??
       "Create schedules and event triggers to automate recurring and event-driven tasks.",
     dataSources: null,
     tables: null,
@@ -58,7 +59,7 @@ export async function getTriggersManagementServer(
     secretName: null,
     dustProject: null,
     additionalConfiguration: {},
-    mcpServerViewId: triggersManagementViewJSON.sId,
+    mcpServerViewId: triggersManagementView.sId,
     dustAppConfiguration: null,
     internalMCPServerId: triggersManagementView.mcpServerId,
   };

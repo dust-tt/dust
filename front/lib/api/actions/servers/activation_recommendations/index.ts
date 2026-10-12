@@ -430,12 +430,14 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       const { conversation } = runContext;
       const spaceIds = conversation.spaceId ? [conversation.spaceId] : [];
 
-      const serverViews =
+      const serverViews = await MCPServerViewResource.loadConfiguration(
+        auth,
         await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
           auth,
           spaceIds,
-          { includeGlobalSpace: true, includeHeavyAttributes: ["cachedTools"] }
-        );
+          { includeGlobalSpace: true }
+        )
+      );
 
       const connectedByType = await buildConnectedServerIdsByType(
         auth,
@@ -448,7 +450,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         const serverName = view.getDisplayName();
         const serverConnected = isServerConnected(view, connectedByType);
 
-        for (const toolMeta of view.getToolPermissions) {
+        for (const toolMeta of view.getToolPermissions()) {
           const executionMode = await resolveToolExecutionMode(auth, {
             view,
             toolName: toolMeta.toolName,

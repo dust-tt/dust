@@ -414,9 +414,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       AgentResource.fetchByIdsAndVersions(auth, agentConfigVersionPairs, {
         dangerouslySkipFetchCheck: true,
       }),
-      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
-        includeHeavyAttributes: ["authorization"],
-      }),
+      MCPServerViewResource.fetchByIds(auth, mcpServerViewIds),
     ]);
 
     const agentConfigurationMap = new Map(

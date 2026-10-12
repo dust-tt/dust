@@ -104,16 +104,7 @@ export const conversationHandlers: ConversationHandlers = {
     if (server_view_id) {
       const mcpServerView = await MCPServerViewResource.fetchById(
         targetAuthResult.value,
-        server_view_id,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        server_view_id
       );
       if (!mcpServerView) {
         return new Err(
@@ -123,24 +114,20 @@ export const conversationHandlers: ConversationHandlers = {
           )
         );
       }
+      const [configuredView] = await MCPServerViewResource.loadConfiguration(
+        targetAuthResult.value,
+        [mcpServerView]
+      );
       return jsonResponse({
         workspace_id,
-        mcpServerView: sanitizeMCPServerView(mcpServerView.toJSON()),
+        mcpServerView: sanitizeMCPServerView(configuredView.toJSON()),
       });
     }
 
     // List all MCP server views for the workspace.
-    const mcpServerViews = await MCPServerViewResource.listByWorkspace(
+    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
       targetAuthResult.value,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      await MCPServerViewResource.listByWorkspace(targetAuthResult.value)
     );
 
     return jsonResponse({

@@ -870,7 +870,11 @@ describe("MCPServerViewResource", () => {
       );
       expect(view).toBeDefined();
 
-      const json = view!.toJSON();
+      const [configuredView] = await MCPServerViewResource.loadConfiguration(
+        adminAuth,
+        [view!]
+      );
+      const json = configuredView.toJSON();
       expect(json.toolsMetadata).toHaveLength(2);
       expect(json.toolsMetadata).toEqual(
         expect.arrayContaining([
@@ -895,20 +899,15 @@ describe("MCPServerViewResource", () => {
       // Fetch the system view through baseFetch.
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        remoteServer.sId
       );
       expect(view).not.toBeNull();
 
-      const json = view!.toJSON();
+      const [configuredView] = await MCPServerViewResource.loadConfiguration(
+        adminAuth,
+        [view!]
+      );
+      const json = configuredView.toJSON();
       expect(json.toolsMetadata).toHaveLength(1);
       expect(json.toolsMetadata?.[0]).toEqual({
         toolName: "remote_tool",
@@ -922,20 +921,15 @@ describe("MCPServerViewResource", () => {
 
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        remoteServer.sId
       );
       expect(view).not.toBeNull();
 
-      const json = view!.toJSON();
+      const [configuredView] = await MCPServerViewResource.loadConfiguration(
+        adminAuth,
+        [view!]
+      );
+      const json = configuredView.toJSON();
       expect(json.toolsMetadata).toEqual([]);
     });
   });

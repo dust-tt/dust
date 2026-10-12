@@ -22,46 +22,25 @@ app.get(
     const auth = ctx.get("auth");
     const { globalSpaceOnly, systemSpaceOnly } = ctx.req.valid("query");
 
-    let mcpServerViews: MCPServerViewResource[];
+    let mcpServerViews: MCPServerViewResource<"metadata">[];
     if (systemSpaceOnly === "true") {
-      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      });
+      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth);
     } else if (globalSpaceOnly === "true") {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
       mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
-        globalSpace,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        globalSpace
       );
     } else {
-      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      });
+      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth);
     }
+    const configuredViews = await MCPServerViewResource.loadConfiguration(
+      auth,
+      mcpServerViews
+    );
 
     return ctx.json({
-      serverViews: mcpServerViews.map((sv) => {
+      serverViews: configuredViews.map((sv) => {
         const space = sv.space.toJSON();
         return {
           ...sv.toJSON(),

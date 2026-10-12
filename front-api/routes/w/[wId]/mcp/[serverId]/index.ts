@@ -211,15 +211,9 @@ async function enrichServer(
   json: MCPServerType
 ): Promise<MCPServerTypeWithViews> {
   const [views, workspaceConnection] = await Promise.all([
-    MCPServerViewResource.listByMCPServer(auth, json.sId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
-    }),
+    MCPServerViewResource.listByMCPServer(auth, json.sId).then((views) =>
+      MCPServerViewResource.loadConfiguration(auth, views)
+    ),
     MCPServerConnectionResource.findByMCPServer(auth, {
       mcpServerId: json.sId,
       connectionType: "workspace",

@@ -22,13 +22,6 @@ app.get(
     const { svId } = ctx.req.valid("param");
 
     const mcpServerView = await MCPServerViewResource.fetchById(auth, svId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
       // Poke admin surface: surface a restricted server's view too.
       includeRestricted: true,
     });
@@ -42,41 +35,38 @@ app.get(
       });
     }
 
+    const [configuredView] = await MCPServerViewResource.loadConfiguration(
+      auth,
+      [mcpServerView]
+    );
     const mcpServerViewJSON = await mcpServerViewToPokeJSON(
-      mcpServerView,
+      configuredView,
       auth
     );
 
     const allViews = await MCPServerViewResource.listByMCPServer(
       auth,
-      mcpServerView.mcpServerId,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      mcpServerView.mcpServerId
     );
-    const spaceViews = allViews
-      .filter((view) => view.space.kind !== "system")
-      .map((view) => {
-        const json = view.toJSON();
-        return {
-          sId: view.sId,
-          spaceId: view.space.sId,
-          space: {
-            sId: view.space.sId,
-            name: view.space.name,
-            kind: view.space.kind,
-          },
-          createdAt: json.createdAt,
-          editedBy: json.editedByUser?.fullName ?? null,
-          editedAt: json.editedByUser?.editedAt ?? null,
-        };
-      });
+    const nonSystemViews = await MCPServerViewResource.loadConfiguration(
+      auth,
+      allViews.filter((view) => view.space.kind !== "system")
+    );
+    const spaceViews = nonSystemViews.map((view) => {
+      const json = view.toJSON();
+      return {
+        sId: view.sId,
+        spaceId: view.space.sId,
+        space: {
+          sId: view.space.sId,
+          name: view.space.name,
+          kind: view.space.kind,
+        },
+        createdAt: json.createdAt,
+        editedBy: json.editedByUser?.fullName ?? null,
+        editedAt: json.editedByUser?.editedAt ?? null,
+      };
+    });
 
     return ctx.json({ mcpServerView: mcpServerViewJSON, spaceViews });
   }

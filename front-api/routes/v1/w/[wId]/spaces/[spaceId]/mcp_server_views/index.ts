@@ -62,16 +62,10 @@ app.get(
     const space = ctx.get("space");
     const { includeAuto } = ctx.req.valid("query");
 
-    const mcpServerViews =
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      });
+    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
+      auth,
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space)
+    );
     return ctx.json({
       success: true,
       serverViews: mcpServerViews

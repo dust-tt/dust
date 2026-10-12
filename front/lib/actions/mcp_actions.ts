@@ -395,8 +395,7 @@ async function handleMCPToolCallAuthError(
 ): Promise<CallToolResult | null> {
   const mcpServerView = await MCPServerViewResource.fetchById(
     auth,
-    toolConfiguration.mcpServerViewId,
-    { includeHeavyAttributes: ["authorization"] }
+    toolConfiguration.mcpServerViewId
   );
   const authorization = mcpServerView?.getAuthorization();
   if (!mcpServerView || !authorization) {

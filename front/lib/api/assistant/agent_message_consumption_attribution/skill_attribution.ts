@@ -14,9 +14,11 @@ function skillExposesAction(
     }
 
     // If the server disables the tool, the skill cannot expose it.
-    return !view.getToolPermissions.some(
-      (permission) => permission.toolName === toolName && !permission.enabled
-    );
+    return !view
+      .getToolPermissions()
+      .some(
+        (permission) => permission.toolName === toolName && !permission.enabled
+      );
   });
 }
 

@@ -21,7 +21,10 @@ export async function fetchRunAgentTool(
   if (!view || !auth.can("read", view)) {
     return null;
   }
-  return view.toJSON();
+  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
+    view,
+  ]);
+  return configuredView.toJSON();
 }
 
 /**

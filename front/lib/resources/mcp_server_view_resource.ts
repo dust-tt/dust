@@ -49,7 +49,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { destroyAgentMCPServerConfigurationsForViews } from "@app/lib/resources/agent_mcp_server_views";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
-import type { RemoteMCPServerHeavyAttributeType } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -85,7 +84,11 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-export interface MCPServerViewResource extends ReadonlyAttributesType<MCPServerViewModel> {}
+export interface MCPServerViewResource<
+  // Declaration merging requires the class type parameters.
+  // oxlint-disable-next-line no-unused-vars
+  TMode extends MCPServerViewFetchMode = MCPServerViewFetchMode,
+> extends ReadonlyAttributesType<MCPServerViewModel> {}
 
 type AffectedAgent = Pick<
   Attributes<AgentConfigurationModel>,
@@ -93,7 +96,7 @@ type AffectedAgent = Pick<
 >;
 
 type MCPServerViewCreationResult = {
-  view: MCPServerViewResource;
+  view: MCPServerViewResource<"configuration">;
   affectedAgents?: AffectedAgent[];
 };
 
@@ -115,6 +118,26 @@ export type PostMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
+/**
+ * What a view carries, in its type:
+ * - `metadata`: what the view is. Identity, display (name, description, icon), OAuth
+ *   authorization and the tools of internal servers. Every fetch returns `metadata` views.
+ * - `configuration`: how the view is set up. Adds the remote server cached tools, custom headers,
+ *   shared secret and last error, the tool permissions, and the internal server credentials.
+ *   Obtained with `loadConfiguration`, required by `toJSON` and `getToolPermissions` (and by
+ *   `getServerTools` on remote views, checked at runtime).
+ * Neither is enough to run a tool: `connectToMCPServer` reads the plaintext secrets itself.
+ */
+export type MCPServerViewFetchMode = "metadata" | "configuration";
+
+const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
+  "authorization",
+  "cachedTools",
+  "customHeaders",
+  "lastError",
+  "sharedSecret",
+] as const;
+
 // Per-process cache of workspaces whose auto internal MCP server views are known to be in
 // sync, keyed by workspace ModelId. See `unsafeEnsureAutoViewsForWorkspace` for the
 // invalidation story.
@@ -130,7 +153,9 @@ const HYDRATION_TTL_MS = 30 * 60 * 1000;
 // racing on the same checks and inserts.
 const inflightHydrations = new Map<ModelId, Promise<void>>();
 
-export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
+export class MCPServerViewResource<
+  TMode extends MCPServerViewFetchMode = MCPServerViewFetchMode,
+> extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStaticSoftDeletable<MCPServerViewModel> =
     MCPServerViewModel;
   declare readonly model: ModelStaticSoftDeletable<MCPServerViewModel>;
@@ -139,6 +164,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
   private internalMCPServer?: InternalMCPServerInMemoryResource;
+  declare private readonly fetchModeType: TMode;
+  private fetchMode?: MCPServerViewFetchMode;
 
   constructor(
     model: ModelStaticSoftDeletable<MCPServerViewModel>,
@@ -162,7 +189,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     space: SpaceResource,
     editedByUser?: UserResource,
     transaction?: Transaction
-  ) {
+  ): Promise<MCPServerViewResource<"configuration">> {
     assert(auth.isAdmin(), "Only the admin can create an MCP server view");
 
     if (blob.internalMCPServerId) {
@@ -192,15 +219,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const remoteServer = await RemoteMCPServerResource.findByPk(
         auth,
         blob.remoteMCPServerId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { includeHeavyAttributes: CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES }
       );
       if (!remoteServer) {
         throw new DustError(
@@ -225,6 +244,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       resource.internalMCPServer = internalServer;
     }
+    resource.fetchMode = "configuration";
+    assert(MCPServerViewResource.isConfigurationView(resource));
 
     return resource;
   }
@@ -276,13 +297,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         name,
         tools.map((tool) => tool.name)
       );
-    const existingViews = await this.listBySpace(
-      auth,
-      space,
+    const spaceViews = await this.listBySpace(auth, space);
+    // Comparing against the tools existing views expose needs the remote cached tools.
+    const existingViews =
       droppedPrefixNames.size > 0
-        ? { includeHeavyAttributes: ["cachedTools"] }
-        : undefined
-    );
+        ? await this.loadConfiguration(auth, spaceViews)
+        : spaceViews;
     for (const view of existingViews) {
       if (view.sId === excludedMCPServerViewId) {
         continue;
@@ -514,13 +534,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       includeMetadata = true,
-      includeHeavyAttributes,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       includeMetadata?: boolean;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -528,7 +546,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       includeRestricted?: boolean;
       transaction?: Transaction;
     } = {}
-  ) {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const views = await this.baseFetchWithAuthorization(
       auth,
       {
@@ -561,7 +579,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
         auth,
         removeNulls(views.map((v) => v.remoteMCPServerId)),
-        { transaction, includeHeavyAttributes }
+        { transaction, includeHeavyAttributes: ["authorization"] }
       );
       const remoteServerMap = new Map(remoteServers.map((s) => [s.id, s]));
 
@@ -596,8 +614,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (includeMetadata && filteredViews.length > 0) {
       await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
+    for (const view of filteredViews) {
+      view.fetchMode = "metadata";
+    }
 
-    return filteredViews;
+    return filteredViews.filter(MCPServerViewResource.isMetadataView);
   }
 
   /**
@@ -677,11 +698,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     id: string,
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
       includeRestricted?: boolean;
     }
-  ): Promise<MCPServerViewResource | null> {
+  ): Promise<MCPServerViewResource<"metadata"> | null> {
     const [mcpServerView] = await this.fetchByIds(auth, [id], options);
 
     return mcpServerView ?? null;
@@ -691,18 +711,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     ids: string[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
       includeRestricted?: boolean;
     }
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    const {
-      includeHeavyAttributes,
-      isRestrictedToSkills,
-      includeRestricted,
-      ...findOptions
-    } = options ?? {};
+    const { isRestrictedToSkills, includeRestricted, ...findOptions } =
+      options ?? {};
 
     const views = await this.baseFetch(
       auth,
@@ -715,7 +730,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeHeavyAttributes, isRestrictedToSkills, includeRestricted }
+      { isRestrictedToSkills, includeRestricted }
     );
 
     return views ?? [];
@@ -736,14 +751,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     ids: ModelId[],
     {
       includeMetadata = true,
-      includeHeavyAttributes,
       transaction,
     }: {
       includeMetadata?: boolean;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       transaction?: Transaction;
     } = {}
-  ) {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const views = await this.baseFetch(
       auth,
       {
@@ -753,7 +766,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeMetadata, includeHeavyAttributes, transaction }
+      { includeMetadata, transaction }
     );
 
     return views ?? [];
@@ -761,12 +774,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async listByWorkspace(
     auth: Authenticator,
-    options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
-    }
-  ): Promise<MCPServerViewResource[]> {
-    const { includeHeavyAttributes, ...findOptions } = options ?? {};
-    return this.baseFetch(auth, findOptions, { includeHeavyAttributes });
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource<"metadata">[]> {
+    return this.baseFetch(auth, options);
   }
 
   static async listDisplayMetadataByWorkspace(
@@ -882,10 +892,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     // Filter out spaces that the user does not have read or administrate access to
     const accessibleSpaces = spaces.filter(
       (space) => auth.can("read", space) || auth.can("admin", space)
@@ -893,8 +902,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     if (accessibleSpaces.length === 0) {
       return [];
     }
-    const { includeHeavyAttributes, isRestrictedToSkills, ...findOptions } =
-      options ?? {};
+    const { isRestrictedToSkills, ...findOptions } = options ?? {};
     return this.baseFetch(
       auth,
       {
@@ -906,7 +914,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         },
         order: [["id", "ASC"]],
       },
-      { includeHeavyAttributes, isRestrictedToSkills }
+      { isRestrictedToSkills }
     );
   }
 
@@ -915,14 +923,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaceIds: string[],
     {
       includeGlobalSpace = false,
-      includeHeavyAttributes,
       isRestrictedToSkills,
     }: {
       includeGlobalSpace?: boolean;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     } = {}
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
 
     if (spaceModelIds.length === 0 && !includeGlobalSpace) {
@@ -950,7 +956,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         ],
         order: [["id", "ASC"]],
       },
-      { includeHeavyAttributes, isRestrictedToSkills }
+      { isRestrictedToSkills }
     );
 
     // Permission parity with listBySpaces: the read-or-admin pre-filter on fetched
@@ -964,10 +970,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     space: SpaceResource,
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     return this.listBySpaces(auth, [space], options);
   }
 
@@ -980,7 +985,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listByWorkspaceEnsuringAutoViews(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listByWorkspace(auth, options);
   }
@@ -989,10 +994,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaces(auth, spaces, options);
   }
@@ -1000,10 +1004,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listBySpaceEnsuringAutoViews(
     auth: Authenticator,
     space: SpaceResource,
-    options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
-    }
-  ): Promise<MCPServerViewResource[]> {
+    options?: ResourceFindOptions<MCPServerViewModel>
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     return this.listBySpacesEnsuringAutoViews(auth, [space], options);
   }
 
@@ -1012,18 +1014,15 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     spaceIds: string[],
     {
       includeGlobalSpace = false,
-      includeHeavyAttributes,
       isRestrictedToSkills,
     }: {
       includeGlobalSpace?: boolean;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     } = {}
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaceIds(auth, spaceIds, {
       includeGlobalSpace,
-      includeHeavyAttributes,
       isRestrictedToSkills,
     });
   }
@@ -1031,10 +1030,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listForSystemSpace(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel> & {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     return this.listBySpace(auth, systemSpace, options);
@@ -1045,12 +1043,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     mcpServerIds: string[],
     {
       transaction,
-      includeHeavyAttributes,
     }: {
       transaction?: Transaction;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
     } = {}
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
       ...getServerTypeAndIdFromSId(mcpServerId),
       mcpServerId,
@@ -1080,7 +1076,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           ],
         },
       },
-      { transaction, includeHeavyAttributes }
+      { transaction }
     );
   }
 
@@ -1089,9 +1085,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     mcpServerId: string,
     options: {
       transaction?: Transaction;
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
     } = {}
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     return this.listByMCPServers(auth, [mcpServerId], options);
   }
 
@@ -1099,7 +1094,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     mcpServerId: string,
     space: SpaceResource
-  ): Promise<MCPServerViewResource | null> {
+  ): Promise<MCPServerViewResource<"metadata"> | null> {
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
     const where =
       serverType === "internal"
@@ -1119,7 +1114,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async getMCPServerViewForAutoInternalTool(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType
-  ): Promise<MCPServerViewResource | null> {
+  ): Promise<MCPServerViewResource<"metadata"> | null> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     const views = await this.listByMCPServer(
       auth,
@@ -1135,7 +1130,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async getMCPServerViewsForAutoInternalTools(
     auth: Authenticator,
     names: AutoInternalMCPServerNameType[]
-  ): Promise<MCPServerViewResource[]> {
+  ): Promise<MCPServerViewResource<"metadata">[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     const views = await this.listByMCPServers(
       auth,
@@ -1156,7 +1151,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     names: readonly T[],
     { ensureAutoViews = true }: { ensureAutoViews?: boolean } = {}
-  ): Promise<Map<T, MCPServerViewResource>> {
+  ): Promise<Map<T, MCPServerViewResource<"metadata">>> {
     if (ensureAutoViews) {
       await this.unsafeEnsureAutoViewsForWorkspace(auth);
     }
@@ -1172,7 +1167,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       ...nameByInternalMCPServerId.keys(),
     ]);
 
-    const map = new Map<T, MCPServerViewResource>();
+    const map = new Map<T, MCPServerViewResource<"metadata">>();
     for (const view of views) {
       if (view.space.kind !== "global" || !view.internalMCPServerId) {
         continue;
@@ -1277,13 +1272,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async getMCPServerViewForSystemSpace(
     auth: Authenticator,
-    mcpServerId: string,
-    {
-      includeHeavyAttributes,
-    }: {
-      includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
-    } = {}
-  ): Promise<MCPServerViewResource | null> {
+    mcpServerId: string
+  ): Promise<MCPServerViewResource<"metadata"> | null> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
     if (serverType === "internal") {
@@ -1296,17 +1286,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       });
       return views[0] ?? null;
     } else {
-      const views = await this.baseFetch(
-        auth,
-        {
-          where: {
-            serverType: "remote",
-            remoteMCPServerId: id,
-            vaultId: systemSpace.id,
-          },
+      const views = await this.baseFetch(auth, {
+        where: {
+          serverType: "remote",
+          remoteMCPServerId: id,
+          vaultId: systemSpace.id,
         },
-        { includeHeavyAttributes }
-      );
+      });
       return views[0] ?? null;
     }
   }
@@ -1314,7 +1300,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async getMCPServerViewForGlobalSpace(
     auth: Authenticator,
     mcpServerId: string
-  ): Promise<MCPServerViewResource | null> {
+  ): Promise<MCPServerViewResource<"metadata"> | null> {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
     if (serverType === "internal") {
@@ -1634,22 +1620,41 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     };
   }
 
+  private static isMetadataView(
+    view: MCPServerViewResource
+  ): view is MCPServerViewResource<"metadata"> {
+    return view.fetchMode === "metadata";
+  }
+
+  private static isConfigurationView(
+    view: MCPServerViewResource
+  ): view is MCPServerViewResource<"configuration"> {
+    return view.fetchMode === "configuration";
+  }
+
   /**
-   * JIT-hydrate the requested heavy attributes on the views' remote servers, e.g. before
-   * serializing a filtered subset with `toJSON`.
+   * Loads the configuration of the views (see `MCPServerViewFetchMode`), e.g. before serializing
+   * them with `toJSON`. Mutates and returns the given views.
    */
-  static async hydrateRemoteServerHeavyAttributes(
+  static async loadConfiguration(
     auth: Authenticator,
     views: MCPServerViewResource[],
-    attributes: readonly RemoteMCPServerHeavyAttributeType[],
     transaction?: Transaction
-  ): Promise<void> {
-    await RemoteMCPServerResource.hydrateHeavyAttributes(
-      auth,
-      removeNulls(views.map((v) => v.remoteMCPServer ?? null)),
-      attributes,
-      transaction
-    );
+  ): Promise<MCPServerViewResource<"configuration">[]> {
+    const metadataViews = views.filter(MCPServerViewResource.isMetadataView);
+    if (metadataViews.length > 0) {
+      await RemoteMCPServerResource.hydrateHeavyAttributes(
+        auth,
+        removeNulls(metadataViews.map((v) => v.remoteMCPServer ?? null)),
+        CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
+        transaction
+      );
+      for (const view of metadataViews) {
+        view.fetchMode = "configuration";
+      }
+    }
+
+    return views.filter(MCPServerViewResource.isConfigurationView);
   }
 
   get sId(): string {
@@ -2029,7 +2034,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     ];
   }
 
-  get getToolPermissions(): {
+  getToolPermissions(this: MCPServerViewResource<"configuration">): {
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
@@ -2062,7 +2067,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   // Serialization.
-  toJSON(): MCPServerViewType {
+  toJSON(this: MCPServerViewResource<"configuration">): MCPServerViewType {
     const server =
       this.serverType === "remote"
         ? this.getRemoteMCPServerResource().toJSON()

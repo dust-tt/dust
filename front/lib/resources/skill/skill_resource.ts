@@ -144,7 +144,7 @@ import { Op } from "sequelize";
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 export type SkillMCPServerConfiguration = {
-  view: MCPServerViewResource;
+  view: MCPServerViewResource<"configuration">;
   childAgentId?: string;
   serverNameOverride?: string;
 };
@@ -260,7 +260,7 @@ export type UpdateSkillParams = {
   // The spaces a person picked by hand: the subset of `requestedSpaceIds` that stays when
   // nothing in the skill requires it any more.
   manuallyRequestedSpaceIds: ModelId[];
-  mcpServerViews: MCPServerViewResource[];
+  mcpServerViews: MCPServerViewResource<"configuration">[];
   name: string;
   reinforcement?: SkillReinforcementMode;
   requestedSpaceIds: ModelId[];
@@ -442,7 +442,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  get mcpServerViews(): MCPServerViewResource[] {
+  get mcpServerViews(): MCPServerViewResource<"configuration">[] {
     return this._mcpServerConfigurations.map((config) => config.view);
   }
 
@@ -520,7 +520,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       excludedSkillId?: string;
       instructions: string;
       manuallyRequestedSpaceIds: ModelId[];
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
     }
   ): Promise<ModelId[]> {
     const toolAndKnowledgeSpaceIds = await this.computeToolAndKnowledgeSpaceIds(
@@ -578,7 +578,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       attachedKnowledge,
     }: {
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       attachedKnowledge: SkillAttachedKnowledge[];
     }
   ): Promise<ModelId[]> {
@@ -642,7 +642,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments = [],
       auditMetadata,
     }: {
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
@@ -782,18 +782,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViewIds: string[];
     }
   ): Promise<Result<SkillResource, Error>> {
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
       auth,
-      mcpServerViewIds,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
     );
 
     if (mcpServerViews.length !== mcpServerViewIds.length) {
@@ -1022,7 +1013,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let allowedCustomSkillsRes: SkillResource[] = [];
     if (allowedCustomSkills.length > 0) {
       let mcpServerConfigurations: SkillMCPServerConfigurationModel[] = [];
-      let allMCPServerViews: MCPServerViewResource[] = [];
+      let allMCPServerViews: MCPServerViewResource<"configuration">[] = [];
 
       if (withTools) {
         mcpServerConfigurations =
@@ -1036,19 +1027,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           });
 
-        allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
+        allMCPServerViews = await MCPServerViewResource.loadConfiguration(
           auth,
-          removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          {
-            includeMetadata: withToolMetadata,
-            includeHeavyAttributes: [
-              "authorization",
-              "cachedTools",
-              "customHeaders",
-              "lastError",
-              "sharedSecret",
-            ],
-          }
+          await MCPServerViewResource.fetchByModelIds(
+            auth,
+            removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+            { includeMetadata: withToolMetadata }
+          )
         );
       }
 
@@ -1170,7 +1155,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Batch-fetch MCP server views for all enabled global skills in a single query.
-    let mcpServerViews: MCPServerViewResource[] = [];
+    let mcpServerViews: MCPServerViewResource<"configuration">[] = [];
     if (withTools) {
       const mcpServerIds = uniq(
         enabledCodeDefinedSkills.flatMap(
@@ -1179,19 +1164,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ).map((name) =>
         autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
       );
-      const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
+      const allMCPServerViews = await MCPServerViewResource.loadConfiguration(
         auth,
-        mcpServerIds,
-        {
+        await MCPServerViewResource.listByMCPServers(auth, mcpServerIds, {
           transaction,
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        }),
+        transaction
       );
       mcpServerViews = allMCPServerViews.filter(
         (view) =>
@@ -2585,7 +2563,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       withInstructions?: boolean;
     }
   ): Promise<SkillResource> {
@@ -2948,18 +2926,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const allMcpServerViewIds = uniq(
       sortedVersionModels.flatMap((model) => model.mcpServerViewIds)
     );
-    const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
+    const allMcpServerViews = await MCPServerViewResource.loadConfiguration(
       auth,
-      allMcpServerViewIds,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      await MCPServerViewResource.fetchByModelIds(auth, allMcpServerViewIds)
     );
     const mcpServerViewMap = new Map(
       allMcpServerViews.map((view) => [view.id, view])
@@ -4216,7 +4185,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   private async updateMCPServerViews(
     auth: Authenticator,
-    mcpServerViews: MCPServerViewResource[],
+    mcpServerViews: MCPServerViewResource<"configuration">[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
