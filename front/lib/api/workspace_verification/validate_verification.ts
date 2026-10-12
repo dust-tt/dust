@@ -61,7 +61,8 @@ export async function validateVerification(
     if (error.code === "max_attempts") {
       return new Err({
         type: "verification_error",
-        message: "Too many incorrect codes. Please request a new code.",
+        message:
+          "Too many incorrect codes. Please wait a few minutes, then request a new code.",
       });
     }
     if (error.code === "invalid_code") {
