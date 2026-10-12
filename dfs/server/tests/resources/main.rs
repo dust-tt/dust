@@ -27,6 +27,7 @@ fn resources() -> Result<()> {
         object::session_modes_isolate_tenants_and_reject_invalid_ancestry().await?;
         object::permission_reads_conflict_with_changes_and_retry().await?;
         object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;
+        object::virtual_stat_projects_root_and_keeps_shared_versions_fixed().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::authentication_and_refresh_require_active_matching_state().await?;

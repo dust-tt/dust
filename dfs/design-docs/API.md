@@ -133,11 +133,10 @@ not advance its parent's `content_version`. Renaming or moving the directory its
 `attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
 unchanged when its entries are unchanged.
 
-Virtual `root` and `shared` also return positive content versions that advance when topology changes
-their entry mappings. Grant changes never advance them, even when they change visible membership.
-These versions must preserve their ordering across servers and restarts for the same session view.
-No version comparison replaces authorization, validates cached visibility, or establishes a snapshot
-across listing pages.
+Virtual `root` projects the stored tenant root's attributes and versions, with the virtual reference
+and mode described above. Virtual `shared` has no stored timestamps; its `attr_version` and
+`content_version` stay fixed at 1, regardless of grants or topology changes. `Validate(shared)` always
+returns `CHANGED`. No version comparison replaces authorization or validates cached visibility.
 
 **Both `ReadView.store_version` and `ReadView.auth_version` are monotonically increasing within a
 tenant.** Each is a nonnegative `int64`: as its respective state advances, its version increases
@@ -555,10 +554,10 @@ Pages obey both the entry limit and a 4 MiB response budget. Pass `next_after` u
 next request. Ordinary directories are ordered by basename; `shared` uses object-ID cursors.
 Continue until `next_after` is absent, even after an empty page.
 
-Clients refresh cached pages through `List`. A directory's `Attr.content_version`, obtained through
-`Stat`, identifies topology changes to its entry names and object IDs. `Validate` can check those
-bindings, but an unchanged version does not confirm cached entry visibility: grants can change
-visibility without changing the version. Refresh through `List` to obtain current visibility. An
+Clients refresh cached pages through `List`. For real directories and virtual `root`,
+`Attr.content_version` from `Stat` identifies topology changes to entry names and object IDs.
+`Validate` can check those bindings, but unchanged versions do not confirm visibility: grants can
+change visibility without changing the version. Refresh through `List` to obtain current visibility. An
 unchanged directory version also does not validate child attributes embedded in an old page; those
 require separate checks or a refetch. Each fetched page includes current child attributes sharing
 the same `Attr.view` for that request; the page has no separate view. Pages are independently
@@ -674,9 +673,8 @@ Authorization is checked before comparing versions. Both versions, when supplied
 against the same current object view.
 
 Valid checks on virtual `shared` always return `CHANGED`, even when the supplied versions match.
-This applies to attribute-only checks, content-only checks, and checks of both versions. Grants can
-change shared membership without advancing its `content_version`; clients must refresh its listing
-through `List`. Returning `CHANGED` does not require a version bump.
+This applies to attribute-only checks, content-only checks, and checks of both versions. Both shared
+versions stay fixed at 1; clients must refresh its listing through `List`.
 
 For other existing, authorized objects:
 

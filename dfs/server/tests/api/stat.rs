@@ -108,10 +108,8 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         .results;
     assert_eq!(results.len(), 8);
     for (index, expected) in [
-        (1, ErrorCode::Unsupported),
         (2, ErrorCode::NotFound),
         (3, ErrorCode::NotFound),
-        (5, ErrorCode::Unsupported),
         (7, ErrorCode::NotFound),
     ] {
         assert!(results[index].object.is_none());
@@ -124,7 +122,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
             expected
         );
     }
-    for index in [0, 4, 6] {
+    for index in [0, 1, 4, 5, 6] {
         assert!(results[index].error.is_none());
     }
     let attributes = results[0]
@@ -159,6 +157,71 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     assert_eq!(root.mode, 0o700);
     assert_eq!(root.view, attributes.view);
     assert!(root.metadata.is_none());
+    let projected = results[1].object.as_ref().context("missing virtual root")?;
+    let mut expected_root = root.clone();
+    expected_root.id = ObjectRef::Root;
+    assert_eq!(projected, &expected_root);
+    let shared = results[5].object.as_ref().context("missing shared")?;
+    assert_eq!(shared.id, ObjectRef::Shared);
+    assert_eq!(shared.name, "shared");
+    assert_eq!(shared.kind(), ObjectKind::Directory);
+    assert_eq!(shared.mode, 0o500);
+    assert_eq!(shared.size, 0);
+    assert_eq!(
+        (shared.atime, shared.mtime, shared.ctime),
+        (None, None, None)
+    );
+    assert_eq!((shared.attr_version, shared.content_version), (1, 1));
+    assert_eq!(shared.view, root.view);
+    assert!(shared.metadata.is_none());
+
+    let empty_session = client
+        .create_session(with_authorization(
+            CreateSessionRequest { subjects: vec![] },
+            &tenant_authorization,
+        )?)
+        .await?
+        .into_inner();
+    let projected = client
+        .stat(with_authorization(
+            StatRequest {
+                object_ids: vec![
+                    ObjectRef::Shared,
+                    tenant.root_id.into(),
+                    ObjectRef::Root,
+                    ObjectRef::Shared,
+                ],
+                include_metadata: None,
+            },
+            &format!("Bearer {}", empty_session.session_key),
+        )?)
+        .await?
+        .into_inner()
+        .results;
+    assert_eq!(projected.len(), 4);
+    assert!(projected[1].object.is_none());
+    assert_eq!(
+        projected[1]
+            .error
+            .as_ref()
+            .context("missing root denial")?
+            .code(),
+        ErrorCode::NotFound
+    );
+    for (index, reference) in [
+        (0, ObjectRef::Shared),
+        (2, ObjectRef::Root),
+        (3, ObjectRef::Shared),
+    ] {
+        assert!(projected[index].error.is_none());
+        let attr = projected[index]
+            .object
+            .as_ref()
+            .context("missing virtual directory")?;
+        assert_eq!(attr.id, reference);
+        assert_eq!(attr.mode, 0o500);
+    }
+    assert_eq!(projected[0], projected[3]);
 
     let request = StatRequest {
         object_ids: vec![file.object_id.into()],
@@ -269,6 +332,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
 
     let tx = fdb::database()?.create_trx()?;
     SessionResource::revoke(&tx, &resource, &session.id).await?;
+    SessionResource::revoke(&tx, &resource, &empty_session.id).await?;
     for id in [&tenant.tenant_id, &other.tenant_id] {
         let (begin, end) = tenant_subspace(id).range();
         tx.clear_range(&begin, &end);

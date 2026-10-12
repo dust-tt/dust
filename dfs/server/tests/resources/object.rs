@@ -29,7 +29,10 @@ pub(crate) use modes::{
     session_modes_isolate_tenants_and_reject_invalid_ancestry,
     tree_hints_follow_moves_and_recheck_grants,
 };
-pub(crate) use stat::stat_distinguishes_object_errors_and_preserves_transaction_failures;
+pub(crate) use stat::{
+    stat_distinguishes_object_errors_and_preserves_transaction_failures,
+    virtual_stat_projects_root_and_keeps_shared_versions_fixed,
+};
 
 type StoredObject = (
     Option<Vec<u8>>,

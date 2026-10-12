@@ -117,7 +117,8 @@ reads omit the field.
 The stored parent and basename support inheritance and namespace maintenance. They change
 atomically with directory entries; public `Attr` exposes only the basename. Moves preserve object
 IDs and content keys and require no descendant path rewrites. Virtual `root` and `shared` are
-projections; the real tenant root is an ordinary stored object.
+projections; the real tenant root is an ordinary stored object. Virtual `root` uses its stored
+versions; `shared` has no stored record and keeps both versions fixed at 1.
 
 Effective `mode` and `ReadView` are computed per response. Directory execute/traverse derives from
 read permission. File size, versions, and affected blocks commit together. Missing blocks read as
