@@ -4,12 +4,16 @@ import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatMod
 import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
 import {
   applyBudgetOrderMoves,
+  countEarlierGroupsSharingMembers,
   getBaseBudgetOrder,
   isSameBudgetOrder,
   moveGroupPastVisibleNeighbor,
 } from "@app/components/workspace/group_budget_order";
 import type { GroupBudgetOrderRow } from "@app/components/workspace/GroupBudgetOrderTab";
-import { GroupBudgetOrderTab } from "@app/components/workspace/GroupBudgetOrderTab";
+import {
+  GroupBudgetOrderBanner,
+  GroupBudgetOrderTab,
+} from "@app/components/workspace/GroupBudgetOrderTab";
 import { GroupSeatPickerDropdown } from "@app/components/workspace/GroupSeatPickerDropdown";
 import {
   parseCreditsInput,
@@ -190,11 +194,14 @@ function useGroupBudgetOrderDraft(
   const { usageByGroupId } = useGroupsUsage({ owner, disabled: !isEnabled });
   const [movedOrder, setMovedOrder] = useState<string[] | null>(null);
 
+  const savedBudgetAwuCredits =
+    group.sharedUsageLimitUsage?.limitAwuCredits ?? null;
   const budgetAwuCredits = draft.sharedLimitResult.ok
     ? draft.sharedLimitResult.awuCredits
-    : (group.sharedUsageLimitUsage?.limitAwuCredits ?? null);
+    : savedBudgetAwuCredits;
+  const loadedOrder = overlaps.map((overlap) => overlap.groupId);
   const baseOrder = getBaseBudgetOrder(
-    overlaps.map((overlap) => overlap.groupId),
+    loadedOrder,
     group.groupId,
     budgetAwuCredits !== null
   );
@@ -228,6 +235,20 @@ function useGroupBudgetOrderDraft(
     order,
     baseOrder,
     hasBudget: budgetAwuCredits !== null,
+    earlierGroupsSharingMembersCount: countEarlierGroupsSharingMembers(
+      applyBudgetOrderMoves(
+        movedOrder,
+        getBaseBudgetOrder(
+          loadedOrder,
+          group.groupId,
+          budgetAwuCredits !== null || savedBudgetAwuCredits !== null
+        )
+      ).map((groupId) => ({
+        isCurrentGroup: groupId === group.groupId,
+        sharedMemberCount:
+          overlapByGroupId.get(groupId)?.sharedMemberCount ?? null,
+      }))
+    ),
     isOrderChanged: hasLoadedOverlaps && !isSameBudgetOrder(order, baseOrder),
     isOverlapsLoading,
     overlapsError,
@@ -510,6 +531,7 @@ function EditGroupUsageForm({
   );
   const confirmSeatRemoval = useConfirmSeatRemoval(group);
   const [isSeatReviewOpen, setIsSeatReviewOpen] = useState(false);
+  const [tab, setTab] = useState<"limits" | "order">("limits");
   const groupName = group.name;
   const isChanged = draft.isChanged || orderDraft.isOrderChanged;
 
@@ -548,7 +570,12 @@ function EditGroupUsageForm({
         <DialogTitle>{t`Edit limits for ${groupName}`}</DialogTitle>
       </DialogHeader>
       {isSharedLimitEditable ? (
-        <Tabs defaultValue="limits">
+        <Tabs
+          value={tab}
+          onValueChange={(value) =>
+            setTab(value === "order" ? "order" : "limits")
+          }
+        >
           <div className="px-5 pt-3">
             <TabsList>
               <TabsTrigger value="limits" label={t`Limits`} />
@@ -568,7 +595,22 @@ function EditGroupUsageForm({
             </TabsList>
           </div>
           <TabsContent value="limits">
-            <DialogContainer>{limitsFields}</DialogContainer>
+            <DialogContainer>
+              <div className="flex flex-col gap-6">
+                {limitsFields}
+                {orderDraft.earlierGroupsSharingMembersCount > 0 && (
+                  <GroupBudgetOrderBanner
+                    groupName={groupName}
+                    earlierGroupCount={
+                      orderDraft.earlierGroupsSharingMembersCount
+                    }
+                    onReview={
+                      orderDraft.hasBudget ? () => setTab("order") : undefined
+                    }
+                  />
+                )}
+              </div>
+            </DialogContainer>
           </TabsContent>
           <TabsContent value="order">
             <DialogContainer>
