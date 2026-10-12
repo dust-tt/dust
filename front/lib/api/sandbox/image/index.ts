@@ -6,10 +6,7 @@ import {
 } from "@app/lib/api/sandbox/image/registry";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { ToolEntry } from "@app/lib/api/sandbox/image/types";
-import {
-  DSBX_TOOL_NAME,
-  devSandboxImageId,
-} from "@app/lib/api/sandbox/image/types";
+import { devSandboxImageId } from "@app/lib/api/sandbox/image/types";
 import type { Authenticator } from "@app/lib/auth";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { isDevelopment } from "@app/types/shared/env";
@@ -18,12 +15,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 export function getToolsForProvider(
   _auth: Authenticator,
-  providerId: ModelProviderIdType,
-  {
-    includeDsbxTools = true,
-  }: {
-    includeDsbxTools?: boolean;
-  } = {}
+  providerId: ModelProviderIdType
 ): Result<readonly ToolEntry[], Error> {
   const imageResult = getSandboxImageFromRegistry({ name: "dust-base" });
   if (imageResult.isErr()) {
@@ -43,20 +35,7 @@ export function getToolsForProvider(
     return tool.profile === profile;
   });
 
-  return new Ok(filterDsbxToolEntries(providerTools, { includeDsbxTools }));
-}
-
-// Hacky temporary filtering: strip the `dsbx` tool entry from the manifest by
-// name when sandbox tools are off so it is not advertised to the model.
-export function filterDsbxToolEntries(
-  tools: readonly ToolEntry[],
-  { includeDsbxTools }: { includeDsbxTools: boolean }
-): readonly ToolEntry[] {
-  if (includeDsbxTools) {
-    return tools;
-  }
-
-  return tools.filter((tool) => tool.name !== DSBX_TOOL_NAME);
+  return new Ok(providerTools);
 }
 
 // Dev-only: resolve the developer's own image alias, so a locally built image

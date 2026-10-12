@@ -9,10 +9,7 @@ import { buildFramesV2Instructions } from "@app/lib/resources/skill/code_defined
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import {
-  isComputerFeatureEnabled,
-  isFramesV2FunctionsEnabled,
-} from "@app/types/shared/feature_flags";
+import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
 
 /**
  * @cc [owner:flvndvd,label:product] frame-document-disclosure
@@ -66,10 +63,7 @@ export const framesSkill = {
       return INTERACTIVE_CONTENT_INSTRUCTIONS;
     }
 
-    return buildInteractiveContentInstructions({
-      hasComputer: isComputerFeatureEnabled(flags),
-      isPod,
-    });
+    return buildInteractiveContentInstructions({ isPod });
   },
   mcpServers: [
     { name: "interactive_content" },

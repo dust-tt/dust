@@ -453,13 +453,11 @@ export function _getDeepDiveGlobalAgent(
     settings,
     preFetchedDataSources,
     mcpServerViews,
-    hasSandbox,
     featureFlags,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-    hasSandbox?: boolean;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {
@@ -481,7 +479,7 @@ export function _getDeepDiveGlobalAgent(
     description: DEEP_DIVE_DESC,
     instructions: getDeepDiveInstructions({
       includeToolsetsPrompt: true,
-      hasSandbox,
+      hasSandbox: true,
     }),
     instructionsHtml: null,
     pictureUrl,

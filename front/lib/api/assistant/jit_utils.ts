@@ -44,7 +44,7 @@ export async function listAttachments(
     }),
   ]);
 
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
 
   for (const m of contentFragments) {
     const attachment = getAttachmentFromContentFragment({

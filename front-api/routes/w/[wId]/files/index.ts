@@ -208,8 +208,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
       },
     });
   }
-  const { contentType: supportedContentType, hasSandboxTools } =
-    validation.value;
+  const { contentType: supportedContentType } = validation.value;
 
   const newFile = await FileResource.makeNew({
     contentType: supportedContentType,
@@ -221,7 +220,7 @@ app.post("/", validate("json", FileUploadUrlRequestSchema), async (ctx) => {
     useCaseMetadata: buildEffectiveUseCaseMetadata({
       contentType: supportedContentType,
       fileName,
-      flags: { hasSandboxTools },
+      flags: { hasSandboxTools: true },
       providedMetadata: useCaseMetadata,
       useCase,
     }),

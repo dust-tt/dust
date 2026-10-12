@@ -267,10 +267,6 @@ msgid "{valueBytes} / {maxBytes} bytes. Multiline values are allowed."
 msgstr "{valueBytes} / {maxBytes} octets. Les valeurs sur plusieurs lignes sont autorisées."
 
 #: front/components/sandbox/SandboxEnvVarsSection.tsx
-msgid "Computer administration is not enabled for this workspace."
-msgstr "L’administration du Computer n’est pas activée pour ce workspace."
-
-#: front/components/sandbox/SandboxEnvVarsSection.tsx
 msgid "The Computer environment variables could not be loaded."
 msgstr "Impossible de charger les variables d’environnement du Computer."
 

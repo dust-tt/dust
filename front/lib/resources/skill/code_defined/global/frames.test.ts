@@ -1,6 +1,5 @@
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
-  FILES_EDIT_ACTION_NAME,
   FILES_LIST_ACTION_NAME,
   FILES_SERVER_NAME,
 } from "@app/lib/api/actions/servers/files/metadata";
@@ -16,11 +15,9 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { describe, expect, it } from "vitest";
 
-// Markers unique to each variant of the updating section.
+// Marker unique to the file-system updating section.
 const COMPUTER_FIRST_MARKER =
   "mounted in the Computer at `/files/conversation-";
-const FILES_FIRST_MARKER =
-  "available to your file tools at `conversation-<conversationId>";
 
 // Markers unique to each Pod-only section.
 const POD_APP_MARKER = "### Frames In A Pod";
@@ -29,10 +26,6 @@ const POD_STORAGE_MARKER = "### Where The Frame's Data Lives";
 const POD_V2_PLACEMENT_MARKER =
   "new Frames still go in the conversation folder";
 
-const FILES_EDIT_TOOL = getPrefixedToolName(
-  FILES_SERVER_NAME,
-  FILES_EDIT_ACTION_NAME
-);
 const FILES_LIST_TOOL = getPrefixedToolName(
   FILES_SERVER_NAME,
   FILES_LIST_ACTION_NAME
@@ -210,25 +203,6 @@ describe("framesSkill.fetchInstructions", () => {
     );
   });
 
-  it("teaches the files-tools flow when the Computer is disabled", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-
-    const instructions = await framesSkill.fetchInstructions(auth, {
-      spaceIds: [],
-    });
-
-    expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).toContain(FILES_FIRST_MARKER);
-    expect(instructions).not.toContain("dsbx frame publish");
-    expect(instructions).toContain(FILES_EDIT_TOOL);
-    expect(instructions).toContain(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
-    expect(instructions).not.toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
-    expect(instructions).not.toContain(
-      RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME
-    );
-  });
-
   it("keeps the retrieve and file-id edit flow for legacy conversations", async () => {
     const { authenticator: auth } = await createResourceTest({});
 
@@ -239,7 +213,6 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).not.toContain("dsbx frame publish");
     expect(instructions).not.toContain(COMPUTER_FIRST_MARKER);
-    expect(instructions).not.toContain(FILES_FIRST_MARKER);
     expect(instructions).toContain(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
     expect(instructions).toContain(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME);
   });

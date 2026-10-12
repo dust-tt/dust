@@ -555,7 +555,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
 
   // Tool results are re-rendered below to measure them, so they need the same attachment
   // capabilities the conversation used when the results were sent to the model.
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
 
   // Every usage is reached through this message's own runIds, so each one belongs to this message.
   const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
