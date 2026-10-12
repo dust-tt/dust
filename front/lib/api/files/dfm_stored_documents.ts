@@ -1,9 +1,9 @@
+import {
+  LiveSessionWriteError,
+  writeThroughLiveSession,
+} from "@app/lib/api/collab/live_session_write";
 import type { LiveSourceError } from "@app/lib/api/collab/live_source";
 import { fetchLiveSource } from "@app/lib/api/collab/live_source";
-import {
-  SessionWriteError,
-  writeThroughSession,
-} from "@app/lib/api/collab/session_write";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
@@ -55,10 +55,10 @@ function liveSourceError({
   );
 }
 
-function sessionWriteError({
+function liveSessionWriteError({
   code,
   message,
-}: SessionWriteError): DfmStoredDocumentError {
+}: LiveSessionWriteError): DfmStoredDocumentError {
   switch (code) {
     case "read_only":
     case "refused":
@@ -244,8 +244,8 @@ export async function readCurrentDocumentSource(
  * `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write.
  *
  * While a live session holds the document, the file MUST NOT be read or written: after the name
- * check of `readStoredDocument`, the change MUST go through `writeThroughSession` with `agent`
- * (`session-write`), and the file MUST exist before `change` receives the session's source,
+ * check of `readStoredDocument`, the change MUST go through `writeThroughLiveSession` with `agent`
+ * (`live-session-write`), and the file MUST exist before `change` receives the session's source,
  * parsed; the session refuses a storage without revisions itself (`collab-live-source-write`).
  */
 export async function writeDocumentChange<T, E extends Error>(
@@ -261,7 +261,7 @@ export async function writeDocumentChange<T, E extends Error>(
   }
 
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    const live = await writeThroughSession(auth, dustFs, {
+    const live = await writeThroughLiveSession(auth, dustFs, {
       filePath: filePath.value,
       agent,
       change: async (source) => {
@@ -289,8 +289,8 @@ export async function writeDocumentChange<T, E extends Error>(
     });
     if (live.isErr()) {
       return new Err(
-        live.error instanceof SessionWriteError
-          ? sessionWriteError(live.error)
+        live.error instanceof LiveSessionWriteError
+          ? liveSessionWriteError(live.error)
           : live.error
       );
     }

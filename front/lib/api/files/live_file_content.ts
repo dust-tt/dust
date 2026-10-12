@@ -1,8 +1,8 @@
-import type { SessionWrite } from "@app/lib/api/collab/session_write";
+import type { LiveSessionWrite } from "@app/lib/api/collab/live_session_write";
 import {
-  SessionWriteError,
-  writeThroughSession,
-} from "@app/lib/api/collab/session_write";
+  LiveSessionWriteError,
+  writeThroughLiveSession,
+} from "@app/lib/api/collab/live_session_write";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type {
   DfmCommentSignatureError,
@@ -23,7 +23,7 @@ import { Err, Ok } from "@app/types/shared/result";
 /**
  * @cc [owner:tdraier,label:product;concurrency;security] live-file-content-write
  * In a workspace with `co_edition`, for a file whose name or request content type is
- * `text/markdown`, `content` MUST be written through `writeThroughSession`, under the file's
+ * `text/markdown`, `content` MUST be written through `writeThroughLiveSession`, under the file's
  * normalized path without a trailing slash. The comments MUST be validated with
  * `validateCommentSignaturesForUser` against the session's source. A write conditional on a file
  * revision MUST fail with `conflict` while a session is open, since the file lags the session.
@@ -44,8 +44,8 @@ export async function writeFileContentThroughLiveSession(
   }
 ): Promise<
   Result<
-    SessionWrite<NewCommentMessage[]>,
-    SessionWriteError | DfmCommentSignatureError
+    LiveSessionWrite<NewCommentMessage[]>,
+    LiveSessionWriteError | DfmCommentSignatureError
   >
 > {
   const resolved = DustFileSystem.resolveScopedPath(scopedPath);
@@ -64,15 +64,19 @@ export async function writeFileContentThroughLiveSession(
   }
 
   const next = decodeBuffer(content);
-  return writeThroughSession<
-    NewCommentMessage[],
-    SessionWriteError | DfmCommentSignatureError
-  >(auth, dustFs, {
+  return writeThroughLiveSession(auth, dustFs, {
     filePath,
-    change: async (source) => {
+    change: async (
+      source
+    ): Promise<
+      Result<
+        { source: string; value: NewCommentMessage[] },
+        LiveSessionWriteError | DfmCommentSignatureError
+      >
+    > => {
       if (ifRevisionMatch !== undefined) {
         return new Err(
-          new SessionWriteError(
+          new LiveSessionWriteError(
             "conflict",
             "This file is being edited live; its revision cannot be matched."
           )
