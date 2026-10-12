@@ -914,8 +914,7 @@ export async function syncFiles({
       logger,
       client,
       parent.internalId,
-      nextPageLink,
-      (providerConfig.allowedSensitivityLabels ?? []).length > 0
+      nextPageLink
     );
     childrenListed = true;
 
