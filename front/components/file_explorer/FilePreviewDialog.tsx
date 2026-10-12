@@ -8,6 +8,7 @@ import {
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
+import { SourceModeFileIcon } from "@app/components/file_explorer/SourceModeFileIcon";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -24,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
   Download01,
-  Icon,
   XClose,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
@@ -158,20 +158,11 @@ export function FilePreviewDialog({
             <DialogTitle className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 overflow-hidden">
                 {FileIcon && (
-                  <span
-                    className="flex shrink-0"
-                    onClick={(event) => {
-                      if (event.altKey) {
-                        markdown.toggleSourceMode();
-                      }
-                    }}
-                  >
-                    <Icon
-                      visual={FileIcon}
-                      size="sm"
-                      className="text-foreground"
-                    />
-                  </span>
+                  <SourceModeFileIcon
+                    visual={FileIcon}
+                    className="text-foreground"
+                    onToggleSourceMode={markdown.toggleSourceMode}
+                  />
                 )}
                 <span className="min-w-16 truncate leading-5 text-foreground">
                   {entry?.fileName ?? t`Preview data`}

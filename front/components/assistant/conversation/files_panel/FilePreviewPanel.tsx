@@ -15,6 +15,7 @@ import {
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
+import { SourceModeFileIcon } from "@app/components/file_explorer/SourceModeFileIcon";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
@@ -37,7 +38,6 @@ import {
   Button,
   cn,
   Download01,
-  Icon,
   Maximize01,
   Minimize01,
   Spinner,
@@ -254,16 +254,10 @@ export function FilePreviewPanel({
         }
       >
         <div className="flex min-w-0 items-center gap-1.5">
-          <span
-            className="flex shrink-0"
-            onClick={(event) => {
-              if (event.altKey) {
-                markdown.toggleSourceMode();
-              }
-            }}
-          >
-            <Icon visual={FileIcon} size="sm" />
-          </span>
+          <SourceModeFileIcon
+            visual={FileIcon}
+            onToggleSourceMode={markdown.toggleSourceMode}
+          />
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
