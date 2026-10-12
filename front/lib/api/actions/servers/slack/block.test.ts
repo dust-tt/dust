@@ -42,6 +42,16 @@ describe("makeMessagePayload", () => {
   );
 });
 
+describe("makeMessagePayload length", () => {
+  it("keeps a long table message whole in both the block and the fallback text", () => {
+    const message = `| a | b |\n| --- | --- |\n${"x".repeat(5_000)}`;
+    const payload = makeMessagePayload(message, undefined);
+
+    expect(payload.text).toBe(message);
+    expect(payload.blocks).toEqual([{ type: "markdown", text: message }]);
+  });
+});
+
 describe("makeMrkdwnText", () => {
   it("keeps long messages whole, even with a table, and appends the footer", () => {
     const message = `| a | b |\n| --- | --- |\n${"x".repeat(5_000)}`;

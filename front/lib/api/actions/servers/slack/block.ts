@@ -3,13 +3,6 @@ import type { KnownBlock } from "@slack/web-api";
 import { Marked } from "marked";
 import slackifyMarkdown from "slackify-markdown";
 
-/*
- * This length threshold prevents the "msg_too_long" error from Slack's
- * chat.update method. Per past incidents, the max message length is 3000
- * characters; we stay conservative to leave room for ellipses.
- */
-const MAX_SLACK_MESSAGE_LENGTH = 2500;
-
 // source: https://docs.slack.dev/reference/block-kit/blocks/markdown-block/
 const MAX_SLACK_MARKDOWN_BLOCK_LENGTH = 12_000;
 
@@ -17,34 +10,7 @@ const MAX_SLACK_MARKDOWN_BLOCK_LENGTH = 12_000;
 // cannot change how tables are detected.
 const markdownParser = new Marked();
 
-// Mirrors connectors/src/connectors/slack/chat/blocks.ts::makeMarkdownBlock.
-// The newer `markdown` block renders tables, headers, lists. File uploads
-// cannot carry blocks and send plain mrkdwn text instead.
-function makeMarkdownBlocks(text?: string, isUpload?: boolean): KnownBlock[] {
-  if (!text) {
-    return [];
-  }
-  // New markdown block has better support for markdown formatting,
-  // but is not supported when uploading files.
-  if (!isUpload) {
-    return [
-      {
-        type: "markdown",
-        text: truncate(text, MAX_SLACK_MARKDOWN_BLOCK_LENGTH),
-      },
-    ];
-  }
-
-  return [
-    {
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: truncate(slackifyMarkdown(text), MAX_SLACK_MESSAGE_LENGTH),
-      },
-    },
-  ];
-}
+export type SentByFooter = { agentName: string; agentUrl: string };
 
 // "Sent via <agent> on Dust" attribution as legacy Slack mrkdwn (link uses
 // `<url|label>`). Single source of truth for the footer text, shared by the
@@ -88,7 +54,7 @@ function hasMarkdownTable(text: string): boolean {
  */
 export function makeMrkdwnText(
   message: string,
-  footerData: { agentName: string; agentUrl: string } | undefined
+  footerData: SentByFooter | undefined
 ): string {
   const text = slackifyMarkdown(message);
   return footerData
@@ -98,7 +64,7 @@ export function makeMrkdwnText(
 
 export function makeMessagePayload(
   message: string,
-  footerData: { agentName: string; agentUrl: string } | undefined
+  footerData: SentByFooter | undefined
 ): { text: string; blocks?: KnownBlock[] } {
   if (!hasMarkdownTable(message)) {
     return { text: makeMrkdwnText(message, footerData) };
@@ -106,9 +72,12 @@ export function makeMessagePayload(
 
   return {
     // Plain fallback for places that cannot render blocks
-    text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
+    text: truncate(message, MAX_SLACK_MARKDOWN_BLOCK_LENGTH),
     blocks: [
-      ...makeMarkdownBlocks(message, false),
+      {
+        type: "markdown",
+        text: truncate(message, MAX_SLACK_MARKDOWN_BLOCK_LENGTH),
+      },
       ...(footerData
         ? [makeSentByFooterBlock(footerData.agentName, footerData.agentUrl)]
         : []),
