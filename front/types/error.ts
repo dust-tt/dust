@@ -7,6 +7,14 @@ import type { ConnectorsAPIError } from "@dust-tt/client";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import type { CellInfo } from "./cell";
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:api;error-handling] invalid-request-error-means-malformed
+ * `invalid_request_error` MUST only describe a request that does not match the shape the endpoint
+ * accepts: a body, query, path parameter or header that fails schema validation, a missing required
+ * field, or an unparsable payload. A failure that depends on server-side state (a missing resource,
+ * a permission, a feature flag, a plan, the state of a resource, a name conflict, a limit) or on
+ * a value the user typed MUST use a dedicated type naming that failure instead.
+ */
 const API_ERROR_TYPES = [
   "not_authenticated",
   "sso_enforced",
@@ -83,6 +91,9 @@ const API_ERROR_TYPES = [
   "subscription_state_invalid",
   "trial_restriction",
   "service_unavailable",
+  // Gating:
+  "feature_not_enabled",
+  "project_space_required",
   // Use by agent creation / update
   "assistant_saving_error",
   // Used in the DustAPI client:

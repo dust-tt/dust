@@ -32,7 +32,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Project metadata is only available for project spaces.",
         },
       });
@@ -73,7 +73,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Project metadata is only available for project spaces.",
         },
       });

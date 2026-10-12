@@ -50,7 +50,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Pod egress policy is only available for project spaces.",
         },
       });
@@ -90,7 +90,7 @@ app.put(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Pod egress policy is only available for project spaces.",
         },
       });
@@ -163,7 +163,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Pod egress policy is only available for project spaces.",
         },
       });
@@ -206,7 +206,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Pod egress policy is only available for project spaces.",
         },
       });

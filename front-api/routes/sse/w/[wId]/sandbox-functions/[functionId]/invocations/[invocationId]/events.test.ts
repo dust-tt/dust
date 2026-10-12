@@ -146,7 +146,7 @@ describe.each(["", "/poll"])(
       expect(response.status).toBe(403);
       expect(await response.json()).toMatchObject({
         error: {
-          type: "feature_flag_not_found",
+          type: "feature_not_enabled",
           message: "Frame functions are not enabled for this workspace.",
         },
       });

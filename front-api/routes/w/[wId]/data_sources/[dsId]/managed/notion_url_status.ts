@@ -76,7 +76,7 @@ app.post(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "feature_flag_not_found",
+          type: "feature_not_enabled",
           message: "Advanced Notion management feature is not enabled",
         },
       });

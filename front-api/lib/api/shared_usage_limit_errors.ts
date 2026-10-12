@@ -41,7 +41,7 @@ export function sharedUsageLimitErrorToApiError(
     case "shared_usage_limits_not_enabled":
       return {
         status_code: 403,
-        api_error: { type: "feature_flag_not_found", message: error.message },
+        api_error: { type: "feature_not_enabled", message: error.message },
       };
     default:
       assertNever(error.type);

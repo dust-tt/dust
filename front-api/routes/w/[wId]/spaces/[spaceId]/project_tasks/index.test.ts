@@ -166,7 +166,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/mark_read", () => {
     const response = await markRead(workspace, regularSpace.sId);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_space_required");
   });
 });
 
