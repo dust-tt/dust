@@ -1,3 +1,4 @@
+import { UserLocaleSync } from "@app/components/app/UserLocaleSync";
 import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
 import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
@@ -52,6 +53,11 @@ interface ExtensionAuthProviderProps {
  * - Uses CellContext for URL resolution (dustDomain).
  *
  * Mirrors the ExtensionFetcherProvider / FetcherProvider pattern.
+ */
+/**
+ * @cc [owner:sfriquet,label:product] locale-synced-once-authenticated
+ * Whenever it provides the front `AuthContext`, the provider MUST mount `UserLocaleSync` under it,
+ * so that the extension switches to the user's locale like the web app.
  */
 export function ExtensionAuthProvider({
   children,
@@ -132,6 +138,7 @@ export function ExtensionAuthProvider({
     <ExtensionAuthContext.Provider value={extensionAuthValue}>
       {frontAuthValue ? (
         <AuthContext.Provider value={frontAuthValue}>
+          <UserLocaleSync />
           {children}
         </AuthContext.Provider>
       ) : (

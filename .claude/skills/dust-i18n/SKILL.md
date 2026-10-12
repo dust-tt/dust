@@ -78,7 +78,8 @@ the factory directly with `(descriptor) => i18n._(descriptor)`.
 Lingui components need an `I18nProvider`. Every front-spa entry mounts one at its root (e.g.
 `front-spa/src/app/App.tsx`); the `poke`, `share`, `oauth` and `email` entries render in `en-US`.
 The browser extension (`extension/`) mounts one in each platform app and compiles the macros in its
-webpack build (`extension/config/webpack_lingui.ts`). It always renders `en-US`.
+webpack build (`extension/config/webpack_lingui.ts`). Once the user is logged in, it follows their
+locale like the web app (`UserLocaleSync`, mounted by `ExtensionAuthProvider`).
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
 `I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is
@@ -107,7 +108,7 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - For text a consumer may override, make the prop optional with no default and fall back at render:
   ``{label ?? t`Load more`}``. A destructuring default cannot call `t`.
 - The locale comes from `SparkleI18nProvider`. Without it, sparkle renders `en-US` (marketing,
-  viz, the extension). Front mounts `SparkleLocaleProvider` (`front/components/app/`) at every app
+  viz). Front and the extension mount `SparkleLocaleProvider` (`front/components/app/`) at every app
   root that mounts `UserLocaleSync`, and front tests already wrap in it. Sparkle's locale is a
   catalog locale (`en-GB` renders as `en-US`).
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
