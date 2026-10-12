@@ -207,8 +207,8 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-api",
     needsNvm: true,
     needsEnvSh: true,
-    // The co-edition live session server, reached through the proxy's /api/collab route. Every env
-    // advertises it to the browser (COLLAB_PUBLIC_URL), so warm starts it.
+    // The co-edition live session server, reached through the proxy's /api/collab route. Started on
+    // demand: only co-edition work needs it.
     buildCommand: (env) =>
       `COLLAB_HOSTNAME=localhost COLLAB_PORT=${env.ports.collab} NODE_ENV=development npm run dev:collab`,
     readinessCheck: {
@@ -243,7 +243,6 @@ export const DEFAULT_WARM_SERVICES: readonly ServiceName[] = [
   "front-workers",
   "front-spa-poke",
   "front-spa-app",
-  "collab",
 ];
 
 const coldStateServices = new Set<ServiceName>(COLD_STATE_SERVICES);
