@@ -2,6 +2,7 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
+import type { SentByFooter } from "@app/lib/api/actions/servers/slack/block";
 import {
   makeMessagePayload,
   makeMrkdwnText,
@@ -787,7 +788,7 @@ export async function executePostMessage(
     return new Err(new MCPError("Failed to open group DM"));
   }
 
-  let footer: { agentName: string; agentUrl: string } | undefined;
+  let footer: SentByFooter | undefined;
 
   if (
     showSentByFooter !== false &&
@@ -946,7 +947,7 @@ export async function executeScheduleMessage(
   }
 ) {
   const slackClient = await getSlackClient(accessToken);
-  let footer: { agentName: string; agentUrl: string } | undefined;
+  let footer: SentByFooter | undefined;
 
   if (
     showSentByFooter !== false &&
