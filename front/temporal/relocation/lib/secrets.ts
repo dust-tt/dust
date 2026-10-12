@@ -13,6 +13,7 @@ export const RELOCATED_SECRET_COLUMNS = {
     useCase: "mcp_server_credentials",
   },
   dust_app_secrets: {
+    // Despite its name, the column holds the encrypted secret, not a hash.
     column: "hash",
     useCase: "developer_secret",
   },
