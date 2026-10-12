@@ -1,3 +1,4 @@
+pub mod directory;
 pub mod keys;
 pub mod object;
 pub mod session;
