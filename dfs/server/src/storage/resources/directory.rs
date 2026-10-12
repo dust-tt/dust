@@ -134,9 +134,8 @@ impl DirectoryResource {
         child.create(tx, &[]).await?;
         tx.set(&entry_key, &pack(&child.object_id.as_bytes().as_slice()));
         self.object
-            .record_content_change(now_ms)
+            .record_content_change(tx, now_ms)
             .map_err(Error::Object)?;
-        self.object.save_attributes(tx);
         Ok(child)
     }
 
