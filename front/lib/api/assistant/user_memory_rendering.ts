@@ -10,6 +10,11 @@ export async function renderUserMemoryUserMessage(
   auth: Authenticator,
   { conversation }: { conversation: ConversationWithoutContentType }
 ): Promise<UserMessageTypeModel | null> {
+  const user = auth.user();
+  if (!user) {
+    return null;
+  }
+
   const memoryResult = await readConversationMemoryFile(auth, conversation);
   if (memoryResult.isErr()) {
     logger.error(
@@ -32,7 +37,7 @@ export async function renderUserMemoryUserMessage(
         type: "text",
         text:
           `<dust_system>\n` +
-          `The memory of the user, ${auth.getNonNullableUser().fullName()}:\n\n` +
+          `The memory of the user, ${user.fullName()}:\n\n` +
           `<user_memory>\n${memory}\n</user_memory>\n` +
           `</dust_system>`,
       },
