@@ -204,6 +204,14 @@ export const getConfig = async ({
       port: 3014,
       server: "https",
       hot: true,
+      client: {
+        overlay: {
+          // Virtuoso's ResizeObserver re-layouts while messages stream in,
+          // which the browser reports as a benign error on every token.
+          runtimeErrors: (error: Error) =>
+            !error.message.includes("ResizeObserver loop"),
+        },
+      },
       static: {
         directory: buildDirPath,
       },
