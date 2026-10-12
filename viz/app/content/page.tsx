@@ -1,5 +1,8 @@
 import { ClientVisualizationWrapper } from "@viz/app/content/ClientVisualizationWrapper";
 import { ServerSideVisualizationWrapper } from "@viz/app/content/ServerVisualizationWrapper";
+import { getVizCatalog } from "@viz/app/lib/i18n/catalogs";
+import { resolveVizLocale } from "@viz/app/lib/i18n/resolveVizLocale";
+import { headers } from "next/headers";
 
 interface RenderVisualizationSearchParams {
   accessToken?: string;
@@ -9,6 +12,11 @@ interface RenderVisualizationSearchParams {
   fullHeight?: string;
   identifier?: string;
   pdfMode?: string;
+  /**
+   * Front's active locale; absent outside the app (public frames), which use Accept-Language.
+   * An array when `?locale=` is repeated.
+   */
+  locale?: string | string[];
 }
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
@@ -29,12 +37,22 @@ export default function RenderVisualization({
     fullHeight,
     identifier,
     pdfMode,
+    locale: localeParam,
   } = searchParams;
 
   const isEditable = editable === "true";
   const isStagedEdits = stagedEdits === "true";
   const isFullHeight = fullHeight === "true";
   const isPdfMode = pdfMode === "true";
+  // Resolved here rather than in the browser, so that server and client render the same language,
+  // and only that language's catalog is sent to the browser.
+  const catalog = getVizCatalog(
+    resolveVizLocale({
+      // A repeated `?locale=` uses its first value.
+      localeParam: Array.isArray(localeParam) ? localeParam[0] : localeParam,
+      acceptLanguage: headers().get("accept-language"),
+    })
+  );
 
   // Use SSR approach for access tokens (publicly accessible).
   // Workspace members can access live files through the authenticated RPC bridge.
@@ -46,6 +64,7 @@ export default function RenderVisualization({
         identifier={identifier!}
         isFullHeight={isFullHeight}
         isPdfMode={isPdfMode}
+        catalog={catalog}
       />
     );
   }
@@ -59,6 +78,7 @@ export default function RenderVisualization({
         isEditable={isEditable}
         stagedEdits={isStagedEdits}
         isFullHeight={isFullHeight}
+        catalog={catalog}
       />
     );
   }

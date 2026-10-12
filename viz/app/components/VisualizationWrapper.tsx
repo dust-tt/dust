@@ -1,5 +1,6 @@
 "use client";
 
+import { Trans, useLingui } from "@lingui/react/macro";
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { TailwindDiagnostics } from "@viz/app/components/TailwindDiagnostics";
@@ -392,6 +393,7 @@ export function VisualizationWrapper({
   // Frames v2: parent toggles Preview|Edit via SET_EDIT_MODE without remounting the iframe.
   const [editModeActive, setEditModeActive] = useState(false);
 
+  const { t } = useLingui();
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
   const {
@@ -584,14 +586,13 @@ export function VisualizationWrapper({
           {
             type: "EXPORT_ERROR",
             identifier,
-            errorMessage:
-              "Failed to export as SVG. This can happen when the content references external images.",
+            errorMessage: t`Failed to export as SVG. This can happen when the content references external images.`,
           },
           "*"
         );
       }
     }
-  }, [ref, downloadFile, identifier]);
+  }, [ref, downloadFile, identifier, t]);
 
   const handleDisplayCode = useCallback(async () => {
     await displayCode();
@@ -685,24 +686,24 @@ export function VisualizationWrapper({
         <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
           <button
             onClick={() => handleScreenshotDownload()}
-            title="Download screenshot"
+            title={t`Download screenshot`}
             className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
-            title="Download SVG"
+            title={t`Download SVG`}
             className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
             Svg
           </button>
           <button
-            title="Show code"
+            title={t`Show code`}
             onClick={handleDisplayCode}
             className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-background"
           >
-            Code
+            <Trans>Code</Trans>
           </button>
         </div>
       )}
