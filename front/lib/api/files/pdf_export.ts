@@ -2,7 +2,6 @@ import config from "@app/lib/api/config";
 import { canAccessFrame } from "@app/lib/api/files/frame_access";
 import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
-import { getFrameExportLocale } from "@app/lib/api/viz/frame_locale";
 import type { Authenticator } from "@app/lib/auth";
 import {
   isDustCompanyPlan,
@@ -95,7 +94,6 @@ export async function exportInteractiveContentFileAsPdf(
     accessToken,
     identifier: `viz-${fileId}`,
     pdfMode: "true",
-    locale: await getFrameExportLocale(auth),
   });
   const targetUrl = `${config.getVizPublicUrl()}/content?${params.toString()}`;
 
