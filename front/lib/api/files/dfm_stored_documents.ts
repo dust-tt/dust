@@ -1,8 +1,10 @@
-import type { LiveSourceError } from "@app/lib/api/collab/live_source";
+import type { LiveSessionWriteError } from "@app/lib/api/collab/live_session_write";
 import {
-  fetchLiveSource,
-  pushLiveSource,
-} from "@app/lib/api/collab/live_source";
+  isLiveSessionWriteError,
+  writeThroughLiveSession,
+} from "@app/lib/api/collab/live_session_write";
+import type { LiveSourceError } from "@app/lib/api/collab/live_source";
+import { fetchLiveSource } from "@app/lib/api/collab/live_source";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
@@ -13,6 +15,7 @@ import type { LiveAgent } from "@app/types/collab";
 import { contentTypeFromFileName } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MAX_WRITE_ATTEMPTS = 3;
 
@@ -51,6 +54,23 @@ function liveSourceError({
     code === "refused" ? "refused" : "storage_failed",
     message
   );
+}
+
+function liveSessionWriteError({
+  code,
+  message,
+}: LiveSessionWriteError): DfmStoredDocumentError {
+  switch (code) {
+    case "read_only":
+    case "refused":
+      return new DfmStoredDocumentError("refused", message);
+    case "conflict":
+      return new DfmStoredDocumentError("conflict", message);
+    case "unavailable":
+      return new DfmStoredDocumentError("storage_failed", message);
+    default:
+      return assertNever(code);
+  }
 }
 
 function resolveDocumentPath(
@@ -179,52 +199,6 @@ async function applyChange<T, E extends Error>(
   return new Ok({ serialized: serialized.value, value: changed.value.value });
 }
 
-/** The change written through the live session, or `null` when it must start over. */
-async function writeLiveDocumentChange<T, E extends Error>(
-  auth: Authenticator,
-  dustFs: DustFileSystem,
-  {
-    filePath,
-    source,
-    agent,
-  }: { filePath: string; source: string; agent?: LiveAgent },
-  change: DocumentChange<T, E>
-): Promise<Result<{ value: T } | null, DfmStoredDocumentError | E>> {
-  const found = await checkDocumentFound(dustFs, filePath);
-  if (found.isErr()) {
-    return found;
-  }
-  const writable = dustFs.checkWriteAccess(filePath);
-  if (writable.isErr()) {
-    return new Err(fileSystemError(writable.error));
-  }
-  const document = parseDocument(source);
-  if (document.isErr()) {
-    return document;
-  }
-  const changed = await applyChange(change, {
-    text: source,
-    document: document.value,
-    filePath,
-  });
-  if (changed.isErr()) {
-    return changed;
-  }
-
-  const pushed = await pushLiveSource(auth, {
-    canonicalPath: filePath,
-    base: source,
-    source: changed.value.serialized,
-    agent,
-  });
-  if (pushed.isErr()) {
-    return new Err(liveSourceError(pushed.error));
-  }
-  return new Ok(
-    pushed.value === "written" ? { value: changed.value.value } : null
-  );
-}
-
 /**
  * @cc [owner:tdraier,label:product] dfm-stored-document-live-read
  * While a live session holds the document, reading MUST return the session's source in place of
@@ -271,15 +245,9 @@ export async function readCurrentDocumentSource(
  * `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write.
  *
  * While a live session holds the document, the file MUST NOT be read or written: after the name
- * check of `readStoredDocument`, the file MUST exist and `dustFs` be able to write it, then
- * `change` MUST receive the session's source, parsed, and its result MUST be written through the
- * session, conditional on that source; the session refuses a storage without revisions itself
- * (`collab-live-source-write`), with `agent` passed on so its editors show the agent's edit. A
- * session that changed, closed or was busy meanwhile counts as a conflict.
- *
- * Known gap until the per-file lock of LIVE_SESSION.md (build step 8): a session opening between
- * the check for one and the file write loads the file before the write, so the session misses the
- * write and its checkpoints conflict with it.
+ * check of `readStoredDocument`, the change MUST go through `writeThroughLiveSession` with `agent`
+ * (`live-session-write`), and the file MUST exist before `change` receives the session's source,
+ * parsed; the session refuses a storage without revisions itself (`collab-live-source-write`).
  */
 export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
@@ -294,27 +262,41 @@ export async function writeDocumentChange<T, E extends Error>(
   }
 
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    // TODO(co-edition): a session opening between this check and the file write below loads the
-    // file before the write, and its checkpoints then conflict with it. Both should run under the
-    // per-file lock of LIVE_SESSION.md.
-    const live = await fetchLiveSource(auth, filePath.value, agent);
+    const live = await writeThroughLiveSession(auth, dustFs, {
+      filePath: filePath.value,
+      agent,
+      change: async (source) => {
+        const found = await checkDocumentFound(dustFs, filePath.value);
+        if (found.isErr()) {
+          return found;
+        }
+        const document = parseDocument(source);
+        if (document.isErr()) {
+          return document;
+        }
+        const changed = await applyChange(change, {
+          text: source,
+          document: document.value,
+          filePath: filePath.value,
+        });
+        if (changed.isErr()) {
+          return changed;
+        }
+        return new Ok({
+          source: changed.value.serialized,
+          value: changed.value.value,
+        });
+      },
+    });
     if (live.isErr()) {
-      return new Err(liveSourceError(live.error));
-    }
-    if (live.value.open) {
-      const written = await writeLiveDocumentChange(
-        auth,
-        dustFs,
-        { filePath: filePath.value, source: live.value.source, agent },
-        change
+      return new Err(
+        isLiveSessionWriteError(live.error)
+          ? liveSessionWriteError(live.error)
+          : live.error
       );
-      if (written.isErr()) {
-        return written;
-      }
-      if (written.value !== null) {
-        return new Ok(written.value.value);
-      }
-      continue;
+    }
+    if (live.value.kind === "written") {
+      return new Ok(live.value.value);
     }
 
     const read = await readStoredDocument(dustFs, scopedPath);
