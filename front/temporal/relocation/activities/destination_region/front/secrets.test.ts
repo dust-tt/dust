@@ -2,7 +2,10 @@ import config from "@app/lib/api/config";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
-import { reencryptSecretsInDestinationRegion } from "@app/temporal/relocation/activities/destination_region/front/secrets";
+import {
+  deleteStagedSecretsInDestinationRegion,
+  reencryptSecretsInDestinationRegion,
+} from "@app/temporal/relocation/activities/destination_region/front/secrets";
 import { readSecretsFromSourceRegion } from "@app/temporal/relocation/activities/source_region/front/secrets";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
@@ -160,6 +163,8 @@ describe("relocation secrets re-encryption", () => {
         useCase: "developer_secret",
       })
     ).toBe("pod-var-value");
+
+    await deleteStagedSecretsInDestinationRegion({ dataPath: dataPath! });
     expect(stagedObjects.size).toBe(0);
   });
 
@@ -230,6 +235,25 @@ describe("relocation secrets re-encryption", () => {
     await dustAppSecret.reload();
     expect(dustAppSecret.hash).toBe(sourceEncryptedHash);
     expect(stagedObjects.has(dataPath!)).toBe(true);
+
+    await deleteStagedSecretsInDestinationRegion({ dataPath: dataPath! });
+    expect(stagedObjects.has(dataPath!)).toBe(false);
+  });
+
+  it("stages retries under the same object path", async () => {
+    const { workspace } = await seedSecrets();
+
+    const first = await readSecretsFromSourceRegion({
+      ...CELLS,
+      workspaceId: workspace.sId,
+    });
+    const second = await readSecretsFromSourceRegion({
+      ...CELLS,
+      workspaceId: workspace.sId,
+    });
+
+    expect(second).toBe(first);
+    expect(stagedObjects.size).toBe(1);
   });
 
   it("can be re-run after a successful re-encryption", async () => {

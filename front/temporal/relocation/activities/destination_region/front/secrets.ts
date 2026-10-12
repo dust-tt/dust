@@ -28,6 +28,12 @@ import { QueryTypes } from "sequelize";
  * If any staged secret's row is missing from the destination workspace, the activity MUST fail
  * without updating any row and leave the staged object intact. Re-running it MUST be safe.
  */
+/**
+ * @cc [owner:avervaet,label:security] staged-secrets-always-cleaned-up
+ * The staged secrets object MUST be deleted once the workflow is done with it, whether
+ * re-encryption succeeded or failed for good, so transport-encrypted secrets never linger in
+ * the relocation bucket.
+ */
 export async function reencryptSecretsInDestinationRegion({
   dataPath,
   destCell,
@@ -111,6 +117,12 @@ export async function reencryptSecretsInDestinationRegion({
     { secretCount: blob.secrets.length },
     "[Secrets] Secrets re-encrypted successfully."
   );
+}
 
+export async function deleteStagedSecretsInDestinationRegion({
+  dataPath,
+}: {
+  dataPath: string;
+}) {
   await deleteFromRelocationStorage(dataPath);
 }

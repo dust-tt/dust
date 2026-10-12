@@ -165,12 +165,18 @@ export async function workspaceRelocateFrontWorkflow({
       workspaceId,
     });
   if (secretsDataPath) {
-    await destinationCellActivities.reencryptSecretsInDestinationRegion({
-      dataPath: secretsDataPath,
-      destCell,
-      sourceCell,
-      workspaceId,
-    });
+    try {
+      await destinationCellActivities.reencryptSecretsInDestinationRegion({
+        dataPath: secretsDataPath,
+        destCell,
+        sourceCell,
+        workspaceId,
+      });
+    } finally {
+      await destinationCellActivities.deleteStagedSecretsInDestinationRegion({
+        dataPath: secretsDataPath,
+      });
+    }
   }
 
   // 4) Relocate the associated files from the file storage to the destination cell.

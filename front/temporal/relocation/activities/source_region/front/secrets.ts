@@ -146,11 +146,14 @@ export async function readSecretsFromSourceRegion({
     });
   }
 
+  // A fixed name keeps retries overwriting the same object instead of leaving earlier uploads
+  // behind in the bucket.
   const blob: SecretsRelocationBlob = { secrets };
   const dataPath = await writeToRelocationStorage(blob, {
     workspaceId,
     type: "front",
     operation: "read_secrets",
+    fileName: "secrets",
   });
 
   localLogger.info(
