@@ -52,25 +52,25 @@ export function getQueueForUserMessageOrigin(
     case "cli":
     case "cli_programmatic":
     case "email":
-    case "excel":
-    case "extension":
-    case "gsheet":
     case "make":
     case "n8n":
-    case "powerpoint":
-    case "raycast":
     case "zapier":
-    case "zendesk":
       return "programmatic";
     case "agent_sidekick":
     case "analytics_panel":
     case "document_comment":
+    case "extension":
     case "onboarding_conversation":
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "slack":
     case "slack_workflow":
     case "teams":
+    case "raycast":
+    case "zendesk":
+    case "excel":
+    case "gsheet":
+    case "powerpoint":
     case "web":
       return "interactive";
     case "triggered":
