@@ -12,12 +12,6 @@ import type {
 import type { SpaceKind } from "@app/types/space";
 import type { UserType } from "@app/types/user";
 
-export type GetSkillsResponseBody = {
-  skills: (SkillWithoutInstructionsAndToolsType & {
-    isFavorite?: boolean;
-  })[];
-};
-
 export type GetSkillsReinforcementSettingsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
     editors: UserType[] | null;
