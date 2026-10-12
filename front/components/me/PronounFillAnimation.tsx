@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 const LETTER_STAGGER_MS = 20;
-const LETTER_MS = 450;
+const LETTER_MS = 300;
 
 // The Dust logo's saturated colors: letters show up in them, one after the other, then blend into
 // the text color.
