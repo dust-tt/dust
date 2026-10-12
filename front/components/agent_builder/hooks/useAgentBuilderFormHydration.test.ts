@@ -98,6 +98,17 @@ vi.mock("@app/lib/swr/assistants", () => ({
   }),
 }));
 
+vi.mock("@app/hooks/useAgentSuggestedPrompts", () => ({
+  useAgentSuggestedPrompts: () => ({
+    suggestedPrompts: [],
+    mutateSuggestedPrompts: vi.fn(),
+  }),
+}));
+
+vi.mock("@app/lib/auth/AuthContext", () => ({
+  useFeatureFlags: () => ({ hasFeature: () => true }),
+}));
+
 vi.mock("@app/lib/swr/permissions", () => ({
   useWorkspacePermissions: () => ({ hasPermission: () => true }),
 }));

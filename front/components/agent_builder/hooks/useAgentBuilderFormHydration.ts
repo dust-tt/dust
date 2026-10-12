@@ -11,6 +11,8 @@ import type {
   AdditionalConfigurationInBuilderType,
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
+import { useAgentSuggestedPrompts } from "@app/hooks/useAgentSuggestedPrompts";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/agent_editors";
@@ -153,6 +155,7 @@ type HydratedAgentFormValues = Pick<
   | "triggersToCreate"
   | "triggersToUpdate"
   | "triggersToDelete"
+  | "suggestedPrompts"
 > &
   Pick<AgentSettings, "slackProvider" | "editors" | "slackChannels">;
 
@@ -214,6 +217,18 @@ export function useAgentBuilderFormHydration({
     disabled: !agentConfiguration || isDuplicate,
   });
 
+  const { hasFeature } = useFeatureFlags();
+  const {
+    suggestedPrompts,
+    isSuggestedPromptsError,
+    isSuggestedPromptsLoading,
+    mutateSuggestedPrompts,
+  } = useAgentSuggestedPrompts({
+    workspaceId: owner.sId,
+    agentId: sourceAgentId,
+    disabled: !hasFeature("discovery_homepage"),
+  });
+
   const { slackProvider, slackChannels } = useSlackSettings(agentConfiguration);
 
   const processedActions = useMemo(
@@ -258,6 +273,7 @@ export function useAgentBuilderFormHydration({
       triggersToCreate: isDuplicate ? userOwnedTriggers : [],
       triggersToUpdate: isDuplicate ? [] : userOwnedTriggers,
       triggersToDelete: [],
+      suggestedPrompts: suggestedPrompts.map((prompt) => ({ prompt })),
       slackProvider,
       editors: resolveEditors(editors, agentConfiguration, isDuplicate, user),
       slackChannels,
@@ -273,6 +289,7 @@ export function useAgentBuilderFormHydration({
     agentConfiguration,
     editors,
     slackChannels,
+    suggestedPrompts,
   ]);
 
   const refresh = useCallback(async () => {
@@ -281,8 +298,15 @@ export function useAgentBuilderFormHydration({
       mutateActions(),
       mutateSkills(),
       mutateEditors(),
+      mutateSuggestedPrompts(),
     ]);
-  }, [mutateTriggers, mutateActions, mutateSkills, mutateEditors]);
+  }, [
+    mutateTriggers,
+    mutateActions,
+    mutateSkills,
+    mutateEditors,
+    mutateSuggestedPrompts,
+  ]);
 
   return {
     hydratedValues,
@@ -293,7 +317,11 @@ export function useAgentBuilderFormHydration({
     isSkillsLoading,
     isTriggersLoading,
     hasLoadError:
-      isActionsError || isSkillsError || !!isTriggersError || isEditorsError,
+      isActionsError ||
+      isSkillsError ||
+      !!isTriggersError ||
+      isEditorsError ||
+      isSuggestedPromptsError,
     isValidating:
       isActionsValidating ||
       isSkillsValidating ||
@@ -303,7 +331,8 @@ export function useAgentBuilderFormHydration({
       isActionsLoading ||
       isSkillsLoading ||
       isTriggersLoading ||
-      isEditorsLoading,
+      isEditorsLoading ||
+      isSuggestedPromptsLoading,
     refresh,
     mutateEditors,
   };

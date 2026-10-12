@@ -346,6 +346,14 @@ msgid "Instructions are required"
 msgstr "Instructions are required"
 
 #: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "Suggested prompts are limited to {MAX_AGENT_SUGGESTED_PROMPT_LENGTH} characters"
+msgstr "Suggested prompts are limited to {MAX_AGENT_SUGGESTED_PROMPT_LENGTH} characters"
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
+msgid "An agent can have at most {MAX_AGENT_SUGGESTED_PROMPTS} suggested prompts"
+msgstr "An agent can have at most {MAX_AGENT_SUGGESTED_PROMPTS} suggested prompts"
+
+#: front/components/agent_builder/agentBuilderFormSchema.ts
 msgid "Max steps per run must be at least 1"
 msgstr "Max steps per run must be at least 1"
 

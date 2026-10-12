@@ -168,8 +168,12 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setPendingInputText, setSelectedSingleAgent, setPendingSkill } =
-    useContext(InputBarContext);
+  const {
+    selectedSingleAgent,
+    setPendingInputText,
+    setSelectedSingleAgent,
+    setPendingSkill,
+  } = useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -431,8 +435,12 @@ export function ConversationContainerVirtuoso({
 
       {isDiscoveryHomepage && (
         <HomepageUseCases
+          agentId={selectedSingleAgent?.id ?? null}
           enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
           onPick={handleUseCasePick}
+          onPickPrompt={(prompt) =>
+            setPendingInputText("", { replace: true, typedSuffix: prompt })
+          }
           workspaceId={owner.sId}
         />
       )}
