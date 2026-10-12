@@ -3,13 +3,22 @@ import { DfsFileSystem } from "@app/lib/dfs/file_system";
 import { formatDfsUri } from "@app/lib/dfs/uri";
 import { InMemoryDfs } from "@app/tests/utils/dfs/InMemoryDfs";
 import type { DfsObjectId } from "@app/types/dfs";
+import { DfsError } from "@app/types/dfs";
+import { Readable } from "stream";
 import { describe, expect, it } from "vitest";
 
+const WRITE_CHUNK_BYTES = 4;
 const READ_CHUNK_BYTES = 3;
 
 function setup(options: ConstructorParameters<typeof InMemoryDfs>[0] = {}) {
-  const dfs = new InMemoryDfs(options);
-  const fs = new DfsFileSystem(dfs, { readChunkBytes: READ_CHUNK_BYTES });
+  const dfs = new InMemoryDfs({
+    maxWriteBytesPerApply: WRITE_CHUNK_BYTES,
+    ...options,
+  });
+  const fs = new DfsFileSystem(dfs, {
+    readChunkBytes: READ_CHUNK_BYTES,
+    writeChunkBytes: WRITE_CHUNK_BYTES,
+  });
   // A URI anchored at the tenant root, e.g. `at("a/b")` is `dfs://<root-id>/a/b`.
   const at = (path: string) =>
     formatDfsUri(dfs.rootId, { path: path ? path.split("/") : [] });
@@ -125,5 +134,155 @@ describe("DfsFileSystem", () => {
     const res = await fs.readBuffer(at("dir"));
 
     expect(res.isErr() && res.error.code).toBe("is_directory");
+  });
+
+  it("creates missing parent directories one level at a time", async () => {
+    const { dfs, fs, at } = setup();
+
+    const dir = await fs.mkdir(at("a/b/c"));
+    expect(dir.isOk() && dir.value.attr.kind).toBe("directory");
+    const file = await fs.write(at("a/x/z.txt"), "z");
+    expect(file.isOk()).toBe(true);
+
+    expect(dfs.paths()).toEqual(["/a", "/a/b", "/a/b/c", "/a/x", "/a/x/z.txt"]);
+    expect(dfs.applyCalls.map((ops) => ops.map((op) => op.type))).toEqual([
+      ["create"],
+      ["create"],
+      ["create"],
+      // `a` already exists: only `x` and the file are created.
+      ["create"],
+      ["create", "write"],
+    ]);
+    const existing = await fs.mkdir(at("a/b/c"));
+    expect(existing.isErr() && existing.error.code).toBe("already_exists");
+    const noName = await fs.mkdir(at(""));
+    expect(noName.isErr() && noName.error.code).toBe("invalid_input");
+    const throughFile = await fs.write(at("a/x/z.txt/w.txt"), "w");
+    expect(throughFile.isErr() && throughFile.error.code).toBe("not_directory");
+  });
+
+  it("reuses a parent directory created concurrently", async () => {
+    const { dfs, fs, at } = setup({
+      // Another writer creates `a` right before our own `create` (apply #0).
+      beforeApply: (callIndex) => {
+        if (callIndex === 0) {
+          dfs.createDirectory(dfs.rootId, "a");
+        }
+      },
+    });
+
+    const res = await fs.write(at("a/f.txt"), "f");
+
+    expect(res.isOk()).toBe(true);
+    expect(dfs.paths()).toEqual(["/a", "/a/f.txt"]);
+  });
+
+  it("writes and overwrites a small file in place, keeping its id", async () => {
+    const { dfs, fs, at } = setup();
+
+    const created = await fs.write(at("notes.txt"), "abc", {
+      mimeType: "text/plain",
+    });
+    const overwritten = await fs.write(at("notes.txt"), "xy");
+
+    expect(created.isOk() && overwritten.isOk()).toBe(true);
+    if (created.isOk() && overwritten.isOk()) {
+      expect(overwritten.value.uri).toBe(created.value.uri);
+      expect(overwritten.value.attr.size).toBe(2);
+    }
+    expect(await readText(fs, at("notes.txt"))).toBe("xy");
+    expect(dfs.applyCalls).toHaveLength(2);
+    const stat = await fs.stat(at("notes.txt"), { includeMetadata: true });
+    expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+      "text/plain"
+    );
+  });
+
+  it("writes large streamed content chunk by chunk, keeping the file's id", async () => {
+    const { dfs, fs, at } = setup();
+    const original = await fs.write(at("data.bin"), "old");
+
+    const res = await fs.write(
+      at("data.bin"),
+      Readable.from([
+        Buffer.from("01234"),
+        Buffer.from("5"),
+        Buffer.from("6789"),
+      ]),
+      { mimeType: "application/x-test" }
+    );
+
+    expect(res.isOk()).toBe(true);
+    if (res.isOk() && original.isOk()) {
+      expect(res.value.uri).toBe(original.value.uri);
+      expect(res.value.attr.size).toBe(10);
+    }
+    expect(await readText(fs, at("data.bin"))).toBe("0123456789");
+    // The MIME type on its own, then the truncation with the first chunk, then one apply per chunk.
+    const writeCalls = dfs.applyCalls.slice(1);
+    expect(writeCalls.map((ops) => ops.map((op) => op.type))).toEqual([
+      ["update"],
+      ["update", "write"],
+      ["write"],
+      ["write"],
+    ]);
+    const stat = await fs.stat(at("data.bin"), { includeMetadata: true });
+    expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+      "application/x-test"
+    );
+  });
+
+  it("writes large content through a URI without a path", async () => {
+    const { fs, at } = setup();
+    const original = await fs.write(at("data.bin"), "old");
+    expect(original.isOk()).toBe(true);
+    if (!original.isOk()) {
+      return;
+    }
+
+    const res = await fs.write(original.value.uri, "0123456789");
+
+    expect(res.isOk() && res.value.uri).toBe(original.value.uri);
+    expect(await readText(fs, at("data.bin"))).toBe("0123456789");
+  });
+
+  it("leaves the content written so far when a chunk fails", async () => {
+    const { fs, at } = setup({
+      // Apply #0 is the initial small write, #1 the first chunk, #2 the second one.
+      failApply: (callIndex) =>
+        callIndex === 2 ? new DfsError("unavailable") : null,
+    });
+    await fs.write(at("data.bin"), "old");
+
+    const res = await fs.write(at("data.bin"), "0123456789");
+
+    expect(res.isErr() && res.error.code).toBe("unavailable");
+    expect(await readText(fs, at("data.bin"))).toBe("0123");
+  });
+
+  it("fails the write when the content stream fails", async () => {
+    const { dfs, fs, at } = setup();
+    const content = new Readable({ read() {} });
+    content.push(Buffer.from("0123456789"));
+    setImmediate(() => content.destroy(new Error("socket hang up")));
+
+    const res = await fs.write(at("data.bin"), content);
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+    // The two full chunks were written before the stream failed.
+    expect(dfs.paths()).toEqual(["/data.bin"]);
+    expect(await readText(fs, at("data.bin"))).toBe("01234567");
+  });
+
+  it("leaves an existing file untouched when its new MIME type is invalid", async () => {
+    const { fs, at } = setup();
+    await fs.write(at("notes.txt"), "abc", { mimeType: "text/plain" });
+
+    const res = await fs.write(at("notes.txt"), "xy", {
+      mimeType: "not a type",
+    });
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+    expect(await readText(fs, at("notes.txt"))).toBe("abc");
   });
 });

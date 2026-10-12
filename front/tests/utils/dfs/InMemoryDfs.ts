@@ -10,11 +10,15 @@ import type {
   DfsObjectId,
   DfsObjectKind,
   DfsObjectRef,
+  DfsOperation,
+  DfsOperationBatch,
+  DfsOperationResult,
   DfsReadData,
 } from "@app/types/dfs";
 import { DfsError } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface FakeNode {
   id: DfsObjectId;
@@ -36,6 +40,22 @@ class OperationError extends Error {
 
 const VIEW = { storeVersion: BigInt(1), authVersion: BigInt(1) };
 
+function checkName(name: string) {
+  if (Buffer.byteLength(name) > 255) {
+    throw new OperationError("name_too_long");
+  }
+}
+
+// A simplified version of the API's "valid and at most 255 bytes" MIME type rule.
+function checkMimeType(mimeType: string | undefined) {
+  if (
+    mimeType !== undefined &&
+    (!/^[^/\s]+\/[^/\s]+$/.test(mimeType) || Buffer.byteLength(mimeType) > 255)
+  ) {
+    throw new OperationError("invalid_input");
+  }
+}
+
 /**
  * In-memory stand-in for a dfs server session, implementing the calls `DfsFileSystem` uses.
  * It follows the API's filesystem rules (names, kinds, non-empty directories, version bumps,
@@ -43,11 +63,18 @@ const VIEW = { storeVersion: BigInt(1), authVersion: BigInt(1) };
  */
 export class InMemoryDfs implements DfsFileSystemClient {
   readonly rootId: DfsObjectId;
+  readonly applyCalls: DfsOperation[][] = [];
   readonly readCalls: { objectId: DfsObjectId; offset: number }[] = [];
   private readonly nodes = new Map<DfsObjectId, FakeNode>();
 
   constructor(
     private readonly options: {
+      // Fails any `apply` whose written bytes exceed this, like the 1 MiB request budget.
+      maxWriteBytesPerApply?: number;
+      // Returning an error fails that `apply` call as a whole (e.g. a transport failure).
+      failApply?: (callIndex: number) => DfsError | null;
+      // Runs before each `apply` is served, e.g. to modify the tree concurrently.
+      beforeApply?: (callIndex: number) => void;
       // Runs before each `read` is served, e.g. to modify the file concurrently.
       beforeRead?: (callIndex: number) => void;
     } = {}
@@ -274,5 +301,159 @@ export class InMemoryDfs implements DfsFileSystemClient {
         this.attrResult(() => this.attr(this.node(objectId), includeMetadata))
       ),
     });
+  }
+
+  async apply({
+    operations,
+  }: {
+    operations: DfsOperation[];
+  }): Promise<Result<DfsOperationBatch, DfsError>> {
+    const callIndex = this.applyCalls.push(operations) - 1;
+    this.options.beforeApply?.(callIndex);
+    const failure = this.options.failApply?.(callIndex);
+    if (failure) {
+      return new Err(failure);
+    }
+    const writtenBytes = operations.reduce(
+      (sum, op) => sum + (op.type === "write" ? op.data.length : 0),
+      0
+    );
+    const { maxWriteBytesPerApply } = this.options;
+    if (
+      maxWriteBytesPerApply !== undefined &&
+      writtenBytes > maxWriteBytesPerApply
+    ) {
+      return new Err(new DfsError("capacity", "Apply request too large."));
+    }
+
+    const outcomes = operations.map((op) => this.run(() => this.applyOne(op)));
+    const results: DfsOperationResult[] = outcomes.map((outcome) => {
+      if (outcome.isErr()) {
+        return { status: "error", errorCode: outcome.error.code };
+      }
+      // Attributes reflect the final state of the whole batch.
+      const node = outcome.value ? this.nodes.get(outcome.value) : undefined;
+      return {
+        status: "ok",
+        mutation: { object: node ? this.attr(node) : undefined, related: [] },
+      };
+    });
+    return new Ok({ results });
+  }
+
+  /** Applies one operation and returns the primary object's id, or null for a removal. */
+  private applyOne(op: DfsOperation): DfsObjectId | null {
+    switch (op.type) {
+      case "create": {
+        checkName(op.name);
+        checkMimeType(op.mimeType);
+        const parent = this.directory(op.parentId);
+        if (parent.children.has(op.name) || this.nodes.has(op.objectId)) {
+          throw new OperationError("already_exists");
+        }
+        this.nodes.set(
+          op.objectId,
+          this.newNode(op.objectId, parent.id, op.name, op.kind, op.mimeType)
+        );
+        parent.children.set(op.name, op.objectId);
+        this.touch(parent, { content: true });
+        return op.objectId;
+      }
+      case "update": {
+        // Validate the whole patch before applying any of it.
+        checkMimeType(op.mimeType);
+        const node = this.node(op.objectId);
+        if (op.size !== undefined && node.kind === "directory") {
+          throw new OperationError("is_directory");
+        }
+        if (op.mimeType !== undefined) {
+          node.mimeType = op.mimeType;
+        }
+        if (op.size !== undefined) {
+          const resized = Buffer.alloc(op.size);
+          node.data.copy(resized, 0, 0, op.size);
+          node.data = resized;
+        }
+        this.touch(node, { content: op.size !== undefined });
+        return node.id;
+      }
+      case "write": {
+        const node = this.node(op.objectId);
+        if (node.kind === "directory") {
+          throw new OperationError("is_directory");
+        }
+        const offset = op.append ? node.data.length : op.offset;
+        const end = offset + op.data.length;
+        const data = Buffer.alloc(Math.max(node.data.length, end));
+        node.data.copy(data);
+        Buffer.from(op.data).copy(data, offset);
+        node.data = data;
+        this.touch(node, { content: op.data.length > 0 });
+        return node.id;
+      }
+      case "rename": {
+        checkName(op.name);
+        const node = this.node(op.objectId);
+        const destination = this.directory(op.parentId);
+        for (
+          let ancestor: FakeNode | undefined = destination;
+          ancestor;
+          ancestor = ancestor.parentId
+            ? this.nodes.get(ancestor.parentId)
+            : undefined
+        ) {
+          if (ancestor.id === node.id) {
+            throw new OperationError("invalid_input");
+          }
+        }
+        const replacedId = destination.children.get(op.name);
+        if (replacedId && replacedId !== node.id) {
+          const replaced = this.node(replacedId);
+          if (!op.replace) {
+            throw new OperationError("already_exists");
+          }
+          if (replaced.kind !== node.kind) {
+            throw new OperationError(
+              replaced.kind === "directory" ? "is_directory" : "not_directory"
+            );
+          }
+          if (replaced.children.size > 0) {
+            throw new OperationError("not_empty");
+          }
+          this.nodes.delete(replacedId);
+        }
+        if (node.parentId) {
+          const source = this.node(node.parentId);
+          source.children.delete(node.name);
+          this.touch(source, { content: true });
+        }
+        destination.children.set(op.name, node.id);
+        this.touch(destination, { content: true });
+        node.parentId = destination.id;
+        node.name = op.name;
+        this.touch(node, { content: false });
+        return node.id;
+      }
+      case "remove": {
+        const node = this.node(op.objectId);
+        if (node.kind !== op.kind) {
+          throw new OperationError(
+            node.kind === "directory" ? "is_directory" : "not_directory"
+          );
+        }
+        if (node.children.size > 0) {
+          throw new OperationError("not_empty");
+        }
+        if (node.parentId) {
+          const parent = this.node(node.parentId);
+          parent.children.delete(node.name);
+          this.touch(parent, { content: true });
+        }
+        this.nodes.delete(node.id);
+        return null;
+      }
+      default:
+        assertNever(op);
+    }
   }
 }

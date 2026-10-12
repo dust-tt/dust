@@ -1,16 +1,26 @@
 import type { DfsClient } from "@app/lib/dfs/client";
+import { newDfsObjectId } from "@app/lib/dfs/object_id";
 import { formatDfsUri, parseDfsUri } from "@app/lib/dfs/uri";
-import type { DfsAttr, DfsEntry, DfsObjectId } from "@app/types/dfs";
+import type {
+  DfsAttr,
+  DfsEntry,
+  DfsMutation,
+  DfsObjectId,
+  DfsOperation,
+} from "@app/types/dfs";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Readable } from "stream";
 
 /** The `DfsClient` calls the file system relies on. */
 export type DfsFileSystemClient = Pick<
   DfsClient,
-  "list" | "lookup" | "read" | "stat"
+  "apply" | "list" | "lookup" | "read" | "stat"
 >;
+
+export type DfsWriteContent = Buffer | Uint8Array | string | Readable;
 
 /** An object's attributes with its canonical URI (`dfs://<name>--<id>`, no path). */
 export interface DfsResolvedObject {
@@ -20,6 +30,8 @@ export interface DfsResolvedObject {
 
 // Server limit for one `Read`.
 const MAX_READ_CHUNK_BYTES = 1024 * 1024;
+// `Apply` requests are limited to 1 MiB encoded; keep headroom for the operation envelope.
+const MAX_WRITE_CHUNK_BYTES = 1024 * 1024 - 64 * 1024;
 const LIST_PAGE_LIMIT = 4096;
 
 function isDirectory(attr: DfsAttr): boolean {
@@ -37,6 +49,79 @@ function resolved(attr: DfsAttr): Result<DfsResolvedObject, DfsError> {
   return id.isErr()
     ? id
     : new Ok({ uri: formatDfsUri(id.value, { name: attr.name }), attr });
+}
+
+function toBuffer(piece: unknown): Result<Buffer, DfsError> {
+  if (Buffer.isBuffer(piece)) {
+    return new Ok(piece);
+  }
+  if (piece instanceof Uint8Array || typeof piece === "string") {
+    return new Ok(Buffer.from(piece));
+  }
+  return new Err(
+    new DfsError("invalid_input", "Unsupported stream chunk type.")
+  );
+}
+
+/**
+ * Splits `content` into chunks of exactly `chunkBytes`, except the last one. Empty content yields
+ * nothing.
+ */
+/**
+ * @cc [owner:fabiencelier,label:error-handling] content-stream-errors
+ * Exception to `no-catching-own-errors`: failures while consuming `content` MUST be thrown as a
+ * `DfsError`: a `DfsError` raised by the source stream unchanged, any other `Error` raised by the
+ * source stream as `invalid_input`. Only `DfsFileSystem.writeContent` MAY catch
+ * them, with an `instanceof DfsError` guard that rethrows anything else.
+ */
+async function* contentChunks(
+  content: DfsWriteContent,
+  chunkBytes: number
+): AsyncGenerator<Buffer> {
+  const source: AsyncIterable<unknown> | Iterable<unknown> =
+    content instanceof Readable ? content : [content];
+  const iterator =
+    Symbol.asyncIterator in source
+      ? source[Symbol.asyncIterator]()
+      : source[Symbol.iterator]();
+  let pending: Buffer[] = [];
+  let pendingBytes = 0;
+  while (true) {
+    let next: IteratorResult<unknown>;
+    try {
+      next = await iterator.next();
+    } catch (err) {
+      // The caller's stream failed: an external error, except for our own read streams.
+      throw err instanceof DfsError
+        ? err
+        : new DfsError(
+            "invalid_input",
+            `Content stream failed: ${normalizeError(err).message}`
+          );
+    }
+    if (next.done) {
+      break;
+    }
+    const piece = toBuffer(next.value);
+    if (piece.isErr()) {
+      throw piece.error;
+    }
+    pending.push(piece.value);
+    pendingBytes += piece.value.length;
+    if (pendingBytes >= chunkBytes) {
+      // Concatenate once per chunk boundary rather than once per piece.
+      let buffered = Buffer.concat(pending);
+      while (buffered.length >= chunkBytes) {
+        yield buffered.subarray(0, chunkBytes);
+        buffered = buffered.subarray(chunkBytes);
+      }
+      pending = [buffered];
+      pendingBytes = buffered.length;
+    }
+  }
+  if (pendingBytes > 0) {
+    yield Buffer.concat(pending);
+  }
 }
 
 /**
@@ -57,6 +142,21 @@ function resolved(attr: DfsAttr): Result<DfsResolvedObject, DfsError> {
  * name from the returned attributes, without a path. It MUST NOT echo the URI the caller passed.
  */
 /**
+ * @cc [owner:fabiencelier,label:product] create-missing-parents
+ * `mkdir` and `write` MUST create the missing intermediate directories of a URI's path one level at
+ * a time. A directory that already exists, including one created concurrently (`already_exists`),
+ * MUST be reused; a file there MUST fail with `not_directory`. `mkdir` MUST fail with
+ * `already_exists` when an object exists at the URI.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product] chunked-writes
+ * `write` MUST keep the ObjectId of an existing file. Caller-supplied metadata (MIME type) MUST be
+ * applied in its own `Apply` before the content changes, so that an invalid value changes nothing.
+ * Content MUST be written with one `Apply` per chunk, in order, the first one also creating or
+ * truncating the file: content fitting in one chunk is replaced atomically, larger content is not,
+ * and a failure leaves the content written so far in place.
+ */
+/**
  * @cc [owner:fabiencelier,label:product] consistent-reads
  * Multi-chunk reads MUST check every chunk's returned `contentVersion` against the one observed when
  * resolving the file, so that a concurrent modification fails the read with `content_changed`
@@ -64,14 +164,19 @@ function resolved(attr: DfsAttr): Result<DfsResolvedObject, DfsError> {
  */
 export class DfsFileSystem {
   private readonly readChunkBytes: number;
+  private readonly writeChunkBytes: number;
 
   constructor(
     private readonly client: DfsFileSystemClient,
-    options: { readChunkBytes?: number } = {}
+    options: { readChunkBytes?: number; writeChunkBytes?: number } = {}
   ) {
     this.readChunkBytes = Math.min(
       options.readChunkBytes ?? MAX_READ_CHUNK_BYTES,
       MAX_READ_CHUNK_BYTES
+    );
+    this.writeChunkBytes = Math.min(
+      options.writeChunkBytes ?? MAX_WRITE_CHUNK_BYTES,
+      MAX_WRITE_CHUNK_BYTES
     );
   }
 
@@ -179,6 +284,97 @@ export class DfsFileSystem {
       : new Err(new DfsError("not_found", `Not found: ${uri}.`));
   }
 
+  /**
+   * The ID of the directory at `segments` under `anchorId`, creating the missing ones one level at a
+   * time (see `create-missing-parents`).
+   */
+  private async ensureDirectories(
+    anchorId: DfsObjectId,
+    segments: string[]
+  ): Promise<Result<DfsObjectId, DfsError>> {
+    let parentId = anchorId;
+    for (const name of segments) {
+      const child = await this.ensureDirectory(parentId, name);
+      if (child.isErr()) {
+        return child;
+      }
+      parentId = child.value;
+    }
+    return new Ok(parentId);
+  }
+
+  private async ensureDirectory(
+    parentId: DfsObjectId,
+    name: string
+  ): Promise<Result<DfsObjectId, DfsError>> {
+    let existing = await this.lookupChild(parentId, name);
+    if (existing.isErr()) {
+      return existing;
+    }
+    if (!existing.value) {
+      const objectId = newDfsObjectId();
+      const created = await this.applyAll([
+        { type: "create", parentId, name, objectId, kind: "directory" },
+      ]);
+      if (created.isOk()) {
+        return new Ok(objectId);
+      }
+      if (created.error.code !== "already_exists") {
+        return created;
+      }
+      // Created concurrently: reuse it.
+      existing = await this.lookupChild(parentId, name);
+      if (existing.isErr()) {
+        return existing;
+      }
+      if (!existing.value) {
+        return new Err(new DfsError("already_exists"));
+      }
+    }
+    if (!isDirectory(existing.value)) {
+      return new Err(new DfsError("not_directory"));
+    }
+    return realIdOf(existing.value);
+  }
+
+  // Mutations.
+
+  /** Applies `operations` in one request, failing with the first per-operation error. */
+  private async applyAll(
+    operations: DfsOperation[]
+  ): Promise<Result<DfsMutation[], DfsError>> {
+    const res = await this.client.apply({ operations });
+    if (res.isErr()) {
+      return res;
+    }
+    const mutations: DfsMutation[] = [];
+    for (const [i, result] of res.value.results.entries()) {
+      if (result.status === "error") {
+        return new Err(
+          new DfsError(
+            result.errorCode,
+            `Operation ${i} (${operations[i].type}) failed.`
+          )
+        );
+      }
+      mutations.push(result.mutation);
+    }
+    return new Ok(mutations);
+  }
+
+  private async applyForObject(
+    operations: DfsOperation[]
+  ): Promise<Result<DfsResolvedObject, DfsError>> {
+    const mutations = await this.applyAll(operations);
+    if (mutations.isErr()) {
+      return mutations;
+    }
+    const object = mutations.value.at(-1)?.object;
+    return object
+      ? resolved(object)
+      : new Err(new DfsError("invalid_response", "Missing object attributes."));
+  }
+
   // Public API.
 
   /** The object at `uri`, or null when nothing exists there. */
@@ -246,6 +442,35 @@ export class DfsFileSystem {
       after = page.value.nextAfter;
     } while (after !== undefined);
     return new Ok(entries);
+  }
+
+  /** Creates the directory at `uri` and its missing parents, see `create-missing-parents`. */
+  async mkdir(uri: string): Promise<Result<DfsResolvedObject, DfsError>> {
+    const parsed = parseDfsUri(uri);
+    if (parsed.isErr()) {
+      return parsed;
+    }
+    const { anchorId, segments } = parsed.value;
+    const name = segments.at(-1);
+    if (name === undefined) {
+      return new Err(new DfsError("invalid_input", "A name is required."));
+    }
+    const parentId = await this.ensureDirectories(
+      anchorId,
+      segments.slice(0, -1)
+    );
+    if (parentId.isErr()) {
+      return parentId;
+    }
+    return this.applyForObject([
+      {
+        type: "create",
+        parentId: parentId.value,
+        name,
+        objectId: newDfsObjectId(),
+        kind: "directory",
+      },
+    ]);
   }
 
   /** Reads the chunk at `offset`, failing with `content_changed` if `contentVersion` moved. */
@@ -350,5 +575,140 @@ export class DfsFileSystem {
       }
       offset += chunk.value.length;
     }
+  }
+
+  /**
+   * Creates or replaces the file at `uri`, see `chunked-writes` and `create-missing-parents`. A
+   * `Readable` content is consumed, or destroyed when the write fails before consuming it.
+   */
+  async write(
+    uri: string,
+    content: DfsWriteContent,
+    options: { mimeType?: string } = {}
+  ): Promise<Result<DfsResolvedObject, DfsError>> {
+    const written = await this.writeContent(uri, content, options);
+    if (content instanceof Readable && !content.readableEnded) {
+      content.destroy();
+    }
+    return written;
+  }
+
+  private async writeContent(
+    uri: string,
+    content: DfsWriteContent,
+    { mimeType }: { mimeType?: string }
+  ): Promise<Result<DfsResolvedObject, DfsError>> {
+    const parsed = parseDfsUri(uri);
+    if (parsed.isErr()) {
+      return parsed;
+    }
+    const { anchorId, segments } = parsed.value;
+    const name = segments.at(-1);
+    let target: { parentId: DfsObjectId; name: string } | null = null;
+    let existing: DfsAttr | null;
+    if (name === undefined) {
+      const anchor = await this.statById(anchorId, false);
+      if (anchor.isErr()) {
+        return anchor;
+      }
+      if (!anchor.value) {
+        return new Err(new DfsError("not_found", `Not found: ${uri}.`));
+      }
+      existing = anchor.value;
+    } else {
+      const parentId = await this.ensureDirectories(
+        anchorId,
+        segments.slice(0, -1)
+      );
+      if (parentId.isErr()) {
+        return parentId;
+      }
+      const child = await this.lookupChild(parentId.value, name);
+      if (child.isErr()) {
+        return child;
+      }
+      target = { parentId: parentId.value, name };
+      existing = child.value;
+    }
+    if (existing && isDirectory(existing)) {
+      return new Err(new DfsError("is_directory"));
+    }
+
+    try {
+      return await this.writeChunks({
+        target,
+        existing,
+        chunks: contentChunks(content, this.writeChunkBytes),
+        mimeType,
+      });
+    } catch (err) {
+      // See `content-stream-errors`.
+      if (err instanceof DfsError) {
+        return new Err(err);
+      }
+      throw err;
+    }
+  }
+
+  /** Writes `chunks` to `existing`, or to a new file at `target`, see `chunked-writes`. */
+  private async writeChunks({
+    target,
+    existing,
+    chunks,
+    mimeType,
+  }: {
+    target: { parentId: DfsObjectId; name: string } | null;
+    existing: DfsAttr | null;
+    chunks: AsyncGenerator<Buffer>;
+    mimeType: string | undefined;
+  }): Promise<Result<DfsResolvedObject, DfsError>> {
+    let objectId: DfsObjectId;
+    let operations: DfsOperation[];
+    if (existing) {
+      const existingId = realIdOf(existing);
+      if (existingId.isErr()) {
+        return existingId;
+      }
+      objectId = existingId.value;
+      if (mimeType !== undefined) {
+        const updated = await this.applyAll([
+          { type: "update", objectId, mimeType },
+        ]);
+        if (updated.isErr()) {
+          return updated;
+        }
+      }
+      operations = [{ type: "update", objectId, size: 0 }];
+    } else if (target) {
+      // A failed create fails the following write with `not_found`.
+      objectId = newDfsObjectId();
+      operations = [
+        {
+          type: "create",
+          parentId: target.parentId,
+          name: target.name,
+          objectId,
+          kind: "file",
+          mimeType,
+        },
+      ];
+    } else {
+      return new Err(new DfsError("invalid_input", "Nothing to write to."));
+    }
+
+    let written: DfsResolvedObject | null = null;
+    let offset = 0;
+    for await (const data of chunks) {
+      operations.push({ type: "write", objectId, offset, data, append: false });
+      offset += data.length;
+      const applied = await this.applyForObject(operations);
+      if (applied.isErr()) {
+        return applied;
+      }
+      written = applied.value;
+      operations = [];
+    }
+    // Empty content: only create or truncate the file.
+    return written ? new Ok(written) : this.applyForObject(operations);
   }
 }
