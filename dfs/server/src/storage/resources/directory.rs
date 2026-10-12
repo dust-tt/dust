@@ -121,7 +121,7 @@ impl DirectoryResource {
         }
 
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
-        let object = ObjectResource::new(
+        let child = ObjectResource::new(
             &self.object.tenant_id,
             object_id,
             Some(self.object.object_id),
@@ -131,13 +131,13 @@ impl DirectoryResource {
             xattrs,
             now_ms,
         );
-        object.create(tx, &[]).await?;
-        tx.set(&entry_key, &pack(&object.object_id.as_bytes().as_slice()));
+        child.create(tx, &[]).await?;
+        tx.set(&entry_key, &pack(&child.object_id.as_bytes().as_slice()));
         self.object
             .record_content_change(now_ms)
             .map_err(Error::Object)?;
         self.object.save_attributes(tx);
-        Ok(object)
+        Ok(child)
     }
 
     pub async fn lookup_child(
