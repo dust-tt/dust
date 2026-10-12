@@ -124,6 +124,7 @@ export const ConversationContainer = ({
             )}
           >
             <Button
+              tooltip="Open sidebar"
               variant="ghost"
               icon={Menu01}
               onClick={() => setSidebarOpen(true)}
