@@ -20,7 +20,7 @@ import type { JSONContent } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import { Plugin } from "@tiptap/pm/state";
-import { ReplaceStep } from "@tiptap/pm/transform";
+import { AddMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { Decoration } from "@tiptap/pm/view";
 import {
   afterAll,
@@ -250,6 +250,32 @@ describe("useDocumentComments", () => {
         `Hello :comment-start{id=${comment.id}}brave  \nnew:comment-end{id=${comment.id}} world.`
       );
     }
+  });
+
+  it("marks a new comment over formatted text in one step", async () => {
+    const { result } = await renderCommentedEditor(
+      "Hello *brave* **new** world.\n"
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+    const steps: Transaction["steps"][number][] = [];
+    editor.on("transaction", ({ transaction }) => {
+      steps.push(...transaction.steps);
+    });
+
+    act(() => {
+      select(editor, "brave new world");
+      result.current.comments.startDraft();
+    });
+    await act(async () => {
+      expect((await result.current.comments.submitDraft("Hi")).isOk()).toBe(
+        true
+      );
+    });
+
+    expect(steps.filter((step) => step instanceof AddMarkStep)).toHaveLength(1);
   });
 
   it("refuses a draft whose text can no longer take a comment", async () => {

@@ -488,10 +488,13 @@ const changedRanges = (transactions: readonly Transaction[]) => {
     const { maps } = narrowedMapping(transaction);
     for (const [index, step] of transaction.steps.entries()) {
       const map = maps[index];
-      ranges = ranges.map(({ from, to }) => ({
-        from: map.map(from, -1),
-        to: map.map(to, 1),
-      }));
+      // Mark steps move nothing; remapping for them would make many-step marks quadratic.
+      if (map !== StepMap.empty) {
+        ranges = ranges.map(({ from, to }) => ({
+          from: map.map(from, -1),
+          to: map.map(to, 1),
+        }));
+      }
       if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
         ranges.push({ from: step.from, to: step.to });
       }
@@ -981,15 +984,24 @@ export const DocumentComments = Extension.create({
           const mark = state.schema.marks[COMMENT_MARK_NAME].create({
             id: comment.id,
           });
+          // One step per run of adjacent text, as a range mark would make.
+          const runs: CommentRange[] = [];
           state.doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
-            if (canCarryCommentMark(node, parent)) {
-              tr.addMark(
-                Math.max(pos, draft.from),
-                Math.min(pos + node.nodeSize, draft.to),
-                mark
-              );
+            if (!canCarryCommentMark(node, parent)) {
+              return;
+            }
+            const from = Math.max(pos, draft.from);
+            const to = Math.min(pos + node.nodeSize, draft.to);
+            const last = runs.at(-1);
+            if (last?.to === from) {
+              last.to = to;
+            } else {
+              runs.push({ from, to });
             }
           });
+          for (const { from, to } of runs) {
+            tr.addMark(from, to, mark);
+          }
           // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
             ...getDocumentComments(state.doc).filter(
