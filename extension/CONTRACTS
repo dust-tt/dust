@@ -7,7 +7,7 @@ Every platform webpack config MUST run `linguiMacroLoader` (`config/webpack_ling
 Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`) MUST render its whole tree inside an
 `I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, then inside a
 `SparkleLocaleProvider`, so that shared `front` and sparkle components render in the locale that
-`UserLocaleSync` activates, and in `DEFAULT_LOCALE` before it activates one.
+`LocaleSync` activates, and in `DEFAULT_LOCALE` before it activates one.
 
 @cc [owner:sfriquet,label:architecture] extension-strings-in-own-catalog
 User-visible strings of extension sources MUST be translated with Lingui macros and extracted into

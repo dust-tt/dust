@@ -1,5 +1,7 @@
+import { LocaleSync } from "@app/components/app/LocaleSync";
 import { UserLocaleSync } from "@app/components/app/UserLocaleSync";
 import { AuthContext, type AuthContextValue } from "@app/lib/auth/AuthContext";
+import { resolveBrowserLocale } from "@app/lib/i18n/browser_locale";
 import { emptyWorkspacePermissions } from "@app/types/group_permissions";
 import type { SubscriptionType } from "@app/types/plan";
 import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
@@ -58,6 +60,12 @@ interface ExtensionAuthProviderProps {
  * @cc [owner:sfriquet,label:product] locale-synced-once-authenticated
  * Whenever it provides the front `AuthContext`, the provider MUST mount `UserLocaleSync` under it,
  * so that the extension switches to the user's locale like the web app.
+ */
+/**
+ * @cc [owner:sfriquet,label:product] browser-locale-until-authenticated
+ * Whenever it does not provide the front `AuthContext`, the provider MUST mount `LocaleSync` with
+ * the locale `resolveBrowserLocale` resolves from `navigator.languages` and an `undefined` format
+ * locale, so that screens shown before login follow the browser's language.
  */
 export function ExtensionAuthProvider({
   children,
@@ -134,6 +142,11 @@ export function ExtensionAuthProvider({
     };
   }, [user, workspace, subscription, featureFlags, locale]);
 
+  const browserLocale = useMemo(
+    () => resolveBrowserLocale(navigator.languages),
+    []
+  );
+
   return (
     <ExtensionAuthContext.Provider value={extensionAuthValue}>
       {frontAuthValue ? (
@@ -142,7 +155,10 @@ export function ExtensionAuthProvider({
           {children}
         </AuthContext.Provider>
       ) : (
-        children
+        <>
+          <LocaleSync locale={browserLocale} formatLocale={undefined} />
+          {children}
+        </>
       )}
     </ExtensionAuthContext.Provider>
   );

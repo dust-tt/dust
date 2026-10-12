@@ -78,8 +78,9 @@ the factory directly with `(descriptor) => i18n._(descriptor)`.
 Lingui components need an `I18nProvider`. Every front-spa entry mounts one at its root (e.g.
 `front-spa/src/app/App.tsx`); the `poke`, `share`, `oauth` and `email` entries render in `en-US`.
 The browser extension (`extension/`) mounts one in each platform app and compiles the macros in its
-webpack build (`extension/config/webpack_lingui.ts`). Once the user is logged in, it follows their
-locale like the web app (`UserLocaleSync`, mounted by `ExtensionAuthProvider`).
+webpack build (`extension/config/webpack_lingui.ts`). `ExtensionAuthProvider` renders it in the
+browser's language until the user is logged in, then in their locale like the web app
+(`UserLocaleSync`).
 
 The extension's own strings follow the front rules but go to a single catalog,
 `extension/locales/{locale}/messages.po`. Where `t` of `useLingui()` is not available, translate with
