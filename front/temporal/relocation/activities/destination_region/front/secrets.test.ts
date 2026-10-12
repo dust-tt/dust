@@ -1,37 +1,54 @@
 import config from "@app/lib/api/config";
-import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
-import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import {
   deleteStagedSecretsInDestinationRegion,
   reencryptSecretsInDestinationRegion,
 } from "@app/temporal/relocation/activities/destination_region/front/secrets";
 import { readSecretsFromSourceRegion } from "@app/temporal/relocation/activities/source_region/front/secrets";
+import type * as RelocationStorage from "@app/temporal/relocation/lib/file_storage/relocation";
+import { DustAppSecretFactory } from "@app/tests/utils/DustAppSecretFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { InternalMCPServerCredentialFactory } from "@app/tests/utils/InternalMCPServerCredentialFactory";
 import { SandboxEnvVarFactory } from "@app/tests/utils/SandboxEnvVarFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
+import { randomUUID } from "crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { stagedObjects } = vi.hoisted(() => ({
   stagedObjects: new Map<string, string>(),
 }));
 
-vi.mock("@app/temporal/relocation/lib/file_storage/relocation", () => ({
-  writeToRelocationStorage: vi.fn(
-    async (data: unknown, { operation }: { operation: string }) => {
-      const path = `relocation/${operation}`;
-      stagedObjects.set(path, JSON.stringify(data));
-      return path;
-    }
-  ),
-  readFromRelocationStorage: vi.fn(async (path: string) =>
-    JSON.parse(stagedObjects.get(path) ?? "null")
-  ),
-  deleteFromRelocationStorage: vi.fn(async (path: string) => {
-    stagedObjects.delete(path);
-  }),
-}));
+// Keeps the real path construction and swaps the bucket for an in-memory map.
+vi.mock(
+  "@app/temporal/relocation/lib/file_storage/relocation",
+  async (importOriginal) => {
+    const actual = await importOriginal<typeof RelocationStorage>();
+    return {
+      ...actual,
+      writeToRelocationStorage: vi.fn(
+        async (
+          data: unknown,
+          options: Parameters<typeof actual.writeToRelocationStorage>[1]
+        ) => {
+          // Unnamed objects get a unique path, as timestamps do in production.
+          const path = actual.getRelocationStoragePath({
+            ...options,
+            fileName: options.fileName ?? randomUUID(),
+          });
+          stagedObjects.set(path, JSON.stringify(data));
+          return path;
+        }
+      ),
+      readFromRelocationStorage: vi.fn(async (path: string) =>
+        JSON.parse(stagedObjects.get(path) ?? "null")
+      ),
+      deleteFromRelocationStorage: vi.fn(async (path: string) => {
+        stagedObjects.delete(path);
+      }),
+    };
+  }
+);
 
 const CELLS = { destCell: "cell-00001", sourceCell: "cell-00000" } as const;
 
@@ -52,20 +69,18 @@ async function seedSecrets() {
   const pod = await SpaceFactory.project(workspace, user.id);
 
   setCellSecrets("source");
-  const mcpCredential = await InternalMCPServerCredentialModel.create({
-    workspaceId: workspace.id,
-    internalMCPServerId: "ims_test",
-    sharedSecret: null,
-    customHeaders: null,
-    encryptedKey: encrypt({
-      text: "front-api-key",
-      key: workspace.sId,
-      useCase: "mcp_server_credentials",
-    }),
-  });
-  const dustAppSecret = await DustAppSecretModel.create({
-    workspaceId: workspace.id,
-    userId: user.id,
+  const mcpCredential = await InternalMCPServerCredentialFactory.create(
+    authenticator,
+    {
+      internalMCPServerId: "ims_test",
+      encryptedKey: encrypt({
+        text: "front-api-key",
+        key: workspace.sId,
+        useCase: "mcp_server_credentials",
+      }),
+    }
+  );
+  const dustAppSecret = await DustAppSecretFactory.create(authenticator, {
     name: "APP_SECRET",
     hash: encrypt({
       text: "app-secret-value",
@@ -205,9 +220,14 @@ describe("relocation secrets re-encryption", () => {
     const { workspace, dustAppSecret } = await seedSecrets();
     await dustAppSecret.update({ hash: "deadbeef" });
 
-    await expect(
-      readSecretsFromSourceRegion({ ...CELLS, workspaceId: workspace.sId })
-    ).rejects.toThrow(`dust_app_secrets row ${dustAppSecret.id}`);
+    const result = readSecretsFromSourceRegion({
+      ...CELLS,
+      workspaceId: workspace.sId,
+    });
+    await expect(result).rejects.toThrow(
+      `dust_app_secrets row ${dustAppSecret.id}`
+    );
+    await expect(result).rejects.not.toThrow("deadbeef");
     expect(stagedObjects.size).toBe(0);
   });
 
@@ -263,7 +283,6 @@ describe("relocation secrets re-encryption", () => {
       ...CELLS,
       workspaceId: workspace.sId,
     });
-    const staged = stagedObjects.get(dataPath!)!;
 
     setCellSecrets("destination");
     const params = {
@@ -272,8 +291,6 @@ describe("relocation secrets re-encryption", () => {
       workspaceId: workspace.sId,
     };
     await reencryptSecretsInDestinationRegion(params);
-    // A retried activity reads the same staged object again.
-    stagedObjects.set(dataPath!, staged);
     await reencryptSecretsInDestinationRegion(params);
 
     await dustAppSecret.reload();

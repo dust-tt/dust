@@ -26,11 +26,12 @@ import { QueryTypes } from "sequelize";
 /**
  * @cc [owner:avervaet,label:error-handling] reencryption-is-all-or-nothing
  * If any staged secret's row is missing from the destination workspace, the activity MUST fail
- * without updating any row and leave the staged object intact. Re-running it MUST be safe.
+ * without updating any row.
  */
 /**
- * @cc [owner:avervaet,label:security] staged-secrets-always-cleaned-up
- * The staged object MUST be deleted once re-encryption ends, whether it succeeded or failed.
+ * @cc [owner:avervaet,label:error-handling] staged-object-kept-for-retries
+ * The activity MUST NOT delete the staged object, so a retried attempt reads the same input.
+ * Re-running it after a success MUST leave every secret decryptable.
  */
 export async function reencryptSecretsInDestinationRegion({
   dataPath,
@@ -67,14 +68,13 @@ export async function reencryptSecretsInDestinationRegion({
       useCase: RELOCATED_SECRET_COLUMNS[tableName].useCase,
     });
 
-    const tableSecrets = secretsByTable.get(tableName) ?? {
-      ids: [],
-      values: [],
-    };
-    secretsByTable.set(tableName, {
-      ids: [...tableSecrets.ids, id],
-      values: [...tableSecrets.values, value],
-    });
+    let tableSecrets = secretsByTable.get(tableName);
+    if (!tableSecrets) {
+      tableSecrets = { ids: [], values: [] };
+      secretsByTable.set(tableName, tableSecrets);
+    }
+    tableSecrets.ids.push(id);
+    tableSecrets.values.push(value);
   }
 
   // Check every row first so a missing one fails before anything is written.

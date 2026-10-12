@@ -109,6 +109,11 @@ const getFrontDestinationCellActivities = (cell: CellType) => {
   });
 };
 
+/**
+ * @cc [owner:avervaet,label:security] staged-secrets-always-cleaned-up
+ * Once secret re-encryption ends, successfully or after its last failed attempt, the staged
+ * secrets object MUST be deleted.
+ */
 export async function workspaceRelocateFrontWorkflow({
   sourceCell,
   destCell,
