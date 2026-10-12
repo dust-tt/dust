@@ -2,6 +2,7 @@ import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCom
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { MessageDescriptor } from "@lingui/core";
 import { Editor } from "@tiptap/core";
+import { MarkdownManager } from "@tiptap/markdown";
 import { afterEach, describe, expect, it } from "vitest";
 
 // A comment mark whose thread the editor does not hold, as in a live document.
@@ -60,5 +61,28 @@ describe("buildDocumentExtensions", () => {
 
     expect(undoRedo(false)).not.toBe(false);
     expect(undoRedo(true)).toBe(false);
+  });
+
+  it("gives each editor a marked instance of its own, even from the same extensions", () => {
+    const extensions = buildDocumentEditorExtensions(translate, {
+      resolveImageSource: () => null,
+    });
+    const first = new Editor({ extensions });
+    const second = new Editor({ extensions });
+
+    try {
+      const instances = [first, second].map(
+        (built) => built.markdown?.instance
+      );
+      const global = new MarkdownManager().instance;
+      expect(instances[0]).toBeDefined();
+      expect(instances[1]).toBeDefined();
+      expect(instances[0]).not.toBe(instances[1]);
+      expect(instances[0]).not.toBe(global);
+      expect(instances[1]).not.toBe(global);
+    } finally {
+      first.destroy();
+      second.destroy();
+    }
   });
 });
