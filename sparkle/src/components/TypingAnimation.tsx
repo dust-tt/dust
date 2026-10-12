@@ -47,25 +47,24 @@ export function TypingAnimation({
 
   useEffect(() => {
     const durationMs = durationMsRef.current;
+    // Keep ticking after the last character is revealed: one tick, or until it has fully faded in.
+    const completeCount =
+      characters.length +
+      (reduceMotion ? 1 : Math.ceil(FADE_IN_MS / durationMs));
     let count = initialCount;
-    let completeTimeout: ReturnType<typeof setTimeout> | undefined;
     const typingEffect = setInterval(() => {
-      if (count < characters.length) {
-        count += 1;
+      count += 1;
+      if (count <= characters.length) {
         setProgress({ text, count });
-      } else {
+      }
+      if (count >= completeCount) {
         clearInterval(typingEffect);
-        // Complete once the last character, revealed one tick ago, has fully faded in.
-        completeTimeout = setTimeout(
-          () => onCompleteRef.current?.(),
-          reduceMotion ? 0 : Math.max(0, FADE_IN_MS - durationMs)
-        );
+        onCompleteRef.current?.();
       }
     }, durationMs);
 
     return () => {
       clearInterval(typingEffect);
-      clearTimeout(completeTimeout);
     };
   }, [characters, initialCount, reduceMotion, text]);
 
