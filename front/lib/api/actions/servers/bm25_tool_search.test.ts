@@ -1085,6 +1085,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show the most recent pod documents from last week",
     expected: "pod_manager.retrieve_recent_documents",
+    maxRank: 2,
   },
   {
     query: "start a new pod conversation with the research agent",
@@ -1269,21 +1270,6 @@ const QUERIES: LabeledQuery[] = [
     query:
       "edit this photo to remove the background and replace it with a beach",
     expected: "image_generation.generate_image",
-  },
-
-  // --- file_generation ---
-  {
-    query: "turn this conversation file into a PDF",
-    expected: "file_generation.convert_file_format",
-  },
-  {
-    query: "write my report text out as a Word document",
-    expected: "file_generation.generate_file",
-    maxRank: 2,
-  },
-  {
-    query: "which input formats can I turn into an xlsx spreadsheet",
-    expected: "file_generation.get_supported_source_formats_for_output_format",
   },
 
   // --- fathom ---

@@ -982,21 +982,6 @@ function getDynamicToolDisplayLabels({
       }
       return null;
 
-    case "file_generation":
-      if (
-        (toolName === "generate_file" || toolName === "convert_file_format") &&
-        isString(inputs.file_name)
-      ) {
-        const name = truncateQuery(inputs.file_name);
-        const verb = toolName === "generate_file" ? "Generating" : "Converting";
-        const past = toolName === "generate_file" ? "Generate" : "Convert";
-        return {
-          running: `${verb} “${name}”`,
-          done: `${past} “${name}”`,
-        };
-      }
-      return null;
-
     case "run_agent":
       if (isString(inputs.description)) {
         const d = truncateQuery(inputs.description);
