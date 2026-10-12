@@ -7,9 +7,7 @@ import type {
   MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
-  DRIVE_ITEM_DELTA_SELECTS,
-  DRIVE_ITEM_EXPANDS_AND_SELECTS,
-  DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
+  DRIVE_ITEM_LEAN_SELECTS,
   LIST_ITEM_EXPANDS_AND_SELECTS,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
@@ -255,8 +253,7 @@ export async function getFilesAndFolders(
   logger: LoggerInterface,
   client: Client,
   parentInternalId: string,
-  nextLink?: string,
-  withLabels = false
+  nextLink?: string
 ): Promise<{ results: DriveItem[]; nextLink?: string }> {
   const { nodeType, itemAPIPath: parentResourcePath } =
     typeAndPathFromInternalId(parentInternalId);
@@ -267,13 +264,10 @@ export async function getFilesAndFolders(
     );
   }
 
-  const expandsAndSelects = withLabels
-    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
-    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
   const endpoint =
     nodeType === "drive"
-      ? `${parentResourcePath}/root/children?${expandsAndSelects}`
-      : `${parentResourcePath}/children?${expandsAndSelects}`;
+      ? `${parentResourcePath}/root/children?${DRIVE_ITEM_LEAN_SELECTS}`
+      : `${parentResourcePath}/children?${DRIVE_ITEM_LEAN_SELECTS}`;
 
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
@@ -327,8 +321,8 @@ export async function getDeltaResults({
   // download URL are re-hydrated per file by `syncOneFile` when actually needed.
   const deltaPath =
     (nodeType === "folder"
-      ? `${itemAPIPath}/delta?${DRIVE_ITEM_DELTA_SELECTS}`
-      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_DELTA_SELECTS}`) +
+      ? `${itemAPIPath}/delta?${DRIVE_ITEM_LEAN_SELECTS}`
+      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_LEAN_SELECTS}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink
