@@ -34,6 +34,19 @@ export const SERVICE_ALIASES = {
 
 export type ServiceAlias = keyof typeof SERVICE_ALIASES;
 
+// Services an alias also restarts, but only when they are already running. collab runs
+// front-api's code, but only co-edition work starts it.
+export const SERVICE_ALIAS_RUNNING_COMPANIONS = {
+  front: ["collab"],
+} as const satisfies Record<ServiceAlias, readonly ServiceName[]>;
+
+/**
+ * The services `value` also restarts when they are already running: none unless it is an alias.
+ */
+export function runningCompanions(value: string): readonly ServiceName[] {
+  return isServiceAlias(value) ? SERVICE_ALIAS_RUNNING_COMPANIONS[value] : [];
+}
+
 export function isServiceAlias(value: string | undefined): value is ServiceAlias {
   return value !== undefined && Object.hasOwn(SERVICE_ALIASES, value);
 }

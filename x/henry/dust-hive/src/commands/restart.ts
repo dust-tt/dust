@@ -1,11 +1,17 @@
 import * as p from "@clack/prompts";
 import { requireEnvironment } from "../lib/commands";
 import { logger } from "../lib/logger";
-import { stopService } from "../lib/process";
+import { isServiceRunning, stopService } from "../lib/process";
 import { restoreTerminal } from "../lib/prompt";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { ALL_SERVICES, resolveServices, SERVICE_ALIASES, type ServiceName } from "../lib/services";
+import {
+  ALL_SERVICES,
+  resolveServices,
+  runningCompanions,
+  SERVICE_ALIASES,
+  type ServiceName,
+} from "../lib/services";
 
 async function selectService(): Promise<ServiceName | null> {
   const result = await p.select({
@@ -43,7 +49,13 @@ export async function restartCommand(
       console.log(`Aliases: ${Object.keys(SERVICE_ALIASES).join(", ")}`);
       return Err(new CommandError(`Unknown service '${serviceArg}'`));
     }
-    services = resolved;
+    const companions: ServiceName[] = [];
+    for (const companion of runningCompanions(serviceArg)) {
+      if (await isServiceRunning(env.name, companion)) {
+        companions.push(companion);
+      }
+    }
+    services = [...resolved, ...companions];
   } else {
     // Interactive selection
     const selected = await selectService();

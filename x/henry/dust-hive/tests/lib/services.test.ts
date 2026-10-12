@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALL_SERVICES, type ServiceName } from "../../src/lib/services";
+import { ALL_SERVICES, runningCompanions, type ServiceName } from "../../src/lib/services";
 
 describe("services", () => {
   describe("ALL_SERVICES", () => {
@@ -101,6 +101,16 @@ describe("services", () => {
         const name: ServiceName = service;
         expect(typeof name).toBe("string");
       }
+    });
+  });
+
+  describe("runningCompanions", () => {
+    it("restarts collab with front when it runs", () => {
+      expect(runningCompanions("front")).toEqual(["collab"]);
+    });
+
+    it("has no companions for a single service", () => {
+      expect(runningCompanions("front-api")).toEqual([]);
     });
   });
 });
