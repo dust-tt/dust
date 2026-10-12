@@ -21,7 +21,7 @@ import { isString } from "@app/types/shared/utils/general";
 
 async function isSlackToolsAvailable(auth: Authenticator): Promise<boolean> {
   const servers = await InternalMCPServerInMemoryResource.listByWorkspace(auth);
-  return servers.some((server) => server.toMetadataJSON().name === "slack");
+  return servers.some((server) => server.toJSON().name === "slack");
 }
 
 async function listPrivateChannelsWithToken(

@@ -41,7 +41,7 @@ function enableSlackTools() {
     InternalMCPServerInMemoryResource,
     "listByWorkspace"
   ).mockResolvedValue([
-    { toMetadataJSON: () => ({ name: "slack" }) },
+    { toJSON: () => ({ name: "slack" }) },
   ] as unknown as Awaited<
     ReturnType<typeof InternalMCPServerInMemoryResource.listByWorkspace>
   >);

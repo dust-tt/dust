@@ -55,17 +55,17 @@ app.get(
 
     const availableServer: MCPServerType[] = [];
 
-    const availableInternalServers =
-      await InternalMCPServerInMemoryResource.loadCredentials(
-        auth,
-        internalInstalledServers.filter(
-          (srv) =>
-            !spaceServersId.includes(srv.id) &&
-            !globalServersId.includes(srv.id)
-        )
-      );
-    for (const srv of availableInternalServers) {
-      availableServer.push(srv.toJSON());
+    await InternalMCPServerInMemoryResource.loadCredentials(
+      auth,
+      internalInstalledServers
+    );
+    for (const srv of internalInstalledServers) {
+      if (
+        !spaceServersId.includes(srv.id) &&
+        !globalServersId.includes(srv.id)
+      ) {
+        availableServer.push(srv.toJSON());
+      }
     }
 
     for (const srv of remoteInstalledServers) {
