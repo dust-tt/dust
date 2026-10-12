@@ -544,11 +544,13 @@ export class MCPServerViewResource<
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       mode,
+      includeMetadata = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       mode?: TMode;
+      includeMetadata?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -630,7 +632,11 @@ export class MCPServerViewResource<
       }
     }
 
-    if (mode === "configuration" && filteredViews.length > 0) {
+    if (
+      mode === "configuration" &&
+      includeMetadata &&
+      filteredViews.length > 0
+    ) {
       await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
     for (const view of filteredViews) {
@@ -774,9 +780,11 @@ export class MCPServerViewResource<
     ids: ModelId[],
     {
       mode,
+      includeMetadata = true,
       transaction,
     }: {
       mode?: TMode;
+      includeMetadata?: boolean;
       transaction?: Transaction;
     } = {}
   ): Promise<MCPServerViewResource<TMode>[]> {
@@ -789,7 +797,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { mode, transaction }
+      { mode, includeMetadata, transaction }
     );
 
     return views ?? [];

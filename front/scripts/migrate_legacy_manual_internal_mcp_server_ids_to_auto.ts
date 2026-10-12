@@ -294,7 +294,8 @@ async function fetchViewsByInternalMCPServerId(
 
   return MCPServerViewResource.fetchByModelIds(
     auth,
-    viewRows.map((view) => view.id)
+    viewRows.map((view) => view.id),
+    { includeMetadata: false }
   );
 }
 
@@ -331,7 +332,9 @@ async function findLegacyViewsForTool(
     return [];
   }
 
-  return MCPServerViewResource.fetchByModelIds(auth, legacyViewIds);
+  return MCPServerViewResource.fetchByModelIds(auth, legacyViewIds, {
+    includeMetadata: false,
+  });
 }
 
 async function findCanonicalViewsByVaultId(

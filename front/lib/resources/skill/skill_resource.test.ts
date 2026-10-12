@@ -2839,7 +2839,14 @@ describe("SkillResource", () => {
         instructionsHtml: "<p>Large instructions</p>",
         mcpServerViews: [expect.objectContaining({ sId: serverView.sId })],
       });
-      expect(full?.mcpServerViews[0].toJSON().toolsMetadata).toEqual([
+      expect(full?.mcpServerViews[0].toJSON().toolsMetadata).toEqual([]);
+
+      const withMetadata = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { withToolMetadata: true }
+      );
+      expect(withMetadata?.mcpServerViews[0].toJSON().toolsMetadata).toEqual([
         toolMetadata,
       ]);
 

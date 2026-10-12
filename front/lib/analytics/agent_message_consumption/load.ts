@@ -307,7 +307,8 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   );
   const skills = await SkillResource.listByAgentMessageId(
     auth,
-    agentMessage.agentMessageModelId
+    agentMessage.agentMessageModelId,
+    { withToolMetadata: true }
   );
   const ancestorAgentIds = (
     await listAgenticAncestors(auth, messageConversation, {
