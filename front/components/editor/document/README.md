@@ -107,9 +107,9 @@ read-only preview. The file preview resolves with `resolveMarkdownImageSource`, 
 Markdown surface: a file path in a conversation or a pod, such as
 `![Revenue](pod-<id>/charts/revenue.png)`, the path agents read from `files.list`, or a file id,
 `![Chart](fil_<id>)`, to the file API, which checks the reader's access; it resolves nothing else,
-so an external URL never loads by itself. Only the read-only previews show an external `http(s)`
-image as a button that loads it, without a referrer, once the reader clicks it. Users insert one
-with the Image entry of the `/` menu; agents and raw edits write them.
+so an external URL never loads: like any image it does not resolve, it shows as its alt text, or
+its destination without one, in the editor and in the read-only previews. Users insert one with
+the Image entry of the `/` menu; agents and raw edits write them.
 
 ## Inserting embeds
 

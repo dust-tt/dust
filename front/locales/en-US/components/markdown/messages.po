@@ -25,10 +25,6 @@ msgstr "Dismiss"
 msgid "Loading..."
 msgstr "Loading..."
 
-#: front/components/markdown/MarkdownImage.tsx
-msgid "Load this image from {host}"
-msgstr "Load this image from {host}"
-
 #: front/components/markdown/TaskDirectiveBlock.tsx
 msgctxt "task status"
 msgid "Open"

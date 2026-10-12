@@ -25,10 +25,6 @@ msgstr "Ignorer"
 msgid "Loading..."
 msgstr "Chargement…"
 
-#: front/components/markdown/MarkdownImage.tsx
-msgid "Load this image from {host}"
-msgstr "Charger cette image depuis {host}"
-
 #: front/components/markdown/TaskDirectiveBlock.tsx
 msgctxt "task status"
 msgid "Open"
