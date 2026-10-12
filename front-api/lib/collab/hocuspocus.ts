@@ -432,7 +432,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
           lastTransactionOrigin: undefined,
         });
         if (result.value.added) {
-          // Not awaited, as a save of the file does not wait for its mentions to be posted.
+          // Not awaited: the command is answered without waiting for its mentions to be posted.
           void dispatchLiveCommentMentions(
             file,
             document,
