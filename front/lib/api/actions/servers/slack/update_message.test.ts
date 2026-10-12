@@ -1,5 +1,8 @@
 import { executeUpdateMessage } from "@app/lib/api/actions/servers/slack/helpers";
+import slackifyMarkdown from "slackify-markdown";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const TABLE = "| Team | Score |\n| --- | --- |\n| A | 1 |";
 
 const { mockChatUpdate } = vi.hoisted(() => ({
   mockChatUpdate: vi.fn(),
@@ -20,7 +23,7 @@ describe("executeUpdateMessage", () => {
     vi.clearAllMocks();
   });
 
-  it("updates a Slack message with a markdown block preserving raw Markdown", async () => {
+  it("updates a message without a table as plain mrkdwn text and clears blocks", async () => {
     mockChatUpdate.mockResolvedValue({
       ok: true,
       channel: "C123",
@@ -39,19 +42,42 @@ describe("executeUpdateMessage", () => {
     expect(updateArgs).toMatchObject({
       channel: "C123",
       ts: "1710000000.000100",
+      text: slackifyMarkdown("**Edited** message"),
+      blocks: [],
     });
-    // The message goes into a `markdown` block with the raw GFM preserved (not
-    // slackified), so tables/rich Markdown render. `text` is the plain fallback.
-    expect(updateArgs.blocks).toEqual([
-      { type: "markdown", text: "**Edited** message" },
-    ]);
-    expect(updateArgs.text).toBe("**Edited** message");
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value[0].text).toBe(
         "Message 1710000000.000100 updated in C123"
       );
     }
+  });
+
+  it("updates a message with a table as a markdown block preserving raw Markdown", async () => {
+    mockChatUpdate.mockResolvedValue({ ok: true });
+
+    await executeUpdateMessage({
+      accessToken: "xoxb-test-token",
+      channel: "C123",
+      timestamp: "1710000000.000100",
+      message: TABLE,
+    });
+
+    const updateArgs = mockChatUpdate.mock.calls[0][0];
+    expect(updateArgs.blocks).toEqual([{ type: "markdown", text: TABLE }]);
+    expect(updateArgs.text).toBe(TABLE);
+  });
+
+  it("does not truncate long messages without a table", async () => {
+    mockChatUpdate.mockResolvedValue({ ok: true });
+
+    await executeUpdateMessage({
+      accessToken: "xoxb-test-token",
+      channel: "C123",
+      timestamp: "1710000000.000100",
+      message: "a".repeat(13_000),
+    });
+    expect(mockChatUpdate.mock.calls[0][0].text).toHaveLength(13_001);
   });
 
   it("returns an error when Slack rejects the update", async () => {

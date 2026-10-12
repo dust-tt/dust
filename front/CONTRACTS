@@ -530,7 +530,8 @@ is allowed under the `models-behind-resources` contract; do not add test-only Re
 @cc [owner:avervaet,label:testing] shared-test-fixtures
 When a shared factory cannot express a fixture, tests MUST extend that factory or add a new one
 under `tests/utils/` rather than define a local setup helper. Plain typed objects that do not touch
-the database MUST be built with an in-memory factory, not a hand-written or partial literal.
+the database MUST be built with their in-memory factory when one exists, not a hand-written or
+partial literal; small literals for types without a factory are fine.
 
 @cc [owner:avervaet,label:testing] no-duplicate-global-mocks
 Modules already mocked by the global test setup MUST NOT be mocked again in an individual test
