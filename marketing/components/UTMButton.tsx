@@ -1,12 +1,12 @@
 "use client";
 
-import type { RegularButtonProps } from "@dust-tt/sparkle";
+import type { DistributiveOmit, RegularButtonProps } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
 
-interface UTMButtonProps extends Omit<RegularButtonProps, "href"> {
+type UTMButtonProps = DistributiveOmit<RegularButtonProps, "href"> & {
   href?: string;
-}
+};
 
 const UTMButton = ({ href, ...props }: UTMButtonProps) => {
   const finalHref =
