@@ -81,7 +81,7 @@ impl Provider for GongConnectionProvider {
         ConnectionProvider::Gong
     }
 
-    // Gong OAuth requests must use the static-IP proxy (default trait impl) — Gong requires
+    // Gong OAuth requests must use the static-IP proxy (default trait impl): Gong requires
     // partner apps to whitelist their egress IPs. Connectors and front Gong API calls use it too.
 
     async fn finalize(
