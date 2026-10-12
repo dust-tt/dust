@@ -57,6 +57,15 @@ const type = (text: string) =>
     editor?.commands.insertContent(text);
   });
 
+const press = (menu: ReturnType<typeof renderMenu>, key: string) =>
+  act(() =>
+    menu.result.current.onKeyDown({
+      key,
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    })
+  );
+
 describe("useDocumentBlockMenu embeds", () => {
   it("offers Frame and Image only with embeddable files", () => {
     const withoutFiles = names(renderMenu().result.current.items);
@@ -132,19 +141,45 @@ describe("useDocumentBlockMenu embeds", () => {
     );
   });
 
-  it("leaves the search without inserting on Escape", () => {
+  it("returns from the search to the / menu on Escape, then closes it", () => {
     const menu = renderMenu(embeddable());
     pick(menu, "Image");
-    act(() =>
-      menu.result.current.onKeyDown({
-        key: "Escape",
-        preventDefault: () => {},
-        stopPropagation: () => {},
-      })
-    );
+    type("q3");
+    press(menu, "Escape");
 
     expect(menu.result.current.isPicking).toBe(false);
+    expect(menu.result.current.show).toBe(true);
+    expect(names(menu.result.current.items)).toEqual(
+      expect.arrayContaining(["Frame", "Image"])
+    );
+    expect(editor?.getMarkdown()).toBe("Intro\n\n/");
+
+    press(menu, "Escape");
+
     expect(menu.result.current.show).toBe(false);
     expect(editor?.getMarkdown()).toBe("Intro\n\n/");
+  });
+
+  it("offers a Back entry before the files, reached with the arrows", () => {
+    const menu = renderMenu(embeddable());
+    pick(menu, "Frame");
+    expect(menu.result.current.activeIndex).toBe(0);
+
+    press(menu, "ArrowUp");
+    expect(menu.result.current.activeIndex).toBe(-1);
+    press(menu, "Enter");
+
+    expect(menu.result.current.isPicking).toBe(false);
+    expect(menu.result.current.show).toBe(true);
+    expect(editor?.getMarkdown()).toBe("Intro\n\n/");
+  });
+
+  it("highlights the Back entry when no file matches", () => {
+    const menu = renderMenu(embeddable());
+    pick(menu, "Frame");
+    type("nothing matches");
+
+    expect(menu.result.current.items).toEqual([]);
+    expect(menu.result.current.activeIndex).toBe(-1);
   });
 });

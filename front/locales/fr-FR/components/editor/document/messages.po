@@ -18,6 +18,10 @@ msgid "Add a paragraph"
 msgstr "Ajouter un paragraphe"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "Loading files…"
 msgstr "Chargement des fichiers…"
 
