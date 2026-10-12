@@ -298,7 +298,9 @@ export function useAgentMessageStream({
 }: UseAgentMessageStreamParams) {
   const sId = agentMessage.sId;
   const isStopRequestedRef = useRef(isStopRequested);
-  isStopRequestedRef.current = isStopRequested;
+  useEffect(() => {
+    isStopRequestedRef.current = isStopRequested;
+  }, [isStopRequested]);
   const { mutateContextUsage } = useConversationContextUsage({
     conversationId,
     workspaceId: owner.sId,
