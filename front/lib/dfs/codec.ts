@@ -29,9 +29,6 @@ import type {
   DfsAttrBatch,
   DfsAttrResult,
   DfsTenant,
-  DfsValidationBatch,
-  DfsValidationOutcome,
-  DfsVersionCheck,
 } from "@app/types/dfs";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
@@ -382,43 +379,6 @@ export const WireFilesBatchSchema = z
     }
     return { results };
   });
-
-const WIRE_VALIDATION_OUTCOMES = {
-  UNCHANGED: "unchanged",
-  CHANGED: "changed",
-  DENIED: "denied",
-  MISSING: "missing",
-  ERROR: "error",
-} as const satisfies Record<string, DfsValidationOutcome>;
-
-export const WireValidationBatchSchema = z
-  .object({
-    results: z.array(
-      z.object({
-        outcome: z.enum(["UNCHANGED", "CHANGED", "DENIED", "MISSING", "ERROR"]),
-        error: WireErrorDetailsSchema.optional(),
-      })
-    ),
-    storeVersion: WireBigInt64Schema,
-  })
-  .transform((r): DfsValidationBatch => ({
-    results: r.results.map(({ outcome, error }) => ({
-      outcome: WIRE_VALIDATION_OUTCOMES[outcome],
-      errorCode: error,
-    })),
-    storeVersion: r.storeVersion,
-  }));
-
-export function encodeVersionCheck(check: DfsVersionCheck): DfsWireMessage {
-  return {
-    objectId: encodeObjectRef(check.objectId),
-    attrVersion: encodeOptionalUint64(check.attrVersion, "attrVersion"),
-    contentVersion: encodeOptionalUint64(
-      check.contentVersion,
-      "contentVersion"
-    ),
-  };
-}
 
 // Mutations.
 

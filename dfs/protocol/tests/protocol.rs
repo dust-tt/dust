@@ -100,31 +100,6 @@ fn metadata_patches_preserve_absence_epoch_and_empty_bytes() -> Result<()> {
 }
 
 #[test]
-fn version_checks_preserve_presence_and_full_u64_range() -> Result<()> {
-    for version in [None, Some(0), Some(1), Some(u64::MAX)] {
-        let check = rpc::VersionCheck {
-            object_id: ObjectRef::Object(ID.parse()?),
-            attr_version: Some(42),
-            content_version: version,
-        };
-        assert_eq!(
-            rpc::VersionCheck::decode(check.encode_to_vec().as_slice())?,
-            check
-        );
-    }
-    let check = rpc::VersionCheck {
-        object_id: ObjectRef::Root,
-        attr_version: Some(42),
-        content_version: None,
-    };
-    assert_eq!(
-        rpc::VersionCheck::decode(check.encode_to_vec().as_slice())?,
-        check
-    );
-    Ok(())
-}
-
-#[test]
 fn attributes_carry_names_store_versions_and_optional_metadata() -> Result<()> {
     let mut object = rpc::Attr {
         id: ObjectRef::Object(ID.parse()?),

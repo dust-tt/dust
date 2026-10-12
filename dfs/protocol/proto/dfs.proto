@@ -69,9 +69,6 @@ service Dfs {
   rpc Read(ReadRequest) returns (ReadData);
   rpc ReadFiles(ReadFilesRequest) returns (FilesBatch);
 
-  // Valid checks on virtual shared always return CHANGED, even when supplied versions match.
-  rpc Validate(ValidateRequest) returns (ValidationBatch);
-
   rpc Apply(ApplyRequest) returns (OperationBatch);
   rpc Search(SearchRequest) returns (SearchResults);
 }
@@ -348,36 +345,6 @@ message FileResult {
   optional Attr object = 2;
   optional bytes data = 3;
   optional ErrorDetails error = 4;
-}
-
-// @cc [owner:spolu,label:api] dfs-validate-limit
-// Checks MUST contain between 1 and 256 elements, inclusive.
-message ValidateRequest {
-  repeated VersionCheck checks = 1;
-}
-
-message VersionCheck {
-  required ObjectRef object_id = 1;
-  optional uint64 attr_version = 2;
-  optional uint64 content_version = 3;
-}
-
-message ValidationBatch {
-  repeated ValidationResult results = 1;
-  required int64 store_version = 2;
-}
-
-enum ValidationOutcome {
-  UNCHANGED = 0;
-  CHANGED = 1;
-  DENIED = 2;
-  MISSING = 3;
-  ERROR = 4;
-}
-
-message ValidationResult {
-  required ValidationOutcome outcome = 1;
-  optional ErrorDetails error = 2;
 }
 
 // @cc [owner:spolu,label:api;backend;performance] dfs-apply-request-size
