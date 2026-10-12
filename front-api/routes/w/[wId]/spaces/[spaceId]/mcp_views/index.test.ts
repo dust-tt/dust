@@ -154,7 +154,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: {
-        type: "data_source_not_found",
+        type: "mcp_server_view_not_found",
         message: "MCP Server View not found",
       },
     });

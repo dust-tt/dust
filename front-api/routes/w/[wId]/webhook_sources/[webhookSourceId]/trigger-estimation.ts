@@ -70,7 +70,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "invalid_trigger_filter",
           message: estimationResult.error.message,
         },
       });

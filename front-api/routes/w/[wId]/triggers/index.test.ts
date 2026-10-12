@@ -332,7 +332,7 @@ describe("POST /api/w/:wId/triggers (spaceId)", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("space_not_found");
   });
 
   it("rejects a space that is not a Pod", async () => {

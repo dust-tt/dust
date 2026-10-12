@@ -71,7 +71,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "invalid_mcp_server_url",
             message: urlError,
           },
         });

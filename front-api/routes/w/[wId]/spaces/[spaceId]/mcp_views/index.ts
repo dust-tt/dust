@@ -203,7 +203,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "regular_or_global_space_required",
           message:
             "Can only create MCP Server Views from regular or global spaces.",
         },
@@ -220,7 +220,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "mcp_server_view_not_found",
           message:
             "Missing system view for MCP server, it should have been created when adding the tool.",
         },
@@ -238,7 +238,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "mcp_server_view_already_exists",
           message: `An existing Tool is already using the name "${name}"`,
         },
       });

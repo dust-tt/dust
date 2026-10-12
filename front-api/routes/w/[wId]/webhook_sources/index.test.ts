@@ -141,7 +141,7 @@ describe("POST /api/w/[wId]/webhook_sources/", () => {
 
     expect(response.status).toBe(400);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("webhook_subscribed_events_required");
     expect(data.error.message).toContain("Subscribed events must not be empty");
   });
 

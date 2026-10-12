@@ -94,7 +94,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "webhook_subscribed_events_required",
           message: "Subscribed events must not be empty.",
         },
       });
@@ -110,7 +110,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "webhook_source_already_exists",
           message: "A webhook source with the same name already exists.",
         },
       });
@@ -148,7 +148,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "webhook_source_view_not_found",
             message:
               "Missing system view for webhook source, it should have been created when creating the webhook source.",
           },

@@ -1,4 +1,3 @@
-import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import {
   type GetMCPServersResponseBody,
   getMCPServerViewNameConflictMessage,
@@ -9,6 +8,7 @@ import {
   createRemoteMCPServer,
   listMCPServersWithViews,
 } from "@app/lib/api/mcp/servers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -87,7 +87,7 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
       return ctx.json(
         {
           error: {
-            type: "invalid_request_error",
+            type: "mcp_server_view_already_exists",
             message: getMCPServerViewNameConflictMessage(result.error),
           },
           nameConflict: {
@@ -99,21 +99,61 @@ app.post("/", validate("json", PostBodySchema), async (ctx) => {
       );
     }
 
-    const message = result.error.message;
-    if (isRemoteMCPServerError(result.error)) {
-      // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
-      return ctx.json(
-        {
-          error: { type: "invalid_request_error", message },
-          isRemoteServerError: true,
-        },
-        400
-      );
+    const { code, message } = result.error;
+    switch (code) {
+      case "remote_server_error":
+        // Non-standard envelope: callers rely on the `isRemoteServerError` flag.
+        return ctx.json(
+          {
+            error: { type: "remote_mcp_server_connection_failed", message },
+            isRemoteServerError: true,
+          },
+          400
+        );
+      case "missing_url":
+      case "invalid_internal_server_name":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_request_error", message },
+        });
+      case "url_too_long":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "mcp_server_url_too_long", message },
+        });
+      case "invalid_url":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "invalid_mcp_server_url", message },
+        });
+      case "invalid_name":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "mcp_server_name_invalid", message },
+        });
+      case "oauth_connection_error":
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: { type: "mcp_oauth_connection_error", message },
+        });
+      case "server_not_available":
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: { type: "mcp_server_not_available", message },
+        });
+      case "server_already_installed":
+        return apiError(ctx, {
+          status_code: 409,
+          api_error: { type: "mcp_server_already_installed", message },
+        });
+      case "system_view_not_found":
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: { type: "mcp_server_view_not_found", message },
+        });
+      default:
+        return assertNever(code);
     }
-    return apiError(ctx, {
-      status_code: 400,
-      api_error: { type: "invalid_request_error", message },
-    });
   }
 
   return ctx.json({ success: true, server: result.value }, 201);
