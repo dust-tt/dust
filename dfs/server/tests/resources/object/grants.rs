@@ -13,7 +13,7 @@ use dfs_protocol::{
 };
 use foundationdb::{RangeOption, Transaction};
 
-fn allow(subject: &str, mode: u32) -> Grant {
+pub(super) fn allow(subject: &str, mode: u32) -> Grant {
     Grant {
         kind: Some(grant::Kind::Allow(AllowGrant {
             subject: subject.to_owned(),
@@ -22,7 +22,7 @@ fn allow(subject: &str, mode: u32) -> Grant {
     }
 }
 
-fn deny(mode: u32) -> Grant {
+pub(super) fn deny(mode: u32) -> Grant {
     Grant {
         kind: Some(grant::Kind::Deny(DenyGrant { mode })),
     }
