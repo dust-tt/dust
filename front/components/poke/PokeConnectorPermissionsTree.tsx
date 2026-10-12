@@ -108,7 +108,12 @@ export function PokePermissionTree({
             }
             className="max-w-md"
             trigger={
-              <Button size="xs" icon={InfoCircle} variant="ghost-secondary" />
+              <Button
+                tooltip="Show node details"
+                size="xs"
+                icon={InfoCircle}
+                variant="ghost-secondary"
+              />
             }
           />
         )}

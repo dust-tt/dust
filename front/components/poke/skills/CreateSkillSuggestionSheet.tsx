@@ -282,6 +282,7 @@ export function CreateSkillSuggestionSheet({
               <PopoverRoot open={isIconPickerOpen}>
                 <PopoverTrigger asChild>
                   <Button
+                    aria-label="Select icon"
                     variant="outline"
                     size="sm"
                     icon={IconComponent}

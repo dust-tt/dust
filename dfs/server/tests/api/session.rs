@@ -160,6 +160,79 @@ pub(crate) async fn session_rpcs_enforce_credentials_and_preserve_identity() -> 
     Ok(())
 }
 
+pub(crate) async fn session_authentication_requires_and_caches_existing_tenants() -> Result<()> {
+    let mut client = DfsClient::new(serve().await?);
+    let (tenant, session) = create_session(&mut client).await?;
+    let authorization = format!("Bearer {}", session.session_key);
+    let tenant_key = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
+    let tx = fdb::database()?.create_trx()?;
+    let tenant_value = tx
+        .get(&tenant_key, false)
+        .await?
+        .context("missing tenant")?;
+    tx.clear(&tenant_key);
+    tx.commit().await?;
+
+    // Tenant-key authentication was cached by CreateSession, but it cannot satisfy this lookup.
+    let error = client
+        .current_session(with_authorization(Empty {}, &authorization)?)
+        .await
+        .err()
+        .context("a session without its tenant must not authenticate")?;
+    assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
+
+    let tx = fdb::database()?.create_trx()?;
+    tx.set(&tenant_key, b"invalid tenant record");
+    tx.commit().await?;
+    let error = client
+        .current_session(with_authorization(Empty {}, &authorization)?)
+        .await
+        .err()
+        .context("tenant decoding failures must propagate")?;
+    assert_eq!(error_code(&error)?, ErrorCode::Internal);
+
+    let tx = fdb::database()?.create_trx()?;
+    tx.set(&tenant_key, &tenant_value);
+    tx.commit().await?;
+    // Neither failed lookup may prevent authentication once the tenant is available.
+    let current = client
+        .current_session(with_authorization(Empty {}, &authorization)?)
+        .await?
+        .into_inner();
+    assert_eq!(current.id, session.id);
+    assert_eq!(current.tenant_id, tenant.tenant_id);
+
+    let tx = fdb::database()?.create_trx()?;
+    tx.clear(&tenant_key);
+    tx.commit().await?;
+    let cached = client
+        .current_session(with_authorization(Empty {}, &authorization)?)
+        .await?
+        .into_inner();
+    assert_eq!(cached, current);
+    let mut fresh = DfsClient::new(serve().await?);
+    let error = fresh
+        .current_session(with_authorization(Empty {}, &authorization)?)
+        .await
+        .err()
+        .context("a fresh server must reject the missing tenant")?;
+    assert_eq!(error_code(&error)?, ErrorCode::Unauthenticated);
+
+    let tx = fdb::database()?.create_trx()?;
+    tx.set(&tenant_key, &tenant_value);
+    tx.commit().await?;
+    client
+        .revoke_session(with_authorization(
+            RevokeSessionRequest {
+                session_id: session.id,
+            },
+            &format!("Bearer {}", tenant.tenant_key),
+        )?)
+        .await?;
+    clear_tenant(&tenant).await?;
+    Ok(())
+}
+
 pub(crate) async fn session_cache_bounds_revocation_and_absolute_expiry() -> Result<()> {
     let listener = TcpListener::bind("127.0.0.1:0").await?;
     let endpoint = format!("http://{}", listener.local_addr()?);
