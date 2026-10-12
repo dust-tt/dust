@@ -952,7 +952,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
       ...otherOptions
     } = options;
@@ -1031,7 +1030,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { mode: "configuration", includeToolPermissions: withToolMetadata }
+          { mode: "configuration" }
         );
       }
 
@@ -1298,7 +1297,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyActive = false,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
     }: SkillFetchContext & SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
@@ -1337,7 +1335,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
@@ -1567,7 +1564,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
       withInstructions,
       withTools,
-      withToolMetadata,
       withFileAttachments,
     }: SkillHydrationOptions & {
       agentLoopData?: AgentLoopExecutionData;
@@ -1590,7 +1586,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       {
@@ -1709,8 +1704,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async listByAgentConfiguration(
     auth: Authenticator,
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"],
-    fetchContext: SkillFetchContext &
-      Pick<SkillHydrationOptions, "withToolMetadata"> = {}
+    fetchContext: SkillFetchContext = {}
   ): Promise<SkillResource[]> {
     // Global agents hold no `AgentSkillModel` row: their skills are declared in code.
     if (isGlobalAgentId(agentConfiguration.sId)) {
@@ -2210,13 +2204,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       transaction,
-      withToolMetadata,
-    }: SkillFetchContext &
-      Pick<SkillHydrationOptions, "withToolMetadata"> & {
-        conversation: ConversationWithoutContentType | ConversationResource;
-        agentConfiguration?: AgentConfigurationWithoutModelType;
-        transaction?: Transaction;
-      }
+    }: SkillFetchContext & {
+      conversation: ConversationWithoutContentType | ConversationResource;
+      agentConfiguration?: AgentConfigurationWithoutModelType;
+      transaction?: Transaction;
+    }
   ): Promise<SkillResource[]> {
     const resolvedAgentConfiguration =
       agentConfiguration ?? agentLoopData?.agentConfiguration;
@@ -2242,7 +2234,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       transaction,
-      withToolMetadata,
     });
   }
 
@@ -2305,8 +2296,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (spaceId) => !requestedSpaceIds.has(spaceId)
     );
 
-    // Skills whose servers the loop resolves (see `getSkillServers`) carry their tool permissions,
-    // which the server requirements depend on.
     const conversationEnabledSkills = await this.listEnabledByConversation(
       auth,
       {
@@ -2314,7 +2303,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentConfiguration,
         agentLoopData,
         effectiveSpaceIds,
-        withToolMetadata: true,
       }
     );
 
@@ -2333,7 +2321,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const allAgentSkills = await this.listByAgentConfiguration(
       auth,
       agentConfiguration,
-      { agentLoopData, effectiveSpaceIds, withToolMetadata: true }
+      { agentLoopData, effectiveSpaceIds }
     );
 
     let discoverableSkills: SkillResource[] = [];
@@ -2400,7 +2388,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ? await this.fetchBySkillReferences(auth, autoEnabledSkillRefs, {
           agentLoopData,
           effectiveSpaceIds,
-          withToolMetadata: true,
         })
       : [];
 
@@ -4742,8 +4729,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentMessageId(
     auth: Authenticator,
-    agentMessageId: ModelId,
-    { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
+    agentMessageId: ModelId
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -4759,7 +4745,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Include all statuses for historical accuracy.
     return this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
-      withToolMetadata,
     });
   }
 

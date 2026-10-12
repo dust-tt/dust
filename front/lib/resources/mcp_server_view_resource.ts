@@ -136,13 +136,6 @@ export type PostMCPServerViewResponseBody = {
  */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
-// `includeToolPermissions` (default `true`) only applies to `configuration` views, the only ones
-// carrying tool permissions.
-type MCPServerViewToolPermissionsOption<TMode extends MCPServerViewFetchMode> =
-  TMode extends "configuration"
-    ? { includeToolPermissions?: boolean }
-    : { includeToolPermissions?: never };
-
 const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
   "authorization",
   "cachedTools",
@@ -551,13 +544,11 @@ export class MCPServerViewResource<
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       mode,
-      includeToolPermissions = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       mode?: TMode;
-      includeToolPermissions?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -639,11 +630,7 @@ export class MCPServerViewResource<
       }
     }
 
-    if (
-      mode === "configuration" &&
-      includeToolPermissions &&
-      filteredViews.length > 0
-    ) {
+    if (mode === "configuration" && filteredViews.length > 0) {
       await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
     for (const view of filteredViews) {
@@ -787,12 +774,11 @@ export class MCPServerViewResource<
     ids: ModelId[],
     {
       mode,
-      includeToolPermissions,
       transaction,
     }: {
       mode?: TMode;
       transaction?: Transaction;
-    } & MCPServerViewToolPermissionsOption<TMode> = {}
+    } = {}
   ): Promise<MCPServerViewResource<TMode>[]> {
     const views = await this.baseFetch(
       auth,
@@ -803,7 +789,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { mode, includeToolPermissions, transaction }
+      { mode, transaction }
     );
 
     return views ?? [];
