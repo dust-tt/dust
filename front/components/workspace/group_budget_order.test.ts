@@ -1,5 +1,6 @@
 import {
   applyBudgetOrderMoves,
+  countEarlierGroupsSharingMembers,
   getBaseBudgetOrder,
   moveGroupPastVisibleNeighbor,
 } from "@app/components/workspace/group_budget_order";
@@ -52,5 +53,30 @@ describe("moveGroupPastVisibleNeighbor", () => {
     expect(
       moveGroupPastVisibleNeighbor(order, ["b", "c", "e"], "b", "up")
     ).toEqual(order);
+  });
+});
+
+describe("countEarlierGroupsSharingMembers", () => {
+  const sharedMemberCounts = new Map([
+    ["a", 2],
+    ["b", 0],
+    ["c", 1],
+    ["e", 3],
+  ]);
+
+  it("counts the groups before this one that share members with it", () => {
+    expect(
+      countEarlierGroupsSharingMembers(
+        ["a", "b", "c", "d", "e"],
+        "d",
+        sharedMemberCounts
+      )
+    ).toBe(2);
+  });
+
+  it("returns 0 when the group is not in the order", () => {
+    expect(
+      countEarlierGroupsSharingMembers(["a", "c"], "d", sharedMemberCounts)
+    ).toBe(0);
   });
 });
