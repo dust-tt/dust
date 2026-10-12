@@ -1,6 +1,7 @@
 import { listDiscoveryForYouItems } from "@app/lib/api/discovery";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { fetchDiscoveryForYouCandidates } from "@app/lib/search_usage/for_you";
 import type { DiscoveryRankedItemType } from "@app/types/api/discovery";
 import { Err, Ok } from "@app/types/shared/result";
@@ -74,10 +75,19 @@ export const discoveryForYouPlugin = createPlugin({
         c,
       ])
     );
+    const groupsResult = await GroupResource.fetchByIds(auth, [
+      ...new Set(candidatesResult.value.map((c) => c.reasonGroupId)),
+    ]);
+    if (groupsResult.isErr()) {
+      return groupsResult;
+    }
+    const groupNamesById = new Map(
+      groupsResult.value.map((g) => [g.sId, g.name])
+    );
     const rows = itemsResult.value.map((item, index) => {
       const candidate = candidatesByKey.get(`${item.type}:${item.target.sId}`);
       const stats = candidate
-        ? `${candidate.score.toPrecision(3)} | ${candidate.users} / ${candidate.groupActiveUsers} | [${candidate.reasonGroupId}](/poke/${workspace.sId}/groups/${candidate.reasonGroupId})`
+        ? `${candidate.score.toPrecision(3)} | ${candidate.users} / ${candidate.groupActiveUsers} | [${groupNamesById.get(candidate.reasonGroupId)}](/poke/${workspace.sId}/groups/${candidate.reasonGroupId})`
         : "— | — | —";
       return `| ${index + 1} | ${item.type} | [${item.target.name}](/poke/${workspace.sId}/${pokeItemPath(item)}) | ${stats} |`;
     });
