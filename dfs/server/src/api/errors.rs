@@ -40,11 +40,6 @@ impl From<object::Error> for Status {
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
- * Errors from different resources in one transaction MUST retain their API status mapping.
- * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
- */
 impl From<storage::Error<object::Error>> for storage::Error<Status> {
     fn from(error: storage::Error<object::Error>) -> Self {
         match error {
@@ -91,11 +86,6 @@ impl From<tenant::Error> for Status {
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
- * Errors from different resources in one transaction MUST retain their API status mapping.
- * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
- */
 impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
     fn from(error: storage::Error<tenant::Error>) -> Self {
         match error {
@@ -105,12 +95,6 @@ impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] storage-status-conversion
- * Database and stored-data decoding failures MUST return INTERNAL with protocol ErrorDetails and a
- * generic public message. Resource failures MUST retain their resource-specific status mapping.
- * Database, decoding, and transaction error details MUST NOT be included in the response.
- */
 impl<E: Into<Status>> From<storage::Error<E>> for Status {
     fn from(error: storage::Error<E>) -> Self {
         match error {
