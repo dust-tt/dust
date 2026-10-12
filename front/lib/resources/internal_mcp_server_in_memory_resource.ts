@@ -55,8 +55,8 @@ export class InternalMCPServerInMemoryResource {
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   >;
-  // `undefined` when the credentials were not loaded (see `loadCredentials`), `null` when the
-  // server has none.
+  // `undefined` when the credentials were not fetched (see `includeCredentials`), `null` when
+  // the server has none.
   private internalServerCredential:
     | InternalMCPServerCredentialType
     | null
@@ -319,9 +319,9 @@ export class InternalMCPServerInMemoryResource {
   static async fetchById(
     auth: Authenticator,
     id: string,
-    { includeRestricted = false }: { includeRestricted?: boolean } = {}
+    options: { includeCredentials?: boolean; includeRestricted?: boolean } = {}
   ) {
-    const results = await this.fetchByIds(auth, [id], { includeRestricted });
+    const results = await this.fetchByIds(auth, [id], options);
 
     return results[0] ?? null;
   }
@@ -331,10 +331,15 @@ export class InternalMCPServerInMemoryResource {
   // force-created view for a restricted server cannot be resolved into runnable
   // tools (agent loop, skill/action resolution). Only admin management surfaces
   // that must display an installed-but-restricted server pass `true`.
+  // `includeCredentials` decrypts the server credentials, only needed to serialize them redacted
+  // with `toJSON`. Connecting to a server reads them with `fetchDecryptedCredentials`.
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
-    { includeRestricted = false }: { includeRestricted?: boolean } = {}
+    {
+      includeCredentials = false,
+      includeRestricted = false,
+    }: { includeCredentials?: boolean; includeRestricted?: boolean } = {}
   ): Promise<InternalMCPServerInMemoryResource[]> {
     if (ids.length === 0) {
       return [];
@@ -397,6 +402,13 @@ export class InternalMCPServerInMemoryResource {
       ? resolvedIds
       : resolvedIds.filter(({ name }) => enabledServerNames.has(name));
 
+    const credentialsById = includeCredentials
+      ? await this.fetchCredentialsByIds(
+          auth,
+          permittedIds.map(({ id }) => id)
+        )
+      : null;
+
     return permittedIds.map(({ id, name }) => {
       if (includeRestricted && !enabledServerNames.has(name)) {
         logger.info(
@@ -414,11 +426,17 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
+        internalServerCredential: credentialsById
+          ? (credentialsById.get(id) ?? null)
+          : undefined,
       });
     });
   }
 
-  static async listAvailableInternalMCPServers(auth: Authenticator) {
+  static async listAvailableInternalMCPServers(
+    auth: Authenticator,
+    { includeCredentials = false }: { includeCredentials?: boolean } = {}
+  ) {
     const enabledServerNames = await this.computeEnabledServerNames(
       auth,
       AVAILABLE_INTERNAL_MCP_SERVER_NAMES
@@ -436,6 +454,10 @@ export class InternalMCPServerInMemoryResource {
       })
     );
 
+    const credentialsById = includeCredentials
+      ? await this.fetchCredentialsByIds(auth, ids)
+      : null;
+
     return names.map((name, index) => {
       const id = ids[index];
       const serverMetadata = getInternalMCPServerMetadata(name);
@@ -444,11 +466,17 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
+        internalServerCredential: credentialsById
+          ? (credentialsById.get(id) ?? null)
+          : undefined,
       });
     });
   }
 
-  static async listByWorkspace(auth: Authenticator) {
+  static async listByWorkspace(
+    auth: Authenticator,
+    { includeCredentials = false }: { includeCredentials?: boolean } = {}
+  ) {
     // In case of internal MCP servers, we list the ones that have a view in the system space.
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
@@ -482,6 +510,13 @@ export class InternalMCPServerInMemoryResource {
       auth,
       resolvedIds.map(({ name }) => name)
     );
+    const credentialsById = includeCredentials
+      ? await this.fetchCredentialsByIds(
+          auth,
+          resolvedIds.map(({ id }) => id)
+        )
+      : null;
+
     return resolvedIds.map(({ id, name }) => {
       if (!enabledServerNames.has(name)) {
         logger.info(
@@ -499,23 +534,24 @@ export class InternalMCPServerInMemoryResource {
           ...serverMetadata.serverInfo,
           tools: serverMetadata.tools,
         },
+        internalServerCredential: credentialsById
+          ? (credentialsById.get(id) ?? null)
+          : undefined,
       });
     });
   }
 
-  /**
-   * Decrypts the credentials (API keys, headers) of the given servers so that `toJSON` serializes
-   * them redacted. Mutates and returns the given servers.
-   */
-  static async loadCredentials(
+  // Fetch the credentials (API keys, headers) for MCP servers that have some.
+  private static async fetchCredentialsByIds(
     auth: Authenticator,
-    servers: InternalMCPServerInMemoryResource[]
-  ): Promise<InternalMCPServerInMemoryResource[]> {
+    internalMCPServerIds: string[]
+  ): Promise<Map<string, InternalMCPServerCredentialType>> {
     const decryptedCredentials = await this.fetchDecryptedCredentialsByIds(
       auth,
-      servers.map((server) => server.id)
+      internalMCPServerIds
     );
-    const credentialsById = new Map(
+
+    return new Map(
       decryptedCredentials.map((credential) => [
         credential.internalMCPServerId,
         {
@@ -524,11 +560,6 @@ export class InternalMCPServerInMemoryResource {
         },
       ])
     );
-    for (const server of servers) {
-      server.internalServerCredential = credentialsById.get(server.id) ?? null;
-    }
-
-    return servers;
   }
 
   async upsertCredentials(
@@ -610,7 +641,7 @@ export class InternalMCPServerInMemoryResource {
       return { sharedSecret: null, customHeaders: null };
     }
 
-    // Credentials are only serialized once loaded (see `loadCredentials`).
+    // Credentials are only serialized when fetched (see `includeCredentials`).
     if (this.internalServerCredential === undefined) {
       return {};
     }

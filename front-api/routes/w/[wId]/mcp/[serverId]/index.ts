@@ -55,7 +55,7 @@ app.get(
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
           serverId,
-          { includeRestricted: true }
+          { includeCredentials: true, includeRestricted: true }
         );
 
         if (!server) {
@@ -68,7 +68,6 @@ app.get(
           });
         }
 
-        await InternalMCPServerInMemoryResource.loadCredentials(auth, [server]);
         return ctx.json({ server: await enrichServer(auth, server.toJSON()) });
       }
       case "remote": {
@@ -141,7 +140,7 @@ app.patch(
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
       serverId,
-      { includeRestricted: true }
+      { includeCredentials: true, includeRestricted: true }
     );
     if (!internalServer) {
       return apiError(ctx, {
@@ -152,9 +151,6 @@ app.patch(
         },
       });
     }
-    await InternalMCPServerInMemoryResource.loadCredentials(auth, [
-      internalServer,
-    ]);
     return handleInternalPatch(ctx, auth, internalServer, body);
   }
 );

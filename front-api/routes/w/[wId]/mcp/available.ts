@@ -18,11 +18,9 @@ app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
   const auth = ctx.get("auth");
 
   const internalServers = (
-    await InternalMCPServerInMemoryResource.loadCredentials(
+    await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
       auth,
-      await InternalMCPServerInMemoryResource.listAvailableInternalMCPServers(
-        auth
-      )
+      { includeCredentials: true }
     )
   ).map((r) => r.toJSON());
 

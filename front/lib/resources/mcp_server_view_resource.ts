@@ -131,7 +131,8 @@ export type PostMCPServerViewResponseBody = {
 /**
  * @cc [owner:aubin-tchoi,label:security;backend] metadata-mode-loads-no-secrets
  * `metadata` views MUST NOT carry server secrets: no remote `sharedSecret` or `customHeaders`,
- * and no internal server credentials (never decrypted). Only `loadConfiguration` loads them.
+ * and no internal server credentials (never decrypted). Only the `configuration` mode (the fetch
+ * `mode` option or `loadConfiguration`) loads them.
  */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
@@ -243,7 +244,7 @@ export class MCPServerViewResource<
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
         blob.internalMCPServerId,
-        { includeRestricted: true }
+        { includeCredentials: true, includeRestricted: true }
       );
       if (!internalServer) {
         throw new DustError(
@@ -251,12 +252,8 @@ export class MCPServerViewResource<
           "Internal server not found, it might have been deleted from the list of internal servers."
         );
       }
-      await InternalMCPServerInMemoryResource.loadCredentials(auth, [
-        internalServer,
-      ]);
       resource.internalMCPServer = internalServer;
     }
-    // A new view has no tool permissions of its own yet.
     resource.fetchMode = "configuration";
 
     return resource;
@@ -606,7 +603,10 @@ export class MCPServerViewResource<
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
           removeNulls(views.map((v) => v.internalMCPServerId)),
-          { includeRestricted }
+          {
+            includeCredentials: mode === "configuration",
+            includeRestricted,
+          }
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
@@ -631,32 +631,13 @@ export class MCPServerViewResource<
     }
 
     if (mode === "configuration" && filteredViews.length > 0) {
-      await this.loadCredentialsAndToolPermissions(
-        auth,
-        filteredViews,
-        transaction
-      );
+      await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
     for (const view of filteredViews) {
       view.fetchMode = mode ?? "metadata";
     }
 
     return filteredViews.filter(MCPServerViewResource.isFetchedAs(mode));
-  }
-
-  /**
-   * The part of the `configuration` that the remote server row does not carry.
-   */
-  private static async loadCredentialsAndToolPermissions(
-    auth: Authenticator,
-    views: MCPServerViewResource[],
-    transaction?: Transaction
-  ): Promise<void> {
-    await InternalMCPServerInMemoryResource.loadCredentials(
-      auth,
-      removeNulls(views.map((v) => v.internalMCPServer ?? null))
-    );
-    await this.populateToolsMetadata(auth, views, transaction);
   }
 
   /**
@@ -1758,11 +1739,22 @@ export class MCPServerViewResource<
         CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
         transaction
       );
-      await this.loadCredentialsAndToolPermissions(
-        auth,
-        metadataViews,
-        transaction
-      );
+      // The views already resolved their internal servers, restricted or not.
+      const internalServers =
+        await InternalMCPServerInMemoryResource.fetchByIds(
+          auth,
+          removeNulls(metadataViews.map((v) => v.internalMCPServerId)),
+          { includeCredentials: true, includeRestricted: true }
+        );
+      const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
+      for (const view of metadataViews) {
+        if (view.internalMCPServerId) {
+          view.internalMCPServer = internalServerMap.get(
+            view.internalMCPServerId
+          );
+        }
+      }
+      await this.populateToolsMetadata(auth, metadataViews, transaction);
       for (const view of metadataViews) {
         view.fetchMode = "configuration";
       }
@@ -2142,10 +2134,6 @@ export class MCPServerViewResource<
   }
 
   private get allToolsMetadata(): Attributes<RemoteMCPServerToolMetadataModel>[] {
-    assert(
-      this.fetchMode === "configuration",
-      "MCP server view tool permissions require `loadConfiguration`"
-    );
     return [
       ...(this.internalToolsMetadata ?? []),
       ...(this.remoteToolsMetadata ?? []),

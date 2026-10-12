@@ -31,7 +31,9 @@ app.get(
       remoteInstalledServers,
       workspaceServerViews,
     ] = await Promise.all([
-      InternalMCPServerInMemoryResource.listByWorkspace(auth),
+      InternalMCPServerInMemoryResource.listByWorkspace(auth, {
+        includeCredentials: true,
+      }),
       RemoteMCPServerResource.listByWorkspace(auth, {
         includeHeavyAttributes: [
           "authorization",
@@ -55,10 +57,6 @@ app.get(
 
     const availableServer: MCPServerType[] = [];
 
-    await InternalMCPServerInMemoryResource.loadCredentials(
-      auth,
-      internalInstalledServers
-    );
     for (const srv of internalInstalledServers) {
       if (
         !spaceServersId.includes(srv.id) &&
