@@ -32,7 +32,8 @@ impl From<object::Error> for Status {
             object::Error::NotFound => status(ErrorCode::NotFound),
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
-            | object::Error::InvalidStoredGrant => {
+            | object::Error::InvalidStoredGrant
+            | object::Error::InvalidAncestry => {
                 tracing::error!(%error, "object operation failed");
                 status(ErrorCode::Internal)
             }

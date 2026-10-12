@@ -19,6 +19,11 @@ use crate::storage::{
     resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
 };
 
+mod hints;
+mod modes;
+pub use hints::TreeHints;
+pub use modes::Mode;
+
 const FAMILY: &str = "object";
 const METADATA_FAMILY: &str = "metadata";
 const XATTR_FAMILY: &str = "xattr";
@@ -31,7 +36,9 @@ const REVERSE_GRANT_FAMILY: &str = "grant-object";
 const ALLOW: &str = "ALLOW";
 const DENY: &str = "DENY";
 const GRANTS_MAX_COUNT: usize = 512;
-const GRANT_MODE_MASK: u32 = 0o6;
+const GRANT_READ_MODE: u32 = 0o4;
+const GRANT_WRITE_MODE: u32 = 0o2;
+const GRANT_MODE_MASK: u32 = GRANT_READ_MODE | GRANT_WRITE_MODE;
 
 #[derive(Debug)]
 pub enum Error {
@@ -48,6 +55,7 @@ pub enum Error {
     InvalidGrantLimit,
     InvalidGrantCursor,
     InvalidStoredGrant,
+    InvalidAncestry,
 }
 
 impl fmt::Display for Error {
@@ -66,6 +74,7 @@ impl fmt::Display for Error {
             Self::InvalidGrantLimit => f.write_str("invalid grant page limit"),
             Self::InvalidGrantCursor => f.write_str("invalid grant cursor"),
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
+            Self::InvalidAncestry => f.write_str("invalid object ancestry"),
         }
     }
 }
@@ -132,6 +141,14 @@ impl ObjectResource {
         else {
             return Ok(None);
         };
+        Self::from_value(tenant, object_id, &value).map(Some)
+    }
+
+    fn from_value(
+        tenant: &TenantResource,
+        object_id: &ObjectId,
+        value: &[u8],
+    ) -> Result<Self, storage::Error<Error>> {
         let (
             parent_id,
             name,
@@ -142,8 +159,8 @@ impl ObjectResource {
             ctime_ms,
             attr_version,
             content_version,
-        ): StoredAttributes = unpack(&value).map_err(FdbBindingError::PackError)?;
-        Ok(Some(Self {
+        ): StoredAttributes = unpack(value).map_err(FdbBindingError::PackError)?;
+        Ok(Self {
             tenant_id: tenant.tenant_id.clone(),
             object_id: *object_id,
             parent_id: parent_id
@@ -160,7 +177,7 @@ impl ObjectResource {
             attr_version,
             content_version,
             metadata: None,
-        }))
+        })
     }
 
     /**

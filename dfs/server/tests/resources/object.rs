@@ -16,10 +16,17 @@ use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, tuple::unpack};
 
 mod grants;
+mod modes;
 pub(crate) use grants::{
     grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
+};
+pub(crate) use modes::{
+    permission_reads_conflict_with_changes_and_retry,
+    session_modes_evaluate_full_paths_and_all_grants,
+    session_modes_isolate_tenants_and_reject_invalid_ancestry,
+    tree_hints_follow_moves_and_recheck_grants,
 };
 
 type StoredObject = (

@@ -1,6 +1,7 @@
 use std::{
     collections::BTreeSet,
     fmt,
+    sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -17,6 +18,7 @@ use crate::{
         resources::{
             SUBJECT_MAX_BYTES,
             keys::{namespace_subspace, tenant_subspace},
+            object::TreeHints,
             tenant::{self, TenantResource},
         },
     },
@@ -99,6 +101,8 @@ pub struct SessionResource {
     pub subjects: BTreeSet<String>,
     pub key_hash: KeyHash,
     pub expires_at_ms: u64,
+    /// Shared process-local hints; every permission check still reads the current transaction.
+    pub tree_hints: Arc<TreeHints>,
 }
 
 impl SessionResource {
@@ -136,6 +140,7 @@ impl SessionResource {
             subjects,
             key_hash: auth::hash_key(&session_key),
             expires_at_ms,
+            tree_hints: TreeHints::shared(),
         };
         Ok((session, session_key))
     }
@@ -414,6 +419,7 @@ impl SessionResource {
             subjects,
             key_hash,
             expires_at_ms,
+            tree_hints: TreeHints::shared(),
         }))
     }
 

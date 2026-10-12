@@ -216,6 +216,5 @@ accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and reco
 
 Each object retains one head and at most one current update. Source mutations replace these
 atomically, ordered by FDB's 10-byte commit versionstamp and object ID. Records omit names,
-contents, and inherited permissions; explicit grants are read at the same snapshot. Replicas publish
-coherent generations with tenant-wide authorization versions and fall back to FDB when unavailable
-or stale.
+contents, and inherited permissions. Any such index would remain advisory: every permission check
+must still read the actual ancestry and grants in its FDB transaction.

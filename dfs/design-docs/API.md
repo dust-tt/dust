@@ -264,9 +264,9 @@ permissions. Tenant administration uses its tenant key and is not restricted by 
 Ordinary reads conceal inaccessible objects as `NOT_FOUND`; `Validate` can report `DENIED`
 explicitly. Mutation permission failures use `FORBIDDEN`.
 
-The server may authorize through a complete permission tree up to 30 seconds old by default. Expired
-or unusable tree proofs fall back to current FDB authorization. File metadata/content reads use FDB;
-search indexing has independent lag.
+Every permission check reads the target, its ancestry, and their grants in the operation's FDB
+transaction. Local tree hints only schedule reads; they never authorize access. Search indexing has
+independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
 filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes without NUL. Subject
@@ -445,8 +445,8 @@ grant and attach the new one in the same request. Attaching an existing value or
 value is a no-op.
 
 Attachments not included in `changes` remain unchanged. Detaching an ancestor grant does not remove
-independent attachments below it. Permission changes, including DENY, are subject to the
-authorization freshness bound described above; they do not promise immediate revocation.
+independent attachments below it. Permission checks use their transaction's view of committed grants;
+conflicting mutations retry their checks before committing.
 
 ## Filesystem reads
 
