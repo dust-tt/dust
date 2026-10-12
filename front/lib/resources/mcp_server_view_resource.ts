@@ -213,7 +213,11 @@ export class MCPServerViewResource<
       { transaction }
     );
 
-    const resource = new this(this.model, server.get(), space);
+    const resource = new MCPServerViewResource<"configuration">(
+      this.model,
+      server.get(),
+      space
+    );
 
     if (blob.remoteMCPServerId) {
       const remoteServer = await RemoteMCPServerResource.findByPk(
@@ -245,7 +249,6 @@ export class MCPServerViewResource<
       resource.internalMCPServer = internalServer;
     }
     resource.fetchMode = "configuration";
-    assert(MCPServerViewResource.isConfigurationView(resource));
 
     return resource;
   }
