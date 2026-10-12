@@ -2,7 +2,7 @@ import { useConversationParticipants } from "@app/hooks/conversations";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUserMemory } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Brain, Icon, Tooltip } from "@dust-tt/sparkle";
+import { Icon, InfoCircle, Tooltip } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
 interface ConversationMemoryNoticeProps {
@@ -43,7 +43,11 @@ export function ConversationMemoryNotice({
       label={t`Agents don't use your memory in this conversation because other people are in it.`}
       trigger={
         <span className="flex items-center">
-          <Icon visual={Brain} size="sm" className="text-muted-foreground" />
+          <Icon
+            visual={InfoCircle}
+            size="sm"
+            className="text-muted-foreground"
+          />
           <span className="sr-only">{t`Memory off`}</span>
         </span>
       }
