@@ -8,55 +8,26 @@ import {
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
-import type {
-  DocumentProps,
-  DocumentSaveResult,
-} from "@app/components/editor/document/types";
+import type { DocumentProps } from "@app/components/editor/document/types";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
 import { rand } from "@app/lib/utils/seeded_random";
 import datadogLogger from "@app/logger/datadogLogger";
-import { Err } from "@app/types/shared/result";
 import { cn } from "@dust-tt/sparkle";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { AnyExtension, JSONContent } from "@tiptap/core";
-import type { Node } from "@tiptap/pm/model";
 import { useEditor } from "@tiptap/react";
 import {
   useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
-
-const SAVE_ERROR_MESSAGE = msg`Could not save. Your changes are still here. Try again.`;
-
-/**
- * @cc [owner:PopDaph,label:error-handling] document-save-callback-errors
- * Host save callbacks MAY reject. This boundary MUST convert their rejections into failed
- * save results so the editor can retain the draft and leave the saving state.
- */
-const persistDocument = async (
-  persist: NonNullable<DocumentProps["onSave"]>,
-  content: string,
-  failureMessage: string
-): Promise<DocumentSaveResult> => {
-  try {
-    return await persist(content);
-  } catch {
-    return new Err(failureMessage);
-  }
-};
 
 interface UseDocumentEditorProps {
   initialContent: string;
   readOnly: boolean;
-  autosaveDebounceMs: number;
-  onSave: DocumentProps["onSave"];
-  onStateChange: DocumentProps["onStateChange"];
-  /** Binds the editor to a synced shared document instead of the file's content. */
+  /** Binds the editor to a synced shared document; without it, the file's content is read-only. */
   live?: {
     /** The live extensions, bound to the shared document. */
     extensions: AnyExtension[];
@@ -89,48 +60,25 @@ const logRefusal = (reason: string, source: string) => {
 };
 
 /**
- * @cc [owner:PopDaph,label:product] document-draft-preservation
- * Failed saves, including host callback rejections, MUST preserve the draft. Successful saves
- * MUST acknowledge only the submitted content, leaving later edits unsaved. Prop changes MUST
- * NOT replace an open draft. A file the editor cannot open MUST disable editing and saving.
- * Returning to the saved content MUST clear save errors without making another save request.
- * Unmounting with unsaved, editable content MUST attempt one final save of that content,
- * after any save still in flight.
- */
-/**
- * @cc [owner:PopDaph,label:product] document-autosave
- * Dirty, editable content MUST autosave after autosaveDebounceMs without edits (three seconds
- * by default), with at most one save in flight. Failure MUST suspend automatic retries, except
- * the final save on unmount, until the user explicitly retries or returns to saved content.
- * Unchanged content MUST NOT trigger
- * saves. Cmd/Ctrl+S MUST allow an immediate save. Parent renders and callback identity changes
- * MUST NOT restart the debounce. Saves MUST use the latest committed callback.
- */
-/**
  * @cc [owner:PopDaph,label:product] document-live-editing
- * A live editor MUST edit the shared document only: it MUST NOT save, autosave or report a
- * draft, and it is editable only while connected. It shows the file's comment threads until the
- * live extensions replace them with the session's; keeping comment marks without a thread is up
- * to the live extensions.
+ * The editor MUST be editable only when live and connected, and never on a file it cannot open.
+ * A live editor MUST edit the shared document only, never save the file. It shows the file's
+ * comment threads until the live extensions replace them with the session's; keeping comment marks
+ * without a thread is up to the live extensions.
  */
 /**
  * @cc [owner:tdraier,label:performance;react] document-edits-render-free
- * A local or remote edit MUST NOT set the hook's state unless `dirty` or `error` changes, and MUST
- * NOT make the hook serialize the document; only a save or an `isSavable` call does. Re-rendering
- * with unchanged props MUST NOT hand `useEditor` an option of a new identity, which reapplies
- * every option to the view.
+ * A local or remote edit MUST NOT set the hook's state, and MUST NOT make the hook serialize the
+ * document; only an `isSavable` call does. Re-rendering with unchanged props MUST NOT hand
+ * `useEditor` an option of a new identity, which reapplies every option to the view.
  */
 export const useDocumentEditor = ({
   initialContent,
   readOnly,
-  autosaveDebounceMs,
-  onSave,
-  onStateChange,
   live,
   resolveImageSource,
 }: UseDocumentEditorProps) => {
   const { t } = useLingui();
-  const saveErrorMessage = t(SAVE_ERROR_MESSAGE);
   const [initial] = useState(() => loadDfm(initialContent));
   const resolveSource = useImageSourceResolver(resolveImageSource);
   // Captured with the parse: a later source must not show under the reason this one was refused.
@@ -142,77 +90,7 @@ export const useDocumentEditor = ({
       logRefusal(unsupported.reason, unsupported.source);
     }
   }, [unsupported]);
-  const [dirty, setDirtyState] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setErrorState] = useState<string | null>(null);
-  const dirtyRef = useRef(false);
-  const errorRef = useRef<string | null>(null);
-  const savingRef = useRef(false);
-  const editable =
-    !readOnly &&
-    initial.isOk() &&
-    (live ? live.connected : onSave !== undefined);
-  // A live editor never saves: the session owns the file.
-  const persist = live ? undefined : onSave;
-  const persistenceRef = useRef({
-    onSave: persist,
-    onStateChange,
-    editable,
-    saveErrorMessage,
-    autosaveDebounceMs,
-  });
-  const latestDocumentRef = useRef<Node | null>(null);
-  const persistedDocumentRef = useRef<Node | null>(null);
-  const inflightRef = useRef<Promise<DocumentSaveResult> | null>(null);
-  const autosaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined
-  );
-  const saveRef = useRef<() => Promise<void>>(async () => undefined);
-  const unmountedRef = useRef(false);
-
-  useLayoutEffect(() => {
-    persistenceRef.current = {
-      onSave: persist,
-      onStateChange,
-      editable,
-      saveErrorMessage,
-      autosaveDebounceMs,
-    };
-  }, [persist, onStateChange, editable, saveErrorMessage, autosaveDebounceMs]);
-
-  // Set only on a change, as edits call them: typing must not re-render the document.
-  const setDirty = useCallback((next: boolean) => {
-    if (dirtyRef.current !== next) {
-      dirtyRef.current = next;
-      setDirtyState(next);
-    }
-  }, []);
-
-  const setError = useCallback((next: string | null) => {
-    if (errorRef.current !== next) {
-      errorRef.current = next;
-      setErrorState(next);
-    }
-  }, []);
-
-  const scheduleAutosave = useCallback(() => {
-    clearTimeout(autosaveTimeoutRef.current);
-    const { editable: canSave, autosaveDebounceMs: delayMs } =
-      persistenceRef.current;
-    if (
-      unmountedRef.current ||
-      !dirtyRef.current ||
-      savingRef.current ||
-      errorRef.current !== null ||
-      !canSave
-    ) {
-      return;
-    }
-    autosaveTimeoutRef.current = setTimeout(
-      () => void saveRef.current(),
-      delayMs
-    );
-  }, []);
+  const editable = !readOnly && initial.isOk() && (live?.connected ?? false);
 
   const savedExtensions = useMemo(
     () =>
@@ -262,28 +140,10 @@ export const useDocumentEditor = ({
     immediatelyRender: false,
     editable,
     editorProps,
+    // Hooks reading the editor's state recompute on transactions, and a document as it mounted
+    // sends none they see: TipTap emits `create` a tick later, once they listen.
     onCreate: ({ editor }) => {
-      if (live) {
-        return;
-      }
-      // Normalize TipTap's trailing paragraph before capturing saved content.
       editor.view.dispatch(editor.state.tr);
-      latestDocumentRef.current = editor.state.doc;
-      persistedDocumentRef.current = editor.state.doc;
-    },
-    onUpdate: ({ editor }) => {
-      const persisted = persistedDocumentRef.current;
-      if (live || persisted === null) {
-        return;
-      }
-      const document = editor.state.doc;
-      latestDocumentRef.current = document;
-      const changed = !document.eq(persisted);
-      setDirty(changed);
-      if (!changed) {
-        setError(null);
-      }
-      scheduleAutosave();
     },
   });
 
@@ -294,129 +154,17 @@ export const useDocumentEditor = ({
     }
   }, [editor, editable]);
 
-  // Hosts learn the draft state after the fact on purpose: dirty, saving and error move in several
-  // places, so there is no single event to report from. The callback is read through the ref so
-  // its identity cannot restart the effect.
-  useEffect(() => {
-    persistenceRef.current.onStateChange?.({ dirty, saving, error });
-  }, [dirty, saving, error]);
-
-  // Unmounting inside the autosave delay must not drop the edit. The editor is gone by then,
-  // so this last attempt cannot report a failure; hosts hold close and navigation while dirty.
-  // It waits for any save in flight, so an older write can never land after a newer one.
-  useEffect(() => {
-    unmountedRef.current = false;
-    return () => {
-      // A save in flight re-arms autosave when it settles; the flush below owns the last write.
-      unmountedRef.current = true;
-      clearTimeout(autosaveTimeoutRef.current);
-      const latest = latestDocumentRef.current;
-      const {
-        onSave: persist,
-        editable: canSave,
-        saveErrorMessage: failureMessage,
-      } = persistenceRef.current;
-      if (!persist || !canSave || !initial.isOk() || latest === null) {
-        return;
-      }
-      const envelope = initial.value.envelope;
-      const flush = async () => {
-        await inflightRef.current;
-        const persisted = persistedDocumentRef.current;
-        if (persisted !== null && latest.eq(persisted)) {
-          return;
-        }
-        const serialized = saveDfm(envelope, latest.toJSON());
-        if (serialized.isOk()) {
-          await persistDocument(persist, serialized.value, failureMessage);
-        }
-      };
-      void flush();
-    };
-  }, [initial]);
-
-  const save = useCallback(async () => {
-    const {
-      onSave: persist,
-      editable: canSave,
-      saveErrorMessage: failureMessage,
-    } = persistenceRef.current;
-    const persisted = persistedDocumentRef.current;
-
-    if (
-      !editor ||
-      !persist ||
-      !canSave ||
-      !initial.isOk() ||
-      persisted === null ||
-      savingRef.current
-    ) {
-      return;
-    }
-
-    const document = editor.state.doc;
-
-    if (document.eq(persisted)) {
-      return;
-    }
-
-    const serialized = saveDfm(initial.value.envelope, document.toJSON());
-    if (serialized.isErr()) {
-      setError(serialized.error);
-      scheduleAutosave();
-      return;
-    }
-
-    savingRef.current = true;
-    setSaving(true);
-    setError(null);
-
-    let result: DocumentSaveResult;
-    try {
-      const inflight = persistDocument(
-        persist,
-        serialized.value,
-        failureMessage
-      );
-      inflightRef.current = inflight;
-      result = await inflight;
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-
-    if (result.isOk()) {
-      persistedDocumentRef.current = document;
-      setDirty(!editor.state.doc.eq(document));
-    } else if (!editor.state.doc.eq(persisted)) {
-      setError(result.error || failureMessage);
-    }
-    scheduleAutosave();
-  }, [editor, initial, setDirty, setError, scheduleAutosave]);
-
-  useLayoutEffect(() => {
-    saveRef.current = save;
-  }, [save]);
-
   const isSavable = useCallback(
     (document: JSONContent) =>
       initial.isOk() && saveDfm(initial.value.envelope, document).isOk(),
     [initial]
   );
 
-  useEffect(() => {
-    scheduleAutosave();
-  }, [editable, autosaveDebounceMs, scheduleAutosave]);
-
   return {
     editor,
     editable,
     /** Why the file cannot be edited, with its source, or null when it opened. */
     unsupported,
-    dirty,
-    saving,
-    error,
-    save,
     /** Whether the document, as TipTap JSON, would save. */
     isSavable,
   };

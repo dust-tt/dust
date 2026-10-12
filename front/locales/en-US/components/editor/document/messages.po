@@ -196,30 +196,6 @@ msgid "This document uses formatting the editor doesn't support yet, so it can't
 msgstr "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Not saved"
-msgstr "Not saved"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saving…"
-msgstr "Saving…"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Changes pending"
-msgstr "Changes pending"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saved"
-msgstr "Saved"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Changes save automatically after {autosaveDebounceSeconds}s of inactivity"
-msgstr "Changes save automatically after {autosaveDebounceSeconds}s of inactivity"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Retry"
-msgstr "Retry"
-
-#: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Connecting…"
 msgstr "Connecting…"
 
@@ -252,8 +228,12 @@ msgid "{name} is writing"
 msgstr "{name} is writing"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
-msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
-msgstr "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
+msgid "Saving…"
+msgstr "Saving…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "Saved"
+msgstr "Saved"
 
 #: front/components/editor/document/DocumentSelectionToolbar.tsx
 msgid "Link"
@@ -446,10 +426,6 @@ msgstr "This suggestion can't be saved in this document."
 #: front/components/editor/document/useDocumentComments.ts
 msgid "The suggestion was applied, but the comment couldn't be resolved. {reason}"
 msgstr "The suggestion was applied, but the comment couldn't be resolved. {reason}"
-
-#: front/components/editor/document/useDocumentEditor.ts
-msgid "Could not save. Your changes are still here. Try again."
-msgstr "Could not save. Your changes are still here. Try again."
 
 #: front/components/editor/document/useDocumentEditor.ts
 msgid "Document content"

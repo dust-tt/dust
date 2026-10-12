@@ -79,19 +79,12 @@ function fakeCommentChannel() {
 
 function renderLiveEditor(
   document: Y.Doc,
-  {
-    onSave = vi.fn(),
-    initialContent = FIXTURE,
-    comments = fakeCommentChannel().channel,
-  } = {}
+  { initialContent = FIXTURE, comments = fakeCommentChannel().channel } = {}
 ) {
   return renderHook(() =>
     useDocumentEditor({
       initialContent,
       readOnly: false,
-      autosaveDebounceMs: 0,
-      onSave,
-      onStateChange: undefined,
       resolveImageSource: () => null,
       live: {
         extensions: buildLiveDocumentExtensions({
@@ -406,10 +399,9 @@ describe("useDocumentEditor in a live session", () => {
     expect(document.getXmlFragment(BODY_FRAGMENT_NAME).length).toBe(0);
   });
 
-  it("undoes only the local edit, and never saves", async () => {
+  it("undoes only the local edit", async () => {
     const { document } = sharedDocumentFor(FIXTURE);
-    const onSave = vi.fn();
-    const { result } = renderLiveEditor(document, { onSave });
+    const { result } = renderLiveEditor(document);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -426,12 +418,6 @@ describe("useDocumentEditor in a live session", () => {
 
     expect(editor.getText()).not.toContain("Mine.");
     expect(editor.getText()).toContain("Theirs.");
-    await act(async () => {
-      await result.current.save();
-      await new Promise((resolve) => setTimeout(resolve, 10));
-    });
-    expect(result.current.dirty).toBe(false);
-    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("neither re-renders nor reapplies the editor's options on remote edits or renders", async () => {
@@ -450,9 +436,6 @@ describe("useDocumentEditor in a live session", () => {
       return useDocumentEditor({
         initialContent: FIXTURE,
         readOnly: false,
-        autosaveDebounceMs: 0,
-        onSave: vi.fn(),
-        onStateChange: undefined,
         resolveImageSource: () => null,
         live: { extensions, connected: true },
       });

@@ -3,12 +3,15 @@ import {
   documentCommentsPluginKey,
   getDocumentComments,
 } from "@app/components/editor/document/DocumentComments";
+import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
+import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
+import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
 import type {
   LiveCommentCommand,
   LiveCommentErrorCode,
@@ -52,19 +55,28 @@ async function renderCommentedEditor(
     isSavable?: (document: JSONContent) => boolean;
   } = {}
 ) {
-  const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+  const shared = dfmToYDoc(initialContent);
+  if (shared.isErr()) {
+    throw new Error(shared.error);
+  }
   let currentEditor: Editor | null = null;
   const session =
     live === null ? undefined : (live ?? acceptingSession(() => currentEditor));
+  const extensions = buildLiveDocumentExtensions({
+    t: (descriptor) => descriptor.id ?? "",
+    document: shared.value.doc,
+    awareness: null,
+    user: LiveUserFactory.build(),
+    comments: session ?? liveChannel(() => new Err("unavailable")).channel,
+    resolveImageSource: () => null,
+  });
   const rendered = renderHook(
     ({ currentVerify }: { currentVerify?: DfmMessageVerifier }) => {
       const document = useDocumentEditor({
         initialContent,
         readOnly: false,
-        autosaveDebounceMs: 60_000,
-        onSave,
-        onStateChange: undefined,
         resolveImageSource: () => null,
+        live: { extensions, connected: true },
       });
       currentEditor = document.editor;
       const comments = useDocumentComments({
@@ -83,7 +95,20 @@ async function renderCommentedEditor(
     expect(rendered.result.current.document.editor).not.toBeNull()
   );
   await act(nextTick);
-  return { ...rendered, onSave };
+  /** What the session would write: the shared document's body with the editor's threads. */
+  const saved = () => {
+    const editor = rendered.result.current.document.editor;
+    const written = yDocToDfm({
+      doc: shared.value.doc,
+      comments: editor ? getDocumentComments(editor.state.doc) : [],
+    });
+    if (written.isErr()) {
+      throw new Error(written.error);
+    }
+    return written.value;
+  };
+  const initialSaved = saved();
+  return { ...rendered, saved, isUnchanged: () => saved() === initialSaved };
 }
 
 /** Selects the first occurrence of `text` in the editor. */
@@ -198,34 +223,32 @@ describe("useDocumentComments", () => {
   });
 
   it("saves edited text with the comment's anchors and thread unchanged", async () => {
-    const { result, onSave } = await renderCommentedEditor(SOURCE);
+    const { result, saved } = await renderCommentedEditor(SOURCE);
 
     act(() => {
       result.current.document.editor?.commands.insertContentAt(1, "Well, ");
     });
-    await act(() => result.current.document.save());
 
-    expect(onSave.mock.calls[0][0]).toBe(`Well, ${SOURCE}`);
+    expect(saved()).toBe(`Well, ${SOURCE}`);
   });
 
   it("does not carry comment marks in pasted HTML", async () => {
-    const { result, onSave } = await renderCommentedEditor(SOURCE);
+    const { result, saved } = await renderCommentedEditor(SOURCE);
 
     act(() => {
       result.current.document.editor?.commands.insertContent(
         '<p><span data-comment-id="c1">copied</span></p>'
       );
     });
-    await act(() => result.current.document.save());
 
-    expect(onSave.mock.calls[0][0]).toContain(
+    expect(saved()).toContain(
       "Hi :comment-start{id=c1}there:comment-end{id=c1}"
     );
     expect(result.current.comments.quotes.get("c1")).toBe("there");
   });
 
   it("saves formatting applied across a comment's edge", async () => {
-    const { result, onSave } = await renderCommentedEditor(
+    const { result, saved } = await renderCommentedEditor(
       `Hi :comment-start{id=c1}there:comment-end{id=c1} friend\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nNote.\n:::\n`
     );
 
@@ -236,16 +259,13 @@ describe("useDocumentComments", () => {
         .toggleItalic()
         .run();
     });
-    await act(() => result.current.document.save());
-
-    expect(result.current.document.error).toBeNull();
-    expect(onSave.mock.calls[0][0]).toContain(
+    expect(saved()).toContain(
       "*Hi :comment-start{id=c1}there:comment-end{id=c1} friend*"
     );
   });
 
   it("saves a new comment as an anchor pair and the thread the session created", async () => {
-    const { result, onSave } = await renderCommentedEditor(
+    const { result, saved } = await renderCommentedEditor(
       "Hello brave world.\n"
     );
     const editor = result.current.document.editor;
@@ -262,10 +282,7 @@ describe("useDocumentComments", () => {
         (await result.current.comments.submitDraft("Too bold?")).isOk()
       ).toBe(true);
     });
-    await act(() => result.current.document.save());
-
-    expect(onSave).toHaveBeenCalledTimes(1);
-    const parsed = parseDfm(onSave.mock.calls[0][0]);
+    const parsed = parseDfm(saved());
     expect(parsed.isOk()).toBe(true);
     if (parsed.isOk()) {
       const [comment] = parsed.value.comments;
@@ -280,7 +297,7 @@ describe("useDocumentComments", () => {
   });
 
   it("saves a new comment spanning a hard break", async () => {
-    const { result, onSave } = await renderCommentedEditor(
+    const { result, saved } = await renderCommentedEditor(
       "Hello brave  \nnew world.\n"
     );
     const editor = result.current.document.editor;
@@ -297,9 +314,8 @@ describe("useDocumentComments", () => {
         true
       );
     });
-    await act(() => result.current.document.save());
 
-    const parsed = parseDfm(onSave.mock.calls[0][0]);
+    const parsed = parseDfm(saved());
     expect(parsed.isOk()).toBe(true);
     if (parsed.isOk()) {
       const [comment] = parsed.value.comments;
@@ -361,7 +377,7 @@ describe("useDocumentComments", () => {
   });
 
   it("refuses a reply the document could not be saved with", async () => {
-    const { result } = await renderCommentedEditor(
+    const { result, isUnchanged } = await renderCommentedEditor(
       `${"a".repeat(100_000)}\n\n${SOURCE}`
     );
 
@@ -372,11 +388,11 @@ describe("useDocumentComments", () => {
     });
 
     expect(result.current.comments.comments[0].messages).toHaveLength(1);
-    expect(result.current.document.dirty).toBe(false);
+    expect(isUnchanged()).toBe(true);
   });
 
   it("replies, resolves and deletes through the thread in the file", async () => {
-    const { result, onSave } = await renderCommentedEditor(SOURCE);
+    const { result, saved } = await renderCommentedEditor(SOURCE);
 
     await act(async () => {
       expect(
@@ -386,9 +402,8 @@ describe("useDocumentComments", () => {
     await act(async () => {
       await result.current.comments.setResolved("c1", true, null);
     });
-    await act(() => result.current.document.save());
 
-    const replied = parseDfm(onSave.mock.calls[0][0]);
+    const replied = parseDfm(saved());
     expect(replied.isOk()).toBe(true);
     if (replied.isOk()) {
       expect(replied.value.comments[0].status).toBe("resolved");
@@ -401,9 +416,8 @@ describe("useDocumentComments", () => {
     await act(async () => {
       await result.current.comments.remove("c1", null);
     });
-    await act(() => result.current.document.save());
 
-    expect(onSave.mock.calls[1][0]).toBe("Hi there\n");
+    expect(saved()).toBe("Hi there\n");
   });
 
   it("keeps a pending draft when a comment is revealed", async () => {
@@ -476,10 +490,9 @@ describe("useDocumentComments", () => {
               : null
           )
       );
-      const { result, onSave } = await renderCommentedEditor(
-        "Hello brave world.\n",
-        { live: channel }
-      );
+      const { result } = await renderCommentedEditor("Hello brave world.\n", {
+        live: channel,
+      });
       const editor = result.current.document.editor;
       if (!editor) {
         throw new Error("Editor did not mount.");
@@ -509,7 +522,6 @@ describe("useDocumentComments", () => {
       expect(result.current.comments.comments).toEqual([
         sessionThread(command.commentId, "Too bold?"),
       ]);
-      expect(onSave).not.toHaveBeenCalled();
     });
 
     it("deletes the session's thread when the draft can no longer take it", async () => {
@@ -829,8 +841,8 @@ describe("useDocumentComments", () => {
     });
   });
 
-  it("saves text an undo restores after its comment was deleted, without the comment", async () => {
-    const { result, onSave } = await renderCommentedEditor(SOURCE);
+  it("writes text an undo restores after its comment was deleted, without the comment", async () => {
+    const { result, saved } = await renderCommentedEditor(SOURCE);
     const editor = result.current.document.editor;
     if (!editor) {
       throw new Error("Editor did not mount.");
@@ -849,10 +861,7 @@ describe("useDocumentComments", () => {
     act(() => {
       editor.commands.undo();
     });
-    await act(() => result.current.document.save());
-
-    expect(result.current.document.error).toBeNull();
-    expect(onSave.mock.calls[0][0]).toBe("Hi there\n");
+    expect(saved()).toBe("Hi there\n");
 
     act(() => {
       editor.commands.redo();
@@ -863,11 +872,11 @@ describe("useDocumentComments", () => {
       editor.commands.undo();
     });
     expect(editor.state.doc.textContent).toBe("Hi there");
-    expect(editor.getHTML()).not.toContain("data-comment-id");
+    expect(saved()).toBe("Hi there\n");
   });
 
   it("refuses a reply the codec cannot write, leaving the document unchanged", async () => {
-    const { result } = await renderCommentedEditor(SOURCE);
+    const { result, isUnchanged } = await renderCommentedEditor(SOURCE);
 
     await act(async () => {
       expect(
@@ -876,7 +885,7 @@ describe("useDocumentComments", () => {
     });
 
     expect(result.current.comments.comments[0].messages).toHaveLength(1);
-    expect(result.current.document.dirty).toBe(false);
+    expect(isUnchanged()).toBe(true);
   });
 
   it("reads each message as verified or not from the verifier", async () => {
@@ -1383,7 +1392,7 @@ describe("useDocumentComments", () => {
     });
 
     it("inherits the comment it is pasted inside", async () => {
-      const { result, onSave } = await renderCommentedEditor(SOURCE);
+      const { result, saved } = await renderCommentedEditor(SOURCE);
       const editor = result.current.document.editor;
       if (!editor) {
         throw new Error("Editor did not mount.");
@@ -1394,16 +1403,13 @@ describe("useDocumentComments", () => {
         editor.commands.setTextSelection(6);
         editor.view.pasteHTML("<strong>XX</strong>");
       });
-      await act(() => result.current.document.save());
-
-      expect(result.current.document.error).toBeNull();
-      expect(onSave.mock.calls[0][0]).toContain(
+      expect(saved()).toContain(
         "Hi :comment-start{id=c1}th**XX**ere:comment-end{id=c1}"
       );
     });
 
     it("does not inherit the comment it is pasted next to", async () => {
-      const { result, onSave } = await renderCommentedEditor(SOURCE);
+      const { result, saved } = await renderCommentedEditor(SOURCE);
       const editor = result.current.document.editor;
       if (!editor) {
         throw new Error("Editor did not mount.");
@@ -1413,9 +1419,8 @@ describe("useDocumentComments", () => {
         editor.commands.setTextSelection(4);
         editor.view.pasteText("XX");
       });
-      await act(() => result.current.document.save());
 
-      expect(onSave.mock.calls[0][0]).toContain(
+      expect(saved()).toContain(
         "Hi XX:comment-start{id=c1}there:comment-end{id=c1}"
       );
     });
@@ -1474,7 +1479,7 @@ describe("useDocumentComments", () => {
     });
 
     it("applies inside a comment, which keeps its anchors around it", async () => {
-      const { result, onSave } = await renderCommentedEditor(TAGGED);
+      const { result, saved } = await renderCommentedEditor(TAGGED);
       const editor = result.current.document.editor;
       if (!editor) {
         throw new Error("Editor did not mount.");
@@ -1483,10 +1488,7 @@ describe("useDocumentComments", () => {
       act(() => {
         editor.chain().setTextSelection({ from: 8, to: 11 }).toggleCode().run();
       });
-      await act(() => result.current.document.save());
-
-      expect(result.current.document.error).toBeNull();
-      expect(onSave.mock.calls[0][0]).toContain(
+      expect(saved()).toContain(
         "Hi :comment-start{id=c1}run `all` tests:comment-end{id=c1} now"
       );
     });
@@ -1536,7 +1538,7 @@ describe("useDocumentComments", () => {
 
     it("offers the commented text as Markdown, which applied unchanged keeps the text", async () => {
       const source = `Hi **:comment-start{id=c1}brave:comment-end{id=c1}** world\n\n${thread()}`;
-      const { result, onSave } = await renderCommentedEditor(source);
+      const { result, saved } = await renderCommentedEditor(source);
 
       const template = result.current.comments.suggestionTemplate("c1");
       expect(template.isOk() && template.value).toBe(
@@ -1554,15 +1556,12 @@ describe("useDocumentComments", () => {
           ).isOk()
         ).toBe(true);
       });
-      await act(() => result.current.document.save());
 
-      expect(onSave.mock.calls[0][0]).toBe(
-        source.replace("status=open", "status=resolved")
-      );
+      expect(saved()).toBe(source.replace("status=open", "status=resolved"));
     });
 
     it("replaces the commented text, keeps the comment on it and resolves the thread", async () => {
-      const { result, onSave } = await renderCommentedEditor(SOURCE);
+      const { result, saved } = await renderCommentedEditor(SOURCE);
 
       await act(async () => {
         expect(
@@ -1575,9 +1574,8 @@ describe("useDocumentComments", () => {
           ).isOk()
         ).toBe(true);
       });
-      await act(() => result.current.document.save());
 
-      expect(onSave.mock.calls[0][0]).toBe(
+      expect(saved()).toBe(
         SOURCE.replace(
           ":comment-start{id=c1}there:comment-end{id=c1}",
           "*:comment-start{id=c1}over* here:comment-end{id=c1}"
@@ -1617,7 +1615,7 @@ describe("useDocumentComments", () => {
       ["a heading", "# Title"],
       ["a comment anchor", ":comment-start{id=c2}x:comment-end{id=c2}"],
     ])("refuses %s, leaving the document unchanged", async (_, suggestion) => {
-      const { result } = await renderCommentedEditor(SOURCE);
+      const { result, isUnchanged } = await renderCommentedEditor(SOURCE);
 
       let applied: Result<void, string> | undefined;
       await act(async () => {
@@ -1631,11 +1629,11 @@ describe("useDocumentComments", () => {
       expect(applied?.isErr()).toBe(true);
       expect(result.current.comments.quotes.get("c1")).toBe("there");
       expect(result.current.comments.comments[0].status).toBe("open");
-      expect(result.current.document.dirty).toBe(false);
+      expect(isUnchanged()).toBe(true);
     });
 
     it("refuses a suggestion the document could not be saved with once resolved", async () => {
-      const { result } = await renderCommentedEditor(SOURCE, {
+      const { result, isUnchanged } = await renderCommentedEditor(SOURCE, {
         isSavable: (document) =>
           !JSON.stringify(document).includes('"status":"resolved"'),
       });
@@ -1652,11 +1650,11 @@ describe("useDocumentComments", () => {
       expect(applied?.isErr()).toBe(true);
       expect(result.current.comments.quotes.get("c1")).toBe("there");
       expect(result.current.comments.comments[0].status).toBe("open");
-      expect(result.current.document.dirty).toBe(false);
+      expect(isUnchanged()).toBe(true);
     });
 
     it("refuses a comment spanning paragraphs", async () => {
-      const { result } = await renderCommentedEditor(
+      const { result, isUnchanged } = await renderCommentedEditor(
         `:comment-start{id=c1}One\n\nTwo:comment-end{id=c1}\n\n${thread()}`
       );
 
@@ -1673,7 +1671,7 @@ describe("useDocumentComments", () => {
         );
       });
       expect(applied?.isErr()).toBe(true);
-      expect(result.current.document.dirty).toBe(false);
+      expect(isUnchanged()).toBe(true);
     });
 
     const threads = (...ids: string[]) =>
@@ -1686,7 +1684,7 @@ describe("useDocumentComments", () => {
 
     it("keeps an enclosing comment over the replacement", async () => {
       const source = `the :comment-start{id=c2}quick :comment-start{id=c1}brown:comment-end{id=c1} fox:comment-end{id=c2}\n\n${threads("c1", "c2")}`;
-      const { result, onSave } = await renderCommentedEditor(source);
+      const { result, saved } = await renderCommentedEditor(source);
 
       await act(async () => {
         expect(
@@ -1695,10 +1693,9 @@ describe("useDocumentComments", () => {
           ).isOk()
         ).toBe(true);
       });
-      await act(() => result.current.document.save());
 
       expect(result.current.comments.quotes.get("c2")).toBe("quick red fox");
-      expect(onSave.mock.calls[0][0]).toBe(
+      expect(saved()).toBe(
         source
           .replace("brown", "red")
           .replace("{id=c1 status=open}", "{id=c1 status=resolved}")
@@ -1724,7 +1721,7 @@ describe("useDocumentComments", () => {
     ])(
       "refuses to remove text %s holds, leaving the document unchanged",
       async (_, text, suggestion) => {
-        const { result } = await renderCommentedEditor(
+        const { result, isUnchanged } = await renderCommentedEditor(
           `${text}\n\n${threads("c1", "c2")}`
         );
         const quote = result.current.comments.quotes.get("c2");
@@ -1741,7 +1738,7 @@ describe("useDocumentComments", () => {
         expect(applied?.isErr()).toBe(true);
         expect(result.current.comments.quotes.get("c2")).toBe(quote);
         expect(result.current.comments.comments[0].status).toBe("open");
-        expect(result.current.document.dirty).toBe(false);
+        expect(isUnchanged()).toBe(true);
       }
     );
 
