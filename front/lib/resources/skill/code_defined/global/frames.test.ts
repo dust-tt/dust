@@ -78,6 +78,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("stable Frame ID");
     expect(instructions).toContain("additionally requires read access");
     expect(instructions).toContain("does not test the Frame");
+    expect(instructions).toContain("dsbx db list --frame <frame-id>");
+    expect(instructions).toContain("dsbx db query comments --frame <frame-id>");
     expect(instructions).not.toContain("dsbx frame validate");
     expect(instructions).toContain(
       'bash "/files/conversation-<conversationId>/skills/Create Frames/lint.sh" "$FRAME"'
@@ -185,6 +187,7 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain("useFrameFunction");
     expect(instructions).not.toContain("tools.call");
     expect(instructions).not.toContain("dsbx frame call");
+    expect(instructions).not.toContain("dsbx db");
     expect(instructions).not.toContain("frame_author_required");
     expect(instructions).not.toContain("--replaces");
   });
