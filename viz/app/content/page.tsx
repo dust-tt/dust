@@ -12,8 +12,11 @@ interface RenderVisualizationSearchParams {
   fullHeight?: string;
   identifier?: string;
   pdfMode?: string;
-  /** Front's active locale; absent outside the app (public frames), which use Accept-Language. */
-  locale?: string;
+  /**
+   * Front's active locale; absent outside the app (public frames), which use Accept-Language.
+   * An array when `?locale=` is repeated.
+   */
+  locale?: string | string[];
 }
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
@@ -45,7 +48,8 @@ export default function RenderVisualization({
   // and only that language's catalog is sent to the browser.
   const catalog = getVizCatalog(
     resolveVizLocale({
-      localeParam,
+      // A repeated `?locale=` uses its first value.
+      localeParam: Array.isArray(localeParam) ? localeParam[0] : localeParam,
       acceptLanguage: headers().get("accept-language"),
     })
   );

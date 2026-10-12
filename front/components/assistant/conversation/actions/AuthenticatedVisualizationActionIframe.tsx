@@ -55,9 +55,8 @@ interface AuthenticatedVisualizationActionIframeProps extends Omit<
 
 /**
  * @cc [owner:ykmsd,label:product] authenticated-frame-follows-active-locale
- * The Frame MUST receive front's active UI locale (`i18n.locale`, which is `DEFAULT_LOCALE` when the
- * `localisation` flag is off), or `DEFAULT_LOCALE` when that locale is not a `SupportedLocale`
- * (pseudo-locale).
+ * The Frame MUST receive front's active UI locale (`i18n.locale`, as set by `UserLocaleSync`), or
+ * `DEFAULT_LOCALE` when that locale is not a `SupportedLocale` (pseudo-locale).
  */
 export const AuthenticatedVisualizationActionIframe = forwardRef<
   HTMLIFrameElement,
