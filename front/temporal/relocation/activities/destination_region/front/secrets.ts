@@ -1,5 +1,9 @@
 /* oxlint-disable dust/noRawSql -- relocation SQL file requires raw SQL */
 
+import {
+  buildAuditLogTarget,
+  emitAuditLogEventDirect,
+} from "@app/lib/api/audit/workos_audit";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -110,6 +114,23 @@ export async function reencryptSecretsInDestinationRegion({
         }
       );
     }
+  });
+
+  void emitAuditLogEventDirect({
+    workspace,
+    action: "workspace.secrets_relocated",
+    actor: {
+      type: "system",
+      id: "relocation",
+      name: "Workspace relocation",
+    },
+    targets: [buildAuditLogTarget("workspace", workspace)],
+    context: { location: "internal" },
+    metadata: {
+      secret_count: String(blob.secrets.length),
+      source_cell: sourceCell,
+      destination_cell: destCell,
+    },
   });
 
   localLogger.info(

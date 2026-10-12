@@ -1,3 +1,4 @@
+import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import {
@@ -18,6 +19,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const { stagedObjects } = vi.hoisted(() => ({
   stagedObjects: new Map<string, string>(),
 }));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual = await importOriginal<typeof workosAudit>();
+  return { ...actual, emitAuditLogEventDirect: vi.fn() };
+});
 
 // Keeps the real path construction and swaps the bucket for an in-memory map.
 vi.mock(
@@ -119,6 +125,7 @@ async function seedSecrets() {
 describe("relocation secrets re-encryption", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.mocked(workosAudit.emitAuditLogEventDirect).mockClear();
     stagedObjects.clear();
   });
 
@@ -181,6 +188,37 @@ describe("relocation secrets re-encryption", () => {
 
     await deleteStagedSecretsInDestinationRegion({ dataPath: dataPath! });
     expect(stagedObjects.size).toBe(0);
+  });
+
+  it("audits a successful re-encryption once, with the secret count and both cells", async () => {
+    const { workspace } = await seedSecrets();
+
+    const dataPath = await readSecretsFromSourceRegion({
+      ...CELLS,
+      workspaceId: workspace.sId,
+    });
+    setCellSecrets("destination");
+    await reencryptSecretsInDestinationRegion({
+      ...CELLS,
+      dataPath: dataPath!,
+      workspaceId: workspace.sId,
+    });
+
+    expect(workosAudit.emitAuditLogEventDirect).toHaveBeenCalledTimes(1);
+    expect(workosAudit.emitAuditLogEventDirect).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "workspace.secrets_relocated",
+        actor: expect.objectContaining({ type: "system" }),
+        targets: [
+          expect.objectContaining({ type: "workspace", id: workspace.sId }),
+        ],
+        metadata: {
+          secret_count: "4",
+          source_cell: CELLS.sourceCell,
+          destination_cell: CELLS.destCell,
+        },
+      })
+    );
   });
 
   it("never stages plaintext or source-encrypted values", async () => {
@@ -269,6 +307,7 @@ describe("relocation secrets re-encryption", () => {
         workspaceId: workspace.sId,
       })
     ).rejects.toThrow("workspace_sandbox_env_vars");
+    expect(workosAudit.emitAuditLogEventDirect).not.toHaveBeenCalled();
 
     await mcpCredential.reload();
     await dustAppSecret.reload();

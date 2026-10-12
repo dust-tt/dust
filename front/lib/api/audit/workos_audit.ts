@@ -123,6 +123,7 @@ export const AUDIT_ACTIONS = [
   "workspace.published_agents_restricted_models_updated",
   "workspace.regional_models_only_updated",
   "workspace.reinforcement_cap_updated",
+  "workspace.secrets_relocated",
   "workspace.self_improvement_cap_per_skill_updated",
   "workspace.sharing_policy_updated",
   "workspace.slack_personal_footer_removal_updated",
