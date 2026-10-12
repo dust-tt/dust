@@ -173,14 +173,6 @@ export function GroupBudgetOrderTab({
       </div>
     );
   }
-  if (rows.length === 0) {
-    return (
-      <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-        {t`No group has a budget yet.`}
-      </span>
-    );
-  }
-
   const visibleCount = visibleRows.length;
   const totalCount = rows.length;
 
