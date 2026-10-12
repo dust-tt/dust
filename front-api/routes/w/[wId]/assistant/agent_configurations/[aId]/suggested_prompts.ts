@@ -5,7 +5,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import {
   ARCHIVED_AGENT_API_ERROR,
   isArchivedAgent,
@@ -46,7 +45,6 @@ app.get(
 /** @ignoreswagger */
 app.put(
   "/",
-  withFeatureFlag("discovery_homepage"),
   validate("param", ParamsSchema),
   validate("json", PutAgentSuggestedPromptsRequestBodySchema),
   async (ctx): HandlerResult<AgentSuggestedPromptsResponseBody> => {

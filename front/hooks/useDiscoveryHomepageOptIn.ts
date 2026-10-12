@@ -8,9 +8,10 @@ const DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY = "discoveryHomepageOptIn";
 
 /**
  * @cc [owner:adrsimon,label:product] discovery-homepage-user-opt-in
- * The discovery homepage MUST show when the workspace has the `discovery_homepage` flag or the user
- * opted in through their own metadata. Every opt-in surface (sidebar banner, settings toggle) MUST
- * only show once the metadata has loaded and the workspace flag is off.
+ * Discovery homepage features (homepage, agent suggested prompts) MUST be on when the workspace has
+ * the `discovery_homepage` flag or the user opted in through their own metadata: client code MUST
+ * read `isDiscoveryHomepage` from this hook, not the flag. Opt-in and opt-out surfaces (homepage
+ * line, settings toggle) MUST only show once the metadata has loaded and the workspace flag is off.
  */
 export function useDiscoveryHomepageOptIn() {
   const { t } = useLingui();
@@ -26,16 +27,33 @@ export function useDiscoveryHomepageOptIn() {
 
   const setOptedIn = async (optedIn: boolean) => {
     const value = String(optedIn);
+    const applyLocally = (localValue: string) =>
+      mutateMetadata(
+        {
+          metadata: {
+            key: DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY,
+            value: localValue,
+          },
+        },
+        { revalidate: false }
+      );
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+    if (document.startViewTransition && !prefersReducedMotion) {
+      await document.startViewTransition(() => applyLocally(value)).finished;
+    } else {
+      await applyLocally(value);
+    }
+
     try {
       await setUserMetadataFromClient({
         key: DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY,
         value,
       });
-      await mutateMetadata(
-        { metadata: { key: DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY, value } },
-        { revalidate: false }
-      );
     } catch (error) {
+      await applyLocally(String(!optedIn));
       sendApiErrorNotification({
         title: t`Could not switch homepage`,
         error,
@@ -45,6 +63,7 @@ export function useDiscoveryHomepageOptIn() {
 
   return {
     isDiscoveryHomepage: hasWorkspaceFlag || hasOptedIn,
+    isDiscoveryHomepageLoading: !hasWorkspaceFlag && isMetadataLoading,
     canToggleHomepage:
       !hasWorkspaceFlag && !isMetadataLoading && !isMetadataError,
     hasOptedIn,

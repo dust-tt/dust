@@ -12,7 +12,7 @@ import type {
   BuilderAction,
 } from "@app/components/shared/tools_picker/types";
 import { useAgentSuggestedPrompts } from "@app/hooks/useAgentSuggestedPrompts";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { useAgentConfigurationActions } from "@app/lib/swr/actions";
 import { useEditors } from "@app/lib/swr/agent_editors";
@@ -217,7 +217,8 @@ export function useAgentBuilderFormHydration({
     disabled: !agentConfiguration || isDuplicate,
   });
 
-  const { hasFeature } = useFeatureFlags();
+  const { isDiscoveryHomepage, isDiscoveryHomepageLoading } =
+    useDiscoveryHomepageOptIn();
   const {
     suggestedPrompts,
     isSuggestedPromptsError,
@@ -226,7 +227,7 @@ export function useAgentBuilderFormHydration({
   } = useAgentSuggestedPrompts({
     workspaceId: owner.sId,
     agentId: sourceAgentId,
-    disabled: !hasFeature("discovery_homepage"),
+    disabled: !isDiscoveryHomepage,
   });
 
   const { slackProvider, slackChannels } = useSlackSettings(agentConfiguration);
@@ -332,6 +333,7 @@ export function useAgentBuilderFormHydration({
       isSkillsLoading ||
       isTriggersLoading ||
       isEditorsLoading ||
+      isDiscoveryHomepageLoading ||
       isSuggestedPromptsLoading,
     refresh,
     mutateEditors,

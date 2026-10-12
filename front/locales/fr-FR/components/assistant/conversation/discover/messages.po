@@ -224,6 +224,14 @@ msgstr "Position dans la rubrique À la une"
 msgid "Position {positionNumber}"
 msgstr "Position {positionNumber}"
 
+#: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
+msgid "Switch back to the original homepage."
+msgstr "Revenir à la page d'accueil d'origine."
+
+#: front/components/assistant/conversation/discover/DiscoveryHomepageOptInLine.tsx
+msgid "Your homepage is getting a refresh. <0>Get a sneak peek!</0>"
+msgstr "Votre page d'accueil fait peau neuve. <0>Découvrez-la en avant-première !</0>"
+
 #: front/components/assistant/conversation/discover/HomepageUseCases.tsx
 msgid "Hide this suggestion"
 msgstr "Masquer cette suggestion"
@@ -339,7 +347,3 @@ msgstr "Rédige un document à partir de nos connaissances"
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
 msgid "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."
 msgstr "Rédige une note d’une page sur le sujet que je vais nommer, à partir de nos documents : où en est le sujet, ce qui bloque, qui s’occupe de quoi, et les décisions encore ouvertes. Rends-la sous forme de document."
-
-#: front/components/assistant/conversation/discover/useDiscoveryHomepageOptIn.ts
-msgid "Could not switch homepage"
-msgstr "Impossible de changer de page d'accueil"

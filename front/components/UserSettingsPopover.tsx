@@ -1,4 +1,3 @@
-import { useDiscoveryHomepageOptIn } from "@app/components/assistant/conversation/discover/useDiscoveryHomepageOptIn";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import { MODAL_SETTINGS_LIST_CLASSES } from "@app/components/me/modalSettingsList";
 import {
@@ -22,6 +21,7 @@ import {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
+import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
