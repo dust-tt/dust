@@ -77,6 +77,7 @@ export { default as MistralLogo } from "./Mistral";
 export { default as ModjoLogo } from "./Modjo";
 export { default as MondayLogo } from "./Monday";
 export { default as MoonshotLogo } from "./Moonshot";
+export { default as N8NLogo } from "./N8N";
 export { default as NaptaLogo } from "./Napta";
 export { default as NetSuiteLogo } from "./NetSuite";
 export { default as NotionLogo } from "./Notion";
