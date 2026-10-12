@@ -91,18 +91,16 @@ export async function validateExternalUrl(url: string): Promise<string | null> {
 /**
  * @cc [owner:philipperolet,label:security] check-before-use
  * Front MUST check the Azure OpenAI endpoint of a workspace provider config with this function
- * before storing it, and before sending a request to it, including when it is read back from a
- * stored config.
+ * before storing it, and before front itself sends a request to it, including when the endpoint is
+ * read back from a stored config.
  */
 export function validateAzureOpenAIEndpoint(endpoint: string): string | null {
   const url = URL.parse(endpoint);
-  const isAzureHost = AZURE_OPENAI_HOST_SUFFIXES.some((suffix) =>
-    url?.hostname.endsWith(suffix)
-  );
+  const isAzureHttpsUrl =
+    url?.protocol === "https:" &&
+    AZURE_OPENAI_HOST_SUFFIXES.some((suffix) => url.hostname.endsWith(suffix));
 
-  if (url?.protocol !== "https:" || !isAzureHost) {
-    return "The endpoint is invalid (expecting an `https` URL on `openai.azure.com` or `cognitive.microsoft.com`).";
-  }
-
-  return null;
+  return isAzureHttpsUrl
+    ? null
+    : "The endpoint is invalid (expecting an `https` URL on `openai.azure.com` or `cognitive.microsoft.com`).";
 }

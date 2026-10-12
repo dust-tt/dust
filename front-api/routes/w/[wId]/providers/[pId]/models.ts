@@ -117,9 +117,9 @@ app.get(
           });
         }
 
-        let deploymentsRes: Response;
+        let mList: Array<{ id: string; model: string }>;
         try {
-          deploymentsRes = await fetch(
+          const deploymentsRes = await fetch(
             `${config.endpoint}openai/deployments?api-version=2022-12-01`,
             {
               method: "GET",
@@ -128,6 +128,15 @@ app.get(
               },
             }
           );
+          if (!deploymentsRes.ok) {
+            const err = await deploymentsRes.json();
+            return ctx.json({ error: err.error }, 400);
+          }
+          const deployments = await deploymentsRes.json();
+          mList = deployments.data.map((m: any) => ({
+            id: m.id,
+            model: m.model,
+          }));
         } catch (err) {
           return apiError(
             ctx,
@@ -135,22 +144,13 @@ app.get(
               status_code: 400,
               api_error: {
                 type: "provider_endpoint_error",
-                message: "Could not reach the Azure OpenAI endpoint.",
+                message:
+                  "Could not list deployments from the Azure OpenAI endpoint.",
               },
             },
             normalizeError(err)
           );
         }
-
-        if (!deploymentsRes.ok) {
-          const err = await deploymentsRes.json();
-          return ctx.json({ error: err.error }, 400);
-        }
-        const deployments = await deploymentsRes.json();
-        const mList = deployments.data.map((m: any) => ({
-          id: m.id,
-          model: m.model,
-        })) as Array<{ model: string; id: string }>;
 
         let f = [];
         if (embed) {

@@ -84,7 +84,11 @@ app.post(
           return ctx.json({ ok: true });
         } catch {
           return ctx.json(
-            { ok: false, error: "Invalid Azure endpoint URL" },
+            {
+              ok: false,
+              error:
+                "Could not list deployments from the Azure OpenAI endpoint.",
+            },
             400
           );
         }

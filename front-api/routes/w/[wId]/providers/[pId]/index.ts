@@ -1,6 +1,7 @@
 import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -25,6 +26,8 @@ const ParamsSchema = z.object({
   pId: z.string(),
 });
 
+const AzureOpenAIConfigSchema = z.object({ endpoint: z.string() });
+
 // Mounted at /api/w/:wId/providers/:pId.
 const app = workspaceApp();
 
@@ -43,9 +46,13 @@ app.post(
     const body = ctx.req.valid("json");
 
     if (pId === "azure_openai") {
-      const endpointError = validateAzureOpenAIEndpoint(
-        JSON.parse(body.config).endpoint
+      const parsedConfig = safeParseJSON(body.config);
+      const azureConfig = AzureOpenAIConfigSchema.safeParse(
+        parsedConfig.isOk() ? parsedConfig.value : null
       );
+      const endpointError = azureConfig.success
+        ? validateAzureOpenAIEndpoint(azureConfig.data.endpoint)
+        : "The Azure OpenAI config must be a JSON object with an `endpoint` string.";
       if (endpointError) {
         return apiError(ctx, {
           status_code: 400,
