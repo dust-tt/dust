@@ -12,13 +12,17 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@app/lib/api/email", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@app/lib/api/email")>();
-  return {
-    ...mod,
-    sendEmailWithTemplate: vi.fn().mockResolvedValue({ isOk: () => true }),
-  };
-});
+vi.mock(
+  import("@app/lib/notifications/triggers/frame-sharing"),
+  async (importOriginal) => {
+    const { Ok } = await import("@app/types/shared/result");
+    return {
+      ...(await importOriginal()),
+      notifyFrameLoginCode: vi.fn().mockResolvedValue(new Ok(undefined)),
+      notifyFrameShared: vi.fn().mockResolvedValue(new Ok(undefined)),
+    };
+  }
+);
 
 // Mock resolveOptionalAuth to control authentication per test.
 vi.mock("@front-api/routes/v1/public/frames/shared_auth", () => ({

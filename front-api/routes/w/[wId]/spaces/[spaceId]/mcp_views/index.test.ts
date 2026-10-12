@@ -1,15 +1,28 @@
 import { Authenticator } from "@app/lib/auth";
+import { emailRecipientFromUser } from "@app/lib/notifications/transactional_emails";
+import { notifyAdminsMCPGlobalSharingReconfiguration } from "@app/lib/notifications/triggers/mcp-global-sharing-reconfiguration";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock(
+  "@app/lib/notifications/triggers/mcp-global-sharing-reconfiguration",
+  async (importOriginal) => ({
+    ...(await importOriginal()),
+    notifyAdminsMCPGlobalSharingReconfiguration: vi.fn(),
+  })
+);
 
 describe("GET /api/w/:wId/spaces/:spaceId/mcp_views/not_activated", () => {
   it("returns activable MCP server views", async () => {
@@ -145,5 +158,112 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
         message: "MCP Server View not found",
       },
     });
+  });
+});
+
+describe("POST /api/w/:wId/spaces/:spaceId/mcp_views", () => {
+  beforeEach(() => {
+    vi.mocked(notifyAdminsMCPGlobalSharingReconfiguration).mockReset();
+    vi.mocked(notifyAdminsMCPGlobalSharingReconfiguration).mockResolvedValue(
+      new Ok(undefined)
+    );
+  });
+
+  async function setupToolUsedByAgentInRegularSpace() {
+    const { workspace, user, auth, globalGroup, globalSpace } =
+      await createPrivateApiMockRequest({ role: "admin" });
+
+    const regularSpace = await SpaceFactory.regular(workspace);
+    await SpaceFactory.attachGroup(regularSpace, globalGroup);
+
+    const mcpServer = await RemoteMCPServerFactory.create(workspace, {
+      name: "Test Server",
+      url: "https://test-server.example.com",
+    });
+    const regularView = await MCPServerViewFactory.create(
+      workspace,
+      mcpServer.sId,
+      regularSpace
+    );
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Affected Agent",
+    });
+    await AgentMCPServerConfigurationFactory.create(auth, regularSpace, {
+      agent,
+      mcpServerView: regularView,
+    });
+
+    return { workspace, user, globalSpace, mcpServer };
+  }
+
+  it("notifies active admins when sharing a tool globally affects agents", async () => {
+    const { workspace, user, globalSpace, mcpServer } =
+      await setupToolUsedByAgentInRegularSpace();
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces/${globalSpace.sId}/mcp_views`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mcpServerId: mcpServer.sId }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.success).toBe(true);
+    expect(body.serverView.spaceId).toBe(globalSpace.sId);
+
+    expect(notifyAdminsMCPGlobalSharingReconfiguration).toHaveBeenCalledTimes(
+      1
+    );
+    expect(
+      vi.mocked(notifyAdminsMCPGlobalSharingReconfiguration).mock.calls[0][0]
+    ).toEqual({
+      admins: [emailRecipientFromUser(user.toJSON())],
+      workspaceId: workspace.sId,
+      workspaceName: workspace.name,
+      toolName: expect.any(String),
+      agentNames: ["Affected Agent"],
+    });
+  });
+
+  it("still creates the view when the notification fails", async () => {
+    vi.mocked(notifyAdminsMCPGlobalSharingReconfiguration).mockResolvedValue(
+      new Err(new Error("Novu is down"))
+    );
+    const { workspace, globalSpace, mcpServer } =
+      await setupToolUsedByAgentInRegularSpace();
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces/${globalSpace.sId}/mcp_views`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mcpServerId: mcpServer.sId }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(notifyAdminsMCPGlobalSharingReconfiguration).toHaveBeenCalledTimes(
+      1
+    );
+  });
+
+  it("does not notify when sharing to a regular space", async () => {
+    const { workspace, mcpServer } = await setupToolUsedByAgentInRegularSpace();
+    const otherSpace = await SpaceFactory.regular(workspace);
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/spaces/${otherSpace.sId}/mcp_views`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mcpServerId: mcpServer.sId }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(notifyAdminsMCPGlobalSharingReconfiguration).not.toHaveBeenCalled();
   });
 });

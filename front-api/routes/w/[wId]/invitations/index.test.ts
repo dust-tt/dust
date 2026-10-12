@@ -4,14 +4,20 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import sgMail from "@sendgrid/mail";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.spyOn(sgMail, "setApiKey").mockImplementation(() => {});
-const sgSendMock = vi
-  .spyOn(sgMail, "send")
-  .mockResolvedValue([{ statusCode: 202, headers: {}, body: {} }, {}] as never);
+vi.mock(
+  import("@app/lib/notifications/triggers/workspace-invitation"),
+  async (importOriginal) => {
+    const { Ok } = await import("@app/types/shared/result");
+    return {
+      ...(await importOriginal()),
+      notifyWorkspaceInvitation: vi.fn().mockResolvedValue(new Ok(undefined)),
+    };
+  }
+);
 
+import { notifyWorkspaceInvitation } from "@app/lib/notifications/triggers/workspace-invitation";
 import { honoApp } from "@front-api/app";
 
 beforeEach(() => {
@@ -254,7 +260,7 @@ describe("POST /api/w/:wId/invitations", () => {
     expect(byEmail.get("new-user-2@example.com")?.initialRole).toBe("manager");
     expect(byEmail.get("new-user-3@example.com")?.initialRole).toBe("admin");
 
-    expect(sgSendMock).toHaveBeenCalledTimes(3);
+    expect(notifyWorkspaceInvitation).toHaveBeenCalledTimes(3);
   });
 
   it("returns 400 when the body is not an array of invitations", async () => {
@@ -296,7 +302,7 @@ describe("POST /api/w/:wId/invitations", () => {
     const invitations =
       await MembershipInvitationResource.getPendingInvitations(adminAuth);
     expect(invitations).toHaveLength(0);
-    expect(sgSendMock).not.toHaveBeenCalled();
+    expect(notifyWorkspaceInvitation).not.toHaveBeenCalled();
   });
 
   it("does not count an expired pending invitation against the plan seat limit", async () => {
