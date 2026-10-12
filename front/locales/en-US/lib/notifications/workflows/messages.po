@@ -262,6 +262,114 @@ msgstr "This might increase your subscription cost. You can turn off automatic s
 msgid "Go to workspace usage"
 msgstr "Go to workspace usage"
 
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "[Dust] Subscription canceled - important information"
+msgstr "[Dust] Subscription canceled - important information"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "You canceled the subscription of the {workspaceName} workspace. It will end with your current billing period, on {formattedEndDate}. You can reactivate it at any time before then."
+msgstr "You canceled the subscription of the {workspaceName} workspace. It will end with your current billing period, on {formattedEndDate}. You can reactivate it at any time before then."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "If you don't reactivate it, your workspace will switch back to the free plan:"
+msgstr "If you don't reactivate it, your workspace will switch back to the free plan:"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "• All users will be removed from the workspace except for the most tenured admin."
+msgstr "• All users will be removed from the workspace except for the most tenured admin."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "• Connections will be removed and their data deleted from Dust."
+msgstr "• Connections will be removed and their data deleted from Dust."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "• Conversations, custom agents, and data sources will remain accessible, with the limits of the free plan."
+msgstr "• Conversations, custom agents, and data sources will remain accessible, with the limits of the free plan."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "• Folders holding more than 50 MB of data will be deleted after the end of your billing period."
+msgstr "• Folders holding more than 50 MB of data will be deleted after the end of your billing period."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Learn more in our cancellation FAQ: {CANCELLATION_FAQ_URL}"
+msgstr "Learn more in our cancellation FAQ: {CANCELLATION_FAQ_URL}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Manage your subscription"
+msgstr "Manage your subscription"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "[Dust] Your subscription has been reactivated"
+msgstr "[Dust] Your subscription has been reactivated"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "The subscription of the {workspaceName} workspace has been reactivated."
+msgstr "The subscription of the {workspaceName} workspace has been reactivated."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "It won't be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
+msgstr "It won't be canceled at the end of the billing period, no downgrade will happen, and you can keep using Dust as usual."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Thank you for renewing your trust in us."
+msgstr "Thank you for renewing your trust in us."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "[Dust] Your payment has failed"
+msgstr "[Dust] Your payment has failed"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "The latest payment for the {workspaceName} workspace has failed. Please update your payment information."
+msgstr "The latest payment for the {workspaceName} workspace has failed. Please update your payment information."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Your workspace will be downgraded after 3 failed payment retries. This removes every feature of your paid plan, permanently deletes your connections and their data, and removes the agents linked to those connections."
+msgstr "Your workspace will be downgraded after 3 failed payment retries. This removes every feature of your paid plan, permanently deletes your connections and their data, and removes the agents linked to those connections."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Update payment information"
+msgstr "Update payment information"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "{remainingDays, plural, one {Last reminder: your Dust data will be deleted in # day} other {Last reminder: your Dust data will be deleted in # days}}"
+msgstr "{remainingDays, plural, one {Last reminder: your Dust data will be deleted in # day} other {Last reminder: your Dust data will be deleted in # days}}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "{remainingDays, plural, one {Your Dust data will be deleted in # day} other {Your Dust data will be deleted in # days}}"
+msgstr "{remainingDays, plural, one {Your Dust data will be deleted in # day} other {Your Dust data will be deleted in # days}}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "You're receiving this as an admin of the Dust workspace {workspaceName}. Your trial period has ended."
+msgstr "You're receiving this as an admin of the Dust workspace {workspaceName}. Your trial period has ended."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "{remainingDays, plural, one {To keep using Dust and avoid losing your data, please subscribe within # day. After that, your data will be permanently deleted and you will no longer be able to access your workspace.} other {To keep using Dust and avoid losing your data, please subscribe within # days. After that, your data will be permanently deleted and you will no longer be able to access your workspace.}}"
+msgstr "{remainingDays, plural, one {To keep using Dust and avoid losing your data, please subscribe within # day. After that, your data will be permanently deleted and you will no longer be able to access your workspace.} other {To keep using Dust and avoid losing your data, please subscribe within # days. After that, your data will be permanently deleted and you will no longer be able to access your workspace.}}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Subscribe now to keep your conversations, custom agents, and data sources, and keep using Dust without interruption."
+msgstr "Subscribe now to keep your conversations, custom agents, and data sources, and keep using Dust without interruption."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "You're receiving this as an admin of the Dust workspace {workspaceName}. You recently canceled your Dust subscription."
+msgstr "You're receiving this as an admin of the Dust workspace {workspaceName}. You recently canceled your Dust subscription."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "{remainingDays, plural, one {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # day.} other {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # days.}}"
+msgstr "{remainingDays, plural, one {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # day.} other {To protect your privacy and maintain the highest security standards, your data will be permanently deleted in # days.}}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "{remainingDays, plural, one {To keep your data, please subscribe again within # day. After that, data recovery will not be possible.} other {To keep your data, please subscribe again within # days. After that, data recovery will not be possible.}}"
+msgstr "{remainingDays, plural, one {To keep your data, please subscribe again within # day. After that, data recovery will not be possible.} other {To keep your data, please subscribe again within # days. After that, data recovery will not be possible.}}"
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "This is our last message before data deletion."
+msgstr "This is our last message before data deletion."
+
+#: front/lib/notifications/workflows/subscription-lifecycle.ts
+msgid "Subscribe"
+msgstr "Subscribe"
+
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "• {requester} (reason: {reason})"
 msgstr "• {requester} (reason: {reason})"
