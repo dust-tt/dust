@@ -199,7 +199,7 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {markdown.canEdit && !markdown.richEditor && (
+        {markdown.canEdit && !markdown.richEditor && !markdown.isSourceMode && (
           <div className="flex shrink-0 justify-end px-4">
             <MarkdownFilePreviewViewModeSwitch
               key={`${entry?.path ?? "none"}:${isOpen}`}

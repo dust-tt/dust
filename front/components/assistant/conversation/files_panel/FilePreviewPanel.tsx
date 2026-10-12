@@ -200,10 +200,12 @@ export function FilePreviewPanel({
           <>
             {markdown.canEdit && !markdown.richEditor && (
               <>
-                <MarkdownFilePreviewViewModeSwitch
-                  viewMode={markdown.viewMode}
-                  onViewModeChange={markdown.setViewMode}
-                />
+                {!markdown.isSourceMode && (
+                  <MarkdownFilePreviewViewModeSwitch
+                    viewMode={markdown.viewMode}
+                    onViewModeChange={markdown.setViewMode}
+                  />
+                )}
                 {markdown.isDirty && (
                   <>
                     <Button

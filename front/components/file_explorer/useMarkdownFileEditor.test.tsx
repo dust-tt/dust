@@ -451,7 +451,7 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.richEditor).not.toBeNull();
   });
 
-  it("switches the rich editor for the source in edit mode, and back on the file as fetched", () => {
+  it("switches the rich editor for the unprocessed source in edit mode, and back on the file as fetched", () => {
     flags.add("co_edition");
     const { result, rerender } = renderHook(
       (props) => useMarkdownFileEditor(props),
@@ -464,7 +464,7 @@ describe("useMarkdownFileEditor", () => {
     expect(result.current.isSourceMode).toBe(true);
     expect(result.current.richEditor).toBeNull();
     expect(result.current.viewMode).toBe("edit");
-    expect(result.current.content).toBe("# Notes");
+    expect(result.current.content).toBe("# Notes\n");
 
     rerender(revised);
     act(() => {
@@ -511,6 +511,33 @@ describe("useMarkdownFileEditor", () => {
 
     expect(result.current.isSourceMode).toBe(false);
     expect(result.current.richEditor).not.toBeNull();
+  });
+
+  it("keeps the source in edit mode when asked for the preview", () => {
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    act(() => {
+      result.current.setViewMode("preview");
+    });
+
+    expect(result.current.viewMode).toBe("edit");
+  });
+
+  it("ignores the source switch when the plain editor cannot edit the cut text", () => {
+    flags.add("co_edition");
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(false);
   });
 
   it("ignores the source switch when co_edition is off", () => {
