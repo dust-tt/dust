@@ -6,6 +6,25 @@ import { useLingui } from "@lingui/react/macro";
 
 const DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY = "discoveryHomepageOptIn";
 
+function slideHomeAgents(pseudoElement: string, direction: PlaybackDirection) {
+  document.documentElement.animate(
+    [
+      { opacity: 1, transform: "none" },
+      { opacity: 0, transform: "translateY(64px)" },
+    ],
+    {
+      duration: 320,
+      easing:
+        direction === "normal"
+          ? "cubic-bezier(0.4, 0, 1, 1)"
+          : "cubic-bezier(0, 0, 0.2, 1)",
+      direction,
+      fill: "both",
+      pseudoElement,
+    }
+  );
+}
+
 /**
  * @cc [owner:adrsimon,label:product] discovery-homepage-user-opt-in
  * Discovery homepage features (homepage, agent suggested prompts) MUST be on when the workspace has
@@ -42,7 +61,13 @@ export function useDiscoveryHomepageOptIn() {
       "(prefers-reduced-motion: reduce)"
     ).matches;
     if (document.startViewTransition && !prefersReducedMotion) {
-      await document.startViewTransition(() => applyLocally(value)).finished;
+      const transition = document.startViewTransition(() =>
+        applyLocally(value)
+      );
+      await transition.ready;
+      slideHomeAgents("::view-transition-old(home-agents)", "normal");
+      slideHomeAgents("::view-transition-new(home-agents)", "reverse");
+      await transition.finished;
     } else {
       await applyLocally(value);
     }

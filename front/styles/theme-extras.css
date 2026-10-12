@@ -218,16 +218,3 @@
     color: oklch(87.12% 0.1363 154.45);
   }
 }
-@keyframes home-agents-slide-down {
-  to {
-    opacity: 0;
-    transform: translateY(64px);
-  }
-}
-::view-transition-old(home-agents) {
-  animation: home-agents-slide-down 320ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-::view-transition-new(home-agents) {
-  animation: home-agents-slide-down 320ms cubic-bezier(0, 0, 0.2, 1) reverse
-    both;
-}
