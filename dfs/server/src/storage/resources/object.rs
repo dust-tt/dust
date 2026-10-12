@@ -1,7 +1,6 @@
 use std::{
     collections::{HashMap, HashSet},
     fmt,
-    time::{SystemTime, UNIX_EPOCH},
 };
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
@@ -14,9 +13,12 @@ use foundationdb::{
     tuple::{Subspace, pack, unpack},
 };
 
-use crate::storage::{
-    self,
-    resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
+use crate::{
+    clock,
+    storage::{
+        self,
+        resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
+    },
 };
 
 mod hints;
@@ -192,12 +194,7 @@ impl ObjectResource {
      * change times MUST be initialized to the same server timestamp.
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
-        let now_ms = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map_err(|_| Error::TimestampGeneration)?
-            .as_millis()
-            .try_into()
-            .map_err(|_| Error::TimestampGeneration)?;
+        let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
         Ok(Self {
             tenant_id: tenant.tenant_id.clone(),
             object_id: tenant.root_id,
