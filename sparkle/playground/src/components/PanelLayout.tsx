@@ -415,7 +415,13 @@ export function PanelLayout({ children }: PanelLayoutProps) {
   // Focus = last entered "default"-type panel. Secondary and shared panels
   // never take focus. When the focus panel closes, focus returns to the
   // nearest upper (lower-index) open default panel.
-  const [focusIdx, setFocusIdx] = useState(0);
+  const [focusIdx, setFocusIdx] = useState(() =>
+    panelOpen.reduce(
+      (focus, open, index) =>
+        open && sizingTypes[index] === "default" ? index : focus,
+      0
+    )
+  );
 
   const prevOpenRef = useRef(panelOpen);
   const prevTypesRef = useRef(sizingTypes);

@@ -283,6 +283,8 @@ Tree.Item = React.forwardRef<
           {type === "node" && (
             <Button
               icon={isExpanded ? ChevronDown : ChevronRight}
+              aria-label={`${isExpanded ? "Collapse" : "Expand"} ${label ?? "folder"}`}
+              aria-expanded={Boolean(isExpanded)}
               size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}
@@ -295,7 +297,12 @@ Tree.Item = React.forwardRef<
             />
           )}
           {type === "leaf" && <div className="w-[24px] flex-shrink-0"></div>}
-          {checkbox && <Checkbox {...checkbox} />}
+          {checkbox && (
+            <label className="flex">
+              <span className="sr-only">{label ?? "Select item"}</span>
+              <Checkbox {...checkbox} />
+            </label>
+          )}
           <Icon visual={visual} size="sm" className={tailwindIconTextColor} />
           {isTruncated ? (
             <TooltipProvider>
@@ -303,6 +310,18 @@ Tree.Item = React.forwardRef<
                 <TooltipTrigger asChild>
                   <div
                     ref={labelRef}
+                    role={onItemClick ? "button" : undefined}
+                    tabIndex={onItemClick ? 0 : undefined}
+                    aria-current={isSelected ? "location" : undefined}
+                    onKeyDown={(event) => {
+                      if (
+                        onItemClick &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        onItemClick();
+                      }
+                    }}
                     className={cn(
                       "font-medium truncate text-sm text-primary",
                       labelClassName
@@ -321,6 +340,18 @@ Tree.Item = React.forwardRef<
           ) : (
             <div
               ref={labelRef}
+              role={onItemClick ? "button" : undefined}
+              tabIndex={onItemClick ? 0 : undefined}
+              aria-current={isSelected ? "location" : undefined}
+              onKeyDown={(event) => {
+                if (
+                  onItemClick &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  onItemClick();
+                }
+              }}
               className={cn(
                 "font-medium truncate text-sm text-primary",
                 labelClassName

@@ -4,7 +4,12 @@ import { Extension, mergeAttributes, Mark } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import Mention from "@tiptap/extension-mention";
 import Placeholder from "@tiptap/extension-placeholder";
-import { EditorState, Plugin, TextSelection } from "@tiptap/pm/state";
+import {
+  type EditorState,
+  Plugin,
+  PluginKey,
+  TextSelection,
+} from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -425,6 +430,10 @@ const getMentionItems = (query: string): MentionItem[] => {
     .slice(0, 8);
 };
 
+const mentionPluginKey = new PluginKey<{ active: boolean }>(
+  "playgroundMention"
+);
+
 const mentionExtension = Mention.extend({
   draggable: true,
 }).configure({
@@ -441,6 +450,7 @@ const mentionExtension = Mention.extend({
   },
   char: "@",
   suggestion: {
+    pluginKey: mentionPluginKey,
     items: ({ query }) => getMentionItems(query),
     render: () => {
       let reactRenderer: ReactRenderer<SuggestionListHandle> | null = null;
@@ -576,6 +586,7 @@ type RichTextAreaProps = {
   }) => void;
   onSuggestionsChange?: (hasSuggestions: boolean) => void;
   onTextChange?: (value: string) => void;
+  onSubmit?: () => void;
   onFocus?: () => void;
   onBlur?: () => void;
   scrollContainer?: HTMLElement | null;
@@ -598,6 +609,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
       onAskSidekick,
       onSuggestionsChange,
       onTextChange,
+      onSubmit,
       onFocus,
       onBlur,
       scrollContainer,
@@ -649,6 +661,17 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
         // handle Escape first (and return true), so this only blurs the editor
         // when no popup is open.
         handleKeyDown: (view, event) => {
+          if (
+            onSubmit &&
+            event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.isComposing &&
+            !view.composing &&
+            !mentionPluginKey.getState(view.state)?.active
+          ) {
+            onSubmit();
+            return true;
+          }
           if (event.key === "Escape") {
             view.dom.blur();
             return true;
