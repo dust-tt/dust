@@ -13,6 +13,26 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "New version ready"
+msgstr "Nouvelle version disponible"
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Install the latest version to keep using Dust."
+msgstr "Installez la dernière version pour continuer à utiliser Dust."
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Relaunch from toolbar."
+msgstr "Relancez l’extension depuis la barre d’outils."
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Update now"
+msgstr "Mettre à jour"
+
 #: extension/ui/components/ErrorFallback.tsx
 msgid "Something went wrong"
 msgstr "Une erreur s’est produite"
