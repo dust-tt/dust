@@ -1,6 +1,5 @@
-import { TypingAnimation } from "@dust-tt/sparkle";
-import type { CSSProperties } from "react";
-import { useLayoutEffect, useState } from "react";
+import { TypingAnimation } from "@sparkle/components/TypingAnimation";
+import React, { type CSSProperties, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 function getInputTextStyle(input: HTMLInputElement): CSSProperties {
@@ -21,16 +20,21 @@ function getInputTextStyle(input: HTMLInputElement): CSSProperties {
   };
 }
 
-interface InputTypingAnimationProps {
+export interface InputTypingAnimationProps {
+  /** The input to type over; its own text stays hidden while this is mounted. */
   input: HTMLInputElement;
+  /** The text to type, usually the value just set on the input. */
   text: string;
+  /** Called once the text is typed, or as soon as the user types in the input. Unmount on it. */
   onDone: () => void;
 }
 
 /**
- * Types `text` over `input`, e.g. after setting its value from a suggestion. The input's own text
- * stays hidden while this is mounted: unmount it on `onDone`, called once `text` is typed or when
- * the user types in the input.
+ * Types `text` over an input with TypingAnimation, e.g. right after setting its value from a
+ * suggestion. A native input cannot render animated text, so the typing is drawn over it while
+ * the input's own text is hidden; unmount the component on `onDone` to show it again.
+ *
+ * @summary Typing effect over an input.
  */
 export function InputTypingAnimation({
   input,

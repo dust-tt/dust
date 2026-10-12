@@ -1,5 +1,4 @@
-import { InputTypingAnimation } from "@app/components/shared/InputTypingAnimation";
-import { Chip } from "@dust-tt/sparkle";
+import { Chip, InputTypingAnimation } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
