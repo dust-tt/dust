@@ -1031,7 +1031,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { mode: "configuration", includeMetadata: withToolMetadata }
+          { mode: "configuration", includeToolPermissions: withToolMetadata }
         );
       }
 

@@ -136,6 +136,13 @@ export type PostMCPServerViewResponseBody = {
  */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
+// `includeToolPermissions` (default `true`) only applies to `configuration` views, the only ones
+// carrying tool permissions.
+type MCPServerViewToolPermissionsOption<TMode extends MCPServerViewFetchMode> =
+  TMode extends "configuration"
+    ? { includeToolPermissions?: boolean }
+    : { includeToolPermissions?: never };
+
 const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
   "authorization",
   "cachedTools",
@@ -544,13 +551,13 @@ export class MCPServerViewResource<
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
       mode,
-      includeMetadata = true,
+      includeToolPermissions = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
+      includeToolPermissions?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
       // workspace does not have. Defaults to `false` so restricted servers are
@@ -634,7 +641,7 @@ export class MCPServerViewResource<
 
     if (
       mode === "configuration" &&
-      includeMetadata &&
+      includeToolPermissions &&
       filteredViews.length > 0
     ) {
       await this.populateToolsMetadata(auth, filteredViews, transaction);
@@ -780,13 +787,12 @@ export class MCPServerViewResource<
     ids: ModelId[],
     {
       mode,
-      includeMetadata = true,
+      includeToolPermissions,
       transaction,
     }: {
       mode?: TMode;
-      includeMetadata?: boolean;
       transaction?: Transaction;
-    } = {}
+    } & MCPServerViewToolPermissionsOption<TMode> = {}
   ): Promise<MCPServerViewResource<TMode>[]> {
     const views = await this.baseFetch(
       auth,
@@ -797,7 +803,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { mode, includeMetadata, transaction }
+      { mode, includeToolPermissions, transaction }
     );
 
     return views ?? [];
