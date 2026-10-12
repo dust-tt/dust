@@ -1,4 +1,5 @@
 import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
+import { hasFeatureFlag } from "@app/lib/auth";
 import type { PostSendOnboardingResponseBody } from "@app/types/api/assistant/onboarding";
 import { isString } from "@app/types/shared/utils/general";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -20,8 +21,9 @@ app.post("/", async (ctx): HandlerResult<PostSendOnboardingResponseBody> => {
     ? body.language
     : (acceptLanguage?.split(",")[0]?.split("-")[0] ?? null);
 
-  // Only superusers can force creation (for testing purposes).
-  const force = auth.isDustSuperUser() && body?.force === true;
+  // Only workspaces with debug tools enabled can force creation (for testing purposes).
+  const force =
+    body?.force === true && (await hasFeatureFlag(auth, "show_debug_tools"));
 
   const result = await createOnboardingConversationIfNeeded(auth, {
     force,
