@@ -2,9 +2,11 @@
 
 ## Voice
 
-- Address the user with *vous*, never *tu*. Exception: prompts the user sends to an agent
-  (prompt starters, prefilled composer text) are written as the user speaking to the agent and use
-  *tu*: "Aide-moi à…", "Résume-moi…".
+- Address the user with *vous* (deuxième personne du pluriel de politesse), never *tu*.
+  Exception: prompts the user sends to an agent (prompt starters, prefilled composer text,
+  Discover suggestions) are written as the user speaking to the agent and use *tu* (deuxième
+  personne du singulier): "Utilise…", "Aide-moi à…", "Résume-moi…". Never "Utilisez…" in those
+  prompts. Enforced by `fr-address-form-by-audience` in `front/CONTRACTS`.
 - Buttons and menu items use the infinitive: "Enregistrer", "Annuler", "Rejoindre".
 - Toasts and errors are full sentences ending with a period: "Impossible d'enregistrer la langue.",
   "Le nom est obligatoire."
