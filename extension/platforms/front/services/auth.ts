@@ -7,10 +7,10 @@ import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getCellInfoFromClaims,
+  postWorkOSAuthenticate,
+  revokeWorkOSSession,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
-import { jwtDecode } from "jwt-decode";
 
 const POPUP_CONFIG = {
   WIDTH: 600,
@@ -134,49 +134,23 @@ export class FrontAuthService extends AuthService {
         );
       }
 
-      const tokenParams = new URLSearchParams({
-        code_verifier: storedCodeVerifier,
+      const tokensRes = await postWorkOSAuthenticate(DUST_US_URL, {
         code: result.code,
+        code_verifier: storedCodeVerifier,
       });
-      const response = await fetch(`${DUST_US_URL}/api/workos/authenticate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          Origin: FRONT_EXTENSION_URL,
-        },
-        credentials: "include",
-        body: tokenParams,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
+      if (tokensRes.isErr()) {
         return new Err(
           new AuthError(
             "invalid_oauth_token_error",
-            `Token exchange failed: ${response.status} ${response.statusText}. Error: ${errorText}`
+            `Token exchange failed: ${tokensRes.error.message}`
           )
         );
       }
 
-      const data = await response.json();
-
       await this.storage.delete("code_verifier");
 
-      // Store tokens
-      const tokens = await this.saveTokens({
-        success: true,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken || "",
-        expirationDate: data.expirationDate,
-      });
-
-      const claims = jwtDecode<Record<string, string>>(data.accessToken);
-
-      const cellInfo = getCellInfoFromClaims(claims, this.cells);
-
-      await this.storage.set("cellInfo", cellInfo);
-
-      return new Ok({ tokens, cellInfo });
+      const loginResult = await this.saveLogin(tokensRes.value, this.cells);
+      return new Ok(loginResult);
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
@@ -188,29 +162,14 @@ export class FrontAuthService extends AuthService {
       return true;
     }
 
-    const decodedPayload = jwtDecode<Record<string, string>>(accessToken);
-    const sessionId = decodedPayload?.sid;
-    if (!sessionId) {
-      return true;
-    }
-
     const cellInfo = await this.getCellInfoFromStorage();
     if (!cellInfo) {
       return true;
     }
 
-    const response = await fetch(`${cellInfo.url}/api/workos/revoke-session`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      credentials: "omit",
-      body: JSON.stringify({ session_id: sessionId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Revoke session failed: ${response.status}`);
+    const revokeRes = await revokeWorkOSSession(cellInfo.url, accessToken);
+    if (revokeRes.isErr()) {
+      throw revokeRes.error;
     }
 
     return true;
@@ -244,11 +203,6 @@ export class FrontAuthService extends AuthService {
         return new Err(new AuthError("not_authenticated", "No tokens found."));
       }
 
-      const tokenParams: Record<string, string> = {
-        grant_type: "refresh_token",
-        refresh_token: tokens.refreshToken ?? "",
-      };
-
       const cellInfo = await this.getCellInfoFromStorage();
       if (!cellInfo) {
         return new Err(
@@ -256,26 +210,15 @@ export class FrontAuthService extends AuthService {
         );
       }
 
-      const response = await fetch(`${cellInfo.url}/api/workos/authenticate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams(tokenParams),
+      const tokensRes = await postWorkOSAuthenticate(cellInfo.url, {
+        grant_type: "refresh_token",
+        refresh_token: tokens.refreshToken ?? "",
       });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(
-          `Token refresh failed: ${data.error} - ${data.error_description}`
-        );
+      if (tokensRes.isErr()) {
+        throw new Error(`Token refresh failed: ${tokensRes.error.message}`);
       }
 
-      const data = await response.json();
-      const storedTokens = await this.saveTokens({
-        success: true,
-        accessToken: data.accessToken,
-        refreshToken: data.refreshToken || "",
-        expirationDate: data.expirationDate,
-      });
+      const storedTokens = await this.saveTokens(tokensRes.value);
       return new Ok(storedTokens);
     } catch (error) {
       return new Err(

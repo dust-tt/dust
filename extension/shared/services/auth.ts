@@ -2,7 +2,11 @@ import { type CellInfo, type CellType, isCellType } from "@app/types/cell";
 import type { RegionInfo } from "@app/types/region";
 import { isRegionType } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@extension/shared/lib/utils";
 import type { StorageService } from "@extension/shared/services/storage";
+import { jwtDecode } from "jwt-decode";
+import { z } from "zod";
 
 export type StoredTokens = {
   accessToken: string;
@@ -40,6 +44,26 @@ export type LoginResult = {
   cellInfo: CellInfo;
 };
 
+const WorkOSTokensResponseSchema = z.object({
+  accessToken: z.string().min(1),
+  refreshToken: z.string().min(1),
+  expirationDate: z.number(),
+  authenticationMethod: z.string().optional(),
+});
+
+const WorkOSErrorResponseSchema = z.object({
+  error: z.string().optional(),
+  type: z.string().optional(),
+});
+
+export type WorkOSAuthenticateError = {
+  // null when the request got no response (network error).
+  status: number | null;
+  // The WorkOS error type, e.g. `invalid_grant`.
+  type: string | null;
+  message: string;
+};
+
 export abstract class AuthService {
   protected storage: StorageService;
   protected cells?: CellInfo[];
@@ -62,6 +86,19 @@ export abstract class AuthService {
     }
 
     return tokens;
+  }
+
+  // Saves the tokens of a login, and the cell of the user read from the access token claims.
+  async saveLogin(
+    rawTokens: OAuthAuthorizeResponse,
+    cells: CellInfo[]
+  ): Promise<LoginResult> {
+    const tokens = await this.saveTokens(rawTokens);
+    const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
+    const cellInfo = getCellInfoFromClaims(claims, cells);
+    await this.storage.set("cellInfo", cellInfo);
+
+    return { tokens, cellInfo };
   }
 
   async getStoredTokens(): Promise<StoredTokens | null> {
@@ -102,6 +139,17 @@ export abstract class AuthService {
     return migrated;
   }
 
+  async clearStoredData(): Promise<void> {
+    await Promise.all([
+      this.storage.delete("accessToken"),
+      this.storage.delete("expiresAt"),
+      this.storage.delete("refreshToken"),
+      this.storage.delete("cellInfo"),
+      this.storage.delete("regionInfo"),
+      this.storage.delete("selectedWorkspace"),
+    ]);
+  }
+
   async getSelectedWorkspace(): Promise<string | null> {
     return (await this.storage.get<string>("selectedWorkspace")) ?? null;
   }
@@ -120,6 +168,90 @@ export abstract class AuthService {
     tokens: StoredTokens | null
   ): Promise<Result<StoredTokens, AuthError>>;
 }
+
+// WorkOS API calls, shared by all platforms (including the Chrome background script).
+export async function postWorkOSAuthenticate(
+  baseUrl: string,
+  params:
+    | { code: string; code_verifier: string }
+    | { grant_type: "refresh_token"; refresh_token: string }
+): Promise<Result<OAuthAuthorizeResponse, WorkOSAuthenticateError>> {
+  let response: Response;
+  let body: unknown;
+  try {
+    response = await fetch(`${baseUrl}/api/workos/authenticate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      credentials: "omit",
+      body: new URLSearchParams(params),
+    });
+    body = await response.json().catch(() => null);
+  } catch (error) {
+    return new Err({
+      status: null,
+      type: null,
+      message: `Network error: ${normalizeError(error).message}`,
+    });
+  }
+
+  if (!response.ok) {
+    const parsed = WorkOSErrorResponseSchema.safeParse(body);
+    const detail = parsed.success ? parsed.data.error : undefined;
+    return new Err({
+      status: response.status,
+      type: (parsed.success ? parsed.data.type : undefined) ?? null,
+      message: `${response.status}${detail ? ` - ${detail}` : ""}`,
+    });
+  }
+
+  const parsed = WorkOSTokensResponseSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Err({
+      status: response.status,
+      type: null,
+      message: "The response does not contain the tokens.",
+    });
+  }
+
+  return new Ok({
+    success: true,
+    accessToken: parsed.data.accessToken,
+    refreshToken: parsed.data.refreshToken,
+    expirationDate: parsed.data.expirationDate,
+    authentication_method: parsed.data.authenticationMethod,
+  });
+}
+
+// Revokes the WorkOS session of the access token (its `sid` claim).
+export async function revokeWorkOSSession(
+  baseUrl: string,
+  accessToken: string
+): Promise<Result<void, Error>> {
+  try {
+    const sessionId = jwtDecode<Record<string, string>>(accessToken).sid;
+    if (!sessionId) {
+      return new Err(new Error("No session ID found."));
+    }
+
+    const response = await fetch(`${baseUrl}/api/workos/revoke-session`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: "omit",
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    if (!response.ok) {
+      return new Err(new Error(`Revoke session failed: ${response.status}`));
+    }
+    return new Ok(undefined);
+  } catch (error) {
+    return new Err(normalizeError(error));
+  }
+}
+
+// Cell helpers.
 
 const CELL_CLAIM = `https://dust.tt/cell`;
 const REGION_CLAIM = `https://dust.tt/region`;

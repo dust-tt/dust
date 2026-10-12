@@ -9,13 +9,8 @@ import {
   sentLogoutMessage,
 } from "@extension/shared/messages";
 import type { StoredTokens } from "@extension/shared/services/auth";
-import {
-  AuthError,
-  AuthService,
-  getCellInfoFromClaims,
-} from "@extension/shared/services/auth";
+import { AuthError, AuthService } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
-import { jwtDecode } from "jwt-decode";
 
 export class ChromeFirefoxAuthService extends AuthService {
   constructor(storage: StorageService, cells?: CellInfo[]) {
@@ -78,15 +73,8 @@ export class ChromeFirefoxAuthService extends AuthService {
         logger.error("Login failed: No access token received");
         throw new Error("No access token received.");
       }
-      const tokens = await this.saveTokens(response);
-
-      const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
-
-      const cellInfo = getCellInfoFromClaims(claims, this.cells);
-
-      await this.storage.set("cellInfo", cellInfo);
-
-      return new Ok({ tokens, cellInfo });
+      const loginResult = await this.saveLogin(response, this.cells);
+      return new Ok(loginResult);
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }
