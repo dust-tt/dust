@@ -355,8 +355,8 @@ const config = {
     return { url: EnvironmentConfig.getEnvVariable("DFS_API_URL") };
   },
   // Only needed to create tenants.
-  getDfsServerKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("DFS_API_SERVER_KEY");
+  getDfsMasterKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DFS_API_MASTER_KEY");
   },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");

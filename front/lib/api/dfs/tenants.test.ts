@@ -29,12 +29,12 @@ beforeEach(() => {
 });
 
 const ROOT_ID = "0190c3a0b1c27d4e8f0a1b2c3d4e5f60";
-const SERVER_KEY = "s".repeat(64);
+const MASTER_KEY = "s".repeat(64);
 const TENANT_KEY = "t".repeat(64);
 
 function serverClient(answer: FakeDfsAnswer) {
   const transport = new FakeDfsTransport({ CreateTenant: answer });
-  return { transport, client: new DfsClient(transport, SERVER_KEY) };
+  return { transport, client: new DfsClient(transport, MASTER_KEY) };
 }
 
 function tenantAnswer(tenantId: string): FakeDfsAnswer {
@@ -65,7 +65,7 @@ describe("createDfsTenant", () => {
           tenantId: workspace.sId,
           rootGrants: [{ deny: { mode: 2 } }],
         },
-        key: SERVER_KEY,
+        key: MASTER_KEY,
       },
     ]);
     const tenant = await DfsTenantResource.fetchByWorkspace(authenticator);

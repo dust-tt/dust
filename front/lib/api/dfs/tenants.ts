@@ -9,7 +9,7 @@ import { Err } from "@app/types/shared/result";
 
 /**
  * Creates the dfs tenant of the authenticated workspace and stores its key and root ID. `serverClient`
- * MUST be authenticated with the dfs server key.
+ * MUST be authenticated with the dfs master key.
  */
 /**
  * @cc [owner:fabiencelier,label:backend;security] one-tenant-per-workspace
