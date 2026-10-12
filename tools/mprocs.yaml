@@ -176,6 +176,12 @@ procs:
       npm run dev:firefox
     autostart: false
 
+  extension-excel:
+    cwd: "<CONFIG_DIR>/../extension"
+    shell: |
+      npm run dev:excel
+    autostart: false
+
   firebase-webhook-router:
     cwd: "<CONFIG_DIR>/../firebase-functions/webhook-router"
     shell: |
@@ -231,26 +237,25 @@ procs:
     autostart: false
 
   metronome:
-      shell: |
-        #!/bin/bash
-        set -e
-        URL_FILE="${DUST_INFRA_LOG_DIR}/sbx-dev-front-url"
-        if [ ! -f "$URL_FILE" ]; then
-          echo "🔗 Metronome webhook URL not available (file $URL_FILE not found). Run ensure-ngrok.sh and try again."
-          exit 1
-        fi
-        WEBHOOK_URL="$(cat "$URL_FILE" | tr -d '\n')/api/metronome/webhook"
-        echo "🔗 Register this as the Metronome webhook URL:"
-        echo "    $WEBHOOK_URL"
-        echo "   on https://app.metronome.com/sandbox/developer/notifications?tab=webhooks"
-        echo ""
-        if echo "${METRONOME_WEBHOOK_SECRET:-}" | grep -q "MISSING"; then
-          echo
-          echo "❌ ERROR: METRONOME_WEBHOOK_SECRET env var not set (still contains 'MISSING')."
-          echo "   Get the real secret from Metronome when registering the webhook."
-          exit 1
-        else
-          echo "✅ OK: METRONOME_WEBHOOK_SECRET env var set. 👉 Make sure it matches the one from the webhook."
-        fi
-      autostart: false
-
+    shell: |
+      #!/bin/bash
+      set -e
+      URL_FILE="${DUST_INFRA_LOG_DIR}/sbx-dev-front-url"
+      if [ ! -f "$URL_FILE" ]; then
+        echo "🔗 Metronome webhook URL not available (file $URL_FILE not found). Run ensure-ngrok.sh and try again."
+        exit 1
+      fi
+      WEBHOOK_URL="$(cat "$URL_FILE" | tr -d '\n')/api/metronome/webhook"
+      echo "🔗 Register this as the Metronome webhook URL:"
+      echo "    $WEBHOOK_URL"
+      echo "   on https://app.metronome.com/sandbox/developer/notifications?tab=webhooks"
+      echo ""
+      if echo "${METRONOME_WEBHOOK_SECRET:-}" | grep -q "MISSING"; then
+        echo
+        echo "❌ ERROR: METRONOME_WEBHOOK_SECRET env var not set (still contains 'MISSING')."
+        echo "   Get the real secret from Metronome when registering the webhook."
+        exit 1
+      else
+        echo "✅ OK: METRONOME_WEBHOOK_SECRET env var set. 👉 Make sure it matches the one from the webhook."
+      fi
+    autostart: false
