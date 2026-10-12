@@ -1,8 +1,13 @@
+import { accessRequestWorkflow } from "@app/lib/notifications/workflows/access-request";
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { consumptionExportReadyWorkflow } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import {
+  frameLoginCodeWorkflow,
+  frameSharedWorkflow,
+} from "@app/lib/notifications/workflows/frame-sharing";
 import { manualActionRequiredWorkflow } from "@app/lib/notifications/workflows/manual-action-required";
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
@@ -17,6 +22,7 @@ import {
 } from "@app/lib/notifications/workflows/subscription-lifecycle";
 import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
+import { workspaceInvitationWorkflow } from "@app/lib/notifications/workflows/workspace-invitation";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
 import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
@@ -83,10 +89,14 @@ const options: ServeHandlerOptions = {
     seatAutoUpgradedWorkflow,
     manualActionRequiredWorkflow,
     consumptionExportReadyWorkflow,
+    workspaceInvitationWorkflow,
+    frameLoginCodeWorkflow,
+    frameSharedWorkflow,
     subscriptionCanceledWorkflow,
     subscriptionReactivatedWorkflow,
     subscriptionPaymentFailedWorkflow,
     workspaceDataDeletionWorkflow,
+    accessRequestWorkflow,
   ],
 };
 
