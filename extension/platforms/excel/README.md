@@ -21,3 +21,11 @@ button to open the task pane.
 2. Select **Home** > **Add-ins** > **Advanced**.
 3. Select **Upload My Add-in**.
 4. Select `manifest.dev.xml`. Click **Upload**.
+
+## Sign-in
+
+The task pane makes a PKCE pair and opens an Office dialog on `auth.html`. On the first visit,
+this page goes to `/api/workos/login` with `redirect_uri=<add-in origin>/auth.html`. After
+sign-in, WorkOS goes back to `auth.html` with `code` (or `error`). On this second visit, the page
+loads Office.js and sends the code to the task pane, which gets the tokens from
+`/api/workos/authenticate`. The tokens are in `localStorage`.
