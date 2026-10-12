@@ -7,11 +7,11 @@ object IDs. Paths are a transient input, always resolved under an object ID, and
 
 - An object is identified only by its `ObjectId`. IDs stay stable across renames and moves; paths do
   not.
-- Clients store object IDs, never paths. Front stores the IDs of the folders it owns, such as a pod's,
-  a conversation's or a user's top folder, and the IDs of the files it needs to reference.
+- Clients store object IDs, never paths. Front stores the IDs of the folders it owns, such as a user's,
+  a pod's or a conversation's folder, and the IDs of the files it needs to reference.
 - A path is only valid relative to an anchor object ID. There are no absolute paths. The stored
-  tenant root ID is an anchor like any other, but clients only use it to create and recover
-  top-level folders (see [Top-level folders](#top-level-folders)).
+  tenant root ID is an anchor like any other, but clients only use it to create and recover user
+  folders (see [Folder layout](#folder-layout)).
 - Names in URIs are decorative. They help humans and models read a URI and never take part in
   resolution.
 
@@ -68,13 +68,14 @@ needed. It does not change this format.
 
 | Operation | Without path | With path |
 | --- | --- | --- |
-| Read, write, stat, list, delete | Acts on the anchor. | Resolves the full path, then acts on the target. |
-| Create | Creates nothing at the anchor. A name is required. | Resolves the parent path; the last segment is the new object's name. |
+| Read, write, stat, list, delete | Acts on the anchor. | Walks the URI's path from the anchor, then acts on the object it reaches. |
+| Create | Creates nothing at the anchor. A name is required. | Walks the URI's path from the anchor, except the last segment, which names the new object. |
 
-When creating, missing intermediate directories under the anchor are created, like `mkdir -p`. The
-client resolves the longest existing prefix of the path. It then sends one `Apply` that creates the
-missing directories and the new object, using the object IDs it generated. An existing object at the
-last segment fails with `ALREADY_EXISTS`, as `create` does.
+When creating, missing intermediate directories under the anchor are created one level at a time,
+like `mkdir -p`. A directory that already exists, including one created concurrently (`create`
+fails with `ALREADY_EXISTS`), is looked up and reused; an existing file there fails with
+`NOT_DIRECTORY`. A failure partway leaves the directories already created in place. An existing
+object at the last segment fails with `ALREADY_EXISTS`, as `create` does.
 
 The client returns the resolved or created object's canonical URI, `dfs://<name>--<id>` with its
 current name percent-encoded and no path. That URI is built from the returned `Attr`. Clients store the ID it
@@ -82,8 +83,8 @@ contains, never the URI they passed in.
 
 ## Example: front and a pod
 
-1. When a pod is created, front creates its top folder under the tenant root (see
-   [Top-level folders](#top-level-folders)) and stores the folder's ID on the pod.
+1. When a pod is created, front creates its folder under its owner's user folder (see
+   [Folder layout](#folder-layout)) and stores the folder's ID on the pod.
 2. An agent writes a plan into the pod:
 
    ```text
@@ -96,37 +97,54 @@ contains, never the URI they passed in.
 4. A later edit uses `dfs://plan.md--<plan-id>`. It still targets the same file after a user renames
    it or moves it to another folder of the pod. The stale `plan.md` name in the URI is ignored.
 
-Conversations work the same way, with the conversation's top folder ID as the anchor.
+Conversations work the same way, with the conversation's folder ID as the anchor.
 
-## Top-level folders
+## Folder layout
 
 `CreateTenant` returns the stored tenant root's real `ObjectId`; front stores it as
-`dfs_tenants.rootId`. Front creates each context's top folder under that root, in a namespace folder:
+`dfs_tenants.rootId`. Front chooses the parent of each context's folder. Today everything lives
+under its owner's user folder:
 
 ```text
-create dfs://<tenant-root-id>/pods/pod-<podSId>
-create dfs://<tenant-root-id>/conversations/conv-<conversationSId>
-create dfs://<tenant-root-id>/users/user-<userSId>
+<tenant-root>/
+  users/
+    user-<userSId>/
+      pods/
+        pod-<podSId>/
+      conversations/
+        conv-<conversationSId>/
 ```
 
-- **Layout:** namespace folders (`pods/`, `conversations/`, `users/`) keep the root's listing small
-  and leave room for grants per namespace. They are created the first time they are needed, like any
-  missing intermediate directory.
-- **Stored reference:** front stores the returned folder ID on the pod, the conversation, or the
-  user. All later access to that context's content uses this ID as the anchor, never a path from
-  the root.
+Only user folders are created from the tenant root. Pod and conversation folders are created from
+their owner's user folder ID, which front already stores:
+
+```text
+create dfs://<tenant-root-id>/users/user-<userSId>
+create dfs://user-<userSId>--<user-folder-id>/pods/pod-<podSId>
+create dfs://user-<userSId>--<user-folder-id>/conversations/conv-<conversationSId>
+```
+
+- **Layout:** namespace folders (`users/`, `pods/`, `conversations/`) keep listings small and leave
+  room for grants per namespace. They are created the first time they are needed, like any missing
+  intermediate directory.
+- **Stored reference:** front stores the returned folder ID on the user, the pod, or the
+  conversation. All later access to that context's content uses this ID as the anchor, never a path
+  from the root or from the user folder.
+- **Moves:** this layout reflects ownership today and may change, for instance when a pod is shared
+  or transferred. Moving a folder keeps its object ID, so references front stores stay valid.
 - **User folders:** a user's folder holds their personal data in this workspace. The tenant is the
   workspace, so a user who belongs to several workspaces has one folder per workspace, and its ID is
-  stored per user and workspace, not on the global user.
-- **Names:** top folder names derive from the owning resource's sId, which is unique and never
+  stored per user and workspace, not on the global user. Deleting a user's folder deletes the pods
+  and conversations it contains.
+- **Names:** folder names derive from the owning resource's sId, which is unique and never
   changes. Two contexts can therefore never claim the same name.
 - **Retries:** `Apply` has no idempotency key, so a lost response leaves the outcome unknown. A
-  retry that fails with `ALREADY_EXISTS` looks the name up under its namespace folder and uses the
-  existing folder's ID. This recovery is the only case where front resolves existing content
-  through the root.
-- **Access:** creating top folders requires a session with `w` on the root or on the namespace
-  folder. User and agent sessions only receive grants on the context folders they work in. Each top
-  folder is where that context's grants attach.
+  retry that fails with `ALREADY_EXISTS` looks the name up under the same parent folder and uses the
+  existing folder's ID. This recovery is the only case where front resolves an existing context
+  folder by name.
+- **Access:** creating these folders requires a session with `w` on their parent folder. User and
+  agent sessions only receive grants on the context folders they work in. Each context folder is
+  where that context's grants attach: sharing a pod means granting access on its folder.
 
 ## Virtual references
 
