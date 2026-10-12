@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{HashMap, HashSet},
     fmt,
     time::{SystemTime, UNIX_EPOCH},
 };
@@ -242,13 +242,12 @@ impl ObjectResource {
             }
         }
 
-        let mut unique_grants = BTreeMap::new();
-        for grant in grants {
-            let (forward, _) = self.grant_keys(grant)?;
-            unique_grants.insert(forward, grant);
-            if unique_grants.len() > GRANTS_MAX_COUNT {
-                return Err(Error::TooManyGrants.into());
-            }
+        let unique_grants: HashSet<&Grant> = grants.iter().collect();
+        if unique_grants.len() > GRANTS_MAX_COUNT {
+            return Err(Error::TooManyGrants.into());
+        }
+        for grant in &unique_grants {
+            self.grant_keys(grant)?;
         }
 
         let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
@@ -276,7 +275,7 @@ impl ObjectResource {
                 value,
             );
         }
-        for grant in unique_grants.into_values() {
+        for grant in unique_grants {
             self.write_grant(tx, grant, false)?;
         }
         Ok(())
@@ -357,8 +356,8 @@ impl ObjectResource {
         }
         let mut seen = HashSet::new();
         for change in changes {
-            let (forward, _) = self.grant_keys(&change.grant)?;
-            if !seen.insert(forward) {
+            self.grant_keys(&change.grant)?;
+            if !seen.insert(&change.grant) {
                 return Err(Error::DuplicateGrant.into());
             }
         }
