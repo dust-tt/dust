@@ -37,6 +37,7 @@ async function writeVariants(imagePath) {
     // re-encode it at its own size, so every requested width has a file.
     await image
       .clone()
+      .rotate() // Applies EXIF orientation, which WebP output would otherwise drop.
       .resize({ width, withoutEnlargement: true })
       .webp({ quality: WEBP_QUALITY })
       .toFile(path.join(VARIANTS_DIR, src, `${width}.webp`));

@@ -28,7 +28,8 @@ const config = {
     // Next's built-in optimizer resizes images in the server process with sharp, whose native
     // code segfaulted and restarted marketing pods. This loader resizes them elsewhere instead:
     // Contentful's image CDN, or variants written at build time by
-    // scripts/generate-image-variants.mjs for these widths.
+    // scripts/generate-image-variants.mjs for these widths. There are fewer widths than Next's
+    // defaults, to limit the number of variants generated.
     loader: "custom",
     loaderFile: "./lib/image_loader.ts",
     deviceSizes: [640, 828, 1200, 1920],
@@ -44,13 +45,12 @@ const config = {
     // undici is a server-side fetch used by HubSpot egress; keep it out of
     // webpack's client/server bundle and let Node resolve it natively.
     serverComponentsExternalPackages: ["undici"],
-    // Next copies sharp into the standalone output for its built-in optimizer, which still
-    // answers /_next/image requests. Leaving sharp out makes those requests fail instead of
-    // running it.
-    outputFileTracingIgnores: [
-      "**/node_modules/sharp/**/*",
-      "**/node_modules/@img/**/*",
-    ],
+    // With a custom loader, /_next/image returns a 404, but Next loads its optimizer module
+    // first, which loads sharp. Leaving sharp out of the standalone output keeps its native
+    // code out of the server process.
+    outputFileTracingExcludes: {
+      "**/*": ["**/node_modules/sharp/**/*", "**/node_modules/@img/**/*"],
+    },
   },
   async redirects() {
     return [
