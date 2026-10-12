@@ -348,9 +348,8 @@ export function useSearchSkillsInfinite({
 
 /**
  * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
- * Revalidate string-keyed skill lists and array-keyed skill searches for the
- * given workspace, regardless of query parameters or search body, plus its
- * reinforcement settings.
+ * Revalidate array-keyed skill searches for the given workspace, regardless of
+ * search body, plus its reinforcement settings.
  * Do not revalidate other workspaces or individual skill detail endpoints.
  */
 export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
@@ -362,8 +361,7 @@ export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
     () =>
       mutate((key) =>
         isString(key)
-          ? key.split("?")[0] === skillsUrl ||
-            key === `${skillsUrl}/reinforcement_settings`
+          ? key === `${skillsUrl}/reinforcement_settings`
           : Array.isArray(key) && key[0] === searchUrl
       ),
     [mutate, skillsUrl, searchUrl]

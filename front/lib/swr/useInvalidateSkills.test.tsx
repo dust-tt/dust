@@ -5,7 +5,7 @@ import useSWR, { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 
 describe("useInvalidateSkills", () => {
-  it("refreshes list variants, search pages and settings only in the requested workspace", async () => {
+  it("refreshes search pages and settings only in the requested workspace", async () => {
     const fetcher = vi.fn().mockResolvedValue("initial");
     const skillsUrl = "/api/w/workspace-a/skills";
     const cache = new Map();
@@ -17,16 +17,6 @@ describe("useInvalidateSkills", () => {
     const { result } = renderHook(
       () => ({
         invalidate: useInvalidateSkills({ workspaceId: "workspace-a" }),
-        all: useSWR(skillsUrl, fetcher).data,
-        active: useSWR(`${skillsUrl}?status=active`, fetcher).data,
-        archived: useSWR(
-          `${skillsUrl}?withRelations=true&status=archived`,
-          fetcher
-        ).data,
-        custom: useSWR(
-          `${skillsUrl}?withRelations=true&status=active&onlyCustom=true`,
-          fetcher
-        ).data,
         search: useSWR(
           [`${skillsUrl}/search`, { query: "", offset: 0 }],
           fetcher
@@ -43,10 +33,6 @@ describe("useInvalidateSkills", () => {
           "/api/w/workspace-b/skills/reinforcement_settings",
           fetcher
         ).data,
-        otherWorkspace: useSWR(
-          "/api/w/workspace-b/skills?status=active",
-          fetcher
-        ).data,
         otherSearch: useSWR(
           ["/api/w/workspace-b/skills/search", { query: "" }],
           fetcher
@@ -57,7 +43,7 @@ describe("useInvalidateSkills", () => {
     );
 
     await waitFor(() => {
-      expect(fetcher).toHaveBeenCalledTimes(11);
+      expect(fetcher).toHaveBeenCalledTimes(6);
       expect(result.current.detail).toBe("initial");
     });
     fetcher.mockResolvedValue("updated");
@@ -66,15 +52,10 @@ describe("useInvalidateSkills", () => {
       await result.current.invalidate();
     });
 
-    expect(result.current.all).toBe("updated");
-    expect(result.current.active).toBe("updated");
-    expect(result.current.archived).toBe("updated");
-    expect(result.current.custom).toBe("updated");
     expect(result.current.search).toBe("updated");
     expect(result.current.nextPage).toBe("updated");
     expect(result.current.reinforcementSettings).toBe("updated");
     expect(result.current.otherSettings).toBe("initial");
-    expect(result.current.otherWorkspace).toBe("initial");
     expect(result.current.otherSearch).toBe("initial");
     expect(result.current.detail).toBe("initial");
   });
