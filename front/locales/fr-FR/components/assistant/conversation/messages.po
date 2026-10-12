@@ -321,6 +321,10 @@ msgstr "Actualisez la page pour poursuivre votre conversation."
 msgid "Still having trouble? Reach out at support@dust.tt"
 msgstr "Le problème persiste ? Contactez-nous à support@dust.tt"
 
+#: front/components/assistant/conversation/ConversationMemoryNotice.tsx
+msgid "Agents don't use your memory in this conversation because other people are in it."
+msgstr "Les agents n’utilisent pas votre mémoire dans cette conversation, car d’autres personnes y participent."
+
 #: front/components/assistant/conversation/ConversationMenu.tsx
 msgid "Link copied!"
 msgstr "Lien copié !"
@@ -892,8 +896,8 @@ msgid "Invite"
 msgstr "Inviter"
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
-msgid "The content of your personal memory may be disclosed to invited users."
-msgstr "Le contenu de votre mémoire personnelle peut être divulgué aux utilisateurs invités."
+msgid "Agents stop using your memory in this conversation once they join. Earlier answers may still reflect it."
+msgstr "Les agents cessent d’utiliser votre mémoire dans cette conversation dès que ces personnes la rejoignent. Les réponses précédentes peuvent encore en refléter le contenu."
 
 #: front/components/assistant/conversation/MentionValidationRequired.tsx
 msgid "Decline"

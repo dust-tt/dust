@@ -189,8 +189,8 @@ export function MentionValidationRequired({
                 <InfoCircle className="h-4 w-4 shrink-0" />
                 <span>
                   <Trans>
-                    The content of your personal memory may be disclosed to
-                    invited users.
+                    Agents stop using your memory in this conversation once they
+                    join. Earlier answers may still reflect it.
                   </Trans>
                 </span>
               </span>

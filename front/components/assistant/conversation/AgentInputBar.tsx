@@ -1,5 +1,6 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
+import { ConversationMemoryNotice } from "@app/components/assistant/conversation/ConversationMemoryNotice";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
@@ -650,6 +651,12 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           owner={context.owner}
           conversationId={context.conversation.sId}
           canDelete={isActiveWakeUpOwner && !isCompactionInProgress}
+        />
+      )}
+      {context.conversation && (
+        <ConversationMemoryNotice
+          owner={context.owner}
+          conversationId={context.conversation.sId}
         />
       )}
       <div
