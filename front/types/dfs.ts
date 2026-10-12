@@ -45,6 +45,22 @@ export class DfsError extends Error {
   }
 }
 
+// Front-side failures to get a workspace's tenant key (not a dfs server error).
+export type DfsTenantErrorCode =
+  | "tenant_not_found"
+  // The tenant exists but its key could not be read from the oauth service.
+  | "tenant_key_unavailable";
+
+export class DfsTenantError extends Error {
+  constructor(
+    readonly code: DfsTenantErrorCode,
+    message: string
+  ) {
+    super(message);
+    this.name = "DfsTenantError";
+  }
+}
+
 export interface DfsReadView {
   storeVersion: bigint;
   authVersion: bigint;

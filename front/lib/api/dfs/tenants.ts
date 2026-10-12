@@ -8,8 +8,8 @@ import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
 
 /**
- * Creates the dfs tenant of the authenticated workspace and stores its key and root ID. `serverClient`
- * MUST be authenticated with the dfs server key.
+ * Creates the dfs tenant of the authenticated workspace and stores its key and root ID. `masterClient`
+ * MUST be authenticated with the dfs master key.
  */
 /**
  * @cc [owner:fabiencelier,label:backend;security] one-tenant-per-workspace
@@ -20,9 +20,9 @@ import { Err } from "@app/types/shared/result";
 export async function createDfsTenant(
   auth: Authenticator,
   {
-    serverClient,
+    masterClient,
     rootGrants = [],
-  }: { serverClient: DfsClient; rootGrants?: DfsGrant[] }
+  }: { masterClient: DfsClient; rootGrants?: DfsGrant[] }
 ): Promise<Result<DfsTenantResource, Error>> {
   const tenantId = auth.getNonNullableWorkspace().sId;
   if (await DfsTenantResource.fetchByWorkspace(auth)) {
@@ -31,7 +31,7 @@ export async function createDfsTenant(
     );
   }
 
-  const created = await serverClient.createTenant({ tenantId, rootGrants });
+  const created = await masterClient.createTenant({ tenantId, rootGrants });
   if (created.isErr()) {
     if (created.error.code === "already_exists") {
       return new Err(

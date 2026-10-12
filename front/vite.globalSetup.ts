@@ -50,6 +50,8 @@ export default async function setup() {
     WORKOS_AUTHKIT_DOMAIN: "https://test.authkit.app",
     OAUTH_API: process.env.OAUTH_API ?? "http://fake-oauth-api",
     CORE_API: "http://fake-core-api",
+    DFS_API_URL: "http://127.0.0.1:1",
+    DFS_API_MASTER_KEY: "test-dfs-master-key",
     CONNECTORS_API: "http://fake-connectors-api",
     DUST_CONNECTORS_SECRET: "fake-connectors-secret",
     DUST_CONNECTORS_WEBHOOKS_SECRET: "fake-connectors-webhooks-secret",
