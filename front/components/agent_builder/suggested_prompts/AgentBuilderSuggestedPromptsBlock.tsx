@@ -30,7 +30,7 @@ export function AgentBuilderSuggestedPromptsBlock() {
   return (
     <AgentBuilderSectionContainer
       title={t`Suggested prompts`}
-      description={t`Examples of what people can do with this agent.`}
+      description={t`Add example prompts to show people how to use this agent and what they can ask.`}
       headerActions={
         <Button
           icon={Plus}
