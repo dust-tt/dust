@@ -16,6 +16,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureHasAnyGroupPermission } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { groupMemberChangeApiError } from "@front-api/routes/w/[wId]/groups/errors";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -46,16 +47,17 @@ function toApiError(
         status_code: 404,
         api_error: { type: "group_not_found", message: err.message },
       };
-    case "group_requirements_not_met":
     case "invalid_group_id":
-    case "last_group_member":
-    case "system_or_global_group":
-    case "user_already_member":
-    case "user_not_member":
       return {
         status_code: 400,
         api_error: { type: "invalid_request_error", message: err.message },
       };
+    case "group_requirements_not_met":
+    case "last_group_member":
+    case "system_or_global_group":
+    case "user_already_member":
+    case "user_not_member":
+      return groupMemberChangeApiError(err.type, err.message);
     default:
       assertNever(err.type);
   }

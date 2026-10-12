@@ -63,7 +63,7 @@ function mapPreparePaymentError(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "payment_setup_incomplete",
           message: "Setup session has not completed successfully.",
         },
       });

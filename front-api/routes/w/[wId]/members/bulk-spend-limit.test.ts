@@ -188,7 +188,7 @@ describe("POST /api/w/[wId]/members/bulk-spend-limit", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("no_matching_members");
     expect(bulkClient.runBulkSetUserSpendLimitWorkflow).not.toHaveBeenCalled();
   });
 

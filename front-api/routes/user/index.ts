@@ -213,7 +213,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "user_name_required",
           message: "First name and last name cannot be empty.",
         },
       });
@@ -225,7 +225,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "provisioned_user_name_not_editable",
             message: "Cannot update name for provisioned users.",
           },
         });

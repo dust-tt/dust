@@ -45,7 +45,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "workspace_phone_not_verified",
           message: "This workspace does not have a verified phone number.",
         },
       });

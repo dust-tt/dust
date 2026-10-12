@@ -18,7 +18,7 @@ export function slackWorkflowErrorToApiError(
       return {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "space_not_found",
           message: error.message,
         },
       };

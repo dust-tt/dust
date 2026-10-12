@@ -134,7 +134,7 @@ describe("POST /api/w/:wId/members/:uId/groups", () => {
     expect(members.map((m) => m.sId)).toEqual([otherUser.sId]);
   });
 
-  it("returns 400 when the member is already in the group", async () => {
+  it("returns 409 when the member is already in the group", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -151,8 +151,10 @@ describe("POST /api/w/:wId/members/:uId/groups", () => {
       groupId: group.sId,
     });
 
-    expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe(
+      "user_already_group_member"
+    );
   });
 
   it("returns 404 for a provisioned group", async () => {
@@ -238,7 +240,7 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
 
     expect(response.status).toBe(400);
     const { error } = await response.json();
-    expect(error.type).toBe("invalid_request_error");
+    expect(error.type).toBe("last_group_member_cannot_be_removed");
     expect(error.message).toBe(
       "A group must always keep at least one member. To remove everyone, " +
         "delete the group instead."
@@ -258,7 +260,7 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
     const response = await deleteMemberGroup(workspace, user.sId, group.sId);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("user_not_group_member");
   });
 
   it("returns 404 for a provisioned group", async () => {

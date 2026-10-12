@@ -14,7 +14,7 @@ export type VerifyCodeResponse = {
 // Error response.
 export type VerificationErrorType =
   | "rate_limit_error"
-  | "invalid_request_error"
+  | "phone_number_not_accepted"
   | "verification_error"
   | "phone_already_used_error"
   | "invalid_captcha";

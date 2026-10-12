@@ -425,7 +425,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "non_regional_models_in_use",
               message: `${incompatibleAgentIds.length} active agent(s) use a non-regional model. Update them first.`,
             },
           });
@@ -655,7 +655,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "redirect_uri_invalid",
               message: validation.error.message,
             },
           });
@@ -938,7 +938,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "agent_configuration_not_found",
               message: `Agent "${body.workspaceDefaultAgentId}" was not found or is not usable by the authenticated user.`,
             },
           });

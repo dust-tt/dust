@@ -67,7 +67,7 @@ function spendLimitErrorToApiError(
       return {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "billing_period_unavailable",
           message: error.message,
         },
       };

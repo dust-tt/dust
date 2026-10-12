@@ -457,7 +457,9 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       );
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect((await response.json()).error.type).toBe(
+        "upgrade_request_reason_required"
+      );
     });
 
     it("allows the request when the workspace requires a reason and one is given", async () => {

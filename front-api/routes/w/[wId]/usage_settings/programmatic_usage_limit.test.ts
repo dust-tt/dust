@@ -273,7 +273,7 @@ describe("/api/w/[wId]/usage_settings/programmatic_usage_limit", () => {
 
       expect(response.status).toBe(400);
       const data = (await response.json()) as { error: { type: string } };
-      expect(data.error.type).toBe("invalid_request_error");
+      expect(data.error.type).toBe("credit_priced_plan_required");
       expect(businessLayer.syncProgrammaticUsageLimit).not.toHaveBeenCalled();
     });
   });

@@ -75,11 +75,17 @@ app.post(
     if (keyRes.isErr()) {
       const { code, message } = keyRes.error;
       switch (code) {
-        case "invalid_request_error":
+        case "api_key_name_required":
+        case "usage_limit_out_of_range":
+        case "credit_priced_plan_required":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: code, message },
+          });
         case "name_conflict":
           return apiError(ctx, {
             status_code: 400,
-            api_error: { type: "invalid_request_error", message },
+            api_error: { type: "api_key_already_exists", message },
           });
         case "unauthorized":
           return apiError(ctx, {

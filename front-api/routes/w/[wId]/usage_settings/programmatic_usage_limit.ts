@@ -55,7 +55,7 @@ app.put(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "credit_priced_plan_required",
           message:
             "Programmatic monthly cap is only available on credit-priced plans.",
         },

@@ -194,7 +194,9 @@ describe("PATCH /api/w/:wId/members/:uId/seat-type", () => {
       );
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect((await response.json()).error.type).toBe(
+        "paid_seat_requires_paid_plan"
+      );
     });
 
     it("returns 200 when downgrading from max to pro", async () => {

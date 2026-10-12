@@ -206,7 +206,7 @@ describe("POST /api/w/:wId/slack-workflows", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
-      error: { type: "invalid_request_error" },
+      error: { type: "space_not_found" },
     });
     expect(allow).not.toHaveBeenCalled();
     expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();

@@ -88,7 +88,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "free_seat_already_used",
               message:
                 "The free seat is reserved for first-time members and cannot be assigned again.",
             },
@@ -97,7 +97,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "paid_seat_requires_paid_plan",
               message:
                 "A paid seat cannot be assigned while the workspace is on a free plan. Upgrade the workspace first.",
             },
@@ -106,7 +106,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "seat_limit_reached",
               message:
                 "The seat type has reached its maximum capacity for this workspace.",
             },
@@ -123,7 +123,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "subscription_cancellation_scheduled",
               message:
                 "The subscription has a cancellation scheduled; seats cannot be changed until it's reactivated or has fully ended.",
             },

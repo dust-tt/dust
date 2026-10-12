@@ -26,7 +26,7 @@ export function getStatusCodeForError(
   switch (type) {
     case "rate_limit_error":
       return 429;
-    case "invalid_request_error":
+    case "phone_number_not_accepted":
     case "verification_error":
     case "invalid_captcha":
       return 400;

@@ -123,7 +123,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "workos_server_error",
           message: "Failed to remove WorkOS organization domain",
         },
       });
@@ -169,7 +169,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "verified_domain_not_found",
               message: updateResult.error.message,
             },
           });
@@ -199,7 +199,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "verified_domain_not_found",
           message: updateResult.error.message,
         },
       });

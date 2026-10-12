@@ -12,7 +12,7 @@ export function awuPoolSummaryErrorToApi(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "metronome_billing_not_configured",
           message: "Workspace is not configured for Metronome billing.",
         },
       });

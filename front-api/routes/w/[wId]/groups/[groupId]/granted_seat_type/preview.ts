@@ -91,7 +91,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "seat_type_not_in_contract",
           message: "The workspace contract does not bill this seat tier.",
         },
       });
@@ -105,7 +105,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "seat_change_preview_unavailable",
           message: `Could not compute the seat-change preview: ${previewRes.error.type}`,
         },
       });

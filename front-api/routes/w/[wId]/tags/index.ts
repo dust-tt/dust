@@ -48,7 +48,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "tag_already_exists",
           message: "A tag with this name already exists",
         },
       });

@@ -49,7 +49,7 @@ function mapErrorToApiError(
       return {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "usage_limit_out_of_range",
           message: error.message,
         },
       };

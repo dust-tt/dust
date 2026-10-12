@@ -38,7 +38,10 @@ function resolveSourceErrorToApiError(
     case "unsupported_mcp_server":
       return {
         status_code: 400 as const,
-        api_error: { type: "invalid_request_error" as const, message },
+        api_error: {
+          type: "data_classification_source_not_supported" as const,
+          message,
+        },
       };
     default:
       assertNever(errorType);
