@@ -224,7 +224,7 @@ function PokeSearchCommandUI({
       <PokeCommandDialog
         open={open}
         onOpenChange={onOpenChange}
-        className="bg-muted-background sm:max-w-[900px]"
+        className="bg-muted-background sm:max-w-4xl"
         shouldFilter={false}
       >
         <PokeCommandInput
@@ -232,7 +232,7 @@ function PokeSearchCommandUI({
           onValueChange={(value) => onSearchTermChange(value.trim())}
           className="border-none focus:outline-hidden focus:ring-0"
         />
-        <PokeCommandList className="max-h-[70vh]">
+        <PokeCommandList className="max-h-160">
           {currentPagePlugins && plugins.length > 0 && (
             <PokeCommandGroup heading="Plugins on this page">
               {plugins.map((plugin, index) => (
