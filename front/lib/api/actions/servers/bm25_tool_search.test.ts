@@ -1273,7 +1273,7 @@ const QUERIES: LabeledQuery[] = [
 
   // --- file_generation ---
   {
-    query: "turn this conversation file into a PDF",
+    query: "convert this conversation file into another format",
     expected: "file_generation.convert_file_format",
   },
   {
@@ -1394,10 +1394,6 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "delete a file from the conversation or pod file system",
     expected: "files.delete",
-  },
-  {
-    query: "extract text from a pdf or docx binary document",
-    expected: "files.extract_text",
   },
   {
     query: "copy a file from one scoped path to another keeping the source",

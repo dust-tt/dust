@@ -4,7 +4,6 @@ import { GlobalFeatureFlagModel } from "@app/lib/models/global_feature_flag";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   RequestQueryCache,
   setRequestStorageResolver,
@@ -191,49 +190,7 @@ describe("getFeatureFlags with global flags", () => {
     expect(flags).toContain("dummy_feature_for_flag_testing");
   });
 
-  it("returns disable_computer_feature alongside other feature flags", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    await FeatureFlagResource.enableMany(workspace, [
-      "disable_computer_feature",
-      "deepseek_feature",
-    ]);
-
-    const flags = await getFeatureFlags(auth);
-    expect(flags).toContain("disable_computer_feature");
-    expect(flags).toContain("deepseek_feature");
-  });
-
-  it("keeps disable_computer_feature independent from raw feature flag checks", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    await FeatureFlagResource.enableMany(workspace, [
-      "disable_computer_feature",
-      "deepseek_feature",
-    ]);
-
-    const flags = await getFeatureFlags(auth);
-    expect(isComputerFeatureEnabled(flags)).toBe(false);
-    await expect(hasFeatureFlag(auth, "deepseek_feature")).resolves.toBe(true);
-  });
-
-  it("enables Computer by default when disable_computer_feature is absent", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-
-    const flags = await getFeatureFlags(auth);
-    expect(isComputerFeatureEnabled(flags)).toBe(true);
-
-    await FeatureFlagResource.enable(workspace, "disable_computer_feature");
-
-    const disabledFlags = await getFeatureFlags(auth);
-    expect(disabledFlags).toContain("disable_computer_feature");
-    expect(isComputerFeatureEnabled(disabledFlags)).toBe(false);
-  });
-
-  it("ignores legacy sandbox_tools rows while keeping Computer controlled by the disable flag", async () => {
+  it("ignores legacy sandbox_tools rows", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
@@ -248,14 +205,6 @@ describe("getFeatureFlags with global flags", () => {
 
     const flags = await getFeatureFlags(auth);
     expect(flags).not.toContain("sandbox_tools");
-    expect(isComputerFeatureEnabled(flags)).toBe(true);
-
-    await FeatureFlagResource.enable(workspace, "disable_computer_feature");
-
-    const disabledFlags = await getFeatureFlags(auth);
-    expect(disabledFlags).not.toContain("sandbox_tools");
-    expect(disabledFlags).toContain("disable_computer_feature");
-    expect(isComputerFeatureEnabled(disabledFlags)).toBe(false);
   });
 
   it("disable_frames_v2 overrides the global frames_v2 rollout", async () => {

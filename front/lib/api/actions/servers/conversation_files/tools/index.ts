@@ -110,7 +110,7 @@ const listAttachmentsHandler: ToolHandlers<
   assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
   const conversation = runContext.conversation;
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
   const allAttachments = await listAttachments(auth, { conversation });
 
   // When the conversation uses the new file system, regular files are surfaced via the `files`

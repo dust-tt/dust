@@ -247,15 +247,16 @@ function shouldSuppressTabularAttachmentHints({
 
 /**
  * Capability flags for file attachments. Gated early so callers (JIT, Use: lines, tools) can
- * trust the booleans without re-checking file-explorer / Computer availability.
+ * trust the booleans without re-checking file-explorer availability. File attachments are never
+ * queryable: tabular files are analyzed by the Computer rather than through query_tables.
  *
  * In file explorer mode every flag is off: files are reached by path through the `files` MCP server
  * and tabular files are analyzed by the Computer, so none of the conversation_files JIT tools apply.
  */
 /**
  * @cc [owner:frankaloia,label:product] file-explorer-disables-conversation-file-tools
- * When `isNewFileExplorer` is true, `isQueryable`, `isIncludable`, and `isSearchable` MUST all be
- * false. Regular files are reached by path through the `files` server, not `conversation_files`.
+ * When `isNewFileExplorer` is true, `isIncludable` and `isSearchable` MUST both be false. Regular
+ * files are reached by path through the `files` server, not `conversation_files`.
  */
 /**
  * @cc [owner:frankaloia,label:product] includable-independent-of-snippet
@@ -264,16 +265,16 @@ function shouldSuppressTabularAttachmentHints({
  * reads original file content, which still exists after JIT indexing was removed.
  */
 /**
- * @cc [owner:frankaloia,label:product] query-search-require-snippet
- * `isQueryable` and `isSearchable` MUST be false when `snippet` is null or the content type is a
- * pasted file. Those capabilities require JIT-indexed content that snippet-less files do not have.
+ * @cc [owner:frankaloia,label:product] search-requires-snippet
+ * `isSearchable` MUST be false when `snippet` is null or the content type is a pasted file.
+ * Search requires JIT-indexed content that snippet-less files do not have.
  */
 function computeFileAttachmentCapabilityFlags({
   contentType,
   snippet,
   isInProjectContext,
   skipFileProcessing,
-  capabilities: { isNewFileExplorer, hasSandboxTools },
+  capabilities: { isNewFileExplorer },
 }: {
   contentType: SupportedContentFragmentType;
   snippet: string | null;
@@ -281,19 +282,18 @@ function computeFileAttachmentCapabilityFlags({
   skipFileProcessing: boolean;
   capabilities: AttachmentCapabilityContext;
 }): {
-  isQueryable: boolean;
   isIncludable: boolean;
   isSearchable: boolean;
 } {
   if (isNewFileExplorer) {
-    return { isQueryable: false, isIncludable: false, isSearchable: false };
+    return { isIncludable: false, isSearchable: false };
   }
 
-  // Query/search need a snippet from JIT indexing. Direct reading does not: after JIT upsert
-  // was removed, newly uploaded files legitimately have `snippet: null` while their original
-  // content remains readable via `conversation_files__cat`. Pasted files are inlined and are
-  // not queryable or searchable.
-  const canQueryOrSearch = snippet !== null && !isPastedFile(contentType);
+  // Search needs a snippet from JIT indexing. Direct reading does not: after JIT upsert was
+  // removed, newly uploaded files legitimately have `snippet: null` while their original content
+  // remains readable via `conversation_files__cat`. Pasted files are inlined and are not
+  // searchable.
+  const canSearch = snippet !== null && !isPastedFile(contentType);
 
   const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
     contentType,
@@ -302,15 +302,10 @@ function computeFileAttachmentCapabilityFlags({
   });
 
   return {
-    isQueryable:
-      canQueryOrSearch &&
-      !shouldSuppressTabularHints &&
-      isQueryableContentType(contentType) &&
-      !hasSandboxTools, // Only use query_tables_v2 if Computer is not available.
     isIncludable:
       !shouldSuppressTabularHints &&
       isConversationIncludableFileContentType(contentType),
-    isSearchable: canQueryOrSearch && isSearchableContentType(contentType),
+    isSearchable: canSearch && isSearchableContentType(contentType),
   };
 }
 
@@ -334,14 +329,13 @@ export function getAttachmentFromFileContentFragment({
   }
   const isInProjectContext = cf.isInProjectContext === true;
 
-  const { isQueryable, isIncludable, isSearchable } =
-    computeFileAttachmentCapabilityFlags({
-      contentType: cf.contentType,
-      snippet: cf.snippet,
-      isInProjectContext,
-      skipFileProcessing: cf.skipFileProcessing === true,
-      capabilities,
-    });
+  const { isIncludable, isSearchable } = computeFileAttachmentCapabilityFlags({
+    contentType: cf.contentType,
+    snippet: cf.snippet,
+    isInProjectContext,
+    skipFileProcessing: cf.skipFileProcessing === true,
+    capabilities,
+  });
 
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
@@ -356,16 +350,9 @@ export function getAttachmentFromFileContentFragment({
     contentType: cf.contentType,
     snippet: cf.snippet,
     contentFragmentVersion: cf.contentFragmentVersion,
-    // Backward compatibility: we fallback to the fileId if no generated tables are mentioned
-    // but the file is queryable.
-    generatedTables:
-      cf.generatedTables.length > 0
-        ? cf.generatedTables
-        : isQueryable
-          ? [fileId]
-          : [],
+    generatedTables: cf.generatedTables,
     isIncludable,
-    isQueryable,
+    isQueryable: false,
     isSearchable,
     isInProjectContext,
     hidden: cf.hidden,
@@ -409,15 +396,14 @@ export function makeFileAttachment({
   creator?: AttachmentCreator | null;
   capabilities: AttachmentCapabilityContext;
 }): FileAttachmentType {
-  const { isQueryable, isIncludable, isSearchable } =
-    computeFileAttachmentCapabilityFlags({
-      contentType,
-      snippet,
-      isInProjectContext,
-      // Agent generated files are never sandbox raw uploads: they always go through processing.
-      skipFileProcessing: false,
-      capabilities,
-    });
+  const { isIncludable, isSearchable } = computeFileAttachmentCapabilityFlags({
+    contentType,
+    snippet,
+    isInProjectContext,
+    // Agent generated files are never sandbox raw uploads: they always go through processing.
+    skipFileProcessing: false,
+    capabilities,
+  });
 
   return {
     fileId,
@@ -428,11 +414,10 @@ export function makeFileAttachment({
     contentType,
     title,
     snippet,
-    // For simplicity later, we always set the generatedTables to the fileId if the file is queryable for agent generated files.
-    generatedTables: isQueryable ? [fileId] : [],
+    generatedTables: [],
     contentFragmentVersion: "latest",
     isIncludable,
-    isQueryable,
+    isQueryable: false,
     isSearchable,
     isInProjectContext,
     hidden: hideFromUser,

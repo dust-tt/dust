@@ -143,8 +143,7 @@ app.post(
         },
       });
     }
-    const { contentType: supportedContentType, hasSandboxTools } =
-      validation.value;
+    const { contentType: supportedContentType } = validation.value;
 
     const file = await FileResource.makeNew({
       contentType: supportedContentType,
@@ -156,7 +155,6 @@ app.post(
       useCaseMetadata: buildEffectiveUseCaseMetadata({
         contentType: supportedContentType,
         fileName,
-        flags: { hasSandboxTools },
         providedMetadata: useCaseMetadata,
         useCase,
       }),

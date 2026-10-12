@@ -875,7 +875,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_fable_5_feature"
   | "deepseek_feature"
   | "exa_people_and_company"
-  | "disable_computer_feature"
   | "disable_formatting_prompt"
   | "disable_frames_v2"
   | "disable_gpt_6_astra"

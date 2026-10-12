@@ -1,7 +1,4 @@
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 // Library choices follow api/sandbox/image/registry.ts.
 /**
@@ -165,9 +162,9 @@ visually checked. Save the PDF under \`/files/conversation\` and provide its lin
 `;
 
 /**
- * @cc [owner:flvndvd,label:product] pdf-workspace-computer-availability
- * PDF skill availability MUST follow the workspace Computer feature, independently
- * of whether the Computer skill has been enabled in the current agent loop.
+ * @cc [owner:flvndvd,label:product] pdf-always-available
+ * The PDF skill MUST be available in every workspace, independently of whether the Computer
+ * skill has been enabled in the current agent loop.
  */
 export const pdfSkill = {
   sId: "pdf",
@@ -184,9 +181,4 @@ export const pdfSkill = {
   mcpServers: [{ name: "sandbox" }],
   version: 2,
   icon: "ActionDocumentTextIcon",
-  isRestricted: async (auth: Authenticator) => {
-    const flags = await getFeatureFlags(auth);
-
-    return !isComputerFeatureEnabled(flags);
-  },
 } as const satisfies GlobalSkillDefinition;

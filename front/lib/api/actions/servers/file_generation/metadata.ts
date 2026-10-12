@@ -1,9 +1,9 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
 export const FILE_GENERATION_TOOL_NAME = "file_generation" as const;
 
+// PDF is left out on purpose: PDFs are produced by the PDFs skill in the Computer.
 export const OUTPUT_FORMATS = [
   "csv",
   "docx",
@@ -11,7 +11,6 @@ export const OUTPUT_FORMATS = [
   "html",
   "jpg",
   "md",
-  "pdf",
   "png",
   "pptx",
   "txt",
@@ -25,7 +24,6 @@ export type OutputFormatType = (typeof OUTPUT_FORMATS)[number];
 
 export const BINARY_FORMATS: OutputFormatType[] = [
   "docx",
-  "pdf",
   "pptx",
   "xls",
   "xlsx",
@@ -35,6 +33,11 @@ export const BINARY_FORMATS: OutputFormatType[] = [
   "webp",
 ];
 
+/**
+ * @cc [owner:flvndvd,label:product;mcp] pdf-output-left-to-computer
+ * The file generation tool schemas MUST exclude PDF output, including PDF filenames, while
+ * preserving other formats. PDFs are produced by the PDFs skill in the Computer.
+ */
 export const FILE_GENERATION_TOOLS_METADATA = [
   {
     name: "get_supported_source_formats_for_output_format",
@@ -54,7 +57,7 @@ export const FILE_GENERATION_TOOLS_METADATA = [
   {
     name: "convert_file_format",
     description:
-      "Convert an existing conversation file into another format, for example turn a document into a PDF.",
+      "Convert an existing conversation file into another supported format. Use the PDFs skill for PDF output.",
     schema: {
       file_name: z
         .string()
@@ -90,8 +93,14 @@ export const FILE_GENERATION_TOOLS_METADATA = [
     schema: {
       file_name: z
         .string()
+        // The handler's path.extname ignores trailing slashes.
+        .refine((name) => !/\.pdf\/*$/i.test(name), {
+          message: "Use the PDFs skill in the Computer to create PDFs.",
+        })
         .describe(
-          "The name of the file to generate. Must be a valid filename with the format extension."
+          "The name of the file to generate, including its extension. " +
+            `Supported formats: ${OUTPUT_FORMATS.join(", ")}. ` +
+            "Use the PDFs skill for PDF output."
         ),
       file_content: z
         .string()
@@ -116,64 +125,6 @@ export const FILE_GENERATION_TOOLS_METADATA = [
     freeUsage: false,
   },
 ] as const;
-
-/**
- * @cc [owner:flvndvd,label:product;mcp] pdf-output-follows-computer-availability
- * When Computer is available, the file generation tool schemas MUST exclude PDF
- * output, including PDF filenames, while preserving other formats. Without
- * Computer, the original PDF generation and conversion schemas MUST remain available.
- */
-export function getFileGenerationToolsMetadata({
-  hasComputer,
-}: {
-  hasComputer: boolean;
-}) {
-  return FILE_GENERATION_TOOLS_METADATA.map((tool) => {
-    if (!hasComputer) {
-      return tool;
-    }
-
-    switch (tool.name) {
-      case "get_supported_source_formats_for_output_format":
-        return {
-          ...tool,
-          schema: {
-            ...tool.schema,
-            output_format: tool.schema.output_format.exclude(["pdf"]),
-          },
-        };
-      case "convert_file_format":
-        return {
-          ...tool,
-          description:
-            "Convert an existing conversation file into another supported format. Use the PDFs skill for PDF output.",
-          schema: {
-            ...tool.schema,
-            output_format: tool.schema.output_format.exclude(["pdf"]),
-          },
-        };
-      case "generate_file":
-        return {
-          ...tool,
-          schema: {
-            ...tool.schema,
-            // The handler's path.extname ignores trailing slashes.
-            file_name: tool.schema.file_name
-              .refine((name) => !/\.pdf\/*$/i.test(name), {
-                message: "Use the PDFs skill in the Computer to create PDFs.",
-              })
-              .describe(
-                "The name of the file to generate, including its extension. " +
-                  `Supported formats: ${OUTPUT_FORMATS.filter((format) => format !== "pdf").join(", ")}. ` +
-                  "Use the PDFs skill for PDF output."
-              ),
-          },
-        };
-      default:
-        return assertNever(tool);
-    }
-  });
-}
 
 export const FILE_GENERATION_SERVER = {
   serverInfo: {

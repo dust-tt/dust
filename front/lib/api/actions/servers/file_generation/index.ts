@@ -12,7 +12,7 @@ async function createServer(
 ): Promise<McpServer> {
   const server = makeInternalMCPServer("file_generation");
 
-  const tools = await createFileGenerationTools(auth);
+  const tools = createFileGenerationTools();
   for (const tool of tools) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: FILE_GENERATION_TOOL_NAME,

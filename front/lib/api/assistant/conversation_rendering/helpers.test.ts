@@ -19,7 +19,6 @@ import { getSteps, renderUserMessage } from "./helpers";
 // These cases render tool results that carry no attachment, so the mode does not matter.
 const LEGACY_CAPABILITIES: AttachmentCapabilityContext = {
   isNewFileExplorer: false,
-  hasSandboxTools: false,
 };
 
 describe("renderUserMessage", () => {

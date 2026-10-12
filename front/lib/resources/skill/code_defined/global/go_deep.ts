@@ -1,12 +1,10 @@
 import { getDeepDiveInstructions } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { SKILL_COMPANY_DATA_SERVER_NAME } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 export const goDeepSkill = {
   sId: "go-deep",
@@ -23,15 +21,10 @@ export const goDeepSkill = {
     "or could be parallelized. If none of the explicit activation conditions is clearly met, " +
     "handle the request directly. When in doubt, do not enable it.",
   fetchInstructions: async (
-    auth: Authenticator,
+    _auth: Authenticator,
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
   ) => {
-    const flags = await getFeatureFlags(auth);
-    const hasSandbox = isComputerFeatureEnabled(flags);
-    return getDeepDiveInstructions({
-      includeToolsetsPrompt: false,
-      hasSandbox,
-    });
+    return getDeepDiveInstructions({ includeToolsetsPrompt: false });
   },
   mcpServers: [
     {

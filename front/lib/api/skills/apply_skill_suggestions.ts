@@ -198,7 +198,7 @@ export async function resolveSkillFileAttachments(
       );
     }
 
-    const { contentType, hasSandboxTools } = validation.value;
+    const { contentType } = validation.value;
     const uploaded = await uploadReadableToFileStorage(auth, {
       readable: readRes.value,
       fileSize: sizeBytes,
@@ -208,7 +208,6 @@ export async function resolveSkillFileAttachments(
       useCaseMetadata: buildEffectiveUseCaseMetadata({
         contentType,
         fileName,
-        flags: { hasSandboxTools },
         providedMetadata: { skillId: skill.sId },
         useCase: "skill_attachment",
       }),

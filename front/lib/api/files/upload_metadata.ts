@@ -11,24 +11,17 @@ import {
 export function buildEffectiveUseCaseMetadata({
   contentType,
   fileName,
-  flags,
   providedMetadata,
   useCase,
 }: {
   contentType: AllSupportedFileContentType;
   fileName: string;
-  flags: { hasSandboxTools: boolean };
   providedMetadata: FileUseCaseMetadata | undefined;
   useCase: FileUseCase;
 }): FileUseCaseMetadata | undefined {
   const category = getFileFormatCategory(contentType);
   const isSandboxRaw =
-    category !== null &&
-    allowsSandboxRawUpload({
-      category,
-      hasSandboxTools: flags.hasSandboxTools,
-      useCase,
-    });
+    category !== null && allowsSandboxRawUpload({ category, useCase });
 
   if (!isSandboxRaw) {
     return providedMetadata;

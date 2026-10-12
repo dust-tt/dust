@@ -3,9 +3,7 @@ import type { SkillBuilderFormData } from "@app/components/skill_builder/skillBu
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { compareStrings } from "@app/lib/i18n/format";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import {
   Button,
   ContextItem,
@@ -25,7 +23,6 @@ export function SkillBuilderFilesSection() {
   const { t } = useLingui();
   const { owner, skillId } = useSkillBuilderContext();
   const sendNotification = useSendNotification();
-  const { featureFlags } = useFeatureFlags();
   const { setValue } = useFormContext<SkillBuilderFormData>();
   const { disabled: disableUpload } = useFormState<SkillBuilderFormData>();
   const { compareVersion, isDiffMode } = useSkillVersionComparisonContext();
@@ -44,7 +41,6 @@ export function SkillBuilderFilesSection() {
   const fileListBottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { handleFilesUpload, isProcessingFiles } = useFileUploaderService({
-    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
     owner,
     useCase: "skill_attachment",
     useCaseMetadata: skillId ? { skillId } : undefined,

@@ -22,7 +22,6 @@ export const FILES_DELETE_ACTION_NAME = "delete" as const;
 export const FILES_COPY_ACTION_NAME = "copy" as const;
 export const FILES_MOVE_ACTION_NAME = "move" as const;
 export const FILES_RESOLVE_ACTION_NAME = "resolve" as const;
-export const FILES_EXTRACT_TEXT_ACTION_NAME = "extract_text" as const;
 
 export const CAT_LINES_DEFAULT = 200;
 export const CAT_LINES_MAX = 500;
@@ -197,7 +196,7 @@ const FILES_TOOLS_COMMON_METADATA = [
       "to continue from the exact position where the response stopped, even inside an oversized line. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
       "For binary documents (PDF, DOCX, PPTX, etc.), use the corresponding document skill " +
-      "when the Computer is available, or an available text-extraction tool, then read the extracted text file.",
+      "in the Computer, then read the extracted text file.",
     schema: {
       path: z
         .string()
@@ -405,36 +404,10 @@ const EDIT_TOOL = {
   freeUsage: true,
 };
 
-const EXTRACT_TEXT_TOOL = {
-  description:
-    "Extract text from a binary document (PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS) " +
-    "and save the result as a plain-text file next to the source. " +
-    "Returns the scoped path of the extracted file. " +
-    `Use this before \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_CAT_ACTION_NAME)}\` or \`${getPrefixedToolName(FILES_SERVER_NAME, FILES_GREP_ACTION_NAME)}\` ` +
-    "on binary documents that cannot be read as text. " +
-    "Do NOT use on plain-text files (.txt, .md, .csv, etc.), read those directly.",
-  schema: {
-    path: z
-      .string()
-      .describe(
-        `Scoped path to the binary document (e.g. \`conversation-<id>/report.pdf\`)`
-      ),
-  },
-  stake: "never_ask" as const,
-  eager: true,
-  displayLabels: {
-    running: "Extracting text from document",
-    done: "Extracted text from document",
-  },
-  toolCostCategory: "basic" as const,
-  freeUsage: true,
-};
-
 export const FILES_TOOLS_METADATA = [
   { name: FILES_LIST_ACTION_NAME, ...LIST_TOOL },
   ...FILES_TOOLS_COMMON_METADATA,
   { name: FILES_EDIT_ACTION_NAME, ...EDIT_TOOL },
-  { name: FILES_EXTRACT_TEXT_ACTION_NAME, ...EXTRACT_TEXT_TOOL },
   { name: FILES_COPY_ACTION_NAME, ...COPY_TOOL },
   { name: FILES_MOVE_ACTION_NAME, ...MOVE_TOOL },
 ] as const;

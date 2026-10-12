@@ -12,7 +12,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -28,11 +27,9 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
 export async function createSandboxTokenTestContext({
   agentScope = "visible",
-  disableComputerFeature = false,
   usePodSpaceForConversation = false,
 }: {
   agentScope?: "visible" | "hidden";
-  disableComputerFeature?: boolean;
   usePodSpaceForConversation?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
@@ -58,10 +55,6 @@ export async function createSandboxTokenTestContext({
     if (addMemberResult.isErr()) {
       throw addMemberResult.error;
     }
-  }
-
-  if (disableComputerFeature) {
-    await FeatureFlagFactory.basic(auth, "disable_computer_feature");
   }
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
@@ -153,14 +146,8 @@ export async function createSandboxTokenTestContext({
   };
 }
 
-export async function createSandboxFunctionInvocationTokenTestContext({
-  disableComputerFeature = false,
-}: {
-  disableComputerFeature?: boolean;
-} = {}) {
-  const context = await createSandboxTokenTestContext({
-    disableComputerFeature,
-  });
+export async function createSandboxFunctionInvocationTokenTestContext() {
+  const context = await createSandboxTokenTestContext();
   const token = await generateSandboxFunctionInvocationToken(context.auth, {
     noTools: false,
     sandbox: context.sandbox,

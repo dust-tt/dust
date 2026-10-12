@@ -196,7 +196,6 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const pronounsInputRef = useRef<HTMLInputElement | null>(null);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: false,
     owner,
     useCase: "avatar",
   });

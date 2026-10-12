@@ -5,10 +5,8 @@ import {
   mcpServerViewSortingFn,
 } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { compareStrings } from "@app/lib/i18n/format";
 import { useMCPServerViewsFromMemberSpaces } from "@app/lib/swr/mcp_servers";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import groupBy from "lodash/groupBy";
@@ -57,11 +55,9 @@ export const MCPServerViewsContext = createContext<
 function getGroupedMCPServerViews({
   mcpServerViews,
   spaces,
-  hasSandbox,
 }: {
   mcpServerViews: MCPServerViewType[];
   spaces: SpaceType[];
-  hasSandbox: boolean;
 }) {
   if (!mcpServerViews || !Array.isArray(mcpServerViews)) {
     return {
@@ -108,11 +104,10 @@ function getGroupedMCPServerViews({
         : "mcpServerViewsWithoutKnowledge"
     );
 
-  // The sandbox generates and converts files itself, so file_generation is not offered when
-  // it is available.
+  // The sandbox generates and converts files itself, so file_generation is not offered.
   const selectableViewsWithoutKnowledge = (
     mcpServerViewsWithoutKnowledge || []
-  ).filter((view) => !hasSandbox || view.server.name !== "file_generation");
+  ).filter((view) => view.server.name !== "file_generation");
 
   const grouped = groupBy(
     selectableViewsWithoutKnowledge,
@@ -156,7 +151,6 @@ export const MCPServerViewsProvider = ({
   includeRestrictedToSkills = false,
 }: MCPServerViewsProviderProps) => {
   const { spaces, isSpacesLoading } = useSpacesContext();
-  const { featureFlags } = useFeatureFlags();
 
   const {
     serverViews: mcpServerViews,
@@ -178,9 +172,8 @@ export const MCPServerViewsProvider = ({
       return getGroupedMCPServerViews({
         mcpServerViews: sortedMCPServerViews,
         spaces,
-        hasSandbox: isComputerFeatureEnabled(featureFlags),
       });
-    }, [sortedMCPServerViews, spaces, featureFlags]);
+    }, [sortedMCPServerViews, spaces]);
 
   const value: MCPServerViewsContextType = useMemo(() => {
     return {

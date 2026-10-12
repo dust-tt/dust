@@ -11,13 +11,10 @@ import {
   isBinaryFormat,
   isValidOutputType,
 } from "@app/lib/api/actions/servers/file_generation/helpers";
-import { getFileGenerationToolsMetadata } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FILE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/file_generation/metadata";
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
@@ -27,9 +24,7 @@ import { Marked } from "marked";
 
 const fileMarked = new Marked();
 
-const handlers: ToolHandlers<
-  ReturnType<typeof getFileGenerationToolsMetadata>
-> = {
+const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
   get_supported_source_formats_for_output_format: async ({ output_format }) => {
     const formats = await cacheWithRedis(
       async () => {
@@ -303,11 +298,6 @@ ${file_content
   },
 };
 
-export async function createFileGenerationTools(auth: Authenticator) {
-  const flags = await getFeatureFlags(auth);
-  const metadata = getFileGenerationToolsMetadata({
-    hasComputer: isComputerFeatureEnabled(flags),
-  });
-
-  return buildTools(metadata, handlers);
+export function createFileGenerationTools() {
+  return buildTools(FILE_GENERATION_TOOLS_METADATA, handlers);
 }

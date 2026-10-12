@@ -26,8 +26,6 @@ export function getContentTypeFromOutputFormat(
       return "text/markdown";
     case "gif":
       return "image/gif";
-    case "pdf":
-      return "application/pdf";
     case "docx":
       return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     case "pptx":

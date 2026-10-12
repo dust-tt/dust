@@ -2,9 +2,7 @@ import { PodSettingsAdvancedTab } from "@app/components/pod/settings/PodSettings
 import { PodSettingsCustomizationTab } from "@app/components/pod/settings/PodSettingsCustomizationTab";
 import { PodSettingsGeneralTab } from "@app/components/pod/settings/PodSettingsGeneralTab";
 import { PodSettingsParticipantsTab } from "@app/components/pod/settings/PodSettingsParticipantsTab";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ContentMessage,
@@ -37,12 +35,6 @@ export function PodSettingsSection({
 }: PodSettingsSectionProps) {
   const { t } = useLingui();
   const [activeTab, setActiveTab] = useState("general");
-  const { featureFlags } = useFeatureFlags();
-
-  // The advanced tab is only visible when the Computer is enabled
-  const visibleTabs = POD_SETTINGS_TABS.filter(
-    (tab) => tab.value !== "advanced" || isComputerFeatureEnabled(featureFlags)
-  );
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -59,7 +51,7 @@ export function PodSettingsSection({
           className="flex w-full flex-col gap-8"
         >
           <TabsList>
-            {visibleTabs.map((tab) => (
+            {POD_SETTINGS_TABS.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}

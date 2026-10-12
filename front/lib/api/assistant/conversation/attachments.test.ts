@@ -36,9 +36,8 @@ const SEARCH_TOOL = getPrefixedToolName(
 
 function capabilities({
   isNewFileExplorer = false,
-  hasSandboxTools = false,
 }: Partial<AttachmentCapabilityContext> = {}): AttachmentCapabilityContext {
-  return { isNewFileExplorer, hasSandboxTools };
+  return { isNewFileExplorer };
 }
 
 const LEGACY = capabilities();
@@ -99,11 +98,10 @@ describe("makeFileAttachment", () => {
     expect(attachment.isSearchable).toBe(false);
   });
 
-  it("disables queryable when sandbox tools are available", () => {
+  it("never marks file attachments queryable", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
       contentType: "text/csv",
-      capabilities: capabilities({ hasSandboxTools: true }),
     });
 
     expect(attachment.isQueryable).toBe(false);
@@ -331,9 +329,8 @@ describe("renderAttachmentXml", () => {
       usage: legacyUsage,
     });
 
-    expect(csvXml).toContain(
-      `Use: read with \`${CAT_TOOL}\`; query tabular data with \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`.`
-    );
+    expect(csvXml).toContain(`Use: read with \`${CAT_TOOL}\`.`);
+    expect(csvXml).not.toContain(DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME);
     expect(csvXml).not.toContain(SEARCH_TOOL);
     expect(csvXml).toContain("snippet");
     expect(csvXml).not.toContain("isIncludable");
@@ -471,15 +468,15 @@ describe("getAttachmentFromFileContentFragment", () => {
     expect(attachment?.path).toBe("conversation/data.csv");
   });
 
-  it("keeps old-style CSV files queryable when skipFileProcessing is false", () => {
+  it("keeps old-style CSV files includable when skipFileProcessing is false", () => {
     const attachment = getAttachmentFromFileContentFragment({
       cf: makeFileContentFragment({ skipFileProcessing: false }),
       capabilities: LEGACY,
     });
 
-    expect(attachment?.isQueryable).toBe(true);
+    expect(attachment?.isQueryable).toBe(false);
     expect(attachment?.isIncludable).toBe(true);
-    expect(attachment?.generatedTables).toEqual(["fil_123"]);
+    expect(attachment?.generatedTables).toEqual([]);
   });
 
   it("does not suppress project-context CSV hints", () => {
@@ -491,7 +488,7 @@ describe("getAttachmentFromFileContentFragment", () => {
       capabilities: LEGACY,
     });
 
-    expect(attachment?.isQueryable).toBe(true);
+    expect(attachment?.isQueryable).toBe(false);
     expect(attachment?.isIncludable).toBe(true);
   });
 
@@ -506,15 +503,15 @@ describe("getAttachmentFromFileContentFragment", () => {
     expect(attachment?.isSearchable).toBe(false);
   });
 
-  it("disables queryable when sandbox tools are available", () => {
+  it("never marks file attachments queryable", () => {
     const attachment = getAttachmentFromFileContentFragment({
       cf: makeFileContentFragment({ skipFileProcessing: false }),
-      capabilities: capabilities({ hasSandboxTools: true }),
+      capabilities: LEGACY,
     });
 
     expect(attachment?.isQueryable).toBe(false);
     expect(attachment?.isIncludable).toBe(true);
-    // CSV is queryable/includable but not semantically searchable.
+    // CSV is includable but not semantically searchable.
     expect(attachment?.isSearchable).toBe(false);
   });
 });

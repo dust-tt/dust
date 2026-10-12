@@ -20,13 +20,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const LEGACY: AttachmentCapabilityContext = {
   isNewFileExplorer: false,
-  hasSandboxTools: false,
 };
 
-// Computer is enabled unless a workspace opts out, so file explorer conversations normally have it.
 const FILE_SYSTEM: AttachmentCapabilityContext = {
   isNewFileExplorer: true,
-  hasSandboxTools: true,
 };
 
 const BASE_CONTEXT = {

@@ -446,7 +446,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
   });
 
   const podFileUpload = useFileUploaderService({
-    hasSandboxTools: false,
     owner,
     useCase: "project_context",
     useCaseMetadata: {

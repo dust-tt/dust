@@ -80,7 +80,6 @@ const auth = {} as Authenticator;
 // None of these outputs are attachments, so the capabilities only need to be present.
 const capabilities: AttachmentCapabilityContext = {
   isNewFileExplorer: false,
-  hasSandboxTools: false,
 };
 
 describe("toolCallFootprintTexts", () => {

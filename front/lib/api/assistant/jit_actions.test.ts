@@ -1,8 +1,5 @@
 import { DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME } from "@app/lib/actions/constants";
-import {
-  CONVERSATION_FILES_SERVER_NAME,
-  CONVERSATION_LIST_FILES_ACTION_NAME,
-} from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { CONVERSATION_FILES_SERVER_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { makeFileAttachment } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,7 +10,6 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
@@ -186,11 +182,7 @@ describe("getJITServers", () => {
       );
     });
 
-    describe("when no auto-equipped skills", () => {
-      beforeEach(async () => {
-        await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-      });
-
+    describe("when the agent has no configured skills", () => {
       it("should include skill_management server when agent has no skills", async () => {
         await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
@@ -800,7 +792,7 @@ describe("getJITServers", () => {
   });
 
   describe("sandbox (Computer) availability", () => {
-    it("auto-equips the sandbox skill for any agent when Computer is enabled", async () => {
+    it("auto-equips the sandbox skill for any agent", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // The test agent does not list the sandbox skill in its configuration.
@@ -815,20 +807,6 @@ describe("getJITServers", () => {
       const computerSkill = equippedSkills.find((s) => s.sId === "sandbox");
       expect(computerSkill).toBeDefined();
       expect(computerSkill?.instructions).toBe("");
-    });
-
-    it("does not equip or enable the sandbox skill when Computer is disabled", async () => {
-      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-
-      const { enabledSkills, systemSkills, equippedSkills } =
-        await SkillResource.listForAgentLoop(auth, {
-          agentConfiguration: agentConfig,
-          conversation,
-        });
-
-      expect(systemSkills.some((s) => s.sId === "sandbox")).toBe(false);
-      expect(enabledSkills.some((s) => s.sId === "sandbox")).toBe(false);
-      expect(equippedSkills.some((s) => s.sId === "sandbox")).toBe(false);
     });
 
     it("keeps the sandbox skill available for nested sub-agent conversations", async () => {
@@ -903,9 +881,7 @@ describe("getJITServers", () => {
   });
 
   describe("attachment-based servers", () => {
-    it("should include query_tables server when queryable file attachments exist and Computer is disabled", async () => {
-      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-
+    it("should not include query_tables server for tabular file attachments", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
@@ -915,7 +891,8 @@ describe("getJITServers", () => {
         status: "ready",
       });
 
-      // Built through the constructor so the flags cannot describe a state the product can't reach.
+      // The Computer analyzes tabular files, so the attachment comes out non-queryable and
+      // query_tables has nothing to register for.
       const attachments: ConversationAttachmentType[] = [
         makeFileAttachment({
           fileId: file.sId,
@@ -925,56 +902,7 @@ describe("getJITServers", () => {
           snippet: "test snippet",
           isInProjectContext: false,
           hideFromUser: false,
-          capabilities: { isNewFileExplorer: false, hasSandboxTools: false },
-        }),
-      ];
-      expect(attachments[0].isQueryable).toBe(true);
-
-      const jitServers = await getJITServers(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-        attachments,
-      });
-
-      const queryTablesServer = jitServers.find(
-        (server) =>
-          server.name === DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME
-      );
-
-      expect(queryTablesServer).toBeDefined();
-      expect(queryTablesServer?.description).toContain(
-        `'queryable' conversation files`
-      );
-      expect(queryTablesServer?.description).toContain(
-        CONVERSATION_LIST_FILES_ACTION_NAME
-      );
-      expect(queryTablesServer?.tables).toBeDefined();
-      // Note: tables array may be empty if conversation datasource view is not set up,
-      // but the server should still be created with the correct structure.
-    });
-
-    it("should not include query_tables server for tabular file attachments when Computer is available", async () => {
-      const user = auth.getNonNullableUser();
-      const file = await FileFactory.csv(auth, user, {
-        useCase: "conversation",
-        useCaseMetadata: {
-          conversationId: conversation.sId,
-        },
-        status: "ready",
-      });
-
-      // With Computer available the sandbox analyzes tabular files, so the attachment comes out
-      // non-queryable and query_tables has nothing to register for.
-      const attachments: ConversationAttachmentType[] = [
-        makeFileAttachment({
-          fileId: file.sId,
-          source: "user",
-          title: "test.csv",
-          contentType: "text/csv",
-          snippet: "test snippet",
-          isInProjectContext: false,
-          hideFromUser: false,
-          capabilities: { isNewFileExplorer: false, hasSandboxTools: true },
+          capabilities: { isNewFileExplorer: false },
         }),
       ];
       expect(attachments[0].isQueryable).toBe(false);
@@ -998,7 +926,7 @@ describe("getJITServers", () => {
       ).toBe(true);
     });
 
-    it("should include query_tables server for queryable content nodes even when Computer is available", async () => {
+    it("should include query_tables server for queryable content nodes", async () => {
       const attachments: ConversationAttachmentType[] = [
         {
           contentFragmentId: "cf_queryable_node",
@@ -1240,8 +1168,6 @@ describe("getJITServers", () => {
 
   describe("multiple servers", () => {
     it("should return multiple servers when conditions are met", async () => {
-      await FeatureFlagFactory.basic(auth, "disable_computer_feature");
-
       // Create attachments.
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {

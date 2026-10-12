@@ -357,22 +357,16 @@ const MAX_FILE_SIZES_LARGE_SKILL: Record<FileFormatCategory, number> = {
 };
 
 // Whether an upload is stored as a raw sandbox file: kept as-is with no upload-time processing
-// (no Tika extraction / image resize) and not indexed. Always requires sandbox tools.
+// (no Tika extraction / image resize) and not indexed.
 //  - conversation: large delimited files are served raw to the sandbox instead of indexed as tables;
 //  - skill_attachment: delimited tables and data documents (PDF/DOCX/PPTX) are mounted raw.
 export function allowsSandboxRawUpload({
   category,
-  hasSandboxTools,
   useCase,
 }: {
   category: FileFormatCategory;
-  hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): boolean {
-  if (!hasSandboxTools) {
-    return false;
-  }
-
   switch (useCase) {
     case "conversation":
       return category === "delimited";
@@ -392,16 +386,10 @@ export function allowsSandboxRawUpload({
 }
 
 export function resolveMaxFileSizes({
-  hasSandboxTools,
   useCase,
 }: {
-  hasSandboxTools: boolean;
   useCase: FileUseCase;
 }): Record<FileFormatCategory, number> {
-  if (!hasSandboxTools) {
-    return MAX_FILE_SIZES_DEFAULT;
-  }
-
   switch (useCase) {
     case "conversation":
       return MAX_FILE_SIZES_LARGE_DELIMITED;
@@ -431,7 +419,6 @@ export function ensureFileSize(
   contentType: AllSupportedFileContentType,
   fileSize: number,
   opts: {
-    hasSandboxTools: boolean;
     useCase: FileUseCase;
   }
 ): boolean {
@@ -448,7 +435,6 @@ export function ensureFileSizeByFormatCategory(
   category: FileFormatCategory,
   fileSize: number,
   opts: {
-    hasSandboxTools: boolean;
     useCase: FileUseCase;
   }
 ): boolean {

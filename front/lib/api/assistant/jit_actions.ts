@@ -52,8 +52,8 @@ const CONDITIONAL_MCP_SERVERS: Record<
 > = {
   // Note there is an additional filtering on the tools (see: front/lib/api/actions/servers/conversation_files/index.ts)
   conversation_files: ({ attachments }) => attachments.length > 0,
-  // `isQueryable` already accounts for Computer availability and for the file explorer, so file
-  // attachments only reach here in legacy conversations without the sandbox.
+  // File attachments are never queryable (the Computer analyzes tabular files), so only
+  // content-node tables reach here.
   query_tables_v2: ({ attachments }) => attachments.some((a) => a.isQueryable),
   // Folder search is distinct from attachment.isSearchable (conversation semantic search).
   search: ({ attachments }) =>

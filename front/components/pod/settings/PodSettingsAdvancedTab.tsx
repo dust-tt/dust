@@ -1,8 +1,7 @@
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type { RichSpaceType } from "@app/types/api/spaces";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface PodSettingsAdvancedTabProps {
@@ -14,37 +13,24 @@ export function PodSettingsAdvancedTab({
   owner,
   pod,
 }: PodSettingsAdvancedTabProps) {
-  const { featureFlags } = useFeatureFlags();
   const { isAdmin } = useAuth();
 
   // Env var editing is workspace-admin only (matching the API write gates);
   // the list is visible to anyone who can see the tab, like the network
   // section. Values are write-only, so the list carries names, kinds and
   // domains only.
-  const hasComputer = isComputerFeatureEnabled(featureFlags);
-  const isPodSandboxAdminEnabled = isAdmin && hasComputer;
-  // The pod network section is visible to anyone who can open this page once
-  // the Computer is enabled (the API opens the egress GET to Pod readers);
-  // editing is workspace-admin only. Mirrors the egress-policy route gates —
-  // change both together.
-  const canViewPodNetwork = hasComputer;
-  const canEditPodNetwork = isPodSandboxAdminEnabled;
-
+  // The pod network section is visible to anyone who can open this page (the
+  // API opens the egress GET to Pod readers); editing is workspace-admin only.
+  // Mirrors the egress-policy route gates — change both together.
   return (
     <>
-      {canViewPodNetwork && (
-        <PodNetworkSection
-          owner={owner}
-          podId={pod.sId}
-          canEdit={canEditPodNetwork}
-        />
-      )}
+      <PodNetworkSection owner={owner} podId={pod.sId} canEdit={isAdmin} />
 
       <div className="flex w-full flex-col gap-2">
         <SandboxEnvVarsSection
           owner={owner}
           spaceId={pod.sId}
-          canEdit={isPodSandboxAdminEnabled}
+          canEdit={isAdmin}
         />
       </div>
     </>

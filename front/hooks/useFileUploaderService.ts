@@ -142,12 +142,10 @@ function withOnSettled(
  * extensions in that case so the picker cannot offer them in the first place.
  */
 export function useFileUploaderService({
-  hasSandboxTools,
   owner,
   useCase,
   useCaseMetadata,
 }: {
-  hasSandboxTools: boolean;
   owner: LightWorkspaceType;
   useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
@@ -177,13 +175,7 @@ export function useFileUploaderService({
     return supported.filter((ext) => !audioExtensions.has(ext));
   }, [isAudioSupported, useCase]);
 
-  const sizeResolverOpts = useMemo(
-    () => ({
-      hasSandboxTools,
-      useCase,
-    }),
-    [hasSandboxTools, useCase]
-  );
+  const sizeResolverOpts = useMemo(() => ({ useCase }), [useCase]);
 
   const maxFileSizes = useMemo(
     () => resolveMaxFileSizes(sizeResolverOpts),

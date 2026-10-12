@@ -18,8 +18,6 @@ export type AttachmentCreator = {
 export type AttachmentCapabilityContext = {
   /** The conversation exposes its files through the `files` MCP server rather than by fileId. */
   isNewFileExplorer: boolean;
-  /** The workspace can run the Computer, which handles tabular files itself. */
-  hasSandboxTools: boolean;
 };
 
 export type BaseConversationAttachmentType = {

@@ -22,7 +22,6 @@ const SEARCH_TOOL = getPrefixedToolName(
 // The legacy mode is the one that lists file attachments, so it is what these tests exercise.
 const LEGACY_USAGE = attachmentUsageHintsFor({
   isNewFileExplorer: false,
-  hasSandboxTools: false,
 });
 
 function makeFileAttachment(
@@ -86,7 +85,6 @@ describe("contentFromAttachments", () => {
     const out = contentFromAttachments(attachments, {
       usage: attachmentUsageHintsFor({
         isNewFileExplorer: true,
-        hasSandboxTools: true,
       }),
     });
 
