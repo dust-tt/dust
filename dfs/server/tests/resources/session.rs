@@ -258,6 +258,23 @@ pub(crate) async fn authentication_and_refresh_require_active_matching_state() -
     ));
     tenant.create(&tx).await?;
 
+    let tenant_key = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
+    tx.set(
+        &tenant_key,
+        &pack(&(tenant.root_id.as_bytes().as_slice(), &[0u8; 31][..])),
+    );
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::InvalidKeyHash(_))
+    ));
+    tx.set(
+        &tenant_key,
+        &pack(&(
+            tenant.root_id.as_bytes().as_slice(),
+            tenant.key_hash.as_slice(),
+        )),
+    );
+
     let lookup = namespace_subspace().pack(&("session-key", session.key_hash.as_slice()));
     let state =
         tenant_subspace(&tenant.tenant_id).pack(&("session", session.session_id.as_str(), "state"));

@@ -63,6 +63,7 @@ impl From<session::Error> for Status {
             session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
             session::Error::NotFound => status(ErrorCode::NotFound),
             session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            session::Error::Tenant(error) => error.into(),
             session::Error::KeyGeneration
             | session::Error::ExpiryGeneration
             | session::Error::KeyCollision => {
@@ -176,6 +177,27 @@ mod tests {
             // Follow the runner's boxing and unboxing before translating the final API response.
             let error = FdbBindingError::from(error);
             let error = storage::Error::<Status>::from(error);
+            let status: Status = error.into();
+            assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn tenant_errors_preserve_retries_and_statuses_through_sessions()
+    -> Result<(), prost::DecodeError> {
+        let error: storage::Error<tenant::Error> =
+            FdbBindingError::from(FdbError::from_code(1020)).into();
+        let error = FdbBindingError::from(storage::Error::<session::Error>::from(error));
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+
+        for (error, expected) in [
+            (tenant::Error::InvalidId, ErrorCode::InvalidInput),
+            (tenant::Error::InvalidKey, ErrorCode::Unauthenticated),
+        ] {
+            let error = storage::Error::<session::Error>::from(storage::Error::Resource(error));
+            let error = FdbBindingError::from(error);
+            let error = storage::Error::<session::Error>::from(error);
             let status: Status = error.into();
             assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
         }

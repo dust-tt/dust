@@ -17,7 +17,7 @@ use crate::{
         resources::{
             SUBJECT_MAX_BYTES,
             keys::{namespace_subspace, tenant_subspace},
-            tenant::TenantResource,
+            tenant::{self, TenantResource},
         },
     },
 };
@@ -41,6 +41,7 @@ pub enum Error {
     InvalidId,
     InvalidKey,
     NotFound,
+    Tenant(tenant::Error),
 }
 
 impl fmt::Display for Error {
@@ -55,15 +56,40 @@ impl fmt::Display for Error {
             Self::InvalidId => f.write_str("invalid session ID"),
             Self::InvalidKey => f.write_str("invalid or expired session key"),
             Self::NotFound => f.write_str("session not found"),
+            Self::Tenant(error) => error.fmt(f),
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Tenant(error) => Some(error),
+            _ => None,
+        }
+    }
+}
 
 impl From<Error> for storage::Error<Error> {
     fn from(error: Error) -> Self {
         Self::Resource(error)
+    }
+}
+
+/**
+ * @cc [owner:spolu,label:backend;error-handling] tenant-error-conversion
+ * Tenant resource failures MUST retain their typed error inside the session error. FDB and
+ * decoding failures MUST pass through unchanged to preserve retries and API error classification.
+ */
+impl From<storage::Error<tenant::Error>> for storage::Error<Error> {
+    fn from(error: storage::Error<tenant::Error>) -> Self {
+        match error {
+            storage::Error::Open(error) => Self::Open(error),
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            storage::Error::InvalidKeyHash(error) => Self::InvalidKeyHash(error),
+            storage::Error::InvalidObjectId(error) => Self::InvalidObjectId(error),
+            storage::Error::Resource(error) => Self::Resource(Error::Tenant(error)),
+        }
     }
 }
 
