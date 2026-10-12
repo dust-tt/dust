@@ -700,6 +700,33 @@ abstract class BaseTransition extends LLM {
     return flaggedConfig;
   }
 
+  // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
+  private toBaseMessagesWithEffortChanges(
+    conversation: LLMStreamParameters["conversation"]
+  ): BaseMessage[] {
+    return filterRaisingReasoningEfforts(
+      this.modelConfig,
+      conversation.messages.flatMap(toBaseMessages),
+      {
+        effort: this.reasoningEffort,
+        getEffort: (m) => (m.role === "system" ? m.content.effort : null),
+      }
+    );
+  }
+
+  // The last effort change sent with the request, else the top-level effort.
+  protected override getReasoningEffortInEffect({
+    conversation,
+  }: LLMStreamParameters): ReasoningEffort {
+    const lastEffortChange = this.toBaseMessagesWithEffortChanges(
+      conversation
+    ).findLast((m) => m.role === "system");
+
+    return lastEffortChange?.role === "system"
+      ? lastEffortChange.content.effort
+      : this.reasoningEffort;
+  }
+
   // Builds the provider-agnostic conversation payload (system + messages) shared
   // by both the streaming and batch surfaces.
   //
@@ -717,16 +744,8 @@ abstract class BaseTransition extends LLM {
   ): Payload {
     const { conversation, prompt } = streamParameters;
 
-    // Only the effort changes this model can apply reach the provider (effort-messages-only-raise).
     const baseMessages = withMessageCacheBreakpoints(
-      filterRaisingReasoningEfforts(
-        this.modelConfig,
-        conversation.messages.flatMap(toBaseMessages),
-        {
-          effort: this.reasoningEffort,
-          getEffort: (m) => (m.role === "system" ? m.content.effort : null),
-        }
-      ),
+      this.toBaseMessagesWithEffortChanges(conversation),
       conversation.messages[0],
       { explicitTailBreakpoint }
     );
