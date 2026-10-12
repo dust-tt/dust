@@ -405,8 +405,7 @@ export async function sendFrameOtpEmail({
   workspace: LightWorkspaceType;
 }): Promise<Result<void, Error>> {
   const [recipient] = await emailRecipientsFromAddresses(workspace, [to]);
-  return notifyFrameLoginCode({
-    recipient,
+  return notifyFrameLoginCode(recipient, {
     workspaceId: workspace.sId,
     workspaceName: workspace.name,
     sharedByName,
@@ -439,8 +438,7 @@ async function sendFrameSharedEmail({
     return new Ok(undefined);
   }
 
-  return notifyFrameShared({
-    recipient,
+  return notifyFrameShared(recipient, {
     workspaceId: workspace.sId,
     workspaceName: workspace.name,
     sharedByName,

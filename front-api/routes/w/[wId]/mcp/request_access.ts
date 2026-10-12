@@ -68,16 +68,18 @@ app.post(
     }
 
     const owner = auth.getNonNullableWorkspace();
-    const result = await notifyAccessRequest({
-      recipient: emailRecipientFromUser(mcpServerView.editedByUser),
-      workspaceId: owner.sId,
-      workspaceName: owner.name,
-      resourceKind: "mcp_server",
-      resourceName: mcpServerView.getDisplayName(),
-      requesterName: user.fullName(),
-      requesterEmail: user.email,
-      message: emailMessage,
-    });
+    const result = await notifyAccessRequest(
+      emailRecipientFromUser(mcpServerView.editedByUser),
+      {
+        workspaceId: owner.sId,
+        workspaceName: owner.name,
+        resourceKind: "mcp_server",
+        resourceName: mcpServerView.getDisplayName(),
+        requesterName: user.fullName(),
+        requesterEmail: user.email,
+        message: emailMessage,
+      }
+    );
 
     if (result.isErr()) {
       return apiError(ctx, {

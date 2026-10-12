@@ -20,12 +20,10 @@ export type WorkspaceInvitationPayloadType = z.infer<
  * Email an invitation (or its reminder) to join a workspace. The invitee usually has no Dust user,
  * so the email renders in the workspace's locale unless they already have one of their own.
  */
-export function notifyWorkspaceInvitation({
-  recipient,
-  ...payload
-}: WorkspaceInvitationPayloadType & {
-  recipient: EmailRecipient;
-}): Promise<Result<void, Error>> {
+export function notifyWorkspaceInvitation(
+  recipient: EmailRecipient,
+  payload: WorkspaceInvitationPayloadType
+): Promise<Result<void, Error>> {
   return triggerEmailWorkflow({
     workflowId: WORKSPACE_INVITATION_TRIGGER_ID,
     recipients: [recipient],

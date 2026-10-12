@@ -80,8 +80,8 @@ describe("verify-email endpoint", () => {
     ).toBe(200);
     expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
     expect(notifyFrameLoginCode).toHaveBeenCalledWith(
+      expect.objectContaining({ email: "alice@example.com" }),
       expect.objectContaining({
-        recipient: expect.objectContaining({ email: "alice@example.com" }),
         workspaceId: auth.getNonNullableWorkspace().sId,
       })
     );

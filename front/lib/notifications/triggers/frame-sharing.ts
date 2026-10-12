@@ -28,12 +28,10 @@ export const FrameSharedPayloadSchema = z.object({
 
 export type FrameSharedPayloadType = z.infer<typeof FrameSharedPayloadSchema>;
 
-export function notifyFrameLoginCode({
-  recipient,
-  ...payload
-}: FrameLoginCodePayloadType & {
-  recipient: EmailRecipient;
-}): Promise<Result<void, Error>> {
+export function notifyFrameLoginCode(
+  recipient: EmailRecipient,
+  payload: FrameLoginCodePayloadType
+): Promise<Result<void, Error>> {
   return triggerEmailWorkflow({
     workflowId: FRAME_LOGIN_CODE_TRIGGER_ID,
     recipients: [recipient],
@@ -41,12 +39,10 @@ export function notifyFrameLoginCode({
   });
 }
 
-export function notifyFrameShared({
-  recipient,
-  ...payload
-}: FrameSharedPayloadType & {
-  recipient: EmailRecipient;
-}): Promise<Result<void, Error>> {
+export function notifyFrameShared(
+  recipient: EmailRecipient,
+  payload: FrameSharedPayloadType
+): Promise<Result<void, Error>> {
   return triggerEmailWorkflow({
     workflowId: FRAME_SHARED_TRIGGER_ID,
     recipients: [recipient],

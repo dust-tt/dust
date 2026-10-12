@@ -43,8 +43,7 @@ function sendWorkspaceInvitationEmail(
   invitation: MembershipInvitationType,
   recipient: EmailRecipient
 ): Promise<Result<void, Error>> {
-  return notifyWorkspaceInvitation({
-    recipient,
+  return notifyWorkspaceInvitation(recipient, {
     workspaceId: owner.sId,
     workspaceName: owner.name,
     inviterName: user.fullName,
@@ -58,8 +57,7 @@ export function sendWorkspaceInvitationReminderEmail(
   invitation: MembershipInvitationType,
   recipient: EmailRecipient
 ): Promise<Result<void, Error>> {
-  return notifyWorkspaceInvitation({
-    recipient,
+  return notifyWorkspaceInvitation(recipient, {
     workspaceId: owner.sId,
     workspaceName: owner.name,
     inviterName: null,

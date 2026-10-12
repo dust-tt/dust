@@ -7,7 +7,7 @@ import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { LightWorkspaceType, UserType } from "@app/types/user";
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
 import { createHash } from "crypto";
@@ -62,16 +62,13 @@ export function isExternalSubscriberId(subscriberId: string): boolean {
   return subscriberId.startsWith(EXTERNAL_SUBSCRIBER_ID_PREFIX);
 }
 
-export function emailRecipientFromUser(user: {
-  sId: string;
-  email: string;
-  firstName: string | null;
-  lastName: string | null;
-}): EmailRecipient {
+export function emailRecipientFromUser(
+  user: Pick<UserType, "sId" | "email" | "firstName" | "lastName">
+): EmailRecipient {
   return {
     subscriberId: user.sId,
     email: user.email,
-    firstName: user.firstName ?? undefined,
+    firstName: user.firstName,
     lastName: user.lastName ?? undefined,
   };
 }

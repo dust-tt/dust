@@ -58,7 +58,7 @@ describe("POST /api/w/:wId/data_sources/request_access", () => {
 
     expect(response.status).toBe(200);
     expect(notifyAccessRequest).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(notifyAccessRequest).mock.calls[0][0]).toMatchObject({
+    expect(vi.mocked(notifyAccessRequest).mock.calls[0][1]).toMatchObject({
       workspaceId: workspace.sId,
       resourceKind: "data_source",
       resourceName: "Sales <R&D>",
@@ -67,7 +67,7 @@ describe("POST /api/w/:wId/data_sources/request_access", () => {
     });
 
     // The payload carries the raw text: the email template escapes it when rendering.
-    const [[payload]] = vi.mocked(notifyAccessRequest).mock.calls;
+    const [[, payload]] = vi.mocked(notifyAccessRequest).mock.calls;
     const i18n = await getNotificationI18n("en-US");
     const { content } = buildAccessRequestEmailCopy(i18n, payload);
     const body = await renderEmail({

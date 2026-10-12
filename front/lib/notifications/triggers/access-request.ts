@@ -22,12 +22,10 @@ export type AccessRequestPayloadType = z.infer<
  * Email the editor of a data source or of tools that a member requests access to. The email
  * cannot be replied to, so it links to the requester's address instead.
  */
-export function notifyAccessRequest({
-  recipient,
-  ...payload
-}: AccessRequestPayloadType & {
-  recipient: EmailRecipient;
-}): Promise<Result<void, Error>> {
+export function notifyAccessRequest(
+  recipient: EmailRecipient,
+  payload: AccessRequestPayloadType
+): Promise<Result<void, Error>> {
   return triggerEmailWorkflow({
     workflowId: ACCESS_REQUEST_TRIGGER_ID,
     recipients: [recipient],

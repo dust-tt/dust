@@ -79,16 +79,18 @@ app.post("/", validate("json", PostRequestAccessBodySchema), async (ctx) => {
   }
 
   const owner = auth.getNonNullableWorkspace();
-  const result = await notifyAccessRequest({
-    recipient: emailRecipientFromUser(dataSource.editedByUser),
-    workspaceId: owner.sId,
-    workspaceName: owner.name,
-    resourceKind: "data_source",
-    resourceName: dataSource.name,
-    requesterName: user.fullName(),
-    requesterEmail: user.email,
-    message: emailMessage,
-  });
+  const result = await notifyAccessRequest(
+    emailRecipientFromUser(dataSource.editedByUser),
+    {
+      workspaceId: owner.sId,
+      workspaceName: owner.name,
+      resourceKind: "data_source",
+      resourceName: dataSource.name,
+      requesterName: user.fullName(),
+      requesterEmail: user.email,
+      message: emailMessage,
+    }
+  );
 
   if (result.isErr()) {
     return apiError(ctx, {

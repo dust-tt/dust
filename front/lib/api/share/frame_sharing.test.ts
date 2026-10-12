@@ -243,16 +243,16 @@ describe("sendFrameOtpEmail", () => {
 
     expect(result.isOk()).toBe(true);
     expect(notifyFrameLoginCode).toHaveBeenCalledOnce();
-    const call = vi.mocked(notifyFrameLoginCode).mock.calls[0][0];
-    expect(call).toMatchObject({
+    const [recipient, payload] = vi.mocked(notifyFrameLoginCode).mock.calls[0];
+    expect(payload).toMatchObject({
       workspaceId: workspace.sId,
       workspaceName: workspace.name,
       sharedByName: "Alice",
       code: "123456",
       expiresInMinutes: 15,
     });
-    expect(call.recipient.email).toBe("outsider@example.com");
-    expect(isExternalSubscriberId(call.recipient.subscriberId)).toBe(true);
+    expect(recipient.email).toBe("outsider@example.com");
+    expect(isExternalSubscriberId(recipient.subscriberId)).toBe(true);
   });
 });
 
