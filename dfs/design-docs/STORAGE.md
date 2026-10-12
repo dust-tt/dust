@@ -51,8 +51,8 @@ entries every 30 seconds.
 
 ## Sessions
 
-Sessions persist in FDB across server restarts and HTTP/2 connections. Each has a fixed subject set,
-an initial one-hour expiry, and a root resolved from tenant state.
+Sessions persist in FDB with fixed subjects and an initial one-hour expiry. `SessionResource` owns
+its `TenantResource`, including the root ID.
 
 | Key | Value | Rationale |
 | --- | --- | --- |
@@ -70,16 +70,15 @@ Creation atomically writes state, subjects, credential lookup, and expiry entry,
 collisions. IDs and keys are generated before the retrying transaction; an existing ID with the same
 hash succeeds without rewriting state, allowing retries to recognize their own commit.
 
-Authentication resolves the lookup and verifies the matching hash and unexpired state in one
-transaction. Successful results are cached per API instance for at most 30 seconds from the start
-of the lookup, capped by session expiry; hits do not extend this deadline. Revocation can therefore
-take up to 30 seconds to prevent new RPCs across servers; already admitted RPCs may finish.
+Authentication checks the lookup, hash, and expiry, and loads the required tenant in one transaction.
+The session and tenant share a per-instance cache deadline: 30 seconds from lookup start, capped by
+session expiry; hits never extend it. Revocation may take 30 seconds to block new RPCs across servers;
+admitted RPCs may finish.
 
-`RefreshSession` reads active state directly from FDB and atomically replaces the expiry index entry,
-extending expiry to the later of its current value and server time plus one hour. It never revives
-expired or revoked sessions. `RevokeSession` uses the authenticated tenant to locate the session,
-then atomically clears its prefix, credential lookup, and expiry entry. Both operations use
-conflict-tracked reads and evict the local cache entry after commit.
+`RefreshSession` authenticates directly in FDB and atomically updates expiry and its index to
+`max(current_expiry, now + 1 hour)`; missing tenants and expired or revoked sessions fail.
+`RevokeSession` atomically clears the authenticated tenant's session prefix, key lookup, and expiry
+entry. Both use conflict-tracked reads and evict the local cache after commit.
 
 Each server waits a fresh random 1–60 seconds before each expiry sweep, including the first. A pass
 fixes its cutoff at one minute before its start and drains the expiry index in fresh transactions

@@ -38,7 +38,7 @@ pub(crate) fn subjects_are_exact_deduplicated_and_bounded() -> Result<()> {
         ],
     )?;
     let after_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
-    assert_eq!(session.tenant_id, tenant.tenant_id);
+    assert_eq!(session.tenant.tenant_id, tenant.tenant_id);
     assert_eq!(
         session.subjects.into_iter().collect::<Vec<_>>(),
         ["User", "a\0/b", "user"]
@@ -103,7 +103,9 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
     })
     .await?;
     assert_eq!(authenticated.subjects, owner.subjects);
-    assert_eq!(authenticated.tenant_id, owner.tenant_id);
+    assert_eq!(authenticated.tenant.tenant_id, owner.tenant.tenant_id);
+    assert_eq!(authenticated.tenant.root_id, tenant.root_id);
+    assert_eq!(authenticated.tenant.key_hash, tenant.key_hash);
     assert_eq!(authenticated.session_id, owner.session_id);
 
     for (candidate, key_collision_expected) in [(&key_collision, true), (&id_collision, false)] {
@@ -122,7 +124,7 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
     }
 
     let session_subspace =
-        tenant_subspace(&owner.tenant_id).subspace(&("session", owner.session_id.as_str()));
+        tenant_subspace(&owner.tenant.tenant_id).subspace(&("session", owner.session_id.as_str()));
     let lookup = namespace_subspace().pack(&("session-key", owner.key_hash.as_slice()));
     let expires_at_ms = owner.expires_at_ms + REFRESH_EXTENSION_MS;
     let original_expiry = expiry_key(&owner, owner.expires_at_ms);
@@ -149,7 +151,7 @@ pub(crate) async fn creation_persists_indexes_and_preserves_existing_sessions() 
                     .ok_or_else(|| FdbBindingError::CustomError("missing session lookup".into()))?;
                 let (tenant_id, session_id): (String, String) =
                     unpack(&indexed).map_err(FdbBindingError::PackError)?;
-                assert_eq!(tenant_id, owner.tenant_id);
+                assert_eq!(tenant_id, owner.tenant.tenant_id);
                 assert_eq!(session_id, owner.session_id);
                 assert_eq!(
                     tx.get(original_expiry, false).await?.as_deref(),
@@ -245,6 +247,34 @@ pub(crate) async fn authentication_and_refresh_require_active_matching_state() -
     let tx = fdb::database()?.create_trx()?;
     session.create(&tx).await?;
 
+    // A valid session cannot authenticate or refresh without its tenant.
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::Resource(session::Error::InvalidKey))
+    ));
+    assert!(matches!(
+        SessionResource::refresh(&tx, &session.key_hash).await,
+        Err(storage::Error::Resource(session::Error::InvalidKey))
+    ));
+    tenant.create(&tx).await?;
+
+    let tenant_key = tenant_subspace(&tenant.tenant_id).pack(&"tenant");
+    tx.set(
+        &tenant_key,
+        &pack(&(tenant.root_id.as_bytes().as_slice(), &[0u8; 31][..])),
+    );
+    assert!(matches!(
+        SessionResource::authenticate(&tx, &session.key_hash).await,
+        Err(storage::Error::InvalidKeyHash(_))
+    ));
+    tx.set(
+        &tenant_key,
+        &pack(&(
+            tenant.root_id.as_bytes().as_slice(),
+            tenant.key_hash.as_slice(),
+        )),
+    );
+
     let lookup = namespace_subspace().pack(&("session-key", session.key_hash.as_slice()));
     let state =
         tenant_subspace(&tenant.tenant_id).pack(&("session", session.session_id.as_str(), "state"));
@@ -287,7 +317,7 @@ pub(crate) async fn authentication_and_refresh_require_active_matching_state() -
     assert_eq!(refreshed.subjects, session.subjects);
     assert_eq!(refreshed.key_hash, session.key_hash);
     assert_eq!(refreshed.session_id, session.session_id);
-    assert_eq!(refreshed.tenant_id, session.tenant_id);
+    assert_eq!(refreshed.tenant.tenant_id, session.tenant.tenant_id);
     assert!(
         tx.get(&expiry_key(&session, session.expires_at_ms), false)
             .await?
@@ -298,6 +328,11 @@ pub(crate) async fn authentication_and_refresh_require_active_matching_state() -
 
 pub(crate) async fn refresh_and_revocation_conflict_in_both_orders() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    fdb::with_transaction(|tx| {
+        let tenant = &tenant;
+        async move { tenant.create(&tx).await }
+    })
+    .await?;
     for refresh_commits_first in [true, false] {
         let (mut session, _) = SessionResource::new(&tenant, vec!["u:race".to_owned()])?;
         session.expires_at_ms -= REFRESH_EXTENSION_MS;
@@ -362,9 +397,13 @@ pub(crate) async fn refresh_and_revocation_conflict_in_both_orders() -> Result<(
         ));
         let tx = fdb::database()?.create_trx()?;
         assert!(
-            read_prefix(&tx, &tenant_subspace(&tenant.tenant_id))
-                .await?
-                .is_empty()
+            read_prefix(
+                &tx,
+                &tenant_subspace(&tenant.tenant_id)
+                    .subspace(&("session", session.session_id.as_str()))
+            )
+            .await?
+            .is_empty()
         );
         assert!(
             tx.get(
@@ -382,6 +421,11 @@ pub(crate) async fn refresh_and_revocation_conflict_in_both_orders() -> Result<(
             );
         }
     }
+    let tx = fdb::database()?.create_trx()?;
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.clear(&namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice())));
+    tx.commit().await?;
     Ok(())
 }
 
@@ -424,8 +468,8 @@ pub(crate) async fn expiry_cleanup_is_bounded_and_preserves_live_sessions() -> R
     assert_eq!(total_processed, expired.len() + 2);
     assert_eq!(total_revoked, expired.len());
     for session in &expired {
-        let session_prefix =
-            tenant_subspace(&session.tenant_id).subspace(&("session", session.session_id.as_str()));
+        let session_prefix = tenant_subspace(&session.tenant.tenant_id)
+            .subspace(&("session", session.session_id.as_str()));
         assert!(read_prefix(&tx, &session_prefix).await?.is_empty());
         assert!(
             tx.get(
@@ -444,7 +488,7 @@ pub(crate) async fn expiry_cleanup_is_bounded_and_preserves_live_sessions() -> R
     assert!(tx.get(&stale_index, false).await?.is_none());
     assert!(tx.get(&orphan_index, false).await?.is_none());
     let live_prefix =
-        tenant_subspace(&live.tenant_id).subspace(&("session", live.session_id.as_str()));
+        tenant_subspace(&live.tenant.tenant_id).subspace(&("session", live.session_id.as_str()));
     assert_eq!(
         tx.get(&live_prefix.pack(&"state"), false).await?.as_deref(),
         Some(pack(&(live.key_hash.as_slice(), live.expires_at_ms)).as_slice()),
@@ -472,6 +516,11 @@ pub(crate) async fn expiry_cleanup_is_bounded_and_preserves_live_sessions() -> R
 
 pub(crate) async fn expiry_cleanup_conflicts_with_concurrent_changes() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    fdb::with_transaction(|tx| {
+        let tenant = &tenant;
+        async move { tenant.create(&tx).await }
+    })
+    .await?;
     for extend_expiry in [true, false] {
         let (mut session, _) = SessionResource::new(&tenant, vec!["u:cleanup-race".to_owned()])?;
         let live_expiry_ms = session.expires_at_ms;
@@ -540,9 +589,13 @@ pub(crate) async fn expiry_cleanup_conflicts_with_concurrent_changes() -> Result
         }
         let tx = fdb::database()?.create_trx()?;
         assert!(
-            read_prefix(&tx, &tenant_subspace(&tenant.tenant_id))
-                .await?
-                .is_empty()
+            read_prefix(
+                &tx,
+                &tenant_subspace(&tenant.tenant_id)
+                    .subspace(&("session", session.session_id.as_str()))
+            )
+            .await?
+            .is_empty()
         );
         assert!(
             tx.get(
@@ -560,6 +613,11 @@ pub(crate) async fn expiry_cleanup_conflicts_with_concurrent_changes() -> Result
             );
         }
     }
+    let tx = fdb::database()?.create_trx()?;
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.clear(&namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice())));
+    tx.commit().await?;
     Ok(())
 }
 
@@ -567,7 +625,7 @@ fn expiry_key(session: &SessionResource, expires_at_ms: u64) -> Vec<u8> {
     namespace_subspace().pack(&(
         "session-expiry",
         expires_at_ms.to_be_bytes().as_slice(),
-        session.tenant_id.as_str(),
+        session.tenant.tenant_id.as_str(),
         session.session_id.as_str(),
     ))
 }

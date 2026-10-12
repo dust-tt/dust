@@ -102,6 +102,7 @@ async fn periodic_sweeps_reclaim_expired_entries_and_preserve_live_references() 
     assert_eq!(Arc::strong_count(&held), 1);
     drop(held);
     assert!(held_reference.upgrade().is_none());
+    assert_eq!(live_session.tenant.tenant_id, "held");
 
     api.tenant_key_cache
         .write()
@@ -141,5 +142,41 @@ fn session_cache_deadline_starts_before_the_lookup() -> Result<()> {
         lookup_started + Duration::from_millis(SESSION_KEY_CACHE_TTL_MS)
     );
     assert!(cached.expires_at <= Instant::now());
+    Ok(())
+}
+
+#[tokio::test]
+async fn session_cache_hits_return_matching_resources() -> Result<()> {
+    let api = API::new(&"a".repeat(KEY_LENGTH))?;
+    for tenant_id in ["first", "second"] {
+        let (tenant, _) = TenantResource::new(tenant_id.to_owned())?;
+        let (session, session_key) = SessionResource::new(&tenant, vec![])?;
+        let session = Arc::new(session);
+        let cached = CachedSession::new(Arc::clone(&session), Instant::now())?;
+        let expires_at = cached.expires_at;
+        api.session_key_cache
+            .write()
+            .await
+            .insert(session.key_hash, cached);
+
+        let mut request = tonic::Request::new(());
+        request
+            .metadata_mut()
+            .insert("authorization", format!("Bearer {session_key}").parse()?);
+        let request = super::bearer_auth(request)?;
+        let actual_session = api.require_session(&request).await?;
+        assert!(Arc::ptr_eq(&actual_session, &session));
+        assert_eq!(actual_session.tenant.tenant_id, tenant.tenant_id);
+        assert_eq!(actual_session.tenant.root_id, tenant.root_id);
+        assert_eq!(
+            api.session_key_cache
+                .read()
+                .await
+                .get(&session.key_hash)
+                .context("missing cached session")?
+                .expires_at,
+            expires_at,
+        );
+    }
     Ok(())
 }
