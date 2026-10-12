@@ -539,6 +539,14 @@ msgid "Access your favorite and most-used agents, or search for one from the hom
 msgstr "Accédez à vos agents favoris et les plus utilisés, ou recherchez-en un depuis la page d’accueil."
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Use the new homepage"
+msgstr "Utiliser la nouvelle page d'accueil"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Try the new homepage, built to discover skills and agents."
+msgstr "Essayez la nouvelle page d'accueil, conçue pour découvrir les compétences et les agents."
+
+#: front/components/UserSettingsPopover.tsx
 msgid "Notification preferences saved"
 msgstr "Préférences de notification enregistrées"
 

@@ -11,6 +11,7 @@ import { DiscoverContainer } from "@app/components/assistant/conversation/discov
 import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
+import { useDiscoveryHomepageOptIn } from "@app/components/assistant/conversation/discover/useDiscoveryHomepageOptIn";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
@@ -185,7 +186,7 @@ export function ConversationContainerVirtuoso({
     : null;
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
-  const isDiscoveryHomepage = hasFeature("discovery_homepage");
+  const { isDiscoveryHomepage } = useDiscoveryHomepageOptIn();
 
   const handleUseCasePick = (useCase: HomepageUseCaseType) => {
     const references = [

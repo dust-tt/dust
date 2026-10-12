@@ -822,6 +822,14 @@ msgstr "Vous pouvez désormais créer et modifier des compétences et des agents
 msgid "Try it"
 msgstr "Essayer"
 
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "The homepage is changing next week."
+msgstr "La page d'accueil change la semaine prochaine."
+
+#: front/components/assistant/conversation/InAppBanner.tsx
+msgid "Try the new experience"
+msgstr "Essayer la nouvelle expérience"
+
 #: front/components/assistant/conversation/LeaveConversationDialog.tsx
 msgid "Leave conversation"
 msgstr "Quitter la conversation"

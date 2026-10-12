@@ -339,3 +339,7 @@ msgstr "Draft a document from our own knowledge"
 #: front/components/assistant/conversation/discover/homepageUseCaseMessages.ts
 msgid "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."
 msgstr "Draft a one-page brief on the topic I name, sourced from our own documents: where it stands, what is blocked, who owns what, and the decisions still open. Hand it back as a document."
+
+#: front/components/assistant/conversation/discover/useDiscoveryHomepageOptIn.ts
+msgid "Could not switch homepage"
+msgstr "Could not switch homepage"
