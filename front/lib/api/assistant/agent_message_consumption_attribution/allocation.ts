@@ -88,13 +88,9 @@ function splitByWeight(
   );
 }
 
-function roundToMicroCredits(
-  shares: ItemCreditShare[],
-  totalCreditMicro: number
-): ItemCreditShare[] {
+function roundToMicroCredits(shares: ItemCreditShare[]): ItemCreditShare[] {
   const creditMicros = allocateMicroCreditsByLargestRemainder(
-    shares.map(({ creditMicro }) => creditMicro),
-    totalCreditMicro
+    shares.map(({ creditMicro }) => creditMicro)
   );
 
   return shares.map(({ item }, index) => ({
@@ -346,7 +342,7 @@ function allocateUsageCredits({
     }
     shares.push(...bucketShares.value);
   }
-  return new Ok(roundToMicroCredits(shares, billedCreditMicro));
+  return new Ok(roundToMicroCredits(shares));
 }
 
 function splitLlmCreditsByItem({

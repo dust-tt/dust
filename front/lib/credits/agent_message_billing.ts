@@ -210,8 +210,7 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
     left.allocationKey < right.allocationKey ? -1 : 1
   );
   const creditMicros = allocateMicroCreditsByLargestRemainder(
-    allocationsInKeyOrder.map(({ exactCreditMicro }) => exactCreditMicro),
-    billedCreditMicro
+    allocationsInKeyOrder.map(({ exactCreditMicro }) => exactCreditMicro)
   );
   const allocatedCreditMicroByKey = new Map(
     allocationsInKeyOrder.map(({ allocationKey }, index) => [

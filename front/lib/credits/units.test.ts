@@ -18,20 +18,14 @@ describe("credit units", () => {
   });
 
   it("gives the remaining microcredits to the largest fractional parts", () => {
-    expect(allocateMicroCreditsByLargestRemainder([1.2, 1.7, 1.1], 4)).toEqual([
+    expect(allocateMicroCreditsByLargestRemainder([1.2, 1.7, 1.1])).toEqual([
       1, 2, 1,
     ]);
   });
 
   it("breaks ties between equal fractional parts by position", () => {
     expect(
-      allocateMicroCreditsByLargestRemainder([1 / 3, 1 / 3, 1 / 3], 1)
+      allocateMicroCreditsByLargestRemainder([1 / 3, 1 / 3, 1 / 3])
     ).toEqual([1, 0, 0]);
-  });
-
-  it("pads to the total when the exact amounts add up to less", () => {
-    expect(allocateMicroCreditsByLargestRemainder([1.1, 1.3], 3)).toEqual([
-      1, 2,
-    ]);
   });
 });
