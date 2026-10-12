@@ -57,24 +57,26 @@ describe("moveGroupPastVisibleNeighbor", () => {
 });
 
 describe("countEarlierGroupsSharingMembers", () => {
-  const row = (sharedMemberCount: number | null, isCurrentGroup = false) => ({
-    sharedMemberCount,
-    isCurrentGroup,
-  });
+  const sharedMemberCounts = new Map([
+    ["a", 2],
+    ["b", 0],
+    ["c", 1],
+    ["e", 3],
+  ]);
 
   it("counts the groups before this one that share members with it", () => {
     expect(
-      countEarlierGroupsSharingMembers([
-        row(2),
-        row(0),
-        row(1),
-        row(null, true),
-        row(3),
-      ])
+      countEarlierGroupsSharingMembers(
+        ["a", "b", "c", "d", "e"],
+        "d",
+        sharedMemberCounts
+      )
     ).toBe(2);
   });
 
   it("returns 0 when the group is not in the order", () => {
-    expect(countEarlierGroupsSharingMembers([row(2), row(1)])).toBe(0);
+    expect(
+      countEarlierGroupsSharingMembers(["a", "c"], "d", sharedMemberCounts)
+    ).toBe(0);
   });
 });

@@ -49,12 +49,14 @@ export function moveGroupPastVisibleNeighbor(
 }
 
 export function countEarlierGroupsSharingMembers(
-  rows: { isCurrentGroup: boolean; sharedMemberCount: number | null }[]
+  order: string[],
+  groupId: string,
+  sharedMemberCountByGroupId: Map<string, number>
 ): number {
-  const currentIndex = rows.findIndex((row) => row.isCurrentGroup);
+  const currentIndex = order.indexOf(groupId);
   return currentIndex === -1
     ? 0
-    : rows
+    : order
         .slice(0, currentIndex)
-        .filter((row) => (row.sharedMemberCount ?? 0) > 0).length;
+        .filter((id) => (sharedMemberCountByGroupId.get(id) ?? 0) > 0).length;
 }

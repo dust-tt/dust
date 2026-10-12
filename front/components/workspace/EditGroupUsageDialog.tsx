@@ -41,6 +41,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  LoadingBlock,
   Page,
   Tabs,
   TabsContent,
@@ -243,11 +244,14 @@ function useGroupBudgetOrderDraft(
           group.groupId,
           budgetAwuCredits !== null || savedBudgetAwuCredits !== null
         )
-      ).map((groupId) => ({
-        isCurrentGroup: groupId === group.groupId,
-        sharedMemberCount:
-          overlapByGroupId.get(groupId)?.sharedMemberCount ?? null,
-      }))
+      ),
+      group.groupId,
+      new Map(
+        overlaps.map((overlap) => [
+          overlap.groupId,
+          overlap.sharedMemberCount ?? 0,
+        ])
+      )
     ),
     isOrderChanged: hasLoadedOverlaps && !isSameBudgetOrder(order, baseOrder),
     isOverlapsLoading,
@@ -598,6 +602,9 @@ function EditGroupUsageForm({
             <DialogContainer>
               <div className="flex flex-col gap-6">
                 {limitsFields}
+                {orderDraft.isOverlapsLoading && (
+                  <LoadingBlock className="h-14 w-full rounded-2xl" />
+                )}
                 {orderDraft.earlierGroupsSharingMembersCount > 0 && (
                   <GroupBudgetOrderBanner
                     groupName={groupName}
