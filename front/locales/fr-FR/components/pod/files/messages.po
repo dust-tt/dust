@@ -88,6 +88,7 @@ msgid "There is no data available in Company Data yet. Go to Company Data to add
 msgstr "Aucune donnée n’est encore disponible dans Company Data. Accédez à Company Data pour ajouter des données."
 
 #: front/components/pod/files/PodFileExplorer.tsx
+#: front/components/pod/files/PodFrameSheet.tsx
 msgid "Close"
 msgstr "Fermer"
 

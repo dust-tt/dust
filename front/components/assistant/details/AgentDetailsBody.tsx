@@ -561,6 +561,7 @@ function TriggerEditView({
     <>
       <div className="flex flex-row items-center gap-2 p-5 text-sm text-foreground">
         <Button
+          tooltip={t`Back`}
           icon={ArrowLeft}
           variant="ghost"
           size="sm"

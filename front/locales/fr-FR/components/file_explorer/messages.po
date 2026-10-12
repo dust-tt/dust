@@ -83,6 +83,10 @@ msgid "Code"
 msgstr "Code"
 
 #: front/components/file_explorer/FileExplorerItem.tsx
+msgid "More options"
+msgstr "Plus d’options"
+
+#: front/components/file_explorer/FileExplorerItem.tsx
 #: front/components/file_explorer/FilePreviewDialog.tsx
 msgid "Downloading…"
 msgstr "Téléchargement…"

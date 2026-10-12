@@ -1706,6 +1706,7 @@ function AgentMessageContent({
               <ButtonGroupDropdown
                 trigger={
                   <Button
+                    aria-label={t`More options`}
                     variant="outline"
                     size="xs"
                     icon={DotsHorizontal}

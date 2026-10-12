@@ -183,6 +183,7 @@ export function WebhookSourceDetailsInfo({
               {webhookUrl}
             </p>
             <Button
+              tooltip={t`Copy to clipboard`}
               icon={Clipboard}
               onClick={() =>
                 handleCopy(webhookUrl, t`Webhook URL copied to clipboard`)
@@ -249,12 +250,14 @@ export function WebhookSourceDetailsInfo({
               </p>
               <div>
                 <Button
+                  tooltip={isSecretVisible ? t`Hide secret` : t`Show secret`}
                   icon={isSecretVisible ? EyeOff : Eye}
                   onClick={() => setIsSecretVisible((prev) => !prev)}
                   size="xs"
                   variant="ghost-secondary"
                 />
                 <Button
+                  tooltip={t`Copy to clipboard`}
                   icon={Clipboard}
                   onClick={() =>
                     handleCopy(

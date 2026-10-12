@@ -375,6 +375,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
+                  aria-label={t`More options`}
                   icon={DotsHorizontal}
                   size="icon"
                   variant="ghost-secondary"

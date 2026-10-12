@@ -268,6 +268,7 @@ export function SkillBuilderFilesSection() {
                     action={
                       !isDiffMode && !disableUpload ? (
                         <Button
+                          tooltip={t`Remove file`}
                           type="button"
                           variant="ghost"
                           icon={XClose}

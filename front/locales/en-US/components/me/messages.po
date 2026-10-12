@@ -302,6 +302,10 @@ msgid "Connect"
 msgstr "Connect"
 
 #: front/components/me/UserToolsTable.tsx
+msgid "More options"
+msgstr "More options"
+
+#: front/components/me/UserToolsTable.tsx
 msgid "Clear confirmation preferences"
 msgstr "Clear confirmation preferences"
 

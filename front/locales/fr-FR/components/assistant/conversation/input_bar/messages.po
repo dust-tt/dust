@@ -14,6 +14,10 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
+msgid "Show context usage"
+msgstr "Afficher l’utilisation du contexte"
+
+#: front/components/assistant/conversation/input_bar/ContextUsageIndicator.tsx
 msgid "{contextUsagePercent} of context used. <0>Learn more</0>"
 msgstr "{contextUsagePercent} du contexte utilisé. <0>En savoir plus</0>"
 
@@ -142,6 +146,10 @@ msgstr "Impossible de mettre à jour les espaces"
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Failed to transcribe voice"
 msgstr "Impossible de transcrire l’audio"
+
+#: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
+msgid "Add content"
+msgstr "Ajouter du contenu"
 
 #: front/components/assistant/conversation/input_bar/InputBarContainer.tsx
 msgid "Attach page content"

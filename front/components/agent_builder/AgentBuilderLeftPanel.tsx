@@ -59,6 +59,7 @@ export function AgentBuilderLeftPanel({
         title={title}
         rightActions={
           <Button
+            tooltip={t`Close`}
             icon={XClose}
             onClick={handleCancel}
             variant="ghost"

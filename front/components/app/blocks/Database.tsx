@@ -149,6 +149,7 @@ export function TablesManager({
             {!readOnly && block.config.tables?.length > 1 && (
               <div>
                 <Button
+                  tooltip={t`Remove table`}
                   onClick={() => removeTable(index)}
                   className={classNames(
                     "text-muted-foreground",

@@ -821,6 +821,7 @@ export function AgentSidebarMenu({
                   />
                 </div>
                 <Button
+                  tooltip={t`Cancel selection`}
                   variant="ghost"
                   icon={XClose}
                   onClick={toggleMultiSelect}

@@ -62,6 +62,10 @@ msgid "Connected"
 msgstr "Connected"
 
 #: front/components/skills/import/GitHubConnectionRow.tsx
+msgid "More options"
+msgstr "More options"
+
+#: front/components/skills/import/GitHubConnectionRow.tsx
 msgid "Disconnect"
 msgstr "Disconnect"
 

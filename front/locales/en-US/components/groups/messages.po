@@ -124,6 +124,10 @@ msgid "Loading groups..."
 msgstr "Loading groups..."
 
 #: front/components/groups/GroupsList.tsx
+msgid "Remove group"
+msgstr "Remove group"
+
+#: front/components/groups/GroupsList.tsx
 msgid "Members"
 msgstr "Members"
 
@@ -138,6 +142,10 @@ msgstr "This group has no members."
 #: front/components/groups/WorkspaceGroupsList.tsx
 msgid "Group Manager"
 msgstr "Group Manager"
+
+#: front/components/groups/WorkspaceGroupsList.tsx
+msgid "More options"
+msgstr "More options"
 
 #: front/components/groups/WorkspaceGroupsList.tsx
 msgid "Delete"

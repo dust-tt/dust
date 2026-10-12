@@ -80,6 +80,10 @@ msgstr "Réduire"
 msgid "Expand"
 msgstr "Développer"
 
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Remove filter"
+msgstr "Retirer le filtre"
+
 #: front/components/shared/filter_panel/FilterSummaryChips.tsx
 msgid "{previousNames} or {optionName}"
 msgstr "{previousNames} ou {optionName}"

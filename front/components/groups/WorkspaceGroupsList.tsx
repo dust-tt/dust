@@ -164,6 +164,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
+                    aria-label={t`More options`}
                     icon={DotsHorizontal}
                     size="mini"
                     variant="ghost-secondary"

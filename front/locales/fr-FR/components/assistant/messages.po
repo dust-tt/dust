@@ -47,12 +47,20 @@ msgid "Unable to load agents"
 msgstr "Impossible de charger les agents"
 
 #: front/components/assistant/AgentPicker.tsx
+msgid "View agent details"
+msgstr "Voir les détails de l’agent"
+
+#: front/components/assistant/AgentPicker.tsx
 msgid "No results found"
 msgstr "Aucun résultat trouvé"
 
 #: front/components/assistant/CapabilitiesPicker.tsx
 msgid "Configure"
 msgstr "Configurer"
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "View details"
+msgstr "Voir les détails"
 
 #: front/components/assistant/CapabilitiesPicker.tsx
 msgid "Capabilities"

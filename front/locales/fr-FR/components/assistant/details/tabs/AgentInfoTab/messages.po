@@ -58,6 +58,14 @@ msgstr "Filtrage en conversation"
 msgid "Activated"
 msgstr "Activé"
 
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "Open in a new tab"
+msgstr "Ouvrir dans un nouvel onglet"
+
+#: front/components/assistant/details/tabs/AgentInfoTab/AssistantKnowledgeSection.tsx
+msgid "View document"
+msgstr "Voir le document"
+
 #: front/components/assistant/details/tabs/AgentInfoTab/AssistantSkillsToolsSection.tsx
 msgid "Skills"
 msgstr "Compétences"

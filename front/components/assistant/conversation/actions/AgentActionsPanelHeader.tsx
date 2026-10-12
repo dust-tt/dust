@@ -1,5 +1,6 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Button, cn } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 
 interface AgentActionsPanelHeaderProps {
@@ -15,6 +16,7 @@ export function AgentActionsPanelHeader({
   onClose,
   title,
 }: AgentActionsPanelHeaderProps) {
+  const { t } = useLingui();
   return (
     <AppLayoutTitle className="@container">
       <div className="flex h-full min-w-0 max-w-full items-center justify-between gap-2">
@@ -36,6 +38,7 @@ export function AgentActionsPanelHeader({
           {children}
           {onClose && (
             <Button
+              tooltip={t`Close`}
               variant="ghost"
               size="sm"
               onClick={onClose}

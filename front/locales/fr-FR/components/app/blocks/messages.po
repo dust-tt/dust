@@ -29,6 +29,18 @@ msgstr "Les résultats sont mis en cache (plus rapide)"
 msgid "Results are computed at each run"
 msgstr "Les résultats sont calculés à chaque exécution"
 
+#: front/components/app/blocks/Block.tsx
+msgid "Move up"
+msgstr "Monter"
+
+#: front/components/app/blocks/Block.tsx
+msgid "Move down"
+msgstr "Descendre"
+
+#: front/components/app/blocks/Block.tsx
+msgid "Delete block"
+msgstr "Supprimer le bloc"
+
 #: front/components/app/blocks/Browser.tsx
 msgid "URL (with scheme)"
 msgstr "URL (avec le schéma)"
@@ -163,6 +175,10 @@ msgstr "ajouter un tag"
 #: front/components/app/blocks/Database.tsx
 msgid "Table"
 msgstr "Table"
+
+#: front/components/app/blocks/Database.tsx
+msgid "Remove table"
+msgstr "Retirer la table"
 
 #: front/components/app/blocks/Database.tsx
 msgid "Add table"

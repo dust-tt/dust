@@ -229,6 +229,10 @@ msgid "Email"
 msgstr "E-mail"
 
 #: front/components/members/MembersList.tsx
+msgid "Remove member"
+msgstr "Retirer le membre"
+
+#: front/components/members/MembersList.tsx
 msgid "Status"
 msgstr "Statut"
 

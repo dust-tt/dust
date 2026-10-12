@@ -34,6 +34,10 @@ msgid "Header value"
 msgstr "Valeur de l’en-tête"
 
 #: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Remove header"
+msgstr "Retirer l’en-tête"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
 msgid "Add header"
 msgstr "Ajouter un en-tête"
 

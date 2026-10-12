@@ -69,6 +69,7 @@ export function ConversationPlanModePanel({
               />
             )}
             <Button
+              tooltip={t`Close`}
               variant="ghost"
               size="sm"
               onClick={closePanel}

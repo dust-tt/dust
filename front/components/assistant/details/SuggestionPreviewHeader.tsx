@@ -1,5 +1,5 @@
 import { Button, ContentMessage, SliderToggle, XClose } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface SuggestionPreviewHeaderProps {
   isApplied: boolean;
@@ -14,6 +14,7 @@ export function SuggestionPreviewHeader({
   onToggle,
   onClose,
 }: SuggestionPreviewHeaderProps) {
+  const { t } = useLingui();
   return (
     <div className="flex h-title shrink-0 items-center justify-between pr-4">
       <ContentMessage
@@ -28,6 +29,7 @@ export function SuggestionPreviewHeader({
         <Trans>Suggestion preview</Trans>
       </ContentMessage>
       <Button
+        tooltip={t`Close`}
         variant="ghost"
         onClick={onClose}
         icon={XClose}

@@ -1869,6 +1869,7 @@ const InputBarContainer = ({
                         >
                           <DropdownMenuTrigger asChild>
                             <Button
+                              aria-label={t`Add content`}
                               variant="ghost-secondary"
                               icon={Plus}
                               size={INPUT_BAR_BUTTON_SIZE}

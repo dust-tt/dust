@@ -663,6 +663,7 @@ function WebhookSourceSheetContent({
                     <div className="grow" />
                     <div className="flex h-full flex-row items-center">
                       <Button
+                        tooltip={t`Remove webhook source`}
                         icon={Trash01}
                         variant="warning"
                         size="xs"

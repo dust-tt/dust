@@ -395,6 +395,10 @@ msgid "Header value"
 msgstr "Header value"
 
 #: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Remove header"
+msgstr "Remove header"
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
 msgid "Add header"
 msgstr "Add header"
 
@@ -405,6 +409,10 @@ msgstr "Key"
 #: front/components/actions/mcp/MCPServerMetaFields.tsx
 msgid "Value"
 msgstr "Value"
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Remove field"
+msgstr "Remove field"
 
 #: front/components/actions/mcp/MCPServerMetaFields.tsx
 msgid "Add meta field"

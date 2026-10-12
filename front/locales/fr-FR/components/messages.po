@@ -51,6 +51,14 @@ msgid "No documents"
 msgstr "Aucun document"
 
 #: front/components/ContentNodeTree.tsx
+msgid "Open in a new tab"
+msgstr "Ouvrir dans un nouvel onglet"
+
+#: front/components/ContentNodeTree.tsx
+msgid "View document"
+msgstr "Voir le document"
+
+#: front/components/ContentNodeTree.tsx
 msgid "Failed to select all"
 msgstr "Impossible de tout sélectionner"
 
@@ -385,6 +393,10 @@ msgid "Shown next to your messages"
 msgstr "Affichée à côté de vos messages"
 
 #: front/components/UserSettingsPopover.tsx
+msgid "Change profile picture"
+msgstr "Changer la photo de profil"
+
+#: front/components/UserSettingsPopover.tsx
 msgid "First name"
 msgstr "Prénom"
 
@@ -585,6 +597,10 @@ msgstr "Les agents utilisent votre mémoire pour répondre : leurs réponses, y
 #: front/components/UserSettingsPopover.tsx
 msgid "About you"
 msgstr "À propos de vous"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Close"
+msgstr "Fermer"
 
 #: front/components/ViewFolderAPIModal.tsx
 msgid "Data source API"

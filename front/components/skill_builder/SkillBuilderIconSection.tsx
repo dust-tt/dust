@@ -10,12 +10,14 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 import { useController } from "react-hook-form";
 
 const DEFAULT_ICON = Plus;
 
 export function SkillBuilderIconSection() {
+  const { t } = useLingui();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { field: iconField } = useController<SkillBuilderFormData, "icon">({
     name: "icon",
@@ -43,6 +45,7 @@ export function SkillBuilderIconSection() {
             visual={<IconComponent className="h-8 w-8 text-muted-foreground" />}
           />
           <Button
+            tooltip={t`Change icon`}
             variant="outline"
             size="sm"
             icon={Edit04}

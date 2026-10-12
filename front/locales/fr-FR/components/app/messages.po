@@ -163,6 +163,14 @@ msgid "Add and edit your dataset entries below. You can insert or remove entries
 msgstr "Ajoutez et modifiez les entrées de votre jeu de données ci-dessous. Vous pouvez insérer ou supprimer des entrées avec les boutons à droite."
 
 #: front/components/app/DatasetView.tsx
+msgid "Delete entry"
+msgstr "Supprimer l’entrée"
+
+#: front/components/app/DatasetView.tsx
+msgid "Add entry after"
+msgstr "Ajouter une entrée après"
+
+#: front/components/app/DatasetView.tsx
 msgid "New entry"
 msgstr "Nouvelle entrée"
 

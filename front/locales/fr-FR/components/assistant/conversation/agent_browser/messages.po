@@ -66,3 +66,7 @@ msgstr "Tags"
 #: front/components/assistant/conversation/agent_browser/shared.tsx
 msgid "Agents"
 msgstr "Agents"
+
+#: front/components/assistant/conversation/agent_browser/shared.tsx
+msgid "View agent details"
+msgstr "Voir les détails de l’agent"

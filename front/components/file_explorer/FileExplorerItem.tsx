@@ -142,6 +142,7 @@ export function FileExplorerItem(props: FileExplorerItemProps) {
     >
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label={t`More options`}
           variant="ghost"
           size="xs"
           icon={DotsHorizontal}
