@@ -13,6 +13,10 @@ export const MAX_SLACK_MESSAGE_LENGTH = 2500;
 // source: https://docs.slack.dev/reference/block-kit/blocks/markdown-block/
 const MAX_SLACK_MARKDOWN_BLOCK_LENGTH = 12_000;
 
+// Dedicated instance so options set on the shared global parser elsewhere
+// cannot change how tables are detected.
+const markdownParser = new Marked();
+
 // Mirrors connectors/src/connectors/slack/chat/blocks.ts::makeMarkdownBlock.
 // The newer `markdown` block renders tables, headers, lists. File uploads
 // cannot carry blocks and send plain mrkdwn text instead.
@@ -69,10 +73,6 @@ function makeSentByFooterBlock(
     ],
   };
 }
-
-// Dedicated instance so options set on the shared global parser elsewhere
-// cannot change how tables are detected.
-const markdownParser = new Marked();
 
 function hasMarkdownTable(text: string): boolean {
   let found = false;
