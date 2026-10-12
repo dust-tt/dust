@@ -143,6 +143,7 @@ export const ActionCard = React.forwardRef<HTMLDivElement, ActionCardProps>(
             <CardActionButton
               size="icon"
               icon={XClose}
+              tooltip={t`Remove`}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 onRemove();
                 e.stopPropagation();
