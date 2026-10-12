@@ -3,12 +3,10 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import type { TransactionalEmailCopy } from "@app/lib/notifications/transactional_emails";
-import {
-  contactSupportLine,
-  TRANSACTIONAL_EMAIL_PREFERENCES,
-} from "@app/lib/notifications/transactional_emails";
+import { TRANSACTIONAL_EMAIL_PREFERENCES } from "@app/lib/notifications/transactional_emails";
 import type { CreditUsageAlertPayloadType } from "@app/lib/notifications/triggers/credit-usage-alert";
 import { CreditUsageAlertPayloadSchema } from "@app/lib/notifications/triggers/credit-usage-alert";
+import { contactSupportLine } from "@app/lib/notifications/workflows/contact-support";
 import { CREDIT_USAGE_ALERT_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";

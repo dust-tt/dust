@@ -130,6 +130,10 @@ msgctxt "action"
 msgid "Download"
 msgstr "Download"
 
+#: front/lib/notifications/workflows/contact-support.ts
+msgid "If you have any questions, contact us at {supportEmail}."
+msgstr "If you have any questions, contact us at {supportEmail}."
+
 #: front/lib/notifications/workflows/conversation-unread.ts
 msgid "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
 msgstr "[Dust] {count, plural, one {New conversation in \"{projectName}\"} other {New conversations in \"{projectName}\"}}"
