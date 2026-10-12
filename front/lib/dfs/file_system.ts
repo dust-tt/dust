@@ -33,6 +33,7 @@ const MAX_READ_CHUNK_BYTES = 1024 * 1024;
 // `Apply` requests are limited to 1 MiB encoded; keep headroom for the operation envelope.
 const MAX_WRITE_CHUNK_BYTES = 1024 * 1024 - 64 * 1024;
 const LIST_PAGE_LIMIT = 4096;
+const MAX_REMOVALS_PER_APPLY = 512;
 
 function isDirectory(attr: DfsAttr): boolean {
   return attr.kind === "directory";
@@ -146,7 +147,7 @@ async function* contentChunks(
  * `mkdir` and `write` MUST create the missing intermediate directories of a URI's path one level at
  * a time. A directory that already exists, including one created concurrently (`already_exists`),
  * MUST be reused; a file there MUST fail with `not_directory`. `mkdir` MUST fail with
- * `already_exists` when an object exists at the URI.
+ * `already_exists` when an object exists at the URI. `move` MUST NOT create directories.
  */
 /**
  * @cc [owner:fabiencelier,label:product] chunked-writes
@@ -503,7 +504,9 @@ export class DfsFileSystem {
    * @cc [owner:fabiencelier,label:error-handling] read-stream-errors
    * Exception to `no-catching-own-errors`, which requires expected failures to be returned as `Err`:
    * an async generator can only report failures by throwing, so read failures MUST be thrown as the
-   * `DfsError` returned by `readChunk` (`Readable.from` then emits them as stream errors).
+   * `DfsError` returned by `readChunk` (`Readable.from` then emits them as stream errors). Within
+   * this class they are only caught by `writeContent`, when `copy` writes a read stream (see
+   * `content-stream-errors`).
    */
   private async *readChunks(
     objectId: DfsObjectId,
@@ -710,5 +713,160 @@ export class DfsFileSystem {
     }
     // Empty content: only create or truncate the file.
     return written ? new Ok(written) : this.applyForObject(operations);
+  }
+
+  /** Removes the object at `uri`; non-empty directories require `recursive`. */
+  async remove(
+    uri: string,
+    { recursive = false }: { recursive?: boolean } = {}
+  ): Promise<Result<void, DfsError>> {
+    const attr = await this.require(uri);
+    if (attr.isErr()) {
+      return attr;
+    }
+    const objectId = realIdOf(attr.value);
+    if (objectId.isErr()) {
+      return objectId;
+    }
+    const self: DfsOperation = {
+      type: "remove",
+      objectId: objectId.value,
+      kind: attr.value.kind,
+    };
+    if (!isDirectory(attr.value) || !recursive) {
+      const removed = await this.applyAll([self]);
+      return removed.isErr() ? removed : new Ok(undefined);
+    }
+
+    const removals = await this.collectRemovals(objectId.value);
+    if (removals.isErr()) {
+      return removals;
+    }
+    // Children always precede their parent, so sequential batches never hit `not_empty`.
+    const operations = [...removals.value, self];
+    for (let i = 0; i < operations.length; i += MAX_REMOVALS_PER_APPLY) {
+      const removed = await this.applyAll(
+        operations.slice(i, i + MAX_REMOVALS_PER_APPLY)
+      );
+      if (removed.isErr()) {
+        return removed;
+      }
+    }
+    return new Ok(undefined);
+  }
+
+  /** Remove operations for every descendant of `directoryId`, children before parents. */
+  private async collectRemovals(
+    directoryId: DfsObjectId
+  ): Promise<Result<DfsOperation[], DfsError>> {
+    // Every object is listed in pre-order (parents before children), once; reversing that order
+    // puts each object before all of its ancestors.
+    const removals: DfsOperation[] = [];
+    const pending: DfsObjectId[] = [directoryId];
+    for (let parentId = pending.pop(); parentId; parentId = pending.pop()) {
+      const entries = await this.listById(parentId);
+      if (entries.isErr()) {
+        return entries;
+      }
+      for (const entry of entries.value) {
+        const attr = entry.object
+          ? new Ok(entry.object)
+          : await this.lookupChild(parentId, entry.name);
+        if (attr.isErr()) {
+          return attr;
+        }
+        if (!attr.value) {
+          // Removed concurrently.
+          continue;
+        }
+        const childId = realIdOf(attr.value);
+        if (childId.isErr()) {
+          return childId;
+        }
+        removals.push({
+          type: "remove",
+          objectId: childId.value,
+          kind: attr.value.kind,
+        });
+        if (isDirectory(attr.value)) {
+          pending.push(childId.value);
+        }
+      }
+    }
+    return new Ok(removals.reverse());
+  }
+
+  /** Copies the file at `src` to `dest` (bytes and MIME type) by streaming it through front. */
+  async copy(
+    src: string,
+    dest: string
+  ): Promise<Result<DfsResolvedObject, DfsError>> {
+    const file = await this.resolveFile(src);
+    if (file.isErr()) {
+      return file;
+    }
+    const { objectId, attr } = file.value;
+    const withMetadata = await this.statById(objectId, true);
+    if (withMetadata.isErr()) {
+      return withMetadata;
+    }
+    return this.write(
+      dest,
+      Readable.from(this.readChunks(objectId, attr.contentVersion)),
+      { mimeType: withMetadata.value?.metadata?.mimeType }
+    );
+  }
+
+  /** Moves or renames the object at `src` to `dest`, keeping its ObjectId. */
+  async move(
+    src: string,
+    dest: string,
+    { replace = false }: { replace?: boolean } = {}
+  ): Promise<Result<DfsResolvedObject, DfsError>> {
+    const destination = parseDfsUri(dest);
+    if (destination.isErr()) {
+      return destination;
+    }
+    const { anchorId, segments } = destination.value;
+    const name = segments.at(-1);
+    if (name === undefined) {
+      return new Err(
+        new DfsError("invalid_input", "The destination requires a path.")
+      );
+    }
+    const attr = await this.require(src);
+    if (attr.isErr()) {
+      return attr;
+    }
+    const objectId = realIdOf(attr.value);
+    if (objectId.isErr()) {
+      return objectId;
+    }
+    let parentId = anchorId;
+    if (segments.length > 1) {
+      const parent = await this.require(
+        formatDfsUri(anchorId, { path: segments.slice(0, -1) })
+      );
+      if (parent.isErr()) {
+        return parent;
+      }
+      if (!isDirectory(parent.value)) {
+        return new Err(new DfsError("not_directory"));
+      }
+      const id = realIdOf(parent.value);
+      if (id.isErr()) {
+        return id;
+      }
+      parentId = id.value;
+    }
+    return this.applyForObject([
+      {
+        type: "rename",
+        objectId: objectId.value,
+        parentId,
+        name,
+        replace,
+      },
+    ]);
   }
 }
