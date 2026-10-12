@@ -63,7 +63,7 @@ type ItemCreditShare = {
   creditMicro: number;
 };
 
-type ToolResult = {
+export type ToolResult = {
   item: AgentMessageConsumptionItemResource;
   tokensCount: number;
 };
@@ -176,7 +176,7 @@ export function compareRunsChronologically(
  * A tool result MUST only be charged when a later LLM call of the message read it, and only from
  * that call's input cost.
  */
-function groupToolResultsByReadingUsage({
+export function groupToolResultsByReadingUsage({
   items,
   runs,
   usages,
@@ -236,7 +236,7 @@ function groupToolResultsByReadingUsage({
  * price for tokens read from the provider's cache, and the cache write price for tokens written to
  * it.
  */
-function toolResultShareOfInputCost({
+export function toolResultShareOfInputCost({
   usage,
   toolResultTokensCount,
   priceRatios,

@@ -1,31 +1,24 @@
 /**
- * Explains how an agent message's bill is split across its LLM calls and tools, and flags LLM
- * calls whose cache was warmed by an unbilled request (a lost attempt that was retried).
+ * Explains how an agent message's bill is reconciled across its consumption items, step by step,
+ * or where the reconciliation fails.
  *
  * This script is read-only.
  *
- * One message, in detail:
  * npx tsx scripts/debug_agent_message_consumption_allocation.ts \
  *   --workspaceId 8DpNy5tEUG \
  *   --agentMessageId Ut5LbnRe3M \
  *   --execute
- *
- * One summary row per recent message of a workspace whose stored attribution has no reconciled
- * credits, i.e. that fails to reconcile today:
- * npx tsx scripts/debug_agent_message_consumption_allocation.ts \
- *   --workspaceId 8DpNy5tEUG \
- *   --unreconciledSinceDays 7 \
- *   --limit 50 \
- *   --execute
  */
 
-import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import {
   buildLatestMessageConsumptionAllocation,
   compareRunsChronologically,
+  groupToolResultsByReadingUsage,
+  toolResultShareOfInputCost,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/allocation";
 import {
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+  getCachedTokenPriceRatios,
   splitRecordedCostIntoInputAndOutput,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { Authenticator } from "@app/lib/auth";
@@ -35,620 +28,33 @@ import {
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
 import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
-import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
-import { MessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import {
-  getTemporalClientForAgentNamespace,
-  getTemporalClientForFrontNamespace,
-} from "@app/lib/temporal";
 import { makeScript } from "@app/scripts/helpers";
-import { makeAgentLoopWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
-import { makeAgentMessageAnalyticsWorkflowId } from "@app/temporal/analytics_queue/helpers";
 import type { ModelId } from "@app/types/shared/model_id";
-import { decodeTimeoutType, tsToDate } from "@temporalio/common";
-import { col, fn, Op, where } from "sequelize";
 
 const MIN_CACHE_WARMED_BY_UNBILLED_REQUEST_TOKENS = 1_024;
 
-type ModelActivity = {
-  executionRunId: string;
-  scheduledAt: Date;
-  startedAt: Date | null;
-  closedAt: Date | null;
-  outcome: string;
-  attempt: number | null;
-  worker: string | null;
-  previousAttemptFailure: string;
-};
-
-function credits(creditAmountMicro: number | null | undefined) {
-  return creditAmountMicro === null || creditAmountMicro === undefined
+function credits(creditMicro: number | null | undefined): number | "n/a" {
+  return creditMicro === null || creditMicro === undefined
     ? "n/a"
-    : creditAmountMicro / 1_000_000;
+    : Math.round(creditMicro) / MICRO_CREDITS_PER_CREDIT;
 }
 
-async function listAgentLoopModelActivities({
-  agentMessageId,
-  conversationId,
-  workspaceId,
-}: {
-  agentMessageId: string;
-  conversationId: string;
-  workspaceId: string;
-}): Promise<ModelActivity[] | null> {
-  const workflowId = makeAgentLoopWorkflowId({
-    agentMessageId,
-    conversationId,
-    workspaceId,
-  });
-
-  try {
-    const client = await getTemporalClientForAgentNamespace();
-    const activities: ModelActivity[] = [];
-
-    for await (const execution of client.workflow.list({
-      query: `WorkflowId = ${JSON.stringify(workflowId)}`,
-    })) {
-      const history = await client.workflow
-        .getHandle(workflowId, execution.runId)
-        .fetchHistory();
-      const activityByScheduledEventId = new Map<string, ModelActivity>();
-
-      for (const event of history.events ?? []) {
-        const eventAt = event.eventTime ? tsToDate(event.eventTime) : null;
-        const scheduled = event.activityTaskScheduledEventAttributes;
-        if (
-          scheduled?.activityType?.name ===
-            "runModelAndCreateActionsActivity" &&
-          eventAt
-        ) {
-          const activity: ModelActivity = {
-            executionRunId: execution.runId,
-            scheduledAt: eventAt,
-            startedAt: null,
-            closedAt: null,
-            outcome: "running",
-            attempt: null,
-            worker: null,
-            previousAttemptFailure: "none",
-          };
-          activityByScheduledEventId.set(String(event.eventId), activity);
-          activities.push(activity);
-        }
-
-        const started = event.activityTaskStartedEventAttributes;
-        const startedActivity = started
-          ? activityByScheduledEventId.get(String(started.scheduledEventId))
-          : undefined;
-        if (started && startedActivity) {
-          const lastFailure = started.lastFailure;
-          startedActivity.startedAt = eventAt;
-          startedActivity.attempt = started.attempt ?? null;
-          startedActivity.worker = started.identity ?? null;
-          startedActivity.previousAttemptFailure = lastFailure
-            ? `${decodeTimeoutType(lastFailure.timeoutFailureInfo?.timeoutType) ?? lastFailure.applicationFailureInfo?.type ?? "unknown"}: ${lastFailure.message ?? ""}`
-            : "none";
-        }
-
-        const outcome =
-          event.activityTaskCompletedEventAttributes ??
-          event.activityTaskFailedEventAttributes ??
-          event.activityTaskTimedOutEventAttributes ??
-          event.activityTaskCanceledEventAttributes;
-        const closedActivity = outcome
-          ? activityByScheduledEventId.get(String(outcome.scheduledEventId))
-          : undefined;
-        if (closedActivity) {
-          closedActivity.closedAt = eventAt;
-          closedActivity.outcome = event.activityTaskCompletedEventAttributes
-            ? "completed"
-            : event.activityTaskFailedEventAttributes
-              ? "failed"
-              : event.activityTaskTimedOutEventAttributes
-                ? "timed_out"
-                : "canceled";
-        }
-      }
-    }
-
-    return activities.sort(
-      (left, right) => left.scheduledAt.getTime() - right.scheduledAt.getTime()
-    );
-  } catch (error) {
-    console.log(
-      `\nAgent-loop history unavailable: ${error instanceof Error ? error.message : String(error)}`
-    );
-    return null;
-  }
+function creditMicroFromCostMicroUsd(costMicroUsd: number): number {
+  return (
+    (costMicroUsd * MICRO_CREDITS_PER_CREDIT) /
+    MODEL_COST_MICRO_USD_PER_AWU_CREDIT
+  );
 }
 
-async function printAttributionWorkflows({
-  agentMessageId,
-  conversationId,
-  workspaceId,
-}: {
-  agentMessageId: string;
-  conversationId: string;
-  workspaceId: string;
-}): Promise<void> {
-  const workflowId = `${makeAgentMessageAnalyticsWorkflowId({
-    agentMessageId,
-    conversationId,
-    workspaceId,
-  })}-consumption-attribution-v3`;
-
-  try {
-    const client = await getTemporalClientForFrontNamespace();
-    const rows = [];
-    for await (const execution of client.workflow.list({
-      query: `WorkflowId = ${JSON.stringify(workflowId)}`,
-    })) {
-      const description = await client.workflow
-        .getHandle(workflowId, execution.runId)
-        .describe();
-      const pendingActivity = description.raw.pendingActivities?.[0];
-      rows.push({
-        runId: execution.runId,
-        status: execution.status.name,
-        startTime: execution.startTime.toISOString(),
-        closeTime: execution.closeTime?.toISOString() ?? "running",
-        pendingActivity: pendingActivity?.activityType?.name ?? "none",
-        pendingAttempt: pendingActivity?.attempt ?? "none",
-        pendingFailure: pendingActivity?.lastFailure
-          ? `${pendingActivity.lastFailure.applicationFailureInfo?.type ?? "unknown"}: ${pendingActivity.lastFailure.message ?? ""}`
-          : "none",
-      });
-    }
-    console.log("\nAttribution workflows");
-    console.table(rows);
-  } catch (error) {
-    console.log(
-      `\nAttribution workflows unavailable: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
-}
-
-type MessageSummary = Record<string, string | number | boolean>;
-
-async function analyzeAgentMessage(
-  auth: Authenticator,
-  {
-    agentMessageId,
-    verbose,
-    workspaceId,
-  }: { agentMessageId: string; verbose: boolean; workspaceId: string }
-): Promise<MessageSummary> {
-  const creditContext =
-    await ConversationResource.fetchAgentMessageCreditContext(auth, {
-      agentMessageId,
-    });
-  const analyticsContext =
-    await ConversationResource.fetchAgentMessageConsumptionAnalyticsContext(
-      auth,
-      { agentMessageId }
-    );
-  if (!creditContext || !analyticsContext) {
-    return { message: agentMessageId, today: "message not found" };
-  }
-  const conversationId = analyticsContext.conversation.conversationId;
-
-  const dustRunIds = [...new Set(creditContext.runIds ?? [])];
-  const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
-  const [actions, items] = await Promise.all([
-    AgentMCPActionResource.listByAgentMessageIds(auth, [
-      creditContext.agentMessageModelId,
-    ]),
-    AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
-      agentMessageModelIds: [creditContext.agentMessageModelId],
-      maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-    }),
-  ]);
-
-  const billingPlan = buildAgentMessageBillingPlan({
-    actions: actions.map((action) => ({
-      actionId: action.sId,
-      internalMCPServerName: action.metadata.internalMCPServerName,
-      mcpServerId: action.metadata.mcpServerId ?? null,
-      status: action.status,
-      toolName: getToolNameFromFunctionCallName(action.functionCallName),
-    })),
-    contextOrigin: creditContext.triggeringUserMessageOrigin,
-    runUsages: usages,
-  });
-  const llmBillingPlanWithoutWaivers = buildAgentMessageBillingPlan({
-    actions: [],
-    contextOrigin: null,
-    getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
-    runUsages: usages,
-  });
-  const llmCreditsWithoutWaivers =
-    llmBillingPlanWithoutWaivers.totals.llmBilledCredits;
-  const billingGroups = llmBillingPlanWithoutWaivers.llm.map((line) => {
-    const costCreditMicro =
-      (line.providerCostMicroUsd * MICRO_CREDITS_PER_CREDIT) /
-      MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
-    const billedCreditMicro = roundCreditsToMicroCredits(line.billedCredits);
-    return {
-      runKey: line.runKey,
-      providerId: line.providerId,
-      modelId: line.modelId,
-      usageAllocations: line.usageAllocations ?? [],
-      costCreditMicro,
-      billedCreditMicro,
-      roundingCreditMicro: billedCreditMicro - costCreditMicro,
-    };
-  });
-
-  const allocationResult = buildLatestMessageConsumptionAllocation({
-    actions,
-    billedCredits: creditContext.previousCostCredits,
-    dustRunIds,
-    hasUnbilledExecution: false,
-    items,
-    runs,
-    usages,
-  });
-  const recomputedCreditMicroByItem: ReadonlyMap<
-    AgentMessageConsumptionItemResource,
-    number
-  > = allocationResult.isOk()
-    ? allocationResult.value.reconciledCreditAmounts.byItem
-    : new Map();
-  const billedCreditMicroByRunUsageModelId = new Map(
-    billingGroups.flatMap((group) =>
-      group.usageAllocations.map(
-        ({ usage, allocatedBilledCreditMicro }) =>
-          [usage.runUsageModelId, allocatedBilledCreditMicro] as const
-      )
-    )
-  );
-  const newestAttributionVersion = Math.max(
-    ...items.map(({ attributionVersion }) => attributionVersion)
-  );
-  const reportedItems = allocationResult.isOk()
-    ? allocationResult.value.items
-    : items.filter(
-        (item) => item.attributionVersion === newestAttributionVersion
-      );
-  const storedItems = items.filter(
-    (item) => item.reconciledCreditAmountMicro !== null
-  );
-  const directCreditAmountMicro = reportedItems.reduce(
-    (total, item) => total + (item.directCreditAmountMicro ?? 0),
-    0
-  );
-  const recomputedCreditMicroOf = (
-    predicate: (item: AgentMessageConsumptionItemResource) => boolean
-  ) =>
-    reportedItems
-      .filter(predicate)
-      .reduce(
-        (total, item) => total + (recomputedCreditMicroByItem.get(item) ?? 0),
-        0
-      );
-
-  const runByModelId = new Map(runs.map((run) => [run.id, run]));
-  const runIndexByModelId = new Map(
-    [...runs]
-      .sort(compareRunsChronologically)
-      .map((run, index) => [run.id, index])
-  );
-  const orderedUsages = [...usages].sort(
-    (left, right) =>
-      (runIndexByModelId.get(left.runModelId) ?? -1) -
-        (runIndexByModelId.get(right.runModelId) ?? -1) ||
-      left.runModelId - right.runModelId ||
-      left.runUsageModelId - right.runUsageModelId
-  );
-  const callIndexByRunUsageModelId = new Map(
-    orderedUsages.map((usage, index) => [usage.runUsageModelId, index + 1])
-  );
-  const firstUsagesOfRuns = orderedUsages.filter(
-    (usage, index) =>
-      index === 0 || orderedUsages[index - 1].runModelId !== usage.runModelId
-  );
-  const nextCallByRunModelId = new Map(
-    firstUsagesOfRuns.flatMap((usage, index) => {
-      const nextCall = firstUsagesOfRuns[index + 1];
-      return nextCall ? [[usage.runModelId, nextCall] as const] : [];
-    })
-  );
-  const readingUsageByRunUsageModelId = new Map<
-    ModelId,
-    RunUsageWithRunKeyType
-  >(
-    orderedUsages.flatMap((usage) => {
-      const readingUsage = nextCallByRunModelId.get(usage.runModelId);
-      return readingUsage
-        ? [[usage.runUsageModelId, readingUsage] as const]
-        : [];
-    })
-  );
-  const toolResultTokensReadByRunUsageModelId = new Map<ModelId, number>();
-  const ownRowsCreditMicroByRunUsageModelId = new Map<ModelId, number>();
-  for (const item of reportedItems) {
-    if (item.itemType === "tool") {
-      const readingUsage = readingUsageByRunUsageModelId.get(item.runUsageId);
-      if (readingUsage) {
-        toolResultTokensReadByRunUsageModelId.set(
-          readingUsage.runUsageModelId,
-          (toolResultTokensReadByRunUsageModelId.get(
-            readingUsage.runUsageModelId
-          ) ?? 0) + (item.inputTokensCount ?? 0)
-        );
-      }
-    } else {
-      ownRowsCreditMicroByRunUsageModelId.set(
-        item.runUsageId,
-        (ownRowsCreditMicroByRunUsageModelId.get(item.runUsageId) ?? 0) +
-          (recomputedCreditMicroByItem.get(item) ?? 0)
-      );
-    }
-  }
-
-  const callRows = orderedUsages.map((usage, index) => {
-    const previousUsage = orderedUsages[index - 1];
-    const cachedTokens = Math.min(usage.cachedTokens ?? 0, usage.promptTokens);
-    const cacheBeyondPreviousCallTokens =
-      previousUsage && previousUsage.runModelId !== usage.runModelId
-        ? cachedTokens -
-          (previousUsage.promptTokens + previousUsage.completionTokens)
-        : null;
-    return {
-      usage,
-      cachedTokens,
-      cacheBeyondPreviousCallTokens,
-      cacheWarmedByUnbilledRequest:
-        cacheBeyondPreviousCallTokens !== null &&
-        cacheBeyondPreviousCallTokens >
-          MIN_CACHE_WARMED_BY_UNBILLED_REQUEST_TOKENS,
-      recordedCostSplit: splitRecordedCostIntoInputAndOutput(usage),
-    };
-  });
-
-  const summary: MessageSummary = {
-    message: agentMessageId,
-    status: creditContext.status,
-    origin: creditContext.triggeringUserMessageOrigin ?? "none",
-    billedCredits: creditContext.previousCostCredits ?? "none",
-    directCredits: directCreditAmountMicro / 1_000_000,
-    llmCreditsFromRuns: llmCreditsWithoutWaivers,
-    llmCalls: orderedUsages.length,
-    retriedCalls: callRows.filter((row) => row.cacheWarmedByUnbilledRequest)
-      .length,
-    today:
-      storedItems.length > 0
-        ? `ok (${credits(
-            storedItems.reduce(
-              (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
-              0
-            )
-          )})`
-        : "no reconciled credits",
-    recomputed: allocationResult.isOk() ? "ok" : allocationResult.error.code,
-    recomputedInputCredits: credits(
-      recomputedCreditMicroOf(
-        (item) => item.itemType === "input" || item.itemType === "system"
-      )
-    ),
-    recomputedOutputCredits: credits(
-      recomputedCreditMicroOf(
-        (item) => item.itemType === "output" || item.itemType === "reasoning"
-      )
-    ),
-    recomputedToolCredits: credits(
-      recomputedCreditMicroOf((item) => item.itemType === "tool")
-    ),
-  };
-  if (!verbose) {
-    return summary;
-  }
-
-  console.log("\nBilling");
-  console.table([
-    {
-      storedCostCredits: creditContext.previousCostCredits,
-      ...billingPlan.totals,
-      llmCreditsWithoutWaivers,
-    },
-  ]);
-  console.log("\nTool billing lines");
-  console.table(
-    billingPlan.tools.map((line) => ({
-      action: line.action.actionId,
-      tool: line.action.toolName,
-      billedCredits: line.billedCredits,
-      disposition: line.billingDisposition,
-    }))
-  );
-
-  console.log("\nAllocation (today: stored; recomputed: this branch)");
-  console.table([
-    {
-      ...summary,
-      ...(allocationResult.isErr() ? allocationResult.error.context : {}),
-      billMinusDirectCredits:
-        (creditContext.previousCostCredits ?? 0) -
-        directCreditAmountMicro / 1_000_000,
-    },
-  ]);
-
-  console.log("\nBilling groups");
-  console.table(
-    billingGroups.map((group) => ({
-      runKey: group.runKey,
-      provider: group.providerId,
-      model: group.modelId,
-      calls: group.usageAllocations.length,
-      costCredits: credits(Math.round(group.costCreditMicro)),
-      billedCredits: credits(group.billedCreditMicro),
-      roundingCredits: credits(Math.round(group.roundingCreditMicro)),
-    }))
-  );
-
-  const modelActivities = await listAgentLoopModelActivities({
-    agentMessageId,
-    conversationId,
-    workspaceId,
-  });
-  const activityForRun = (createdAt: Date) =>
-    modelActivities?.find(
-      (activity) =>
-        activity.startedAt !== null &&
-        activity.startedAt <= createdAt &&
-        (activity.closedAt === null || createdAt <= activity.closedAt)
-    );
-
-  console.log("\nLLM calls");
-  console.table(
-    callRows.map(
-      (
-        {
-          usage,
-          cachedTokens,
-          cacheBeyondPreviousCallTokens,
-          cacheWarmedByUnbilledRequest,
-          recordedCostSplit,
-        },
-        index
-      ) => {
-        const run = runByModelId.get(usage.runModelId);
-        const uncachedTokens = usage.promptTokens - cachedTokens;
-        const toolResultTokensRead =
-          toolResultTokensReadByRunUsageModelId.get(usage.runUsageModelId) ?? 0;
-        const activity = run ? activityForRun(run.createdAt) : undefined;
-        return {
-          call: index + 1,
-          runUsageId: usage.runUsageModelId,
-          runKey: usage.runKey ?? "none",
-          model: usage.modelId,
-          runCreatedAt: run?.createdAt.toISOString() ?? "n/a",
-          promptTokens: usage.promptTokens,
-          cachedTokens,
-          uncachedTokens,
-          completionTokens: usage.completionTokens,
-          costMicroUsd: usage.costMicroUsd,
-          inputCostMicroUsd: recordedCostSplit.isOk()
-            ? Math.round(recordedCostSplit.value.inputCostMicroUsd)
-            : "n/a",
-          outputCostMicroUsd: recordedCostSplit.isOk()
-            ? Math.round(recordedCostSplit.value.outputCostMicroUsd)
-            : "exceeds recorded cost",
-          billedCredits: credits(
-            billedCreditMicroByRunUsageModelId.get(usage.runUsageModelId)
-          ),
-          ownRowsCredits: credits(
-            ownRowsCreditMicroByRunUsageModelId.get(usage.runUsageModelId)
-          ),
-          toolResultTokensRead,
-          uncachedToolResultTokens: Math.min(
-            toolResultTokensRead,
-            uncachedTokens
-          ),
-          cacheBeyondPreviousCallTokens: cacheBeyondPreviousCallTokens ?? "n/a",
-          cacheWarmedByUnbilledRequest,
-          modelActivityAttempt: activity?.attempt ?? "n/a",
-          previousAttemptFailure: activity?.previousAttemptFailure ?? "n/a",
-        };
-      }
-    )
-  );
-
-  const actionSIdByModelId = new Map(
-    actions.map((action) => [action.id, action.sId])
-  );
-  console.log("\nItems");
-  console.table(
-    reportedItems.map((item) => {
-      const readingUsage =
-        item.itemType === "tool"
-          ? readingUsageByRunUsageModelId.get(item.runUsageId)
-          : undefined;
-      const recomputedCreditMicro = recomputedCreditMicroByItem.get(item);
-      return {
-        itemId: item.id,
-        type: item.itemType,
-        version: item.attributionVersion,
-        action:
-          item.agentMCPActionId === null
-            ? "n/a"
-            : (actionSIdByModelId.get(item.agentMCPActionId) ?? "n/a"),
-        call: callIndexByRunUsageModelId.get(item.runUsageId) ?? "n/a",
-        readByCall: readingUsage
-          ? (callIndexByRunUsageModelId.get(readingUsage.runUsageModelId) ??
-            "n/a")
-          : "n/a",
-        inputTokens: item.inputTokensCount ?? "n/a",
-        outputTokens: item.outputTokensCount ?? "n/a",
-        grossCredits: credits(item.grossAttributedCreditAmountMicro),
-        directCredits: credits(item.directCreditAmountMicro),
-        storedCredits: credits(item.reconciledCreditAmountMicro),
-        recomputedCredits: credits(recomputedCreditMicro),
-        differsFromStored:
-          recomputedCreditMicro !== undefined &&
-          item.reconciledCreditAmountMicro !== recomputedCreditMicro,
-      };
-    })
-  );
-
-  if (modelActivities) {
-    console.log("\nAgent-loop model activities");
-    console.table(
-      modelActivities.map((activity) => ({
-        execution: activity.executionRunId,
-        scheduledAt: activity.scheduledAt.toISOString(),
-        startedAt: activity.startedAt?.toISOString() ?? "n/a",
-        closedAt: activity.closedAt?.toISOString() ?? "n/a",
-        outcome: activity.outcome,
-        attempt: activity.attempt ?? "n/a",
-        worker: activity.worker ?? "n/a",
-        previousAttemptFailure: activity.previousAttemptFailure,
-      }))
-    );
-  }
-
-  await printAttributionWorkflows({
-    agentMessageId,
-    conversationId,
-    workspaceId,
-  });
-
-  return summary;
-}
-
-async function listUnreconciledAgentMessageIds(
-  auth: Authenticator,
-  { limit, sinceDays }: { limit: number; sinceDays: number }
-): Promise<string[]> {
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const unreconciledItems = await AgentMessageConsumptionItemModel.findAll({
-    attributes: ["agentMessageId"],
-    where: {
-      workspaceId,
-      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      createdAt: { [Op.gte]: new Date(Date.now() - sinceDays * 86_400_000) },
-    },
-    group: ["agentMessageId"],
-    having: where(fn("COUNT", col("reconciledCreditAmountMicro")), 0),
-    order: [[fn("MAX", col("createdAt")), "DESC"]],
-    limit,
-  });
-  const messages = await MessageModel.findAll({
-    attributes: ["sId"],
-    where: {
-      workspaceId,
-      agentMessageId: unreconciledItems.map(
-        ({ agentMessageId }) => agentMessageId
-      ),
-    },
-  });
-  return messages.map(({ sId }) => sId);
+function sumCreditMicro(
+  items: AgentMessageConsumptionItemResource[],
+  creditMicroOf: (item: AgentMessageConsumptionItemResource) => number
+): number {
+  return items.reduce((total, item) => total + creditMicroOf(item), 0);
 }
 
 makeScript(
@@ -660,72 +66,386 @@ makeScript(
     },
     agentMessageId: {
       type: "string",
-      description: "Agent message sId to explain in detail.",
-    },
-    unreconciledSinceDays: {
-      type: "number",
-      description:
-        "Summarize the workspace's messages attributed in the last N days that have no reconciled credits.",
-    },
-    limit: {
-      type: "number",
-      default: 50,
-      description: "Maximum number of messages to summarize.",
+      demandOption: true,
+      description: "Agent message sId.",
     },
   },
-  async ({
-    agentMessageId,
-    execute,
-    limit,
-    unreconciledSinceDays,
-    workspaceId,
-  }) => {
+  async ({ agentMessageId, execute, workspaceId }) => {
     if (!execute) {
       console.log("Read-only diagnostic. Pass --execute to run it.");
       return;
     }
+
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-
-    if (agentMessageId) {
-      await analyzeAgentMessage(auth, {
+    const creditContext =
+      await ConversationResource.fetchAgentMessageCreditContext(auth, {
         agentMessageId,
-        verbose: true,
-        workspaceId,
       });
-      return;
-    }
-    if (unreconciledSinceDays === undefined) {
-      throw new Error(
-        "Pass --agentMessageId or --unreconciledSinceDays to choose messages."
-      );
+    if (!creditContext) {
+      throw new Error(`Agent message ${agentMessageId} was not found.`);
     }
 
-    const agentMessageIds = await listUnreconciledAgentMessageIds(auth, {
-      limit,
-      sinceDays: unreconciledSinceDays,
+    const billedCredits = creditContext.previousCostCredits;
+    const dustRunIds = [...new Set(creditContext.runIds ?? [])];
+    const runs = await RunResource.listByDustRunIds(auth, { dustRunIds });
+    const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+    const [actions, items] = await Promise.all([
+      AgentMCPActionResource.listByAgentMessageIds(auth, [
+        creditContext.agentMessageModelId,
+      ]),
+      AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
+        agentMessageModelIds: [creditContext.agentMessageModelId],
+        maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      }),
+    ]);
+
+    const allocationResult = buildLatestMessageConsumptionAllocation({
+      actions,
+      billedCredits,
+      dustRunIds,
+      hasUnbilledExecution: false,
+      items,
+      runs,
+      usages,
     });
-    const summaries: MessageSummary[] = [];
-    for (const id of agentMessageIds) {
-      summaries.push(
-        await analyzeAgentMessage(auth, {
-          agentMessageId: id,
-          verbose: false,
-          workspaceId,
-        })
-      );
-    }
-    console.log(
-      `\n${summaries.length} messages without reconciled credits since ${unreconciledSinceDays} days`
-    );
-    console.table(summaries);
+
+    console.log("\nResult");
+    console.table([
+      {
+        agentMessageId,
+        status: creditContext.status,
+        origin: creditContext.triggeringUserMessageOrigin ?? "none",
+        billedCredits: billedCredits ?? "none",
+        result: allocationResult.isOk()
+          ? "reconciled"
+          : allocationResult.error.code,
+        attributionVersion: allocationResult.isOk()
+          ? allocationResult.value.attributionVersion
+          : "n/a",
+        ...(allocationResult.isErr() ? allocationResult.error.context : {}),
+      },
+    ]);
+
+    const attributionVersions = [
+      ...new Set(items.map(({ attributionVersion }) => attributionVersion)),
+    ].sort((left, right) => right - left);
+    console.log("\nStored attribution versions, newest first");
     console.table(
-      Object.entries(
-        summaries.reduce<Record<string, number>>((counts, summary) => {
-          const key = String(summary.recomputed);
-          counts[key] = (counts[key] ?? 0) + 1;
-          return counts;
-        }, {})
-      ).map(([recomputed, messages]) => ({ recomputed, messages }))
+      attributionVersions.map((attributionVersion) => {
+        const versionItems = items.filter(
+          (item) => item.attributionVersion === attributionVersion
+        );
+        const versionResult = buildLatestMessageConsumptionAllocation({
+          actions,
+          billedCredits,
+          dustRunIds,
+          hasUnbilledExecution: false,
+          items: versionItems,
+          runs,
+          usages,
+        });
+        return {
+          attributionVersion,
+          items: versionItems.length,
+          result: versionResult.isOk()
+            ? "reconciled"
+            : versionResult.error.code,
+        };
+      })
     );
+
+    const reportedItems = allocationResult.isOk()
+      ? allocationResult.value.items
+      : items.filter(
+          (item) => item.attributionVersion === attributionVersions[0]
+        );
+    const reconciledCreditMicroByItem = allocationResult.isOk()
+      ? allocationResult.value.reconciledCreditAmounts.byItem
+      : null;
+
+    const toolFeesCreditMicro = sumCreditMicro(
+      reportedItems,
+      (item) => item.directCreditAmountMicro ?? 0
+    );
+    const llmBillingPlan = buildAgentMessageBillingPlan({
+      actions: [],
+      contextOrigin: null,
+      getUsageAllocationKey: (usage) => String(usage.runUsageModelId),
+      runUsages: usages,
+    });
+    const chargedLlmBilledCredits = buildAgentMessageBillingPlan({
+      actions: [],
+      contextOrigin: creditContext.triggeringUserMessageOrigin,
+      runUsages: usages,
+    }).totals.llmBilledCredits;
+    const llmBilledCreditMicro =
+      billedCredits === null
+        ? null
+        : roundCreditsToMicroCredits(billedCredits) - toolFeesCreditMicro;
+    const recomputedLlmBilledCreditMicro = roundCreditsToMicroCredits(
+      llmBillingPlan.totals.llmBilledCredits
+    );
+
+    console.log("\nStep 1: the LLM part of the bill must match its usages");
+    console.table([
+      {
+        quantity: "bill",
+        credits: billedCredits ?? "n/a",
+        meaning: "What the message was charged",
+      },
+      {
+        quantity: "tool_fees",
+        credits: credits(toolFeesCreditMicro),
+        meaning: "Direct credits of the tool items, kept as billed",
+      },
+      {
+        quantity: "llm_bill",
+        credits: credits(llmBilledCreditMicro),
+        meaning: "Bill minus tool fees, to split across the LLM usages",
+      },
+      {
+        quantity: "llm_bill_from_usages",
+        credits: credits(recomputedLlmBilledCreditMicro),
+        meaning:
+          "Recorded cost of each billing group rounded up, before any free-origin waiver",
+      },
+      {
+        quantity: "llm_bill_charged_from_usages",
+        credits: chargedLlmBilledCredits,
+        meaning: "Same, after the free-origin waiver (0 for free origins)",
+      },
+    ]);
+
+    console.log("\nStep 2: each billing group's bill is shared by its usages");
+    console.table(
+      llmBillingPlan.llm.map((line) => {
+        const costCreditMicro = creditMicroFromCostMicroUsd(
+          line.providerCostMicroUsd
+        );
+        const billedCreditMicro = roundCreditsToMicroCredits(
+          line.billedCredits
+        );
+        return {
+          runKey: line.runKey,
+          provider: line.providerId,
+          model: line.modelId,
+          usages: line.usageAllocations?.length ?? 0,
+          recordedCostCredits: credits(costCreditMicro),
+          billedCredits: credits(billedCreditMicro),
+          roundingCredits: credits(billedCreditMicro - costCreditMicro),
+        };
+      })
+    );
+
+    const runIndexByModelId = new Map(
+      [...runs]
+        .sort(compareRunsChronologically)
+        .map((run, index) => [run.id, index])
+    );
+    const orderedUsages = [...usages].sort(
+      (left, right) =>
+        (runIndexByModelId.get(left.runModelId) ?? -1) -
+          (runIndexByModelId.get(right.runModelId) ?? -1) ||
+        left.runModelId - right.runModelId ||
+        left.runUsageModelId - right.runUsageModelId
+    );
+    const usageNumberByRunUsageModelId = new Map(
+      orderedUsages.map((usage, index) => [usage.runUsageModelId, index + 1])
+    );
+    const usageBilledCreditMicroByRunUsageModelId = new Map(
+      llmBillingPlan.llm.flatMap((line) =>
+        (line.usageAllocations ?? []).map(
+          ({ usage, allocatedBilledCreditMicro }) =>
+            [usage.runUsageModelId, allocatedBilledCreditMicro] as const
+        )
+      )
+    );
+    const toolResultsByReadingUsage = groupToolResultsByReadingUsage({
+      items: reportedItems,
+      runs,
+      usages,
+    });
+    const readingRunUsageModelIdByItem = new Map<
+      AgentMessageConsumptionItemResource,
+      ModelId
+    >(
+      [...toolResultsByReadingUsage].flatMap(
+        ([readingRunUsageModelId, toolResults]) =>
+          toolResults.map(({ item }) => [item, readingRunUsageModelId] as const)
+      )
+    );
+
+    const usageRows = orderedUsages.map((usage, index) => {
+      const costSplit = splitRecordedCostIntoInputAndOutput(usage);
+      const toolResults =
+        toolResultsByReadingUsage.get(usage.runUsageModelId) ?? [];
+      const toolResultTokensCount = toolResults.reduce(
+        (total, { tokensCount }) => total + tokensCount,
+        0
+      );
+      const toolResultCostMicroUsd = costSplit.isOk()
+        ? costSplit.value.inputCostMicroUsd *
+          toolResultShareOfInputCost({
+            usage,
+            toolResultTokensCount,
+            priceRatios: getCachedTokenPriceRatios(usage),
+          })
+        : null;
+      const previousUsage = orderedUsages[index - 1];
+      const cachedTokensBeyondPreviousUsage =
+        previousUsage && previousUsage.runModelId !== usage.runModelId
+          ? (usage.cachedTokens ?? 0) -
+            (previousUsage.promptTokens + previousUsage.completionTokens)
+          : null;
+      return {
+        usage,
+        costSplit,
+        toolResultTokensCount,
+        toolResultCostMicroUsd,
+        cachedTokensBeyondPreviousUsage,
+        billedCreditMicro: usageBilledCreditMicroByRunUsageModelId.get(
+          usage.runUsageModelId
+        ),
+      };
+    });
+
+    console.log(
+      "\nStep 3: each usage's recorded cost splits into output, tool results read, and prompt"
+    );
+    console.table(
+      usageRows.map(
+        ({
+          usage,
+          costSplit,
+          toolResultTokensCount,
+          toolResultCostMicroUsd,
+          cachedTokensBeyondPreviousUsage,
+        }) => ({
+          usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
+          runUsageId: usage.runUsageModelId,
+          runKey: usage.runKey ?? "none",
+          model: usage.modelId,
+          promptTokens: usage.promptTokens,
+          cachedTokens: usage.cachedTokens ?? 0,
+          cacheWriteTokens: usage.cacheCreationTokens ?? 0,
+          completionTokens: usage.completionTokens,
+          toolResultTokensRead: toolResultTokensCount,
+          cacheWarmedByUnbilledRequest:
+            cachedTokensBeyondPreviousUsage !== null &&
+            cachedTokensBeyondPreviousUsage >
+              MIN_CACHE_WARMED_BY_UNBILLED_REQUEST_TOKENS,
+          recordedCostCredits: credits(
+            creditMicroFromCostMicroUsd(usage.costMicroUsd)
+          ),
+          outputCostCredits: costSplit.isOk()
+            ? credits(
+                creditMicroFromCostMicroUsd(costSplit.value.outputCostMicroUsd)
+              )
+            : costSplit.error,
+          toolResultCostCredits:
+            toolResultCostMicroUsd === null
+              ? "n/a"
+              : credits(creditMicroFromCostMicroUsd(toolResultCostMicroUsd)),
+          promptCostCredits:
+            costSplit.isOk() && toolResultCostMicroUsd !== null
+              ? credits(
+                  creditMicroFromCostMicroUsd(
+                    costSplit.value.inputCostMicroUsd - toolResultCostMicroUsd
+                  )
+                )
+              : "n/a",
+        })
+      )
+    );
+
+    console.log(
+      "\nStep 4: each usage's billed share is split in proportion to those costs"
+    );
+    console.table(
+      usageRows.map(
+        ({ usage, costSplit, toolResultCostMicroUsd, billedCreditMicro }) => {
+          const costMicroUsd = costSplit.isOk()
+            ? costSplit.value.inputCostMicroUsd +
+              costSplit.value.outputCostMicroUsd
+            : 0;
+          const creditMicroOf = (partCostMicroUsd: number) =>
+            costMicroUsd > 0 && billedCreditMicro !== undefined
+              ? credits((partCostMicroUsd * billedCreditMicro) / costMicroUsd)
+              : "n/a";
+          return {
+            usage: usageNumberByRunUsageModelId.get(usage.runUsageModelId),
+            billedCredits: credits(billedCreditMicro),
+            billedOverRecordedCost:
+              costMicroUsd > 0 && billedCreditMicro !== undefined
+                ? Math.round(
+                    (billedCreditMicro /
+                      creditMicroFromCostMicroUsd(costMicroUsd)) *
+                      10_000
+                  ) / 10_000
+                : "n/a",
+            outputCredits: costSplit.isOk()
+              ? creditMicroOf(costSplit.value.outputCostMicroUsd)
+              : "n/a",
+            toolResultCredits:
+              toolResultCostMicroUsd === null
+                ? "n/a"
+                : creditMicroOf(toolResultCostMicroUsd),
+            promptCredits:
+              costSplit.isOk() && toolResultCostMicroUsd !== null
+                ? creditMicroOf(
+                    costSplit.value.inputCostMicroUsd - toolResultCostMicroUsd
+                  )
+                : "n/a",
+          };
+        }
+      )
+    );
+
+    const actionSIdByModelId = new Map(
+      actions.map((action) => [action.id, action.sId])
+    );
+    console.log(
+      "\nStep 5: items receive their usages' shares, plus their tool fees"
+    );
+    console.table(
+      reportedItems.map((item) => {
+        const readingRunUsageModelId = readingRunUsageModelIdByItem.get(item);
+        return {
+          itemId: item.id,
+          type: item.itemType,
+          version: item.attributionVersion,
+          action:
+            item.agentMCPActionId === null
+              ? "n/a"
+              : (actionSIdByModelId.get(item.agentMCPActionId) ?? "n/a"),
+          usage: usageNumberByRunUsageModelId.get(item.runUsageId) ?? "n/a",
+          resultReadByUsage:
+            readingRunUsageModelId === undefined
+              ? "n/a"
+              : (usageNumberByRunUsageModelId.get(readingRunUsageModelId) ??
+                "n/a"),
+          inputTokens: item.inputTokensCount ?? "n/a",
+          outputTokens: item.outputTokensCount ?? "n/a",
+          grossCredits: credits(item.grossAttributedCreditAmountMicro),
+          toolFeeCredits: credits(item.directCreditAmountMicro),
+          reconciledCredits: credits(reconciledCreditMicroByItem?.get(item)),
+        };
+      })
+    );
+
+    if (reconciledCreditMicroByItem) {
+      console.log("\nTotal");
+      console.table([
+        {
+          bill: billedCredits ?? "n/a",
+          reconciledCredits: credits(
+            sumCreditMicro(
+              reportedItems,
+              (item) => reconciledCreditMicroByItem.get(item) ?? 0
+            )
+          ),
+        },
+      ]);
+    }
   }
 );
