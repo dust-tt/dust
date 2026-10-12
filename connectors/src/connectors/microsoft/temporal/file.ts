@@ -181,7 +181,7 @@ export async function removeFileBasedOnSensitivityLabel({
  * @cc [owner:philipperolet,label:backend] hydrate-lean-items
  * `file` may come from a lean listing (see DRIVE_ITEM_LEAN_SELECTS) that lacks the download URL
  * and list-item fields. When either is missing, both MUST be re-fetched before use, and the
- * sensitivity-label check, document tags and spreadsheet table tags MUST use the resulting
+ * sensitivity-label check, document tags, CSV and spreadsheet table tags MUST use the resulting
  * fields rather than `file.listItem`.
  */
 export async function syncOneFile({

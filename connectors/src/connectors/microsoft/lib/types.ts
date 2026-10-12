@@ -38,7 +38,7 @@ export const DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS =
 //   deleted entry (none of which need it) inflates the worker's footprint and can OOM the
 //   pod on large drives.
 // - Children: on large folders (e.g. thousands of images), expanding every item's fields
-//   makes Graph time out (504) on the page, and the full sync retries it forever.
+//   makes Graph time out (504) on the page.
 // `syncOneFile` already re-hydrates the download URL and list-item fields per file on
 // demand (see connectors/src/connectors/microsoft/temporal/file.ts), so files that are
 // actually synced still get the full metadata.
