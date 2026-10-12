@@ -407,6 +407,30 @@ export class Authenticator {
     });
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:security] self-granted-group-in-scope
+   * Some authenticators hold a fixed list of groups that `refresh()` reuses as is (e.g. a sandbox's,
+   * see `sandbox-exec-groups`); others re-read the user's memberships on every `refresh()`. On a
+   * fixed list, this method MUST add the group, so the next `refresh()` resolves its grants.
+   * Callers MUST only pass the regular_auto group of a non-space grant they just added the
+   * authenticator's own user to, so that a fixed list never gains a space, nor a group the user
+   * already belonged to but was narrowed out of.
+   */
+  includeSelfGrantedGroupInScope(groupModelId: ModelId) {
+    if (
+      // Nothing to do if the auth do not use the fixed list of groups on refresh
+      this._requestedGroupModelIds === null ||
+      // or if the group is already present
+      this._requestedGroupModelIds.includes(groupModelId)
+    ) {
+      return;
+    }
+    this._requestedGroupModelIds = [
+      ...this._requestedGroupModelIds,
+      groupModelId,
+    ];
+  }
+
   // Re-derive a plain API key's groups. Workspace-scoped fetch, so a foreign-workspace key yields
   // none (matching `fromKey`). The requestedGroupIds override keeps an explicit scope and skips this.
   private async groupModelIdsFromKey(): Promise<ModelId[]> {
@@ -848,7 +872,8 @@ export class Authenticator {
    * spaces, plus those holding any grant on the token's agent, whatever their kind or grant type,
    * and no other: the sandbox holds the verbs the agent loop holds on that agent (see `agent-verbs`),
    * restricted to the conversation's spaces. A group kept for its agent grant brings its other grants
-   * along: the narrowing is per group.
+   * along: the narrowing is per group. The only later addition is a non-space grant the sandbox
+   * grants its own user (see `self-granted-group-in-scope`).
    */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],

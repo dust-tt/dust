@@ -535,6 +535,16 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         return addResult;
       }
 
+      // A caller with a narrowed scope (e.g. a sandbox) granting itself, typically the creator of a
+      // skill or agent, must hold the grant once it refreshes, as an unscoped caller does.
+      const callerUserModelId = auth.user()?.id;
+      if (
+        resourceType !== "space" &&
+        usersToAdd.some((user) => user.id === callerUserModelId)
+      ) {
+        auth.includeSelfGrantedGroupInScope(group.id);
+      }
+
       return new Ok(undefined);
     }, transaction);
   }
