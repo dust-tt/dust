@@ -29,7 +29,7 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:api;security] object-stat-mode
      * Returned owner read/write bits MUST match the session mode. Only readable directories MUST
-     * receive owner execute; all other mode bits MUST be zero. Symlinks MUST return UnsupportedKind.
+     * receive owner execute; all other mode bits MUST be zero.
      */
     pub async fn stat(
         tx: &Transaction,
