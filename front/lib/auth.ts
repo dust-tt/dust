@@ -416,7 +416,8 @@ export class Authenticator {
    * @cc [owner:fabiencelier,label:security] self-granted-group-in-scope
    * Some authenticators hold a fixed list of groups that `refresh()` reuses as is (e.g. a sandbox's,
    * see `sandbox-exec-groups`); others re-read the user's memberships on every `refresh()`. On a
-   * fixed list, this method MUST add the group, so the next `refresh()` resolves its grants.
+   * fixed list, this method MUST add the group, so the next `refresh()` resolves its grants. On an
+   * `"all"` scope, it MUST change nothing: every workspace group is already in it.
    * Callers MUST only pass the regular_auto group of a non-space grant they just added the
    * authenticator's own user to, so that a fixed list never gains a space, nor a group the user
    * already belonged to but was narrowed out of.
@@ -425,6 +426,8 @@ export class Authenticator {
     if (
       // Nothing to do if the auth do not use the fixed list of groups on refresh
       this._requestedGroupModelIds === null ||
+      // or if the scope already covers every workspace group, re-listed on each refresh
+      this._requestedGroupModelIds === "all" ||
       // or if the group is already present
       this._requestedGroupModelIds.includes(groupModelId)
     ) {
