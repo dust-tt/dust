@@ -282,7 +282,7 @@ export interface ToolbarLinkProps {
   size: ToolbarButtonSize;
   /** Whether a link is applied at the current selection. */
   active?: boolean;
-  tooltip?: string;
+  tooltip: string;
 }
 
 /**
@@ -321,7 +321,7 @@ function ToolbarLink({
         icon={Link01}
         onClick={onOpenDialog}
         active={active}
-        tooltip={tooltip ?? t`Insert link`}
+        tooltip={tooltip}
         size={size}
       />
       <DialogContent onClick={handleDialogClick}>

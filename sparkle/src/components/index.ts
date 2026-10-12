@@ -28,7 +28,6 @@ export type {
   ButtonProps,
   ButtonSizeType,
   ButtonVariantType,
-  DistributiveOmit,
   IconOnlyButtonProps,
   RegularButtonProps,
   RegularButtonSize,

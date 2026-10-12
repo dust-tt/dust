@@ -189,6 +189,7 @@ function InputBarAgentButton({
   const { t } = useLingui();
   const router = useAppRouter();
   const isWidthConstrained = useIsWidthConstrained();
+  const agentLabel = t({ message: "Agent", context: "button label" });
   const displayedAgent =
     selectedAgent ??
     (isSelectedAgentPending ? LOADING_AGENT_PLACEHOLDER : null);
@@ -225,13 +226,8 @@ function InputBarAgentButton({
             size={buttonSize}
             icon={Robot}
             {...(isWidthConstrained
-              ? {
-                  "aria-label": t({
-                    message: "Agent",
-                    context: "button label",
-                  }),
-                }
-              : { label: t({ message: "Agent", context: "button label" }) })}
+              ? { "aria-label": agentLabel }
+              : { label: agentLabel })}
             isRounded
             className={cn(
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
