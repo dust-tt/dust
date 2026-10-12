@@ -1226,7 +1226,11 @@ makeScript(
             estimated: estimatedTokens,
             observedMin: observedMinTokens,
             observedMax: observedMaxTokens,
-            ratio: ratio(estimatedTokens, observedMaxTokens),
+            ratio: ratio(estimatedTokens, observedMinTokens),
+            gap: observedMinTokens - estimatedTokens,
+            gapPerResult: Math.round(
+              (observedMinTokens - estimatedTokens) / toolResults.length
+            ),
             uncached: segments.uncachedTokens,
             atFresh: segments.inFreshTokens,
             atWrite: segments.inCacheWriteTokens,
@@ -1243,7 +1247,8 @@ makeScript(
     );
     printTable(
       "Tokenizer: tool result tokens estimated vs observed by the reading usage\n" +
-        "observed = reader's prompt - emitter's prompt - emitter's output (max: reasoning not re-sent)\n" +
+        "observed = reader's prompt - emitter's prompt - emitter's output (min: reasoning re-sent, usually the real one; max: not re-sent)\n" +
+        "ratio = estimated / observedMin; gap = observedMin - estimated, mostly tool-result framing\n" +
         "at*: where the estimate was priced in the reader's prompt; beyond: dropped past the prompt",
       toolResultReadRows
     );
