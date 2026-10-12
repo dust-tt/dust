@@ -356,13 +356,15 @@ const UNREAD_SUMMARY_FUNCTION_NAME = "write_summary";
 
 const unreadSummarySpecification: AgentActionSpecification = {
   name: UNREAD_SUMMARY_FUNCTION_NAME,
-  description: "Write a summary of the conversation",
+  description:
+    "Write a 1-2 sentence summary of the unread messages, addressed to the recipient in the second person.",
   inputSchema: {
     type: "object",
     properties: {
       conversation_summary: {
         type: "string",
-        description: "A short summary of the conversation.",
+        description:
+          'A 1-2 sentence summary of the unread messages only, addressed to the recipient as "you". Start with the substance (e.g. "@dust answered your question: ..."), never with "You received". Never "the user", never narrate who asked what.',
       },
     },
     required: ["conversation_summary"],
@@ -425,9 +427,10 @@ export const generateUnreadMessagesSummary = async ({
 
   const owner = auth.getNonNullableWorkspace();
 
-  const userFullName = auth.user()?.fullName();
+  const user = auth.user();
+  const userFullName = user?.fullName();
 
-  if (!userFullName) {
+  if (!user || !userFullName) {
     return new Err(
       new DustError("user_not_found", "User not found for summary generation")
     );
@@ -438,11 +441,12 @@ export const generateUnreadMessagesSummary = async ({
     `Write a 1-2 sentence summary of unread messages for ${userFullName} to quickly understand what happened while they were away and what action (if any) is needed from them.\n\n` +
     `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
     `# Input Format\n` +
-    `You'll receive a JSON array of UNREAD messages (not the full conversation history, only what ${userFullName} hasn't seen yet). Each message has:\n` +
-    `- "role": "user" (human) or "assistant" (AI agent)\n` +
-    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
-    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
-    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for what happened. Never guess.\n\n` +
+    `You'll receive a header (title, dates, flags) followed by the conversation as plain text. Each message starts with a header line:\n` +
+    `- \`>> User (Name, email) [timestamp]\`: a message written by a human. "User" is only a label, not a name.\n` +
+    `- \`>> Agent (Name) [timestamp]\`: a message written by an AI agent.\n` +
+    `- \`>> Content Fragment [timestamp]\`: a file or document attached to the conversation.\n` +
+    `Headers ending with \`(unread)\` are messages ${userFullName} has NOT seen yet. Messages without \`(unread)\` were already read: use them only as context, never summarize them.\n\n` +
+    `Messages from \`${user.email}\` were written by ${userFullName} (the recipient): refer to them as "you" (e.g. "your question", "the CSV you asked for"). Attribute other senders by the name in their header. Never guess.\n\n` +
     `# Writing Rules\n` +
     `1. **Length**: 1-2 sentences maximum\n` +
     `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
@@ -451,7 +455,9 @@ export const generateUnreadMessagesSummary = async ({
     `5. **No chat narration**: NEVER write "X asked", "assistant provided", "then Y replied"\n` +
     `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
     `7. **Use names**: Refer to other participants by name, never "the user"\n` +
-    `8. **Accurate attribution**: Only include information actually in the messages\n\n` +
+    `8. **Accurate attribution**: Only include information actually in the messages\n` +
+    `9. **Narrator voice**: You are not a participant. Never write "I" or speak for the agent: write "@dust can add it as a tab", not "I can add it"\n` +
+    `10. **No filler openers**: Never start with "You received", "You got", or "Here is". Start with the substance\n\n` +
     `# Examples\n\n` +
     `## Action Needed (someone waiting on the recipient)\n` +
     `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
@@ -464,6 +470,9 @@ export const generateUnreadMessagesSummary = async ({
     `## Mixed (update + action)\n` +
     `"Hiring budget spreadsheet is ready for Q1. Emily needs your review by Wednesday."\n` +
     `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
+    `## Agent replies (the recipient asked an agent something and left before it answered)\n` +
+    `"@analyst explained where to find the summary Google Sheet you couldn't see. The enriched CSV is ready with Net Sales of $723,548.60."\n` +
+    `"@dust listed the steps to open the Copilot pane in Excel, with example prompts and a fix if the Copilot button is missing."\n\n` +
     `# Your Task\n` +
     `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
     `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +

@@ -3,7 +3,7 @@ import { GroupDialog } from "@app/components/groups/GroupDialog";
 import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { ProvisionedGroupDialog } from "@app/components/groups/ProvisionedGroupDialog";
 import { ROLE_LABELS, ROLES_DATA } from "@app/components/members/Roles";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useDeleteGroup, useGroups } from "@app/lib/swr/groups";
 import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
 import {
@@ -54,13 +54,11 @@ interface WorkspaceGroupsListProps {
 
 export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
   const { t } = useLingui();
-  const { hasFeature } = useFeatureFlags();
   const { isManager } = useAuth();
-  const isGroupManagementEnabled = hasFeature("group_management");
   const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: MANAGEABLE_GROUP_KINDS,
-    withManagers: isGroupManagementEnabled,
+    withManagers: true,
     managedOnly: !isManager,
   });
 
@@ -193,10 +191,6 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
     ],
     [t]
   );
-  const columnsWithoutManagers = useMemo(
-    () => columns.filter((column) => column.id !== "managers"),
-    [columns]
-  );
 
   const openCreateDialog = () => {
     setEditedGroupId(null);
@@ -278,9 +272,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
             </div>
             <DataTable
               data={rows}
-              columns={
-                isGroupManagementEnabled ? columns : columnsWithoutManagers
-              }
+              columns={columns}
               filter={searchTerm}
               filterColumn="name"
               pagination={pagination}

@@ -28,7 +28,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
   Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -448,10 +447,10 @@ function ScheduleEditor({
                         min="1"
                         placeholder="∞"
                       />
-                      <IconButton
+                      <Button
                         icon={Trash01}
                         size="xs"
-                        variant="outline"
+                        variant="ghost-secondary"
                         disabled={saved}
                         tooltip={
                           saved ? "Saved phases can't be removed" : undefined

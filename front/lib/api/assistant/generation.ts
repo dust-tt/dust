@@ -35,6 +35,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
+import type { SupportedLocale } from "@app/types/locale";
 import type { WorkspaceType } from "@app/types/user";
 import { tz } from "@date-fns/tz";
 import { format } from "date-fns";
@@ -371,6 +372,23 @@ function constructGuidelinesSection({
   return guidelinesSection;
 }
 
+// Models reason in English by default, even when told to reason in another language: they follow
+// the language the instruction is written in. The section is therefore written in the user's
+// language, and only for non-English locales.
+const LANGUAGE_SECTION_BY_LOCALE: Record<SupportedLocale, string | null> = {
+  "en-US": null,
+  "en-GB": null,
+  "fr-FR":
+    "# LANGUE\n\n" +
+    "La langue de l'utilisateur est le français. Rédige toujours ton raisonnement (ta réflexion " +
+    "interne) en français, et réponds en français sauf si l'utilisateur écrit dans une autre " +
+    "langue ou si tes instructions disent le contraire.\n",
+};
+
+function constructLanguageSection(locale: SupportedLocale | null): string {
+  return (locale && LANGUAGE_SECTION_BY_LOCALE[locale]) ?? "";
+}
+
 function constructInstructionsSection({
   agentConfiguration,
   fallbackPrompt,
@@ -411,6 +429,7 @@ export function constructPromptMultiActions(
     hasSandboxTools = false,
     disableFormattingPrompt = false,
     hasSelectedSpacesOutsideAgentScope = false,
+    locale = null,
   }: {
     userMessage: AgentLoopExecutionData["userMessage"];
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
@@ -428,6 +447,7 @@ export function constructPromptMultiActions(
     hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
     hasSelectedSpacesOutsideAgentScope?: boolean;
+    locale?: SupportedLocale | null;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -480,6 +500,7 @@ export function constructPromptMultiActions(
     : constructAttachmentsSection({ hasSandboxTools, isComputerAlwaysActive });
   const pastedContentSection = constructPastedContentSection();
   const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
+  const languageSection = constructLanguageSection(locale);
 
   if (hasStaticInstructions) {
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.
@@ -495,7 +516,7 @@ export function constructPromptMultiActions(
     // breakpoint here lets different users in the same workspace share this prefix.
     //
     // Ephemeral context (no breakpoint): per-call data, covering selected-space-scoped skill
-    // instructions, branch lineage, and user profile.
+    // instructions, branch lineage, user profile, and the user's language.
     const fullInstructions = [
       instructionsContent,
       ...(hasSelectedSpacesOutsideAgentScope ? [] : [skillsSection]),
@@ -526,6 +547,7 @@ export function constructPromptMultiActions(
       { role: "context" as const, content: branchContextSection },
       { role: "context" as const, content: userContext ?? "" },
       { role: "context" as const, content: projectContext ?? "" },
+      { role: "context" as const, content: languageSection },
     ].filter((s) => s.content.trim() !== "");
 
     const structured: StructuredSystemPrompt = {
@@ -552,6 +574,7 @@ export function constructPromptMultiActions(
     { role: "context" as const, content: userContext ?? "" },
     { role: "context" as const, content: workspaceContext ?? "" },
     { role: "context" as const, content: projectContext ?? "" },
+    { role: "context" as const, content: languageSection },
   ].filter((s) => s.content.trim() !== "");
 
   return allSections;

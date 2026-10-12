@@ -39,6 +39,8 @@ pub enum CredentialProvider {
     Openai,
     Anthropic,
     GoogleAiStudio,
+    // dfs tenant keys, one per workspace
+    Dfs,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -277,6 +279,9 @@ impl Credential {
             }
             CredentialProvider::GoogleAiStudio => {
                 vec!["api_key"]
+            }
+            CredentialProvider::Dfs => {
+                vec!["tenant_key"]
             }
         };
 

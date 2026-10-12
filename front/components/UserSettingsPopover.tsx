@@ -49,8 +49,10 @@ import type { SupportedLocale } from "@app/types/locale";
 import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/types/locale";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
-import { areConversationExternalNotificationsEnabled } from "@app/types/user";
-import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
+import {
+  areConversationExternalNotificationsEnabled,
+  MAX_USER_PRONOUNS_LENGTH,
+} from "@app/types/user";
 import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,

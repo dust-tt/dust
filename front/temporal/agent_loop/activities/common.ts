@@ -4,6 +4,7 @@ import { getCompletionDuration } from "@app/lib/api/assistant/messages";
 import { resolvedModelFromAgentMessageRow } from "@app/lib/api/assistant/models";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { finalizeAgentMessagesWithoutWorkflow } from "@app/lib/api/cancel";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
@@ -22,6 +23,7 @@ import {
   globalCoalescer,
 } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
+  GenericErrorContent,
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -29,7 +31,7 @@ import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/types/assistant/agent_m
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
-  isAgentLoopDataModelNotFoundError,
+  isAgentLoopConfigNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -39,7 +41,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -531,6 +532,46 @@ export async function finalizeUnavailableAgentLoop(
   await ConversationResource.cancelUnavailableAgentMessage(auth, agentLoopArgs);
 }
 
+/**
+ * Stops the loop's agent message without its agent configuration or model, which can no longer be
+ * loaded (see `isAgentLoopConfigNotFoundError`): retrying would fail forever. Pending tokens are
+ * not flushed, as that requires the configuration.
+ */
+async function stopWithoutAgentConfiguration(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  status: "cancelled" | "interrupted"
+): Promise<void> {
+  const { conversationId, agentMessageId } = agentLoopArgs;
+  const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
+  const conversation = await ConversationResource.fetchById(
+    auth,
+    conversationId
+  );
+  if (!conversation) {
+    await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
+    return;
+  }
+
+  await finalizeAgentMessagesWithoutWorkflow(auth, {
+    conversation,
+    messageIds: [agentMessageId],
+    status,
+  });
+  // As the regular cancelled event does (`processEventForDatabase`). An interrupt keeps the flag:
+  // promoted messages start a new loop.
+  if (status === "cancelled") {
+    await ConversationResource.setIsRunningAgentLoop(auth, {
+      conversation: conversation.toJSON(),
+      isRunningAgentLoop: false,
+    });
+  }
+  logger.info(
+    { conversationId, agentMessageId, messageStatus: status },
+    "Agent configuration or model unavailable, agent message stopped without them"
+  );
+}
+
 function toUserFriendlyMessage(error: {
   message: string;
   name: string;
@@ -552,8 +593,30 @@ function toUserFriendlyMessage(error: {
 // gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
-  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  agentLoopArgs: AgentLoopArgs,
   error: { message: string; name: string }
+): Promise<ModelId | null> {
+  return notifyAgentMessageError(authType, agentLoopArgs, {
+    error: {
+      code: "workflow_error",
+      message: toUserFriendlyMessage(error),
+      metadata: {
+        category: "critical_failure",
+        errorTitle: "Agent response generation failed",
+        // Ensure errorName is a string (not an Error object or undefined)
+        errorName: error.name || "UnknownError",
+      },
+    },
+    step: 0, // Workflow-level error, not tied to a specific step
+  });
+}
+
+// Fails the agent message with `error`, stored at `step`, without loading its agent configuration.
+// Returns the agent message's model id, or null when the conversation is gone.
+export async function notifyAgentMessageError(
+  authType: AuthenticatorType,
+  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  { error, step }: { error: GenericErrorContent; step: number }
 ): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
@@ -592,17 +655,8 @@ export async function notifyWorkflowError(
     created: Date.now(),
     configurationId: messageRow.agentMessage.agentConfigurationId || "",
     messageId: agentMessageId,
-    error: {
-      code: "workflow_error",
-      message: toUserFriendlyMessage(error),
-      metadata: {
-        category: "critical_failure",
-        errorTitle: "Agent response generation failed",
-        // Ensure errorName is a string (not an Error object or undefined)
-        errorName: error.name || "UnknownError",
-      },
-    },
-    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    error,
+    // These errors occur outside of LLM execution, so use existing runIds from DB
     runIds: messageRow.agentMessage.runIds ?? [],
   };
 
@@ -648,7 +702,7 @@ export async function notifyWorkflowError(
     event: errorEvent,
     agentMessage,
     conversation: conversation.toJSON(),
-    step: 0, // Workflow-level error, not tied to a specific step
+    step,
   });
 
   return messageRow.agentMessage.id;
@@ -656,6 +710,12 @@ export async function notifyWorkflowError(
 
 /**
  * Activity executed after a cancel signal
+ */
+/**
+ * @cc [owner:philipperolet,label:error-handling;backend] cancel-without-agent-configuration
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeCancellation` MUST mark the agent message
+ * `cancelled` and return without throwing, as its activity retries without limit.
  */
 export async function finalizeCancellation(
   authType: AuthenticatorType,
@@ -677,13 +737,9 @@ export async function finalizeCancellation(
       );
       return;
     }
-    if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
-      // The selected model no longer exists. Retrying the
-      // cancel finalizer cannot recover an endpoint and would loop forever.
-      throw ApplicationFailure.nonRetryable(
-        `Failed to get run agent data: ${runAgentDataRes.error.message}`,
-        "ModelNotFound"
-      );
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
+      await stopWithoutAgentConfiguration(authType, agentLoopArgs, "cancelled");
+      return;
     }
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
@@ -736,6 +792,12 @@ export async function finalizeCancellation(
  * immediately. Unlike cancellation, pending queued messages are promoted and a new agent message
  * is created to continue processing them.
  */
+/**
+ * @cc [owner:philipperolet,label:error-handling;backend] interrupt-without-agent-configuration
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeInterruption` MUST mark the agent message
+ * `interrupted` and return without throwing, as its activity retries without limit.
+ */
 export async function finalizeInterruption(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -753,6 +815,14 @@ export async function finalizeInterruption(
           agentMessageId: agentLoopArgs.agentMessageId,
         },
         "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
+      await stopWithoutAgentConfiguration(
+        authType,
+        agentLoopArgs,
+        "interrupted"
       );
       return;
     }

@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/files/dfm_stored_documents";
 import type { Authenticator } from "@app/lib/auth";
 import { extractAnchors } from "@app/lib/markdown/dfm";
+import type { LiveAgent } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -120,9 +121,10 @@ function anchorIds(body: string): string[] | null {
 export async function readAgentDocument(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  scopedPath: string
+  scopedPath: string,
+  agent?: LiveAgent
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
-  return readCurrentDocumentSource(auth, dustFs, scopedPath);
+  return readCurrentDocumentSource(auth, dustFs, scopedPath, agent);
 }
 
 /**
@@ -145,11 +147,13 @@ export async function editAgentDocument(
     oldString,
     newString,
     expectedReplacements,
+    agent,
   }: {
     scopedPath: string;
     oldString: string;
     newString: string;
     expectedReplacements: number;
+    agent?: LiveAgent;
   }
 ): Promise<
   Result<
@@ -157,8 +161,7 @@ export async function editAgentDocument(
     DfmAgentDocumentError | DfmStoredDocumentError
   >
 > {
-  // TODO(co-edition): pass an idempotency key so a retried tool call is applied once, and show
-  // the agent's cursor on the range it changed.
+  // TODO(co-edition): pass an idempotency key so a retried tool call is applied once.
   return writeDocumentChange(
     auth,
     dustFs,
@@ -203,6 +206,7 @@ export async function editAgentDocument(
         document: { ...document, body: editedBody },
         value: { replacements },
       });
-    }
+    },
+    agent
   );
 }

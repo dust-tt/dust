@@ -147,15 +147,17 @@ fn attributes_carry_names_views_and_optional_metadata() -> Result<()> {
         rpc::Attr::decode(object.encode_to_vec().as_slice())?,
         object
     );
-    object.metadata = Some(rpc::ExtendedMetadata {
-        created: 0,
-        mime_type: "inode/directory".into(),
-        xattrs: Default::default(),
-    });
-    assert_eq!(
-        rpc::Attr::decode(object.encode_to_vec().as_slice())?,
-        object
-    );
+    for mime_type in [None, Some(String::new()), Some("text/plain".into())] {
+        object.metadata = Some(rpc::ExtendedMetadata {
+            created: 0,
+            mime_type,
+            xattrs: Default::default(),
+        });
+        assert_eq!(
+            rpc::Attr::decode(object.encode_to_vec().as_slice())?,
+            object
+        );
+    }
     Ok(())
 }
 
@@ -330,7 +332,7 @@ fn search_preserves_defaults_filters_and_optional_hit_metadata() -> Result<()> {
         None,
         Some(rpc::ExtendedMetadata {
             created: 0,
-            mime_type: "text/plain".into(),
+            mime_type: Some("text/plain".into()),
             xattrs: Default::default(),
         }),
     ] {

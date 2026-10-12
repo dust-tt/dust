@@ -52,9 +52,9 @@ function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
     case "memberCount":
       return <LoadingBlock className="h-3 w-8" />;
     case "cap":
-      return <LoadingBlock className="h-3 w-24" />;
+      return <LoadingBlock className="h-3 w-16 max-w-full" />;
     case "sharedUsageLimit":
-      return <LoadingBlock className="h-3 w-40" />;
+      return <LoadingBlock className="h-3 w-full" />;
     case "modelTiers":
       return <LoadingBlock className="h-8 w-48 rounded-xl" />;
     default:
@@ -149,8 +149,12 @@ export function GroupsUsageTable({
         ? [
             {
               id: "cap",
-              header: t`Limit per member`,
-              meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
+              header: () => (
+                <span className="block min-w-0 truncate">{t`Limit per member`}</span>
+              ),
+              meta: {
+                className: "hidden @3xl:table-cell @3xl:w-22 @4xl:w-36",
+              },
               cell: (info: GroupInfo) => {
                 const { poolCapAwuCredits } = info.row.original;
                 return (
@@ -171,11 +175,15 @@ export function GroupsUsageTable({
         ? [
             {
               id: "sharedUsageLimit",
-              header: t`Group budget`,
-              meta: { className: "hidden @3xl:table-cell @3xl:w-48" },
+              header: () => (
+                <span className="block min-w-0 truncate">{t`Group budget`}</span>
+              ),
+              meta: {
+                className: "hidden @3xl:table-cell @3xl:w-21 @4xl:w-36",
+              },
               cell: (info: GroupInfo) =>
                 isGroupsUsageLoading ? (
-                  <LoadingBlock className="h-3 w-40" />
+                  <LoadingBlock className="h-3 w-full" />
                 ) : (
                   <SharedUsageLimitCell
                     usage={info.row.original.sharedUsageLimitUsage}
@@ -187,7 +195,7 @@ export function GroupsUsageTable({
               id: "sharedUsageLimitPace",
               header: "",
               meta: {
-                className: "hidden @3xl:table-cell @3xl:w-16",
+                className: "hidden @3xl:table-cell @3xl:w-10",
                 headerAlign: "center",
               },
               cell: (info: GroupInfo) => (

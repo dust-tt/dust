@@ -2379,6 +2379,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         def.getAutoEnabledOrEquippedForAgentLoop?.({
           agentConfiguration,
           conversation,
+          userMessage: agentLoopData?.userMessage,
         })
       ) {
         case "enabled":

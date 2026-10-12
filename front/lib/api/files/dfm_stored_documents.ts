@@ -9,6 +9,7 @@ import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfmDocument } from "@app/lib/markdown/dfm";
 import { parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
+import type { LiveAgent } from "@app/types/collab";
 import { contentTypeFromFileName } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -182,7 +183,11 @@ async function applyChange<T, E extends Error>(
 async function writeLiveDocumentChange<T, E extends Error>(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  { filePath, source }: { filePath: string; source: string },
+  {
+    filePath,
+    source,
+    agent,
+  }: { filePath: string; source: string; agent?: LiveAgent },
   change: DocumentChange<T, E>
 ): Promise<Result<{ value: T } | null, DfmStoredDocumentError | E>> {
   const found = await checkDocumentFound(dustFs, filePath);
@@ -210,6 +215,7 @@ async function writeLiveDocumentChange<T, E extends Error>(
     canonicalPath: filePath,
     base: source,
     source: changed.value.serialized,
+    agent,
   });
   if (pushed.isErr()) {
     return new Err(liveSourceError(pushed.error));
@@ -224,18 +230,20 @@ async function writeLiveDocumentChange<T, E extends Error>(
  * While a live session holds the document, reading MUST return the session's source in place of
  * the file's, since the file lags the session until its next checkpoint, without reading the file:
  * after the name check of `readStoredDocument`, `dustFs` MUST be able to read the file and the file
- * MUST exist. Otherwise it MUST return what `readStoredDocument` reads, with its refusals.
+ * MUST exist. Otherwise it MUST return what `readStoredDocument` reads, with its refusals. `agent`
+ * is passed on to the session, which shows it reading.
  */
 export async function readCurrentDocumentSource(
   auth: Authenticator,
   dustFs: DustFileSystem,
-  scopedPath: string
+  scopedPath: string,
+  agent?: LiveAgent
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
   const filePath = resolveDocumentPath(scopedPath);
   if (filePath.isErr()) {
     return filePath;
   }
-  const live = await fetchLiveSource(auth, filePath.value);
+  const live = await fetchLiveSource(auth, filePath.value, agent);
   if (live.isErr()) {
     return new Err(liveSourceError(live.error));
   }
@@ -266,8 +274,8 @@ export async function readCurrentDocumentSource(
  * check of `readStoredDocument`, the file MUST exist and `dustFs` be able to write it, then
  * `change` MUST receive the session's source, parsed, and its result MUST be written through the
  * session, conditional on that source; the session refuses a storage without revisions itself
- * (`collab-live-source-write`). A session that changed, closed or was busy meanwhile counts as a
- * conflict.
+ * (`collab-live-source-write`), with `agent` passed on so its editors show the agent's edit. A
+ * session that changed, closed or was busy meanwhile counts as a conflict.
  *
  * Known gap until the per-file lock of LIVE_SESSION.md (build step 8): a session opening between
  * the check for one and the file write loads the file before the write, so the session misses the
@@ -277,7 +285,8 @@ export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
-  change: DocumentChange<T, E>
+  change: DocumentChange<T, E>,
+  agent?: LiveAgent
 ): Promise<Result<T, DfmStoredDocumentError | E>> {
   const filePath = resolveDocumentPath(scopedPath);
   if (filePath.isErr()) {
@@ -288,7 +297,7 @@ export async function writeDocumentChange<T, E extends Error>(
     // TODO(co-edition): a session opening between this check and the file write below loads the
     // file before the write, and its checkpoints then conflict with it. Both should run under the
     // per-file lock of LIVE_SESSION.md.
-    const live = await fetchLiveSource(auth, filePath.value);
+    const live = await fetchLiveSource(auth, filePath.value, agent);
     if (live.isErr()) {
       return new Err(liveSourceError(live.error));
     }
@@ -296,7 +305,7 @@ export async function writeDocumentChange<T, E extends Error>(
       const written = await writeLiveDocumentChange(
         auth,
         dustFs,
-        { filePath: filePath.value, source: live.value.source },
+        { filePath: filePath.value, source: live.value.source, agent },
         change
       );
       if (written.isErr()) {

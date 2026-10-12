@@ -1,7 +1,6 @@
 import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { makeScript } from "@app/scripts/helpers";
-import { USER_PRONOUNS_METADATA_KEY } from "@app/types/user_profile";
 
 /**
  * Copies pronouns from the global `pronouns` user metadata to the `users.pronouns` column.
@@ -10,7 +9,7 @@ import { USER_PRONOUNS_METADATA_KEY } from "@app/types/user_profile";
  */
 makeScript({}, async ({ execute }, logger) => {
   const rows = await UserMetadataModel.findAll({
-    where: { key: USER_PRONOUNS_METADATA_KEY, workspaceId: null },
+    where: { key: "pronouns", workspaceId: null },
   });
   logger.info({ count: rows.length }, "Found pronouns metadata rows.");
 

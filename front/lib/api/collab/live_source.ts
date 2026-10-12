@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type {
+  LiveAgent,
   LiveSourceReadRequest,
   LiveSourceReadResponse,
   LiveSourceWriteRequest,
@@ -103,11 +104,13 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
  * workspace's `co_edition`, since a session can outlive the flag being turned off. It MUST be asked
  * as `auth`'s user when it has one, since an open document's source is only served to a user who
  * can open it live; a refusal MUST be `refused`. Any other failure MUST be an error, never reported
- * closed, since the caller would write the file under an open session.
+ * closed, since the caller would write the file under an open session. With `agent`, the session
+ * shows that agent reading the document to its editors.
  */
 export async function fetchLiveSource(
   auth: Authenticator,
-  canonicalPath: string
+  canonicalPath: string,
+  agent?: LiveAgent
 ): Promise<Result<LiveSourceReadResponse, LiveSourceError>> {
   const answer = await postToCollabServer(
     LIVE_SOURCE_READ_PATH,
@@ -115,6 +118,7 @@ export async function fetchLiveSource(
       workspaceId: auth.getNonNullableWorkspace().sId,
       userId: auth.user()?.sId,
       canonicalPath,
+      agent,
     },
     liveSourceReadResponseSchema
   );
@@ -130,7 +134,8 @@ export async function fetchLiveSource(
  * asking the collab server when `auth` has no user. Nothing listening at the collab server's
  * address MUST count as `closed`. A refusal of the access or of the source MUST be `refused`, any
  * other failure `unavailable`: the collab server refuses an access with a 4xx other than 401,
- * which only answers a wrong secret.
+ * which only answers a wrong secret. With `agent`, the session's editors see the change as that
+ * agent's edit.
  */
 export async function pushLiveSource(
   auth: Authenticator,
@@ -138,7 +143,13 @@ export async function pushLiveSource(
     canonicalPath,
     base,
     source,
-  }: { canonicalPath: string; base: string; source: string }
+    agent,
+  }: {
+    canonicalPath: string;
+    base: string;
+    source: string;
+    agent?: LiveAgent;
+  }
 ): Promise<Result<LiveSourceWriteResult, LiveSourceError>> {
   const user = auth.user();
   if (!user) {
@@ -156,6 +167,7 @@ export async function pushLiveSource(
       canonicalPath,
       base,
       source,
+      agent,
     },
     liveSourceWriteResponseSchema
   );

@@ -113,11 +113,7 @@ app.get(
     }
 
     const members = await group.getActiveMembers(auth);
-    const allowedActions = getGroupAllowedActions(
-      auth,
-      group,
-      await auth.hasFeatureFlag("group_management")
-    );
+    const allowedActions = getGroupAllowedActions(auth, group);
 
     return ctx.json({
       group: { ...group.toJSON(), memberCount: members.length, allowedActions },
@@ -177,8 +173,6 @@ app.patch(
     }
 
     const group = groupRes.value;
-    const isGroupManagementEnabled =
-      await auth.hasFeatureFlag("group_management");
 
     // Assignment changes use a separate PATCH so invalid membership/name changes cannot leave
     // a partially applied manager change (or vice versa).
@@ -187,15 +181,6 @@ app.patch(
         return apiError(ctx, {
           status_code: 404,
           api_error: { type: "group_not_found", message: "Group not found." },
-        });
-      }
-      if (!isGroupManagementEnabled) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Group management is not enabled for this workspace.",
-          },
         });
       }
       const assignment = await updateGroupManagers(
@@ -227,11 +212,7 @@ app.patch(
         group: {
           ...group.toJSON(),
           memberCount: members.length,
-          allowedActions: getGroupAllowedActions(
-            auth,
-            group,
-            isGroupManagementEnabled
-          ),
+          allowedActions: getGroupAllowedActions(auth, group),
         },
         members: serializeGroupUsers(
           auth,
@@ -307,11 +288,7 @@ app.patch(
       group: {
         ...group.toJSON(),
         memberCount: members.length,
-        allowedActions: getGroupAllowedActions(
-          auth,
-          group,
-          isGroupManagementEnabled
-        ),
+        allowedActions: getGroupAllowedActions(auth, group),
       },
       members: serializeGroupUsers(
         auth,

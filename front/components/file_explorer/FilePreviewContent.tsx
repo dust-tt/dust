@@ -1,12 +1,15 @@
 import { Document } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
+import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
 import {
@@ -351,6 +354,10 @@ interface FilePreviewContentProps {
   isFullWidth?: boolean;
   markdownCanEdit?: boolean;
   markdownContent?: string;
+  /** Where the rich editor shows its comments button and live status, such as a header bar. */
+  markdownHeaderControlsContainer?: HTMLElement | null;
+  /** Where the rich editor shows its save or live status icon, such as next to the file name. */
+  markdownStatusContainer?: HTMLElement | null;
   /** Behind the co_edition flag: the rich editor replaces the preview and the raw editor. */
   markdownRichEditor?: MarkdownRichEditor | null;
   markdownViewMode?: MarkdownFilePreviewViewMode;
@@ -363,9 +370,16 @@ interface FilePreviewContentProps {
 interface RichMarkdownDocumentProps {
   editor: MarkdownRichEditor;
   owner: LightWorkspaceType;
+  headerControlsContainer?: HTMLElement | null;
+  statusContainer?: HTMLElement | null;
 }
 
-function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
+function RichMarkdownDocument({
+  editor,
+  owner,
+  headerControlsContainer,
+  statusContainer,
+}: RichMarkdownDocumentProps) {
   const user = useContext(AuthContext)?.user;
   const signCommentMessage = useSignDfmCommentMessage({
     owner,
@@ -391,6 +405,10 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       }),
     ];
   }, [owner, editor.path]);
+  const embeddableFiles = useDocumentEmbeddableFiles({
+    owner,
+    documentPath: editor.path,
+  });
   const resolveImageSource = useCallback(
     (src: string) => resolveDocumentImageSource(owner, src),
     [owner]
@@ -414,6 +432,8 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
   return (
     <Document
       initialContent={editor.initialContent}
+      headerControlsContainer={headerControlsContainer}
+      statusContainer={statusContainer}
       onSave={live ? undefined : editor.onSave}
       onStateChange={live ? undefined : editor.onStateChange}
       live={live}
@@ -427,8 +447,13 @@ function RichMarkdownDocument({ editor, owner }: RichMarkdownDocumentProps) {
       )}
       commentInputExtensions={commentInputExtensions}
       resolveImageSource={resolveImageSource}
+      embeddableFiles={embeddableFiles}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
+      )}
+      badge={<CoEditionBadge />}
+      renderLiveParticipants={(participants) => (
+        <LiveParticipantsAvatars owner={owner} participants={participants} />
       )}
     />
   );
@@ -443,6 +468,8 @@ export function FilePreviewContent({
   isFullWidth = false,
   markdownCanEdit,
   markdownContent,
+  markdownHeaderControlsContainer,
+  markdownStatusContainer,
   markdownRichEditor,
   markdownViewMode,
   onMarkdownContentChange,
@@ -518,6 +545,8 @@ export function FilePreviewContent({
               key={markdownRichEditor.mountKey}
               editor={markdownRichEditor}
               owner={owner}
+              headerControlsContainer={markdownHeaderControlsContainer}
+              statusContainer={markdownStatusContainer}
             />
           </div>
         );

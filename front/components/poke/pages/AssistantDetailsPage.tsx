@@ -18,7 +18,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
   LinkExternal01,
   LinkWrapper,
   Page,
@@ -242,10 +241,10 @@ export function AssistantDetailsPage() {
                                     href={`/poke/${owner.sId}/skills/${skill.sId}`}
                                     target="_blank"
                                   >
-                                    <IconButton
+                                    <Button
                                       icon={LinkExternal01}
                                       size="xs"
-                                      variant="outline"
+                                      variant="ghost-secondary"
                                     />
                                   </LinkWrapper>
                                 </div>

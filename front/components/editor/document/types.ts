@@ -8,7 +8,7 @@ import type { ReactNode } from "react";
 /** Ok once the content is stored, Err with a message the editor shows next to Retry. */
 export type DocumentSaveResult = Result<void, string>;
 
-export type DocumentCommentAvatarSize = "xxs" | "3xs";
+export type DocumentCommentAvatarSize = "xs" | "xxs" | "3xs";
 
 export interface DocumentProps {
   /** The DFM source of the file. Remount with a new key to open another document. */
@@ -17,6 +17,16 @@ export interface DocumentProps {
   className?: string;
   /** Optional container for the comments' tooltips. Defaults to the enclosing sheet or body. */
   mountPortalContainer?: HTMLElement;
+  /**
+   * Where the comments button shows, such as the host's header bar. Without it, it shows above the
+   * document with the save and live statuses.
+   */
+  headerControlsContainer?: HTMLElement | null;
+  /**
+   * Where the save or live status shows as one icon, such as next to the host's file name. Without
+   * it the statuses show in the badge above the document.
+   */
+  statusContainer?: HTMLElement | null;
   readOnly?: boolean;
   /** Idle time before autosaving, in milliseconds. Defaults to 3,000. */
   autosaveDebounceMs?: number;
@@ -34,7 +44,7 @@ export interface DocumentProps {
    * existing comments stay readable without one.
    */
   commentAuthor?: DfmAuthor;
-  /** Renders a comment author's avatar. */
+  /** Renders a comment author's avatar, or the agent at work in a live document's. */
   renderCommentAuthorAvatar: (
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
@@ -59,6 +69,30 @@ export interface DocumentProps {
   commentInputExtensions?: Extensions;
   /** The URL to display an image at, from its Markdown source, or null to show its alt text. */
   resolveImageSource: (src: string) => string | null;
+  /** Files the `/` menu offers to embed. Without them, it offers no image. */
+  embeddableFiles?: DocumentEmbeddableFiles;
+  /** Shown at the start of the status row, kept in view above the document, such as a stage badge. */
+  badge?: ReactNode;
+  /** Renders the users in the live session, the current one first, such as an avatar stack. */
+  renderLiveParticipants?: (
+    participants: DocumentLiveParticipant[]
+  ) => ReactNode;
+}
+
+/** A file of the document's conversation or pod, embedded by its path. */
+export interface DocumentEmbeddableFile {
+  kind: "image";
+  path: string;
+  name: string;
+}
+
+/** The host's files to embed, loaded only once the `/` menu asks for them. */
+export interface DocumentEmbeddableFiles {
+  /** Empty until loaded. */
+  files: DocumentEmbeddableFile[];
+  isLoading: boolean;
+  /** Asks the host to load `files`. */
+  load: () => void;
 }
 
 /** Where and as whom a Document joins its live session. */
@@ -68,6 +102,12 @@ export interface DocumentLiveSession {
   /** Fetches a one-time ticket for each connection; throws when access is refused. */
   getTicket: () => Promise<string>;
   user: { id: string; name: string; color: string };
+}
+
+/** A user with the live document open. */
+export interface DocumentLiveParticipant {
+  id: string;
+  name: string;
 }
 
 /** Where a live document's connection stands, shown in place of the save status. */

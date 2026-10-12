@@ -111,10 +111,19 @@ export const COLLAB_INTERNAL_ROUTES_PREFIX = "/internal";
 export const LIVE_SOURCE_READ_PATH = "/documents/read";
 export const LIVE_SOURCE_WRITE_PATH = "/documents/write";
 
+/** The agent reading or changing a live document, as its editors show it. */
+export const liveAgentSchema = z.object({
+  agentId: z.string().min(1),
+  name: z.string().min(1),
+});
+
+export type LiveAgent = z.infer<typeof liveAgentSchema>;
+
 export const liveSourceReadRequestSchema = z.object({
   workspaceId: z.string().min(1),
   userId: z.string().min(1).optional(),
   canonicalPath: z.string().min(1),
+  agent: liveAgentSchema.optional(),
 });
 
 export type LiveSourceReadRequest = z.infer<typeof liveSourceReadRequestSchema>;
@@ -159,3 +168,46 @@ export const liveSourceWriteResponseSchema = z.discriminatedUnion("result", [
 export type LiveSourceWriteResponse = z.infer<
   typeof liveSourceWriteResponseSchema
 >;
+
+/**
+ * What an agent is doing in a live document, pushed to its editors as a stateless message.
+ * `editing` goes out just before the agent's change is applied: Hocuspocus may batch document
+ * updates but sends stateless messages at once, so an editor receives it first.
+ */
+export const LIVE_AGENT_ACTIVITIES = ["reading", "editing"] as const;
+
+export type LiveAgentActivity = (typeof LIVE_AGENT_ACTIVITIES)[number];
+
+export const liveAgentServerMessageSchema = z.object({
+  type: z.literal("agent_activity"),
+  agent: liveAgentSchema,
+  activity: z.enum(LIVE_AGENT_ACTIVITIES),
+});
+
+export type LiveAgentServerMessage = z.infer<
+  typeof liveAgentServerMessageSchema
+>;
+
+/** Yjs items by id: `length` consecutive clocks of `client`, from `clock`. */
+const liveIdRangeSchema = z.object({
+  client: z.number().int().nonnegative(),
+  clock: z.number().int().nonnegative(),
+  length: z.number().int().positive(),
+});
+
+export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
+
+/** One range per client a change advances: an agent's change holds one, other ranges are noise. */
+const LIVE_AGENT_EDIT_MAX_RANGES = 16;
+
+/**
+ * The text an agent's change inserted in a live document, by Yjs item ids, so editors highlight
+ * exactly that text and no one else's. Sent right after the change's update.
+ */
+export const liveAgentEditMessageSchema = z.object({
+  type: z.literal("agent_edit"),
+  agent: liveAgentSchema,
+  inserted: z.array(liveIdRangeSchema).max(LIVE_AGENT_EDIT_MAX_RANGES),
+});
+
+export type LiveAgentEditMessage = z.infer<typeof liveAgentEditMessageSchema>;

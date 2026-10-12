@@ -18,6 +18,14 @@ msgid "Add a paragraph"
 msgstr "Ajouter un paragraphe"
 
 #: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "Loading files…"
+msgstr "Chargement des fichiers…"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
+msgid "No matching files"
+msgstr "Aucun fichier correspondant"
+
+#: front/components/editor/document/DocumentBlockMenu.tsx
 msgid "No matching paragraphs"
 msgstr "Aucun paragraphe correspondant"
 
@@ -52,29 +60,13 @@ msgid "Send"
 msgstr "Envoyer"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "{count, plural, one {# comment} other {# comments}}"
-msgstr "{count, plural, one {# commentaire} other {# commentaires}}"
-
-#: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Show {count, plural, one {# comment} other {# comments}}"
-msgstr "Afficher {count, plural, one {# commentaire} other {# commentaires}}"
-
-#: front/components/editor/document/DocumentCommentMarkers.tsx
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Comment by {authorName}"
 msgstr "Commentaire de {authorName}"
 
 #: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Show comment by {authorName}"
-msgstr "Afficher le commentaire de {authorName}"
-
-#: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Comment by unknown"
-msgstr "Commentaire d’un auteur inconnu"
-
-#: front/components/editor/document/DocumentCommentMarkers.tsx
-msgid "Show comment by unknown"
-msgstr "Afficher le commentaire d’un auteur inconnu"
+msgid "Show comment by {authorName}, {count, plural, one {# message} other {# messages}}"
+msgstr "Afficher le commentaire de {authorName}, {count, plural, one {# message} other {# messages}}"
 
 #: front/components/editor/document/DocumentCommentThread.tsx
 msgid "Dust cannot confirm who wrote this message. It may come from an agent or an edit made outside the editor."
@@ -176,6 +168,30 @@ msgid "All comments"
 msgstr "Tous les commentaires"
 
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a table."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient un tableau."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has HTML."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient du HTML."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a task list."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient une liste de tâches."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a code block fenced with ~~~."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient un bloc de code délimité par ~~~."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has an indented code fence."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient une délimitation de code indentée."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
+msgid "This document can't be edited here yet because it has a reference link definition."
+msgstr "Ce document ne peut pas encore être modifié ici, car il contient une définition de lien de référence."
+
+#: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr "Ce document utilise une mise en forme que l’éditeur ne prend pas encore en charge, il ne peut donc pas être modifié ici."
 
@@ -218,6 +234,22 @@ msgstr "Reconnexion…"
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Live editing unavailable"
 msgstr "Édition en direct indisponible"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "reading…"
+msgstr "lit…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "{name} is reading"
+msgstr "{name} lit le document"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "writing…"
+msgstr "écrit…"
+
+#: front/components/editor/document/DocumentSaveStatus.tsx
+msgid "{name} is writing"
+msgstr "{name} écrit dans le document"
 
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Saving is unavailable. Your unsaved changes are still here. Copy them before reopening."
@@ -345,6 +377,19 @@ msgstr "Séparateur"
 #: front/components/editor/document/blocks.ts
 msgid "Separate sections"
 msgstr "Séparer les sections"
+
+#: front/components/editor/document/blocks.ts
+msgctxt "slash menu entry embedding an image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/blocks.ts
+msgid "Show an image from the files"
+msgstr "Afficher une image depuis les fichiers"
+
+#: front/components/editor/document/blocks.ts
+msgid "Choose an image"
+msgstr "Choisir une image"
 
 #: front/components/editor/document/extensions.ts
 msgid "Untitled"

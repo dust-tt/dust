@@ -225,8 +225,8 @@ msgid "Network"
 msgstr "Network"
 
 #: front/components/pod/settings/PodNetworkSection.tsx
-msgid "This Pod's Computer can reach these domains on top of the workspace allowlist. Changes apply to running Computers within about a minute."
-msgstr "This Pod's Computer can reach these domains on top of the workspace allowlist. Changes apply to running Computers within about a minute."
+msgid "Computers in this Pod can reach the following domains, in addition to the workspace allowlist. Changes apply to every Computer running in the Pod within about a minute."
+msgstr "Computers in this Pod can reach the following domains, in addition to the workspace allowlist. Changes apply to every Computer running in the Pod within about a minute."
 
 #: front/components/pod/settings/PodNetworkSection.tsx
 msgid "You can request additional domains; a workspace admin reviews each request."

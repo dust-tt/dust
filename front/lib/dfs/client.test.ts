@@ -82,83 +82,86 @@ describe("DfsClient", () => {
     expect(transport.calls).toHaveLength(0);
   });
 
-  it("stats virtual and real objects with per-item errors and exact versions", async () => {
-    const { client, transport } = setup({
-      Stat: new Ok({
-        results: [
-          {
-            object: wireAttr(ROOT_ID, {
-              id: { root: true },
-              name: "",
-              directory: true,
-              size: "0",
-              metadata: {
-                created: "0",
-                mimeType: "inode/directory",
-                xattrs: {},
-              },
-            }),
-          },
-          {
-            object: wireAttr(FILE_ID, {
-              attrVersion: MAX_UINT64.toString(),
-              metadata: {
-                created: "1600000000000",
-                mimeType: "text/plain",
-                xattrs: { "user.tag": Buffer.from("v") },
-              },
-            }),
-          },
-          { error: { code: "NOT_FOUND" } },
-        ],
-      }),
-    });
+  it.each([undefined, ""])(
+    "stats virtual and real objects with per-item errors, exact versions, and MIME type %j",
+    async (mimeType) => {
+      const { client, transport } = setup({
+        Stat: new Ok({
+          results: [
+            {
+              object: wireAttr(ROOT_ID, {
+                id: { root: true },
+                name: "",
+                kind: "DIRECTORY",
+                size: "0",
+                metadata: {
+                  created: "0",
+                  mimeType: "inode/directory",
+                  xattrs: {},
+                },
+              }),
+            },
+            {
+              object: wireAttr(FILE_ID, {
+                attrVersion: MAX_UINT64.toString(),
+                metadata: {
+                  created: "1600000000000",
+                  mimeType,
+                  xattrs: { "user.tag": Buffer.from("v") },
+                },
+              }),
+            },
+            { error: { code: "NOT_FOUND" } },
+          ],
+        }),
+      });
 
-    const res = await client.stat({
-      objectIds: ["root", FILE_ID, "shared"],
-      includeMetadata: true,
-    });
+      const res = await client.stat({
+        objectIds: ["root", FILE_ID, "shared"],
+        includeMetadata: true,
+      });
 
-    expect(transport.calls[0].request).toEqual({
-      objectIds: [{ root: true }, wireRef(FILE_ID), { shared: true }],
-      includeMetadata: true,
-    });
-    expect(res.isOk()).toBe(true);
-    if (!res.isOk()) {
-      return;
+      expect(transport.calls[0].request).toEqual({
+        objectIds: [{ root: true }, wireRef(FILE_ID), { shared: true }],
+        includeMetadata: true,
+      });
+      expect(res.isOk()).toBe(true);
+      if (!res.isOk()) {
+        return;
+      }
+      const [root, file, shared] = res.value.results;
+      expect(root).toMatchObject({
+        status: "ok",
+        object: {
+          id: "root",
+          name: "",
+          kind: "directory",
+          metadata: { createdMs: 0, xattrs: {} },
+        },
+      });
+      expect(file).toMatchObject({
+        status: "ok",
+        object: {
+          id: FILE_ID,
+          name: "notes.txt",
+          size: 5,
+          mode: 0o600,
+          mtimeMs: 1700000000000,
+          attrVersion: MAX_UINT64,
+          contentVersion: BigInt("2"),
+          view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
+          metadata: { createdMs: 1600000000000, mimeType },
+        },
+      });
+      if (file.status === "ok") {
+        expect(file.object.atimeMs).toBeUndefined();
+        expect(
+          Buffer.from(file.object.metadata?.xattrs["user.tag"] ?? []).toString()
+        ).toBe("v");
+      }
+      expect(shared).toEqual({ status: "error", errorCode: "not_found" });
     }
-    const [root, file, shared] = res.value.results;
-    expect(root).toMatchObject({
-      status: "ok",
-      object: {
-        id: "root",
-        name: "",
-        directory: true,
-        metadata: { createdMs: 0, xattrs: {} },
-      },
-    });
-    expect(file).toMatchObject({
-      status: "ok",
-      object: {
-        id: FILE_ID,
-        name: "notes.txt",
-        size: 5,
-        mode: 0o600,
-        mtimeMs: 1700000000000,
-        attrVersion: MAX_UINT64,
-        contentVersion: BigInt("2"),
-        view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
-        metadata: { createdMs: 1600000000000, mimeType: "text/plain" },
-      },
-    });
-    if (file.status === "ok") {
-      expect(file.object.atimeMs).toBeUndefined();
-      expect(
-        Buffer.from(file.object.metadata?.xattrs["user.tag"] ?? []).toString()
-      ).toBe("v");
-    }
-    expect(shared).toEqual({ status: "error", errorCode: "not_found" });
-  });
+  );
 
   it("returns invalid_input for a malformed object id without calling the server", async () => {
     const { client, transport } = setup({});
@@ -321,7 +324,7 @@ describe("DfsClient", () => {
           parentId: ROOT_ID,
           name: "new.txt",
           objectId: newId,
-          directory: false,
+          kind: "file",
           xattrs: { "user.k": Buffer.from("v") },
         },
         {
@@ -338,7 +341,7 @@ describe("DfsClient", () => {
           name: "new.txt",
           replace: false,
         },
-        { type: "remove", objectId: FILE_ID, directory: false },
+        { type: "remove", objectId: FILE_ID, kind: "file" },
       ],
     });
 
@@ -349,7 +352,7 @@ describe("DfsClient", () => {
             parentId: wireId(ROOT_ID),
             name: "new.txt",
             objectId: wireId(newId),
-            directory: false,
+            kind: "FILE",
             xattrs: { "user.k": Buffer.from("v") },
           },
         },
@@ -370,7 +373,7 @@ describe("DfsClient", () => {
           },
         },
         {
-          remove: { objectId: wireId(FILE_ID), directory: false },
+          remove: { objectId: wireId(FILE_ID), kind: "FILE" },
         },
       ],
     });
@@ -442,7 +445,7 @@ describe("DfsClient", () => {
             object: {
               id: wireId(FILE_ID),
               name: "notes.txt",
-              directory: false,
+              kind: "FILE",
               size: "5",
               mtime: "1700000000000",
             },
@@ -610,8 +613,8 @@ describe("DfsClient", () => {
 
     const res = await client.apply({
       operations: [
-        { type: "remove", objectId: FILE_ID, directory: false },
-        { type: "remove", objectId: ROOT_ID, directory: true },
+        { type: "remove", objectId: FILE_ID, kind: "file" },
+        { type: "remove", objectId: ROOT_ID, kind: "directory" },
       ],
     });
 

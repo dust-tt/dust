@@ -132,6 +132,26 @@ export const MANUAL_ACTION_REQUIRED_TRIGGER_ID =
   "manual-action-required" as const;
 export const MANUAL_ACTION_REQUIRED_TAG = "manual-action-required" as const;
 
+// Transactional emails: sent through Novu like other notifications, but also to recipients without a
+// Dust account (invitees, frame recipients).
+export const WORKSPACE_INVITATION_TRIGGER_ID = "workspace-invitation" as const;
+export const FRAME_LOGIN_CODE_TRIGGER_ID = "frame-login-code" as const;
+export const FRAME_SHARED_TRIGGER_ID = "frame-shared" as const;
+export const SUBSCRIPTION_CANCELED_TRIGGER_ID =
+  "subscription-canceled" as const;
+export const SUBSCRIPTION_REACTIVATED_TRIGGER_ID =
+  "subscription-reactivated" as const;
+export const SUBSCRIPTION_PAYMENT_FAILED_TRIGGER_ID =
+  "subscription-payment-failed" as const;
+export const WORKSPACE_DATA_DELETION_TRIGGER_ID =
+  "workspace-data-deletion" as const;
+export const CREDIT_USAGE_ALERT_TRIGGER_ID = "credit-usage-alert" as const;
+export const GITHUB_CONNECTION_DELETED_TRIGGER_ID =
+  "github-connection-deleted" as const;
+export const MCP_GLOBAL_SHARING_RECONFIGURATION_TRIGGER_ID =
+  "mcp-global-sharing-reconfiguration" as const;
+export const ACCESS_REQUEST_TRIGGER_ID = "access-request" as const;
+
 export const SOUND_NOTIFICATION_OPTIONS = [
   "Pluck",
   "Wood",

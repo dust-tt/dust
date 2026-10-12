@@ -743,6 +743,10 @@ export const useDocumentComments = ({
     cancelDraft: () => {
       editor?.chain().cancelCommentDraft().focus().run();
     },
+    /** Cancels the draft and leaves focus where it is, for a press elsewhere. */
+    dismissDraft: () => {
+      editor?.commands.cancelCommentDraft();
+    },
     submitDraft: async (body: string): Promise<Result<void, string>> => {
       if (!canWrite || !editor || !author || !state.draft) {
         return new Err(t(UNAVAILABLE_MESSAGE));

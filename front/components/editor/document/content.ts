@@ -68,28 +68,47 @@ const isSupportedMarkdownToken = (token: MarkdownToken) =>
     token.raw?.startsWith("```") ||
     token.codeBlockStyle === "indented");
 
-const describeUnsupportedToken = (token: MarkdownToken): string => {
+/** A Markdown element the editor cannot keep and can name. */
+export type UnsupportedElement =
+  | "table"
+  | "html"
+  | "task_list"
+  | "tilde_fence"
+  | "indented_fence"
+  | "reference_definition";
+
+const UNSUPPORTED_ELEMENT_NAMES: Record<UnsupportedElement, string> = {
+  table: "a table",
+  html: "HTML",
+  task_list: "a task list",
+  tilde_fence: "a code block fenced with ~~~",
+  indented_fence: "an indented code fence",
+  reference_definition: "a reference link definition",
+};
+
+const unsupportedElement = (
+  token: MarkdownToken
+): UnsupportedElement | null => {
   if (token.type === "list_item" && token.task) {
-    return "a task list";
+    return "task_list";
   }
   switch (token.type) {
     case "code":
       return token.raw?.trimStart().startsWith("~")
-        ? "a code block fenced with ~~~"
-        : "an indented code fence";
+        ? "tilde_fence"
+        : "indented_fence";
     case "table":
-      return "a table";
+      return "table";
     case "html":
-      return "HTML";
+      return "html";
     case "def":
-      return "a reference link definition";
+      return "reference_definition";
     default:
-      return `"${token.type}" Markdown`;
+      return null;
   }
 };
 
-/** The first Markdown element in `content` the editor cannot keep, or null. */
-const findUnsupportedMarkdown = (content: string): string | null => {
+const findUnsupportedToken = (content: string): MarkdownToken | null => {
   const unsupported: MarkdownToken[] = [];
   documentMarkdown.instance.walkTokens(
     documentMarkdown.instance.lexer(content),
@@ -99,13 +118,19 @@ const findUnsupportedMarkdown = (content: string): string | null => {
       }
     }
   );
-  return unsupported.length > 0
-    ? describeUnsupportedToken(unsupported[0])
-    : null;
+  return unsupported[0] ?? null;
+};
+
+/** The first Markdown element in `content` the editor cannot keep, or null if it has no name. */
+export const findUnsupportedElement = (
+  content: string
+): UnsupportedElement | null => {
+  const token = findUnsupportedToken(content);
+  return token ? unsupportedElement(token) : null;
 };
 
 const hasSupportedMarkdown = (content: string) =>
-  findUnsupportedMarkdown(content) === null;
+  findUnsupportedToken(content) === null;
 
 const withoutTrailingParagraphs = (document: JSONContent): JSONContent => {
   const content = document.content ?? [];
@@ -235,10 +260,14 @@ const isValidDocument = (document: JSONContent) => {
 export const parseDocumentContent = (
   content: string
 ): Result<MarkedDocument, string> => {
-  const unsupported = findUnsupportedMarkdown(content);
+  const unsupported = findUnsupportedToken(content);
   if (unsupported) {
+    const element = unsupportedElement(unsupported);
+    const name = element
+      ? UNSUPPORTED_ELEMENT_NAMES[element]
+      : `"${unsupported.type}" Markdown`;
     return new Err(
-      `The Markdown uses formatting the editor cannot keep: ${unsupported}.`
+      `The Markdown uses formatting the editor cannot keep: ${name}.`
     );
   }
 

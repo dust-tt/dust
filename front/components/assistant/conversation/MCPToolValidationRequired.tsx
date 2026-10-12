@@ -66,6 +66,11 @@ export function MCPToolValidationRequired({
     stopPulsingAction(blockedAction.actionId);
   };
 
+  /**
+   * @cc [owner:achilleburah,label:security;product] always-allow-cascades-queued-calls
+   * "Always allow" must apply "always_approved" to all queued calls to the same tool
+   * (mcpServerName/toolName) for this user in this conversation.
+   */
   const handleValidation = async (
     approved: MCPValidationOutputType
   ): Promise<boolean> => {
@@ -105,7 +110,7 @@ export function MCPToolValidationRequired({
           conversationId: cascadeAction.conversationId,
           messageId: cascadeAction.messageId,
           actionId: cascadeAction.actionId,
-          approved: "approved",
+          approved: "always_approved",
         });
         if (cascadeResult.success) {
           removeCompletedAction(cascadeAction.actionId);

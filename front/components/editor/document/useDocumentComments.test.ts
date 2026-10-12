@@ -1,5 +1,8 @@
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
-import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
+import {
+  documentCommentsPluginKey,
+  getDocumentComments,
+} from "@app/components/editor/document/DocumentComments";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
@@ -14,11 +17,20 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { JSONContent } from "@tiptap/core";
-import type { Slice } from "@tiptap/pm/model";
+import { Fragment, Slice } from "@tiptap/pm/model";
+import type { Transaction } from "@tiptap/pm/state";
 import { Plugin } from "@tiptap/pm/state";
-import { ReplaceStep } from "@tiptap/pm/transform";
+import { AddMarkStep, ReplaceStep } from "@tiptap/pm/transform";
 import { Decoration } from "@tiptap/pm/view";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 const AUTHOR: DfmAuthor = { kind: "user", id: "usr_tom", name: "Tom" };
 const AT = "2026-09-25T14:16:32.380Z";
@@ -208,6 +220,62 @@ describe("useDocumentComments", () => {
         expect.objectContaining({ author: AUTHOR, body: "Too bold?" }),
       ]);
     }
+  });
+
+  it("saves a new comment spanning a hard break", async () => {
+    const { result, onSave } = await renderCommentedEditor(
+      "Hello brave  \nnew world.\n"
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      editor.commands.setTextSelection({ from: 7, to: 16 });
+      result.current.comments.startDraft();
+    });
+    await act(async () => {
+      expect((await result.current.comments.submitDraft("Hi")).isOk()).toBe(
+        true
+      );
+    });
+    await act(() => result.current.document.save());
+
+    const parsed = parseDfm(onSave.mock.calls[0][0]);
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      const [comment] = parsed.value.comments;
+      expect(parsed.value.body).toBe(
+        `Hello :comment-start{id=${comment.id}}brave  \nnew:comment-end{id=${comment.id}} world.`
+      );
+    }
+  });
+
+  it("marks a new comment over formatted text in one step", async () => {
+    const { result } = await renderCommentedEditor(
+      "Hello *brave* **new** world.\n"
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+    const steps: Transaction["steps"][number][] = [];
+    editor.on("transaction", ({ transaction }) => {
+      steps.push(...transaction.steps);
+    });
+
+    act(() => {
+      select(editor, "brave new world");
+      result.current.comments.startDraft();
+    });
+    await act(async () => {
+      expect((await result.current.comments.submitDraft("Hi")).isOk()).toBe(
+        true
+      );
+    });
+
+    expect(steps.filter((step) => step instanceof AddMarkStep)).toHaveLength(1);
   });
 
   it("refuses a draft whose text can no longer take a comment", async () => {
@@ -1108,6 +1176,187 @@ describe("useDocumentComments", () => {
         editor.commands.undo();
       });
       expect(highlighted(editor)).toBe("there");
+    });
+
+    describe("after a remote change", () => {
+      type MountedEditor = NonNullable<
+        ReturnType<typeof useDocumentEditor>["editor"]
+      >;
+      const thread = (id: string) =>
+        `::comment{id=${id} status=open}\n\n::message{author=user:u name="U" at=${AT}}\n\nNote.\n`;
+      // "there" is at 4-9, "friend" at 14-20, "Plain" starts at 22.
+      const TWO_COMMENTS = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\nYo :comment-start{id=c2}friend:comment-end{id=c2}\n\nPlain text.\n\n:::annotations\n${thread("c1")}${thread("c2")}:::\n`;
+
+      afterEach(() => {
+        vi.restoreAllMocks();
+      });
+
+      async function renderTwoComments() {
+        const { result } = await renderCommentedEditor(TWO_COMMENTS);
+        const editor = result.current.document.editor;
+        if (!editor) {
+          throw new Error("Editor did not mount.");
+        }
+        return editor;
+      }
+
+      /** Applies the edit as y-tiptap applies a remote change: one step replacing the whole document with new nodes. */
+      function applyAsRemote(
+        editor: MountedEditor,
+        edit: (tr: Transaction) => void
+      ) {
+        const { state } = editor;
+        const edited = state.tr;
+        edit(edited);
+        const rebuilt = Fragment.fromJSON(
+          state.schema,
+          edited.doc.content.toJSON()
+        );
+        act(() => {
+          editor.view.dispatch(
+            state.tr.replace(
+              0,
+              state.doc.content.size,
+              new Slice(rebuilt, 0, 0)
+            )
+          );
+        });
+      }
+
+      const highlightOf = (editor: MountedEditor, id: string) =>
+        [
+          ...editor.view.dom.querySelectorAll(
+            `[data-comment-highlight="${id}"]`
+          ),
+        ]
+          .map((element) => element.textContent)
+          .join("");
+
+      const builtRanges = (built: { mock: { calls: unknown[][] } }) =>
+        built.mock.calls.map(([from, to]) => [from, to]);
+
+      it("rebuild only the highlights of the paragraph changed inside a comment", async () => {
+        const editor = await renderTwoComments();
+        const built = vi.spyOn(Decoration, "inline");
+
+        applyAsRemote(editor, (tr) => {
+          // Inside "friend", after "fr", without the comment's mark.
+          tr.insert(16, editor.schema.text("XX"));
+        });
+
+        expect(builtRanges(built).every(([from]) => Number(from) >= 10)).toBe(
+          true
+        );
+        expect(highlightOf(editor, "c1")).toBe("there");
+        expect(highlightOf(editor, "c2")).toBe("frXXiend");
+        expect(getMarkedCommentIds(editor.getJSON())).toEqual(
+          new Set(["c1", "c2"])
+        );
+      });
+
+      it("rebuild no highlight for a change outside comments", async () => {
+        const editor = await renderTwoComments();
+        const built = vi.spyOn(Decoration, "inline");
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Very ", 22);
+        });
+        applyAsRemote(editor, () => undefined);
+
+        expect(built).not.toHaveBeenCalled();
+        expect(highlightOf(editor, "c1")).toBe("there");
+        expect(highlightOf(editor, "c2")).toBe("friend");
+        expect(editor.state.doc.child(2).textContent).toBe("Very Plain text.");
+      });
+
+      it("go away when the commented text is deleted", async () => {
+        const editor = await renderTwoComments();
+        const built = vi.spyOn(Decoration, "inline");
+
+        applyAsRemote(editor, (tr) => {
+          tr.delete(4, 9);
+        });
+
+        expect(built).not.toHaveBeenCalled();
+        expect(highlightOf(editor, "c1")).toBe("");
+        expect(highlightOf(editor, "c2")).toBe("friend");
+      });
+
+      it("do not spread to text inserted at a comment's edges", async () => {
+        const editor = await renderTwoComments();
+
+        applyAsRemote(editor, (tr) => {
+          tr.insert(20, editor.schema.text("YY"));
+          tr.insert(14, editor.schema.text("XX"));
+        });
+
+        expect(highlightOf(editor, "c2")).toBe("friend");
+        expect(editor.state.doc.child(1).textContent).toBe("Yo XXfriendYY");
+        expect(highlightOf(editor, "c1")).toBe("there");
+      });
+
+      it("keep a pending draft over unchanged text", async () => {
+        const editor = await renderTwoComments();
+        act(() => {
+          editor
+            .chain()
+            .setTextSelection({ from: 1, to: 3 })
+            .startCommentDraft()
+            .run();
+        });
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Very ", 22);
+        });
+
+        expect(
+          editor.view.dom.querySelector("[data-comment-draft]")?.textContent
+        ).toBe("Hi");
+        expect(documentCommentsPluginKey.getState(editor.state)?.draft).toEqual(
+          { from: 1, to: 3 }
+        );
+      });
+
+      it("rebuild nothing in an unchanged paragraph between two changed ones", async () => {
+        const editor = await renderTwoComments();
+        const built = vi.spyOn(Decoration, "inline");
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Very ", 22);
+          tr.insertText("Oh ", 1);
+        });
+
+        expect(
+          built.mock.calls.map(
+            ([, , attrs]) => attrs?.["data-comment-highlight"]
+          )
+        ).toEqual(["c1"]);
+        expect(highlightOf(editor, "c1")).toBe("there");
+        expect(highlightOf(editor, "c2")).toBe("friend");
+      });
+
+      it("keep a pending draft over unchanged text changed on both sides", async () => {
+        const editor = await renderTwoComments();
+        act(() => {
+          editor
+            .chain()
+            .setTextSelection({ from: 23, to: 26 })
+            .startCommentDraft()
+            .run();
+        });
+
+        applyAsRemote(editor, (tr) => {
+          tr.insertText("Y", 27);
+          tr.insertText("X", 22);
+        });
+
+        expect(
+          editor.view.dom.querySelector("[data-comment-draft]")?.textContent
+        ).toBe("lai");
+        expect(documentCommentsPluginKey.getState(editor.state)?.draft).toEqual(
+          { from: 24, to: 27 }
+        );
+      });
     });
   });
 

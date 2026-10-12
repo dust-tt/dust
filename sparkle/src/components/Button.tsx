@@ -120,9 +120,11 @@ const buttonVariants = cva(
         ),
         "ghost-secondary": cn(
           "text-muted-foreground",
+          "hover:text-foreground active:text-foreground",
           "hover:bg-black/[0.02] active:bg-black/[0.02]",
           "dark:hover:bg-white/[0.08] dark:active:bg-white/[0.08]",
           "data-[disabled]:text-faint",
+          "data-[disabled]:hover:text-faint data-[disabled]:active:text-faint",
           "disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
         ),
         "highlight-ghost": cn(

@@ -13,7 +13,7 @@ import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";
 import { extractFromString } from "@app/lib/mentions/format";
 import { notifyNewProjectConversation } from "@app/lib/notifications/triggers/project-new-conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { documentCommentMessageHeading } from "@app/lib/resources/skill/code_defined/system/document_comments";
+import { documentCommentMessageHeading } from "@app/lib/resources/skill/code_defined/global/markdown_documents";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -124,7 +124,7 @@ const oneLine = (text: string) => text.replace(/\s+/g, " ").trim();
 /**
  * @cc [owner:tdraier,label:product] document-comment-message
  * The user message for a comment MUST open with `documentCommentMessageHeading`, which turns on
- * the `document_comments` skill, naming the thread's id, the document's path and where it lives,
+ * the `markdown_documents` skill, naming the thread's id, the document's path and where it lives,
  * then give the quoted passage when there is one and the new message as written. It MUST NOT
  * repeat the thread's earlier messages, which agents read in the document.
  */

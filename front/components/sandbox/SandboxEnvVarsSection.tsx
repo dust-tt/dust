@@ -165,9 +165,9 @@ function getFormSchema(t: (descriptor: MessageDescriptor) => string) {
 
 type FormValues = z.infer<ReturnType<typeof getFormSchema>>;
 
-const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Environment variables mounted on every Computer in this workspace. Values are write-only and snapshotted when a Computer starts.`;
-const POD_ENV_VARS_DESCRIPTION = msg`Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts.`;
-const POD_ENV_VARS_READ_ONLY_DESCRIPTION = msg`Environment variables mounted on every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values are write-only and snapshotted when a Computer starts. Workspace admins manage these variables.`;
+const WORKSPACE_ENV_VARS_DESCRIPTION = msg`Environment variables for every Computer in this workspace. Values cannot be viewed after saving. Changes apply to new Computers.`;
+const POD_ENV_VARS_DESCRIPTION = msg`Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers.`;
+const POD_ENV_VARS_READ_ONLY_DESCRIPTION = msg`Environment variables for every Computer in this Pod. Workspace variables are inherited — a Pod variable with the same name takes precedence. Values cannot be viewed after saving. Changes apply to new Computers. Workspace admins manage these variables.`;
 const HTTPS_SECRETS_DESCRIPTION = msg`Encrypted; injected only into outbound HTTPS requests to allowlisted domains.`;
 const CONFIG_DESCRIPTION = msg`Plain, non-sensitive environment variables.`;
 

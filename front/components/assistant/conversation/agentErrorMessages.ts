@@ -142,6 +142,10 @@ const CODE_MESSAGES: Record<string, AgentErrorMessages> = {
     title: msg`Early exit`,
     description: msg`A tool stopped before it finished. Check whether it completed, then retry.`,
   },
+  agent_not_available: {
+    title: msg`Agent not available`,
+    description: msg`This agent is no longer available to you. Contact your workspace administrator or use another agent.`,
+  },
   model_not_available: {
     title: DEFAULT_TITLE,
     description: msg`The model this agent uses isn't available. Edit the agent to use another model (advanced settings in the Instructions panel).`,

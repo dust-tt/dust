@@ -68,9 +68,12 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
+import type {
+  FetchLike,
+  Transport,
+} from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { McpError } from "@modelcontextprotocol/sdk/types.js";
+import { ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Dispatcher } from "undici";
 import { z } from "zod";
@@ -797,6 +800,44 @@ export async function connectToMCPServer(
   return new Ok(mcpClient);
 }
 
+/**
+ * @cc [owner:philipperolet,label:performance] bounded-connect
+ * The returned promise MUST settle within `DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS`, including the
+ * `notifications/initialized` message sent after `initialize`. On failure, including timeout, it
+ * MUST close `mcpClient` before rejecting, so that a pending request is aborted and the client can
+ * be reused by the SSE fallback.
+ */
+// Exported for tests.
+export async function connectWithTimeout(
+  mcpClient: Client,
+  transport: Transport
+): Promise<void> {
+  let timeoutId: NodeJS.Timeout | undefined;
+  // The SDK's connect `timeout` option only bounds the `initialize` request: a server that never
+  // answers the `notifications/initialized` POST stalls the connection until undici's 300s
+  // headers timeout, far beyond the agent loop activity heartbeat timeout.
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(
+      () =>
+        reject(
+          new McpError(ErrorCode.RequestTimeout, "MCP connection timed out")
+        ),
+      DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS
+    );
+  });
+
+  try {
+    await Promise.race([mcpClient.connect(transport), timeoutPromise]);
+  } catch (error) {
+    // Aborts the request still pending on timeout. The SDK does not close the transport when it
+    // fails to start (e.g. an SSE stream that errored), so this also detaches it.
+    await mcpClient.close();
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 // Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
 // If the URL path ends with /sse, skip HTTP streaming and use SSE directly.
 async function connectToRemoteMCPServer(
@@ -807,15 +848,12 @@ async function connectToRemoteMCPServer(
   // If the URL path ends with /sse, use SSE transport directly.
   if (url.pathname.endsWith("/sse")) {
     const sseTransport = new SSEClientTransport(url, req);
-    return mcpClient.connect(sseTransport);
+    return connectWithTimeout(mcpClient, sseTransport);
   }
 
   try {
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
-    await mcpClient.connect(streamableHttpTransport, {
-      // The default timeout is 60 seconds, which may exceed the heartbeat timeout.
-      timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
-    });
+    await connectWithTimeout(mcpClient, streamableHttpTransport);
   } catch (error) {
     // Check if the error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
@@ -832,9 +870,7 @@ async function connectToRemoteMCPServer(
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
-      return mcpClient.connect(sseTransport, {
-        timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
-      });
+      return connectWithTimeout(mcpClient, sseTransport);
     }
     throw error;
   }

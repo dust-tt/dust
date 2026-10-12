@@ -81,12 +81,8 @@ const GovernancePage = withSuspense(
 );
 
 function PeopleRoute() {
-  const { isManager, featureFlags, groupManagement } = useAuth();
-  if (
-    !isManager &&
-    (!featureFlags.includes("group_management") ||
-      !hasGroupManagementScope(groupManagement?.read_usage))
-  ) {
+  const { isManager, groupManagement } = useAuth();
+  if (!isManager && !hasGroupManagementScope(groupManagement?.read_usage)) {
     return <Custom404 />;
   }
   return (
@@ -97,7 +93,7 @@ function PeopleRoute() {
 }
 
 function CreditsRoute() {
-  const { workspace, subscription, featureFlags, groupManagement } = useAuth();
+  const { workspace, subscription, groupManagement } = useAuth();
   if (isManager(workspace)) {
     return (
       <AdminLayout>
@@ -109,10 +105,7 @@ function CreditsRoute() {
       </AdminLayout>
     );
   }
-  if (
-    !featureFlags.includes("group_management") ||
-    !hasGroupManagementScope(groupManagement?.read_usage)
-  ) {
+  if (!hasGroupManagementScope(groupManagement?.read_usage)) {
     return <Custom404 />;
   }
   return (

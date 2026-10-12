@@ -23,12 +23,18 @@ import {
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type {
+  LiveAgent,
+  LiveAgentActivity,
+  LiveAgentEditMessage,
+  LiveAgentServerMessage,
   LiveCommentErrorCode,
   LiveCommentServerMessage,
+  LiveIdRange,
   LiveSourceReadResponse,
   LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
+  BODY_FRAGMENT_NAME,
   LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
@@ -40,10 +46,15 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
+import type * as Y from "yjs";
 import { z } from "zod";
 
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
+// Each store serializes and uploads the whole `.md`, its only durable copy for now: a crash loses up
+// to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown checkpoints them first.
+const STORE_DEBOUNCE_MS = 5 * 1000;
+const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 
 /** What a loaded document needs beside its Yjs state to be checkpointed. */
 interface LiveSession {
@@ -57,6 +68,35 @@ interface LiveSession {
 
 const serverMessage = (message: LiveCommentServerMessage) =>
   JSON.stringify(message);
+
+const agentActivityMessage = (
+  agent: LiveAgent,
+  activity: LiveAgentActivity
+): string =>
+  JSON.stringify({
+    type: "agent_activity",
+    agent,
+    activity,
+  } satisfies LiveAgentServerMessage);
+
+/** The Yjs items `transaction` inserted, by id. */
+const insertedRanges = (transaction: Y.Transaction): LiveIdRange[] => {
+  const ranges: LiveIdRange[] = [];
+  transaction.afterState.forEach((after, client) => {
+    const before = transaction.beforeState.get(client) ?? 0;
+    if (after > before) {
+      ranges.push({ client, clock: before, length: after - before });
+    }
+  });
+  return ranges;
+};
+
+const agentEditMessage = (agent: LiveAgent, inserted: LiveIdRange[]): string =>
+  JSON.stringify({
+    type: "agent_edit",
+    agent,
+    inserted,
+  } satisfies LiveAgentEditMessage);
 
 const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
@@ -153,6 +193,9 @@ export async function authenticateConnection(
  */
 export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
   const hocuspocus = new Hocuspocus<LiveFile>({
+    debounce: STORE_DEBOUNCE_MS,
+    maxDebounce: STORE_MAX_DEBOUNCE_MS,
+
     // The token is a ticket minted by front-api for this user, workspace and file.
     async onAuthenticate({ documentName, token, connectionConfig }) {
       const parsed = parseLiveDocumentName(documentName);
@@ -206,7 +249,7 @@ export function createCollabHocuspocus(): Hocuspocus<LiveFile> {
       }
     },
 
-    // TODO(co-edition): this writes the `.md` on every debounced store, about every 2 to 10 seconds
+    // TODO(co-edition): this writes the `.md` on every debounced store, about every 5 to 30 seconds
     // while people type. LIVE_SESSION.md keeps the Yjs state in a durable store between
     // checkpoints instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
@@ -501,6 +544,24 @@ export async function readLiveSource(
 }
 
 /**
+ * @cc [owner:PopDaph,label:product] collab-agent-activity
+ * Every connection of a document Hocuspocus holds MUST be told what `agent` is doing in it, and
+ * nothing MUST be sent for a document it does not hold. Callers MUST only report an agent whose
+ * user may read the document live (`checkLiveReadAccess`).
+ */
+export function showLiveAgentActivity(
+  hocuspocus: Hocuspocus<LiveFile>,
+  documentName: string,
+  agent: LiveAgent,
+  activity: LiveAgentActivity
+): void {
+  const document = hocuspocus.documents.get(documentName);
+  if (document && !document.isDestroyed) {
+    document.broadcastStateless(agentActivityMessage(agent, activity));
+  }
+}
+
+/**
  * @cc [owner:tdraier,label:product;concurrency;security] collab-live-source-write
  * A write MUST only target the document named after `file`'s workspace and path, so its checkpoint
  * writes the file the document was loaded from. It MUST answer `closed`, changing nothing, when
@@ -516,11 +577,20 @@ export async function readLiveSource(
  * within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
  * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
- * them.
+ * them. With `agent`, a change of the source MUST be announced to every connection as that agent
+ * editing right before it is applied; it MUST be announced as reading again if the change is then
+ * refused or leaves the document's body unchanged. Once a change of the body is applied, its update
+ * MUST be sent, then the text it inserted announced as that agent's edit (`agent_edit`, the ids of
+ * the items the change's own transaction inserted); failing to read them MUST only skip it.
  */
 export async function writeLiveSource(
   hocuspocus: Hocuspocus<LiveFile>,
-  { file, base, source }: { file: LiveFile; base: string; source: string }
+  {
+    file,
+    base,
+    source,
+    agent,
+  }: { file: LiveFile; base: string; source: string; agent?: LiveAgent }
 ): Promise<Result<LiveSourceWriteResult, string>> {
   if (!file.canWrite) {
     return new Err("The file cannot be written.");
@@ -558,13 +628,55 @@ export async function writeLiveSource(
       return new Ok("changed");
     }
 
-    // As a direct connection's change, so `onChange` records `file` as its writer.
-    const comments = replaceYDocContent(document, source, {
-      source: "local",
-      context: file,
-    });
+    // Before the change: Hocuspocus may batch the update, never a stateless message.
+    const announced = agent !== undefined && source !== current.value;
+    if (announced) {
+      document.broadcastStateless(agentActivityMessage(agent, "editing"));
+    }
+    // Observed on the body: another spelling of the same document, or a change of front matter
+    // alone, leaves it as it was and gives editors nothing to show.
+    const body = document.getXmlFragment(BODY_FRAGMENT_NAME);
+    let bodyChanged = false;
+    let inserted: LiveIdRange[] = [];
+    const onBodyChange = (_events: unknown, transaction: Y.Transaction) => {
+      bodyChanged = true;
+      // Presentation only: a failure must not fail the write, which Yjs has applied.
+      try {
+        inserted = insertedRanges(transaction);
+      } catch (err) {
+        logger.warn(
+          { err: normalizeError(err), documentName },
+          "Could not read the text an agent's change inserted"
+        );
+      }
+    };
+    if (announced) {
+      body.observeDeep(onBodyChange);
+    }
+    let comments: Result<DfmComment[], string> = new Err(
+      "The change could not be applied."
+    );
+    try {
+      // As a direct connection's change, so `onChange` records `file` as its writer.
+      comments = replaceYDocContent(document, source, {
+        source: "local",
+        context: file,
+      });
+    } finally {
+      if (announced) {
+        body.unobserveDeep(onBodyChange);
+        if (comments.isErr() || !bodyChanged) {
+          document.broadcastStateless(agentActivityMessage(agent, "reading"));
+        }
+      }
+    }
     if (comments.isErr()) {
       return comments;
+    }
+    if (announced && inserted.length > 0) {
+      // The update first, so editors already hold the text the message names.
+      document.flush();
+      document.broadcastStateless(agentEditMessage(agent, inserted));
     }
     const threadsChanged =
       JSON.stringify(comments.value) !== JSON.stringify(session.comments);

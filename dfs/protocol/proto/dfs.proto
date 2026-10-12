@@ -45,7 +45,7 @@ package dfs.v1;
 // report either success or an ErrorDetails failure. An element's failure MUST NOT suppress other
 // results. Request-wide failures MUST follow dfs-rpc-errors.
 service Dfs {
-  // Requires the server key; tenant_id names the tenant to create.
+  // Requires the master key; tenant_id names the tenant to create.
   rpc CreateTenant(CreateTenantRequest) returns (Tenant);
 
   // Requires a tenant key, which determines the authenticated tenant.
@@ -137,11 +137,12 @@ message Attr {
 }
 
 // @cc [owner:spolu,label:api] dfs-extended-metadata-limits
-// MIME types MUST be valid and at most 255 UTF-8 bytes. Xattr names MUST contain 1-255 UTF-8 bytes
-// without NUL. Combined xattr key/value byte lengths MUST NOT exceed 32 KiB (32,768 bytes).
+// MIME types MAY be absent or empty. Nonempty MIME types MUST be valid and at most 255 UTF-8 bytes.
+// Xattr names MUST contain 1-255 UTF-8 bytes without NUL. Combined xattr key/value byte lengths MUST
+// NOT exceed 32 KiB (32,768 bytes).
 message ExtendedMetadata {
   required uint64 created = 1;
-  required string mime_type = 3;
+  optional string mime_type = 3;
   map<string, bytes> xattrs = 4;
 }
 
@@ -180,15 +181,15 @@ message DenyGrant {
 }
 
 // @cc [owner:spolu,label:api] dfs-create-tenant-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Root grants MUST contain at most 512 distinct grant
-// values; identical values MUST be deduplicated.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Root grants MUST contain at most 512 distinct
+// grant values; identical values MUST be deduplicated.
 message CreateTenantRequest {
   required string tenant_id = 1;
   repeated Grant root_grants = 2;
 }
 
 // @cc [owner:spolu,label:api] dfs-tenant-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Tenant keys MUST contain exactly 64 characters.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Tenant keys MUST contain exactly 64 characters.
 message Tenant {
   required string tenant_id = 1;
   required ObjectId root_id = 2;
@@ -206,16 +207,17 @@ message CreateSessionRequest {
 // @cc [owner:spolu,label:api;security] dfs-session-revocation
 // The tenant MUST be derived from the authenticated tenant key. The session ID MUST be nonempty
 // and identify a session in that tenant. Unknown sessions and sessions in another tenant MUST
-// return NOT_FOUND. Success MUST prevent new admissions, drain admitted mutations, and invalidate
-// the session key. Concurrent refresh MUST NOT undo revocation.
+// return NOT_FOUND. Success MUST remove the session from FDB. Cached authentication MUST stop new
+// admissions within 30 seconds of revocation; already admitted RPCs MAY finish. Concurrent refresh
+// MUST NOT undo revocation.
 message RevokeSessionRequest {
   required string session_id = 1;
 }
 
 // @cc [owner:spolu,label:api] dfs-session-limits
-// Tenant IDs MUST contain 1-256 UTF-8 bytes. Subjects MUST contain at most 512 unique values, each
-// containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for CreateSession and
-// MUST be empty for CurrentSession and RefreshSession.
+// Tenant IDs MUST contain 1-256 UTF-8 bytes without NUL. Subjects MUST contain at most 512 unique
+// values, each containing 1-1,024 UTF-8 bytes. The session key MUST contain 64 characters for
+// CreateSession and MUST be empty for CurrentSession and RefreshSession.
 message Session {
   required string id = 1;
   required string tenant_id = 2;

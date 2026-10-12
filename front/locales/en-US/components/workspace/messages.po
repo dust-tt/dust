@@ -249,6 +249,7 @@ msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has be
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
 #: front/components/workspace/UpgradeRequestLimitModal.tsx
 msgid "Close"
 msgstr "Close"
@@ -948,6 +949,10 @@ msgstr "Limits"
 msgid "Order"
 msgstr "Order"
 
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Groups join the order once they have a group budget."
+msgstr "Groups join the order once they have a group budget."
+
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
 msgstr "Edit spend limit for {memberName}"
@@ -1001,10 +1006,6 @@ msgstr "Move down"
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "The order of group budgets could not be loaded."
 msgstr "The order of group budgets could not be loaded."
-
-#: front/components/workspace/GroupBudgetOrderTab.tsx
-msgid "No group has a budget yet."
-msgstr "No group has a budget yet."
 
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "Shares members with <0>{groupName}</0>"
@@ -1298,6 +1299,7 @@ msgid "{summary} (custom)"
 msgstr "{summary} (custom)"
 
 #: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
 msgid "Assign seat"
 msgstr "Assign seat"
 
@@ -1632,6 +1634,15 @@ msgstr "Check Dust plans"
 #: front/components/workspace/UpgradePlanDialog.tsx
 msgid "You do not have permission to upgrade the plan."
 msgstr "You do not have permission to upgrade the plan."
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Edit group budget"
+msgstr "Edit group budget"
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+msgid "Could not load the shared group budget for {requesterName}. Refresh the page to try again."
+msgstr "Could not load the shared group budget for {requesterName}. Refresh the page to try again."
 
 #: front/components/workspace/UpgradeRequestLimitModal.tsx
 msgid "Edit spend limit for {requesterName}"

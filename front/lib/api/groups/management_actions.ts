@@ -5,26 +5,19 @@ import { isManageableGroupKind } from "@app/types/groups";
 
 /**
  * @cc [owner:philipperolet,label:security;api] advertised-group-actions
- * A group response MUST advertise only actions allowed by current server permissions. Delegated
- * actions MUST be hidden while group_management is off; provisioned and privileged group
- * restrictions still apply. This is UI guidance, not mutation authorization.
+ * A group response MUST advertise only actions allowed by current server permissions, including
+ * membership restrictions for provisioned and privileged groups. This is UI guidance, not
+ * mutation authorization.
  */
 export function getGroupAllowedActions(
   auth: Authenticator,
-  group: GroupResource,
-  isGroupManagementEnabled: boolean
+  group: GroupResource
 ): GroupAllowedActions {
-  const canUseDelegation =
-    isGroupManagementEnabled || auth.isManager() || auth.isAdmin();
-
   return {
-    canEditMembers: canUseDelegation && auth.can("write", group),
+    canEditMembers: auth.can("write", group),
     canEditDetails: auth.can("admin", group),
-    canReadUsage: canUseDelegation && auth.can("read_usage", group),
-    canSetUsageLimits: canUseDelegation && auth.can("set_usage_limits", group),
-    canAssignManagers:
-      isGroupManagementEnabled &&
-      auth.isManager() &&
-      isManageableGroupKind(group.kind),
+    canReadUsage: auth.can("read_usage", group),
+    canSetUsageLimits: auth.can("set_usage_limits", group),
+    canAssignManagers: auth.isManager() && isManageableGroupKind(group.kind),
   };
 }

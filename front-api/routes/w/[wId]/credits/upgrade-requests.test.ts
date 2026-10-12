@@ -5,7 +5,6 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -151,8 +150,6 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       const { workspace, adminAuth, member, overlap, outsider, second } =
         await createManagedRequests();
       const url = upgradeRequestsUrl(workspace.sId);
-      expect((await honoApp.request(url)).status).toBe(403);
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
 
       const response = await honoApp.request(url);
       expect(response.status).toBe(200);
@@ -181,7 +178,6 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     it("returns no requests when managed members leave and never exposes another workspace", async () => {
       const { workspace, adminAuth, member, overlap, first, second } =
         await createManagedRequests();
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       await first.dangerouslyRemoveMembers(adminAuth, {
         users: [member.toJSON()],
       });
@@ -215,7 +211,7 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
 
   describe("PATCH (group manager)", () => {
     it("gates resolution and audits the group that authorized it", async () => {
-      const { workspace, adminAuth, delegate, member, outsider, first } =
+      const { workspace, adminAuth, member, outsider, first } =
         await createManagedRequests();
       const request = await MembershipUpgradeRequestResource.getPendingForUser(
         adminAuth,
@@ -230,23 +226,12 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
       if (!request || !outside) {
         return;
       }
-      const auth = await Authenticator.fromUserIdAndWorkspaceId(
-        delegate.sId,
-        workspace.sId
-      );
       const resolve = (requestId: string) =>
         honoApp.request(`${upgradeRequestsUrl(workspace.sId)}/${requestId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ status: "denied" }),
         });
-      expect((await resolve(request.sId)).status).toBe(403);
-      const disabled = await resolveUpgradeRequest(auth, {
-        requestId: request.sId,
-        status: "denied",
-      });
-      expect(disabled.isErr()).toBe(true);
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       expect((await resolve(outside.sId)).status).toBe(404);
       const response = await resolve(request.sId);
       expect(response.status).toBe(200);
@@ -266,7 +251,6 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     it("rechecks membership and workspace when resolving a previously loaded request", async () => {
       const { workspace, adminAuth, delegate, member, first } =
         await createManagedRequests();
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       const request = await MembershipUpgradeRequestResource.getPendingForUser(
         adminAuth,
         { user: member }
@@ -342,7 +326,6 @@ describe("/api/w/[wId]/credits/upgrade-requests", () => {
     it("allows only one concurrent resolution and emits one audit event", async () => {
       const { workspace, adminAuth, delegate, member } =
         await createManagedRequests();
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       const request = await MembershipUpgradeRequestResource.getPendingForUser(
         adminAuth,
         { user: member }

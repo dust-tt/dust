@@ -4,6 +4,7 @@ import { docxSkill } from "@app/lib/resources/skill/code_defined/global/docx";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/code_defined/global/go_deep";
 import { jobSkill } from "@app/lib/resources/skill/code_defined/global/job";
+import { markdownDocumentsSkill } from "@app/lib/resources/skill/code_defined/global/markdown_documents";
 import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/global/mention_users";
 import { pdfSkill } from "@app/lib/resources/skill/code_defined/global/pdf";
 import { pptxSkill } from "@app/lib/resources/skill/code_defined/global/pptx";
@@ -23,6 +24,7 @@ export const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   framesSkill,
   goDeepSkill,
   jobSkill,
+  markdownDocumentsSkill,
   mentionUsersSkill,
   pdfSkill,
   pptxSkill,

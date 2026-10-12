@@ -190,13 +190,8 @@ export const DocumentCommentsList = ({
         ref={listRef}
         aria-label={t`Comments`}
         aria-hidden={!open || undefined}
+        data-document-layer={open ? "" : undefined}
         data-state={open ? "open" : "closed"}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && !event.defaultPrevented) {
-            event.preventDefault();
-            closeList();
-          }
-        }}
         className={cn(
           "pointer-events-auto absolute right-0 top-2 flex max-h-[min(36rem,70vh)] w-[22.5rem] max-w-full flex-col overflow-hidden",
           "origin-top-right rounded-2xl border border-border bg-background font-sans text-foreground shadow-xl antialiased dark:bg-muted-background",
@@ -261,11 +256,13 @@ export const DocumentCommentsList = ({
 interface DocumentCommentsToggleProps {
   listId: string;
   comments: DocumentCommentsController;
+  size: "xs" | "sm";
 }
 
 export const DocumentCommentsToggle = ({
   listId,
   comments,
+  size,
 }: DocumentCommentsToggleProps) => {
   const { t } = useLingui();
   const unresolvedCount = comments.unresolved.length;
@@ -274,7 +271,7 @@ export const DocumentCommentsToggle = ({
       ref={comments.toggleRef}
       type="button"
       variant={comments.listOpen ? "primary" : "ghost"}
-      size="xs"
+      size={size}
       icon={MessageCircle01}
       label={unresolvedCount > 0 ? String(unresolvedCount) : undefined}
       tooltip={t`All comments`}

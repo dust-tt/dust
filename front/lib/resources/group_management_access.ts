@@ -43,10 +43,7 @@ export async function hasAnyGroupPermission(
   if (auth.isManager()) {
     return true;
   }
-  return (
-    (await auth.hasFeatureFlag("group_management")) &&
-    (await listGroupsWithVerb(auth, verb)).length > 0
-  );
+  return (await listGroupsWithVerb(auth, verb)).length > 0;
 }
 
 export type GroupMemberScope =

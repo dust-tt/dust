@@ -31,6 +31,11 @@ Update this file in the same PR as the work it describes. Dates are absolute.
 ## In progress
 
 - M3 live session with Yjs (daph), starting 2026-10-06 with the spike below.
+- 2026-10-08 agent edits played back in live documents (daph): "agent is working / editing" status
+  and a typing playback of the change, from stateless messages of the collab server (see
+  `LIVE_SESSION.md`, "Playing an agent's edit back"). Follow-ups: end "working" on the agent
+  message's end event (its stream, by `agentMessageId`); stream tool arguments to name the edited
+  document early (LLM layer, with flav).
 - 2026-10-05 M4 editor comments (tdraier), two PRs stacked on #34029: #34126 shows comments
   (`editor-dfm-comments`), the next one writes them (`editor-dfm-comment-authoring`).
   Sparkle's comment UI ported to `front/components/editor/document/`, on DFM threads. Anchors

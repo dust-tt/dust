@@ -2,7 +2,7 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import config from "@app/lib/api/config";
 import type { AppType } from "@app/types/app";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Download01, IconButton, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, Download01, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export function makeColumnsForApps(
@@ -49,7 +49,7 @@ export function makeColumnsForApps(
               target="_blank"
               rel="noopener noreferrer"
             >
-              <IconButton icon={Download01} size="xs" variant="outline" />
+              <Button icon={Download01} size="xs" variant="ghost-secondary" />
             </a>
           </>
         );

@@ -20,6 +20,7 @@ import {
 } from "@app/types/collab";
 import {
   readLiveSource,
+  showLiveAgentActivity,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
 import { liveAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
@@ -76,12 +77,11 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
     LIVE_SOURCE_READ_PATH,
     validate("json", liveSourceReadRequestSchema),
     async (ctx) => {
-      const { workspaceId, userId, canonicalPath } = ctx.req.valid("json");
+      const { workspaceId, userId, canonicalPath, agent } =
+        ctx.req.valid("json");
+      const documentName = toLiveDocumentName(workspaceId, canonicalPath);
 
-      const read = await readLiveSource(
-        hocuspocus,
-        toLiveDocumentName(workspaceId, canonicalPath)
-      );
+      const read = await readLiveSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
         return ctx.json<LiveSourceReadResponse>(read.value);
       }
@@ -119,6 +119,10 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
           new Error(read.error)
         );
       }
+      // Only once the reader may open the file: its editors then see the agent at work.
+      if (agent) {
+        showLiveAgentActivity(hocuspocus, documentName, agent, "reading");
+      }
       return ctx.json<LiveSourceReadResponse>(read.value);
     }
   );
@@ -128,7 +132,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
     LIVE_SOURCE_WRITE_PATH,
     validate("json", liveSourceWriteRequestSchema),
     async (ctx) => {
-      const { workspaceId, userId, canonicalPath, base, source } =
+      const { workspaceId, userId, canonicalPath, base, source, agent } =
         ctx.req.valid("json");
 
       const file = await checkLiveAccess(
@@ -152,6 +156,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
         file: file.value,
         base,
         source,
+        agent,
       });
       return ctx.json<LiveSourceWriteResponse>(
         written.isOk()

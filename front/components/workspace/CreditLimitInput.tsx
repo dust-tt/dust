@@ -39,6 +39,11 @@ export function CreditLimitNumberInput({
       messageStatus={validationMessage !== null ? "error" : undefined}
       suffix={suffix ?? t`credits/month`}
       isUnit
+      className={
+        readOnly
+          ? undefined
+          : "[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background dark:[&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-transparent"
+      }
     />
   );
 }

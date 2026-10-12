@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -71,8 +70,8 @@ describe("GET /api/w/:wId/groups", () => {
     ]);
   });
 
-  it("returns each group's managers only when enabled and requested", async () => {
-    const { workspace, user, auth } = await createPrivateApiMockRequest();
+  it("returns each group's managers only when requested", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -85,15 +84,6 @@ describe("GET /api/w/:wId/groups", () => {
       resourceId: sales.id,
     });
     expect(grant.isOk()).toBe(true);
-
-    const disabledResponse = await getGroupsRequest(workspace.sId, {
-      kind: "regular_manual",
-      withManagers: "true",
-    });
-    expect(disabledResponse.status).toBe(200);
-    expect((await disabledResponse.json()).groups[0].managers).toBeUndefined();
-
-    await FeatureFlagFactory.basic(auth, "group_management");
 
     const response = await getGroupsRequest(workspace.sId, {
       kind: "regular_manual",
@@ -116,8 +106,8 @@ describe("GET /api/w/:wId/groups", () => {
     ).toHaveProperty("managers", []);
   });
 
-  it("advertises delegated actions only while group management is enabled", async () => {
-    const { workspace, user, auth } = await createPrivateApiMockRequest();
+  it("advertises delegated actions for group managers", async () => {
+    const { workspace, user } = await createPrivateApiMockRequest();
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
@@ -137,9 +127,6 @@ describe("GET /api/w/:wId/groups", () => {
       expect(response.status).toBe(200);
       return (await response.json()).groups[0].allowedActions;
     };
-    expect((await readActions()).canEditMembers).toBe(false);
-
-    await FeatureFlagFactory.basic(auth, "group_management");
     expect(await readActions()).toEqual({
       canEditMembers: true,
       canEditDetails: false,

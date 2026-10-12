@@ -16,6 +16,7 @@ import { z } from "zod";
 
 import actions from "./actions";
 import cancel from "./cancel";
+import consumption from "./consumption";
 import contentFragments from "./content_fragments";
 import events from "./events";
 import feedbacks from "./feedbacks";
@@ -253,6 +254,7 @@ app.patch(
 
 app.route("/actions", actions);
 app.route("/cancel", cancel);
+app.route("/consumption", consumption);
 app.route("/content_fragments", contentFragments);
 app.route("/events", events);
 app.route("/feedbacks", feedbacks);

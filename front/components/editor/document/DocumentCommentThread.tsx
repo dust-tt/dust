@@ -297,6 +297,7 @@ const MessageBody = ({
 interface DocumentCommentDraftCardProps {
   onSubmit: (body: string) => Promise<Result<void, string>>;
   onCancel: () => void;
+  onFilledChange: (filled: boolean) => void;
   onSuggest?: () => Result<string, string>;
   inputExtensions?: Extensions;
   mountPortalContainer?: HTMLElement;
@@ -305,6 +306,7 @@ interface DocumentCommentDraftCardProps {
 export const DocumentCommentDraftCard = ({
   onSubmit,
   onCancel,
+  onFilledChange,
   onSuggest,
   inputExtensions,
   mountPortalContainer,
@@ -318,6 +320,7 @@ export const DocumentCommentDraftCard = ({
         renderAuthorAvatar={() => null}
         onSubmit={onSubmit}
         onCancel={onCancel}
+        onFilledChange={onFilledChange}
         autoFocus
         onSuggest={onSuggest}
         extensions={inputExtensions}

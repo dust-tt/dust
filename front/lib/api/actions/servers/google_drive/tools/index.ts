@@ -1,5 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
+  ToolDefinition,
   ToolHandlerExtra,
   ToolHandlerResult,
   ToolHandlers,
@@ -33,10 +34,12 @@ import {
 import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
 import { resolvePresentationOperations } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
+import { extractGoogleDriveFileId } from "@app/lib/providers/google_drive/file_id";
 import logger from "@app/logger/logger";
 import { Err, Ok } from "@app/types/shared/result";
 import { isTextExtractionSupportedContentType } from "@app/types/shared/text_extraction";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import { Common } from "googleapis";
 import { Readable } from "stream";
@@ -376,8 +379,16 @@ export async function handleFileAccessError(
         }
       }
 
+      // Models sometimes corrupt a character when re-typing a file ID.
+      const notFoundMessage = (err.message ?? "Resource not found").replace(
+        /\.$/,
+        ""
+      );
       return new Err(
-        new MCPError(err.message ?? "Resource not found", { tracked: false })
+        new MCPError(
+          `${notFoundMessage}. Double-check that the ID or URL was copied exactly, character for character.`,
+          { tracked: false }
+        )
       );
     }
 
@@ -1834,4 +1845,47 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
 
 const writeTools = buildTools(GOOGLE_DRIVE_WRITE_TOOLS_METADATA, writeHandlers);
 
-export const TOOLS = [...readOnlyTools, ...writeTools];
+// Params holding Google Drive file or folder IDs. `upload_file.fileId` is a
+// conversation file reference, not a Drive ID, and is left untouched.
+const DRIVE_ID_PARAMS = [
+  "fileId",
+  "documentId",
+  "spreadsheetId",
+  "presentationId",
+  "parentId",
+] as const;
+
+/**
+ * Replaces every Drive ID param given as a URL with the extracted ID. Inputs
+ * that are neither an ID nor a Google URL are left unchanged and fail at the
+ * Drive API. Exported for unit testing.
+ */
+export function resolveDriveIdParams(
+  toolName: string,
+  params: Record<string, unknown>
+): Record<string, unknown> {
+  const resolvedParams = { ...params };
+  for (const key of DRIVE_ID_PARAMS) {
+    if (toolName === "upload_file" && key === "fileId") {
+      continue;
+    }
+    const rawId = params[key];
+    if (isString(rawId)) {
+      resolvedParams[key] = extractGoogleDriveFileId(rawId) ?? rawId;
+    }
+  }
+  return resolvedParams;
+}
+
+// Lets every Drive ID param be passed as a URL.
+function withResolvedDriveIds(tool: ToolDefinition): ToolDefinition {
+  return {
+    ...tool,
+    handler: (params, extra) =>
+      tool.handler(resolveDriveIdParams(tool.name, params), extra),
+  };
+}
+
+export const TOOLS = [...readOnlyTools, ...writeTools].map(
+  withResolvedDriveIds
+);

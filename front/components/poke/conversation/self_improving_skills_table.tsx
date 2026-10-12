@@ -6,7 +6,7 @@ import type { PokeConversationsFetchProps } from "@app/poke/swr/conversation";
 import { usePokeConversations } from "@app/poke/swr/conversation";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { IconButton, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -39,8 +39,8 @@ const makeColumnsForSelfImprovingSkillsConversations = (
         return (
           <div className="flex space-x-2">
             <p>Id</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -66,8 +66,8 @@ const makeColumnsForSelfImprovingSkillsConversations = (
         return (
           <div className="flex space-x-2">
             <p>Created at</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -86,8 +86,8 @@ const makeColumnsForSelfImprovingSkillsConversations = (
         return (
           <div className="flex space-x-2">
             <p>Title</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -103,8 +103,8 @@ const makeColumnsForSelfImprovingSkillsConversations = (
         return (
           <div className="flex space-x-2">
             <p>Type</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")

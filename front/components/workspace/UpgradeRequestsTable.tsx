@@ -8,6 +8,7 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
@@ -21,6 +22,7 @@ import {
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
+import type { ReactNode } from "react";
 
 type RowData = {
   sId: string;
@@ -125,14 +127,22 @@ function buildActionsColumn({
   seatPlans,
   onUpgradePlan,
   onEditLimit,
+  onEditGroupBudget,
   onDeny,
   labels,
 }: {
   seatPlans?: SeatPlanResponseBody;
   onUpgradePlan?: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
+  onEditGroupBudget?: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
-  labels: { deny: string; upgradePlan: string; editLimit: string };
+  labels: {
+    deny: string;
+    upgradePlan: string;
+    assignSeat: string;
+    editLimit: string;
+    editGroupBudget: string;
+  };
 }): ColumnDef<RowData, string> {
   return {
     id: "actions" as const,
@@ -148,37 +158,78 @@ function buildActionsColumn({
           </div>
         );
       }
-      // Hide "Upgrade plan" when there is no higher seat tier to move the
+
+      const denyButton = (
+        <Button
+          size="sm"
+          variant="warning-secondary"
+          icon={XClose}
+          label={labels.deny}
+          onClick={() => onDeny(request)}
+        />
+      );
+
+      // Hide seat actions when there is no higher seat tier to move the
       // requester to: their current seat already grants as many AWU credits as
       // the richest seat the plan offers.
       const canUpgradePlan =
-        seatPlans &&
-        onUpgradePlan &&
+        !!seatPlans &&
+        !!onUpgradePlan &&
         canUpgrade(request.requester.seatType, seatPlans);
-      return (
-        <div className="flex w-full items-center justify-end gap-2">
-          <Button
-            size="sm"
-            variant="warning-secondary"
-            icon={XClose}
-            label={labels.deny}
-            onClick={() => onDeny(request)}
-          />
-          {canUpgradePlan && (
+
+      let primaryActions: ReactNode = null;
+      switch (request.cause) {
+        case "personal_limit":
+          primaryActions = (
+            <>
+              {canUpgradePlan && (
+                <Button
+                  size="sm"
+                  variant="highlight-secondary"
+                  icon={Check}
+                  label={labels.upgradePlan}
+                  onClick={() => onUpgradePlan?.(request)}
+                />
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                label={labels.editLimit}
+                onClick={() => onEditLimit(request)}
+              />
+            </>
+          );
+          break;
+        case "no_seat":
+          primaryActions = canUpgradePlan ? (
             <Button
               size="sm"
               variant="highlight-secondary"
               icon={Check}
-              label={labels.upgradePlan}
+              label={labels.assignSeat}
               onClick={() => onUpgradePlan?.(request)}
             />
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            label={labels.editLimit}
-            onClick={() => onEditLimit(request)}
-          />
+          ) : null;
+          break;
+        case "group_shared_limit":
+          primaryActions = onEditGroupBudget ? (
+            <Button
+              size="sm"
+              variant="outline"
+              label={labels.editGroupBudget}
+              onClick={() => onEditGroupBudget(request)}
+            />
+          ) : null;
+          break;
+        default:
+          assertNeverAndIgnore(request.cause);
+          break;
+      }
+
+      return (
+        <div className="flex w-full items-center justify-end gap-2">
+          {denyButton}
+          {primaryActions}
         </div>
       );
     },
@@ -195,6 +246,7 @@ interface UpgradeRequestsTableProps {
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan?: (request: MembershipUpgradeRequestType) => void;
   onEditLimit: (request: MembershipUpgradeRequestType) => void;
+  onEditGroupBudget?: (request: MembershipUpgradeRequestType) => void;
   onDeny: (request: MembershipUpgradeRequestType) => void;
 }
 
@@ -205,6 +257,7 @@ export function UpgradeRequestsTable({
   pendingRequestIds,
   onUpgradePlan,
   onEditLimit,
+  onEditGroupBudget,
   onDeny,
 }: UpgradeRequestsTableProps) {
   const { t } = useLingui();
@@ -231,15 +284,18 @@ export function UpgradeRequestsTable({
         seatPlans,
         onUpgradePlan,
         onEditLimit,
+        onEditGroupBudget,
         onDeny,
         labels: {
           deny: t`Deny`,
           upgradePlan: t`Upgrade plan`,
+          assignSeat: t`Assign seat`,
           editLimit: t`Edit limit`,
+          editGroupBudget: t`Edit group budget`,
         },
       }),
     ],
-    [seatPlans, onUpgradePlan, onEditLimit, onDeny, t]
+    [seatPlans, onUpgradePlan, onEditLimit, onEditGroupBudget, onDeny, t]
   );
 
   if (isLoading) {

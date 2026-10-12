@@ -1,18 +1,22 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::atomic::{AtomicUsize, Ordering},
+    time::{Duration, Instant},
+};
 
-use anyhow::Result;
-use dfs_api::storage::fdb;
-use foundationdb::{Database, options::TransactionOption};
-
-/// Same lookup as the server: dust-hive envs export their own cluster file through `env.sh`.
-fn cluster_file() -> String {
-    std::env::var("FDB_CLUSTER_FILE").unwrap_or_else(|_| "fdb.cluster".to_owned())
-}
+use anyhow::{Context, Result};
+use dfs_api::storage::{
+    self, fdb,
+    resources::{
+        keys::{namespace_subspace, tenant_subspace},
+        tenant,
+    },
+};
+use dfs_protocol::ObjectId;
+use foundationdb::{Database, tuple::unpack};
 
 const PING_DEADLINE_HEADROOM_MS: i32 = 5_000;
 const UNREACHABLE_PING_DEADLINE: Duration =
     Duration::from_millis((fdb::PING_TIMEOUT_MS + PING_DEADLINE_HEADROOM_MS) as u64);
-const TRANSACTION_TIMEOUT_MS: i32 = 5_000;
 
 /// The network boots once per process and cannot restart once stopped, so every FDB check runs
 /// under this one test, which holds the guard and drops it before the binary exits.
@@ -26,49 +30,17 @@ fn fdb_client() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
-        let database = fdb::open(&cluster_file())?;
-        fdb::ping(&database).await?;
-        writes_are_read_back_then_cleared(&database).await?;
-        ping_fails_instead_of_hanging_when_fdb_is_unreachable().await
+        fdb::ping(fdb::database()?).await?;
+        ping_fails_instead_of_hanging_when_fdb_is_unreachable().await?;
+        resource_errors_abort_staged_writes().await
     })
-}
-
-async fn writes_are_read_back_then_cleared(database: &Database) -> Result<()> {
-    let key = format!("dfs-test/round-trip/{}", std::process::id()).into_bytes();
-    let key = key.as_slice();
-
-    database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            transaction.set(key, b"hello");
-            Ok(())
-        })
-        .await?;
-    let written = database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            let value = transaction.get(key, false).await?;
-            transaction.clear(key);
-            Ok(value.map(|value| value.to_vec()))
-        })
-        .await?;
-    let cleared = database
-        .run(|transaction, _maybe_committed| async move {
-            transaction.set_option(TransactionOption::Timeout(TRANSACTION_TIMEOUT_MS))?;
-            Ok(transaction.get(key, false).await?)
-        })
-        .await?;
-
-    assert_eq!(written.as_deref(), Some(b"hello".as_slice()));
-    assert!(cleared.is_none());
-    Ok(())
 }
 
 async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
     let cluster_file =
         std::env::temp_dir().join(format!("dfs-unreachable-{}.cluster", std::process::id()));
     std::fs::write(&cluster_file, "test:test@127.0.0.1:1\n")?;
-    let database = fdb::open(&cluster_file.to_string_lossy())?;
+    let database = Database::from_path(&cluster_file.to_string_lossy())?;
     let started = Instant::now();
 
     let result = fdb::ping(&database).await;
@@ -76,5 +48,93 @@ async fn ping_fails_instead_of_hanging_when_fdb_is_unreachable() -> Result<()> {
     std::fs::remove_file(&cluster_file)?;
     assert!(result.is_err());
     assert!(started.elapsed() < UNREACHABLE_PING_DEADLINE);
+    Ok(())
+}
+
+async fn resource_errors_abort_staged_writes() -> Result<()> {
+    let tenant_id = ObjectId::new_v7().to_string();
+    let subspace = tenant_subspace(&tenant_id);
+    let key = subspace.pack(&"resource-error-test");
+    let (tenant, _) = tenant::TenantResource::new(tenant_id.clone())?;
+    let created = fdb::with_transaction(|tx| {
+        let tenant = &tenant;
+        async move { tenant.create(&tx).await }
+    })
+    .await?;
+    assert!(created);
+
+    let (duplicate, _) = tenant::TenantResource::new(tenant_id)?;
+    let (pending, _) = tenant::TenantResource::new(ObjectId::new_v7().to_string())?;
+    let attempts = AtomicUsize::new(0);
+    let result = fdb::with_transaction(|tx| {
+        attempts.fetch_add(1, Ordering::Relaxed);
+        let key = &key;
+        let duplicate = &duplicate;
+        let pending = &pending;
+        async move {
+            tx.set(key, b"must not commit");
+            pending.create(&tx).await?;
+            duplicate.create(&tx).await
+        }
+    })
+    .await;
+
+    // Reusing the original identity succeeds, as on a retry after an unknown commit result.
+    let created = fdb::with_transaction(|tx| {
+        let tenant = &tenant;
+        async move { tenant.create(&tx).await }
+    })
+    .await?;
+    assert!(!created);
+
+    let lookup_key = namespace_subspace().pack(&("tenant-key", tenant.key_hash.as_slice()));
+    let duplicate_lookup_key =
+        namespace_subspace().pack(&("tenant-key", duplicate.key_hash.as_slice()));
+    let pending_lookup_key =
+        namespace_subspace().pack(&("tenant-key", pending.key_hash.as_slice()));
+    let pending_subspace = tenant_subspace(&pending.tenant_id);
+    let (rolled_back, lookup, duplicate_lookup, pending_record, pending_lookup) = fdb::database()?
+        .run(|tx, _| {
+            let key = &key;
+            let subspace = &subspace;
+            let lookup_key = &lookup_key;
+            let duplicate_lookup_key = &duplicate_lookup_key;
+            let pending_lookup_key = &pending_lookup_key;
+            let pending_subspace = &pending_subspace;
+            async move {
+                let rolled_back = tx.get(key, false).await?.is_none();
+                let lookup = tx.get(lookup_key, false).await?;
+                let duplicate_lookup = tx.get(duplicate_lookup_key, false).await?;
+                let pending_record = tx.get(&pending_subspace.pack(&"tenant"), false).await?;
+                let pending_lookup = tx.get(pending_lookup_key, false).await?;
+                let (begin, end) = subspace.range();
+                tx.clear_range(&begin, &end);
+                let (begin, end) = pending_subspace.range();
+                tx.clear_range(&begin, &end);
+                tx.clear(lookup_key);
+                tx.clear(duplicate_lookup_key);
+                tx.clear(pending_lookup_key);
+                Ok((
+                    rolled_back,
+                    lookup,
+                    duplicate_lookup,
+                    pending_record,
+                    pending_lookup,
+                ))
+            }
+        })
+        .await?;
+
+    assert!(matches!(
+        result,
+        Err(storage::Error::Resource(tenant::Error::AlreadyExists))
+    ));
+    assert_eq!(attempts.load(Ordering::Relaxed), 1);
+    assert!(rolled_back);
+    let indexed_tenant_id: String = unpack(&lookup.context("missing tenant key lookup")?)?;
+    assert_eq!(indexed_tenant_id, tenant.tenant_id);
+    assert!(duplicate_lookup.is_none());
+    assert!(pending_record.is_none());
+    assert!(pending_lookup.is_none());
     Ok(())
 }

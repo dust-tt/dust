@@ -1,4 +1,4 @@
-import { IconButton } from "@dust-tt/sparkle";
+import { Button } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { Column } from "@tanstack/react-table";
 
@@ -17,9 +17,9 @@ export function PokeColumnSortableHeader<TData>({
   return (
     <div className="flex items-center space-x-2">
       <p>{label}</p>
-      <IconButton
+      <Button
         aria-label={`Sort ${label} ${nextDirection}`}
-        variant="outline"
+        variant="ghost-secondary"
         icon={ArrowsUpDownIcon}
         onClick={() => column.toggleSorting(sorted === "asc")}
       />

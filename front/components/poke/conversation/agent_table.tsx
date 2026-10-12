@@ -6,7 +6,7 @@ import type { AgentConversationsOrderColumn } from "@app/lib/resources/conversat
 import { usePokeAgentConversations } from "@app/poke/swr/conversation";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Chip, IconButton, Input, LinkWrapper } from "@dust-tt/sparkle";
+import { Button, Chip, Input, LinkWrapper } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type {
   ColumnDef,
@@ -42,8 +42,8 @@ const makeColumnsForConversations = (
         return (
           <div className="flex space-x-2">
             <p>Conversation ID</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -69,8 +69,8 @@ const makeColumnsForConversations = (
         return (
           <div className="flex space-x-2">
             <p>Created at</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")
@@ -89,8 +89,8 @@ const makeColumnsForConversations = (
         return (
           <div className="flex space-x-2">
             <p>Title</p>
-            <IconButton
-              variant="outline"
+            <Button
+              variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
                 column.toggleSorting(column.getIsSorted() === "asc")

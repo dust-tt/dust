@@ -241,8 +241,19 @@ browsers. If the service dies in between, the next load already has both the edi
 so the retried call is a no-op. Published first, a browser could keep the edit through a crash
 while the key was lost, and the retry would apply a second, independently generated edit. The
 file path checks and records keys in the same document record, so a retry that crosses a
-session opening or closing is still recognized. Browsers animate the reveal of the inserted
-range from an awareness hint (agent, range, start time); the typing effect is presentation only.
+session opening or closing is still recognized.
+
+**Playing an agent's edit back.** Built 2026-10-08, without awareness: the service sends a stateless
+`agent_activity` message (agent, `reading` or `editing`) to the document's editors. `reading` goes
+out once the agent's read passes the access check; `editing` goes out just before the agent's change
+is applied, since Hocuspocus may batch document updates but sends stateless messages at once. Each
+browser diffs its own document before and after the next remote change, so no range travels and
+nothing persists in awareness. It then plays the change back as decorations: removed text fading,
+new text revealed behind the agent's caret, a highlight settling. The document holds the whole change
+from the start, so the typing effect is presentation only. The status "agent is working" lasts a
+fixed 20 s after a read, since the service learns nothing between the read and the write; follow-ups
+listen to the agent message's own stream to end it precisely, then stream the tool's arguments to
+know the edited document while the model writes.
 
 **Closing.** When the last client has been gone for a grace period (minutes, so a dropped
 connection or a reload reconnects to the same state), under the per-file lock: final checkpoint of

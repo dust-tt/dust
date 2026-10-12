@@ -18,15 +18,14 @@ import {
   CheckboxWithText,
   Clipboard,
   ClipboardCheck,
-  cn,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  IconButton,
   Markdown,
   Spinner,
+  cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
@@ -107,11 +106,11 @@ function PluginResultHeader({
   return (
     <div className="mb-2 flex items-center justify-between">
       <div className="font-medium">Result:</div>
-      <IconButton
+      <Button
         tooltip={isCopied ? "Copied!" : "Copy result"}
         icon={isCopied ? ClipboardCheck : Clipboard}
         size="xs"
-        variant="outline"
+        variant="ghost-secondary"
         onClick={onCopy}
       />
     </div>

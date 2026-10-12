@@ -14,10 +14,8 @@ import {
   Button,
   Chip,
   Clipboard,
-  cn,
   Eye,
   EyeOff,
-  IconButton,
   IconPicker,
   Input,
   Label,
@@ -27,6 +25,7 @@ import {
   PopoverTrigger,
   Separator,
   TextArea,
+  cn,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
@@ -183,12 +182,13 @@ export function WebhookSourceDetailsInfo({
             <p className="dd-privacy-mask min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
               {webhookUrl}
             </p>
-            <IconButton
+            <Button
               icon={Clipboard}
               onClick={() =>
                 handleCopy(webhookUrl, t`Webhook URL copied to clipboard`)
               }
               size="xs"
+              variant="ghost-secondary"
             />
           </div>
         </div>
@@ -248,12 +248,13 @@ export function WebhookSourceDetailsInfo({
                 {webhookSourceView.webhookSource.secret}
               </p>
               <div>
-                <IconButton
+                <Button
                   icon={isSecretVisible ? EyeOff : Eye}
                   onClick={() => setIsSecretVisible((prev) => !prev)}
                   size="xs"
+                  variant="ghost-secondary"
                 />
-                <IconButton
+                <Button
                   icon={Clipboard}
                   onClick={() =>
                     handleCopy(
@@ -262,6 +263,7 @@ export function WebhookSourceDetailsInfo({
                     )
                   }
                   size="xs"
+                  variant="ghost-secondary"
                 />
               </div>
             </div>

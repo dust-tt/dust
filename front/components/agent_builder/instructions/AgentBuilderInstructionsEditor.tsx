@@ -29,9 +29,10 @@ import {
 } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
+import { CharacterCountDisplay } from "@app/components/shared/CharacterCountDisplay";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { ContainerWithTopBar, cn, markdownStyles } from "@dust-tt/sparkle";
-import { Trans, useLingui } from "@lingui/react/macro";
+import { ContainerWithTopBar, markdownStyles } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
@@ -533,32 +534,3 @@ export function AgentBuilderInstructionsEditor({
 }
 
 AgentBuilderInstructionsEditor.ToolbarSlot = ToolbarSlot;
-
-interface CharacterCountDisplayProps {
-  count: number;
-  maxCount: number;
-}
-
-const CharacterCountDisplay = ({
-  count,
-  maxCount,
-}: CharacterCountDisplayProps) => {
-  if (count <= maxCount / 2) {
-    return null;
-  }
-
-  const isOverLimit = count >= maxCount;
-
-  return (
-    <span
-      className={cn(
-        "text-end text-xs",
-        isOverLimit ? "text-warning" : "text-muted-foreground"
-      )}
-    >
-      <Trans>
-        {count} / {maxCount} characters
-      </Trans>
-    </span>
-  );
-};

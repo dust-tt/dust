@@ -1,16 +1,31 @@
+import { accessRequestWorkflow } from "@app/lib/notifications/workflows/access-request";
 import { agentMessageFeedbackWorkflow } from "@app/lib/notifications/workflows/agent-message-feedback";
 import { agentSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/agent-suggestions-ready";
 import { balanceThresholdReachedWorkflow } from "@app/lib/notifications/workflows/balance-threshold-reached";
 import { consumptionExportReadyWorkflow } from "@app/lib/notifications/workflows/consumption-export-ready";
 import { conversationUnreadWorkflow } from "@app/lib/notifications/workflows/conversation-unread";
+import { creditUsageAlertWorkflow } from "@app/lib/notifications/workflows/credit-usage-alert";
+import {
+  frameLoginCodeWorkflow,
+  frameSharedWorkflow,
+} from "@app/lib/notifications/workflows/frame-sharing";
+import { gitHubConnectionDeletedWorkflow } from "@app/lib/notifications/workflows/github-connection-deleted";
 import { manualActionRequiredWorkflow } from "@app/lib/notifications/workflows/manual-action-required";
+import { mcpGlobalSharingReconfigurationWorkflow } from "@app/lib/notifications/workflows/mcp-global-sharing-reconfiguration";
 import { podAddedAsMemberWorkflow } from "@app/lib/notifications/workflows/pod-added-as-member";
 import { programmaticCapReachedWorkflow } from "@app/lib/notifications/workflows/programmatic-cap-reached";
 import { providerCredentialsHealthUpdatedWorkflow } from "@app/lib/notifications/workflows/provider-credential-updated";
 import { seatAutoUpgradedWorkflow } from "@app/lib/notifications/workflows/seat-auto-upgraded";
 import { skillSuggestionsReadyWorkflow } from "@app/lib/notifications/workflows/skill-suggestions-ready";
+import {
+  subscriptionCanceledWorkflow,
+  subscriptionPaymentFailedWorkflow,
+  subscriptionReactivatedWorkflow,
+  workspaceDataDeletionWorkflow,
+} from "@app/lib/notifications/workflows/subscription-lifecycle";
 import { upgradeRequestCreatedWorkflow } from "@app/lib/notifications/workflows/upgrade-request-created";
 import { userAwuCapReachedWorkflow } from "@app/lib/notifications/workflows/user-awu-cap-reached";
+import { workspaceInvitationWorkflow } from "@app/lib/notifications/workflows/workspace-invitation";
 import logger from "@app/logger/logger";
 import { createHono } from "@front-api/lib/hono";
 import { skipRequestLog } from "@front-api/middlewares/request_instrumentation";
@@ -77,6 +92,17 @@ const options: ServeHandlerOptions = {
     seatAutoUpgradedWorkflow,
     manualActionRequiredWorkflow,
     consumptionExportReadyWorkflow,
+    workspaceInvitationWorkflow,
+    frameLoginCodeWorkflow,
+    frameSharedWorkflow,
+    subscriptionCanceledWorkflow,
+    subscriptionReactivatedWorkflow,
+    subscriptionPaymentFailedWorkflow,
+    workspaceDataDeletionWorkflow,
+    creditUsageAlertWorkflow,
+    gitHubConnectionDeletedWorkflow,
+    mcpGlobalSharingReconfigurationWorkflow,
+    accessRequestWorkflow,
   ],
 };
 

@@ -5,11 +5,13 @@ use prost::{
 };
 use std::{fmt, str::FromStr};
 
-/// @cc [owner:spolu,label:api] dfs-real-object-id
-/// Populated object IDs MUST contain exactly 16 UUIDv7 bytes. The protobuf default MUST remain an
-/// invalid unset value, never a generated identity; request consumers MUST reject it with
-/// `validate`. Text parsing MUST accept lowercase 32-digit hex and dfs:// references and reject
-/// virtual references. Display MUST emit lowercase 32-digit hex.
+/**
+ * @cc [owner:spolu,label:api] dfs-real-object-id
+ * Populated object IDs MUST contain exactly 16 UUIDv7 bytes. The protobuf default MUST remain an
+ * invalid unset value, never a generated identity; request consumers MUST reject it with
+ * `validate`. Text parsing MUST accept lowercase 32-digit hex and references using the `dfs` URI
+ * scheme and reject virtual references. Display MUST emit lowercase 32-digit hex.
+ */
 #[derive(Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ObjectId([u8; 16]);
 

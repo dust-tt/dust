@@ -7,9 +7,16 @@ import type { Node } from "@tiptap/pm/model";
 import { Fragment, Mark as ProseMirrorMark, Slice } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
-import { AddMarkStep, RemoveMarkStep } from "@tiptap/pm/transform";
+import {
+  AddMarkStep,
+  Mapping,
+  RemoveMarkStep,
+  ReplaceStep,
+  StepMap,
+} from "@tiptap/pm/transform";
 import type { EditorView } from "@tiptap/pm/view";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { diffArrays } from "diff";
 import { z } from "zod";
 
 export const COMMENT_MARK_NAME = "comment";
@@ -360,16 +367,134 @@ const buildDecorations = (
       : []),
   ]);
 
+// Past this many tokens changed, or this long spent diffing, a remote change maps as one
+// replacement: diffing further would cost more than rebuilding the highlights it spans. Diffing
+// costs the edit length times the diffed size, so many changes across a large document need the
+// time bound.
+const MAX_DIFFED_EDIT_LENGTH = 512;
+const MAX_DIFF_DURATION_MS = 10;
+
+const markTokens = (marks: readonly ProseMirrorMark[]) =>
+  marks.map((mark) => `${mark.type.name}${JSON.stringify(mark.attrs)}`).join();
+
+const nodeToken = (node: Node) =>
+  `${node.type.name}${JSON.stringify(node.attrs)}${markTokens(node.marks)}`;
+
+/** One token per position of `doc` between `from` and `to`: characters and node boundaries. */
+const positionTokens = (doc: Node, from: number, to: number): string[] => {
+  const tokens: string[] = [];
+  const visit = (fragment: Fragment, start: number) => {
+    fragment.forEach((node, offset) => {
+      const pos = start + offset;
+      const end = pos + node.nodeSize;
+      if (end <= from || pos >= to) {
+        return;
+      }
+      if (node.isText) {
+        const marks = markTokens(node.marks);
+        const text = node.text ?? "";
+        for (let at = Math.max(from, pos); at < Math.min(to, end); at++) {
+          tokens.push(`${marks}\u0000${text[at - pos]}`);
+        }
+      } else if (node.isLeaf) {
+        tokens.push(nodeToken(node));
+      } else {
+        if (pos >= from) {
+          tokens.push(`<${nodeToken(node)}`);
+        }
+        visit(node.content, pos + 1);
+        if (end - 1 < to) {
+          tokens.push(`>${node.type.name}`);
+        }
+      }
+    });
+  };
+  visit(doc.content, 0);
+  return tokens;
+};
+
+/** The replacement of `before` by `after`, as one replaced range per place their content differs. */
+const diffMap = (before: Node, after: Node): StepMap => {
+  const start = before.content.findDiffStart(after.content);
+  if (start === null) {
+    return StepMap.empty;
+  }
+  const end = before.content.findDiffEnd(after.content);
+  if (end === null) {
+    return StepMap.empty;
+  }
+  // When the change repeats the text next to it, the common prefix and suffix overlap; moving both
+  // ends past the start keeps the replaced ranges from inverting.
+  const overlap = Math.max(0, start - Math.min(end.a, end.b));
+  const endBefore = end.a + overlap;
+  const endAfter = end.b + overlap;
+  const changes = diffArrays(
+    positionTokens(before, start, endBefore),
+    positionTokens(after, start, endAfter),
+    { maxEditLength: MAX_DIFFED_EDIT_LENGTH, timeout: MAX_DIFF_DURATION_MS }
+  );
+  if (!changes) {
+    return new StepMap([start, endBefore - start, endAfter - start]);
+  }
+  const ranges: number[] = [];
+  let pos = start;
+  for (const { added, removed, count } of changes) {
+    if (!added && !removed) {
+      pos += count;
+      continue;
+    }
+    const last = ranges.length - 3;
+    if (last < 0 || ranges[last] + ranges[last + 1] !== pos) {
+      ranges.push(pos, 0, 0);
+    }
+    ranges[ranges.length - (added ? 1 : 2)] += count;
+    if (removed) {
+      pos += count;
+    }
+  }
+  return new StepMap(ranges);
+};
+
+const narrowedMappings = new WeakMap<Transaction, Mapping>();
+
+/**
+ * The transaction's mapping, with each step that replaces the whole document narrowed to where
+ * it changed it. y-tiptap applies every remote change as one such step, which would otherwise
+ * make every remote keystroke change the whole document.
+ */
+const narrowedMapping = (transaction: Transaction): Mapping => {
+  const cached = narrowedMappings.get(transaction);
+  if (cached) {
+    return cached;
+  }
+  const mapping = new Mapping(
+    transaction.steps.map((step, index) => {
+      const before = transaction.docs[index];
+      return step instanceof ReplaceStep &&
+        step.from === 0 &&
+        step.to === before.content.size
+        ? diffMap(before, transaction.docs[index + 1] ?? transaction.doc)
+        : step.getMap();
+    })
+  );
+  narrowedMappings.set(transaction, mapping);
+  return mapping;
+};
+
 /** Where the transactions changed content or marks, in the last one's document. */
 const changedRanges = (transactions: readonly Transaction[]) => {
   let ranges: CommentRange[] = [];
   for (const transaction of transactions) {
-    for (const step of transaction.steps) {
-      const map = step.getMap();
-      ranges = ranges.map(({ from, to }) => ({
-        from: map.map(from, -1),
-        to: map.map(to, 1),
-      }));
+    const { maps } = narrowedMapping(transaction);
+    for (const [index, step] of transaction.steps.entries()) {
+      const map = maps[index];
+      // Mark steps move nothing; remapping for them would make many-step marks quadratic.
+      if (map !== StepMap.empty) {
+        ranges = ranges.map(({ from, to }) => ({
+          from: map.map(from, -1),
+          to: map.map(to, 1),
+        }));
+      }
       if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
         ranges.push({ from: step.from, to: step.to });
       }
@@ -404,7 +529,8 @@ const toTextblocks = (doc: Node, { from, to }: CommentRange): CommentRange => {
  * @cc [owner:tdraier,label:performance] document-comment-highlights-local
  * Unless a comments command runs or the threads or the active comment change, a transaction
  * MUST only rebuild the comment highlights of the textblocks it changes, content or marks, and
- * map the others and the draft highlight.
+ * map the others and the draft highlight. A step replacing the whole document, as y-tiptap
+ * applies every remote change, changes only the textblocks whose content or marks differ.
  */
 const updateDecorations = (
   previous: DecorationSet,
@@ -413,7 +539,7 @@ const updateDecorations = (
 ) => {
   const { doc } = transaction;
   const comments = commentsById(doc);
-  let decorations = previous.map(transaction.mapping, doc);
+  let decorations = previous.map(narrowedMapping(transaction), doc);
   for (const changed of changedRanges([transaction])) {
     const { from, to } = toTextblocks(doc, changed);
     decorations = decorations
@@ -458,7 +584,8 @@ declare module "@tiptap/core" {
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-anchor
  * Comment marks MUST store only the comment id. Marks MUST NOT extend to text typed at
- * their edges. Distinct comments MUST be allowed on overlapping text.
+ * their edges. Distinct comments MUST be allowed on overlapping text. Marks MUST sit only on
+ * text, never on inline nodes such as hard breaks, since anchors reopen as marks on text only.
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
@@ -852,11 +979,29 @@ export const DocumentComments = Extension.create({
         }
 
         if (dispatch) {
-          tr.addMark(
-            draft.from,
-            draft.to,
-            state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
-          );
+          // A range mark would also cover inline nodes such as hard breaks, which anchors
+          // cannot express, so the document would no longer save.
+          const mark = state.schema.marks[COMMENT_MARK_NAME].create({
+            id: comment.id,
+          });
+          // One step per run of adjacent text, as a range mark would make.
+          const runs: CommentRange[] = [];
+          state.doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
+            if (!canCarryCommentMark(node, parent)) {
+              return;
+            }
+            const from = Math.max(pos, draft.from);
+            const to = Math.min(pos + node.nodeSize, draft.to);
+            const last = runs.at(-1);
+            if (last?.to === from) {
+              last.to = to;
+            } else {
+              runs.push({ from, to });
+            }
+          });
+          for (const { from, to } of runs) {
+            tr.addMark(from, to, mark);
+          }
           // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
             ...getDocumentComments(state.doc).filter(
@@ -1063,8 +1208,9 @@ export const DocumentComments = Extension.create({
 
           let { activeId, draft } = previous;
           if (draft && transaction.docChanged) {
-            const from = transaction.mapping.map(draft.from, 1);
-            const to = transaction.mapping.map(draft.to, -1);
+            const mapping = narrowedMapping(transaction);
+            const from = mapping.map(draft.from, 1);
+            const to = mapping.map(draft.to, -1);
             draft = from < to ? { from, to } : null;
           }
 

@@ -5,6 +5,7 @@ import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import {
   COLLAB_INTERNAL_ROUTES_PREFIX,
@@ -162,6 +163,35 @@ describe("createInternalDocumentsApp", () => {
     expect(await allowed.json()).toEqual({ open: true, source: "# Notes\n" });
     expect((await readAs(undefined)).status).toBe(403);
     expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
+  });
+
+  it("shows an agent reading only once its user may open the document", async () => {
+    const { hocuspocus, name, request } = await openNotes();
+    const { authenticator: outsider } = await createResourceTest({});
+    const document = hocuspocus.documents.get(name);
+    if (!document) {
+      throw new Error("The document is not open.");
+    }
+    const broadcast = vi.spyOn(document, "broadcastStateless");
+    const agent = LiveAgentFactory.build();
+    const readAs = (userId: string) =>
+      post(
+        LIVE_SOURCE_READ_PATH,
+        { ...request, userId, agent },
+        `Bearer ${SECRET}`,
+        hocuspocus
+      );
+
+    expect((await readAs(outsider.getNonNullableUser().sId)).status).toBe(403);
+    expect(broadcast).not.toHaveBeenCalled();
+
+    expect((await readAs(request.userId)).status).toBe(200);
+    expect(broadcast).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(String(broadcast.mock.calls[0][0]))).toEqual({
+      type: "agent_activity",
+      agent,
+      activity: "reading",
+    });
   });
 
   it("serves an open document's source to a user who can only read it, never their write", async () => {

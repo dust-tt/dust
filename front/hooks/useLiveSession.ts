@@ -37,9 +37,12 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
 export function useLiveSession(live: DocumentLiveSession | undefined): {
   connection: LiveConnection | null;
   status: LiveStatus;
+  /** The shown connection has changes the server has not confirmed yet. */
+  syncing: boolean;
 } {
   const [connection, setConnection] = useState<LiveConnection | null>(null);
   const [status, setStatus] = useState<LiveStatus>("connecting");
+  const [syncing, setSyncing] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const shownRef = useRef<LiveConnection | null>(null);
   // Losses since the last sync: the delay doubles with each, so a down server is not hammered.
@@ -62,6 +65,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
       lastThreadsRef.current = null;
       setConnection(null);
       setStatus("connecting");
+      setSyncing(false);
     },
     [url, documentName, userId, getTicket]
   );
@@ -104,6 +108,7 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
       provider.destroy();
       if (synced) {
         setStatus("offline");
+        setSyncing(false);
       }
       const delay = Math.min(
         RECONNECT_DELAY_MS * 2 ** failuresRef.current,
@@ -134,6 +139,12 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
         shownRef.current = next;
         setConnection(next);
         setStatus("live");
+        setSyncing(provider.hasUnsyncedChanges);
+      },
+      onUnsyncedChanges: ({ number }) => {
+        if (synced && !closed) {
+          setSyncing(number > 0);
+        }
       },
       onDisconnect: onLost,
       // Also sent alone, without a disconnect, when the server closes the document.
@@ -159,5 +170,5 @@ export function useLiveSession(live: DocumentLiveSession | undefined): {
     return () => connection?.close();
   }, [connection]);
 
-  return { connection, status };
+  return { connection, status, syncing };
 }

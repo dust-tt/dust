@@ -1,6 +1,12 @@
-import { extractMetadataFromTools } from "@app/lib/actions/mcp_metadata";
+import {
+  connectWithTimeout,
+  extractMetadataFromTools,
+} from "@app/lib/actions/mcp_metadata";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { FetchLike } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("extractMetadataFromTools", () => {
   it("passes through schemas with $ref unchanged", () => {
@@ -64,5 +70,53 @@ describe("extractMetadataFromTools", () => {
     const result = extractMetadataFromTools(tools);
     expect(result[0].eager).toBeUndefined();
     expect(result[1].eager).toBeUndefined();
+  });
+});
+
+describe("connectWithTimeout", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("rejects and aborts the request when the server never answers the initialized notification", async () => {
+    vi.useFakeTimers();
+    let initializedSignal: AbortSignal | undefined;
+    const fakeServer: FetchLike = async (_url, init) => {
+      const { id, method } = JSON.parse(String(init?.body));
+      if (method === "initialize") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id,
+          result: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            serverInfo: { name: "fake", version: "1.0.0" },
+          },
+        });
+      }
+      // Never answer `notifications/initialized`, until the request is aborted.
+      initializedSignal = init?.signal ?? undefined;
+      return new Promise((_, reject) => {
+        initializedSignal?.addEventListener("abort", () =>
+          reject(initializedSignal?.reason)
+        );
+      });
+    };
+    const transport = new StreamableHTTPClientTransport(
+      new URL("https://mcp.example.com/mcp"),
+      { fetch: fakeServer }
+    );
+
+    const connection = connectWithTimeout(
+      new Client({ name: "test", version: "1.0.0" }),
+      transport
+    );
+    const rejection = expect(connection).rejects.toThrow(
+      "MCP connection timed out"
+    );
+    await vi.runAllTimersAsync();
+
+    await rejection;
+    expect(initializedSignal?.aborted).toBe(true);
   });
 });

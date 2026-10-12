@@ -1,4 +1,4 @@
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { hasOpenDocumentLayer } from "@app/components/editor/document";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -8,6 +8,7 @@ import {
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
+import { SourceModeFileIcon } from "@app/components/file_explorer/SourceModeFileIcon";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -18,12 +19,13 @@ import {
   ChevronRight,
   cn,
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Download01,
-  Icon,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 import { useEffect, useState } from "react";
@@ -39,6 +41,11 @@ interface FilePreviewDialogProps {
   onPrev?: () => void;
 }
 
+/**
+ * @cc [owner:tdraier,label:react] file-preview-dialog-escape
+ * Escape MUST close the dialog, except an Escape from the document or its header controls while
+ * a document layer is open (`hasOpenDocumentLayer`), which the document closes first.
+ */
 export function FilePreviewDialog({
   entry,
   fileUrl,
@@ -51,6 +58,12 @@ export function FilePreviewDialog({
 }: FilePreviewDialogProps) {
   const { t } = useLingui();
   const [isDownloading, setIsDownloading] = useState(false);
+  const [documentControls, setDocumentControls] =
+    useState<HTMLDivElement | null>(null);
+  const [documentArea, setDocumentArea] = useState<HTMLDivElement | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<HTMLSpanElement | null>(
+    null
+  );
 
   const handleDownload = async () => {
     if (!entry) {
@@ -124,23 +137,55 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent size="2xl" height="2xl" className="gap-4 px-4">
-        <DialogHeader className="flex gap-4">
-          <DialogTitle>
-            <div className="flex items-center gap-1.5 overflow-hidden">
-              {FileIcon && (
-                <Icon
-                  visual={FileIcon}
-                  size="sm"
-                  className="shrink-0 text-foreground"
+      <DialogContent
+        size="2xl"
+        height="2xl"
+        className="gap-4 px-4"
+        onEscapeKeyDown={(event) => {
+          const target = event.target instanceof Node ? event.target : null;
+          const reachesDocument =
+            target !== null &&
+            [documentArea, documentControls].some((element) =>
+              element?.contains(target)
+            );
+          if (reachesDocument && hasOpenDocumentLayer(document)) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <DialogHeader hideButton className="flex gap-4">
+          <div className="flex items-center gap-2">
+            <DialogTitle className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 overflow-hidden">
+                {FileIcon && (
+                  <SourceModeFileIcon
+                    visual={FileIcon}
+                    className="text-foreground"
+                    onToggleSourceMode={markdown.toggleSourceMode}
+                  />
+                )}
+                <span className="min-w-16 truncate leading-5 text-foreground">
+                  {entry?.fileName ?? t`Preview data`}
+                </span>
+                <span
+                  ref={setDocumentStatus}
+                  className="flex font-normal empty:hidden"
                 />
-              )}
-              <span className="min-w-16 truncate leading-5 text-foreground">
-                {entry?.fileName ?? t`Preview data`}
-              </span>
-              {markdown.richEditor && <CoEditionBadge />}
+              </div>
+            </DialogTitle>
+            {/* Level with the title, where the built-in close button sat. */}
+            <div className="-my-1.5 -mr-2 ml-auto flex shrink-0 items-center gap-1">
+              <div ref={setDocumentControls} className="flex empty:hidden" />
+              <DialogClose asChild>
+                <Button
+                  icon={XClose}
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t`Close`}
+                />
+              </DialogClose>
             </div>
-          </DialogTitle>
+          </div>
           <div className="flex items-center justify-between">
             {recordCounts && (
               <span
@@ -154,7 +199,7 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {markdown.canEdit && !markdown.richEditor && (
+        {markdown.canEdit && !markdown.richEditor && !markdown.isSourceMode && (
           <div className="flex shrink-0 justify-end px-4">
             <MarkdownFilePreviewViewModeSwitch
               key={`${entry?.path ?? "none"}:${isOpen}`}
@@ -164,6 +209,7 @@ export function FilePreviewDialog({
           </div>
         )}
         <div
+          ref={setDocumentArea}
           className={cn(
             "min-h-0 flex-1 px-4",
             filePreviewLayoutClassName(category)
@@ -177,6 +223,8 @@ export function FilePreviewDialog({
             entry={entry}
             fileUrl={fileUrl}
             markdown={markdown}
+            markdownHeaderControlsContainer={documentControls}
+            markdownStatusContainer={documentStatus}
             onMarkdownViewModeChange={
               markdown.canEdit ? markdown.setViewMode : undefined
             }

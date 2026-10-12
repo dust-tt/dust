@@ -52,6 +52,7 @@ interface BaseSkillDefinition<
   readonly getAutoEnabledOrEquippedForAgentLoop?: (params: {
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
     conversation: ConversationWithoutContentType;
+    userMessage?: AgentLoopExecutionData["userMessage"];
   }) => T | undefined;
   // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (

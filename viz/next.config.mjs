@@ -1,3 +1,10 @@
+import { createRequire } from "node:module";
+import path from "node:path";
+
+import { LINGUI_MACRO_BABEL_OPTIONS } from "./lingui-macro.mjs";
+
+const require = createRequire(import.meta.url);
+
 /** @type {import('next').NextConfig} */
 const isDev = process.env.NODE_ENV === "development";
 
@@ -31,7 +38,25 @@ const FRAME_ANCESTORS = [
 
 const CONTENT_SECURITY_POLICIES = `connect-src 'self'; media-src 'self'; frame-ancestors 'self' https://app.frontapp.com ${FRAME_ANCESTORS} moz-extension:;`;
 
+// Runs before next-swc-loader, which compiles the TS and JSX the macros leave behind.
+const linguiMacroLoader = {
+  loader: require.resolve("babel-loader"),
+  options: { ...LINGUI_MACRO_BABEL_OPTIONS, cacheDirectory: true },
+};
+
 const nextConfig = {
+  webpack(config) {
+    //`enforce: "pre"` runs the macro pass before Next's SWC loader.
+    config.module.rules.push({
+      enforce: "pre",
+      test: /\.(ts|tsx)$/,
+      include: ["app", "components", "hooks", "lib"].map((dir) =>
+        path.resolve(import.meta.dirname, dir)
+      ),
+      use: [linguiMacroLoader],
+    });
+    return config;
+  },
   async headers() {
     return [
       {

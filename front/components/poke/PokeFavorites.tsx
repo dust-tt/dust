@@ -7,12 +7,12 @@ import { useCurrentPage } from "@app/poke/swr/currentPage";
 import type { PokeFavorite, PokeFavoriteType } from "@app/poke/swr/favorites";
 import { POKE_FAVORITE_TYPES, usePokeFavorites } from "@app/poke/swr/favorites";
 import {
+  Button,
   Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Icon,
-  IconButton,
   LinkWrapper,
   Star01,
   StarFilled,
@@ -93,11 +93,11 @@ export function PokeFavoriteButton() {
   }
 
   return (
-    <IconButton
+    <Button
       icon={isCurrentlyFavorite ? StarFilled : Star01}
       onClick={handleToggle}
       disabled={currentForPath === null}
-      variant="outline"
+      variant="ghost-secondary"
       size="sm"
       tooltip={
         currentForPath === null
@@ -138,11 +138,11 @@ function PokeNavItemRow({ item, onRemove }: PokeNavItemRowProps) {
       )}
       {onRemove && (
         <div className="shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
-          <IconButton
+          <Button
             icon={XClose}
             onClick={() => onRemove(item.url)}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             tooltip="Remove from favorites"
           />
         </div>
