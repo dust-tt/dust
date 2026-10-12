@@ -69,7 +69,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "query_tables_v2",
   "include_data",
   "extract_data",
-  "file_generation",
   "image_generation",
   "run_agent",
   "run_dust_app",

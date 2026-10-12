@@ -79,10 +79,6 @@ export async function getInternalMCPServer(
       return (
         await import("@app/lib/api/actions/servers/sound_studio")
       ).default(auth, toolContext);
-    case "file_generation":
-      return (
-        await import("@app/lib/api/actions/servers/file_generation")
-      ).default(auth, toolContext);
     case "interactive_content":
       return (
         await import("@app/lib/api/actions/servers/interactive_content")

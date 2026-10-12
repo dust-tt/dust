@@ -149,10 +149,6 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Images";
   }
 
-  if (name === "file_generation") {
-    return "Create Files";
-  }
-
   // Override the name to avoid having "Query Tables V2" show up in the UI. Ideally, we would
   // rename the tool internally to just "query_tables", but that raises more potential risks,
   // in particular with the Extension logic in extension/ui/components/actions/mcp/details/MCPActionDetails.tsx,
