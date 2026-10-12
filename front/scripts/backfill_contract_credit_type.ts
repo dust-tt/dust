@@ -11,8 +11,8 @@
  *
  * Same rules as the webhook's `stampContractCreditType`: only AWU credits, not
  * per-seat (INDIVIDUAL) ones, "excess" for the excess-credits product and
- * "pool" otherwise. Expired credits are skipped. Idempotent — credits already
- * carrying the field are skipped.
+ * "pool" otherwise. Only currently active credits are stamped (not expired, not
+ * yet started). Idempotent — credits already carrying the field are skipped.
  *
  * When a workspace gets credits stamped, its pool credit state is reconciled
  * from the live balance, so a workspace wrongly moved to `depleted` recovers.
@@ -86,10 +86,12 @@ async function backfillCreditsForWorkspace(
     if (credit.subscription_config?.allocation === "INDIVIDUAL") {
       continue;
     }
-    const isExpired = (credit.access_schedule?.schedule_items ?? []).every(
-      (item) => new Date(item.ending_before) <= now
+    // Future credits are left to their `credit.segment.start` webhook.
+    const isActive = (credit.access_schedule?.schedule_items ?? []).some(
+      (item) =>
+        new Date(item.starting_at) <= now && now < new Date(item.ending_before)
     );
-    if (isExpired) {
+    if (!isActive) {
       continue;
     }
 
