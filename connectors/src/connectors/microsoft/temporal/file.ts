@@ -512,6 +512,7 @@ export async function syncOneFile({
     result = await handleSpreadSheet({
       connectorId,
       file,
+      fields,
       parentInternalId,
       localLogger,
       startSyncTs,
