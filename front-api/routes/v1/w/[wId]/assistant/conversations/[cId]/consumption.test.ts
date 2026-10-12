@@ -8,7 +8,10 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -18,7 +21,11 @@ import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { assert, beforeEach, describe, expect, it } from "vitest";
 
-const BILLED_CREDITS = 7;
+const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
+// The run costs 1 credit of input and 2 credits of output.
+const LLM_CREDITS = 3;
+const TOOL_DIRECT_CREDITS = 1;
+const BILLED_CREDITS = LLM_CREDITS + TOOL_DIRECT_CREDITS;
 
 describe("GET /api/v1/w/:wId/assistant/conversations/:cId/consumption", () => {
   let auth: Authenticator;
@@ -53,9 +60,9 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/consumption", () => {
     conversation = fetchedConversation;
 
     const usage = await RunFactory.createWithUsage(auth, {
-      inputTokens: 100,
-      outputTokens: 20,
-      reasoningTokens: 5,
+      inputTokens: INPUT,
+      outputTokens: 2 * OUTPUT,
+      reasoningTokens: 0,
     });
     runUsageModelId = usage.runUsageModelId;
     dustRunId = usage.run.dustRunId;
@@ -100,19 +107,19 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/consumption", () => {
         {
           itemType: "input",
           runUsageModelId,
-          inputTokensCount: 80,
-          grossAttributedCreditAmountMicro: 8_000_000,
+          inputTokensCount: INPUT,
+          grossAttributedCreditAmountMicro: 2_000_000,
         },
         {
           itemType: "output",
           runUsageModelId,
-          outputTokensCount: 10,
+          outputTokensCount: OUTPUT,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
         {
           itemType: "reasoning",
           runUsageModelId,
-          outputTokensCount: 5,
+          outputTokensCount: 0,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
         {
@@ -121,9 +128,9 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/consumption", () => {
           action,
           attributedSkillIds: [],
           inputTokensCount: 20,
-          outputTokensCount: 5,
-          grossAttributedCreditAmountMicro: 2_000_000,
-          directCreditAmountMicro: 1_000_000,
+          outputTokensCount: OUTPUT,
+          grossAttributedCreditAmountMicro: 5_000_000,
+          directCreditAmountMicro: TOOL_DIRECT_CREDITS * 1_000_000,
         },
       ],
       pendingToolItems: [],
@@ -135,26 +142,37 @@ describe("GET /api/v1/w/:wId/assistant/conversations/:cId/consumption", () => {
     await expect(response.json()).resolves.toMatchObject({
       billedCredits: BILLED_CREDITS,
       details: {
-        agentWorkCredits: 5,
+        agentWorkCredits: 1 + 1,
         tools: [
           {
             toolName: "test_tool",
             callCount: 1,
-            attributedCredits: 2,
-            directCredits: 1,
+            attributedCredits: 1 + TOOL_DIRECT_CREDITS,
+            directCredits: TOOL_DIRECT_CREDITS,
             pending: false,
           },
         ],
         models: [
-          { providerId: "openai", modelId: "gpt-5-mini", attributedCredits: 7 },
+          {
+            providerId: "openai",
+            modelId: "gpt-5-mini",
+            attributedCredits: BILLED_CREDITS,
+          },
         ],
         agents: [
           {
             agentId: agentConfiguration.sId,
             billedCredits: BILLED_CREDITS,
-            agentWorkCredits: 5,
-            tools: [{ toolName: "test_tool", attributedCredits: 2 }],
-            models: [{ modelId: "gpt-5-mini", attributedCredits: 7 }],
+            agentWorkCredits: 1 + 1,
+            tools: [
+              {
+                toolName: "test_tool",
+                attributedCredits: 1 + TOOL_DIRECT_CREDITS,
+              },
+            ],
+            models: [
+              { modelId: "gpt-5-mini", attributedCredits: BILLED_CREDITS },
+            ],
           },
         ],
       },
