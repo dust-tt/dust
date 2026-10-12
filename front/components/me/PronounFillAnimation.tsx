@@ -3,16 +3,7 @@ import { useLayoutEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 const LETTER_STAGGER_MS = 20;
-const LETTER_MS = 300;
-
-// The Dust logo's saturated colors: letters show up in them, one after the other, then blend into
-// the text color.
-const LETTER_COLOR_CLASSES = [
-  "text-blue-500",
-  "text-green-600",
-  "text-golden-500",
-  "text-rose-500",
-];
+const LETTER_MS = 200;
 
 export interface PronounFill {
   input: HTMLInputElement;
@@ -64,22 +55,19 @@ export function PronounFillAnimation({
       return;
     }
 
-    const textColor = window.getComputedStyle(text).color;
     // The letters stand in for the real text until the overlay unmounts.
     const hideText = input.animate(
       { color: "transparent" },
       { fill: "forwards" }
     );
-    // Each letter fades in with its own color, which blends into the text color.
+    // The letters fade in one after the other.
     const letters = Array.from(text.children, (letter, index) =>
-      letter.animate(
-        [
-          { opacity: 0 },
-          { offset: 0.3, opacity: 1 },
-          { opacity: 1, color: textColor },
-        ],
-        { duration: LETTER_MS, delay: index * LETTER_STAGGER_MS, fill: "both" }
-      )
+      letter.animate([{ opacity: 0 }, { opacity: 1 }], {
+        duration: LETTER_MS,
+        delay: index * LETTER_STAGGER_MS,
+        easing: "ease-out",
+        fill: "both",
+      })
     );
     const doneTimeout = window.setTimeout(
       onDone,
@@ -104,12 +92,7 @@ export function PronounFillAnimation({
       style={fill.textStyle}
     >
       {Array.from(fill.text, (char, index) => (
-        <span
-          key={index}
-          className={LETTER_COLOR_CLASSES[index % LETTER_COLOR_CLASSES.length]}
-        >
-          {char}
-        </span>
+        <span key={index}>{char}</span>
       ))}
     </span>,
     document.body
