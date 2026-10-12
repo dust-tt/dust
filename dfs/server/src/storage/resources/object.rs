@@ -242,11 +242,11 @@ impl ObjectResource {
             }
         }
 
-        let mut grant_keys = BTreeMap::new();
+        let mut unique_grants = BTreeMap::new();
         for grant in grants {
-            let (forward, reverse) = self.grant_keys(grant)?;
-            grant_keys.insert(forward, reverse);
-            if grant_keys.len() > GRANTS_MAX_COUNT {
+            let (forward, _) = self.grant_keys(grant)?;
+            unique_grants.insert(forward, grant);
+            if unique_grants.len() > GRANTS_MAX_COUNT {
                 return Err(Error::TooManyGrants.into());
             }
         }
@@ -276,8 +276,8 @@ impl ObjectResource {
                 value,
             );
         }
-        for (forward, reverse) in grant_keys {
-            Self::write_grant(tx, &forward, reverse.as_deref(), false);
+        for grant in unique_grants.into_values() {
+            self.write_grant(tx, grant, false)?;
         }
         Ok(())
     }
@@ -356,28 +356,28 @@ impl ObjectResource {
             return Err(Error::TooManyGrants.into());
         }
         let mut seen = HashSet::new();
-        let mut keys = Vec::new();
         for change in changes {
-            let (forward, reverse) = self.grant_keys(&change.grant)?;
-            if !seen.insert(forward.clone()) {
+            let (forward, _) = self.grant_keys(&change.grant)?;
+            if !seen.insert(forward) {
                 return Err(Error::DuplicateGrant.into());
             }
-            keys.push((forward, reverse, change.remove));
         }
-        for (forward, reverse, remove) in keys {
-            Self::write_grant(tx, &forward, reverse.as_deref(), remove);
+        for change in changes {
+            self.write_grant(tx, &change.grant, change.remove)?;
         }
         Ok(())
     }
 
-    fn write_grant(tx: &Transaction, forward: &[u8], reverse: Option<&[u8]>, remove: bool) {
-        for key in std::iter::once(forward).chain(reverse) {
+    fn write_grant(&self, tx: &Transaction, grant: &Grant, remove: bool) -> Result<(), Error> {
+        let (forward, reverse) = self.grant_keys(grant)?;
+        for key in std::iter::once(forward.as_slice()).chain(reverse.as_deref()) {
             if remove {
                 tx.clear(key);
             } else {
                 tx.set(key, &[]);
             }
         }
+        Ok(())
     }
 
     /**
