@@ -28,4 +28,10 @@ describe("credit units", () => {
       allocateMicroCreditsByLargestRemainder([1 / 3, 1 / 3, 1 / 3], 1)
     ).toEqual([1, 0, 0]);
   });
+
+  it("pads to the total when the exact amounts add up to less", () => {
+    expect(allocateMicroCreditsByLargestRemainder([1.1, 1.3], 3)).toEqual([
+      1, 2,
+    ]);
+  });
 });
