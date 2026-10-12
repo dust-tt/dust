@@ -14,6 +14,7 @@ import { isSupportedImageContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Citation, CitationImage } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
+import { useEffect, useState } from "react";
 import { visit } from "unist-util-visit";
 
 interface ImgProps {
@@ -38,6 +39,58 @@ function LoadingImg({ imgSrc, downloadUrl, title }: LoadingImgProps) {
         isLoading={true}
       />
     </Citation>
+  );
+}
+
+// CitationImage renders no image while loading, so the image is fetched ahead to know when it has loaded.
+function useIsImageLoading(url: string): boolean {
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const image = new window.Image();
+    const markLoaded = () => setLoadedUrl(url);
+    image.addEventListener("load", markLoaded);
+    image.addEventListener("error", markLoaded);
+    image.src = url;
+    return () => {
+      image.removeEventListener("load", markLoaded);
+      image.removeEventListener("error", markLoaded);
+    };
+  }, [url]);
+
+  return loadedUrl !== url;
+}
+
+interface ImageCitationProps {
+  contentType: string;
+  downloadUrl: string;
+  fileId?: string;
+  filePath?: string;
+  thumbnailUrl: string;
+  title: string;
+}
+
+function ImageCitation({
+  contentType,
+  downloadUrl,
+  fileId,
+  filePath,
+  thumbnailUrl,
+  title,
+}: ImageCitationProps) {
+  const isImageLoading = useIsImageLoading(thumbnailUrl);
+
+  return (
+    <PreviewableCitation
+      fileId={fileId}
+      filePath={filePath}
+      contentType={contentType}
+      title={title}
+      thumbnailUrl={thumbnailUrl}
+      downloadUrl={downloadUrl}
+      isLoading={isImageLoading}
+      containerClassName="aspect-square w-48"
+    />
   );
 }
 
@@ -74,13 +127,12 @@ function PathImg({ source, alt, owner }: PathImgProps) {
   }
 
   return (
-    <PreviewableCitation
+    <ImageCitation
       filePath={source.filePath}
       contentType={metadata.contentType}
       title={alt || getFileNameFromScopedPath(source.filePath)}
       thumbnailUrl={source.url}
       downloadUrl={downloadUrl}
-      containerClassName="aspect-square w-48"
     />
   );
 }
@@ -126,13 +178,12 @@ function Img({ src, alt, owner }: ImgProps) {
   }
 
   return (
-    <PreviewableCitation
+    <ImageCitation
       fileId={source.fileId}
       contentType={fileMetadata.contentType}
       title={fileMetadata.fileName}
       thumbnailUrl={viewURL.toString()}
       downloadUrl={downloadURL.toString()}
-      containerClassName="aspect-square w-48"
     />
   );
 }

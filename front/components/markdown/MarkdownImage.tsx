@@ -88,7 +88,7 @@ function ExternalMarkdownImage({
       type="button"
       title={t`Load this image from ${host}`}
       onClick={() => setIsLoadRequested(true)}
-      className="rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground hover:border-highlight hover:text-highlight"
+      className="dd-privacy-mask rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground hover:border-highlight hover:text-highlight"
     >
       {alt || url.href}
     </button>
@@ -134,7 +134,7 @@ function MarkdownImage({
     return (
       <span
         title={title}
-        className="rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground"
+        className="dd-privacy-mask rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground"
       >
         {alt || src}
       </span>
