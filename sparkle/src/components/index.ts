@@ -200,6 +200,8 @@ export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export type { InputProps, InputSizeType } from "./Input";
 export { INPUT_SIZES, Input } from "./Input";
+export type { InputTypingAnimationProps } from "./InputTypingAnimation";
+export { InputTypingAnimation } from "./InputTypingAnimation";
 export type { InputWithSaveProps } from "./InputWithSave";
 export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
