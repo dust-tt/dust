@@ -17,6 +17,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { SandboxMountAdapter } from "./sandbox_mount_adapter";
 
 const MOUNT_TIMEOUT_MS = 30_000;
+// Positive stat-cache TTL for the sandbox state replica mount. gcsfuse fills the stat cache from
+// directory listings, so the per-file lookups that follow a listing (litestream lstats every LTX
+// file, twice per restore) are served from memory instead of costing GCS round trips each.
+const SANDBOX_STATE_REPLICA_METADATA_CACHE_TTL_SECONDS = 60;
 
 const TOKEN_SERVER_URL = "http://127.0.0.1:987";
 const TOKEN_SERVER_PATH_PREFIX = `${TOKEN_SERVER_URL}/token`;
@@ -77,9 +81,12 @@ function tokenUrl(index: number): string {
  * - "sandbox_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
  *   default — only the mounting user can access the fs — makes it invisible to
  *   every other uid, including the untrusted workload uid 1003 and root. No
- *   `allow_other`, restrictive modes, and NO kernel list caching: litestream
- *   restore must never see a stale LTX listing. Needs the dust-state user and
- *   sandbox state layout in the image; targets with this profile are only ever
+ *   `allow_other`, restrictive modes, and NO kernel list or negative caching:
+ *   litestream restore must never see a stale LTX listing. Positive metadata IS
+ *   cached so per-file lookups after a listing stay local: the cache is empty at
+ *   the cold-start restore, and afterwards the litestream daemon is the only
+ *   writer, whose own mutations gcsfuse applies to the cache. Needs the dust-state
+ *   user and sandbox state layout in the image; targets with this profile are only ever
  *   constructed for stateful Frame sandboxes.
  */
 export type GCSMountProfile =
@@ -408,7 +415,9 @@ export class GCSSandboxMountAdapter implements SandboxMountAdapter {
 /**
  * @cc [owner:flvndvd,label:performance] mount-cache-ttls
  * Workload mounts MUST use a one second TTL for directory listings, metadata and negative
- * lookups. Frame publication and sandbox state replica mounts MUST disable these caches.
+ * lookups. Frame publication mounts MUST disable these caches. Sandbox state replica mounts MUST
+ * disable the directory listing and negative lookup caches and MUST use a nonzero metadata TTL
+ * (`SANDBOX_STATE_REPLICA_METADATA_CACHE_TTL_SECONDS`).
  */
 export function buildMountCommand({
   bucket,
@@ -471,14 +480,17 @@ export function buildMountCommand({
     case "sandbox_state_replica": {
       // Mounted AS dust-state (runuser): with no allow_other, the FUSE layer
       // denies every uid but the mounting one — the kernel-enforced version of
-      // "invisible to uid 1003". List caching is OFF: litestream restore reads
-      // the LTX listing at cold start and must never see a cached view.
+      // "invisible to uid 1003". List and negative caching are OFF: litestream
+      // restore reads the LTX listing at cold start and must never see a cached
+      // view. Metadata caching is ON: with a zero TTL every lookup after a
+      // listing costs a GCS StatObject + ListObjects, and restores of long LTX
+      // chains outlive their exec timeout.
       const flags = [
         ...commonFlags,
         "--file-mode=600",
         "--dir-mode=700",
         "--kernel-list-cache-ttl-secs=0",
-        "--metadata-cache-ttl-secs=0",
+        `--metadata-cache-ttl-secs=${SANDBOX_STATE_REPLICA_METADATA_CACHE_TTL_SECONDS}`,
         "--metadata-cache-negative-ttl-secs=0",
       ];
 

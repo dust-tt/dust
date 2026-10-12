@@ -5,6 +5,7 @@ import {
   hasReachedCreditSpendCheckpoint,
   isExemptFromCreditSpendCheckpoint,
 } from "@app/lib/api/assistant/credit_spend_checkpoint";
+import { sendEmailReplyOnError } from "@app/lib/api/assistant/email/email_reply";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -18,6 +19,7 @@ import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
   finalizeUnavailableAgentLoop,
+  notifyAgentMessageError,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
 import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
@@ -35,13 +37,17 @@ import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_action
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
+import type { GenericErrorContent } from "@app/types/assistant/agent";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgs,
   AgentLoopArgsWithTiming,
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
-import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
+import {
+  isAgentLoopConfigNotFoundError,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -61,6 +67,22 @@ const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
 const AGENT_LOOP_SUBAGENT_CAP_ERROR_CODE = "agent_loop_subagent_cap_exceeded";
 const AGENT_LOOP_RESOURCE_CAP_ERROR_MESSAGE =
   "This message used too many resources to continue. Start a new message with a narrower request.";
+const CONFIG_NOT_FOUND_ERRORS = {
+  agent_not_found: {
+    code: "agent_not_available",
+    message:
+      "This agent is no longer available to you. Contact your workspace administrator or " +
+      "use another agent.",
+    metadata: { errorTitle: "Agent not available" },
+  },
+  model_not_found: {
+    code: "model_not_available",
+    message:
+      "The model this agent uses isn't available. Edit the agent to use another model " +
+      "(advanced settings in the Instructions panel).",
+    metadata: null,
+  },
+} satisfies Record<string, GenericErrorContent>;
 
 function getActivityTimeoutDeadlineMs(): number {
   const { startToCloseTimeoutMs } = Context.current().info;
@@ -169,6 +191,14 @@ async function _runModelAndCreateActionsActivity({
         },
         "Message or conversation was deleted, exiting"
       );
+      return new Ok(null);
+    }
+    if (isAgentLoopConfigNotFoundError(contextProviderRes.error)) {
+      // Retrying cannot make the agent or its model loadable again: fail the message now.
+      const error = CONFIG_NOT_FOUND_ERRORS[contextProviderRes.error.type];
+      await notifyAgentMessageError(authType, runAgentArgs, { error, step });
+      // The completion email reloads this data and would fail the same way: reply now.
+      await sendEmailReplyOnError(auth, runAgentArgs, error.message);
       return new Ok(null);
     }
     throw contextProviderRes.error;

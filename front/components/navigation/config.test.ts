@@ -114,7 +114,7 @@ describe("subNavigationAdmin Organization / Spend / Platform groups", () => {
     const nav = subNavigationAdmin({
       owner: ownerWithRole("user"),
       currentRoute: "/w/ws_1/credits",
-      featureFlags: ["group_management"],
+      featureFlags: [],
       subscription: SUBSCRIPTION,
       hasPermission: () => false,
       hasManagedGroups: true,

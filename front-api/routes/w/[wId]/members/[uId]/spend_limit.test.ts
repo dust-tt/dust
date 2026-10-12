@@ -5,7 +5,6 @@ import * as metronomeContracts from "@app/lib/metronome/contracts";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -285,9 +284,8 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
         workspace.sId
       );
       expect(
-        (await getUserSpendLimit(delegateAuth, { userId: member.sId })).isErr()
+        (await getUserSpendLimit(delegateAuth, { userId: member.sId })).isOk()
       ).toBe(true);
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
 
       expect(
         (await honoApp.request(spendLimitUrl(workspace.sId, member.sId))).status
@@ -377,8 +375,6 @@ describe("/api/w/[wId]/members/[uId]/spend_limit", () => {
           body: JSON.stringify({ kind: "limited", awuCredits: 1500 }),
         });
 
-      expect((await putLimit(member.sId)).status).toBe(403);
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       expect((await putLimit(outsider.sId)).status).toBe(403);
       expect((await putLimit(member.sId)).status).toBe(200);
       expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(

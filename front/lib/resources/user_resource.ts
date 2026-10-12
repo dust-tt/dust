@@ -25,6 +25,7 @@ import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import type { SupportedLocale } from "@app/types/locale";
 import { isSupportedLocale, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
@@ -38,7 +39,6 @@ import type {
   UserProviderType,
   UserType,
 } from "@app/types/user";
-import type { UserProfileType } from "@app/types/user_profile";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 import chunk from "lodash/chunk";
 import escape from "lodash/escape";
@@ -826,12 +826,9 @@ export class UserResource extends BaseResource<UserModel> {
     return isSupportedLocale(storedLocale) ? storedLocale : null;
   }
 
-  async getProfile(): Promise<UserProfileType> {
+  async getJobType(): Promise<JobType | null> {
     const jobType = (await this.getMetadata("job_type"))?.value;
-    return {
-      pronouns: this.pronouns,
-      jobType: isJobType(jobType) ? jobType : null,
-    };
+    return isJobType(jobType) ? jobType : null;
   }
 
   async updatePronouns(pronouns: string | null): Promise<void> {

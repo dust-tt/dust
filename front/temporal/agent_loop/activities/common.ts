@@ -23,6 +23,7 @@ import {
   globalCoalescer,
 } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
+  GenericErrorContent,
   LightAgentConfigurationType,
   ToolErrorEvent,
 } from "@app/types/assistant/agent";
@@ -30,8 +31,7 @@ import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/types/assistant/agent_m
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopRuntimeData,
-  isAgentLoopDataAgentNotFoundError,
-  isAgentLoopDataModelNotFoundError,
+  isAgentLoopConfigNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -41,7 +41,6 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -534,9 +533,9 @@ export async function finalizeUnavailableAgentLoop(
 }
 
 /**
- * Stops the loop's agent message without its agent configuration, which can no longer be loaded
- * (see `isAgentLoopDataAgentNotFoundError`): retrying would fail forever. Pending tokens are not
- * flushed, as that requires the configuration.
+ * Stops the loop's agent message without its agent configuration or model, which can no longer be
+ * loaded (see `isAgentLoopConfigNotFoundError`): retrying would fail forever. Pending tokens are
+ * not flushed, as that requires the configuration.
  */
 async function stopWithoutAgentConfiguration(
   authType: AuthenticatorType,
@@ -569,7 +568,7 @@ async function stopWithoutAgentConfiguration(
   }
   logger.info(
     { conversationId, agentMessageId, messageStatus: status },
-    "Agent configuration unavailable, agent message stopped without it"
+    "Agent configuration or model unavailable, agent message stopped without them"
   );
 }
 
@@ -594,8 +593,30 @@ function toUserFriendlyMessage(error: {
 // gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
-  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  agentLoopArgs: AgentLoopArgs,
   error: { message: string; name: string }
+): Promise<ModelId | null> {
+  return notifyAgentMessageError(authType, agentLoopArgs, {
+    error: {
+      code: "workflow_error",
+      message: toUserFriendlyMessage(error),
+      metadata: {
+        category: "critical_failure",
+        errorTitle: "Agent response generation failed",
+        // Ensure errorName is a string (not an Error object or undefined)
+        errorName: error.name || "UnknownError",
+      },
+    },
+    step: 0, // Workflow-level error, not tied to a specific step
+  });
+}
+
+// Fails the agent message with `error`, stored at `step`, without loading its agent configuration.
+// Returns the agent message's model id, or null when the conversation is gone.
+export async function notifyAgentMessageError(
+  authType: AuthenticatorType,
+  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  { error, step }: { error: GenericErrorContent; step: number }
 ): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
@@ -634,17 +655,8 @@ export async function notifyWorkflowError(
     created: Date.now(),
     configurationId: messageRow.agentMessage.agentConfigurationId || "",
     messageId: agentMessageId,
-    error: {
-      code: "workflow_error",
-      message: toUserFriendlyMessage(error),
-      metadata: {
-        category: "critical_failure",
-        errorTitle: "Agent response generation failed",
-        // Ensure errorName is a string (not an Error object or undefined)
-        errorName: error.name || "UnknownError",
-      },
-    },
-    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    error,
+    // These errors occur outside of LLM execution, so use existing runIds from DB
     runIds: messageRow.agentMessage.runIds ?? [],
   };
 
@@ -690,7 +702,7 @@ export async function notifyWorkflowError(
     event: errorEvent,
     agentMessage,
     conversation: conversation.toJSON(),
-    step: 0, // Workflow-level error, not tied to a specific step
+    step,
   });
 
   return messageRow.agentMessage.id;
@@ -701,9 +713,9 @@ export async function notifyWorkflowError(
  */
 /**
  * @cc [owner:philipperolet,label:error-handling;backend] cancel-without-agent-configuration
- * When the loop's agent configuration cannot be loaded (`isAgentLoopDataAgentNotFoundError`),
- * `finalizeCancellation` MUST mark the agent message `cancelled` and return without throwing, as
- * its activity retries without limit.
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeCancellation` MUST mark the agent message
+ * `cancelled` and return without throwing, as its activity retries without limit.
  */
 export async function finalizeCancellation(
   authType: AuthenticatorType,
@@ -725,17 +737,9 @@ export async function finalizeCancellation(
       );
       return;
     }
-    if (isAgentLoopDataAgentNotFoundError(runAgentDataRes.error)) {
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
       await stopWithoutAgentConfiguration(authType, agentLoopArgs, "cancelled");
       return;
-    }
-    if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
-      // The selected model no longer exists. Retrying the
-      // cancel finalizer cannot recover an endpoint and would loop forever.
-      throw ApplicationFailure.nonRetryable(
-        `Failed to get run agent data: ${runAgentDataRes.error.message}`,
-        "ModelNotFound"
-      );
     }
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
@@ -790,9 +794,9 @@ export async function finalizeCancellation(
  */
 /**
  * @cc [owner:philipperolet,label:error-handling;backend] interrupt-without-agent-configuration
- * When the loop's agent configuration cannot be loaded (`isAgentLoopDataAgentNotFoundError`),
- * `finalizeInterruption` MUST mark the agent message `interrupted` and return without throwing, as
- * its activity retries without limit.
+ * When the loop's agent configuration or its model cannot be loaded
+ * (`isAgentLoopConfigNotFoundError`), `finalizeInterruption` MUST mark the agent message
+ * `interrupted` and return without throwing, as its activity retries without limit.
  */
 export async function finalizeInterruption(
   authType: AuthenticatorType,
@@ -814,7 +818,7 @@ export async function finalizeInterruption(
       );
       return;
     }
-    if (isAgentLoopDataAgentNotFoundError(runAgentDataRes.error)) {
+    if (isAgentLoopConfigNotFoundError(runAgentDataRes.error)) {
       await stopWithoutAgentConfiguration(
         authType,
         agentLoopArgs,

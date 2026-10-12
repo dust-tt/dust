@@ -249,6 +249,7 @@ msgstr "{bonusCredits, plural, one {<0>{bonusCreditsFormatted} credit</0> has be
 
 #: front/components/workspace/BuyAwuCreditsDialog.tsx
 #: front/components/workspace/BuyCreditDialog.tsx
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
 #: front/components/workspace/UpgradeRequestLimitModal.tsx
 msgid "Close"
 msgstr "Close"
@@ -1298,6 +1299,7 @@ msgid "{summary} (custom)"
 msgstr "{summary} (custom)"
 
 #: front/components/workspace/MembersUsageTable.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
 msgid "Assign seat"
 msgstr "Assign seat"
 
@@ -1632,6 +1634,15 @@ msgstr "Check Dust plans"
 #: front/components/workspace/UpgradePlanDialog.tsx
 msgid "You do not have permission to upgrade the plan."
 msgstr "You do not have permission to upgrade the plan."
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+#: front/components/workspace/UpgradeRequestsTable.tsx
+msgid "Edit group budget"
+msgstr "Edit group budget"
+
+#: front/components/workspace/UpgradeRequestGroupBudgetModal.tsx
+msgid "Could not load the shared group budget for {requesterName}. Refresh the page to try again."
+msgstr "Could not load the shared group budget for {requesterName}. Refresh the page to try again."
 
 #: front/components/workspace/UpgradeRequestLimitModal.tsx
 msgid "Edit spend limit for {requesterName}"

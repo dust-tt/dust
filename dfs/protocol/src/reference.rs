@@ -6,10 +6,12 @@ use prost::{
 };
 use std::{fmt, str::FromStr};
 
-/// @cc [owner:spolu,label:api;security] dfs-object-reference
-/// References MUST distinguish real IDs, virtual root, and virtual shared in protobuf.
-/// Missing references MUST remain invalid until populated; request consumers MUST call `validate`.
-/// Text parsing and display MUST use ID strings, `root`, or `shared` for valid references.
+/**
+ * @cc [owner:spolu,label:api;security] dfs-object-reference
+ * References MUST distinguish real IDs, virtual root, and virtual shared in protobuf.
+ * Missing references MUST remain invalid until populated; request consumers MUST call `validate`.
+ * Text parsing and display MUST use ID strings, `root`, or `shared` for valid references.
+ */
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ObjectRef {
     #[default]

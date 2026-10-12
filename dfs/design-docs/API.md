@@ -39,7 +39,7 @@ Attr {
 
 ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
-  mime_type: string
+  mime_type?: string
   xattrs: map<string, bytes>
 }
 
@@ -94,6 +94,9 @@ Optional `metadata` contains creation time, MIME type, and xattrs; absence means
 fetched, while a present metadata object with an empty xattr map means it was fetched and no xattrs
 exist. `Stat` and `Lookup` populate this field when `include_metadata=true`. `Search` may include it
 in `SearchAttr`. Other responses omit it unless explicitly specified.
+
+In returned metadata, an omitted MIME type means none is assigned. Setting `mime_type` to `""` in a
+create or update operation clears it and stores `None`; subsequent metadata reads omit the field.
 
 Whenever extended metadata is returned, `created` is required. For every real object, including the
 tenant root, the server assigns it when the object is created. It is read-only and remains unchanged
@@ -161,6 +164,17 @@ its version whichever instance or authorization path serves it; equal versions i
 authorization state.
 
 ## Authorization and common limits
+
+The master key is configured at startup through `DFS_MASTER_KEY` (or `--master-key`) and must contain
+64 visible ASCII characters. Every RPC supplies its bearer, including when reusing a connection.
+The master key is checked against its configured hash in memory. Successful tenant authentication is
+cached by key hash across all connections served by the API instance for 30 seconds. Cache hits do
+not extend expiry; the next call after expiry authenticates against FDB again. A connection may carry
+several different credentials. Tenant keys currently have no rotation or revocation API; immediate
+invalidation would require clearing these caches across API instances. Session authentication is
+also cached for at most 30 seconds, capped by the session's absolute expiry. Cache hits do not extend
+either deadline. Revocation can take up to 30 seconds to prevent new admissions across all servers;
+already admitted RPCs may finish. Refresh always checks current session state in FDB.
 
 Every RPC request and response is limited to 4 MiB (4,194,304 bytes) of uncompressed protobuf
 payload, including encoding overhead. Response budgets include all results, attributes, metadata,
@@ -255,18 +269,19 @@ or unusable tree proofs fall back to current FDB authorization. File metadata/co
 search indexing has independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
-filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes. Subject strings contain
-1–1,024 UTF-8 bytes.
+filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes without NUL. Subject
+strings contain 1–1,024 UTF-8 bytes.
 
 Stored basenames contain 1–255 UTF-8 bytes, exclude `/` and NUL, and cannot be `.` or `..`. MIME types
-must be valid and at most 255 bytes. Xattr names contain 1–255 bytes without NUL; combined xattr
-key/value bytes are limited to 32 KiB.
+may be absent or empty; nonempty values must be valid and at most 255 bytes. Xattr names contain
+1–255 bytes without NUL; combined xattr key/value bytes are limited to 32 KiB.
 
 ## Tenants and sessions
 
 ### CreateTenant
 
-Creates a tenant with an empty root directory. Requires the **server key**.
+Creates a tenant with an empty root directory. Requires the **master key**.
+The root directory starts without a MIME type.
 
 **Arguments**
 
@@ -289,6 +304,7 @@ Tenant {
 
 The supplied grants are attached to the root and inherit to future descendants. Identical grant
 values are deduplicated. An existing tenant ID fails with `ALREADY_EXISTS`.
+The tenant, root object, and initial grants are committed together; invalid grants create none of them.
 
 ### CreateSession
 
@@ -318,9 +334,10 @@ Session {
 Clients address the virtual `root`; the server resolves the stored root directory from the session's
 tenant. The root directory ID belongs to tenant state, not session state.
 
-Subjects may be included before any ALLOW grants reference them. Sessions live in server memory,
-initially expire after one hour, and are lost on restart. An active session can extend its expiry
-through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
+Subjects may be included before any ALLOW grants reference them. Sessions are stored in FoundationDB
+and survive server restarts. They initially expire after one hour; an active session can extend its
+expiry through `RefreshSession`. Its subject set is fixed; create a new session to change subjects.
+Expired sessions fail authentication immediately and are removed asynchronously by periodic cleanup.
 
 ### CurrentSession
 
@@ -330,6 +347,7 @@ Returns information about the authenticated session. Requires the **session key*
 
 **Returns:** `Session`, with the fields defined above. `session_key` is an empty string; this call
 never reissues the credential. The session's subject set and expiration are unchanged.
+The response may reflect cached state for up to 30 seconds after a refresh on another server.
 
 ### RevokeSession
 
@@ -344,8 +362,10 @@ RevokeSessionRequest {
 }
 ```
 
-**Returns:** `Empty {}` after admitted mutations finish and the session is invalidated.
-Revocation prevents new admissions; subsequent calls using that session key fail authentication.
+**Returns:** `Empty {}` after the session and its indexes are removed from FDB.
+Servers may continue admitting RPCs through cached session state for up to 30 seconds after
+revocation commits. After that window, calls using the session key fail authentication. Already
+admitted RPCs may finish.
 Unknown sessions and sessions belonging to another tenant return `NOT_FOUND`. A concurrent refresh
 cannot undo revocation.
 
@@ -392,6 +412,8 @@ GrantPage {
 Inherited grants are excluded. Grants are ordered by variant (ALLOW before DENY), then by subject
 in UTF-8 byte order for ALLOW, then by numeric mode. Pass `next_after` unchanged as the next request's
 `after`; clients must not construct cursors from subject names.
+Cursors are scoped to the tenant and object. Malformed or mismatched cursors fail with `INVALID_INPUT`.
+A missing object, including an object from another tenant, fails with `NOT_FOUND`.
 
 ### UpdateGrants
 
@@ -414,6 +436,7 @@ GrantUpdate {
 
 **Returns:** `Empty {}` on success. Failures follow the [error rules](#errors) and commit no partial
 grant changes. The tenant key provides no session context, so this operation does not return `Attr`.
+A missing object, including an object from another tenant, fails with `NOT_FOUND`.
 
 A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
@@ -780,7 +803,7 @@ Applies a metadata patch to an authorized object. Omitted optional fields remain
 ```text
 UpdateOperation {
   object_id: ObjectId
-  mime_type?: string
+  mime_type?: string             // Omitted leaves unchanged; "" clears it and stores None.
   xattrs: XattrChange[]           // Changes to individual keys; not a full replacement map.
   atime?: Timestamp
   mtime?: Timestamp

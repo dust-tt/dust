@@ -225,7 +225,6 @@ export const DocumentCommentCard = ({
     submitDraft,
     cancelDraft,
     dismissDraft,
-    closeThread,
     busyThreadIds,
     threadError,
   } = comments;
@@ -291,6 +290,7 @@ export const DocumentCommentCard = ({
     <div
       ref={cardRef}
       data-document-comment-card=""
+      data-document-layer={open ? "" : undefined}
       data-state={open ? "open" : "closed"}
       aria-hidden={!open || undefined}
       className={cn(
@@ -302,12 +302,6 @@ export const DocumentCommentCard = ({
         top: shown.position.top,
         left: shown.position.left,
         width: shown.position.width,
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && thread && !event.defaultPrevented) {
-          event.preventDefault();
-          closeThread();
-        }
       }}
     >
       {shown.target === DRAFT ? (

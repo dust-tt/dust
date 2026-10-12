@@ -19,6 +19,14 @@ describe("extractEmailAddressesFromHeader", () => {
       []
     );
   });
+
+  it("returns quickly on a header made only of opening angle brackets", () => {
+    expect(extractEmailAddressesFromHeader("<".repeat(100_000))).toEqual([]);
+  }, 1_000);
+
+  it("returns quickly on a header made only of local-part characters", () => {
+    expect(extractEmailAddressesFromHeader("a".repeat(100_000))).toEqual([]);
+  }, 1_000);
 });
 
 describe("extractSingleEmailAddressFromHeader", () => {

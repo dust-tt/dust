@@ -1,13 +1,14 @@
+import { onStatelessMessage } from "@app/lib/client/live_session";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import type {
   LiveCommentClientMessage,
   LiveCommentCommand,
   LiveCommentErrorCode,
+  LiveCommentServerMessage,
 } from "@app/types/collab";
 import { liveCommentServerMessageSchema } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { HocuspocusProvider } from "@hocuspocus/provider";
 import { v4 as uuidv4 } from "uuid";
 
@@ -59,31 +60,31 @@ export function createLiveCommentChannel(
     pending.clear();
   };
 
-  const onStateless = ({ payload }: { payload: string }) => {
-    const json = safeParseJSON(payload);
-    const message = json.isOk()
-      ? liveCommentServerMessageSchema.safeParse(json.value)
-      : null;
-    if (closed || !message?.success) {
+  const onMessage = (message: LiveCommentServerMessage) => {
+    if (closed) {
       return;
     }
-    switch (message.data.type) {
+    switch (message.type) {
       case "threads": {
-        const { comments } = message.data;
+        const { comments } = message;
         threads = comments;
         listeners.forEach((listener) => listener(comments));
         return;
       }
       case "accepted":
-        answer(message.data.requestId, new Ok(message.data.comment));
+        answer(message.requestId, new Ok(message.comment));
         return;
       case "refused":
-        answer(message.data.requestId, new Err(message.data.error));
+        answer(message.requestId, new Err(message.error));
         return;
     }
   };
 
-  provider.on("stateless", onStateless);
+  const stopMessages = onStatelessMessage(
+    provider,
+    liveCommentServerMessageSchema,
+    onMessage
+  );
   provider.on("synced", requestThreads);
   provider.on("close", failPending);
   requestThreads();
@@ -107,7 +108,7 @@ export function createLiveCommentChannel(
     close: () => {
       closed = true;
       threads = null;
-      provider.off("stateless", onStateless);
+      stopMessages();
       provider.off("synced", requestThreads);
       provider.off("close", failPending);
       listeners.clear();

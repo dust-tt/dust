@@ -1,7 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -41,7 +40,7 @@ function putLimit(wId: string, groupId: string, body: Record<string, unknown>) {
 
 describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
   describe("auth", () => {
-    it("lets a group manager change only a managed group's cap when enabled", async () => {
+    it("lets a group manager change only a managed group's cap", async () => {
       const workspace = await makeMetronomeWorkspaceWithCustomer();
       const managed = await makeProvisionedGroup(workspace);
       const other = await GroupResource.makeNew({
@@ -67,10 +66,6 @@ describe("/api/w/[wId]/groups/[groupId]/spend_limit", () => {
       expect(grant.isOk()).toBe(true);
       const limit = { kind: "limited", awuCredits: 1500 };
 
-      expect((await putLimit(workspace.sId, managed.sId, limit)).status).toBe(
-        403
-      );
-      await FeatureFlagFactory.basic(adminAuth, "group_management");
       expect((await putLimit(workspace.sId, other.sId, limit)).status).toBe(
         403
       );

@@ -6,7 +6,6 @@ import {
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { useSidePanelFullScreen } from "@app/components/assistant/conversation/useSidePanelFullScreen";
-import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
 import {
   FilePreviewBody,
   filePreviewLayoutClassName,
@@ -68,6 +67,9 @@ export function FilePreviewPanel({
   const clientType = useClientType();
   const [documentControls, setDocumentControls] =
     useState<HTMLDivElement | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<HTMLSpanElement | null>(
+    null
+  );
   const target = parseFilePreviewData(data);
   const fileId = target?.kind === "id" ? target.fileId : null;
 
@@ -254,7 +256,7 @@ export function FilePreviewPanel({
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
-          {markdown.richEditor && <CoEditionBadge />}
+          <span ref={setDocumentStatus} className="flex empty:hidden" />
         </div>
       </ConversationSidePanelHeader>
       <div
@@ -275,6 +277,7 @@ export function FilePreviewPanel({
           isFullWidth
           markdown={markdown}
           markdownHeaderControlsContainer={documentControls}
+          markdownStatusContainer={documentStatus}
           owner={owner}
           preview={preview}
         />

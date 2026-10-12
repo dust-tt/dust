@@ -160,6 +160,8 @@ export const MentionDropdown = forwardRef<
         </DropdownMenuTrigger>
         <DropdownMenuContent
           key={contentKey}
+          // Lets a document comment field tell an Escape that closes this list from one that cancels.
+          data-suggestion-list=""
           className="w-72"
           align="start"
           side="bottom"

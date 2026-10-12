@@ -119,7 +119,7 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
     });
   });
 
-  it("allows a group manager only when group management is enabled", async () => {
+  it("allows a group manager to read member usage", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
@@ -139,11 +139,6 @@ describe("GET /api/w/[wId]/credits/members-usage", () => {
       resourceId: group.id,
     });
     expect(grant.isOk()).toBe(true);
-
-    expect((await honoApp.request(membersUsageUrl(workspace.sId))).status).toBe(
-      403
-    );
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
 
     expect((await honoApp.request(membersUsageUrl(workspace.sId))).status).toBe(
       200
@@ -251,7 +246,6 @@ describe("GET /api/w/[wId]/credits/members-usage sharedUsageLimitGroup", () => {
   it("hides the budget groups a group manager cannot read usage of", async () => {
     const { workspace, adminAuth, support, salesMember, supportMember } =
       await setUpBudgets();
-    await FeatureFlagFactory.basic(adminAuth, "group_management");
     const { user: caller } = await createPrivateApiMockRequest({
       method: "GET",
       role: "user",

@@ -120,7 +120,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       fileId: z
         .string()
         .describe(
-          "The ID of the file to retrieve content from. Can be extracted from the URL of a file, typically found at its end."
+          "The ID or URL of the file to retrieve content from. Pass the URL as given when you have one."
         ),
       offset: z
         .number()
@@ -150,7 +150,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     schema: {
       documentId: z
         .string()
-        .describe("The ID of the Google Docs document to retrieve."),
+        .describe("The ID or URL of the Google Docs document to retrieve."),
       offset: z
         .number()
         .optional()
@@ -181,7 +181,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     schema: {
       presentationId: z
         .string()
-        .describe("The ID of the Google Slides presentation to retrieve."),
+        .describe(
+          "The ID or URL of the Google Slides presentation to retrieve."
+        ),
       offset: z
         .number()
         .optional()
@@ -211,7 +213,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     schema: {
       spreadsheetId: z
         .string()
-        .describe("The ID of the spreadsheet to retrieve."),
+        .describe("The ID or URL of the spreadsheet to retrieve."),
     },
     stake: "never_ask",
     displayLabels: {
@@ -226,7 +228,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     description:
       "Get cell values from a specific range in a Google Sheets spreadsheet. Returns values in the specified format (formatted, unformatted, or formulas).",
     schema: {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      spreadsheetId: z.string().describe("The ID or URL of the spreadsheet."),
       range: z
         .string()
         .describe(
@@ -254,7 +256,7 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     description:
       "List all permissions (sharing settings) on a Google Drive file, showing who has access and their roles. Requires sharing access to the file.",
     schema: {
-      fileId: z.string().describe("The ID of the Google Drive file."),
+      fileId: z.string().describe("The ID or URL of the Google Drive file."),
       capabilities: capabilitiesSchema,
     },
     stake: "never_ask",
@@ -270,7 +272,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     description:
       "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
     schema: {
-      fileId: z.string().describe("The ID of the file to list comments from."),
+      fileId: z
+        .string()
+        .describe("The ID or URL of the file to list comments from."),
       pageSize: z
         .number()
         .optional()
@@ -304,7 +308,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+          "The ID or URL of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
         ),
     },
     stake: "low",
@@ -325,7 +329,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+          "The ID or URL of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
         ),
     },
     stake: "low",
@@ -346,7 +350,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+          "The ID or URL of the folder to create the file in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
         ),
     },
     stake: "low",
@@ -367,7 +371,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the parent folder to create the folder in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+          "The ID or URL of the parent folder to create the folder in. If not provided, creates in the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
         ),
     },
     stake: "low",
@@ -385,7 +389,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
       "Creates a duplicate of the file with a new name in the same folder or a different location. " +
       "Prefer this over creating a new document when you want to preserve the formatting or structure of an existing template.",
     schema: {
-      fileId: z.string().describe("The ID of the file to copy."),
+      fileId: z.string().describe("The ID or URL of the file to copy."),
       name: z
         .string()
         .optional()
@@ -396,7 +400,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the folder to place the copy in. If not provided, the copy will be placed in the same folder as the original."
+          "The ID or URL of the folder to place the copy in. If not provided, the copy will be placed in the same folder as the original."
         ),
       capabilities: capabilitiesSchema,
     },
@@ -413,7 +417,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     description:
       "Add a comment to a Google Drive file (Doc, Sheet, or Presentation).",
     schema: {
-      fileId: z.string().describe("The ID of the file to comment on."),
+      fileId: z.string().describe("The ID or URL of the file to comment on."),
       content: z.string().describe("The text content of the comment."),
       capabilities: capabilitiesSchema,
     },
@@ -430,7 +434,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     description:
       "Reply to an existing comment on a Google Drive file (Doc, Sheet, or Presentation).",
     schema: {
-      fileId: z.string().describe("The ID of the file containing the comment."),
+      fileId: z
+        .string()
+        .describe("The ID or URL of the file containing the comment."),
       commentId: z.string().describe("The ID of the comment to reply to."),
       content: z.string().describe("The plain text content of the reply."),
       capabilities: capabilitiesSchema,
@@ -448,7 +454,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     description:
       "Update a Google Docs document by applying one or more operations: text find/replace, position-based insert/delete/format, table cell and row/column edits, and header/footer edits. No prior call to get_document_structure is needed. Pass a `raw` operation for any Google Docs batchUpdate request the named ops don't cover.",
     schema: {
-      documentId: z.string().describe("The ID of the document to update."),
+      documentId: z
+        .string()
+        .describe("The ID or URL of the document to update."),
       capabilities: capabilitiesSchema,
       operations: DocumentOperationsArraySchema.describe(
         "An array of operations to apply to the document. Operations are resolved server-side from the current document state."
@@ -469,7 +477,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
       "This is a simple operation for adding new rows to the end of existing data. " +
       "For more complex operations like formatting, merging cells, or updating existing data, use update_spreadsheet instead.",
     schema: {
-      spreadsheetId: z.string().describe("The ID of the spreadsheet."),
+      spreadsheetId: z.string().describe("The ID or URL of the spreadsheet."),
       capabilities: capabilitiesSchema,
       range: z
         .string()
@@ -507,7 +515,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     schema: {
       spreadsheetId: z
         .string()
-        .describe("The ID of the spreadsheet to update."),
+        .describe("The ID or URL of the spreadsheet to update."),
       capabilities: capabilitiesSchema,
       operations: SpreadsheetOperationsArraySchema.describe(
         "An array of operations to apply to the spreadsheet. Operations are resolved server-side from the current spreadsheet state."
@@ -528,7 +536,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     schema: {
       presentationId: z
         .string()
-        .describe("The ID of the presentation to update."),
+        .describe("The ID or URL of the presentation to update."),
       capabilities: capabilitiesSchema,
       operations: PresentationOperationsArraySchema.describe(
         "An array of operations to apply to the presentation. Operations are resolved server-side from the current presentation state."
@@ -547,7 +555,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     description:
       "Share a Google Drive file with a specific person by email, or with everyone in a Google Workspace domain.",
     schema: {
-      fileId: z.string().describe("The ID of the Google Drive file to share."),
+      fileId: z
+        .string()
+        .describe("The ID or URL of the Google Drive file to share."),
       type: z
         .enum(["user", "group", "domain"])
         .describe(
@@ -599,7 +609,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     description:
       "Update the role of an existing permission on a Google Drive file. Use list_file_permissions to find the permissionId first. To grant new access, use share_file instead.",
     schema: {
-      fileId: z.string().describe("The ID of the Google Drive file."),
+      fileId: z.string().describe("The ID or URL of the Google Drive file."),
       permissionId: z
         .string()
         .describe(
@@ -625,7 +635,9 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
     schema: {
       fileId: z
         .string()
-        .describe("The ID of the Google Drive file to remove access from."),
+        .describe(
+          "The ID or URL of the Google Drive file to remove access from."
+        ),
       permissionId: z
         .string()
         .describe(
@@ -655,7 +667,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = [
         .string()
         .optional()
         .describe(
-          "The ID of the folder to upload the file into. If not provided, uploads to the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
+          "The ID or URL of the folder to upload the file into. If not provided, uploads to the user's root Drive. Use the search_files tool with `mimeType = 'application/vnd.google-apps.folder'` to find folder IDs."
         ),
       fileName: z
         .string()

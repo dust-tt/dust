@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
@@ -19,6 +20,11 @@ const mockedSearchConsumptionAnalytics = vi.mocked(
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
   return { ...mod, searchConsumptionAnalytics: vi.fn() };
+});
+
+vi.mock(import("@app/lib/utils/rate_limiter"), async (orig) => {
+  const mod = await orig();
+  return { ...mod, rateLimiter: vi.fn(async () => 1) };
 });
 
 vi.mock(import("@app/lib/api/analytics/consumption/labels"), async (orig) => {
@@ -472,6 +478,24 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     const json = await response.json();
     expect(json.error.type).toBe("invalid_request_error");
     expect(json.error.message).toContain("startDate");
+  });
+
+  it("returns 429 once the workspace exceeds 60 exports per minute", async () => {
+    vi.mocked(rateLimiter).mockResolvedValueOnce(0);
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+
+    const response = await consumptionExportRequest({
+      workspace,
+      key,
+      body: {
+        startDate: "2024-06-01T00:00:00Z",
+        endDate: "2024-06-15T00:00:00Z",
+      },
+    });
+
+    expect(response.status).toBe(429);
   });
 
   it("returns 405 for GET", async () => {

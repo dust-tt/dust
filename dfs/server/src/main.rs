@@ -15,8 +15,8 @@ use tokio::{
 struct Config {
     #[arg(long, env = "DFS_LISTEN", default_value = "127.0.0.1:50051")]
     listen: SocketAddr,
-    #[arg(long, env = "FDB_CLUSTER_FILE", default_value = "fdb.cluster")]
-    fdb_cluster_file: String,
+    #[arg(long, env = "DFS_MASTER_KEY", hide_env_values = true)]
+    master_key: String,
 }
 
 #[tokio::main]
@@ -30,19 +30,18 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     // SAFETY: `boot` runs once, here, and `_network` lives until `main` returns, so the network is
-    // stopped before exit on every path. It is declared before `database`, so it outlives it.
+    // stopped before exit on every path.
     // See https://docs.rs/foundationdb/0.11.0/foundationdb/fn.boot.html
     #[allow(unsafe_code)]
     let _network = unsafe { foundationdb::boot() };
-    let database = fdb::open(&config.fdb_cluster_file)?;
-    fdb::ping(&database).await?;
-    tracing::info!(cluster_file = %config.fdb_cluster_file, "connected to FoundationDB");
+    fdb::ping(fdb::database()?).await?;
+    tracing::info!("connected to FoundationDB");
 
     let mut interrupt = signal(SignalKind::interrupt())?;
     let mut terminate = signal(SignalKind::terminate())?;
     let listener = TcpListener::bind(config.listen).await?;
     tracing::info!(listen = %listener.local_addr()?, "dfs-api listening");
-    serve(listener, async {
+    serve(listener, &config.master_key, async {
         tokio::select! {
             _ = interrupt.recv() => {}
             _ = terminate.recv() => {}

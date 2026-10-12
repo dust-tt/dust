@@ -176,6 +176,8 @@ export type ExtensionWorkspaceType = WorkspaceType & {
   blacklistedDomains: string[] | null;
 };
 
+export const MAX_USER_PRONOUNS_LENGTH = 32;
+
 export const UserProviderSchema = z
   .enum(["auth0", "github", "google", "okta", "samlp", "waad"])
   .nullable();

@@ -1,0 +1,10 @@
+@cc [owner:spolu,label:architecture;error-handling] storage-transport-independence
+Storage and resource modules MUST return transport-independent errors and MUST NOT import tonic or
+construct gRPC statuses. Conversions to API statuses MUST live in the API layer.
+
+@cc [owner:spolu,label:backend;error-handling] strongly-typed-resource-errors
+Resource domain errors MUST use an Error enum defined in the resource module, with distinct variants
+for failures callers need to distinguish. They MUST be returned through Result, directly or wrapped
+in storage::Error<Error>, and MUST NOT be reduced to strings or anyhow::Error. Callers MUST match
+variants instead of parsing error messages. Database and stored-data decoding failures MAY propagate
+as FdbBindingError.

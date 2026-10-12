@@ -76,32 +76,30 @@ app.get(
     const locale = await user.getLocale(workspace.locale);
 
     const workspacePermissions = await auth.getWorkspacePermissions();
-    let groupManagement: GroupManagementAccess | undefined;
-    if (featureFlags.includes("group_management")) {
-      if (auth.isManager() || auth.isAdmin()) {
-        groupManagement = {
-          write: { kind: "all" },
-          read_usage: { kind: "all" },
-          set_usage_limits: { kind: "all" },
-        };
-      } else {
-        const [write, readUsage, setUsageLimits] = await Promise.all([
-          listGroupsWithVerb(auth, "write"),
-          listGroupsWithVerb(auth, "read_usage"),
-          listGroupsWithVerb(auth, "set_usage_limits"),
-        ]);
-        groupManagement = {
-          write: { kind: "ids", groupIds: write.map((group) => group.sId) },
-          read_usage: {
-            kind: "ids",
-            groupIds: readUsage.map((group) => group.sId),
-          },
-          set_usage_limits: {
-            kind: "ids",
-            groupIds: setUsageLimits.map((group) => group.sId),
-          },
-        };
-      }
+    let groupManagement: GroupManagementAccess;
+    if (auth.isManager() || auth.isAdmin()) {
+      groupManagement = {
+        write: { kind: "all" },
+        read_usage: { kind: "all" },
+        set_usage_limits: { kind: "all" },
+      };
+    } else {
+      const [write, readUsage, setUsageLimits] = await Promise.all([
+        listGroupsWithVerb(auth, "write"),
+        listGroupsWithVerb(auth, "read_usage"),
+        listGroupsWithVerb(auth, "set_usage_limits"),
+      ]);
+      groupManagement = {
+        write: { kind: "ids", groupIds: write.map((group) => group.sId) },
+        read_usage: {
+          kind: "ids",
+          groupIds: readUsage.map((group) => group.sId),
+        },
+        set_usage_limits: {
+          kind: "ids",
+          groupIds: setUsageLimits.map((group) => group.sId),
+        },
+      };
     }
 
     return ctx.json({
@@ -116,7 +114,7 @@ app.get(
       ...(collabUrl && { collabUrl }),
       providersHealth: auth.providersHealth(),
       workspacePermissions,
-      ...(groupManagement && { groupManagement }),
+      groupManagement,
       locale,
     });
   }

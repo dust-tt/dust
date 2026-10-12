@@ -289,9 +289,7 @@ function useCommandPaletteSettings({
       featureFlags,
       subscription,
       hasPermission,
-      hasManagedGroups:
-        featureFlags.includes("group_management") &&
-        hasGroupManagementScope(groupManagement?.read_usage),
+      hasManagedGroups: hasGroupManagementScope(groupManagement?.read_usage),
       t,
     });
     return accessibleAdminMenus(subNavigation, hasFeature);

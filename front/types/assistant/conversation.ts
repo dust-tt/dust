@@ -93,7 +93,6 @@ export const CLIENT_MESSAGE_ORIGINS = [
   "extension",
   "agent_sidekick",
   "analytics_panel",
-  "reinforced_skill_notification",
 ] as const;
 
 export type ClientMessageOrigin = (typeof CLIENT_MESSAGE_ORIGINS)[number];
@@ -128,6 +127,7 @@ export type UserMessageOrigin =
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
+  | "reinforced_skill_notification"
   // Opening message of an Activation Pod nudge, authored by the system on the
   // user's behalf. Server-only: it is not in `CLIENT_MESSAGE_ORIGINS` and
   // `isUserMessageContextValid` rejects it on /v1/ for anything but a

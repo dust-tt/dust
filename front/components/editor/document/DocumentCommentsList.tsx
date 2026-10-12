@@ -190,13 +190,8 @@ export const DocumentCommentsList = ({
         ref={listRef}
         aria-label={t`Comments`}
         aria-hidden={!open || undefined}
+        data-document-layer={open ? "" : undefined}
         data-state={open ? "open" : "closed"}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && !event.defaultPrevented) {
-            event.preventDefault();
-            closeList();
-          }
-        }}
         className={cn(
           "pointer-events-auto absolute right-0 top-2 flex max-h-[min(36rem,70vh)] w-[22.5rem] max-w-full flex-col overflow-hidden",
           "origin-top-right rounded-2xl border border-border bg-background font-sans text-foreground shadow-xl antialiased dark:bg-muted-background",

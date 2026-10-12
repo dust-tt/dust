@@ -12,7 +12,6 @@ import type {
   AgentMessageSuccessEvent,
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
-import { ApplicationFailure } from "@temporalio/common";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   finalizeCancellation,
@@ -1316,7 +1315,7 @@ describe("finalizeCancellation", () => {
     expect(dbMessage?.status).toBe("cancelled");
   });
 
-  it("throws a non-retryable failure when the selected model is gone", async () => {
+  it("marks the agent message as cancelled when its model is gone", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
     const conversation = await ConversationFactory.create(auth, {
@@ -1349,23 +1348,23 @@ describe("finalizeCancellation", () => {
       { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
     );
 
-    await expect(
-      finalizeCancellation(auth.toJSON(), {
-        agentMessageId: agentMessage.sId,
-        agentMessageVersion: agentMessage.version,
-        conversationId: conversation.sId,
-        conversationTitle: conversation.title,
-        userMessageId: userMessage.sId,
-        userMessageVersion: userMessage.version,
-        userMessageOrigin: userMessage.context.origin,
-      })
-    ).rejects.toSatisfy((error: unknown): boolean => {
-      return (
-        error instanceof ApplicationFailure &&
-        error.nonRetryable === true &&
-        error.type === "ModelNotFound"
-      );
+    await finalizeCancellation(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
     });
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("cancelled");
   });
 
   it("marks the agent message as cancelled when its agent can no longer be loaded", async () => {

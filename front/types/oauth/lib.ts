@@ -964,6 +964,19 @@ export const NotionCredentialsSchema = z.object({
 });
 export type NotionCredentials = z.infer<typeof NotionCredentialsSchema>;
 
+// The dfs tenant key of a workspace (oauth provider `dfs`).
+export const DfsTenantCredentialsSchema = z.object({
+  tenant_key: z.string(),
+});
+export type DfsTenantCredentials = z.infer<typeof DfsTenantCredentialsSchema>;
+
+export type OauthAPIPostDfsTenantCredentialsResponse = {
+  credential: {
+    credential_id: string;
+    created: number;
+  };
+};
+
 export type ConnectionCredentials =
   | SnowflakeCredentials
   | BigQueryCredentialsWithLocation

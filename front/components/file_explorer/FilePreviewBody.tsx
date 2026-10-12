@@ -31,6 +31,8 @@ interface FilePreviewBodyProps {
   markdown: MarkdownFileEditor;
   /** Where the rich editor shows its comments button and live status, such as a header bar. */
   markdownHeaderControlsContainer?: HTMLElement | null;
+  /** Where the rich editor shows its save or live status icon, such as next to the file name. */
+  markdownStatusContainer?: HTMLElement | null;
   onMarkdownViewModeChange?: (mode: MarkdownFilePreviewViewMode) => void;
   owner?: LightWorkspaceType;
   preview: FilePreviewContentData;
@@ -43,6 +45,7 @@ export function FilePreviewBody({
   isFullWidth,
   markdown,
   markdownHeaderControlsContainer,
+  markdownStatusContainer,
   onMarkdownViewModeChange,
   owner,
   preview,
@@ -93,6 +96,7 @@ export function FilePreviewBody({
       markdownCanEdit={markdown.canEdit}
       markdownContent={markdown.content}
       markdownHeaderControlsContainer={markdownHeaderControlsContainer}
+      markdownStatusContainer={markdownStatusContainer}
       markdownRichEditor={markdown.richEditor}
       markdownViewMode={markdown.viewMode}
       onMarkdownContentChange={markdown.canEdit ? markdown.setDraft : undefined}

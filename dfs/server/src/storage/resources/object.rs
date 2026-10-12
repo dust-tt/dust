@@ -1,0 +1,461 @@
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+    time::{SystemTime, UNIX_EPOCH},
+};
+
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
+use dfs_protocol::{
+    ObjectId,
+    rpc::{AllowGrant, DenyGrant, Grant, GrantPage, GrantUpdate, ObjectKind, grant},
+};
+use foundationdb::{
+    FdbBindingError, KeySelector, RangeOption, Transaction,
+    tuple::{Subspace, pack, unpack},
+};
+
+use crate::storage::{
+    self,
+    resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
+};
+
+const FAMILY: &str = "object";
+const METADATA_FAMILY: &str = "metadata";
+const XATTR_FAMILY: &str = "xattr";
+const INITIAL_VERSION: u64 = 1;
+const EMPTY_SIZE_BYTES: u64 = 0;
+const XATTR_NAME_MAX_BYTES: usize = 255;
+const XATTRS_MAX_BYTES: usize = 32 * 1024;
+const GRANT_FAMILY: &str = "object-grant";
+const REVERSE_GRANT_FAMILY: &str = "grant-object";
+const ALLOW: &str = "ALLOW";
+const DENY: &str = "DENY";
+const GRANTS_MAX_COUNT: usize = 512;
+const GRANT_MODE_MASK: u32 = 0o6;
+
+#[derive(Debug)]
+pub enum Error {
+    TimestampGeneration,
+    AlreadyExists,
+    MissingMetadata,
+    InvalidXattrName,
+    XattrsTooLarge,
+    InvalidId,
+    NotFound,
+    InvalidGrant,
+    TooManyGrants,
+    DuplicateGrant,
+    InvalidGrantLimit,
+    InvalidGrantCursor,
+    InvalidStoredGrant,
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::TimestampGeneration => f.write_str("object timestamp generation failed"),
+            Self::AlreadyExists => f.write_str("object already exists"),
+            Self::MissingMetadata => f.write_str("object creation requires metadata"),
+            Self::InvalidXattrName => f.write_str("invalid xattr name"),
+            Self::XattrsTooLarge => f.write_str("xattrs exceed the size limit"),
+            Self::InvalidId => f.write_str("invalid object ID"),
+            Self::NotFound => f.write_str("object not found"),
+            Self::InvalidGrant => f.write_str("invalid grant"),
+            Self::TooManyGrants => f.write_str("too many grants"),
+            Self::DuplicateGrant => f.write_str("duplicate grant change"),
+            Self::InvalidGrantLimit => f.write_str("invalid grant page limit"),
+            Self::InvalidGrantCursor => f.write_str("invalid grant cursor"),
+            Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<Error> for storage::Error<Error> {
+    fn from(error: Error) -> Self {
+        Self::Resource(error)
+    }
+}
+
+pub struct ObjectResource {
+    pub tenant_id: String,
+    pub object_id: ObjectId,
+    pub parent_id: Option<ObjectId>,
+    pub name: String,
+    pub kind: ObjectKind,
+    pub size: u64,
+    pub atime_ms: Option<u64>,
+    pub mtime_ms: Option<u64>,
+    pub ctime_ms: Option<u64>,
+    pub attr_version: u64,
+    pub content_version: u64,
+    pub metadata: Option<Metadata>,
+}
+
+pub struct Metadata {
+    pub created_at_ms: u64,
+    pub mime_type: Option<String>,
+    pub xattrs: HashMap<String, Vec<u8>>,
+}
+
+type StoredAttributes = (
+    Option<Vec<u8>>,
+    String,
+    i32,
+    u64,
+    Option<u64>,
+    Option<u64>,
+    Option<u64>,
+    u64,
+    u64,
+);
+
+impl ObjectResource {
+    /**
+     * @cc [owner:spolu,label:backend;security] object-fetch-attributes
+     * Fetch MUST derive tenant scope from the supplied TenantResource, read object attributes with
+     * conflict tracking, and leave metadata unloaded. An invalid object ID MUST return InvalidId;
+     * a missing object MUST return None. Stored-data decoding failures MUST propagate as storage
+     * failures.
+     */
+    pub async fn fetch(
+        tx: &Transaction,
+        tenant: &TenantResource,
+        object_id: &ObjectId,
+    ) -> Result<Option<Self>, storage::Error<Error>> {
+        object_id.validate().map_err(|_| Error::InvalidId)?;
+        let Some(value) = tx
+            .get(&Self::object_key(&tenant.tenant_id, object_id), false)
+            .await
+            .map_err(FdbBindingError::from)?
+        else {
+            return Ok(None);
+        };
+        let (
+            parent_id,
+            name,
+            kind,
+            size,
+            atime_ms,
+            mtime_ms,
+            ctime_ms,
+            attr_version,
+            content_version,
+        ): StoredAttributes = unpack(&value).map_err(FdbBindingError::PackError)?;
+        Ok(Some(Self {
+            tenant_id: tenant.tenant_id.clone(),
+            object_id: *object_id,
+            parent_id: parent_id
+                .map(|bytes| ObjectId::try_from(bytes.as_slice()))
+                .transpose()
+                .map_err(storage::Error::InvalidObjectId)?,
+            name,
+            kind: ObjectKind::try_from(kind)
+                .map_err(|error| FdbBindingError::CustomError(Box::new(error)))?,
+            size,
+            atime_ms,
+            mtime_ms,
+            ctime_ms,
+            attr_version,
+            content_version,
+            metadata: None,
+        }))
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] tenant-root-initial-state
+     * A new root MUST use the tenant's root ID and be an empty directory with no parent, MIME type,
+     * or xattrs, and an empty name. Both versions MUST start at 1. Creation, access, modification, and
+     * change times MUST be initialized to the same server timestamp.
+     */
+    pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
+        let now_ms = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| Error::TimestampGeneration)?
+            .as_millis()
+            .try_into()
+            .map_err(|_| Error::TimestampGeneration)?;
+        Ok(Self {
+            tenant_id: tenant.tenant_id.clone(),
+            object_id: tenant.root_id,
+            parent_id: None,
+            name: String::new(),
+            kind: ObjectKind::Directory,
+            size: EMPTY_SIZE_BYTES,
+            atime_ms: Some(now_ms),
+            mtime_ms: Some(now_ms),
+            ctime_ms: Some(now_ms),
+            attr_version: INITIAL_VERSION,
+            content_version: INITIAL_VERSION,
+            metadata: Some(Metadata {
+                created_at_ms: now_ms,
+                mime_type: None,
+                xattrs: HashMap::new(),
+            }),
+        })
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;error-handling] object-create-atomicity
+     * Creation MUST write attributes, metadata, xattrs, and grants in the caller's transaction. An
+     * occupied object ID in the same tenant MUST return AlreadyExists before staging any writes,
+     * preserving the existing object and metadata. Missing metadata or invalid xattrs MUST fail
+     * before staging any writes. Initial grants MUST be validated and deduplicated, with at most
+     * 512 distinct values, before staging writes.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] object-xattr-validation
+     * Xattr names MUST contain 1-255 UTF-8 bytes without NUL; invalid names MUST return
+     * InvalidXattrName. Combined name and value bytes MUST NOT exceed 32 KiB; exceeding this limit
+     * MUST return XattrsTooLarge.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] object-xattr-storage
+     * Each xattr MUST use a separate key under the object's metadata with its exact name as one
+     * tuple component. Values MUST be stored verbatim, including empty bytes for a present xattr.
+     */
+    pub async fn create(
+        &self,
+        tx: &Transaction,
+        grants: &[Grant],
+    ) -> Result<(), storage::Error<Error>> {
+        let key = Self::object_key(&self.tenant_id, &self.object_id);
+        if tx
+            .get(&key, false)
+            .await
+            .map_err(FdbBindingError::from)?
+            .is_some()
+        {
+            return Err(Error::AlreadyExists.into());
+        }
+
+        let metadata = self.metadata.as_ref().ok_or(Error::MissingMetadata)?;
+        let mut xattrs_bytes = 0;
+        for (name, value) in &metadata.xattrs {
+            if name.is_empty() || name.len() > XATTR_NAME_MAX_BYTES || name.contains('\0') {
+                return Err(Error::InvalidXattrName.into());
+            }
+            xattrs_bytes += name.len() + value.len();
+            if xattrs_bytes > XATTRS_MAX_BYTES {
+                return Err(Error::XattrsTooLarge.into());
+            }
+        }
+
+        let unique_grants: HashSet<&Grant> = grants.iter().collect();
+        if unique_grants.len() > GRANTS_MAX_COUNT {
+            return Err(Error::TooManyGrants.into());
+        }
+        for grant in &unique_grants {
+            self.grant_keys(grant)?;
+        }
+
+        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
+        tx.set(
+            &key,
+            &pack(&(
+                parent_id,
+                self.name.as_str(),
+                i32::from(self.kind),
+                self.size,
+                self.atime_ms,
+                self.mtime_ms,
+                self.ctime_ms,
+                self.attr_version,
+                self.content_version,
+            )),
+        );
+        tx.set(
+            &Self::metadata_key(&self.tenant_id, &self.object_id),
+            &pack(&(metadata.created_at_ms, metadata.mime_type.as_deref())),
+        );
+        for (name, value) in &metadata.xattrs {
+            tx.set(
+                &Self::xattr_key(&self.tenant_id, &self.object_id, name),
+                value,
+            );
+        }
+        for grant in unique_grants {
+            self.write_grant(tx, grant, false)?;
+        }
+        Ok(())
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] object-grant-pagination
+     * Callers MUST fetch or create this object in the same transaction. Listing MUST return only
+     * its explicit grants, ordered by ALLOW before DENY, then subject bytes and numeric mode.
+     * Limits MUST be 1-512. Cursors MUST be exclusive and scoped to this tenant and object;
+     * next_after MUST be absent when there are no further entries in the transaction's view.
+     */
+    pub async fn list_grants(
+        &self,
+        tx: &Transaction,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<GrantPage, storage::Error<Error>> {
+        let limit = usize::try_from(limit).map_err(|_| Error::InvalidGrantLimit)?;
+        if limit == 0 || limit > GRANTS_MAX_COUNT {
+            return Err(Error::InvalidGrantLimit.into());
+        }
+        let mut range = RangeOption {
+            limit: Some(limit + 1),
+            ..RangeOption::from(self.grant_subspace().range())
+        };
+        if let Some(after) = after {
+            let key = URL_SAFE_NO_PAD
+                .decode(after)
+                .map_err(|_| Error::InvalidGrantCursor)?;
+            self.grant_from_key(&key)
+                .map_err(|_| Error::InvalidGrantCursor)?;
+            range.begin = KeySelector::first_greater_than(key);
+        }
+        let mut grants = Vec::new();
+        let mut last_key = None;
+        let mut next_range = Some(range);
+        let mut iteration = 1;
+        while let Some(range) = next_range {
+            let batch = tx
+                .get_range(&range, iteration, false)
+                .await
+                .map_err(FdbBindingError::from)?;
+            next_range = range.next_range(&batch);
+            for entry in &batch {
+                if grants.len() == limit {
+                    return Ok(GrantPage {
+                        grants,
+                        next_after: last_key,
+                    });
+                }
+                grants.push(self.grant_from_key(entry.key())?);
+                last_key = Some(URL_SAFE_NO_PAD.encode(entry.key()));
+            }
+            iteration += 1;
+        }
+        Ok(GrantPage {
+            grants,
+            next_after: None,
+        })
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend;security] object-grant-updates
+     * Callers MUST fetch or create this object in the same transaction. Updates MUST reject more
+     * than 512 changes, invalid grants, or repeated complete grant values before staging writes.
+     * ALLOW forward and reverse entries MUST change together; DENY MUST have no reverse entry.
+     * Attaching an existing grant or removing an absent grant MUST be a no-op. Unmentioned grants,
+     * object attributes, metadata, and versions MUST remain unchanged.
+     */
+    pub fn update_grants(
+        &self,
+        tx: &Transaction,
+        changes: &[GrantUpdate],
+    ) -> Result<(), storage::Error<Error>> {
+        if changes.len() > GRANTS_MAX_COUNT {
+            return Err(Error::TooManyGrants.into());
+        }
+        let mut seen = HashSet::new();
+        for change in changes {
+            self.grant_keys(&change.grant)?;
+            if !seen.insert(&change.grant) {
+                return Err(Error::DuplicateGrant.into());
+            }
+        }
+        for change in changes {
+            self.write_grant(tx, &change.grant, change.remove)?;
+        }
+        Ok(())
+    }
+
+    fn write_grant(&self, tx: &Transaction, grant: &Grant, remove: bool) -> Result<(), Error> {
+        let (forward, reverse) = self.grant_keys(grant)?;
+        for key in std::iter::once(forward.as_slice()).chain(reverse.as_deref()) {
+            if remove {
+                tx.clear(key);
+            } else {
+                tx.set(key, &[]);
+            }
+        }
+        Ok(())
+    }
+
+    /**
+     * @cc [owner:spolu,label:backend] object-grant-identity
+     * Grants MUST select one variant and use only mode bits 0o6, including zero. ALLOW subjects
+     * MUST contain 1-1024 UTF-8 bytes, preserved exactly. Invalid grants MUST return InvalidGrant.
+     * Keys MUST preserve the complete grant identity, including distinct modes for one subject.
+     * Reverse ALLOW keys MUST place the ALLOW tag before the subject.
+     */
+    fn grant_keys(&self, grant: &Grant) -> Result<(Vec<u8>, Option<Vec<u8>>), Error> {
+        let prefix = self.grant_subspace();
+        match &grant.kind {
+            Some(grant::Kind::Allow(AllowGrant { subject, mode }))
+                if !subject.is_empty()
+                    && subject.len() <= SUBJECT_MAX_BYTES
+                    && mode & !GRANT_MODE_MASK == 0 =>
+            {
+                Ok((
+                    prefix.pack(&(ALLOW, subject.as_str(), *mode)),
+                    Some(tenant_subspace(&self.tenant_id).pack(&(
+                        REVERSE_GRANT_FAMILY,
+                        ALLOW,
+                        subject.as_str(),
+                        self.object_id.as_bytes().as_slice(),
+                        *mode,
+                    ))),
+                ))
+            }
+            Some(grant::Kind::Deny(DenyGrant { mode })) if mode & !GRANT_MODE_MASK == 0 => {
+                Ok((prefix.pack(&(DENY, *mode)), None))
+            }
+            _ => Err(Error::InvalidGrant),
+        }
+    }
+
+    fn grant_from_key(&self, key: &[u8]) -> Result<Grant, Error> {
+        let prefix = self.grant_subspace();
+        let allow = prefix.subspace(&ALLOW);
+        let kind = if allow.is_start_of(key) {
+            let (subject, mode) = allow.unpack(key).map_err(|_| Error::InvalidStoredGrant)?;
+            grant::Kind::Allow(AllowGrant { subject, mode })
+        } else {
+            let mode = prefix
+                .subspace(&DENY)
+                .unpack(key)
+                .map_err(|_| Error::InvalidStoredGrant)?;
+            grant::Kind::Deny(DenyGrant { mode })
+        };
+        let grant = Grant { kind: Some(kind) };
+        if self
+            .grant_keys(&grant)
+            .map_err(|_| Error::InvalidStoredGrant)?
+            .0
+            != key
+        {
+            return Err(Error::InvalidStoredGrant);
+        }
+        Ok(grant)
+    }
+
+    fn grant_subspace(&self) -> Subspace {
+        tenant_subspace(&self.tenant_id)
+            .subspace(&(GRANT_FAMILY, self.object_id.as_bytes().as_slice()))
+    }
+
+    fn object_key(tenant_id: &str, object_id: &ObjectId) -> Vec<u8> {
+        tenant_subspace(tenant_id).pack(&(FAMILY, object_id.as_bytes().as_slice()))
+    }
+
+    fn metadata_key(tenant_id: &str, object_id: &ObjectId) -> Vec<u8> {
+        tenant_subspace(tenant_id).pack(&(METADATA_FAMILY, object_id.as_bytes().as_slice()))
+    }
+
+    fn xattr_key(tenant_id: &str, object_id: &ObjectId, name: &str) -> Vec<u8> {
+        tenant_subspace(tenant_id).pack(&(
+            METADATA_FAMILY,
+            object_id.as_bytes().as_slice(),
+            XATTR_FAMILY,
+            name,
+        ))
+    }
+}

@@ -17,8 +17,8 @@ interface PodNetworkSectionProps {
 }
 
 // Pod-level sandbox egress allowlist. Merged on top of the workspace-level
-// allowlist for the Pod's Shared Computer. Visible to anyone who can open the
-// Pod settings page; editable only by workspace admins.
+// allowlist for every Computer that runs in the Pod. Visible to anyone who can
+// open the Pod settings page; editable only by workspace admins.
 export function PodNetworkSection({
   owner,
   podId,
@@ -63,8 +63,9 @@ export function PodNetworkSection({
       </div>
       <p className="text-sm text-muted-foreground">
         <Trans>
-          This Pod's Computer can reach these domains on top of the workspace
-          allowlist. Changes apply to running Computers within about a minute.
+          Computers in this Pod can reach the following domains, in addition to
+          the workspace allowlist. Changes apply to every Computer running in
+          the Pod within about a minute.
         </Trans>
         {!canEdit && (
           <>

@@ -6,7 +6,7 @@ import type { JobType } from "@app/types/job_type";
 import { JOB_TYPE_OPTIONS } from "@app/types/job_type";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user_profile";
+import { MAX_USER_PRONOUNS_LENGTH } from "@app/types/user";
 import {
   Button,
   Card,
