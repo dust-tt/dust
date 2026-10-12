@@ -133,8 +133,8 @@ not advance its parent's `content_version`. Renaming or moving the directory its
 `attr_version` and the affected parents' `content_version`; it leaves its own `content_version`
 unchanged when its entries are unchanged.
 
-Virtual `root` projects the stored tenant root's attributes and versions, with the virtual reference
-and mode described above. Virtual `shared` has no stored timestamps; its `attr_version` and
+Virtual `root` returns the stored tenant root's real ID, attributes, and versions, with the mode
+described above. Virtual `shared` has no stored timestamps; its `attr_version` and
 `content_version` stay fixed at 1, regardless of grants or topology changes. `Validate(shared)` always
 returns `CHANGED`. No version comparison replaces authorization or validates cached visibility.
 

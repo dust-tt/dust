@@ -61,7 +61,7 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
             .ok()
             .context("expected successful Stat")?
             .id,
-        ObjectRef::Root
+        root.object_id.into()
     );
     assert!(matches!(results[2], Err(object::Error::NotFound)));
     assert!(matches!(results[3], Err(object::Error::NotAuthorized)));
@@ -138,7 +138,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             .as_ref()
             .ok()
             .context("expected successful Stat")?;
-        assert_eq!(projected.id, ObjectRef::Root);
+        assert_eq!(projected.id, root.object_id.into());
         assert_eq!(projected.name, "");
         assert_eq!(projected.kind(), ObjectKind::Directory);
         assert_eq!(projected.size, 0);

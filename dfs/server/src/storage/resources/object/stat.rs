@@ -28,7 +28,8 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] object-stat-references
      * Stat MUST validate every reference before reading. Invalid references MUST fail the batch
-     * with InvalidId. Virtual root and shared MUST retain their virtual references in results.
+     * with InvalidId. Virtual root MUST return the tenant's real root ID; shared MUST retain its
+     * virtual reference.
      */
     /**
      * @cc [owner:spolu,label:api;security] object-stat-mode
@@ -103,7 +104,7 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] virtual-root-stat
      * Virtual root MUST project the stored tenant root's attributes and versions with an empty name
-     * and Root reference. It MUST remain readable regardless of stored-root read access, reporting
+     * and real root ID. It MUST remain readable regardless of stored-root read access, reporting
      * 0o700 when the session has write access on the stored root and 0o500 otherwise.
      */
     async fn stat_root(
@@ -125,7 +126,6 @@ impl ObjectResource {
                 0
             };
         let mut attr = root.into_attr(mode, version);
-        attr.id = ObjectRef::Root;
         attr.name.clear();
         Ok(Ok(attr))
     }

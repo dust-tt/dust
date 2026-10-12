@@ -158,9 +158,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     assert_eq!(root.view, attributes.view);
     assert!(root.metadata.is_none());
     let projected = results[1].object.as_ref().context("missing virtual root")?;
-    let mut expected_root = root.clone();
-    expected_root.id = ObjectRef::Root;
-    assert_eq!(projected, &expected_root);
+    assert_eq!(projected, root);
     let shared = results[5].object.as_ref().context("missing shared")?;
     assert_eq!(shared.id, ObjectRef::Shared);
     assert_eq!(shared.name, "shared");
@@ -210,7 +208,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     );
     for (index, reference) in [
         (0, ObjectRef::Shared),
-        (2, ObjectRef::Root),
+        (2, tenant.root_id.into()),
         (3, ObjectRef::Shared),
     ] {
         assert!(projected[index].error.is_none());
