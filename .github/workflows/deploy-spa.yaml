@@ -186,8 +186,30 @@ jobs:
         working-directory: front-spa
         run: find dist -name "*.map" -delete
 
+      # wrangler retries a slow or 5xx `POST /versions` with the same single-use assets completion
+      # token. When Cloudflare already processed the first request, the retry fails with
+      # "Completion token has already been consumed". A fresh `versions upload` opens a new assets
+      # upload session (assets are already uploaded) and gets a new token, so retry the whole step.
       - name: Upload version
         id: upload_version
+        continue-on-error: true
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: >-
+            versions upload
+            --config wrangler-${{ inputs.app }}.toml
+            ${{ github.ref_name != 'main'
+              && format('--preview-alias {0}', steps.branch.outputs.sanitized)
+              || '' }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: "4.80.0"
+
+      - name: Retry upload version
+        id: upload_version_retry
+        if: ${{ steps.upload_version.outcome == 'failure' }}
         uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4.0.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -205,7 +227,7 @@ jobs:
       - name: Extract version ID
         id: extract_version
         run: |
-          UPLOAD_OUTPUT="${{ steps.upload_version.outputs.command-output }}"
+          UPLOAD_OUTPUT="${{ steps.upload_version_retry.outputs.command-output || steps.upload_version.outputs.command-output }}"
           VERSION_ID=$(echo "$UPLOAD_OUTPUT" | sed -n 's/.*Worker Version ID: *\([0-9a-f-]*\).*/\1/p')
           if [ -z "$VERSION_ID" ]; then
             echo "Failed to extract version ID from upload output:"
