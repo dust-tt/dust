@@ -174,6 +174,10 @@ msgid "Name ..."
 msgstr "Nom…"
 
 #: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: front/components/agent_builder/capabilities/knowledge/KnowledgeFooter.tsx
 msgid "{selectionCount, plural, one {Selection (# item)} other {Selection (# items)}}"
 msgstr "{selectionCount, plural, one {Sélection (# élément)} other {Sélection (# éléments)}}"
 

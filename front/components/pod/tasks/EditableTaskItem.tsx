@@ -193,6 +193,7 @@ export function EditableTaskItem({ task }: EditableTaskItemProps) {
               trigger={
                 <div className="relative shrink-0">
                   <Button
+                    aria-label={t`Open task conversation`}
                     icon={MessageChatSquare}
                     size="xs"
                     variant="outline"

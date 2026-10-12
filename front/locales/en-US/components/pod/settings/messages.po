@@ -528,6 +528,10 @@ msgid "Change icon"
 msgstr "Change icon"
 
 #: front/components/pod/settings/PodTabsCustomizationSection.tsx
+msgid "Tab icon"
+msgstr "Tab icon"
+
+#: front/components/pod/settings/PodTabsCustomizationSection.tsx
 msgid "File {filePath} missing or renamed"
 msgstr "File {filePath} missing or renamed"
 

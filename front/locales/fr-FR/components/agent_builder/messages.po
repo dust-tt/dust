@@ -135,6 +135,10 @@ msgid "Go back"
 msgstr "Retour"
 
 #: front/components/agent_builder/AgentBuilderLeftPanel.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/agent_builder/AgentBuilderLeftPanel.tsx
 #: front/components/agent_builder/PersonalConnectionRequiredDialog.tsx
 msgid "Cancel"
 msgstr "Annuler"

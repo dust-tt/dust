@@ -1,5 +1,6 @@
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { Button, cn, XClose } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 
 interface ConversationSidePanelHeaderProps {
@@ -17,6 +18,7 @@ export function ConversationSidePanelHeader({
   onClose,
   closeDisabled = false,
 }: ConversationSidePanelHeaderProps) {
+  const { t } = useLingui();
   return (
     <AppLayoutTitle className="bg-panel-background @container">
       <div className="flex h-full items-center">
@@ -31,6 +33,7 @@ export function ConversationSidePanelHeader({
             {actions}
             {onClose && (
               <Button
+                tooltip={t`Close`}
                 variant="ghost"
                 onClick={onClose}
                 icon={XClose}

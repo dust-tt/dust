@@ -23,6 +23,10 @@ msgid "Archived"
 msgstr "Archived"
 
 #: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
+msgid "Browse Pods"
+msgstr "Browse Pods"
+
+#: front/components/assistant/conversation/sidebar/PodsBrowsePopover.tsx
 msgid "Search Pods..."
 msgstr "Search Pods..."
 

@@ -60,6 +60,7 @@ export const TableTagSelector = ({
           />
         ) : (
           <Button
+            aria-label={t`Edit tags`}
             variant="ghost"
             icon={ChevronDown}
             size="xmini"

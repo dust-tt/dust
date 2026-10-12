@@ -100,6 +100,10 @@ msgid "Dismiss email tip for all agents"
 msgstr "Masquer l’astuce e-mail pour tous les agents"
 
 #: front/components/assistant/details/AgentDetailsBody.tsx
+msgid "Back"
+msgstr "Retour"
+
+#: front/components/assistant/details/AgentDetailsBody.tsx
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -168,6 +172,10 @@ msgctxt "verb, menu item"
 msgid "Archive"
 msgstr "Archiver"
 
+#: front/components/assistant/details/AgentDetailsButtonBar.tsx
+msgid "More options"
+msgstr "Plus d’options"
+
 #: front/components/assistant/details/DetailsSectionHeading.tsx
 msgid "Edited"
 msgstr "Modifié"
@@ -205,6 +213,7 @@ msgid "Former member"
 msgstr "Ancien membre"
 
 #: front/components/assistant/details/MemberDetails.tsx
+#: front/components/assistant/details/SuggestionPreviewHeader.tsx
 msgid "Close"
 msgstr "Fermer"
 

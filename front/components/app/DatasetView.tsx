@@ -806,6 +806,7 @@ export default function DatasetView({
                       <div className="flex items-center justify-end gap-1 p-1 text-xs">
                         {datasetData.length > 1 ? (
                           <Button
+                            tooltip={t`Delete entry`}
                             icon={XCircle}
                             size="icon"
                             variant="ghost"
@@ -815,6 +816,7 @@ export default function DatasetView({
                           />
                         ) : null}
                         <Button
+                          tooltip={t`Add entry after`}
                           icon={PlusCircle}
                           size="icon"
                           variant="ghost"

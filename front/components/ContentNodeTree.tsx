@@ -332,6 +332,7 @@ function ContentNodeTreeChildren({
                 {additionalActions && additionalActions(n)}
                 {sourceUrl && (
                   <Button
+                    tooltip={t`Open in a new tab`}
                     href={sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -342,6 +343,7 @@ function ContentNodeTreeChildren({
                 )}
                 {onDocumentViewClick && (
                   <Button
+                    tooltip={t`View document`}
                     size="xs"
                     icon={Brackets}
                     onClick={() => {

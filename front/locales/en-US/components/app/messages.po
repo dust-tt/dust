@@ -163,6 +163,14 @@ msgid "Add and edit your dataset entries below. You can insert or remove entries
 msgstr "Add and edit your dataset entries below. You can insert or remove entries using buttons on the right."
 
 #: front/components/app/DatasetView.tsx
+msgid "Delete entry"
+msgstr "Delete entry"
+
+#: front/components/app/DatasetView.tsx
+msgid "Add entry after"
+msgstr "Add entry after"
+
+#: front/components/app/DatasetView.tsx
 msgid "New entry"
 msgstr "New entry"
 

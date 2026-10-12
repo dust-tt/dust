@@ -77,6 +77,10 @@ msgstr "Only members of {spaceLinks} can view and use this agent."
 msgid "Who is this agent available for?"
 msgstr "Who is this agent available for?"
 
+#: front/components/agent_builder/settings/AgentBuilderAvatarSection.tsx
+msgid "Change avatar"
+msgstr "Change avatar"
+
 #: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
 msgid "Failed to generate description"
 msgstr "Failed to generate description"
@@ -169,6 +173,10 @@ msgstr "No channels available"
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "No channels match \"{searchQuery}\""
 msgstr "No channels match \"{searchQuery}\""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Open in Slack"
+msgstr "Open in Slack"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "Slack Channel Settings"

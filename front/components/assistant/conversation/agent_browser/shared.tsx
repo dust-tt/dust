@@ -346,6 +346,7 @@ function SearchDropdownContent({
           endComponent={
             onAgentMoreClick ? (
               <Button
+                tooltip={t`View agent details`}
                 variant="ghost"
                 size="xs"
                 icon={DotsHorizontal}

@@ -173,6 +173,7 @@ export function ConversationFilesPanel({
                 <Trans>Working files</Trans>
               </span>
               <Button
+                tooltip={t`Close`}
                 variant="ghost"
                 size="sm"
                 onClick={closePanel}
@@ -203,6 +204,7 @@ export function ConversationFilesPanel({
               <div className="flex items-center gap-2">
                 {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
                 <Button
+                  tooltip={t`Close`}
                   variant="ghost"
                   size="sm"
                   onClick={closePanel}

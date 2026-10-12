@@ -72,6 +72,7 @@ function KnowledgeFooterItem({
 }: {
   item: DataSourceBuilderTreeItemType;
 }) {
+  const { t } = useLingui();
   const { isDark } = useTheme();
   const { removeNodeWithPath } = useDataSourceBuilderContext();
   const VisualComponent = getVisualForTreeItem(item, isDark);
@@ -84,6 +85,7 @@ function KnowledgeFooterItem({
       visual={<Icon size="sm" visual={VisualComponent} />}
       action={
         <Button
+          tooltip={t`Remove`}
           size="icon"
           variant="ghost"
           icon={XClose}

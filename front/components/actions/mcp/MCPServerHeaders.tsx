@@ -67,6 +67,7 @@ export function MCPServerHeaders() {
               </div>
               {!isPredefined && (
                 <Button
+                  tooltip={t`Remove header`}
                   variant="outline"
                   icon={XClose}
                   onClick={() => remove(index)}

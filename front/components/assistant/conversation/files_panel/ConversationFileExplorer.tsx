@@ -312,6 +312,7 @@ export function ConversationFileExplorer({
             {isPod ? t`Files` : t`Conversation files`}
           </span>
           <Button
+            tooltip={t`Close`}
             variant="ghost"
             size="sm"
             icon={XClose}

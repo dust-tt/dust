@@ -147,18 +147,21 @@ export default function Block({
                   small={true}
                 />
                 <Button
+                  tooltip={t`Move up`}
                   variant="ghost-secondary"
                   icon={ChevronUp}
                   onClick={onBlockUp}
                   size="icon"
                 />
                 <Button
+                  tooltip={t`Move down`}
                   variant="ghost-secondary"
                   icon={ChevronDown}
                   onClick={onBlockDown}
                   size="icon"
                 />
                 <Button
+                  tooltip={t`Delete block`}
                   variant="ghost-secondary"
                   icon={Trash01}
                   onClick={onBlockDelete}

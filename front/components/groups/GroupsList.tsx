@@ -16,6 +16,19 @@ type GroupRowData = {
 
 type GroupInfo = CellContext<GroupRowData, unknown>;
 
+function RemoveGroupButton({ onClick }: { onClick?: () => void }) {
+  const { t } = useLingui();
+  return (
+    <Button
+      tooltip={t`Remove group`}
+      icon={XClose}
+      size="xs"
+      variant="ghost-secondary"
+      onClick={onClick}
+    />
+  );
+}
+
 const groupColumns = [
   {
     id: "name" as const,
@@ -48,12 +61,7 @@ const groupColumns = [
     cell: (info: GroupInfo) => {
       return (
         <DataTable.CellContent>
-          <Button
-            icon={XClose}
-            size="xs"
-            variant="ghost-secondary"
-            onClick={info.row.original.onRemoveGroupClick}
-          />
+          <RemoveGroupButton onClick={info.row.original.onRemoveGroupClick} />
         </DataTable.CellContent>
       );
     },

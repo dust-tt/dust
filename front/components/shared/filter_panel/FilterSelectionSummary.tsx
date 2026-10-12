@@ -124,6 +124,7 @@ export function FilterSelectionSummary<
                         }
                         suffix={
                           <Button
+                            tooltip={t`Remove filter`}
                             icon={XClose}
                             size="xmini"
                             variant="ghost"

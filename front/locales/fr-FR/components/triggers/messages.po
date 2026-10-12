@@ -277,12 +277,24 @@ msgid "Webhook URL"
 msgstr "URL du webhook"
 
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Copy to clipboard"
+msgstr "Copier dans le presse-papiers"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
 msgid "Webhook URL copied to clipboard"
 msgstr "URL du webhook copiée dans le presse-papiers"
 
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx
 msgid "Subscribed events"
 msgstr "Événements suivis"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Hide secret"
+msgstr "Masquer le secret"
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Show secret"
+msgstr "Afficher le secret"
 
 #: front/components/triggers/WebhookSourceDetailsInfo.tsx
 msgid "Secret copied to clipboard"
@@ -391,3 +403,7 @@ msgstr "Infos"
 #: front/components/triggers/WebhookSourceSheet.tsx
 msgid "Sharing"
 msgstr "Partage"
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Remove webhook source"
+msgstr "Retirer la source de webhook"

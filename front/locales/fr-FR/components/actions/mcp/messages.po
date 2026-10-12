@@ -395,6 +395,10 @@ msgid "Header value"
 msgstr "Valeur de l’en-tête"
 
 #: front/components/actions/mcp/MCPServerHeaders.tsx
+msgid "Remove header"
+msgstr "Retirer l’en-tête"
+
+#: front/components/actions/mcp/MCPServerHeaders.tsx
 msgid "Add header"
 msgstr "Ajouter un en-tête"
 
@@ -405,6 +409,10 @@ msgstr "Clé"
 #: front/components/actions/mcp/MCPServerMetaFields.tsx
 msgid "Value"
 msgstr "Valeur"
+
+#: front/components/actions/mcp/MCPServerMetaFields.tsx
+msgid "Remove field"
+msgstr "Retirer le champ"
 
 #: front/components/actions/mcp/MCPServerMetaFields.tsx
 msgid "Add meta field"

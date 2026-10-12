@@ -161,6 +161,10 @@ msgid "Add tags"
 msgstr "Ajouter des tags"
 
 #: front/components/assistant/manager/TableTagSelector.tsx
+msgid "Edit tags"
+msgstr "Modifier les tags"
+
+#: front/components/assistant/manager/TableTagSelector.tsx
 msgid "Available tags"
 msgstr "Tags disponibles"
 

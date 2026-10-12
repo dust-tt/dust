@@ -79,6 +79,7 @@ function ConversationalBuildingBanner({
           className="h-auto w-full border-b border-border-dark"
         />
         <Button
+          tooltip={t`Dismiss`}
           variant="outline"
           icon={XClose}
           size="icon-xs"

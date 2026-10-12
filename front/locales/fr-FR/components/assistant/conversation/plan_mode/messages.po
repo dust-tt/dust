@@ -34,6 +34,10 @@ msgid "Plan: {title}"
 msgstr "Plan : {title}"
 
 #: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
+msgid "Close"
+msgstr "Fermer"
+
+#: front/components/assistant/conversation/plan_mode/ConversationPlanModePanel.tsx
 msgid "No active plan for this conversation."
 msgstr "Aucun plan actif pour cette conversation."
 
