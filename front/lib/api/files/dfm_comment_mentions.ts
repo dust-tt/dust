@@ -84,6 +84,7 @@ async function getDocumentConversation(
       });
       return { conversation, isPodDocument: true, location };
     }
+    case "conversation_metadata":
     case "user":
       return null;
     default:
