@@ -8,7 +8,7 @@ import { CommandError, Err, Ok, type Result } from "../lib/result";
 import {
   ALL_SERVICES,
   resolveServices,
-  runningCompanions,
+  aliasCompanions,
   SERVICE_ALIASES,
   type ServiceName,
 } from "../lib/services";
@@ -50,7 +50,7 @@ export async function restartCommand(
       return Err(new CommandError(`Unknown service '${serviceArg}'`));
     }
     const companions: ServiceName[] = [];
-    for (const companion of runningCompanions(serviceArg)) {
+    for (const companion of aliasCompanions(serviceArg)) {
       if (await isServiceRunning(env.name, companion)) {
         companions.push(companion);
       }

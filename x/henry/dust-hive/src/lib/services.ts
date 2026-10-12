@@ -43,7 +43,7 @@ export const SERVICE_ALIAS_RUNNING_COMPANIONS = {
 /**
  * The services `value` also restarts when they are already running: none unless it is an alias.
  */
-export function runningCompanions(value: string): readonly ServiceName[] {
+export function aliasCompanions(value: string): readonly ServiceName[] {
   return isServiceAlias(value) ? SERVICE_ALIAS_RUNNING_COMPANIONS[value] : [];
 }
 
