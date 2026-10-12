@@ -10,6 +10,7 @@ import {
   DUST_FILE_REVISION_HEADER,
   DUST_IF_REVISION_MATCH_HEADER,
 } from "@app/types/files";
+import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -221,11 +222,7 @@ describe("VisualizationActionIframe", () => {
       canInvokeFunctions: false,
       conversationId: null,
       viewer: null,
-      visualization: {
-        accessToken: "token",
-        complete: true,
-        identifier: "viz-fil_frame",
-      },
+      visualization: VisualizationFactory.buildPublic(),
       vizUrl: "https://viz.dust.tt",
       workspaceId: "w_current",
     };

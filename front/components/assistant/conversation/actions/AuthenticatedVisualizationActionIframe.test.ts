@@ -3,8 +3,8 @@ import {
   getAuthenticatedFrameUserIdentity,
 } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import type { VisualizationActionIframeProps } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
-import { setupI18n } from "@lingui/core";
-import { I18nProvider } from "@lingui/react";
+import { i18n } from "@app/lib/i18n/i18n";
+import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
 import { cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -94,26 +94,15 @@ describe("getAuthenticatedFrameUserIdentity", () => {
 
 describe("AuthenticatedVisualizationActionIframe", () => {
   function renderedLocale(activeLocale: string) {
-    const i18n = setupI18n({
-      locale: activeLocale,
-      messages: { [activeLocale]: {} },
-    });
+    i18n.loadAndActivate({ locale: activeLocale, messages: {} });
     render(
-      createElement(
-        I18nProvider,
-        { i18n },
-        createElement(AuthenticatedVisualizationActionIframe, {
-          agentConfigurationId: null,
-          conversationId: null,
-          visualization: {
-            code: "export default function Frame() {}",
-            complete: true,
-            identifier: "viz-fil_frame",
-          },
-          vizUrl: "https://viz.dust.tt",
-          workspaceId: "w_current",
-        })
-      )
+      createElement(AuthenticatedVisualizationActionIframe, {
+        agentConfigurationId: null,
+        conversationId: null,
+        visualization: VisualizationFactory.buildProtected(),
+        vizUrl: "https://viz.dust.tt",
+        workspaceId: "w_current",
+      })
     );
     return mocks.renderIframe.mock.lastCall?.[0].locale;
   }
