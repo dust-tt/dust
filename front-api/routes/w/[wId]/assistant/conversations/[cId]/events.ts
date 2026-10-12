@@ -60,13 +60,17 @@ const app = workspaceApp();
  *           application/json:
  *             schema:
  *               type: object
- *               required: [events]
+ *               required: [events, lastEventId]
  *               properties:
  *                 events:
  *                   type: array
  *                   items:
  *                     type: string
  *                     description: Serialized event envelope containing eventId and data.
+ *                 lastEventId:
+ *                   type: string
+ *                   nullable: true
+ *                   description: Cursor of the last event read, including events filtered from the response. Pass it as lastEventId on the next poll. For an empty batch, preserves the supplied cursor, or null when no cursor was supplied.
  *       401:
  *         description: Unauthorized
  */
