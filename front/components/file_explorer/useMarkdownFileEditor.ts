@@ -60,9 +60,10 @@ export interface MarkdownFileEditor {
  * @cc [owner:tdraier,label:product] source-mode-toggle
  * `toggleSourceMode` MUST switch only when the rich editor is wanted for the file (co_edition flag,
  * editable Markdown) and neither editor holds an unsaved or saving edit. In source mode the rich
- * editor MUST NOT be open and the plain editor MUST show the source in edit mode; without a live
- * session, leaving it MUST reopen the rich editor on the file as fetched then, not on what it held
- * before. Source mode MUST end when another file opens or the preview closes.
+ * editor MUST NOT be open and the plain editor MUST show the source in edit mode, savable even while
+ * a live session holds the file. Without a live session, leaving it MUST reopen the rich editor on
+ * the file as fetched then, not on what it held before. Source mode MUST end when another file
+ * opens or the preview closes.
  */
 export function useMarkdownFileEditor({
   category,
