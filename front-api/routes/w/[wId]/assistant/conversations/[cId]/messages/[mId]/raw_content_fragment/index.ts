@@ -49,7 +49,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_type_not_supported",
         message:
           "Uploading raw content fragment is only supported for 'content fragment' messages.",
       },

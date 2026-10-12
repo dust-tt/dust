@@ -264,7 +264,7 @@ app.post(
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "invalid_request_error",
+            type: "mcp_server_access_denied",
             message:
               "User does not have access to the client-side MCP servers.",
           },

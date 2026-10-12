@@ -100,7 +100,7 @@ app.post(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "mcp_server_restricted_to_skills",
           message:
             "This MCP server is restricted to skills and cannot be added directly to a conversation.",
         },

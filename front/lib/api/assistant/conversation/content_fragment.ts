@@ -47,6 +47,35 @@ import {
 } from "@dust-tt/client";
 import assert from "assert";
 
+export type ContentFragmentErrorCode =
+  | "conversation_access_restricted"
+  | "conversation_locked"
+  | "file_not_found"
+  | "file_not_attachable"
+  | "file_not_ready"
+  | "data_source_view_not_found"
+  | "content_node_not_found"
+  | "content_node_type_not_supported"
+  | "attachment_space_not_allowed"
+  | "superseded_content_fragment_not_found"
+  | "attachment_failed"
+  | "invalid_content_fragment_input";
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:error-handling] content-fragment-error-has-code
+ * `getContentFragmentBlob` and `postNewContentFragment` MUST report every failure as a
+ * `ContentFragmentError` whose `code` names that failure, so routes can map it to a precise API
+ * error type. `attachment_failed` only wraps the untyped errors of `maybeUpsertFileAttachment`.
+ */
+export class ContentFragmentError extends Error {
+  constructor(
+    readonly code: ContentFragmentErrorCode,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 interface ContentFragmentBlob {
   contentType: DustMimeType | AllSupportedFileContentType;
   fileId: ModelId | null;
@@ -118,13 +147,15 @@ export async function toFileContentFragment(
 export async function getContentFragmentBlob(
   auth: Authenticator,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode
-): Promise<Result<ContentFragmentBlob, Error>> {
+): Promise<Result<ContentFragmentBlob, ContentFragmentError>> {
   const { title, url } = cf;
 
   if (isContentFragmentInputWithFileId(cf)) {
     const file = await FileResource.fetchById(auth, cf.fileId);
     if (!file) {
-      return new Err(new Error("File not found."));
+      return new Err(
+        new ContentFragmentError("file_not_found", "File not found.")
+      );
     }
 
     assert(
@@ -134,7 +165,10 @@ export async function getContentFragmentBlob(
 
     if (!isConversationFileUseCase(file.useCase)) {
       return new Err(
-        new Error("File not meant to be attached in a conversation.")
+        new ContentFragmentError(
+          "file_not_attachable",
+          "File not meant to be attached in a conversation."
+        )
       );
     }
 
@@ -143,12 +177,15 @@ export async function getContentFragmentBlob(
       ? !!(await ConversationResource.fetchById(auth, fileConversationId))
       : file.canAccessUnattachedConversationFile(auth);
     if (!canReadFile) {
-      return new Err(new Error("File not found."));
+      return new Err(
+        new ContentFragmentError("file_not_found", "File not found.")
+      );
     }
 
     if (!file.isReady) {
       return new Err(
-        new Error(
+        new ContentFragmentError(
+          "file_not_ready",
           "The file is not ready. Please re-upload the file to proceed."
         )
       );
@@ -176,7 +213,10 @@ export async function getContentFragmentBlob(
     // If dsView is not defined, it means it does not exist of we don't have access to it.
     if (!dsView) {
       return new Err(
-        new Error("Unknown data source view for content fragment input")
+        new ContentFragmentError(
+          "data_source_view_not_found",
+          "Unknown data source view for content fragment input"
+        )
       );
     }
 
@@ -209,7 +249,8 @@ export async function getContentFragmentBlob(
       });
       if (searchFilterRes.isErr()) {
         return new Err(
-          new Error(
+          new ContentFragmentError(
+            "content_node_not_found",
             `Content node not found for content fragment node id: ${cf.nodeId}`
           )
         );
@@ -223,7 +264,8 @@ export async function getContentFragmentBlob(
       });
       if (searchRes.isErr()) {
         return new Err(
-          new Error(
+          new ContentFragmentError(
+            "content_node_not_found",
             `Content node not found for content fragment node id: ${cf.nodeId}`
           )
         );
@@ -231,7 +273,8 @@ export async function getContentFragmentBlob(
       [coreContentNode] = searchRes.value.nodes;
       if (!coreContentNode) {
         return new Err(
-          new Error(
+          new ContentFragmentError(
+            "content_node_not_found",
             `Content node not found for content fragment node id: ${cf.nodeId}`
           )
         );
@@ -241,7 +284,8 @@ export async function getContentFragmentBlob(
 
     if (!isSupportedContentNodeFragmentContentType(contentNode.mimeType)) {
       return new Err(
-        new Error(
+        new ContentFragmentError(
+          "content_node_type_not_supported",
           "Unsupported content node fragment mime type: " + contentNode.mimeType
         )
       );
@@ -258,6 +302,11 @@ export async function getContentFragmentBlob(
       title,
     });
   } else {
-    return new Err(new Error("Invalid content fragment input."));
+    return new Err(
+      new ContentFragmentError(
+        "invalid_content_fragment_input",
+        "Invalid content fragment input."
+      )
+    );
   }
 }

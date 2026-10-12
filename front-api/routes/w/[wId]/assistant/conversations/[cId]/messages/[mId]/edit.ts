@@ -130,7 +130,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message:
             "The message you're trying to edit does not exist or is not an user message.",
         },
@@ -158,7 +158,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message:
             "The message you're trying to edit does not exist or is not an user message.",
         },

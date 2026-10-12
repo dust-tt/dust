@@ -7,7 +7,10 @@ import { Err, Ok } from "@app/types/shared/result";
 type SignatureValidationError = {
   statusCode: 401 | 403 | 500;
   apiError: {
-    type: "invalid_request_error" | "internal_server_error";
+    type:
+      | "invalid_request_error"
+      | "invalid_webhook_signature"
+      | "internal_server_error";
     message: string;
   };
 };
@@ -128,7 +131,7 @@ export function validateSendgridParseWebhookSignature({
     return new Err({
       statusCode: 403,
       apiError: {
-        type: "invalid_request_error",
+        type: "invalid_webhook_signature",
         message:
           "Invalid SendGrid Parse webhook timestamp: signature is stale or malformed.",
       },
@@ -147,7 +150,7 @@ export function validateSendgridParseWebhookSignature({
       return new Err({
         statusCode: 403,
         apiError: {
-          type: "invalid_request_error",
+          type: "invalid_webhook_signature",
           message: "Invalid SendGrid Parse webhook signature.",
         },
       });
@@ -156,7 +159,7 @@ export function validateSendgridParseWebhookSignature({
     return new Err({
       statusCode: 403,
       apiError: {
-        type: "invalid_request_error",
+        type: "invalid_webhook_signature",
         message: "Invalid SendGrid Parse webhook signature.",
       },
     });

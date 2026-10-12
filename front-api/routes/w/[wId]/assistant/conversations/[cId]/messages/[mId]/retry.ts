@@ -140,7 +140,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_type_not_supported",
           message:
             "The message you're trying to retry does not exist or is not an agent message.",
         },
@@ -205,7 +205,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "conversation_agent_running",
               message: error.message,
             },
           });
@@ -216,7 +216,7 @@ app.post(
           {
             status_code: 500,
             api_error: {
-              type: "invalid_request_error",
+              type: "internal_server_error",
               message: "Failed to retry blocked actions.",
             },
           },

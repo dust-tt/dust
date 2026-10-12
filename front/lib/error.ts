@@ -69,6 +69,7 @@ export type DustErrorCode =
   | "invalid_conversation"
   | "conversation_agent_running"
   | "conversation_locked"
+  | "fork_source_message_not_found"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"

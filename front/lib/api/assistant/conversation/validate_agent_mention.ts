@@ -86,7 +86,7 @@ export async function validateAgentMention(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_type_not_supported",
         message: "Restricted agent mentions can only be on user messages",
       },
     });
@@ -101,7 +101,7 @@ export async function validateAgentMention(
     return new Err({
       status_code: 403,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_author_required",
         message: "User is not authorized to edit this mention",
       },
     });
@@ -118,7 +118,7 @@ export async function validateAgentMention(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "mention_not_found",
         message: "No restricted agent mention found to validate",
       },
     });
@@ -134,7 +134,7 @@ export async function validateAgentMention(
       return new Err({
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "mention_not_found",
           message: "Mention not found",
         },
       });
@@ -327,7 +327,7 @@ export async function validateAgentMention(
       return new Err({
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "mention_not_found",
           message: "Mention not found",
         },
       });

@@ -57,7 +57,7 @@ export async function compactConversation(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "model_not_supported",
         message: "The model is not available.",
       },
     });
@@ -85,7 +85,7 @@ export async function compactConversation(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_agent_running",
         message: "Answer the pending agent message first.",
       },
     });
@@ -95,7 +95,7 @@ export async function compactConversation(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_compaction_running",
         message: "A compaction is already in progress. Please wait.",
       },
     });
@@ -105,7 +105,7 @@ export async function compactConversation(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_already_compacted",
         message:
           "This conversation was just compacted. Send a new message before compacting again.",
       },
@@ -146,7 +146,7 @@ export async function compactConversation(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_busy",
         message:
           "Cannot compact while another compaction or an agent message is running.",
       },

@@ -70,12 +70,19 @@ app.post(
     if (result.isErr()) {
       switch (result.error.code) {
         case "action_not_blocked":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "action_not_blocked",
+              message: result.error.message,
+            },
+          });
         case "action_not_editable":
         case "invalid_edited_arguments":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "action_not_editable",
               message: result.error.message,
             },
           });
@@ -83,7 +90,7 @@ app.post(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "invalid_request_error",
+              type: "action_not_found",
               message: result.error.message,
             },
           });

@@ -1,7 +1,10 @@
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { cleanupDeniedBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
-import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
+import {
+  ContentFragmentError,
+  getContentFragmentBlob,
+} from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   getConversationRankVersionLock,
   getNextConversationMessageRank,
@@ -87,7 +90,6 @@ import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
-import { DustError } from "@app/lib/error";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
@@ -532,7 +534,7 @@ const conversationBusyError = () =>
   new Err({
     status_code: 409 as const,
     api_error: {
-      type: "invalid_request_error" as const,
+      type: "conversation_busy" as const,
       message: "An agent or a compaction is running in this conversation.",
     },
   });
@@ -679,7 +681,7 @@ export async function postUserMessage(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_fork_pending",
         message:
           "User messages cannot be posted while the forked conversation is being prepared.",
       },
@@ -697,7 +699,7 @@ export async function postUserMessage(
     return new Err({
       status_code: 409,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_compaction_running",
         message:
           "User messages cannot be posted while conversation is being compacted.",
       },
@@ -724,7 +726,7 @@ export async function postUserMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "multiple_agent_mentions",
         message: "Only one agent can be mentioned per message.",
       },
     });
@@ -745,7 +747,7 @@ export async function postUserMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "conversation_agent_running",
         message: RUNNING_AGENT_SWITCH_BLOCK_MESSAGE,
       },
     });
@@ -834,7 +836,7 @@ export async function postUserMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "model_not_supported",
           message: "The model is not supported.",
           model: agent.modelConfiguration,
         },
@@ -1190,7 +1192,14 @@ function canAccessAgent(auth: Authenticator, agent: AgentResource): boolean {
   }
 }
 
-class UserMessageError extends Error {}
+class UserMessageError extends Error {
+  constructor(
+    message: string,
+    readonly apiErrorType: "message_outdated" | "internal_server_error"
+  ) {
+    super(message);
+  }
+}
 
 // A message with no concrete user has no author to be, so nobody passes this.
 // Testing that first also stops an API key, which has no `auth.user()` either,
@@ -1400,7 +1409,8 @@ export async function editUserMessage(
 
       if (newerMessage) {
         throw new UserMessageError(
-          "Invalid user message edit request, this message was already edited."
+          "Invalid user message edit request, this message was already edited.",
+          "message_outdated"
         );
       }
 
@@ -1495,14 +1505,17 @@ export async function editUserMessage(
     agentMessages = result.agentMessages;
 
     if (!userMessage) {
-      throw new UserMessageError("Unreachable: userMessage is null");
+      throw new UserMessageError(
+        "Unreachable: userMessage is null",
+        "internal_server_error"
+      );
     }
   } catch (e) {
     if (e instanceof UserMessageError) {
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: e.apiErrorType,
           message: e.message,
         },
       });
@@ -1542,7 +1555,14 @@ export async function editUserMessage(
   });
 }
 
-class AgentMessageError extends Error {}
+class AgentMessageError extends Error {
+  constructor(
+    message: string,
+    readonly apiErrorType: "message_outdated" | "internal_server_error"
+  ) {
+    super(message);
+  }
+}
 
 export async function handleAgentMessage(
   auth: Authenticator,
@@ -1558,7 +1578,7 @@ export async function handleAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "internal_server_error",
         message: "Agent message content is required",
       },
     });
@@ -1626,7 +1646,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "Could not find the parent user message for this retry.",
       },
     });
@@ -1640,7 +1660,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "Could not find the parent user message for this retry.",
       },
     });
@@ -1656,7 +1676,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "Could not find the parent user message for this retry.",
       },
     });
@@ -1667,7 +1687,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_not_found",
         message: "Could not find the parent user message for this retry.",
       },
     });
@@ -1718,7 +1738,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "agent_inaccessible",
         message:
           "Invalid agent message retry request, the agent is no longer available to you.",
       },
@@ -1763,7 +1783,7 @@ export async function retryAgentMessage(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "agent_inaccessible",
         message:
           "Invalid agent message retry request, the agent is no longer available to you.",
       },
@@ -1821,7 +1841,8 @@ export async function retryAgentMessage(
       });
       if (newerMessage) {
         throw new AgentMessageError(
-          "Invalid agent message retry request, this message was already retried."
+          "Invalid agent message retry request, this message was already retried.",
+          "message_outdated"
         );
       }
 
@@ -1839,7 +1860,8 @@ export async function retryAgentMessage(
 
       if (agentMessages.length !== 1) {
         throw new AgentMessageError(
-          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`
+          `Unexpected: expected 1 agent message result while retrying agent message, got ${agentMessages.length} instead.`,
+          "internal_server_error"
         );
       }
 
@@ -1854,7 +1876,7 @@ export async function retryAgentMessage(
       return new Err({
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: e.apiErrorType,
           message: e.message,
         },
       });
@@ -1903,7 +1925,7 @@ export async function postNewContentFragment(
   conversation: ConversationWithoutContentType,
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
-): Promise<Result<ContentFragmentType, Error>> {
+): Promise<Result<ContentFragmentType, ContentFragmentError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Invalid auth for conversation.");
@@ -1911,7 +1933,12 @@ export async function postNewContentFragment(
   if (
     (await ConversationResource.canAccess(auth, conversation.sId)) !== "allowed"
   ) {
-    return new Err(new Error("Conversation access restricted."));
+    return new Err(
+      new ContentFragmentError(
+        "conversation_access_restricted",
+        "Conversation access restricted."
+      )
+    );
   }
 
   const canInteractRes = await WakeUpResource.canUserInteract(
@@ -1920,7 +1947,7 @@ export async function postNewContentFragment(
   );
   if (canInteractRes.isErr()) {
     return new Err(
-      new DustError(
+      new ContentFragmentError(
         "conversation_locked",
         canInteractRes.error.api_error.message
       )
@@ -1937,14 +1964,20 @@ export async function postNewContentFragment(
       cf.nodeDataSourceViewId
     );
     if (!dsView) {
-      return new Err(new Error("Data source view not found"));
+      return new Err(
+        new ContentFragmentError(
+          "data_source_view_not_found",
+          "Data source view not found"
+        )
+      );
     }
     if (
       dsView.space.sId !== conversation.spaceId &&
       dsView.space.kind !== "global"
     ) {
       return new Err(
-        new Error(
+        new ContentFragmentError(
+          "attachment_space_not_allowed",
           "Only content fragments from the project space or the global space are allowed in a project conversation"
         )
       );
@@ -2015,7 +2048,12 @@ export async function postNewContentFragment(
   });
 
   if (upsertAttachmentRes.isErr()) {
-    return upsertAttachmentRes;
+    return new Err(
+      new ContentFragmentError(
+        "attachment_failed",
+        upsertAttachmentRes.error.message
+      )
+    );
   }
 
   const messageId = generateRandomModelSId();
@@ -2033,7 +2071,12 @@ export async function postNewContentFragment(
     );
 
     if (!found) {
-      return new Err(new Error("Superseded content fragment not found."));
+      return new Err(
+        new ContentFragmentError(
+          "superseded_content_fragment_not_found",
+          "Superseded content fragment not found."
+        )
+      );
     }
   }
 

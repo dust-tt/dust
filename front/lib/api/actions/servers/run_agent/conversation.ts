@@ -22,6 +22,7 @@ import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { APIErrorType } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -32,18 +33,29 @@ import type {
   PublicPostMessagesRequestBody,
 } from "@dust-tt/client";
 
+// Typed as `string` because the public client's error type union does not list every type front
+// returns. The conversation types are the ones `postUserMessage` returned as
+// `invalid_request_error` before they were given a dedicated type.
+const USER_SIDE_ERROR_TYPES: ReadonlySet<string> = new Set<APIErrorType>([
+  "agent_inaccessible",
+  "invalid_request_error",
+  "plan_message_limit_exceeded",
+  "rate_limit_error",
+  "conversation_agent_running",
+  "conversation_busy",
+  "conversation_compaction_running",
+  "conversation_fork_pending",
+  "model_not_supported",
+  "multiple_agent_mentions",
+]);
+
 /**
  * Determines if an error should be considered user-side.
  * User-side errors should not trigger alerts and their messages should be
  * surfaced to the model.
  */
 function isUserSideError(error: APIError): boolean {
-  return (
-    error.type === "agent_inaccessible" ||
-    error.type === "invalid_request_error" ||
-    error.type === "plan_message_limit_exceeded" ||
-    error.type === "rate_limit_error"
-  );
+  return USER_SIDE_ERROR_TYPES.has(error.type);
 }
 
 async function cleanupSubConversationAfterSetupFailure(

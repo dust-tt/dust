@@ -638,6 +638,102 @@ msgid "Another user has an active wake-up in this conversation. Only they can po
 msgstr "Un autre utilisateur a un réveil actif dans cette conversation. Seul cet utilisateur peut publier jusqu'au déclenchement ou à l'annulation du réveil."
 
 #: front/lib/api_error_messages.ts
+msgid "This isn't available for this type of message."
+msgstr "Indisponible pour ce type de message."
+
+#: front/lib/api_error_messages.ts
+msgid "Only the person who sent this message can do this."
+msgstr "Seule la personne qui a envoyé ce message peut effectuer cette action."
+
+#: front/lib/api_error_messages.ts
+msgid "Mention not found."
+msgstr "Mention introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "This person couldn't be added to the Pod."
+msgstr "Impossible d’ajouter cette personne au Pod."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent or a compaction is running in this conversation."
+msgstr "Un agent ou un compactage est en cours dans cette conversation."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is being compacted. Try again once it's done."
+msgstr "Cette conversation est en cours de compactage. Réessayez une fois terminé."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation was just compacted. Send a new message before compacting again."
+msgstr "Cette conversation vient d’être compactée. Envoyez un nouveau message avant de la compacter à nouveau."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is still being set up. Try again in a moment."
+msgstr "Cette conversation est encore en cours de préparation. Réessayez dans un instant."
+
+#: front/lib/api_error_messages.ts
+msgid "You can only mention one agent per message."
+msgstr "Vous ne pouvez mentionner qu’un seul agent par message."
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't supported."
+msgstr "Ce modèle n’est pas pris en charge."
+
+#: front/lib/api_error_messages.ts
+msgid "There's no completed agent answer to branch from."
+msgstr "Aucune réponse d’agent terminée à partir de laquelle créer une branche."
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation can't be moved into or out of this Pod yet."
+msgstr "Cette conversation ne peut pas encore être déplacée vers ce Pod ou en dehors."
+
+#: front/lib/api_error_messages.ts
+msgid "Spaces can't be selected in a Pod conversation."
+msgstr "Impossible de sélectionner des espaces dans une conversation de Pod."
+
+#: front/lib/api_error_messages.ts
+msgid "Only regular spaces can be selected."
+msgstr "Seuls les espaces standard peuvent être sélectionnés."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can only be used through skills."
+msgstr "Cet outil ne peut être utilisé que par le biais de compétences."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to one of the selected tools."
+msgstr "Vous n’avez pas accès à l’un des outils sélectionnés."
+
+#: front/lib/api_error_messages.ts
+msgid "These action inputs can't be edited."
+msgstr "Les paramètres de cette action ne peuvent pas être modifiés."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent message can't be resumed."
+msgstr "Ce message d’agent ne peut pas être repris."
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook signature is invalid."
+msgstr "La signature du webhook n’est pas valide."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a conversation."
+msgstr "Ce fichier ne peut pas être joint à une conversation."
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready. Upload it again."
+msgstr "Le fichier n’est pas prêt. Importez-le à nouveau."
+
+#: front/lib/api_error_messages.ts
+msgid "The attached content wasn't found."
+msgstr "Le contenu joint est introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "In a Pod, you can only attach content from the Pod or from Company Data."
+msgstr "Dans un Pod, vous ne pouvez joindre que du contenu du Pod ou de Company Data."
+
+#: front/lib/api_error_messages.ts
+msgid "Attachment not found."
+msgstr "Pièce jointe introuvable."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code : {code}"
 

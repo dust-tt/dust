@@ -302,7 +302,7 @@ export async function validateUserMention(
       return new Err({
         status_code: error.code === "unauthorized" ? 403 : 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "mention_user_not_added_to_pod",
           message: error.message,
         },
       });
@@ -357,7 +357,7 @@ export async function validateUserMention(
       return new Err({
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_author_required",
           message: "User is not authorized to edit this mention",
         },
       });
@@ -376,7 +376,7 @@ export async function validateUserMention(
       return new Err({
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_author_required",
           message: "User is not authorized to edit this mention",
         },
       });
@@ -388,7 +388,7 @@ export async function validateUserMention(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_type_not_supported",
         message: "Invalid message type",
       },
     });
@@ -560,7 +560,7 @@ export async function dismissMention(
       return new Err({
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_author_required",
           message: "User is not authorized to dismiss this mention",
         },
       });
@@ -579,7 +579,7 @@ export async function dismissMention(
       return new Err({
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "message_author_required",
           message: "User is not authorized to dismiss this mention",
         },
       });
@@ -591,7 +591,7 @@ export async function dismissMention(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "message_type_not_supported",
         message: "Invalid message type",
       },
     });

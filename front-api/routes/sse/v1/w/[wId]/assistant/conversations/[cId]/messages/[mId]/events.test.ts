@@ -162,7 +162,7 @@ describe("GET /api/sse/v1/w/[wId]/assistant/conversations/[cId]/messages/[mId]/e
 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
-      error: expect.objectContaining({ type: "invalid_request_error" }),
+      error: expect.objectContaining({ type: "message_type_not_supported" }),
     });
   });
 
