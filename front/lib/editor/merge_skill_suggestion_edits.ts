@@ -27,14 +27,14 @@ type SkillSuggestionEditsInput = Pick<
 
 function editsForSuggestion(
   suggestion: SkillSuggestionEditsInput
-): Result<SkillEdits, DustError<"invalid_request_error">> {
+): Result<SkillEdits, DustError<"skill_suggestion_invalid">> {
   const parsed = SkillSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
   });
   if (!parsed.success) {
     return new Err(
-      new DustError("invalid_request_error", "Unsupported skill suggestion.")
+      new DustError("skill_suggestion_invalid", "Unsupported skill suggestion.")
     );
   }
 
@@ -46,7 +46,7 @@ function editsForSuggestion(
     case "create":
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "skill_suggestion_invalid",
           "Skill creation suggestions cannot be applied to the skill yet."
         )
       );
@@ -78,7 +78,10 @@ function editsForSuggestion(
     default:
       assertNeverAndIgnore(data);
       return new Err(
-        new DustError("invalid_request_error", "Unsupported skill suggestion.")
+        new DustError(
+          "skill_suggestion_invalid",
+          "Unsupported skill suggestion."
+        )
       );
   }
 }
@@ -148,7 +151,7 @@ function mergeSkillEdits(edits: SkillEdits[]): SkillEdits {
 
 export function mergeSkillSuggestionEdits(
   suggestions: SkillSuggestionEditsInput[]
-): Result<SkillEdits, DustError<"invalid_request_error">> {
+): Result<SkillEdits, DustError<"skill_suggestion_invalid">> {
   const perSuggestionEdits: SkillEdits[] = [];
 
   for (const suggestion of suggestions) {

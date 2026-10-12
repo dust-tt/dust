@@ -1,5 +1,6 @@
 import { isAuthorizedToApplyAgentSuggestions } from "@app/lib/api/assistant/agent_suggestion_authorization";
 import type {
+  ApplyAgentSuggestionsError,
   BatchCreations,
   ResolvedAgentChange,
 } from "@app/lib/api/assistant/apply_agent_suggestions";
@@ -9,7 +10,10 @@ import {
 } from "@app/lib/api/assistant/apply_agent_suggestions";
 import type { BatchApplicationStep } from "@app/lib/api/assistant/batch_application_plan";
 import { planBatchApplication } from "@app/lib/api/assistant/batch_application_plan";
-import type { ResolvedSkillChange } from "@app/lib/api/skills/apply_skill_suggestions";
+import type {
+  ApplySkillSuggestionsError,
+  ResolvedSkillChange,
+} from "@app/lib/api/skills/apply_skill_suggestions";
 import {
   resolveSkillSuggestions,
   writeSkillChange,
@@ -25,9 +29,17 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import assert from "assert";
 
-type ApplyBatchSuggestionsError = DustError<
-  "unauthorized" | "invalid_request_error"
->;
+export type ApplyBatchSuggestionsError =
+  | DustError<
+      | "unauthorized"
+      | "conflicting_suggestions"
+      | "agent_configuration_not_found"
+      | "skill_not_found"
+    >
+  // Failures resolving or writing an agent step.
+  | ApplyAgentSuggestionsError
+  // domain:skills — failures resolving or writing a skill step.
+  | ApplySkillSuggestionsError;
 
 type SkillStep = Extract<BatchApplicationStep, { type: "skill" }>;
 type AgentStep = Extract<BatchApplicationStep, { type: "agent" }>;
@@ -57,7 +69,7 @@ function checkOneStepPerTarget(
     if (targetIds.has(targetId)) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "conflicting_suggestions",
           `The batch must create, edit, or delete ${targetId}, not several of these.`
         )
       );
@@ -77,7 +89,7 @@ function checkSkillStepPermissions(
   if (!skill) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_not_found",
         "The skill this suggestion targets was not found."
       )
     );
@@ -104,7 +116,7 @@ function checkAgentStepPermissions(
   if (!agent) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_configuration_not_found",
         "The agent this suggestion targets was not found."
       )
     );

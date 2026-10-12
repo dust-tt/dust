@@ -43,7 +43,7 @@ async function getActiveWorkspaceAgent(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "active_custom_agent_required",
         message: "Archived and global agents cannot be exported or updated.",
       },
     });

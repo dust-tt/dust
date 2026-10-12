@@ -6,8 +6,16 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-type AgentEditorsChangeError = DustError<
-  "unauthorized" | "invalid_request_error" | "user_not_found"
+export type AgentEditorsChangeError = DustError<
+  | "unauthorized"
+  | "active_custom_agent_required"
+  // The change itself is malformed: empty, or a user both added and removed.
+  | "invalid_request_error"
+  | "user_not_found"
+  | "editor_not_workspace_member"
+  | "user_already_agent_editor"
+  | "user_not_agent_editor"
+  | "agent_editor_required"
 >;
 
 export interface AgentEditorsChange {
@@ -51,7 +59,7 @@ export async function validateAgentEditorsChange(
   if (agent.scope === "global" || agent.status !== "active") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "active_custom_agent_required",
         "Only active custom agents can have their editors changed."
       )
     );
@@ -105,7 +113,7 @@ export async function validateAgentEditorsChange(
   if (nonMembers.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "editor_not_workspace_member",
         `Some users are not active members of this workspace: ${nonMembers
           .map((u) => u.sId)
           .join(", ")}.`
@@ -122,7 +130,7 @@ export async function validateAgentEditorsChange(
   if (alreadyEditors.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "user_already_agent_editor",
         `Some users are already editors of the agent: ${alreadyEditors
           .map((u) => u.sId)
           .join(", ")}.`
@@ -136,7 +144,7 @@ export async function validateAgentEditorsChange(
   if (notEditors.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "user_not_agent_editor",
         `Some users are not editors of the agent: ${notEditors
           .map((u) => u.sId)
           .join(", ")}.`
@@ -152,7 +160,7 @@ export async function validateAgentEditorsChange(
   if (nextEditors.length === 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_editor_required",
         "This change would leave the agent without any editor. Keep or add at least one editor."
       )
     );

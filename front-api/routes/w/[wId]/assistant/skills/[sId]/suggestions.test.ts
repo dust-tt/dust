@@ -223,7 +223,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.type).toBe("agent_suggestion_not_found");
     expect(body.error.message).toContain(
       "do not belong to the specified skill configuration"
     );

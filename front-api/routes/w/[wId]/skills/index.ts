@@ -130,7 +130,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_name_empty",
           message: "Skill name cannot be empty.",
         },
       });
@@ -177,7 +177,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_already_exists",
           message: `A skill with the name "${name}" already exists.`,
         },
       });
@@ -196,7 +196,7 @@ app.post(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "mcp_server_view_not_found",
           message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
         },
       });
@@ -215,7 +215,7 @@ app.post(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_view_not_found",
           message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
         },
       });
@@ -242,7 +242,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "space_not_found",
           message: additionalRequestedSpaceIdsRes.error.message,
         },
       });
@@ -267,7 +267,7 @@ app.post(
         return apiError(ctx, {
           status_code: 404,
           api_error: {
-            type: "invalid_request_error",
+            type: "file_not_found",
             message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
           },
         });
@@ -278,7 +278,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_attachment_file_invalid",
               message: `File ${file.sId} is not ready or not a skill_attachment.`,
             },
           });

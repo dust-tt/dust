@@ -4,10 +4,10 @@ import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { SkillSuggestionType } from "@app/types/suggestions/skill_suggestion";
 import { isCreateSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 
@@ -34,7 +34,7 @@ export function previewSkillSuggestions({
   pipeline,
 }: PreviewSkillSuggestionsInput): Result<
   PreviewedSkillFields,
-  DustError<"invalid_request_error">
+  DustError<"skill_suggestion_invalid" | "skill_suggestion_outdated">
 > {
   const creation = suggestions.find(isCreateSkillSuggestion);
   if (creation) {
@@ -97,7 +97,9 @@ export function previewSkillSuggestions({
     pipeline
   );
   if (instructions.isErr()) {
-    return instructions;
+    return new Err(
+      new DustError("skill_suggestion_outdated", instructions.error.message)
+    );
   }
 
   return new Ok({ ...fields, ...instructions.value });

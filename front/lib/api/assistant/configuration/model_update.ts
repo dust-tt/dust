@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { BulkAgentUpdateResult } from "@app/lib/resources/agent_resource";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -12,6 +13,10 @@ import { getAvailableReasoningEfforts } from "@app/types/assistant/models/types"
 import { validateResponseFormat } from "@app/types/assistant/models/utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+
+type AgentModelChangeError = DustError<
+  "model_not_available" | "reasoning_effort_not_supported"
+>;
 
 /**
  * Validates a model change against live state and resolves the model fields to write. Only models
@@ -33,21 +38,25 @@ export async function resolveAgentModelChange(
       AgentModelConfigurationType,
       "providerId" | "modelId" | "reasoningEffort"
     >,
-    Error
+    AgentModelChangeError
   >
 > {
   const models = await getSelectableModelsForAuth(auth);
   const model = models.find((m) => m.modelId === modelId);
   if (!model) {
     return new Err(
-      new Error(`Model "${modelId}" is not available in this workspace.`)
+      new DustError(
+        "model_not_available",
+        `Model "${modelId}" is not available in this workspace.`
+      )
     );
   }
 
   const effort = reasoningEffort ?? model.defaultReasoningEffort;
   if (!model.supportedReasoningEfforts[effort]) {
     return new Err(
-      new Error(
+      new DustError(
+        "reasoning_effort_not_supported",
         `Model "${modelId}" does not support the "${effort}" reasoning effort. ` +
           `Supported reasoning efforts: ${getAvailableReasoningEfforts(model.supportedReasoningEfforts).join(", ")}.`
       )
@@ -71,14 +80,18 @@ export function validateStructuredOutputChange({
 }: {
   modelId: ModelIdType;
   responseFormat: string | null;
-}): Result<void, Error> {
+}): Result<
+  void,
+  DustError<"structured_output_not_supported" | "invalid_response_format">
+> {
   if (responseFormat === null) {
     return new Ok(undefined);
   }
 
   if (!isSupportingResponseFormat(modelId)) {
     return new Err(
-      new Error(
+      new DustError(
+        "structured_output_not_supported",
         `Model "${modelId}" does not support structured output: pick a model that supports it.`
       )
     );
@@ -87,7 +100,10 @@ export function validateStructuredOutputChange({
   const formatValidation = validateResponseFormat(responseFormat);
   if (!formatValidation.isValid) {
     return new Err(
-      new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+      new DustError(
+        "invalid_response_format",
+        `Invalid response format: ${formatValidation.errorMessage}`
+      )
     );
   }
 
@@ -120,7 +136,12 @@ export async function updateAgentConfigurationsModel(
     reasoningEffort?: ReasoningEffort;
     responseFormat?: string;
   }
-): Promise<Result<BulkAgentUpdateResult, Error>> {
+): Promise<
+  Result<
+    BulkAgentUpdateResult,
+    AgentModelChangeError | DustError<"invalid_response_format">
+  >
+> {
   if (agentIds.length === 0) {
     return new Ok({ updatedAgentIds: [], skippedAgentIds: [] });
   }
@@ -137,7 +158,10 @@ export async function updateAgentConfigurationsModel(
     const formatValidation = validateResponseFormat(responseFormat);
     if (!formatValidation.isValid) {
       return new Err(
-        new Error(`Invalid response format: ${formatValidation.errorMessage}`)
+        new DustError(
+          "invalid_response_format",
+          `Invalid response format: ${formatValidation.errorMessage}`
+        )
       );
     }
   }

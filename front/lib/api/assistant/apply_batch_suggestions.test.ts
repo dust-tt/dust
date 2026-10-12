@@ -1799,7 +1799,7 @@ describe("applyBatchSuggestions", () => {
     });
 
     assert(res.isErr());
-    expect(res.error.code).toBe("invalid_request_error");
+    expect(res.error.code).toBe("agent_suggestion_not_applicable");
     expect(await fetchAgentSubAgentActions(agent.sId)).toEqual([]);
   });
 

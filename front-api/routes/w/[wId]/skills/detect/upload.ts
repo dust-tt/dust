@@ -2,6 +2,7 @@ import { detectSkillsFromUploadedFiles } from "@app/lib/api/skills/detection/fil
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { DetectedSkillSummary } from "@app/lib/skill_detection";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -72,13 +73,21 @@ app.post(
 
     const result = await detectSkillsFromUploadedFiles(uploadedFiles);
     if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: result.error.message,
-        },
-      });
+      const { code, message } = result.error;
+      switch (code) {
+        case "unsupported_file_type":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "file_type_not_supported", message },
+          });
+        case "invalid_archive":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "skill_archive_invalid", message },
+          });
+        default:
+          assertNever(code);
+      }
     }
 
     const detectedSkills = result.value;
@@ -87,7 +96,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skills_not_detected",
           message:
             "No skills found. Skills must contain a SKILL.md file with valid YAML frontmatter (see https://agentskills.io/specification).",
         },

@@ -58,7 +58,7 @@ function resolveEditorUsers(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "agent_editor_required",
         message: "At least one editor is required.",
       },
     });
@@ -97,7 +97,7 @@ async function resolveTags(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "tag_not_found",
         message: `Tags not found: ${missingTags.map((t) => `"${t}"`).join(", ")}.`,
       },
     });
@@ -322,10 +322,12 @@ export async function patchAgentConfigurationFromJSON(
   // only flows into the new version (see `resave-source-content`).
   const sourceRes = await agent.getResaveSource(auth);
   if (sourceRes.isErr()) {
+    // The caller can view the content or holds `write` (checked above), so the only failure left is
+    // the agent changing under us.
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "agent_modified_concurrently",
         message: sourceRes.error.message,
       },
     });

@@ -1,5 +1,6 @@
 import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import type { Result } from "@app/types/shared/result";
@@ -9,7 +10,7 @@ export async function updateAgentConfigurationsScope(
   auth: Authenticator,
   agentIds: string[],
   scope: Exclude<AgentConfigurationScope, "global">
-): Promise<Result<void, Error>> {
+): Promise<Result<void, DustError<"agent_archived">>> {
   if (agentIds.length === 0) {
     return new Ok(undefined);
   }
@@ -25,7 +26,8 @@ export async function updateAgentConfigurationsScope(
     .map((agent) => agent.name);
   if (archivedAgentNames.length > 0) {
     return new Err(
-      new Error(
+      new DustError(
+        "agent_archived",
         `Archived agents cannot be updated: ${archivedAgentNames.join(", ")}. Restore them first.`
       )
     );

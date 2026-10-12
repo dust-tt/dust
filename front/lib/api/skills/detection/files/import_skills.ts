@@ -46,6 +46,24 @@ export function isImportConflictStrategy(
 
 type FileImportSource = Extract<SkillSourceType, "api" | "local_file">;
 
+export type SkillFilesImportErrorCode =
+  // The caller lacks a capability or a right on an existing skill the import needs.
+  | "unauthorized"
+  // An uploaded file is not a readable ZIP within the size limits.
+  | "invalid_archive"
+  // The selected skills cannot be imported: invalid names, missing, duplicated or conflicting.
+  | "invalid_skills"
+  | "editors_not_found";
+
+export class SkillFilesImportError extends Error {
+  constructor(
+    readonly code: SkillFilesImportErrorCode,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 type ImportSkillsResult = {
   imported: SkillResource[];
   updated: SkillResource[];
@@ -83,10 +101,15 @@ export async function importSkillsFromFiles(
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
   }
-): Promise<Result<ImportSkillsResult, Error>> {
+): Promise<Result<ImportSkillsResult, SkillFilesImportError>> {
   const canCreateSkills = auth.hasWorkspacePermission("create", "skill");
   if (!canCreateSkills) {
-    return new Err(new Error("Creating skills is restricted."));
+    return new Err(
+      new SkillFilesImportError(
+        "unauthorized",
+        "Creating skills is restricted."
+      )
+    );
   }
 
   const allSkills: ZipDetectedSkill[] = [];
@@ -105,13 +128,17 @@ export async function importSkillsFromFiles(
     const detectResult = detectSkillsFromZip({ zipBuffer: buffer });
     if (detectResult.isErr()) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err(new Error(detectResult.error.message));
+      return new Err(
+        new SkillFilesImportError("invalid_archive", detectResult.error.message)
+      );
     }
 
     const readerResult = createZipAttachmentReader(buffer);
     if (readerResult.isErr()) {
       await cleanupTempFiles(uploadedFiles);
-      return new Err(readerResult.error);
+      return new Err(
+        new SkillFilesImportError("invalid_archive", readerResult.error.message)
+      );
     }
     const reader = readerResult.value;
 
@@ -133,7 +160,12 @@ export async function importSkillsFromFiles(
     selectedSkills.map((skill) => skill.name)
   );
   if (!nameValidation.success) {
-    return new Err(new Error(fromError(nameValidation.error).toString()));
+    return new Err(
+      new SkillFilesImportError(
+        "invalid_skills",
+        fromError(nameValidation.error).toString()
+      )
+    );
   }
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
@@ -148,11 +180,21 @@ export async function importSkillsFromFiles(
       isConflicting: (existing) => existing.source !== source,
     });
     if (validationResult.isErr()) {
-      return validationResult;
+      return new Err(
+        new SkillFilesImportError(
+          "invalid_skills",
+          validationResult.error.message
+        )
+      );
     }
   }
   if (selectedSkills.length === 0) {
-    return new Err(new Error("No matching importable skills found."));
+    return new Err(
+      new SkillFilesImportError(
+        "invalid_skills",
+        "No matching importable skills found."
+      )
+    );
   }
 
   const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
@@ -173,7 +215,8 @@ export async function importSkillsFromFiles(
     .map((existing) => existing.name);
   if (nonWritableSkillNames.length > 0) {
     return new Err(
-      new Error(
+      new SkillFilesImportError(
+        "unauthorized",
         `You don't have permission to update the following skills: ${[
           ...new Set(nonWritableSkillNames),
         ].join(", ")}.`
@@ -196,7 +239,10 @@ export async function importSkillsFromFiles(
       const canPublishSkills = auth.hasWorkspacePermission("publish", "skill");
       if (!canPublishSkills) {
         return new Err(
-          new Error("You don't have permission to change skill availability.")
+          new SkillFilesImportError(
+            "unauthorized",
+            "You don't have permission to change skill availability."
+          )
         );
       }
     }
@@ -213,7 +259,8 @@ export async function importSkillsFromFiles(
       );
       if (!canMakeSkillsDiscoverable) {
         return new Err(
-          new Error(
+          new SkillFilesImportError(
+            "unauthorized",
             "You don't have permission to change a skill's auto-discoverable status."
           )
         );
@@ -239,7 +286,10 @@ export async function importSkillsFromFiles(
     !auth.isAdmin()
   ) {
     return new Err(
-      new Error("User is not authorized to update skill editors.")
+      new SkillFilesImportError(
+        "unauthorized",
+        "User is not authorized to update skill editors."
+      )
     );
   }
 
@@ -313,7 +363,9 @@ export async function importSkillsFromFiles(
 
       const editorsResult = await existing.upsertEditors(auth, editorUsers);
       if (editorsResult.isErr()) {
-        return editorsResult;
+        return new Err(
+          new SkillFilesImportError("unauthorized", editorsResult.error.message)
+        );
       }
 
       updated.push(existing);
@@ -373,7 +425,9 @@ export async function importSkillsFromFiles(
         editorUsers
       );
       if (editorsResult.isErr()) {
-        return editorsResult;
+        return new Err(
+          new SkillFilesImportError("unauthorized", editorsResult.error.message)
+        );
       }
 
       imported.push(skillResource);
@@ -386,7 +440,7 @@ export async function importSkillsFromFiles(
 async function resolveEditorUsersFromEmails(
   auth: Authenticator,
   editorEmails: string[]
-): Promise<Result<UserResource[], Error>> {
+): Promise<Result<UserResource[], SkillFilesImportError>> {
   const normalizedEditorEmails = [
     ...new Set(
       editorEmails.map((email) => email.trim().toLowerCase()).filter(Boolean)
@@ -409,7 +463,10 @@ async function resolveEditorUsersFromEmails(
 
   if (missingEmails.length > 0) {
     return new Err(
-      new Error(`Editors not found in workspace: ${missingEmails.join(", ")}`)
+      new SkillFilesImportError(
+        "editors_not_found",
+        `Editors not found in workspace: ${missingEmails.join(", ")}`
+      )
     );
   }
 

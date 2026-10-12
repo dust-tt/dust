@@ -874,6 +874,222 @@ msgid "Attachment not found."
 msgstr "Pièce jointe introuvable."
 
 #: front/lib/api_error_messages.ts
+msgid "This agent is archived. Restore it first."
+msgstr "Cet agent est archivé. Restaurez-le d’abord."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for active custom agents."
+msgstr "Disponible uniquement pour les agents personnalisés actifs."
+
+#: front/lib/api_error_messages.ts
+msgid "An active agent with this name already exists."
+msgstr "Un agent actif portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent has already been created."
+msgstr "Cet agent a déjà été créé."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent was changed at the same time. Try again."
+msgstr "Cet agent a été modifié au même moment. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent needs at least one editor."
+msgstr "Un agent doit avoir au moins un éditeur."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already an editor of the agent."
+msgstr "Cet utilisateur est déjà éditeur de l’agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't an editor of the agent."
+msgstr "Cet utilisateur n’est pas éditeur de l’agent."
+
+#: front/lib/api_error_messages.ts
+msgid "Editors must be active members of the workspace."
+msgstr "Les éditeurs doivent être des membres actifs de l’espace de travail."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions can't be applied together."
+msgstr "Ces suggestions ne peuvent pas être appliquées ensemble."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer applies to the agent."
+msgstr "Cette suggestion ne s’applique plus à l’agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of suggestion can't be applied."
+msgstr "Ce type de suggestion ne peut pas être appliqué."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions have already been reviewed."
+msgstr "Ces suggestions ont déjà été examinées."
+
+#: front/lib/api_error_messages.ts
+msgid "Only Sidekick suggestions can be reviewed here."
+msgstr "Seules les suggestions de Sidekick peuvent être examinées ici."
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't available in your workspace."
+msgstr "Ce modèle n’est pas disponible dans votre espace de travail."
+
+#: front/lib/api_error_messages.ts
+msgid "No model is available in your workspace."
+msgstr "Aucun modèle n’est disponible dans votre espace de travail."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support the selected reasoning effort."
+msgstr "Ce modèle ne prend pas en charge le niveau de raisonnement sélectionné."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support structured output."
+msgstr "Ce modèle ne prend pas en charge la sortie structurée."
+
+#: front/lib/api_error_messages.ts
+msgid "The structured output format is invalid."
+msgstr "Le format de sortie structurée n’est pas valide."
+
+#: front/lib/api_error_messages.ts
+msgid "Tag not found."
+msgstr "Tag introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag isn't on the agent."
+msgstr "Ce tag n’est pas associé à l’agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag is already on the agent."
+msgstr "Ce tag est déjà associé à l’agent."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to add or remove these tags."
+msgstr "Vous n’êtes pas autorisé à ajouter ou retirer ces tags."
+
+#: front/lib/api_error_messages.ts
+msgid "Use case not found."
+msgstr "Cas d’usage introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "This use case can't be dismissed."
+msgstr "Ce cas d’usage ne peut pas être masqué."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent or skill not found."
+msgstr "Agent ou compétence introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "This group doesn't have access to this agent or skill."
+msgstr "Ce groupe n’a pas accès à cet agent ou à cette compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "Items can't be pinned for this group."
+msgstr "Impossible d’épingler des éléments pour ce groupe."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill is archived. Restore it to change it."
+msgstr "Cette compétence est archivée. Restaurez-la pour la modifier."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill isn't active."
+msgstr "Cette compétence n’est pas active."
+
+#: front/lib/api_error_messages.ts
+msgid "Only custom skills can be changed."
+msgstr "Seules les compétences personnalisées peuvent être modifiées."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill with this name already exists."
+msgstr "Une compétence portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the skill."
+msgstr "Saisissez un nom pour la compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill name is too long. Use a shorter name."
+msgstr "Ce nom de compétence est trop long. Utilisez un nom plus court."
+
+#: front/lib/api_error_messages.ts
+msgid "Some editors don't have access to the spaces this skill uses. Add them to those spaces or remove them from the editors."
+msgstr "Certains éditeurs n’ont pas accès aux espaces utilisés par cette compétence. Ajoutez-les à ces espaces ou retirez-les des éditeurs."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill needs at least one editor."
+msgstr "Une compétence doit avoir au moins un éditeur."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a skill."
+msgstr "Ce fichier ne peut pas être joint à une compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't attached to the skill."
+msgstr "Ce fichier n’est pas joint à la compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "The skill already has a file with this name."
+msgstr "La compétence contient déjà un fichier portant ce nom."
+
+#: front/lib/api_error_messages.ts
+msgid "The instructions use tools or knowledge you don't have access to."
+msgstr "Les instructions utilisent des outils ou des connaissances auxquels vous n’avez pas accès."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill has already been created."
+msgstr "Cette compétence a déjà été créée."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be applied to the skill."
+msgstr "Cette suggestion ne peut pas être appliquée à la compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer matches the skill's instructions."
+msgstr "Cette suggestion ne correspond plus aux instructions de la compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to make this change to the skill."
+msgstr "Vous n’avez pas l’autorisation d’apporter cette modification à la compétence."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be reviewed here."
+msgstr "Cette suggestion ne peut pas être examinée ici."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions from the same batch must be reviewed together."
+msgstr "Les suggestions d’un même lot doivent être examinées ensemble."
+
+#: front/lib/api_error_messages.ts
+msgid "No skills found. A skill needs a SKILL.md file with valid frontmatter."
+msgstr "Aucune compétence trouvée. Une compétence doit contenir un fichier SKILL.md avec un frontmatter valide."
+
+#: front/lib/api_error_messages.ts
+msgid "This ZIP archive can't be read or is too large."
+msgstr "Cette archive ZIP est illisible ou trop volumineuse."
+
+#: front/lib/api_error_messages.ts
+msgid "Some skills can't be imported. Check their names and whether they already exist."
+msgstr "Certaines compétences ne peuvent pas être importées. Vérifiez leur nom et si elles existent déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to import these skills."
+msgstr "Vous n’avez pas l’autorisation d’importer ces compétences."
+
+#: front/lib/api_error_messages.ts
+msgid "This GitHub repository URL isn't valid."
+msgstr "Cette URL de dépôt GitHub n’est pas valide."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub denied access to this repository."
+msgstr "GitHub a refusé l’accès à ce dépôt."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub returned an error. Try again later."
+msgstr "GitHub a renvoyé une erreur. Réessayez plus tard."
+
+#: front/lib/api_error_messages.ts
+msgid "The GitHub connection is invalid. Connect GitHub again."
+msgstr "La connexion GitHub n’est pas valide. Connectez GitHub à nouveau."
+
+#: front/lib/api_error_messages.ts
 msgid "This sandbox token can't access this endpoint."
 msgstr "Ce jeton de sandbox ne peut pas accéder à ce point de terminaison."
 

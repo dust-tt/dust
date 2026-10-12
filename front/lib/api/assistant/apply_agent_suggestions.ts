@@ -1,8 +1,12 @@
 import { getDefaultMCPActionPayload } from "@app/lib/actions/default_mcp_action";
 import { pickRandomDroidAvatarUrl } from "@app/lib/agent_builder/avatars";
 import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
+import type { AgentEditorsChangeError } from "@app/lib/api/assistant/agent_editors_change";
 import { validateAgentEditorsChange } from "@app/lib/api/assistant/agent_editors_change";
-import type { AgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
+import type {
+  AgentTagsChange,
+  AgentTagsChangeError,
+} from "@app/lib/api/assistant/agent_tags_change";
 import { validateAgentTagsChange } from "@app/lib/api/assistant/agent_tags_change";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import {
@@ -26,7 +30,11 @@ import {
   fetchSuggestableTools,
 } from "@app/lib/api/assistant/suggestable_tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentEdits } from "@app/lib/editor/merge_agent_suggestion_changes";
+import type {
+  AgentEdits,
+  AgentEditsError,
+  InstructionsEditsError,
+} from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   mergeAgentEdits,
   resolveInstructionsEdits,
@@ -72,7 +80,24 @@ import {
 import type { TagType } from "@app/types/tag";
 import type { UserType } from "@app/types/user";
 
-type ApplyAgentSuggestionsError = DustError<"invalid_request_error">;
+export type ApplyAgentSuggestionsError =
+  | DustError<
+      | "active_custom_agent_required"
+      | "agent_already_created"
+      | "agent_configuration_not_found"
+      | "agent_suggestion_not_applicable"
+      | "assistant_saving_error"
+      | "conflicting_suggestions"
+      | "mcp_server_view_not_found"
+      | "model_not_available"
+      | "reasoning_effort_not_supported"
+      | "structured_output_not_supported"
+      | "invalid_response_format"
+    >
+  | AgentEditsError
+  | InstructionsEditsError
+  | AgentEditorsChangeError
+  | AgentTagsChangeError;
 
 /**
  * A change resolved against the current state of its agent: every check has passed and the write
@@ -110,8 +135,8 @@ export type BatchCreations = {
  * the suggested name, description, instructions, tools, skills and sub-agents. Tools, skills and
  * sub-agents are checked again against live state, as when added to an existing agent, except a
  * skill or sub-agent that a creation of the same batch makes active. Applying it to an agent that
- * is not `pending`, or with a tool, skill or sub-agent that no longer qualifies, fails with
- * `invalid_request_error` and changes nothing.
+ * is not `pending` fails with `agent_already_created`, with a tool, skill or sub-agent that no longer
+ * qualifies with `agent_suggestion_not_applicable`, and changes nothing.
  */
 async function resolveCreateSuggestion(
   auth: Authenticator,
@@ -129,7 +154,7 @@ async function resolveCreateSuggestion(
   if (agent.status !== "pending") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_already_created",
         "The agent this suggestion targets has already been created."
       )
     );
@@ -152,7 +177,9 @@ async function resolveCreateSuggestion(
     getMarkdownPipeline("agent")
   );
   if (converted.isErr()) {
-    return converted;
+    return new Err(
+      new DustError("agent_suggestion_not_applicable", converted.error.message)
+    );
   }
 
   const resolvedActions = await resolveToolsEdits(
@@ -213,7 +240,7 @@ function resolveDeleteSuggestion(
   if (agent.status !== "active") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "active_custom_agent_required",
         "Only an active agent can be deleted."
       )
     );
@@ -241,9 +268,7 @@ async function resolveModelEdit(
 
   const modelRes = await resolveAgentModelChange(auth, model);
   if (modelRes.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", modelRes.error.message)
-    );
+    return modelRes;
   }
 
   return new Ok({ ...currentModel, ...modelRes.value });
@@ -269,9 +294,7 @@ function resolveStructuredOutputEdit(
     responseFormat,
   });
   if (validation.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", validation.error.message)
-    );
+    return validation;
   }
 
   return new Ok({ ...model, responseFormat: responseFormat ?? undefined });
@@ -315,7 +338,9 @@ async function resolveToolsEdits(
   for (const toolId of removedToolIds) {
     const removal = checkToolRemoval(toolId, suggestable, currentActions);
     if (removal.isErr()) {
-      return new Err(new DustError("invalid_request_error", removal.error));
+      return new Err(
+        new DustError("agent_suggestion_not_applicable", removal.error)
+      );
     }
   }
   const actions = currentActions.filter(
@@ -325,7 +350,9 @@ async function resolveToolsEdits(
   for (const toolId of addedToolIds) {
     const addition = checkToolAddition(toolId, suggestable);
     if (addition.isErr()) {
-      return new Err(new DustError("invalid_request_error", addition.error));
+      return new Err(
+        new DustError("agent_suggestion_not_applicable", addition.error)
+      );
     }
     actions.push(
       getDefaultMCPActionPayload(addition.value, {
@@ -374,7 +401,9 @@ async function resolveSubAgentsEdits(
   for (const subAgentId of removedSubAgentIds) {
     const removal = checkSubAgentRemoval(subAgentId, currentActions);
     if (removal.isErr()) {
-      return new Err(new DustError("invalid_request_error", removal.error));
+      return new Err(
+        new DustError("agent_suggestion_not_applicable", removal.error)
+      );
     }
   }
   const actions = currentActions.filter(
@@ -388,7 +417,7 @@ async function resolveSubAgentsEdits(
     if (!runAgentTool) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "mcp_server_view_not_found",
           "The tool to run sub-agents is not available."
         )
       );
@@ -402,7 +431,9 @@ async function resolveSubAgentsEdits(
         ? new Ok(createdAgent)
         : checkSubAgentAddition(subAgentId, suggestable, { agentId });
       if (addition.isErr()) {
-        return new Err(new DustError("invalid_request_error", addition.error));
+        return new Err(
+          new DustError("agent_suggestion_not_applicable", addition.error)
+        );
       }
       actions.push(
         getDefaultMCPActionPayload(runAgentTool, {
@@ -455,7 +486,9 @@ async function resolveSkillsEdits(
     }
     const addition = checkSkillAddition(skillId, suggestable);
     if (addition.isErr()) {
-      return new Err(new DustError("invalid_request_error", addition.error));
+      return new Err(
+        new DustError("agent_suggestion_not_applicable", addition.error)
+      );
     }
   }
 
@@ -635,9 +668,7 @@ async function resolveEditorsEdit(
 
   const validation = await validateAgentEditorsChange(auth, agent, editors);
   if (validation.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", validation.error.message)
-    );
+    return validation;
   }
 
   return new Ok(validation.value.nextEditors.map((u) => u.toJSON()));
@@ -657,9 +688,7 @@ async function resolveTagsEdit(
 
   const validation = await validateAgentTagsChange(auth, agent, tags);
   if (validation.isErr()) {
-    return new Err(
-      new DustError("invalid_request_error", validation.error.message)
-    );
+    return validation;
   }
 
   return new Ok(validation.value);
@@ -702,7 +731,7 @@ async function resolveAgentEdits(
   if (agent.scope === "global" || agent.status !== "active") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "active_custom_agent_required",
         "Archived and global agents cannot be updated."
       )
     );
@@ -781,7 +810,7 @@ export async function resolveAgentSuggestions(
   if (!action || actions.size > 1) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "conflicting_suggestions",
         "Suggestions applied together must all create, all edit, or all delete the agent."
       )
     );
@@ -794,14 +823,18 @@ export async function resolveAgentSuggestions(
         kind: suggestion.kind,
         suggestion: suggestion.suggestion,
       });
-      if (
-        suggestions.length > 1 ||
-        !parsed.success ||
-        parsed.data.kind !== "create"
-      ) {
+      if (suggestions.length > 1) {
         return new Err(
           new DustError(
-            "invalid_request_error",
+            "conflicting_suggestions",
+            "An agent is created from a single valid create suggestion."
+          )
+        );
+      }
+      if (!parsed.success || parsed.data.kind !== "create") {
+        return new Err(
+          new DustError(
+            "agent_suggestion_not_supported",
             "An agent is created from a single valid create suggestion."
           )
         );
@@ -837,7 +870,7 @@ async function archiveAgent(
   if (!agent) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_configuration_not_found",
         "The agent this suggestion targets was not found."
       )
     );
@@ -846,13 +879,13 @@ async function archiveAgent(
   const archiveResult = await agent.archive(auth, { auditMetadata });
   if (archiveResult.isErr()) {
     return new Err(
-      new DustError("invalid_request_error", archiveResult.error.message)
+      new DustError("assistant_saving_error", archiveResult.error.message)
     );
   }
   if (!archiveResult.value) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_configuration_not_found",
         "The agent this suggestion targets was not found."
       )
     );
@@ -877,7 +910,7 @@ async function saveAgentConfiguration(
     auditMetadata,
   });
   if (res.isErr()) {
-    return new Err(new DustError("invalid_request_error", res.error.message));
+    return new Err(new DustError("assistant_saving_error", res.error.message));
   }
 
   return new Ok(undefined);
@@ -957,7 +990,7 @@ async function updateAgentWithoutFullSave(
     { auditMetadata }
   );
   if (res.isErr()) {
-    return new Err(new DustError("invalid_request_error", res.error.message));
+    return new Err(new DustError("assistant_saving_error", res.error.message));
   }
 
   return new Ok(undefined);

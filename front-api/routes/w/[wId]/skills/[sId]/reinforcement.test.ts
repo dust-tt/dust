@@ -105,7 +105,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_archived",
         message: "An archived skill cannot be updated. Restore it first.",
       },
     });

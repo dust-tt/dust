@@ -23,7 +23,7 @@ export function rejectArchivedSkill(
   return apiError(ctx, {
     status_code: 400,
     api_error: {
-      type: "invalid_request_error",
+      type: "skill_archived",
       message: "An archived skill cannot be updated. Restore it first.",
     },
   });
@@ -45,7 +45,7 @@ export function rejectArchivedSkills(
   return apiError(ctx, {
     status_code: 400,
     api_error: {
-      type: "invalid_request_error",
+      type: "skill_archived",
       message: `Archived skills cannot be updated: ${archivedSkillNames.join(", ")}. Restore them first.`,
     },
   });

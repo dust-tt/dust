@@ -428,7 +428,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "agent_archived",
         message: "An archived agent cannot be updated. Restore it first.",
       },
     });

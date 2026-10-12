@@ -253,7 +253,7 @@ app.patch(
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "skill_archived",
                 message: availabilityValidation.error.message,
               },
             });
@@ -293,13 +293,34 @@ app.patch(
             },
           });
         case "archived":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_archived",
+              message: nameValidation.error.message,
+            },
+          });
         case "empty":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_name_empty",
+              message: nameValidation.error.message,
+            },
+          });
         case "too_long":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_name_too_long",
+              message: nameValidation.error.message,
+            },
+          });
         case "already_exists":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_already_exists",
               message: nameValidation.error.message,
             },
           });
@@ -337,7 +358,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "mcp_server_view_not_found",
           message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
         },
       });
@@ -358,7 +379,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_view_not_found",
           message: `Data source views not all found, ${dataSourceViews.length} found, ${dataSourceViewIds.length} requested`,
         },
       });
@@ -390,7 +411,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "space_not_found",
             message: additionalRequestedSpaceIdsRes.error.message,
           },
         });
@@ -423,7 +444,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_editors_missing_space_access",
           message: editorsAccessError,
         },
       });
@@ -438,7 +459,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 404,
           api_error: {
-            type: "invalid_request_error",
+            type: "file_not_found",
             message: `File attachments not all found, ${files.length} found, ${fileAttachmentIds.length} requested`,
           },
         });
@@ -449,7 +470,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_attachment_file_invalid",
               message: `File ${file.sId} is not ready or not a skill_attachment.`,
             },
           });

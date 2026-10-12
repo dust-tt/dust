@@ -371,7 +371,7 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "space_not_found",
         message: `User does not have access to the following spaces: ${restrictedSpace.sId}`,
       },
     });
@@ -554,7 +554,7 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "mcp_server_view_not_found",
         message: "MCP server views not all found, 0 found, 1 requested",
       },
     });
@@ -707,7 +707,7 @@ describe("POST /api/w/:wId/skills", () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "data_source_view_not_found",
         message: "Data source views not all found, 0 found, 1 requested",
       },
     });

@@ -1,3 +1,7 @@
+import type {
+  AgentEditsError,
+  InstructionsEditsError,
+} from "@app/lib/editor/merge_agent_suggestion_changes";
 import {
   mergeAgentEdits,
   resolveInstructionsEdits,
@@ -52,7 +56,7 @@ interface PreviewAgentSuggestionsInput {
 function previewModel(
   currentModel: PreviewedAgentFields["model"],
   model: ModelSuggestionType | undefined
-): Result<PreviewedAgentFields["model"], DustError<"invalid_request_error">> {
+): Result<PreviewedAgentFields["model"], DustError<"model_not_available">> {
   if (!model) {
     return new Ok(currentModel);
   }
@@ -63,7 +67,7 @@ function previewModel(
   if (!config) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "model_not_available",
         `Model "${model.modelId}" is not supported.`
       )
     );
@@ -113,7 +117,7 @@ export function previewAgentSuggestions({
   pipeline,
 }: PreviewAgentSuggestionsInput): Result<
   AgentSuggestionsPreview,
-  DustError<"invalid_request_error">
+  AgentEditsError | InstructionsEditsError | DustError<"model_not_available">
 > {
   const creation = suggestions.find(isCreateAgentSuggestion);
   if (creation) {

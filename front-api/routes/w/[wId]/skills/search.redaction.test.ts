@@ -278,7 +278,7 @@ describe("POST /api/w/:wId/skills/search redaction integration", () => {
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({
         error: {
-          type: "invalid_request_error",
+          type: "invalid_pagination_parameters",
           message: "Skill search offset is out of range",
         },
       });

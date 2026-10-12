@@ -41,7 +41,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_repository_url_invalid",
               message: error.message,
             },
           });
@@ -49,7 +49,7 @@ app.post(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_repository_not_found",
               message: error.message,
             },
           });
@@ -57,7 +57,7 @@ app.post(
           return apiError(ctx, {
             status_code: 401,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_github_auth_error",
               message: error.message,
             },
           });
@@ -67,7 +67,7 @@ app.post(
             {
               status_code: 500,
               api_error: {
-                type: "invalid_request_error",
+                type: "skill_github_api_error",
                 message: error.message,
               },
             },
@@ -77,7 +77,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_import_invalid",
               message: error.message,
             },
           });

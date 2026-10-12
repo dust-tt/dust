@@ -237,7 +237,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "agent_archived",
         message: "An archived agent cannot be updated. Restore it first.",
       },
     });
@@ -467,7 +467,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "user_already_agent_editor",
         message: "The user is already a member of the agent editors group.",
       },
     });
@@ -485,7 +485,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
     expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "user_not_agent_editor",
         message: "The user is not a member of the agent editors group.",
       },
     });
