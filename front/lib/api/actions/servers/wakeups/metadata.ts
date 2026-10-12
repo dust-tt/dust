@@ -7,14 +7,14 @@ export const WAKEUPS_TOOLS_METADATA = [
   {
     name: "schedule_wakeup",
     description:
-      "Schedule a wake-up that posts a user message at a future time to re-invoke " +
-      "the agent. Useful for requests to check back on something later, remind the user, poll " +
-      "until a condition is met, or schedule recurring work. The `when` field accepts three formats: " +
+      "Schedule a conversation-scoped wake-up that posts a user message in the current conversation " +
+      "at a future time to re-invoke the agent. Use it to continue this conversation later: check back " +
+      "on something, remind the user, or poll until a condition is met. For durable recurring automation " +
+      "independent of the current conversation, create a trigger schedule instead. The `when` field accepts three formats: " +
       '(1) relative duration like "in 2h", "in 30m", "in 1d";\n' +
       '(2) absolute ISO 8601 timestamp like "2026-04-16T16:00:00Z";\n' +
       '(3) 5-field cron expression like "0 9 * * MON-FRI". (# and L are not supported).\n' +
-      "Cron expressions fire recurrently until a fire cap is reached. Only one active wake-up " +
-      "is allowed at a time.",
+      "Cron expressions fire recurrently up to 32 times. Only one active wake-up is allowed per conversation.",
     schema: {
       when: z
         .string()
@@ -91,7 +91,8 @@ export const WAKEUPS_SERVER = {
   serverInfo: {
     name: WAKEUPS_SERVER_NAME,
     version: "1.0.0",
-    description: "Schedule wake-ups that re-invoke the agent at a later time.",
+    description:
+      "Resume the current conversation later for reminders, follow-ups, and polling.",
     authorization: null,
     icon: "ActionTimeIcon",
     documentationUrl: null,

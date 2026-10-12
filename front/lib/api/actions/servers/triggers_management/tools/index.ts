@@ -31,7 +31,6 @@ import {
 } from "@app/types/assistant/triggers";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { UniqueConstraintError } from "sequelize";
 
 function renderSchedule(
   schedule: ScheduleTriggerType,
@@ -200,35 +199,27 @@ export function createTriggersManagementTools(
         return new Err(new MCPError("Agent not found."));
       }
 
-      let result;
-      try {
-        result = await TriggerResource.makeNew(auth, {
-          workspaceId: owner.id,
-          agent,
-          name,
-          kind: "schedule",
-          status: "enabled",
-          configuration: scheduleConfig,
-          naturalLanguageDescription: schedule,
-          customPrompt: prompt,
-          editor: user.id,
-          webhookSourceViewId: null,
-          executionPerDayLimitOverride: null,
-          origin: "agent",
-          spaceId,
-        });
+      const result = await TriggerResource.makeNew(auth, {
+        workspaceId: owner.id,
+        agent,
+        name,
+        kind: "schedule",
+        status: "enabled",
+        configuration: scheduleConfig,
+        naturalLanguageDescription: schedule,
+        customPrompt: prompt,
+        editor: user.id,
+        webhookSourceViewId: null,
+        executionPerDayLimitOverride: null,
+        origin: "agent",
+        spaceId,
+      });
 
-        if (result.isErr()) {
-          logger.error(result.error.message);
-          return new Err(
-            new MCPError(`Failed to enable schedule: ${result.error.message}`)
-          );
-        }
-      } catch (err) {
-        if (err instanceof UniqueConstraintError) {
-          return new Err(new MCPError("Schedule uniqueness constraint error"));
-        }
-        throw err;
+      if (result.isErr()) {
+        logger.error(result.error.message);
+        return new Err(
+          new MCPError(`Failed to enable schedule: ${result.error.message}`)
+        );
       }
 
       statsDMetrics.increment("tools.triggers_management.created", 1, [
@@ -582,46 +573,34 @@ export function createTriggersManagementTools(
         return new Err(new MCPError("Agent not found."));
       }
 
-      let result;
-      try {
-        result = await TriggerResource.makeNew(auth, {
-          workspaceId: owner.id,
-          agent,
-          name,
-          kind: "webhook",
-          status: "enabled",
-          configuration: {
-            includePayload: includePayload ?? true,
-            event,
-            ...(filter ? { filter } : {}),
-          },
-          naturalLanguageDescription: filterDescription ?? null,
-          customPrompt: prompt ?? null,
-          editor: user.id,
-          webhookSourceViewId: view.id,
-          executionPerDayLimitOverride:
-            DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
-          origin: "agent",
-          spaceId,
-        });
+      const result = await TriggerResource.makeNew(auth, {
+        workspaceId: owner.id,
+        agent,
+        name,
+        kind: "webhook",
+        status: "enabled",
+        configuration: {
+          includePayload: includePayload ?? true,
+          event,
+          ...(filter ? { filter } : {}),
+        },
+        naturalLanguageDescription: filterDescription ?? null,
+        customPrompt: prompt ?? null,
+        editor: user.id,
+        webhookSourceViewId: view.id,
+        executionPerDayLimitOverride:
+          DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT,
+        origin: "agent",
+        spaceId,
+      });
 
-        if (result.isErr()) {
-          logger.error(result.error.message);
-          return new Err(
-            new MCPError(
-              `Failed to create event trigger: ${result.error.message}`
-            )
-          );
-        }
-      } catch (err) {
-        if (err instanceof UniqueConstraintError) {
-          return new Err(
-            new MCPError(
-              "A trigger with this name already exists for this agent."
-            )
-          );
-        }
-        throw err;
+      if (result.isErr()) {
+        logger.error(result.error.message);
+        return new Err(
+          new MCPError(
+            `Failed to create event trigger: ${result.error.message}`
+          )
+        );
       }
 
       statsDMetrics.increment(
