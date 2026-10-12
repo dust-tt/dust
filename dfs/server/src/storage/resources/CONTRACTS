@@ -2,3 +2,11 @@
 Resource methods that read or write FDB MUST take the caller's `&Transaction` and MUST NOT call
 `fdb::with_transaction` or open a transaction themselves, so a caller can combine several resource
 calls in one atomic transaction.
+
+@cc [owner:spolu,label:architecture;error-handling] cross-resource-error-propagation
+Fallible resource methods MUST use their own concrete `Error` type, directly or through
+`storage::Error<Error>`, rather than a caller-selected error type. Propagated domain errors from
+another resource MUST appear as explicit typed variants, such as
+`session::Error::Tenant(tenant::Error)`. Cross-resource `From` conversions MUST support `?`, wrapping
+only `storage::Error::Resource` and preserving all other variants, including FDB failures, unchanged.
+API translation MUST delegate wrapped domain errors to the originating resource's status mapping.
