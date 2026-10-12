@@ -3,9 +3,8 @@ import { getFileFromConversationAttachment } from "@app/lib/actions/mcp_internal
 import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
-  MAX_SLACK_MESSAGE_LENGTH,
   makeMessagePayload,
-  makeSentByFooterText,
+  makeMrkdwnText,
 } from "@app/lib/api/actions/servers/slack/block";
 import {
   formatSlackMessageForLLM,
@@ -20,13 +19,11 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { truncate } from "@app/types/shared/utils/string_utils";
 import type { WebAPICallResult } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 import type { Usergroup } from "@slack/web-api/dist/types/response/UsergroupsListResponse";
 import type { Member } from "@slack/web-api/dist/types/response/UsersListResponse";
-import slackifyMarkdown from "slackify-markdown";
 
 // Untyped Canvas API responses (not covered by @slack/web-api types).
 interface CanvasSectionsLookupResult extends WebAPICallResult {
@@ -790,13 +787,7 @@ export async function executePostMessage(
     return new Err(new MCPError("Failed to open group DM"));
   }
 
-  // The file-upload path uses legacy Slack mrkdwn via `initial_comment` (a
-  // plain string, no blocks), so the footer is concatenated inline there — we
-  // reserve room for it in the truncation so message + footer stays within
-  // MAX_SLACK_MESSAGE_LENGTH.
   let footer: { agentName: string; agentUrl: string } | undefined;
-  let bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH;
-  let mrkdwnMessage = truncate(slackifyMarkdown(message), bodyMaxLength);
 
   if (
     showSentByFooter !== false &&
@@ -809,10 +800,6 @@ export async function executePostMessage(
       config.getAppUrl()
     );
     const agentName = toolContext.runContext?.agentConfiguration.name;
-    const footerText = makeSentByFooterText(agentName, agentUrl);
-    // -1 for the newline joining the message and the footer in the string path.
-    bodyMaxLength = MAX_SLACK_MESSAGE_LENGTH - footerText.length - 1;
-    mrkdwnMessage = `${truncate(slackifyMarkdown(message), bodyMaxLength)}\n${footerText}`;
     footer = { agentName, agentUrl };
   }
 
@@ -858,7 +845,8 @@ export async function executePostMessage(
       file: fileBuffer,
       filename,
       filetype,
-      initial_comment: mrkdwnMessage,
+      // The comment is a plain string: blocks are not supported with uploads.
+      initial_comment: makeMrkdwnText(message, footer),
     };
     const uploadResp = threadTs
       ? await slackClient.filesUploadV2({

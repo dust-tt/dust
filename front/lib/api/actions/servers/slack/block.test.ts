@@ -1,4 +1,7 @@
-import { makeMessagePayload } from "@app/lib/api/actions/servers/slack/block";
+import {
+  makeMessagePayload,
+  makeMrkdwnText,
+} from "@app/lib/api/actions/servers/slack/block";
 import slackifyMarkdown from "slackify-markdown";
 import { describe, expect, it } from "vitest";
 
@@ -37,4 +40,15 @@ describe("makeMessagePayload", () => {
       });
     }
   );
+});
+
+describe("makeMrkdwnText", () => {
+  it("keeps long messages whole, even with a table, and appends the footer", () => {
+    const message = `| a | b |\n| --- | --- |\n${"x".repeat(5_000)}`;
+
+    expect(makeMrkdwnText(message, FOOTER)).toBe(
+      `${slackifyMarkdown(message)}\n${FOOTER_TEXT}`
+    );
+    expect(makeMrkdwnText(message, undefined)).toBe(slackifyMarkdown(message));
+  });
 });

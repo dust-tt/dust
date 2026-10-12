@@ -8,7 +8,7 @@ import slackifyMarkdown from "slackify-markdown";
  * chat.update method. Per past incidents, the max message length is 3000
  * characters; we stay conservative to leave room for ellipses.
  */
-export const MAX_SLACK_MESSAGE_LENGTH = 2500;
+const MAX_SLACK_MESSAGE_LENGTH = 2500;
 
 // source: https://docs.slack.dev/reference/block-kit/blocks/markdown-block/
 const MAX_SLACK_MARKDOWN_BLOCK_LENGTH = 12_000;
@@ -49,10 +49,7 @@ function makeMarkdownBlocks(text?: string, isUpload?: boolean): KnownBlock[] {
 // "Sent via <agent> on Dust" attribution as legacy Slack mrkdwn (link uses
 // `<url|label>`). Single source of truth for the footer text, shared by the
 // context block below and every plain mrkdwn message.
-export function makeSentByFooterText(
-  agentName: string,
-  agentUrl: string
-): string {
+function makeSentByFooterText(agentName: string, agentUrl: string): string {
   return `_Sent via <${agentUrl}|${agentName} Agent> on Dust_`;
 }
 
@@ -84,17 +81,27 @@ function hasMarkdownTable(text: string): boolean {
   return found;
 }
 
+/**
+ * @cc [owner:avervaet,label:product] untruncated-mrkdwn-text
+ * The result MUST be the slackified `message`, untruncated, followed by the footer text on a new
+ * line when `footer` is set.
+ */
+export function makeMrkdwnText(
+  message: string,
+  footer: { agentName: string; agentUrl: string } | undefined
+): string {
+  const text = slackifyMarkdown(message);
+  return footer
+    ? `${text}\n${makeSentByFooterText(footer.agentName, footer.agentUrl)}`
+    : text;
+}
+
 export function makeMessagePayload(
   message: string,
   footer: { agentName: string; agentUrl: string } | undefined
 ): { text: string; blocks?: KnownBlock[] } {
   if (!hasMarkdownTable(message)) {
-    const text = slackifyMarkdown(message);
-    return {
-      text: footer
-        ? `${text}\n${makeSentByFooterText(footer.agentName, footer.agentUrl)}`
-        : text,
-    };
+    return { text: makeMrkdwnText(message, footer) };
   }
 
   return {
