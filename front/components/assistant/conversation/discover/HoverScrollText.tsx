@@ -24,8 +24,9 @@ interface HoverScrollTextProps {
 
 /**
  * @cc [owner:adrsimon,label:react;product] scrolls-only-when-truncated
- * The text MUST scroll only while an ancestor `group` is hovered and the text overflows its box;
- * otherwise, and under reduced motion, it MUST render as a plain ellipsis-truncated line.
+ * The text MUST scroll forward only while an ancestor `group` is hovered and the text overflows
+ * its box. When the hover ends it eases back to its start. Without overflow, or under reduced
+ * motion, it MUST render as a plain ellipsis-truncated line.
  */
 export function HoverScrollText({ className, text }: HoverScrollTextProps) {
   const shouldReduceMotion = useReducedMotion();

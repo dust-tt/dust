@@ -3,6 +3,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { MAX_AGENT_SUGGESTED_PROMPTS } from "@app/types/api/assistant/configuration/suggested_prompts";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
 
@@ -62,6 +63,21 @@ describe("/api/w/:wId/assistant/agent_configurations/:aId/suggested_prompts", ()
     expect(await getResponse.json()).toEqual({
       suggestedPrompts: ["third", "first"],
     });
+  });
+
+  it("rejects more prompts than the limit", async () => {
+    const { workspace, agent } = await setupEditedAgent({ withFlag: true });
+
+    const response = await putSuggestedPrompts(
+      workspace,
+      agent.sId,
+      Array.from(
+        { length: MAX_AGENT_SUGGESTED_PROMPTS + 1 },
+        (_, index) => `prompt ${index}`
+      )
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it("rejects updates when discovery_homepage is disabled", async () => {

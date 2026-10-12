@@ -5,12 +5,14 @@ import type { Fetcher } from "swr";
 interface UseAgentSuggestedPromptsOptions {
   agentId: string | null;
   disabled?: boolean;
+  keepPreviousData?: boolean;
   workspaceId: string;
 }
 
 export function useAgentSuggestedPrompts({
   agentId,
   disabled,
+  keepPreviousData,
   workspaceId,
 }: UseAgentSuggestedPromptsOptions) {
   const { fetcher } = useFetcher();
@@ -22,7 +24,7 @@ export function useAgentSuggestedPrompts({
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentId}/suggested_prompts`
       : null,
     suggestedPromptsFetcher,
-    { disabled }
+    { disabled, keepPreviousData }
   );
 
   return {

@@ -10,6 +10,7 @@ import {
   getIcon,
   ResourceAvatar,
 } from "@app/components/resources/resources_icons";
+import { useAgentSuggestedPrompts } from "@app/hooks/useAgentSuggestedPrompts";
 import {
   useDismissHomepageUseCase,
   useHomepageUseCases,
@@ -19,6 +20,10 @@ import type {
   HomepageUseCaseType,
 } from "@app/types/api/homepage_use_cases";
 import { MAX_FEATURED_USE_CASES } from "@app/types/api/homepage_use_cases";
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/types/resources_icon_names";
 import {
   Button,
   cn,
@@ -40,10 +45,17 @@ import { forwardRef, useEffect, useRef, useState } from "react";
 
 const VISIBLE_COUNT = 4;
 
-const ROW_OFFSET_PX = 12;
-export const HOMEPAGE_ROW_STAGGER_SECONDS = 0.05;
+const PROMPT_ICONS: InternalAllowedIconType[] = [
+  "ActionDocumentTextIcon",
+  "ActionChatBubbleBottomCenterTextIcon",
+  "ActionLightbulbIcon",
+  "ActionChatBubbleThoughtIcon",
+];
 
-export const HOMEPAGE_ROW_VARIANTS: Variants = {
+const ROW_OFFSET_PX = 12;
+const ROW_STAGGER_SECONDS = 0.05;
+
+const ROW_VARIANTS: Variants = {
   hidden: { opacity: 0, x: -ROW_OFFSET_PX, filter: "blur(2px)" },
   visible: {
     opacity: 1,
@@ -118,8 +130,10 @@ function refillPage(
 }
 
 interface HomepageUseCasesProps {
+  agentId: string | null;
   enterDelaySeconds: number;
   onPick: (useCase: HomepageUseCaseType) => void;
+  onPickPrompt: (prompt: string) => void;
   workspaceId: string;
 }
 
@@ -131,12 +145,25 @@ interface HomepageUseCasesProps {
  * row that is no longer offered MUST be replaced in its own slot, and every row still offered MUST
  * keep its position.
  */
+/**
+ * @cc [owner:adrsimon,label:react;product] agent-prompts-replace-use-cases
+ * When `agentId` has suggested prompts, the rows MUST be those prompts instead of the use cases.
+ * While the prompts of a newly selected agent load, the previous rows MUST stay rendered but
+ * disabled.
+ */
 export function HomepageUseCases({
+  agentId,
   enterDelaySeconds,
   onPick,
+  onPickPrompt,
   workspaceId,
 }: HomepageUseCasesProps) {
+  const { t } = useLingui();
   const { useCases, isUseCasesLoading } = useHomepageUseCases({ workspaceId });
+  const { suggestedPrompts, isSuggestedPromptsLoading } =
+    useAgentSuggestedPrompts({ workspaceId, agentId, keepPreviousData: true });
+  const agentPrompts = agentId ? suggestedPrompts.slice(0, VISIBLE_COUNT) : [];
+  const isShowingAgentPrompts = agentPrompts.length > 0;
   const shouldReduceMotion = useReducedMotion();
   // Rows that replace the skeleton follow it straight away; rows shown on mount wait for the hero.
   const [rowsDelaySeconds] = useState(
@@ -162,13 +189,16 @@ export function HomepageUseCases({
   const viewedUseCaseIds = useRef(new Set<string>());
 
   useEffect(() => {
+    if (isShowingAgentPrompts) {
+      return;
+    }
     page.forEach(({ id }) => {
       if (!viewedUseCaseIds.current.has(id)) {
         viewedUseCaseIds.current.add(id);
         trackHomepageUseCaseView({ useCaseId: id });
       }
     });
-  }, [page]);
+  }, [isShowingAgentPrompts, page]);
 
   const [isTyping, setIsTyping] = useState(false);
 
@@ -186,7 +216,10 @@ export function HomepageUseCases({
   }, [isTyping]);
 
   const isPreparing =
-    isUseCasesLoading || (useCases.length > 0 && page.length === 0);
+    !isShowingAgentPrompts &&
+    (isUseCasesLoading || (useCases.length > 0 && page.length === 0));
+  const areRowsDisabled =
+    isTyping || (agentId !== null && isSuggestedPromptsLoading);
 
   if (isPreparing) {
     return (
@@ -214,7 +247,7 @@ export function HomepageUseCases({
     );
   }
 
-  if (page.length === 0) {
+  if (!isShowingAgentPrompts && page.length === 0) {
     return null;
   }
 
@@ -229,29 +262,50 @@ export function HomepageUseCases({
             visible: {
               transition: {
                 delayChildren: rowsDelaySeconds,
-                staggerChildren: HOMEPAGE_ROW_STAGGER_SECONDS,
+                staggerChildren: ROW_STAGGER_SECONDS,
               },
             },
           }}
         >
           <AnimatePresence mode="popLayout">
-            {page.map((useCase) => (
-              <UseCaseRow
-                key={useCase.id}
-                isMotionReduced={!!shouldReduceMotion}
-                isDisabled={isTyping}
-                onDismiss={() => {
-                  trackHomepageUseCaseDismiss({ useCaseId: useCase.id });
-                  return dismissUseCase(useCase.id);
-                }}
-                onPick={() => {
-                  trackHomepageUseCaseClick({ useCaseId: useCase.id });
-                  setIsTyping(true);
-                  onPick(useCase);
-                }}
-                useCase={useCase}
-              />
-            ))}
+            {isShowingAgentPrompts
+              ? agentPrompts.map((prompt, index) => (
+                  <HomepageRow
+                    key={`prompt-${prompt}`}
+                    icon={PROMPT_ICONS[index % PROMPT_ICONS.length]}
+                    isDisabled={areRowsDisabled}
+                    isMotionReduced={!!shouldReduceMotion}
+                    label={prompt}
+                    onPick={() => {
+                      setIsTyping(true);
+                      onPickPrompt(prompt);
+                    }}
+                  />
+                ))
+              : page.map((useCase) => (
+                  <HomepageRow
+                    key={useCase.id}
+                    icon={useCase.icon}
+                    isDisabled={areRowsDisabled}
+                    isMotionReduced={!!shouldReduceMotion}
+                    label={t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].label)}
+                    onDismiss={
+                      useCase.isDismissible
+                        ? () => {
+                            trackHomepageUseCaseDismiss({
+                              useCaseId: useCase.id,
+                            });
+                            return dismissUseCase(useCase.id);
+                          }
+                        : undefined
+                    }
+                    onPick={() => {
+                      trackHomepageUseCaseClick({ useCaseId: useCase.id });
+                      setIsTyping(true);
+                      onPick(useCase);
+                    }}
+                  />
+                ))}
           </AnimatePresence>
         </m.ul>
       </div>
@@ -259,17 +313,18 @@ export function HomepageUseCases({
   );
 }
 
-interface UseCaseRowProps {
+interface HomepageRowProps {
+  icon: InternalAllowedIconType | CustomResourceIconType;
   isDisabled: boolean;
   isMotionReduced: boolean;
-  onDismiss: () => Promise<void>;
+  label: string;
+  onDismiss?: () => Promise<void>;
   onPick: () => void;
-  useCase: HomepageUseCaseType;
 }
 
-const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
-  function UseCaseRow(
-    { isDisabled, isMotionReduced, onDismiss, onPick, useCase },
+const HomepageRow = forwardRef<HTMLLIElement, HomepageRowProps>(
+  function HomepageRow(
+    { icon, isDisabled, isMotionReduced, label, onDismiss, onPick },
     ref
   ) {
     const { t } = useLingui();
@@ -279,7 +334,7 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
       <m.li
         ref={ref}
         layout={!isMotionReduced}
-        variants={isMotionReduced ? undefined : HOMEPAGE_ROW_VARIANTS}
+        variants={isMotionReduced ? undefined : ROW_VARIANTS}
         exit={isMotionReduced ? undefined : ROW_EXIT}
         transition={{ layout: ROW_LAYOUT_TRANSITION }}
       >
@@ -296,13 +351,10 @@ const UseCaseRow = forwardRef<HTMLLIElement, UseCaseRowProps>(
             onClick={onPick}
             className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 text-left"
           >
-            <ResourceAvatar icon={getIcon(useCase.icon)} size="xs" />
-            <HoverScrollText
-              className="copy-sm text-foreground"
-              text={t(HOMEPAGE_USE_CASE_MESSAGES[useCase.id].label)}
-            />
+            <ResourceAvatar icon={getIcon(icon)} size="xs" />
+            <HoverScrollText className="copy-sm text-foreground" text={label} />
           </button>
-          {useCase.isDismissible && (
+          {onDismiss && (
             <Button
               variant="ghost-secondary"
               size="xs"

@@ -169,9 +169,23 @@ export const getAgentBuilderFormSchema = (
     triggersToDelete: z.array(z.string()),
     suggestedPrompts: z
       .array(
-        z.object({ prompt: z.string().max(MAX_AGENT_SUGGESTED_PROMPT_LENGTH) })
+        z.object({
+          prompt: z
+            .string()
+            .max(
+              MAX_AGENT_SUGGESTED_PROMPT_LENGTH,
+              t(
+                msg`Suggested prompts are limited to ${MAX_AGENT_SUGGESTED_PROMPT_LENGTH} characters`
+              )
+            ),
+        })
       )
-      .max(MAX_AGENT_SUGGESTED_PROMPTS),
+      .max(
+        MAX_AGENT_SUGGESTED_PROMPTS,
+        t(
+          msg`An agent can have at most ${MAX_AGENT_SUGGESTED_PROMPTS} suggested prompts`
+        )
+      ),
     maxStepsPerRun: z
       .number()
       .min(1, t(msg`Max steps per run must be at least 1`))

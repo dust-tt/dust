@@ -18,8 +18,8 @@ msgid "Suggested prompts"
 msgstr "Prompts suggérés"
 
 #: front/components/agent_builder/suggested_prompts/AgentBuilderSuggestedPromptsBlock.tsx
-msgid "Shown under the input bar when this agent is selected."
-msgstr "Affichés sous la barre de saisie lorsque cet agent est sélectionné."
+msgid "Examples of what people can do with this agent."
+msgstr "Exemples de ce que l'on peut faire avec cet agent."
 
 #: front/components/agent_builder/suggested_prompts/AgentBuilderSuggestedPromptsBlock.tsx
 msgid "Add prompt"
