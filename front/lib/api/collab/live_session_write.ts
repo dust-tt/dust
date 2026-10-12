@@ -26,6 +26,12 @@ export class LiveSessionWriteError extends Error {
   }
 }
 
+export function isLiveSessionWriteError(
+  error: unknown
+): error is LiveSessionWriteError {
+  return error instanceof LiveSessionWriteError;
+}
+
 export type LiveSessionWrite<T> =
   | { kind: "no_session" }
   | { kind: "written"; value: T };

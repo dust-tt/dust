@@ -1,4 +1,7 @@
-import { LiveSessionWriteError } from "@app/lib/api/collab/live_session_write";
+import {
+  isLiveSessionWriteError,
+  type LiveSessionWriteError,
+} from "@app/lib/api/collab/live_session_write";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
@@ -772,7 +775,7 @@ app.put(
     if (live.isErr()) {
       return apiError(
         ctx,
-        live.error instanceof LiveSessionWriteError
+        isLiveSessionWriteError(live.error)
           ? mapLiveWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );

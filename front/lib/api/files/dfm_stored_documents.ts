@@ -1,5 +1,6 @@
+import type { LiveSessionWriteError } from "@app/lib/api/collab/live_session_write";
 import {
-  LiveSessionWriteError,
+  isLiveSessionWriteError,
   writeThroughLiveSession,
 } from "@app/lib/api/collab/live_session_write";
 import type { LiveSourceError } from "@app/lib/api/collab/live_source";
@@ -289,7 +290,7 @@ export async function writeDocumentChange<T, E extends Error>(
     });
     if (live.isErr()) {
       return new Err(
-        live.error instanceof LiveSessionWriteError
+        isLiveSessionWriteError(live.error)
           ? liveSessionWriteError(live.error)
           : live.error
       );

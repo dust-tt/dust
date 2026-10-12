@@ -25,8 +25,9 @@ import { Err, Ok } from "@app/types/shared/result";
  * In a workspace with `co_edition`, for a file whose name or request content type is
  * `text/markdown`, `content` MUST be written through `writeThroughLiveSession`, under the file's
  * normalized path without a trailing slash. The comments MUST be validated with
- * `validateCommentSignaturesForUser` against the session's source. A write conditional on a file
- * revision MUST fail with `conflict` while a session is open, since the file lags the session.
+ * `validateCommentSignaturesForUser` against the session's source. While a session is open, a
+ * write conditional on a file revision MUST fail with `conflict`, since the file lags the
+ * session, unless the caller cannot write the file, which fails with `read_only` first.
  * Any other write MUST answer `no_session` without asking the collab server.
  */
 export async function writeFileContentThroughLiveSession(
