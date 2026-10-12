@@ -12,14 +12,14 @@ import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
 import {
+  ACCESS_RECHECK_INTERVAL_MS,
+  recheckAllConnections,
+} from "./lib/collab/access_recheck";
+import {
   checkpointAllDocuments,
   createCollabHocuspocus,
 } from "./lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "./lib/collab/internal_routes";
-import {
-  ACCESS_RECHECK_INTERVAL_MS,
-  recheckAllConnections,
-} from "./lib/collab/recheck";
 import { createHono } from "./lib/hono";
 import { unhandledErrorHandler } from "./middlewares/utils";
 import { healthzApp } from "./routes/healthz";

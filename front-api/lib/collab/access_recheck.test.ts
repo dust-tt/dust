@@ -1,8 +1,4 @@
-import {
-  checkLiveAccess,
-  loadLiveDocument,
-} from "@app/lib/api/collab/live_file";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
+import { checkLiveAccess } from "@app/lib/api/collab/live_file";
 import { DustFileSystemError } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Authenticator } from "@app/lib/auth";
@@ -12,36 +8,13 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import { toLiveDocumentName } from "@app/types/collab";
-import { Err, Ok } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
+import { recheckAllConnections } from "@front-api/lib/collab/access_recheck";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
-import { recheckAllConnections } from "@front-api/lib/collab/recheck";
 import { Connection } from "@hocuspocus/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
-  const actual =
-    await importActual<typeof import("@app/lib/api/collab/live_file")>();
-  return { ...actual, loadLiveDocument: vi.fn() };
-});
-
-/** What `loadLiveDocument` returns for the file the connection opens. */
-async function loadSource() {
-  const source = "# Notes\n";
-  const live = dfmToYDoc(source);
-  if (live.isErr()) {
-    throw new Error(live.error);
-  }
-  return new Ok({
-    live: live.value,
-    checkpoint: { revision: "1", content: source },
-  });
-}
+import { describe, expect, it, vi } from "vitest";
 
 describe("recheckAllConnections", () => {
-  beforeEach(() => {
-    vi.mocked(loadLiveDocument).mockImplementation(loadSource);
-  });
-
   /** A WebSocket connection to the user's own file, open as after a successful connect. */
   async function openConnection(hocuspocus = createCollabHocuspocus()) {
     const {
