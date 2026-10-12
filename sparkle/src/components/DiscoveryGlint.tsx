@@ -1,3 +1,4 @@
+import { prefersReducedMotion } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
@@ -10,13 +11,6 @@ const SWEEP_FROM = "translateX(-100%)";
 const SWEEP_TO = "translateX(160%)";
 const EASING = "cubic-bezier(0.645, 0.045, 0.355, 1)";
 const PULSE_SCALE = 1.08;
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
 
 function findVisualBox(host: HTMLElement | null): HTMLElement | null {
   let element = host?.firstElementChild ?? null;
