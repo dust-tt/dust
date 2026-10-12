@@ -25,12 +25,14 @@ export function ResponseFormatRows({
         <Button
           size="sm"
           variant={hasSchema ? "outline" : "primary"}
+          aria-pressed={!hasSchema}
           label="Text"
           onClick={() => onResponseFormatChange("")}
         />
         <Button
           size="sm"
           variant={hasSchema ? "primary" : "outline"}
+          aria-pressed={hasSchema}
           label="JSON schema"
           disabled={!supportsStructuredOutput}
           tooltip={

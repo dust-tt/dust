@@ -134,8 +134,8 @@ export function SpaceSelectionSheet({
           {isEmpty ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               {needle
-                ? "No results found for your search"
-                : "No spaces and Pods available"}
+                ? `No spaces or Pods match “${search.trim()}”. Try another name.`
+                : "No spaces or Pods yet. Ask an admin to create one."}
             </div>
           ) : (
             <div className="flex flex-col">
@@ -267,7 +267,7 @@ export function DataAccessSection({
             ? `Remove ${spaceToRemove.name} ${spaceToRemove.kind === "pod" ? "Pod" : "space"}`
             : ""
         }
-        confirmLabel="OK"
+        confirmLabel="Remove"
         confirmVariant="warning"
         confirmDisabled={hasKnowledgeReference}
         onConfirm={() => {

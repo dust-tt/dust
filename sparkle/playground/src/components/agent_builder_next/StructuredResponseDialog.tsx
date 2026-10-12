@@ -49,11 +49,15 @@ export function StructuredResponseDialog({
   onSave: (schema: string) => void;
 }) {
   const [draft, setDraft] = useState(value);
+  // Validate live so Save can be gated, but only show the message once the
+  // user has left the field: half-typed JSON is not an error yet.
+  const [isTouched, setIsTouched] = useState(false);
   const error = validateSchema(draft);
 
   useEffect(() => {
     if (open) {
       setDraft(value);
+      setIsTouched(false);
     }
   }, [open, value]);
 
@@ -81,11 +85,12 @@ export function StructuredResponseDialog({
             <TextArea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
+              onBlur={() => setIsTouched(true)}
               placeholder={`Example:\n\n${JSON_SCHEMA_EXAMPLE}`}
               resize="none"
               minRows={16}
-              className="font-mono text-xs"
-              error={error}
+              className="font-mono md:text-xs"
+              error={isTouched ? error : undefined}
               showErrorLabel
             />
           </div>
@@ -97,7 +102,7 @@ export function StructuredResponseDialog({
             onClick: () => onOpenChange(false),
           }}
           rightButtonProps={{
-            label: "Save",
+            label: "Save schema",
             variant: "primary",
             disabled: error !== null,
             onClick: () => {

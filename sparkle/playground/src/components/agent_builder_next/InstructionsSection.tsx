@@ -225,17 +225,20 @@ export function InstructionsSection({
         scrollContainer={scrollContainer}
         className="min-h-24 px-0 py-0"
       />
-      {showCounter ? (
-        <div
-          className={[
-            "text-right text-xs",
-            isOverLimit ? "text-foreground-warning" : "text-muted-foreground",
-          ].join(" ")}
-        >
-          {textLength.toLocaleString("en-US")} /{" "}
-          {INSTRUCTIONS_MAX_CHARS.toLocaleString("en-US")} characters
-        </div>
-      ) : null}
+      {/* Always in the layout so the editor does not jump when it appears. */}
+      <div
+        aria-hidden={!showCounter}
+        className={[
+          "text-right text-xs tabular-nums",
+          showCounter ? "" : "invisible",
+          isOverLimit ? "text-foreground-warning" : "text-muted-foreground",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {textLength.toLocaleString("en-US")} /{" "}
+        {INSTRUCTIONS_MAX_CHARS.toLocaleString("en-US")} characters
+      </div>
       {similarAgents.status === "loading" ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner size="xs" />
@@ -244,7 +247,7 @@ export function InstructionsSection({
       ) : null}
       {similarAgents.status === "error" ? (
         <div className="text-sm text-muted-foreground">
-          Couldn't check for similar agents.
+          Couldn’t check for similar agents.
         </div>
       ) : null}
       {similarAgents.status === "done" ? (

@@ -33,6 +33,8 @@ import {
 } from "./agent_builder_next/CapabilitiesSection";
 import {
   type BuilderTrigger,
+  DEFAULT_SCHEDULE,
+  type ScheduleConfig,
   getBuilderSpaceById,
   validateAgentName,
   getKnowledgeNodeById,
@@ -46,7 +48,12 @@ import {
   PendingSuggestionsDialog,
   PersonalConnectionRequiredDialog,
 } from "./agent_builder_next/dialogs";
-import { IdentityHeader } from "./agent_builder_next/IdentityHeader";
+import {
+  IdentityHeader,
+  IdentityStickyBar,
+  PANEL_HEADER_HEIGHT,
+  useIsScrolledAway,
+} from "./agent_builder_next/IdentityHeader";
 import { InstructionsSection } from "./agent_builder_next/InstructionsSection";
 import { ModelSection } from "./agent_builder_next/ModelSection";
 import { AdvancedSection } from "./agent_builder_next/AdvancedSection";
@@ -151,6 +158,7 @@ export function AgentBuilderNextView({
   const [addedTools, setAddedTools] = useState<AddedTool[]>([]);
   const [knowledge, setKnowledge] = useState<KnowledgeConfiguration[]>([]);
   const [triggers, setTriggers] = useState<BuilderTrigger[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleConfig>(DEFAULT_SCHEDULE);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([""]);
   const [isTriggersLoading, setIsTriggersLoading] = useState(mode === "edit");
   const [scope, setScope] = useState<AgentScope>("hidden");
@@ -190,6 +198,15 @@ export function AgentBuilderNextView({
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
     null
   );
+  const [identityHeader, setIdentityHeader] = useState<HTMLElement | null>(
+    null
+  );
+  const isIdentityScrolledAway = useIsScrolledAway(
+    identityHeader,
+    scrollContainer,
+    PANEL_HEADER_HEIGHT
+  );
+  const [isEditorsOpen, setIsEditorsOpen] = useState(false);
   const sidekickPlaceholder = useMemo(
     () =>
       SIDEKICK_PLACEHOLDERS[
@@ -401,6 +418,20 @@ export function AgentBuilderNextView({
     finishSave();
   };
 
+  // Cmd+S / Ctrl+S saves from anywhere in the builder, including the editor.
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        handleSaveRef.current();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const handleCancel = () => {
     if (isDirty) {
       setShowDiscard(true);
@@ -502,23 +533,56 @@ export function AgentBuilderNextView({
   });
 
   // ----- panels -----------------------------------------------------------
+  // The header floats over the scroll area so the form scrolls underneath it,
+  // with the condensed identity bar pinning right below. The column's top
+  // padding and the sticky bar's offset account for its 56px height.
   const leftPanel = (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <BarHeader
         variant="default"
-        className="mx-4"
+        className="absolute inset-x-0 top-0 z-30 border-b-0 bg-background px-8"
         title={headerTitle}
-        rightActions={
+        leftActions={
           <Button
             size="sm"
             variant="ghost"
             icon={XClose}
+            tooltip="Close"
             onClick={handleCancel}
           />
         }
       />
-      <ScrollArea className="min-h-0 flex-1" ref={setScrollContainer}>
-        <div className="mx-auto w-full max-w-[85ch] space-y-8 px-8 py-6">
+      {/* overscroll-none: no macOS rubber-banding, which would drag the
+          content away from the sticky identity bar at the top. */}
+      <ScrollArea
+        className="min-h-0 flex-1"
+        viewportClassName="overscroll-none"
+        ref={setScrollContainer}
+      >
+        {isIdentityScrolledAway ? (
+          <IdentityStickyBar
+            name={name}
+            description={description}
+            avatar={avatar}
+            scope={scope}
+            onScopeChange={(value) => {
+              setScope(value);
+              markDirty();
+            }}
+            canPublish
+            editorIds={editorIds}
+            onManageEditors={() => setIsEditorsOpen(true)}
+            tagIds={tagIds}
+            onTagsChange={(ids) => {
+              setTagIds(ids);
+              markDirty();
+            }}
+            // Instant on purpose: a jump back to the top, and the bar
+            // unmounts as soon as the header is back in view.
+            onReveal={() => identityHeader?.scrollIntoView({ block: "start" })}
+          />
+        ) : null}
+        <div className="mx-auto flex w-full max-w-[85ch] flex-col gap-8 px-8 pb-16 pt-26">
           {isEditorGateVisible ? (
             <EditorGateMessage
               isBecoming={isBecomingEditor}
@@ -535,6 +599,7 @@ export function AgentBuilderNextView({
             />
           ) : null}
           <IdentityHeader
+            ref={setIdentityHeader}
             name={name}
             onNameChange={(value) => {
               setName(value);
@@ -561,6 +626,9 @@ export function AgentBuilderNextView({
               setEditorIds(ids);
               markDirty();
             }}
+            onManageEditors={() => setIsEditorsOpen(true)}
+            isEditorsOpen={isEditorsOpen}
+            onEditorsOpenChange={setIsEditorsOpen}
             tagIds={tagIds}
             onTagsChange={(ids) => {
               setTagIds(ids);
@@ -643,6 +711,11 @@ export function AgentBuilderNextView({
               }}
             />
             <TriggersSection
+              schedule={schedule}
+              onScheduleChange={(next) => {
+                setSchedule(next);
+                markDirty();
+              }}
               triggers={triggers}
               isLoading={isTriggersLoading}
               onSave={(trigger) => {
@@ -689,11 +762,12 @@ export function AgentBuilderNextView({
           <Button
             size="sm"
             variant="highlight"
-            label={isSubmitting ? "Saving..." : "Save"}
+            label="Save"
             disabled={isSaveDisabled}
             tooltip={
-              !isDirty && mode !== "duplicate" ? "No changes yet" : undefined
+              !isDirty && mode !== "duplicate" ? "No changes yet" : "Save agent"
             }
+            tooltipShortcut="⌘S"
             isLoading={isSubmitting}
             onClick={handleSave}
           />
@@ -714,7 +788,7 @@ export function AgentBuilderNextView({
   const sidekickContent = isSidekickStarting ? (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
       <Spinner />
-      Starting Sidekick session...
+      Starting Sidekick session…
     </div>
   ) : (
     <>
@@ -739,7 +813,7 @@ export function AgentBuilderNextView({
                 <div>
                   <p>Not sure where to start?</p>
                   <p>
-                    Tell me what you want your agent to do—I'll help you write
+                    Tell me what you want your agent to do. I’ll help you write
                     the instructions and configure it.
                   </p>
                 </div>
@@ -760,7 +834,7 @@ export function AgentBuilderNextView({
         {isPreviewPreparing ? (
           <div className="flex items-center gap-2">
             <Spinner size="sm" />
-            Preparing your agent...
+            Preparing your agent…
           </div>
         ) : previewHasActivity ? (
           <span>Conversation with the draft agent renders here.</span>

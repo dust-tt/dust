@@ -1,8 +1,8 @@
 import {
   Breadcrumbs,
-  type BreadcrumbsItem,
   Button,
   Checkbox,
+  CheckboxWithText,
   Chip,
   Collapsible,
   CollapsibleContent,
@@ -19,18 +19,20 @@ import {
   Label,
   MultiPageSheet,
   MultiPageSheetContent,
-  type MultiPageSheetPage,
   Popover,
   SearchInput,
-  SliderToggle,
   SpaceClosed,
   TextArea,
   Tree,
+  type BreadcrumbsItem,
+  type MultiPageSheetPage,
   XClose,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
+import { NumberField } from "./CapabilitiesSection";
 import { ConfirmDialog } from "./dialogs";
+import { Switch } from "./Switch";
 import {
   type BuilderSpace,
   getBuilderSpaceById,
@@ -93,17 +95,11 @@ function SelectionPage({
   const [location, setLocation] = useState<Location | null>(null);
   const [search, setSearch] = useState("");
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    if (!search.trim()) {
-      setIsSearching(false);
-      return;
-    }
-    setIsSearching(true);
-    const timer = window.setTimeout(() => setIsSearching(false), 400);
-    return () => window.clearTimeout(timer);
-  }, [search]);
+  const [showAllRows, setShowAllRows] = useState(false);
+  const selectedSet = useMemo(
+    () => new Set(selectedNodeIds),
+    [selectedNodeIds]
+  );
 
   const spaces = selectedSpaceIds
     .map((id) => getBuilderSpaceById(id))
@@ -184,8 +180,9 @@ function SelectionPage({
       )
     : getKnowledgeChildren(location.nodeId, space.id);
   const allChecked =
-    rows.length > 0 && rows.every((row) => selectedNodeIds.includes(row.id));
-  const someChecked = rows.some((row) => selectedNodeIds.includes(row.id));
+    rows.length > 0 && rows.every((row) => selectedSet.has(row.id));
+  const someChecked = rows.some((row) => selectedSet.has(row.id));
+  const visibleRows = showAllRows ? rows : rows.slice(0, MAX_VISIBLE_ROWS);
 
   const trail: { label: string; onClick?: () => void }[] = [
     { label: "All", onClick: () => setLocation(null) },
@@ -226,22 +223,26 @@ function SelectionPage({
         name="knowledge-search"
         placeholder={`Search in ${space.name}`}
         value={search}
-        onChange={setSearch}
-        isLoading={isSearching}
+        onChange={(value) => {
+          setSearch(value);
+          setShowAllRows(false);
+        }}
       />
       {needle && currentNode ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           Searching in:
           <Button
-            size="xs"
-            variant={searchScope === "node" ? "primary" : "outline"}
+            size="sm"
+            variant={searchScope === "node" ? "outline" : "ghost"}
+            aria-pressed={searchScope === "node"}
             label={currentNode.title}
             onClick={() => setSearchScope("node")}
           />
-          <span>|</span>
+          <span aria-hidden>|</span>
           <Button
-            size="xs"
-            variant={searchScope === "space" ? "primary" : "outline"}
+            size="sm"
+            variant={searchScope === "space" ? "outline" : "ghost"}
+            aria-pressed={searchScope === "space"}
             label={`All ${space.name}`}
             onClick={() => setSearchScope("space")}
           />
@@ -252,19 +253,23 @@ function SelectionPage({
           {needle ? (
             <>
               <span className="heading-base text-foreground">
-                0 results found
+                No results for “{needle}”
               </span>
               <span className="text-sm text-muted-foreground">
-                No matching results found. Try different search terms.
+                Try a different term
+                {searchScope === "node" && currentNode
+                  ? ` or search all of ${space.name}`
+                  : ""}
+                .
               </span>
             </>
           ) : (
             <>
               <span className="heading-base text-foreground">
-                No pages found
+                Nothing here yet
               </span>
               <span className="text-sm text-muted-foreground">
-                This website doesn't have any pages to browse yet.
+                This location has no items to browse.
               </span>
               <Button
                 size="sm"
@@ -285,6 +290,7 @@ function SelectionPage({
         <div className="flex flex-col rounded-xl border border-border">
           <div className="flex items-center gap-3 border-b border-border px-3 py-2">
             <Checkbox
+              aria-label="Select all"
               checked={allChecked ? true : someChecked ? "partial" : false}
               onCheckedChange={() => {
                 if (allChecked) {
@@ -308,14 +314,13 @@ function SelectionPage({
             <span className="heading-xs flex-1 text-muted-foreground">
               Name
             </span>
-            {needle ? (
-              <span className="heading-xs w-48 text-muted-foreground">
-                Location
-              </span>
-            ) : null}
+            {/* Always in the layout so rows do not reflow on the first keystroke. */}
+            <span className="heading-xs w-48 text-muted-foreground">
+              {needle ? "Location" : ""}
+            </span>
           </div>
-          {rows.map((row) => {
-            const isChecked = selectedNodeIds.includes(row.id);
+          {visibleRows.map((row) => {
+            const isChecked = selectedSet.has(row.id);
             const canOpen = row.kind === "connection" || row.kind === "folder";
             return (
               <div
@@ -323,12 +328,13 @@ function SelectionPage({
                 className="flex items-center gap-3 border-b border-border px-3 py-2 last:border-b-0 hover:bg-muted-background"
               >
                 <Checkbox
+                  aria-label={`Select ${row.title}`}
                   checked={isChecked}
                   onCheckedChange={() => onToggleNode(row.id)}
                 />
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={
                     canOpen
                       ? () => {
@@ -343,19 +349,30 @@ function SelectionPage({
                     {row.title}
                   </span>
                 </button>
-                {needle ? (
-                  <span className="w-48 truncate text-xs text-muted-foreground">
-                    {getKnowledgeLocation(row) || space.name}
-                  </span>
-                ) : null}
+                <span className="w-48 truncate text-xs text-muted-foreground">
+                  {needle ? getKnowledgeLocation(row) || space.name : ""}
+                </span>
               </div>
             );
           })}
+          {rows.length > visibleRows.length ? (
+            <div className="flex justify-center px-3 py-1.5">
+              <Button
+                size="xs"
+                variant="ghost"
+                label={`Show ${rows.length - visibleRows.length} more`}
+                onClick={() => setShowAllRows(true)}
+              />
+            </div>
+          ) : null}
         </div>
       )}
     </div>
   );
 }
+
+/** Rows shown before a "Show more", so a whole-space search stays light. */
+const MAX_VISIBLE_ROWS = 50;
 
 function SelectionFooter({
   selectedNodeIds,
@@ -367,11 +384,14 @@ function SelectionFooter({
   return (
     <Collapsible>
       <CollapsibleTrigger
-        label={`Selection (${selectedNodeIds.length} items)`}
+        className="tabular-nums"
+        label={`Selection (${selectedNodeIds.length} ${selectedNodeIds.length === 1 ? "item" : "items"})`}
       />
       <CollapsibleContent>
         {selectedNodeIds.length === 0 ? (
-          <div className="py-2 text-sm text-muted-foreground">No selection</div>
+          <div className="py-2 text-sm text-muted-foreground">
+            Nothing selected yet. Check items above to add them.
+          </div>
         ) : (
           <ContextItem.List>
             {selectedNodeIds.map((id) => {
@@ -390,6 +410,7 @@ function SelectionFooter({
                       size="xs"
                       variant="ghost"
                       icon={XClose}
+                      tooltip="Remove from selection"
                       onClick={() => onRemove(id)}
                     />
                   }
@@ -449,7 +470,7 @@ function ConfigurePage({
         </Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="primary" isSelect label={method.label} />
+            <Button size="sm" variant="outline" isSelect label={method.label} />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             {KNOWLEDGE_METHODS.map((candidate) => (
@@ -473,7 +494,7 @@ function ConfigurePage({
       <div className="flex flex-col gap-2">
         <Label className="text-base font-semibold">Name</Label>
         <Input
-          placeholder="Name ..."
+          placeholder="e.g. Sales playbooks"
           value={configuration.name}
           onChange={(event) =>
             onChange({ ...configuration, name: event.target.value })
@@ -488,7 +509,8 @@ function ConfigurePage({
             Time range configuration
           </Label>
           <div className="flex flex-wrap items-center gap-2">
-            <Checkbox
+            <CheckboxWithText
+              text="Search data from the last"
               checked={configuration.timeFrame.enabled}
               onCheckedChange={(checked) =>
                 onChange({
@@ -500,21 +522,16 @@ function ConfigurePage({
                 })
               }
             />
-            <span className="text-sm text-foreground">
-              Search data from the last
-            </span>
-            <Input
-              type="number"
-              containerClassName="w-20"
+            <NumberField
+              className="w-20"
+              value={configuration.timeFrame.value}
+              min={1}
               disabled={!configuration.timeFrame.enabled}
-              value={String(configuration.timeFrame.value)}
-              onChange={(event) =>
+              ariaLabel="Number of units"
+              onChange={(value) =>
                 onChange({
                   ...configuration,
-                  timeFrame: {
-                    ...configuration.timeFrame,
-                    value: Number(event.target.value) || 1,
-                  },
+                  timeFrame: { ...configuration.timeFrame, value },
                 })
               }
             />
@@ -524,7 +541,6 @@ function ConfigurePage({
                   size="sm"
                   variant="outline"
                   isSelect
-                  className="self-start"
                   disabled={!configuration.timeFrame.enabled}
                   label={`${configuration.timeFrame.unit}s`}
                 />
@@ -556,10 +572,10 @@ function ConfigurePage({
             onChange={(event) =>
               onChange({ ...configuration, jsonSchema: event.target.value })
             }
-            placeholder='{ "type": "object", "properties": { ... } }'
+            placeholder='{ "type": "object", "properties": { … } }'
             minRows={5}
             resize="vertical"
-            className="font-mono text-xs"
+            className="font-mono md:text-xs"
           />
         </div>
       ) : null}
@@ -582,13 +598,11 @@ function ConfigurePage({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <Label className="text-base font-semibold">
-            {wantsTables
-              ? "Selected data source(s)"
-              : "Selected data source(s)"}
+            {wantsTables ? "Selected tables" : "Selected data sources"}
           </Label>
           <div className="flex items-center gap-2">
             <Popover
-              trigger={<Button size="xs" variant="outline" label="Filters" />}
+              trigger={<Button size="sm" variant="outline" label="Filters" />}
               content={
                 <div className="flex w-72 flex-col gap-3 text-sm">
                   <span className="heading-sm text-foreground">Filtering</span>
@@ -636,15 +650,15 @@ function ConfigurePage({
                         in-conversation filtering
                       </span>
                     </div>
-                    <SliderToggle
-                      selected={configuration.filters.inConversationFiltering}
-                      onClick={() =>
+                    <Switch
+                      aria-label="In-conversation filtering"
+                      checked={configuration.filters.inConversationFiltering}
+                      onCheckedChange={(inConversationFiltering) =>
                         onChange({
                           ...configuration,
                           filters: {
                             ...configuration.filters,
-                            inConversationFiltering:
-                              !configuration.filters.inConversationFiltering,
+                            inConversationFiltering,
                           },
                         })
                       }
@@ -654,7 +668,7 @@ function ConfigurePage({
               }
             />
             <Button
-              size="xs"
+              size="sm"
               variant="outline"
               label="Manage selection"
               onClick={onManageSelection}
@@ -668,7 +682,7 @@ function ConfigurePage({
                 {wantsTables ? "No table detected" : "No document detected"}
               </span>
               <Button
-                size="xs"
+                size="sm"
                 variant="outline"
                 label="Select data sources"
                 onClick={onManageSelection}

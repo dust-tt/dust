@@ -218,24 +218,21 @@ export function ModelPicker({
                     {resolved.displayName}
                   </span>
                   {isSelected ? <Icon visual={Check} size="xs" /> : null}
-                  {isSelected && !isDefault ? (
-                    <Button
-                      size="xs"
-                      variant="ghost"
-                      icon={RefreshCw02}
-                      aria-label="Revert to default"
-                      tooltip="Revert to default"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        pickTier(DEFAULT_TIER_ID);
-                      }}
-                    />
-                  ) : null}
                 </div>
               }
             />
           );
         })}
+        {selection.tierId !== DEFAULT_TIER_ID ? (
+          <DropdownMenuItem
+            label="Reset to default"
+            icon={RefreshCw02}
+            onSelect={(event) => {
+              event.preventDefault();
+              pickTier(DEFAULT_TIER_ID);
+            }}
+          />
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           label="More models"

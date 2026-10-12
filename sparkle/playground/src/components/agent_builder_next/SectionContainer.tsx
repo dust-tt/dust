@@ -6,7 +6,7 @@ import {
   Icon,
   Label,
 } from "@dust-tt/sparkle";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 
 /**
  * One top-level block of the builder form: heading, muted description, actions
@@ -34,18 +34,28 @@ export function BuilderSection({
   summary?: ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  useEffect(() => {
+  // Open on our own when the section first gains content (`defaultOpen`
+  // flips to true). Done during render by remembering the previous prop
+  // value, so there is no extra render and no effect to keep in sync.
+  const [prevDefaultOpen, setPrevDefaultOpen] = useState(defaultOpen);
+  if (defaultOpen !== prevDefaultOpen) {
+    setPrevDefaultOpen(defaultOpen);
     if (defaultOpen) {
       setIsOpen(true);
     }
-  }, [defaultOpen]);
+  }
+  const titleId = useId();
+  const descriptionId = useId();
 
   if (!collapsible) {
     return (
-      <section className="flex flex-col gap-3">
+      <section aria-labelledby={titleId} className="flex flex-col gap-3">
         <SectionHeader
-          title={<h2 className="heading-lg text-foreground">{title}</h2>}
+          title={
+            <h2 id={titleId} className="heading-lg text-foreground">
+              {title}
+            </h2>
+          }
           description={description}
           headerActions={headerActions}
         />
@@ -54,48 +64,63 @@ export function BuilderSection({
     );
   }
 
-  // Folded row: title and description are the trigger. The right side holds
-  // the summary while folded and the actions while open, then the chevron, so
-  // the body only ever holds the section's content.
+  // The whole header row is one disclosure button: a stretched, otherwise
+  // empty trigger sits under the row and takes the click, the hover surface
+  // and the focus ring. The visible text is layered above it and lets
+  // pointer events fall through, except for links inside the description.
+  // Actions, when open, sit above the trigger with their own behaviour, so
+  // there is a single tab stop for toggling and no nested buttons.
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <section className="flex flex-col py-4">
-        <div className="flex items-center gap-3">
+      <section aria-labelledby={titleId} className="flex flex-col py-2">
+        <div className="relative -mx-3 flex items-center gap-3 px-3 py-2">
           <CollapsibleTrigger
             hideChevron
-            className="min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
-          >
-            <span className="heading-lg text-foreground">{title}</span>
+            aria-labelledby={titleId}
+            aria-describedby={description ? descriptionId : undefined}
+            className="absolute inset-0 rounded-xl transition-colors hover:bg-muted-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-muted-background motion-reduce:transition-none"
+          />
+          <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col gap-0.5">
+            <h2 id={titleId} className="heading-lg text-foreground">
+              {title}
+            </h2>
             {description ? (
-              <span className="text-sm text-muted-foreground">
+              <p
+                id={descriptionId}
+                className="text-pretty text-sm text-muted-foreground [&_a]:pointer-events-auto"
+              >
                 {description}
-              </span>
+              </p>
             ) : null}
-          </CollapsibleTrigger>
+          </div>
           {summary && !isOpen ? (
-            <span className="shrink-0 text-sm text-muted-foreground">
+            <span className="pointer-events-none relative max-w-[40%] shrink-0 truncate text-sm tabular-nums text-muted-foreground">
               {summary}
             </span>
           ) : null}
           {headerActions && isOpen ? (
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="relative flex shrink-0 items-center gap-2">
               {headerActions}
             </div>
           ) : null}
-          <CollapsibleTrigger
-            hideChevron
-            aria-label={isOpen ? `Collapse ${title}` : `Expand ${title}`}
-            className="w-auto shrink-0 rounded-lg p-1 text-muted-foreground hover:text-foreground"
+          <span
+            aria-hidden
+            className="pointer-events-none relative flex h-8 w-8 shrink-0 items-center justify-center text-muted-foreground"
           >
             <Icon
               visual={ChevronDown}
               size="sm"
-              className="transition-transform duration-200 group-data-[state=open]/col:rotate-180 motion-reduce:transition-none"
+              className={[
+                "transition-transform duration-200 ease-out motion-reduce:transition-none",
+                isOpen ? "rotate-180" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             />
-          </CollapsibleTrigger>
+          </span>
         </div>
-        <CollapsibleContent className="motion-reduce:transition-none">
-          <div className="flex flex-col gap-3 pt-3">{children}</div>
+        <CollapsibleContent>
+          <div className="flex flex-col gap-3 pb-2 pt-1">{children}</div>
         </CollapsibleContent>
       </section>
     </Collapsible>
@@ -116,7 +141,9 @@ function SectionHeader({
       <div className="flex flex-col gap-0.5">
         {title}
         {description ? (
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-pretty text-sm text-muted-foreground">
+            {description}
+          </p>
         ) : null}
       </div>
       {headerActions ? (
@@ -159,13 +186,23 @@ export function FieldRow({
   label,
   children,
   hint,
+  className,
 }: {
   label: string;
   children: ReactNode;
   hint?: string;
+  /** Extra classes on the row, e.g. an enter transition for rows that appear on demand. */
+  className?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 py-2">
+    <div
+      className={[
+        "flex min-h-12 items-center justify-between gap-6 py-2",
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       <div className="flex min-w-0 flex-col">
         <span className="text-sm text-foreground">{label}</span>
         {hint ? (

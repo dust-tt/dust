@@ -100,7 +100,7 @@ export function PendingSuggestionsDialog({
       onConfirm={onSaveAnyway}
     >
       You have {count} pending instruction suggestion{count === 1 ? "" : "s"}{" "}
-      that won't be included in this save. You can review them later.
+      that won’t be included in this save. You can review them later.
     </ConfirmDialog>
   );
 }
@@ -124,7 +124,7 @@ export function DiscardChangesDialog({
       cancelLabel="Keep editing"
       onConfirm={onDiscard}
     >
-      If you leave now, your latest edits won't be kept.
+      If you leave now, your latest edits won’t be kept.
     </ConfirmDialog>
   );
 }
@@ -286,7 +286,7 @@ export function EditorGateMessage({
         <ContentMessageAction
           icon={UsersPlus}
           variant="primary"
-          label={isBecoming ? "Becoming an editor..." : "Become an editor"}
+          label={isBecoming ? "Becoming an editor…" : "Become an editor"}
           isLoading={isBecoming}
           onClick={onBecomeEditor}
         />

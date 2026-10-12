@@ -92,7 +92,7 @@ export function TagsPicker({
         <DropdownMenuContent align="start" className="w-72">
           <DropdownMenuSearchbar
             name="tag-search"
-            placeholder="Change or add tags..."
+            placeholder="Change or add tags…"
             value={tagSearch}
             onChange={setTagSearch}
             autoFocus

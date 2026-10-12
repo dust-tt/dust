@@ -5,7 +5,7 @@ import {
   Button,
   Card,
   CardGrid,
-  Checkbox,
+  CheckboxWithText,
   Chip,
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +17,6 @@ import {
   Icon,
   Input,
   Label,
-  ListGroup,
-  ListItem,
   MultiPageSheet,
   MultiPageSheetContent,
   type MultiPageSheetPage,
@@ -27,7 +25,7 @@ import {
   Stars02,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type ManagedSkill,
@@ -101,18 +99,99 @@ function validateConfiguration(
     return "The name can only contain lowercase letters, numbers, and underscores (no spaces).";
   }
   if (kinds.includes("child_agent") && !configuration.childAgentId) {
-    return "Child agent selection is required";
+    return "Select an agent.";
   }
   if (kinds.includes("dust_app") && !configuration.dustAppId) {
-    return "Please select a Dust app";
+    return "Select a Dust app.";
   }
   if (kinds.includes("secret") && !configuration.secretId) {
-    return "Secret selection is required";
+    return "Select a secret.";
   }
   if (kinds.includes("pod") && !configuration.podId) {
-    return "Please select one Pod";
+    return "Select a Pod.";
   }
   return null;
+}
+
+/** A pickable row: a real button so it is reachable and activatable from the keyboard. */
+function OptionRow({
+  onSelect,
+  children,
+}: {
+  onSelect: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring motion-reduce:transition-none"
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A SearchInput that takes focus on mount when asked, so "Edit"/"Change" hand focus to the list instead of dropping it. */
+function OptionSearch({
+  autoFocus,
+  ...props
+}: React.ComponentProps<typeof SearchInput> & { autoFocus?: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus) {
+      ref.current?.focus();
+    }
+    // Only on mount: the list is remounted each time a selection is cleared.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <SearchInput ref={ref} {...props} />;
+}
+
+/**
+ * A number input that keeps the raw text while typing, so clearing the field
+ * to retype does not snap it back to a default; the value is clamped on blur.
+ */
+export function NumberField({
+  value,
+  onChange,
+  min = 0,
+  disabled,
+  className,
+  ariaLabel,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  min?: number;
+  disabled?: boolean;
+  className?: string;
+  ariaLabel: string;
+}) {
+  const [text, setText] = useState(String(value));
+  const [isEditing, setIsEditing] = useState(false);
+  const shown = isEditing ? text : String(value);
+  return (
+    <Input
+      type="number"
+      containerClassName={className}
+      aria-label={ariaLabel}
+      value={shown}
+      min={min}
+      disabled={disabled}
+      onFocus={() => {
+        setText(String(value));
+        setIsEditing(true);
+      }}
+      onChange={(event) => {
+        setText(event.target.value);
+        const next = Number(event.target.value);
+        if (event.target.value !== "" && Number.isFinite(next)) {
+          onChange(Math.max(min, next));
+        }
+      }}
+      onBlur={() => setIsEditing(false)}
+    />
+  );
 }
 
 const ADDITIONAL_FIELDS = [
@@ -169,6 +248,11 @@ function ConfigurationPage({
     option.toLowerCase().includes(listSearch.trim().toLowerCase())
   );
 
+  // Which list should take focus after its selection is cleared.
+  const [focusTarget, setFocusTarget] = useState<
+    "agent" | "app" | "secret" | null
+  >(null);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -208,31 +292,34 @@ function ConfigurationPage({
                   size="xs"
                   variant="outline"
                   label="Edit agent"
-                  onClick={() =>
-                    onChange({ ...configuration, childAgentId: null })
-                  }
+                  onClick={() => {
+                    setFocusTarget("agent");
+                    onChange({ ...configuration, childAgentId: null });
+                  }}
                 />
               </div>
             </Card>
           ) : (
             <div className="flex flex-col gap-2">
-              <SearchInput
+              <OptionSearch
+                autoFocus={focusTarget === "agent"}
                 name="child-agent-search"
-                placeholder="Search"
+                placeholder="Search agents"
                 value={agentSearch}
                 onChange={setAgentSearch}
               />
               {filteredAgents.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  No agents available
+                  {agentSearch.trim()
+                    ? `No agents match “${agentSearch.trim()}”. Try another name.`
+                    : "No agents yet. Create one from the Agents page first."}
                 </div>
               ) : (
-                <ListGroup>
+                <div className="flex flex-col">
                   {filteredAgents.map((agent) => (
-                    <ListItem
+                    <OptionRow
                       key={agent.id}
-                      itemsAlignment="center"
-                      onClick={() =>
+                      onSelect={() =>
                         onChange({ ...configuration, childAgentId: agent.id })
                       }
                     >
@@ -245,9 +332,9 @@ function ConfigurationPage({
                       <span className="text-sm text-foreground">
                         {agent.name}
                       </span>
-                    </ListItem>
+                    </OptionRow>
                   ))}
-                </ListGroup>
+                </div>
               )}
             </div>
           )}
@@ -260,7 +347,8 @@ function ConfigurationPage({
             Time range configuration
           </Label>
           <div className="flex flex-wrap items-center gap-2">
-            <Checkbox
+            <CheckboxWithText
+              text="Search data from the last"
               checked={configuration.timeFrame.enabled}
               onCheckedChange={(checked) =>
                 onChange({
@@ -272,21 +360,16 @@ function ConfigurationPage({
                 })
               }
             />
-            <span className="text-sm text-foreground">
-              Search data from the last
-            </span>
-            <Input
-              type="number"
-              containerClassName="w-20"
-              value={String(configuration.timeFrame.value)}
+            <NumberField
+              className="w-20"
+              value={configuration.timeFrame.value}
+              min={1}
               disabled={!configuration.timeFrame.enabled}
-              onChange={(event) =>
+              ariaLabel="Number of units"
+              onChange={(value) =>
                 onChange({
                   ...configuration,
-                  timeFrame: {
-                    ...configuration.timeFrame,
-                    value: Number(event.target.value) || 1,
-                  },
+                  timeFrame: { ...configuration.timeFrame, value },
                 })
               }
             />
@@ -296,7 +379,6 @@ function ConfigurationPage({
                   size="sm"
                   variant="outline"
                   isSelect
-                  className="self-start"
                   disabled={!configuration.timeFrame.enabled}
                   label={`${configuration.timeFrame.unit}${configuration.timeFrame.value > 1 ? "s" : ""}`}
                 />
@@ -339,7 +421,7 @@ function ConfigurationPage({
                   label={
                     mockBuilderSpaces.find(
                       (space) => space.id === configuration.dustAppSpaceId
-                    )?.name ?? "Select a space..."
+                    )?.name ?? "Select a space…"
                   }
                 />
               </DropdownMenuTrigger>
@@ -377,9 +459,10 @@ function ConfigurationPage({
                   size="xs"
                   variant="outline"
                   label="Edit selection"
-                  onClick={() =>
-                    onChange({ ...configuration, dustAppId: null })
-                  }
+                  onClick={() => {
+                    setFocusTarget("app");
+                    onChange({ ...configuration, dustAppId: null });
+                  }}
                 />
               </div>
             </Card>
@@ -395,12 +478,11 @@ function ConfigurationPage({
                 </span>
               </div>
             ) : (
-              <ListGroup>
+              <div className="flex flex-col">
                 {appsInSpace.map((app) => (
-                  <ListItem
+                  <OptionRow
                     key={app.id}
-                    itemsAlignment="center"
-                    onClick={() =>
+                    onSelect={() =>
                       onChange({ ...configuration, dustAppId: app.id })
                     }
                   >
@@ -412,9 +494,9 @@ function ConfigurationPage({
                         {app.description}
                       </span>
                     </div>
-                  </ListItem>
+                  </OptionRow>
                 ))}
-              </ListGroup>
+              </div>
             )
           ) : null}
         </div>
@@ -428,7 +510,7 @@ function ConfigurationPage({
           </p>
           {pods.length === 0 ? (
             <div className="text-sm text-muted-foreground">
-              No Pods available
+              No Pods yet. Ask an admin to create one.
             </div>
           ) : (
             <DropdownMenu>
@@ -440,14 +522,14 @@ function ConfigurationPage({
                   className="self-start"
                   label={
                     pods.find((pod) => pod.id === configuration.podId)?.name ??
-                    "Select a Pod..."
+                    "Select a Pod…"
                   }
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuSearchbar
                   name="pod-search"
-                  placeholder="Search..."
+                  placeholder="Search…"
                   value={podSearch}
                   onChange={setPodSearch}
                 />
@@ -493,7 +575,10 @@ function ConfigurationPage({
                   size="xs"
                   variant="outline"
                   label="Change"
-                  onClick={() => onChange({ ...configuration, secretId: null })}
+                  onClick={() => {
+                    setFocusTarget("secret");
+                    onChange({ ...configuration, secretId: null });
+                  }}
                 />
               </div>
             </Card>
@@ -503,12 +588,11 @@ function ConfigurationPage({
               first.
             </div>
           ) : (
-            <ListGroup>
+            <div className="flex flex-col">
               {mockSecrets.map((secret) => (
-                <ListItem
+                <OptionRow
                   key={secret.id}
-                  itemsAlignment="center"
-                  onClick={() =>
+                  onSelect={() =>
                     onChange({ ...configuration, secretId: secret.id })
                   }
                 >
@@ -518,9 +602,9 @@ function ConfigurationPage({
                   <span className="text-xs text-muted-foreground">
                     {secret.createdAt}
                   </span>
-                </ListItem>
+                </OptionRow>
               ))}
-            </ListGroup>
+            </div>
           )}
         </div>
       ) : null}
@@ -536,7 +620,7 @@ function ConfigurationPage({
           <div>
             <Button
               size="sm"
-              variant="primary"
+              variant="outline"
               icon={Stars02}
               label="Re-generate from instructions"
               onClick={() =>
@@ -556,7 +640,7 @@ function ConfigurationPage({
             placeholder='{ "type": "object", "properties": { ... } }'
             minRows={6}
             resize="vertical"
-            className="font-mono text-xs"
+            className="font-mono md:text-xs"
           />
         </div>
       ) : null}
@@ -575,24 +659,19 @@ function ConfigurationPage({
             <div key={field.key} className="flex flex-col gap-1">
               <Label isMuted>{field.key}</Label>
               {field.type === "boolean" ? (
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    checked={configuration.additional[field.key] === "true"}
-                    tooltip={`Whether ${field.key.replace(/_/g, " ")} applies`}
-                    onCheckedChange={(checked) =>
-                      onChange({
-                        ...configuration,
-                        additional: {
-                          ...configuration.additional,
-                          [field.key]: checked === true ? "true" : "false",
-                        },
-                      })
-                    }
-                  />
-                  <span className="text-sm text-foreground">
-                    {field.key.replace(/_/g, " ")}
-                  </span>
-                </div>
+                <CheckboxWithText
+                  text={field.key.replace(/_/g, " ")}
+                  checked={configuration.additional[field.key] === "true"}
+                  onCheckedChange={(checked) =>
+                    onChange({
+                      ...configuration,
+                      additional: {
+                        ...configuration.additional,
+                        [field.key]: checked === true ? "true" : "false",
+                      },
+                    })
+                  }
+                />
               ) : field.type === "enum" ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -647,15 +726,15 @@ function ConfigurationPage({
             <Label isMuted>resources</Label>
             <SearchInput
               name="list-search"
-              placeholder="Search resources..."
+              placeholder="Search resources…"
               value={listSearch}
               onChange={setListSearch}
             />
             {listOptions.length === 0 ? (
               <span className="text-sm text-muted-foreground">
                 {listSearch
-                  ? `No options match "${listSearch}"`
-                  : "No options available"}
+                  ? `No resources match “${listSearch}”.`
+                  : "No resources available for this tool."}
               </span>
             ) : (
               <div className="flex flex-col gap-1 pt-1">
@@ -666,7 +745,8 @@ function ConfigurationPage({
                   const isChecked = selected.includes(option);
                   return (
                     <div key={option} className="flex items-center gap-2">
-                      <Checkbox
+                      <CheckboxWithText
+                        text={option}
                         checked={isChecked}
                         onCheckedChange={() => {
                           const next = isChecked
@@ -681,7 +761,6 @@ function ConfigurationPage({
                           });
                         }}
                       />
-                      <span className="text-sm text-foreground">{option}</span>
                     </div>
                   );
                 })}
@@ -764,7 +843,8 @@ function ToolInfoPage({ tool }: { tool: MockTool }) {
       </p>
       {operations.length === 0 ? (
         <div className="text-sm text-muted-foreground">
-          No tools are currently available for this server.
+          This server exposes no tools yet. Add tools on the server, then
+          refresh.
         </div>
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
@@ -919,8 +999,9 @@ export function CapabilitiesSheet({
   const filterButton = (id: FilterId, label: string) => (
     <Button
       key={id}
-      size="xs"
-      variant={filter === id ? "primary" : "outline"}
+      size="sm"
+      variant={filter === id ? "outline" : "ghost"}
+      aria-pressed={filter === id}
       label={label}
       onClick={() => setFilter(id)}
     />
@@ -931,7 +1012,7 @@ export function CapabilitiesSheet({
       <div className="flex flex-col gap-3">
         <SearchInput
           name="capabilities-search"
-          placeholder="Search capabilities..."
+          placeholder="Search capabilities…"
           value={search}
           onChange={setSearch}
         />
@@ -942,14 +1023,23 @@ export function CapabilitiesSheet({
         </div>
       </div>
       {isLoading ? (
-        <CardGrid>
-          {[0, 1, 2, 3].map((index) => (
-            <div
-              key={index}
-              className="h-36 animate-pulse rounded-2xl bg-muted-background"
-            />
-          ))}
-        </CardGrid>
+        <div
+          aria-busy
+          className="flex animate-pulse flex-col gap-3 motion-reduce:animate-none"
+        >
+          <div className="flex flex-col gap-1.5 py-0.5">
+            <div className="h-4 w-16 rounded bg-muted-background" />
+            <div className="h-3.5 w-80 max-w-full rounded bg-muted-background" />
+          </div>
+          <CardGrid>
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className="h-36 rounded-2xl bg-muted-background"
+              />
+            ))}
+          </CardGrid>
+        </div>
       ) : visibleSkills.length === 0 && visibleTools.length === 0 ? (
         <div className="flex flex-col items-center gap-1 py-10 text-center">
           <span className="heading-base text-foreground">
@@ -1018,7 +1108,7 @@ export function CapabilitiesSheet({
                       icon={tool.icon}
                       label={tool.name}
                       description={tool.description}
-                      cardContainerClassName="h-30"
+                      cardContainerClassName="h-36"
                       canAdd={!isAdded}
                       isSelected={isAdded || selectedToolIds.has(tool.id)}
                       onClick={
@@ -1182,7 +1272,7 @@ export function CapabilitiesSheet({
               : undefined,
           rightButton: {
             label: "Close",
-            variant: "primary" as const,
+            variant: "outline" as const,
             onClick: () => onOpenChange(false),
           },
         };
@@ -1237,7 +1327,7 @@ export function CapabilitiesSheet({
 
 const EMPTY_STATE_STYLE: React.CSSProperties = {
   backgroundImage:
-    "radial-gradient(circle at 50% 0%, rgba(0,0,0,0.04), transparent 60%)",
+    "radial-gradient(circle at 50% 0%, color-mix(in oklch, currentColor 5%, transparent), transparent 60%)",
 };
 
 export function CapabilitiesSection({
@@ -1314,16 +1404,14 @@ export function CapabilitiesSection({
       summary={hasItems ? capabilitiesSummary : "Nothing added"}
       description={
         <>
-          Add skills, tools, and knowledge to enhance your agent's abilities.
-          Need help? Check our{" "}
+          Skills, tools and knowledge your agent can use.{" "}
           <Hoverable
             variant="highlight"
             href="https://docs.dust.tt/docs/skills"
             target="_blank"
           >
-            guide
+            Guide
           </Hoverable>
-          .
         </>
       }
       headerActions={actionButtons}
@@ -1380,9 +1468,12 @@ export function CapabilitiesSection({
         <EmptyCTA
           className="gap-3 p-6"
           styleProps={EMPTY_STATE_STYLE}
-          message="Nothing added yet."
+          message="Nothing added yet. Add tools, skills or knowledge to give your agent abilities."
           action={
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            <div
+              aria-hidden
+              className="pointer-events-none flex select-none flex-wrap items-center justify-center gap-2"
+            >
               {CAPABILITY_LOGO_STRIP.map((Logo, index) => (
                 <div
                   key={index}

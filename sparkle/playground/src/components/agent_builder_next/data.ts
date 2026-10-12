@@ -988,3 +988,114 @@ export function validateAgentName(name: string): string | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Inline schedule (the Triggers section's default content)
+// ---------------------------------------------------------------------------
+
+export type ScheduleRepeat =
+  | "never"
+  | "interval"
+  | "daily"
+  | "weekly"
+  | "custom";
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+export const WEEKDAYS: { id: Weekday; label: string; short: string }[] = [
+  { id: "mon", label: "Monday", short: "Mon" },
+  { id: "tue", label: "Tuesday", short: "Tue" },
+  { id: "wed", label: "Wednesday", short: "Wed" },
+  { id: "thu", label: "Thursday", short: "Thu" },
+  { id: "fri", label: "Friday", short: "Fri" },
+  { id: "sat", label: "Saturday", short: "Sat" },
+  { id: "sun", label: "Sunday", short: "Sun" },
+];
+
+/** Quarter-hour slots, "00:00" to "23:45". */
+export const TIME_SLOTS: string[] = Array.from({ length: 96 }, (_, index) => {
+  const hours = String(Math.floor(index / 4)).padStart(2, "0");
+  const minutes = String((index % 4) * 15).padStart(2, "0");
+  return `${hours}:${minutes}`;
+});
+
+export const SCHEDULE_TIMEZONE = "CET";
+
+export type ScheduleConfig = {
+  repeat: ScheduleRepeat;
+  intervalValue: number;
+  intervalUnit: "minutes" | "hours";
+  /** "HH:MM" in SCHEDULE_TIMEZONE. */
+  time: string;
+  days: Weekday[];
+  customUnit: "day" | "week" | "month";
+  customEvery: number;
+  message?: string;
+  pool: "member" | "workspace";
+  podId?: string | null;
+};
+
+export const DEFAULT_SCHEDULE: ScheduleConfig = {
+  repeat: "never",
+  intervalValue: 30,
+  intervalUnit: "minutes",
+  time: "09:00",
+  days: ["mon", "tue", "wed", "thu", "fri"],
+  customUnit: "week",
+  customEvery: 1,
+  pool: "member",
+  podId: null,
+};
+
+export function formatWeekdays(days: Weekday[]): string {
+  const ordered = WEEKDAYS.filter((day) => days.includes(day.id));
+  if (ordered.length === 7) {
+    return "every day";
+  }
+  if (
+    ordered.length === 5 &&
+    ordered.every((day) => !["sat", "sun"].includes(day.id))
+  ) {
+    return "weekdays";
+  }
+  if (ordered.length === 0) {
+    return "no days";
+  }
+  return ordered.map((day) => day.short).join(", ");
+}
+
+/** One line for the section summary and the "next run" hint. */
+export function describeScheduleConfig(schedule: ScheduleConfig): string {
+  const at = `at ${schedule.time} ${SCHEDULE_TIMEZONE}`;
+  switch (schedule.repeat) {
+    case "never":
+      return "Never";
+    case "interval": {
+      const unit =
+        schedule.intervalValue === 1
+          ? schedule.intervalUnit.slice(0, -1)
+          : schedule.intervalUnit;
+      return schedule.intervalValue === 1
+        ? `Every ${unit}`
+        : `Every ${schedule.intervalValue} ${unit}`;
+    }
+    case "daily":
+      return `Daily ${at}`;
+    case "weekly":
+      return `Weekly on ${formatWeekdays(schedule.days)} ${at}`;
+    case "custom": {
+      const unit =
+        schedule.customEvery === 1
+          ? schedule.customUnit
+          : `${schedule.customUnit}s`;
+      const every =
+        schedule.customEvery === 1
+          ? `Every ${unit}`
+          : `Every ${schedule.customEvery} ${unit}`;
+      const on =
+        schedule.customUnit === "week"
+          ? ` on ${formatWeekdays(schedule.days)}`
+          : "";
+      return `${every}${on} ${at}`;
+    }
+  }
+}

@@ -64,7 +64,8 @@ export function AvatarPickerSheet({
         <button
           key={emoji}
           type="button"
-          className="flex items-center justify-center rounded-2xl p-1 hover:bg-muted-background"
+          aria-label={`Use ${emoji} as avatar`}
+          className="flex items-center justify-center rounded-2xl p-1 transition-colors hover:bg-muted-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
           onClick={() => pickAndClose(emoji)}
         >
           <Avatar
@@ -170,7 +171,7 @@ export function AvatarPickerSheet({
             onClick: () => onOpenChange(false),
           }}
           rightButtonProps={{
-            label: isSaving ? "Saving..." : "Save",
+            label: isSaving ? "Saving…" : "Save",
             variant: "primary",
             disabled: !isDirty || isSaving,
             onClick: () => {

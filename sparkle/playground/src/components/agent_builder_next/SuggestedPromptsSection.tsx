@@ -49,7 +49,7 @@ export function SuggestedPromptsSection({
             <div className="min-w-0 flex-1">
               <InlineText
                 value={prompt}
-                placeholder="e.g. Draft release notes for last week's merges"
+                placeholder="e.g. Draft release notes for last week’s merges"
                 onChange={(value) => updatePrompt(index, value)}
                 ariaLabel={`Suggested prompt ${index + 1}`}
                 className="text-base text-foreground"
@@ -63,7 +63,7 @@ export function SuggestedPromptsSection({
                 variant="ghost"
                 icon={XClose}
                 tooltip="Remove prompt"
-                className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 motion-reduce:transition-none"
                 onClick={() => removePrompt(index)}
               />
             ) : null}

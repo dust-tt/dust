@@ -1,6 +1,5 @@
-import { SliderToggle } from "@dust-tt/sparkle";
-
 import { FieldRow } from "./SectionContainer";
+import { Switch } from "./Switch";
 
 export type CostManagementRowsProps = {
   ignoreCreditThreshold: boolean;
@@ -26,9 +25,10 @@ export function CostManagementRows({
         <span className="text-sm text-muted-foreground">
           {ignoreCreditThreshold ? "Ignore the alert" : "Ask before continuing"}
         </span>
-        <SliderToggle
-          selected={ignoreCreditThreshold}
-          onClick={() => onIgnoreCreditThresholdChange(!ignoreCreditThreshold)}
+        <Switch
+          aria-label="Credit checkpoint"
+          checked={ignoreCreditThreshold}
+          onCheckedChange={onIgnoreCreditThresholdChange}
         />
       </FieldRow>
     </>

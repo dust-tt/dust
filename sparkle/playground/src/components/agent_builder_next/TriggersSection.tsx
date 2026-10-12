@@ -3,7 +3,8 @@ import {
   AnimatedText,
   Button,
   CardGrid,
-  Checkbox,
+  Check,
+  CheckboxWithText,
   Chip,
   Clock,
   Collapsible,
@@ -11,36 +12,46 @@ import {
   CollapsibleTrigger,
   ContentMessage,
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
+  Icon,
   Input,
   Label,
   MultiPageSheet,
   MultiPageSheetContent,
-  type MultiPageSheetPage,
   SearchInput,
-  SliderToggle,
-  Spinner,
   TextArea,
   Tooltip,
+  type MultiPageSheetPage,
   Zap,
 } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { mockUsers } from "../../data/users";
 import {
   type BuilderTrigger,
   describeSchedule,
+  describeScheduleConfig,
+  formatWeekdays,
   mockBuilderSpaces,
   mockOtherMembersTriggers,
   mockRequestHistory,
   mockWebhookSources,
   NEXT_OCCURRENCES,
+  SCHEDULE_TIMEZONE,
+  type ScheduleConfig,
+  type ScheduleRepeat,
+  TIME_SLOTS,
+  type Weekday,
+  WEEKDAYS,
   type WebhookSource,
 } from "./data";
-import { BuilderSection } from "./SectionContainer";
+import { NumberField } from "./CapabilitiesSection";
+import { BuilderSection, FieldGroup, FieldRow } from "./SectionContainer";
+import { Switch } from "./Switch";
 
 const CURRENT_USER = mockUsers[0];
 
@@ -53,9 +64,11 @@ function describeTrigger(trigger: BuilderTrigger): string {
   );
   const sourceName = source?.name ?? "webhook";
   return trigger.event
-    ? `Triggered by ${trigger.event} events on ${sourceName}'s source.`
-    : `Triggered on ${sourceName}'s source.`;
+    ? `Triggered by ${trigger.event} events on ${sourceName}’s source.`
+    : `Triggered on ${sourceName}’s source.`;
 }
+
+const HISTORY_PREVIEW_COUNT = 5;
 
 function TriggerCard({
   trigger,
@@ -77,13 +90,17 @@ function TriggerCard({
       description={describeTrigger(trigger)}
       cardContainerClassName="min-h-28"
       canAdd={false}
-      disabled={trigger.status !== "enabled"}
       onClick={onClick}
       onRemove={onRemove}
       footer={{
         label: (
-          <span>
-            Managed by <strong>{editor?.fullName ?? "Unknown"}</strong>.
+          <span className="flex items-center gap-2">
+            {trigger.status !== "enabled" ? (
+              <Chip size="mini" color="warning" label="Paused" />
+            ) : null}
+            <span>
+              Managed by <strong>{editor?.fullName ?? "Unknown"}</strong>.
+            </span>
           </span>
         ),
       }}
@@ -96,7 +113,7 @@ function TriggerCard({
 // ---------------------------------------------------------------------------
 
 type SheetPage =
-  | { id: "list" }
+  | { id: "list"; webhooksOnly?: boolean }
   | { id: "schedule"; draft: BuilderTrigger; isNew: boolean }
   | {
       id: "webhook";
@@ -105,78 +122,91 @@ type SheetPage =
       source: WebhookSource;
     };
 
+type ConversationFields = {
+  message?: string;
+  pool: "member" | "workspace";
+  podId?: string | null;
+};
+
+/** Message, credits and destination: shared by the inline schedule and the sheet pages. */
 function CommonFields({
-  draft,
+  value,
   onChange,
   readOnly,
 }: {
-  draft: BuilderTrigger;
-  onChange: (next: BuilderTrigger) => void;
+  value: ConversationFields;
+  onChange: (patch: Partial<ConversationFields>) => void;
   readOnly: boolean;
 }) {
   const pods = mockBuilderSpaces.filter((space) => space.kind === "pod");
+  const id = useId();
   return (
     <>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">Message (optional)</Label>
+        <Label htmlFor={`${id}-message`} className="text-base font-semibold">
+          Message (optional)
+        </Label>
         <span className="text-sm text-muted-foreground">
           Message for the agent when the trigger runs.
         </span>
         <TextArea
-          value={draft.message ?? ""}
+          id={`${id}-message`}
+          value={value.message ?? ""}
           disabled={readOnly}
-          onChange={(event) =>
-            onChange({ ...draft, message: event.target.value })
-          }
+          onChange={(event) => onChange({ message: event.target.value })}
           placeholder="Summarize what changed and post it to the team."
           minRows={3}
           resize="vertical"
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">Credits</Label>
+        <Label htmlFor={`${id}-credits`} className="text-base font-semibold">
+          Credits
+        </Label>
         <span className="text-sm text-muted-foreground">
-          Which pool this trigger's runs take credits from.
+          Which pool this trigger’s runs take credits from.
         </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              id={`${id}-credits`}
               size="sm"
               variant="outline"
               isSelect
               className="self-start"
               disabled={readOnly}
               label={
-                draft.pool === "member" ? "My credits" : "Workspace credits"
+                value.pool === "member" ? "My credits" : "Workspace credits"
               }
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem
               label="My credits"
-              onSelect={() => onChange({ ...draft, pool: "member" })}
+              onSelect={() => onChange({ pool: "member" })}
             />
             <DropdownMenuItem
               label="Workspace credits"
-              onSelect={() => onChange({ ...draft, pool: "workspace" })}
+              onSelect={() => onChange({ pool: "workspace" })}
             />
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">
+        <Label htmlFor={`${id}-pod`} className="text-base font-semibold">
           Where to create this conversation? (optional)
         </Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              id={`${id}-pod`}
               size="sm"
               variant="outline"
               isSelect
               className="self-start"
               disabled={readOnly}
               label={
-                pods.find((pod) => pod.id === draft.podId)?.name ??
+                pods.find((pod) => pod.id === value.podId)?.name ??
                 "My conversations (default)"
               }
             />
@@ -184,13 +214,13 @@ function CommonFields({
           <DropdownMenuContent>
             <DropdownMenuItem
               label="My conversations (default)"
-              onSelect={() => onChange({ ...draft, podId: null })}
+              onSelect={() => onChange({ podId: null })}
             />
             {pods.map((pod) => (
               <DropdownMenuItem
                 key={pod.id}
                 label={pod.name}
-                onSelect={() => onChange({ ...draft, podId: pod.id })}
+                onSelect={() => onChange({ podId: pod.id })}
               />
             ))}
           </DropdownMenuContent>
@@ -209,29 +239,33 @@ function NameAndStatus({
   onChange: (next: BuilderTrigger) => void;
   readOnly: boolean;
 }) {
+  const id = useId();
   return (
     <div className="flex items-end gap-4">
       <div className="flex flex-1 flex-col gap-2">
-        <Label className="text-base font-semibold">Name</Label>
+        <Label htmlFor={`${id}-name`} className="text-base font-semibold">
+          Name
+        </Label>
         <Input
+          id={`${id}-name`}
           placeholder="Enter trigger name"
           value={draft.name}
           disabled={readOnly}
           onChange={(event) => onChange({ ...draft, name: event.target.value })}
         />
       </div>
-      <div className="flex flex-col items-end gap-2 pb-1">
+      <div className="flex flex-col items-end gap-2">
         <Label className="text-base font-semibold">Status</Label>
-        <SliderToggle
-          selected={draft.status === "enabled"}
-          disabled={readOnly}
-          onClick={() =>
-            onChange({
-              ...draft,
-              status: draft.status === "enabled" ? "disabled" : "enabled",
-            })
-          }
-        />
+        <div className="flex h-10 items-center">
+          <Switch
+            aria-label="Trigger enabled"
+            checked={draft.status === "enabled"}
+            disabled={readOnly}
+            onCheckedChange={(checked) =>
+              onChange({ ...draft, status: checked ? "enabled" : "disabled" })
+            }
+          />
+        </div>
       </div>
     </div>
   );
@@ -247,6 +281,12 @@ function SchedulePage({
   readOnly: boolean;
 }) {
   const [isGenerating, setIsGenerating] = useState(false);
+  // The generator resolves 800ms later; by then the user may have edited
+  // other fields, so it must merge into the latest draft, not the one it
+  // closed over.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const id = useId();
 
   useEffect(() => {
     const text = draft.scheduleText ?? "";
@@ -256,7 +296,7 @@ function SchedulePage({
     setIsGenerating(true);
     const timer = window.setTimeout(() => {
       setIsGenerating(false);
-      onChange({ ...draft, scheduleLabel: describeSchedule(text) });
+      onChange({ ...draftRef.current, scheduleLabel: describeSchedule(text) });
     }, 800);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,45 +314,62 @@ function SchedulePage({
       ) : null}
       <NameAndStatus draft={draft} onChange={onChange} readOnly={readOnly} />
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">Scheduler</Label>
+        <Label htmlFor={`${id}-schedule`} className="text-base font-semibold">
+          Scheduler
+        </Label>
         <span className="text-sm text-muted-foreground">
           Describe when you want the agent to run in natural language.
         </span>
         <TextArea
+          id={`${id}-schedule`}
           value={draft.scheduleText ?? ""}
           disabled={readOnly}
           onChange={(event) =>
             onChange({ ...draft, scheduleText: event.target.value })
           }
-          placeholder='e.g. "run every day at 9 AM", or "Late afternoon on business days"...'
+          placeholder="e.g. “every day at 9 AM” or “late afternoon on business days”"
           minRows={2}
           resize="none"
         />
         {draft.scheduleText?.trim() ? (
           <ContentMessage variant="outline" size="lg">
-            {isGenerating ? (
-              <AnimatedText>Generating schedule...</AnimatedText>
-            ) : (
-              <div className="flex items-center justify-between gap-2">
-                <span>{draft.scheduleLabel}</span>
-                <Tooltip
-                  label={
-                    <div className="flex flex-col gap-0.5">
-                      {NEXT_OCCURRENCES.map((occurrence) => (
-                        <span key={occurrence}>{occurrence}</span>
-                      ))}
-                    </div>
-                  }
-                  trigger={
-                    <Chip size="xs" icon={Clock} label="Next 5 occurrences" />
-                  }
-                />
-              </div>
-            )}
+            <div className="flex min-h-8 items-center justify-between gap-2">
+              {isGenerating ? (
+                <AnimatedText className="motion-reduce:animate-none">
+                  Generating schedule…
+                </AnimatedText>
+              ) : (
+                <>
+                  <span>{draft.scheduleLabel}</span>
+                  <Tooltip
+                    tooltipTriggerAsChild
+                    label={
+                      <div className="flex flex-col gap-0.5">
+                        {NEXT_OCCURRENCES.map((occurrence) => (
+                          <span key={occurrence}>{occurrence}</span>
+                        ))}
+                      </div>
+                    }
+                    trigger={
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        icon={Clock}
+                        label="Next 5 occurrences"
+                      />
+                    }
+                  />
+                </>
+              )}
+            </div>
           </ContentMessage>
         ) : null}
       </div>
-      <CommonFields draft={draft} onChange={onChange} readOnly={readOnly} />
+      <CommonFields
+        value={draft}
+        onChange={(patch) => onChange({ ...draft, ...patch })}
+        readOnly={readOnly}
+      />
     </div>
   );
 }
@@ -329,6 +386,8 @@ function WebhookPage({
   readOnly: boolean;
 }) {
   const [stats, setStats] = useState<string | null>(null);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+  const id = useId();
   const [isComputing, setIsComputing] = useState(false);
   const editor = mockUsers.find((user) => user.id === draft.editorId);
 
@@ -344,10 +403,13 @@ function WebhookPage({
       {source.hasProvider ? (
         <>
           <div className="flex flex-col gap-2">
-            <Label className="text-base font-semibold">Listen for</Label>
+            <Label htmlFor={`${id}-event`} className="text-base font-semibold">
+              Listen for
+            </Label>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
+                  id={`${id}-event`}
                   size="sm"
                   variant="outline"
                   isSelect
@@ -368,11 +430,12 @@ function WebhookPage({
             </DropdownMenu>
           </div>
           <div className="flex flex-col gap-2">
-            <Label className="text-base font-semibold">
+            <Label htmlFor={`${id}-filter`} className="text-base font-semibold">
               Run only when (optional)
             </Label>
             <Input
-              placeholder='e.g. label is "urgent"'
+              id={`${id}-filter`}
+              placeholder="e.g. label is “urgent”"
               value={draft.filter ?? ""}
               disabled={readOnly}
               onChange={(event) =>
@@ -383,10 +446,11 @@ function WebhookPage({
         </>
       ) : (
         <div className="flex flex-col gap-2">
-          <Label className="text-base font-semibold">
+          <Label htmlFor={`${id}-filter`} className="text-base font-semibold">
             Filter expression (optional)
           </Label>
           <Input
+            id={`${id}-filter`}
             placeholder="payload.status == 'open'"
             value={draft.filter ?? ""}
             disabled={readOnly}
@@ -402,7 +466,7 @@ function WebhookPage({
       )}
       <div className="flex items-center gap-3">
         <Button
-          size="xs"
+          size="sm"
           variant="outline"
           label="Compute stats"
           isLoading={isComputing}
@@ -422,8 +486,11 @@ function WebhookPage({
         ) : null}
       </div>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">Message (optional)</Label>
+        <Label htmlFor={`${id}-message`} className="text-base font-semibold">
+          Message (optional)
+        </Label>
         <TextArea
+          id={`${id}-message`}
           value={draft.message ?? ""}
           disabled={readOnly}
           onChange={(event) =>
@@ -433,24 +500,26 @@ function WebhookPage({
           minRows={3}
           resize="vertical"
         />
-        <div className="flex items-center gap-2">
-          <Checkbox
-            checked={Boolean(draft.includePayload)}
-            disabled={readOnly}
-            onCheckedChange={(checked) =>
-              onChange({ ...draft, includePayload: checked === true })
-            }
-          />
-          <span className="text-sm text-foreground">
-            Include webhook payload
-          </span>
-        </div>
+        <CheckboxWithText
+          text="Include webhook payload"
+          checked={Boolean(draft.includePayload)}
+          disabled={readOnly}
+          onCheckedChange={(checked) =>
+            onChange({ ...draft, includePayload: checked === true })
+          }
+        />
       </div>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">Credits</Label>
+        <Label htmlFor={`${id}-credits`} className="text-base font-semibold">
+          Credits
+        </Label>
+        <span className="text-sm text-muted-foreground">
+          Which pool this trigger’s runs take credits from.
+        </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              id={`${id}-credits`}
               size="sm"
               variant="outline"
               isSelect
@@ -476,25 +545,25 @@ function WebhookPage({
       <div className="flex flex-col gap-2">
         <Label className="text-base font-semibold">Rate limits</Label>
         <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            containerClassName="w-24"
-            value={String(draft.rateLimit ?? 60)}
+          <NumberField
+            className="w-24"
+            value={draft.rateLimit ?? 60}
+            min={0}
             disabled={readOnly}
-            onChange={(event) =>
-              onChange({ ...draft, rateLimit: Number(event.target.value) || 0 })
-            }
+            ariaLabel="Runs per hour"
+            onChange={(rateLimit) => onChange({ ...draft, rateLimit })}
           />
           <span className="text-sm text-muted-foreground">runs per hour</span>
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <Label className="text-base font-semibold">
+        <Label htmlFor={`${id}-pod`} className="text-base font-semibold">
           Where to create this conversation? (optional)
         </Label>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              id={`${id}-pod`}
               size="sm"
               variant="outline"
               isSelect
@@ -527,7 +596,10 @@ function WebhookPage({
         <CollapsibleTrigger label="Request history" variant="secondary" />
         <CollapsibleContent>
           <div className="flex flex-col divide-y divide-border rounded-xl border border-border">
-            {mockRequestHistory.map((request) => (
+            {(showAllHistory
+              ? mockRequestHistory
+              : mockRequestHistory.slice(0, HISTORY_PREVIEW_COUNT)
+            ).map((request) => (
               <div
                 key={request.id}
                 className="flex items-center justify-between px-3 py-2"
@@ -549,9 +621,281 @@ function WebhookPage({
                 />
               </div>
             ))}
+            {!showAllHistory &&
+            mockRequestHistory.length > HISTORY_PREVIEW_COUNT ? (
+              <div className="flex justify-center px-3 py-1.5">
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  label={`Show ${mockRequestHistory.length - HISTORY_PREVIEW_COUNT} more`}
+                  onClick={() => setShowAllHistory(true)}
+                />
+              </div>
+            ) : null}
           </div>
         </CollapsibleContent>
       </Collapsible>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline schedule
+// ---------------------------------------------------------------------------
+
+const REPEAT_OPTIONS: { id: ScheduleRepeat; label: string }[] = [
+  { id: "never", label: "Never" },
+  { id: "interval", label: "Interval" },
+  { id: "daily", label: "Daily" },
+  { id: "weekly", label: "Weekly" },
+  { id: "custom", label: "Custom" },
+];
+
+/** A text-like select for a field row: the value and a chevron, options with a check. */
+function ValueMenu<T extends string>({
+  value,
+  options,
+  onSelect,
+  ariaLabel,
+  contentClassName,
+}: {
+  value: T;
+  options: { id: T; label: string }[];
+  onSelect: (id: T) => void;
+  ariaLabel: string;
+  contentClassName?: string;
+}) {
+  const current = options.find((option) => option.id === value);
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost-secondary"
+          isSelect
+          label={current?.label ?? value}
+          aria-label={`${ariaLabel}: ${current?.label ?? value}`}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className={contentClassName}>
+        {options.map((option) => (
+          <DropdownMenuItem
+            key={option.id}
+            label={option.label}
+            onSelect={() => onSelect(option.id)}
+            endComponent={
+              option.id === value ? (
+                <Icon visual={Check} size="xs" />
+              ) : undefined
+            }
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+const TIME_OPTIONS = TIME_SLOTS.map((slot) => ({
+  id: slot,
+  label: `${slot} ${SCHEDULE_TIMEZONE}`,
+}));
+
+function TimeMenu({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (time: string) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <ValueMenu
+      value={value}
+      options={TIME_OPTIONS}
+      onSelect={onChange}
+      ariaLabel={ariaLabel}
+      contentClassName="max-h-72 overflow-y-auto"
+    />
+  );
+}
+
+function DaysMenu({
+  days,
+  onChange,
+}: {
+  days: Weekday[];
+  onChange: (days: Weekday[]) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="sm"
+          variant="ghost-secondary"
+          isSelect
+          label={formatWeekdays(days)}
+          aria-label={`Days: ${formatWeekdays(days)}`}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {WEEKDAYS.map((day) => (
+          <DropdownMenuCheckboxItem
+            key={day.id}
+            label={day.label}
+            checked={days.includes(day.id)}
+            onCheckedChange={(checked) =>
+              onChange(
+                checked
+                  ? WEEKDAYS.map((candidate) => candidate.id).filter(
+                      (id) => id === day.id || days.includes(id)
+                    )
+                  : days.filter((id) => id !== day.id)
+              )
+            }
+            onSelect={(event) => event.preventDefault()}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * Rows revealed by a Repeat change ease in from just above their resting
+ * place (ease-out, no overshoot) and leave instantly, so the card reads as
+ * unfolding rather than swapping.
+ */
+const ROW_ENTER =
+  "starting:-translate-y-1 starting:opacity-0 transition-[opacity,translate] duration-200 ease-out motion-reduce:transition-none";
+
+/**
+ * The schedule, edited in place as label/control rows that sit flush with
+ * the column like every other section's rows. "Repeat" picks the shape; only
+ * the rows that shape needs are shown.
+ */
+function ScheduleCard({
+  schedule,
+  onChange,
+}: {
+  schedule: ScheduleConfig;
+  onChange: (schedule: ScheduleConfig) => void;
+}) {
+  const patch = (next: Partial<ScheduleConfig>) =>
+    onChange({ ...schedule, ...next });
+  const customUnitLabel =
+    schedule.customEvery === 1
+      ? schedule.customUnit
+      : `${schedule.customUnit}s`;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <FieldGroup>
+          <FieldRow label="Repeat">
+            <ValueMenu
+              value={schedule.repeat}
+              options={REPEAT_OPTIONS}
+              onSelect={(repeat) => patch({ repeat })}
+              ariaLabel="Repeat"
+            />
+          </FieldRow>
+          {schedule.repeat === "interval" ? (
+            <FieldRow label="Every" className={ROW_ENTER}>
+              <NumberField
+                className="w-20"
+                value={schedule.intervalValue}
+                min={1}
+                ariaLabel="Interval"
+                onChange={(intervalValue) => patch({ intervalValue })}
+              />
+              <ValueMenu
+                value={schedule.intervalUnit}
+                options={[
+                  { id: "minutes", label: "minutes" },
+                  { id: "hours", label: "hours" },
+                ]}
+                onSelect={(intervalUnit) => patch({ intervalUnit })}
+                ariaLabel="Interval unit"
+              />
+            </FieldRow>
+          ) : null}
+          {schedule.repeat === "daily" ? (
+            <FieldRow label="Time" className={ROW_ENTER}>
+              <TimeMenu
+                value={schedule.time}
+                onChange={(time) => patch({ time })}
+                ariaLabel="Time"
+              />
+            </FieldRow>
+          ) : null}
+          {schedule.repeat === "weekly" ? (
+            <>
+              <FieldRow label="On" className={ROW_ENTER}>
+                <DaysMenu
+                  days={schedule.days}
+                  onChange={(days) => patch({ days })}
+                />
+              </FieldRow>
+              <FieldRow label="Time" className={ROW_ENTER}>
+                <TimeMenu
+                  value={schedule.time}
+                  onChange={(time) => patch({ time })}
+                  ariaLabel="Time"
+                />
+              </FieldRow>
+            </>
+          ) : null}
+          {schedule.repeat === "custom" ? (
+            <>
+              <FieldRow label="Repeats" className={ROW_ENTER}>
+                <ValueMenu
+                  value={schedule.customUnit}
+                  options={[
+                    { id: "day", label: "Daily" },
+                    { id: "week", label: "Weekly" },
+                    { id: "month", label: "Monthly" },
+                  ]}
+                  onSelect={(customUnit) => patch({ customUnit })}
+                  ariaLabel="Repeats"
+                />
+              </FieldRow>
+              <FieldRow label="Every" className={ROW_ENTER}>
+                <NumberField
+                  className="w-20"
+                  value={schedule.customEvery}
+                  min={1}
+                  ariaLabel="Every"
+                  onChange={(customEvery) => patch({ customEvery })}
+                />
+                <span className="text-sm text-muted-foreground">
+                  {customUnitLabel}
+                </span>
+              </FieldRow>
+              {schedule.customUnit === "week" ? (
+                <FieldRow label="On" className={ROW_ENTER}>
+                  <DaysMenu
+                    days={schedule.days}
+                    onChange={(days) => patch({ days })}
+                  />
+                </FieldRow>
+              ) : null}
+              <FieldRow label="Start time" className={ROW_ENTER}>
+                <TimeMenu
+                  value={schedule.time}
+                  onChange={(time) => patch({ time })}
+                  ariaLabel="Start time"
+                />
+              </FieldRow>
+            </>
+          ) : null}
+        </FieldGroup>
+      </div>
+      {schedule.repeat !== "never" ? (
+        <span className={`text-xs text-muted-foreground ${ROW_ENTER}`}>
+          {describeScheduleConfig(schedule)} · next run {NEXT_OCCURRENCES[0]}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -582,7 +926,9 @@ export function TriggersSheet({
   }, [open, initialPage]);
 
   const needle = search.trim().toLowerCase();
-  const showSchedule = !needle || "schedule".includes(needle);
+  const webhooksOnly = page.id === "list" && Boolean(page.webhooksOnly);
+  const showSchedule =
+    !webhooksOnly && (!needle || "schedule".includes(needle));
   const sources = mockWebhookSources.filter(
     (source) => !needle || source.name.toLowerCase().includes(needle)
   );
@@ -606,13 +952,14 @@ export function TriggersSheet({
     <div className="flex flex-col gap-4">
       <SearchInput
         name="triggers-search"
-        placeholder="Search triggers..."
+        placeholder={webhooksOnly ? "Search webhooks…" : "Search triggers…"}
         value={search}
         onChange={setSearch}
       />
       {!showSchedule && sources.length === 0 ? (
         <div className="py-10 text-center text-sm text-muted-foreground">
-          No triggers found matching your search
+          No triggers match “{search.trim()}”. Try another name or clear the
+          search.
         </div>
       ) : (
         <CardGrid>
@@ -657,7 +1004,12 @@ export function TriggersSheet({
     page.id !== "list" && page.draft.editorId !== CURRENT_USER.id;
 
   const pages: MultiPageSheetPage[] = [
-    { id: "list", title: "Add triggers", icon: Zap, content: listContent },
+    {
+      id: "list",
+      title: webhooksOnly ? "Add a webhook" : "Add triggers",
+      icon: Zap,
+      content: listContent,
+    },
     ...(page.id === "schedule"
       ? [
           {
@@ -709,28 +1061,27 @@ export function TriggersSheet({
   const footer =
     page.id === "list"
       ? {
-          leftButton: {
+          rightButton: {
             label: "Close",
             variant: "outline" as const,
             onClick: () => onOpenChange(false),
           },
-          rightButton: {
-            label: "Save",
-            variant: "primary" as const,
-            onClick: () => onOpenChange(false),
-          },
         }
       : {
-          leftButton: {
-            label: "Cancel",
-            variant: "outline" as const,
-            onClick: () =>
-              page.isNew ? setPage({ id: "list" }) : onOpenChange(false),
-          },
+          leftButton: isReadOnly
+            ? undefined
+            : {
+                label: "Cancel",
+                variant: "outline" as const,
+                onClick: () =>
+                  page.isNew
+                    ? setPage({ id: "list", webhooksOnly: true })
+                    : onOpenChange(false),
+              },
           rightButton: isReadOnly
             ? {
                 label: "Close",
-                variant: "primary" as const,
+                variant: "outline" as const,
                 onClick: () => onOpenChange(false),
               }
             : {
@@ -769,11 +1120,15 @@ export function TriggersSheet({
 // ---------------------------------------------------------------------------
 
 export function TriggersSection({
+  schedule,
+  onScheduleChange,
   triggers,
   isLoading,
   onSave,
   onRemove,
 }: {
+  schedule: ScheduleConfig;
+  onScheduleChange: (schedule: ScheduleConfig) => void;
   triggers: BuilderTrigger[];
   isLoading: boolean;
   onSave: (trigger: BuilderTrigger) => void;
@@ -781,8 +1136,10 @@ export function TriggersSection({
 }) {
   const [sheet, setSheet] = useState<{ open: boolean; page: SheetPage }>({
     open: false,
-    page: { id: "list" },
+    page: { id: "list", webhooksOnly: true },
   });
+  const webhooks = triggers.filter((trigger) => trigger.kind === "webhook");
+  const hasSchedule = schedule.repeat !== "never";
 
   const openTrigger = (trigger: BuilderTrigger) => {
     if (trigger.kind === "schedule") {
@@ -802,82 +1159,120 @@ export function TriggersSection({
     }
   };
 
-  const addButton = (
-    <Button
-      size="sm"
-      variant="primary"
-      icon={Zap}
-      label="Add triggers"
-      onClick={() => setSheet({ open: true, page: { id: "list" } })}
-    />
-  );
+  const summaryParts = [
+    hasSchedule ? describeScheduleConfig(schedule) : null,
+    webhooks.length > 0
+      ? `${webhooks.length} webhook${webhooks.length === 1 ? "" : "s"}`
+      : null,
+  ].filter(Boolean);
 
   return (
     <BuilderSection
       title="Triggers"
       collapsible
-      defaultOpen={triggers.length > 0}
-      summary={
-        triggers.length === 0
-          ? "None"
-          : `${triggers.length} trigger${triggers.length === 1 ? "" : "s"}`
-      }
+      defaultOpen={hasSchedule || webhooks.length > 0}
+      summary={summaryParts.length > 0 ? summaryParts.join(" · ") : "None"}
       description={
         <>
-          Run agents based on events. Need help? Check our{" "}
+          Run your agent on a schedule or when events happen.{" "}
           <Hoverable
             variant="highlight"
             href="https://docs.dust.tt"
             target="_blank"
           >
-            guide
+            Guide
           </Hoverable>
-          .
         </>
       }
-      headerActions={addButton}
     >
-      {isLoading ? (
-        <div className="flex h-40 items-center justify-center">
-          <Spinner />
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-3">
+          <ScheduleCard schedule={schedule} onChange={onScheduleChange} />
+          {hasSchedule ? (
+            <Collapsible>
+              <CollapsibleTrigger label="Advanced" variant="secondary" />
+              <CollapsibleContent>
+                <div className="flex flex-col gap-4 pt-3">
+                  <CommonFields
+                    value={schedule}
+                    onChange={(patch) =>
+                      onScheduleChange({ ...schedule, ...patch })
+                    }
+                    readOnly={false}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          ) : null}
         </div>
-      ) : triggers.length === 0 ? (
-        <div className="rounded-xl border border-border bg-muted-background px-4 py-6 text-center text-sm text-muted-foreground">
-          No triggers yet.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          <CardGrid>
-            {triggers.map((trigger) => (
-              <TriggerCard
-                key={trigger.id}
-                trigger={trigger}
-                onClick={() => openTrigger(trigger)}
-                onRemove={() => onRemove(trigger)}
-              />
-            ))}
-          </CardGrid>
-          <Collapsible>
-            <CollapsibleTrigger
-              label="Other members' triggers"
-              variant="secondary"
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <span className="heading-sm text-foreground">Webhooks</span>
+              <span className="text-pretty text-xs text-muted-foreground">
+                Run the agent when an external service sends an event.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              icon={Zap}
+              label="Add webhook"
+              onClick={() =>
+                setSheet({
+                  open: true,
+                  page: { id: "list", webhooksOnly: true },
+                })
+              }
             />
-            <CollapsibleContent>
-              <div className="pt-3">
-                <CardGrid>
-                  {mockOtherMembersTriggers.map((trigger) => (
-                    <TriggerCard
-                      key={trigger.id}
-                      trigger={trigger}
-                      onClick={() => openTrigger(trigger)}
-                    />
-                  ))}
-                </CardGrid>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
+          </div>
+          {isLoading ? (
+            <CardGrid
+              aria-busy
+              className="animate-pulse motion-reduce:animate-none"
+            >
+              {[0, 1].map((index) => (
+                <div
+                  key={index}
+                  className="min-h-28 rounded-2xl bg-muted-background"
+                />
+              ))}
+            </CardGrid>
+          ) : webhooks.length > 0 ? (
+            <CardGrid>
+              {webhooks.map((trigger) => (
+                <TriggerCard
+                  key={trigger.id}
+                  trigger={trigger}
+                  onClick={() => openTrigger(trigger)}
+                  onRemove={() => onRemove(trigger)}
+                />
+              ))}
+            </CardGrid>
+          ) : null}
         </div>
-      )}
+
+        <Collapsible>
+          <CollapsibleTrigger
+            label="Other members’ triggers"
+            variant="secondary"
+          />
+          <CollapsibleContent>
+            <div className="pt-3">
+              <CardGrid>
+                {mockOtherMembersTriggers.map((trigger) => (
+                  <TriggerCard
+                    key={trigger.id}
+                    trigger={trigger}
+                    onClick={() => openTrigger(trigger)}
+                  />
+                ))}
+              </CardGrid>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </div>
       <TriggersSheet
         open={sheet.open}
         onOpenChange={(open) => setSheet((prev) => ({ ...prev, open }))}
