@@ -292,13 +292,13 @@ function SandboxFunctionInvocation({
 }: SandboxFunctionInvocationProps) {
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null, polling = false) => {
-      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events${polling ? "/poll" : ""}`;
+      const esURL = `/api/sse/w/${workspaceId}/sandbox-functions/${functionId}/invocations/${invocationId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: { eventId: string } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      return esURL + "?lastEventId=" + encodeURIComponent(lastEventId);
+      return `${esURL}?lastEventId=${encodeURIComponent(lastEventId)}${polling ? "&transport=poll" : ""}`;
     },
     [workspaceId, functionId, invocationId]
   );

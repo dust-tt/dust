@@ -16,6 +16,10 @@ export const SseQuerySchema = z.object({
     .transform((value) => (value && value.length > 0 ? value : null)),
 });
 
+export const EventTransportQuerySchema = SseQuerySchema.extend({
+  transport: z.enum(["sse", "poll"]).default("sse"),
+});
+
 type StreamEventsParams<TIn> = {
   ctx: Context;
   iterator: (signal: AbortSignal) => AsyncIterable<TIn>;

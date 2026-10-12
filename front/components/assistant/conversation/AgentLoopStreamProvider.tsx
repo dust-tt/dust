@@ -40,7 +40,7 @@ function OngoingAgentLoopConnection({
   );
   const buildLongPollURL = useCallback(
     (lastEvent: string | null) =>
-      `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events/poll?lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`,
+      `/api/sse/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${messageId}/events?transport=poll&lastEventId=${encodeURIComponent(getAgentLoopEventId(lastEvent))}`,
     [conversationId, messageId, owner.sId]
   );
   const onEvent = useCallback(

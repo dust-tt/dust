@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { makeTestFrameInvocation } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
@@ -25,9 +26,10 @@ import {
   getSandboxFunctionInvocationEventsBatch,
 } from "@app/lib/api/sandbox_functions/events";
 
-describe.each(["", "/poll"])(
+describe.each(["", "?transport=sse", "/poll", "?transport=poll"])(
   "GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invocationId]/events%s",
   (suffix) => {
+    const polling = suffix.includes("poll");
     function getEvents({
       workspaceId,
       functionId,
@@ -44,6 +46,7 @@ describe.each(["", "/poll"])(
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(logger, "info").mockImplementation(() => undefined);
     });
 
     it("streams sandbox function invocation events to the client", async () => {
@@ -77,14 +80,18 @@ describe.each(["", "/poll"])(
       });
 
       expect(response.status).toBe(200);
-      const payloads: string[] = suffix
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: !polling }),
+        "Processed request"
+      );
+      const payloads: string[] = polling
         ? (await response.json()).events
         : parseSseDataPayloads(await response.text());
       expect(payloads.map((p) => JSON.parse(p).data.result)).toEqual([
         { hello: "world" },
       ]);
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).toHaveBeenCalledWith({
@@ -105,7 +112,7 @@ describe.each(["", "/poll"])(
 
       expect(response.status).toBe(404);
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).not.toHaveBeenCalled();
@@ -127,7 +134,7 @@ describe.each(["", "/poll"])(
 
       expect(response.status).toBe(404);
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).not.toHaveBeenCalled();
@@ -151,7 +158,7 @@ describe.each(["", "/poll"])(
         },
       });
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).not.toHaveBeenCalled();

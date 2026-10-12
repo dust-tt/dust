@@ -39,6 +39,14 @@ const app = workspaceApp();
  *         description: Redis stream ID of the last received conversation event. Omit or pass an empty value to start from the available history.
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: transport
+ *         required: false
+ *         description: Use poll for JSON event batches with a wait of up to 25 seconds.
+ *         schema:
+ *           type: string
+ *           enum: [sse, poll]
+ *           default: sse
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -49,6 +57,16 @@ const app = workspaceApp();
  *           text/event-stream:
  *             schema:
  *               $ref: '#/components/schemas/PrivateConversationStreamEnvelope'
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [events]
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                     description: Serialized event envelope containing eventId and data.
  *       401:
  *         description: Unauthorized
  */
