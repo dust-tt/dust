@@ -21,6 +21,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -899,6 +900,24 @@ describe("getJITServers", () => {
       );
 
       expect(triggersManagementServer).toBeUndefined();
+    });
+
+    it("should include triggers_management server for the dust default agent", async () => {
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: {
+          ...agentConfig,
+          sId: GLOBAL_AGENTS_SID.DUST,
+        },
+        conversation,
+        attachments: [],
+      });
+
+      const triggersManagementServer = jitServers.find(
+        (server) => server.name === "triggers_management"
+      );
+
+      expect(triggersManagementServer).toBeDefined();
+      expect(triggersManagementServer?.description).toContain("recurring");
     });
   });
 

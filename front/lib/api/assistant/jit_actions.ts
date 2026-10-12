@@ -148,7 +148,7 @@ async function getConditionalJITServers(
   );
   servers.push(...conversationServers);
 
-  // Add the triggers_management server, only applies to the onboarding conversation.
+  // Triggers management for the Dust default agent, and for onboarding conversations.
   const triggersManagementServer = await getTriggersManagementServer(
     auth,
     agentConfiguration,
