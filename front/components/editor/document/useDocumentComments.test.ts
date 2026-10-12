@@ -222,6 +222,36 @@ describe("useDocumentComments", () => {
     }
   });
 
+  it("saves a new comment spanning a hard break", async () => {
+    const { result, onSave } = await renderCommentedEditor(
+      "Hello brave  \nnew world.\n"
+    );
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    act(() => {
+      editor.commands.setTextSelection({ from: 7, to: 16 });
+      result.current.comments.startDraft();
+    });
+    await act(async () => {
+      expect((await result.current.comments.submitDraft("Hi")).isOk()).toBe(
+        true
+      );
+    });
+    await act(() => result.current.document.save());
+
+    const parsed = parseDfm(onSave.mock.calls[0][0]);
+    expect(parsed.isOk()).toBe(true);
+    if (parsed.isOk()) {
+      const [comment] = parsed.value.comments;
+      expect(parsed.value.body).toBe(
+        `Hello :comment-start{id=${comment.id}}brave  \nnew:comment-end{id=${comment.id}} world.`
+      );
+    }
+  });
+
   it("refuses a draft whose text can no longer take a comment", async () => {
     const { result } = await renderCommentedEditor("Hello brave world.\n");
     const editor = result.current.document.editor;

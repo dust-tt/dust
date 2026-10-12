@@ -581,7 +581,8 @@ declare module "@tiptap/core" {
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-anchor
  * Comment marks MUST store only the comment id. Marks MUST NOT extend to text typed at
- * their edges. Distinct comments MUST be allowed on overlapping text.
+ * their edges. Distinct comments MUST be allowed on overlapping text. Marks MUST sit only on
+ * text, never on inline nodes such as hard breaks, since anchors reopen as marks on text only.
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
@@ -975,11 +976,20 @@ export const DocumentComments = Extension.create({
         }
 
         if (dispatch) {
-          tr.addMark(
-            draft.from,
-            draft.to,
-            state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
-          );
+          // A range mark would also cover inline nodes such as hard breaks, which anchors
+          // cannot express, so the document would no longer save.
+          const mark = state.schema.marks[COMMENT_MARK_NAME].create({
+            id: comment.id,
+          });
+          state.doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
+            if (canCarryCommentMark(node, parent)) {
+              tr.addMark(
+                Math.max(pos, draft.from),
+                Math.min(pos + node.nodeSize, draft.to),
+                mark
+              );
+            }
+          });
           // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
             ...getDocumentComments(state.doc).filter(
