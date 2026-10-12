@@ -1,3 +1,7 @@
+const ENGLISH_LANGUAGE_NAMES = new Intl.DisplayNames(["en"], {
+  type: "language",
+});
+
 /**
  * @cc [owner:ykmsd,label:coding] language-name-never-throws
  * MUST return the name of the language, written in English (e.g. "fr" -> "French", "pt-BR" ->
@@ -7,10 +11,7 @@
  */
 export function getLanguageName(languageCode: string): string {
   try {
-    return (
-      new Intl.DisplayNames(["en"], { type: "language" }).of(languageCode) ??
-      languageCode
-    );
+    return ENGLISH_LANGUAGE_NAMES.of(languageCode) ?? languageCode;
   } catch {
     return languageCode;
   }
