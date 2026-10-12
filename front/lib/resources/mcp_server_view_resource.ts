@@ -1747,7 +1747,7 @@ export class MCPServerViewResource<
         CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
         transaction
       );
-      await InternalMCPServerInMemoryResource.hydrateCredentials(
+      await InternalMCPServerInMemoryResource.loadCredentials(
         auth,
         removeNulls(metadataViews.map((v) => v.internalMCPServer ?? null))
       );

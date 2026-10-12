@@ -544,9 +544,10 @@ export class InternalMCPServerInMemoryResource {
   }
 
   /**
-   * JIT-hydrate the credentials of servers fetched without `includeCredentials`.
+   * Loads the credentials of servers fetched without `includeCredentials`. Mutates the given
+   * servers.
    */
-  static async hydrateCredentials(
+  static async loadCredentials(
     auth: Authenticator,
     servers: InternalMCPServerInMemoryResource[]
   ): Promise<void> {
