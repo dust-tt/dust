@@ -318,7 +318,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_referenced_by_skill",
           message:
             "Files referenced by a skill or its version history cannot be deleted.",
         },
@@ -350,7 +350,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "file_deletion_failed",
         message: "Failed to delete the file.",
       },
     });
@@ -606,7 +606,7 @@ async function checkFileAccess(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Space is not a Pod",
         },
       });

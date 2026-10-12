@@ -2512,14 +2512,14 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     { frameContent }: { frameContent: string }
   ): Promise<
-    Result<ComputedAuthorizedFileAccess, DustError<"invalid_request_error">>
+    Result<ComputedAuthorizedFileAccess, DustError<"frame_user_required">>
   > {
     const generatedByUserId =
       auth.user()?.id ?? auth.key()?.userModelId ?? null;
     if (!generatedByUserId) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "frame_user_required",
           "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app."
         )
       );
@@ -2532,7 +2532,7 @@ export class FileResource extends BaseResource<FileModel> {
     if (!generatedByUser) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "frame_user_required",
           "The user associated with this request no longer exists. Create or update this Frame in the Dust app."
         )
       );
@@ -2733,7 +2733,7 @@ export class FileResource extends BaseResource<FileModel> {
   ): Promise<
     Result<
       ComputedAuthorizedFileAccess,
-      DustError<"invalid_request_error" | "internal_error">
+      DustError<"frame_user_required" | "internal_error">
     >
   > {
     const frameContent = await this.readOriginalContent(auth);

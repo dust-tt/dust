@@ -50,7 +50,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_frame",
           message: "Only Frame files can be saved to a pod.",
         },
       });
@@ -62,7 +62,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_in_conversation",
           message:
             "Only conversation frame files can be saved to a pod. This file is already in a pod or has another use case.",
         },
@@ -97,7 +97,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "The given space is not a project.",
         },
       });
@@ -122,7 +122,10 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type:
+              frameResult.error.code === "internal_error"
+                ? "internal_server_error"
+                : "invalid_request_error",
             message: frameResult.error.message,
           },
         });
@@ -140,7 +143,10 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            result.error.code === "internal_error"
+              ? "internal_server_error"
+              : "invalid_request_error",
           message: result.error.message,
         },
       });

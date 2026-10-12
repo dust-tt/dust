@@ -57,6 +57,9 @@ export type DustErrorCode =
   | "webhook_source_not_found"
   // Activation errors
   | "activation_work_area_not_found"
+  // Frame file access errors (domain:files)
+  | "frame_files_unverifiable"
+  | "frame_user_required"
   // Space errors
   | "space_already_exists"
   // Space errors (domain:spaces)

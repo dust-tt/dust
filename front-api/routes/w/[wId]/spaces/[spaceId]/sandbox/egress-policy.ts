@@ -14,7 +14,10 @@ import type {
   PostPodEgressPolicyRequestResponseBody,
   PutPodEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
-import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
+import {
+  EgressPolicyDomainError,
+  parseEgressPolicy,
+} from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -102,7 +105,10 @@ app.put(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            parsedPolicy.error instanceof EgressPolicyDomainError
+              ? "egress_domain_invalid"
+              : "invalid_request_error",
           message: `Invalid pod egress policy: ${parsedPolicy.error.message}`,
         },
       });
@@ -179,7 +185,10 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            result.error instanceof EgressPolicyDomainError
+              ? "egress_domain_invalid"
+              : "invalid_request_error",
           message: result.error.message,
         },
       });

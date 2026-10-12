@@ -271,18 +271,18 @@ export function parseAuthorizedFileAccessEntry(
 }
 
 export type AuthorizedFileAccessShareError = Omit<DustError, "code"> & {
-  code: "invalid_request_error" | "internal_error";
+  code: "frame_files_unverifiable" | "frame_user_required" | "internal_error";
   unverifiableRefs?: string[];
 };
 
 export function isUnverifiableFrameFileRefsShareError(
   error: AuthorizedFileAccessShareError
 ): error is AuthorizedFileAccessShareError & {
-  code: "invalid_request_error";
+  code: "frame_files_unverifiable";
   unverifiableRefs: string[];
 } {
   return (
-    error.code === "invalid_request_error" &&
+    error.code === "frame_files_unverifiable" &&
     Array.isArray(error.unverifiableRefs) &&
     error.unverifiableRefs.length > 0
   );

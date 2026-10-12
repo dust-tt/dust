@@ -69,7 +69,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_frame",
           message: "Only Frame files can be shared.",
         },
       });

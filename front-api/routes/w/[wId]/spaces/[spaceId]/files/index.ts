@@ -113,7 +113,9 @@ app.post(
           ? 409
           : 400,
         api_error: {
-          type: "invalid_request_error",
+          type: isDustFileSystemError(createResult.error, "already_exists")
+            ? "file_already_exists"
+            : "invalid_request_error",
           message: createResult.error.message,
         },
       });

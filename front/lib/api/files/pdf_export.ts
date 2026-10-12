@@ -24,7 +24,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 // Shared by pdf_export and screenshot — kept here as the primary export file.
 export type FrameExportError = {
-  type: "file_not_found" | "invalid_request" | "render_failed";
+  type: "file_not_found" | "not_frame" | "render_failed";
   message: string;
 };
 
@@ -53,7 +53,7 @@ export async function exportInteractiveContentFileAsPdf(
 
   if (!isFrameContentType(file.contentType)) {
     return new Err({
-      type: "invalid_request",
+      type: "not_frame",
       message: "Only Frame files can be exported as PDF.",
     });
   }
@@ -70,7 +70,7 @@ export async function exportInteractiveContentFileAsPdf(
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return new Err({
-      type: "invalid_request",
+      type: "not_frame",
       message: "File is not shareable.",
     });
   }
