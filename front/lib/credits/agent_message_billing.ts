@@ -7,7 +7,10 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { TOOL_COST_CATEGORIES } from "@app/lib/api/mcp";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  allocateMicroCreditsByLargestRemainder,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -189,19 +192,12 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
     }));
   }
 
-  const allocations = usages.map((usage) => {
-    const allocationKey = getUsageAllocationKey(usage);
-    const exactCreditMicro =
-      (usage.costMicroUsd / providerCostMicroUsd) * billedCreditMicro;
-    const floorCreditMicro = Math.floor(exactCreditMicro);
-
-    return {
-      usage,
-      allocationKey,
-      floorCreditMicro,
-      fractionalCreditMicro: exactCreditMicro - floorCreditMicro,
-    };
-  });
+  const allocations = usages.map((usage) => ({
+    usage,
+    allocationKey: getUsageAllocationKey(usage),
+    exactCreditMicro:
+      (usage.costMicroUsd / providerCostMicroUsd) * billedCreditMicro,
+  }));
   if (
     new Set(allocations.map(({ allocationKey }) => allocationKey)).size !==
     allocations.length
@@ -210,27 +206,24 @@ function allocateBilledCreditMicro<TUsage extends AgentMessageBillingRunUsage>({
       "Usage allocation keys must be unique within a billing group."
     );
   }
-  const allocatedFloorCreditMicro = allocations.reduce(
-    (total, allocation) => total + allocation.floorCreditMicro,
-    0
+  const allocationsInKeyOrder = [...allocations].sort((left, right) =>
+    left.allocationKey < right.allocationKey ? -1 : 1
   );
-  const remainderCreditMicro = billedCreditMicro - allocatedFloorCreditMicro;
-  const allocationKeysReceivingRemainder = new Set(
-    [...allocations]
-      .sort(
-        (left, right) =>
-          right.fractionalCreditMicro - left.fractionalCreditMicro ||
-          (left.allocationKey < right.allocationKey ? -1 : 1)
-      )
-      .slice(0, remainderCreditMicro)
-      .map(({ allocationKey }) => allocationKey)
+  const creditMicros = allocateMicroCreditsByLargestRemainder(
+    allocationsInKeyOrder.map(({ exactCreditMicro }) => exactCreditMicro),
+    billedCreditMicro
+  );
+  const allocatedCreditMicroByKey = new Map(
+    allocationsInKeyOrder.map(({ allocationKey }, index) => [
+      allocationKey,
+      creditMicros[index],
+    ])
   );
 
-  return allocations.map(({ usage, allocationKey, floorCreditMicro }) => ({
+  return allocations.map(({ usage, allocationKey }) => ({
     usage,
     allocatedBilledCreditMicro:
-      floorCreditMicro +
-      (allocationKeysReceivingRemainder.has(allocationKey) ? 1 : 0),
+      allocatedCreditMicroByKey.get(allocationKey) ?? 0,
   }));
 }
 

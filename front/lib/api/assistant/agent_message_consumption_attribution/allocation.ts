@@ -6,7 +6,10 @@ import {
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import type { AgentMessageLlmBillingLine } from "@app/lib/credits/agent_message_billing";
 import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
-import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import {
+  allocateMicroCreditsByLargestRemainder,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type {
@@ -89,29 +92,14 @@ function roundToMicroCredits(
   shares: ItemCreditShare[],
   totalCreditMicro: number
 ): ItemCreditShare[] {
-  const floorsMicro = shares.map(({ creditMicro }) => Math.floor(creditMicro));
-  const remainderMicro =
-    totalCreditMicro - floorsMicro.reduce((total, floor) => total + floor, 0);
-  // Largest remainders and then source order keep allocation stable.
-  const sharesReceivingRemainder = new Set(
-    shares
-      .map((share, index) => ({
-        index,
-        fractionalMicro: share.creditMicro - floorsMicro[index],
-      }))
-      .sort(
-        (left, right) =>
-          right.fractionalMicro - left.fractionalMicro ||
-          left.index - right.index
-      )
-      .slice(0, remainderMicro)
-      .map(({ index }) => index)
+  const creditMicros = allocateMicroCreditsByLargestRemainder(
+    shares.map(({ creditMicro }) => creditMicro),
+    totalCreditMicro
   );
 
   return shares.map(({ item }, index) => ({
     item,
-    creditMicro:
-      floorsMicro[index] + (sharesReceivingRemainder.has(index) ? 1 : 0),
+    creditMicro: creditMicros[index],
   }));
 }
 
@@ -179,8 +167,8 @@ function groupByRunUsage(
  * message's runs with this comparator.
  */
 export function compareRunsChronologically(
-  left: Pick<RunResource, "createdAt" | "id">,
-  right: Pick<RunResource, "createdAt" | "id">
+  left: RunResource,
+  right: RunResource
 ): number {
   return (
     left.createdAt.getTime() - right.createdAt.getTime() || left.id - right.id
