@@ -1,8 +1,4 @@
-import type { PronounFill } from "@app/components/me/PronounFillAnimation";
-import {
-  createPronounFill,
-  PronounFillAnimation,
-} from "@app/components/me/PronounFillAnimation";
+import { InputTypingAnimation } from "@app/components/shared/InputTypingAnimation";
 import { Chip } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -25,7 +21,7 @@ function isPresetSelected(value: string, label: string): boolean {
 interface PronounPresetChipsProps {
   value: string;
   onSelect: (pronouns: string) => void;
-  // The input showing `value`, which picked presets animate into.
+  // The input showing `value`, into which picked presets are typed.
   inputRef: RefObject<HTMLInputElement>;
 }
 
@@ -36,13 +32,16 @@ export function PronounPresetChips({
 }: PronounPresetChipsProps) {
   const { t } = useLingui();
   const shouldReduceMotion = useReducedMotion();
-  const [fill, setFill] = useState<PronounFill | null>(null);
-  const endFill = useCallback(() => setFill(null), []);
+  const [typing, setTyping] = useState<{
+    input: HTMLInputElement;
+    text: string;
+  } | null>(null);
+  const endTyping = useCallback(() => setTyping(null), []);
 
   const selectPreset = (label: string) => {
     const input = inputRef.current;
     if (input && !shouldReduceMotion && !isPresetSelected(value, label)) {
-      setFill(createPronounFill(input, label));
+      setTyping({ input, text: label });
     }
     onSelect(label);
   };
@@ -61,8 +60,13 @@ export function PronounPresetChips({
           />
         );
       })}
-      {fill && (
-        <PronounFillAnimation key={fill.text} fill={fill} onDone={endFill} />
+      {typing && (
+        <InputTypingAnimation
+          key={typing.text}
+          input={typing.input}
+          text={typing.text}
+          onDone={endTyping}
+        />
       )}
     </div>
   );
