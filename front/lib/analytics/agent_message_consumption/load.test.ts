@@ -594,6 +594,49 @@ describe("loadAgentMessageConsumptionAnalyticsInput", () => {
     });
   });
 
+  it("dates a failed message at its last billed run, not at its failure", async () => {
+    const context = await setupSettledMessage({
+      completedAt: new Date("2099-01-01T00:00:00.000Z"),
+    });
+    const agentMessageModelId = context.agentMessage.agentMessageId!;
+    const [billedUsage] = await RunResource.listRunUsagesForRuns(context.auth, {
+      runs: [context.run],
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "output",
+            runUsageModelId: billedUsage.runUsageModelId,
+            outputTokensCount: 20,
+            grossAttributedCreditAmountMicro: 5_000_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+    await AgentMessageModel.update(
+      { status: "failed" },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+
+    const input = await loadAgentMessageConsumptionAnalyticsInput(
+      context.auth,
+      { agentMessageId: context.agentMessage.sId }
+    );
+
+    expect(input?.completedAt).toEqual(context.run.createdAt);
+  });
+
   it("loads a billed message that can still resume at its last update", async () => {
     const context = await setupSettledMessage();
     await AgentMessageModel.update(

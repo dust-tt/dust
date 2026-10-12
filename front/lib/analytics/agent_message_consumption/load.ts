@@ -114,6 +114,21 @@ function filterUsagesAttributedByItems(
   );
 }
 
+function lastRunCreatedAt(
+  runs: RunResource[],
+  usages: BilledRunUsage[]
+): Date | null {
+  const usageRunModelIds = new Set(usages.map((usage) => usage.runModelId));
+  return runs.reduce<Date | null>(
+    (latest, run) =>
+      usageRunModelIds.has(run.id) &&
+      (latest === null || run.createdAt > latest)
+        ? run.createdAt
+        : latest,
+    null
+  );
+}
+
 async function loadApiKeyName(
   auth: Authenticator,
   apiKeyModelId: ModelId | null
@@ -209,6 +224,12 @@ async function loadAnalyticsUser({
  * restricted to the billed run usages referenced by its stored attribution items, so that the
  * indexed snapshot covers only the executions billed before the message failed.
  */
+/**
+ * @cc [owner:sfriquet,label:product;backend] unbilled-execution-date
+ * When `hasUnbilledExecution` is set, `completedAt` MUST be the creation time of the latest run
+ * among the indexed `usages`, not the time the message failed, so a charge is dated when it was
+ * billed. It falls back to the message's `completedAt` only when no usage is indexed.
+ */
 export async function loadAgentMessageConsumptionAnalyticsInput(
   auth: Authenticator,
   {
@@ -253,10 +274,10 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   // A paused message cancelled through `finalizeAgentMessagesWithoutWorkflow` is not re-indexed,
   // so its documents keep the `created` status and the pause time as `completed_at`. Credits stay
   // correct since cancelling adds none.
-  const completedAt = isTerminalAgentMessageStatus(agentMessage.status)
+  const settledAt = isTerminalAgentMessageStatus(agentMessage.status)
     ? agentMessage.completedAt
     : agentMessage.updatedAt;
-  if (!completedAt) {
+  if (!settledAt) {
     throw new Error("Settled agent message is missing completedAt");
   }
 
@@ -283,6 +304,9 @@ export async function loadAgentMessageConsumptionAnalyticsInput(
   const indexedUsages = hasUnbilledExecution
     ? filterUsagesAttributedByItems(billedUsages, items)
     : billedUsages;
+  const completedAt = hasUnbilledExecution
+    ? (lastRunCreatedAt(runs, indexedUsages) ?? settledAt)
+    : settledAt;
   const actions =
     preloadedActions ??
     (await AgentMCPActionResource.listByAgentMessageIds(auth, [
