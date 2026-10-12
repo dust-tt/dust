@@ -73,6 +73,20 @@ impl From<session::Error> for Status {
     }
 }
 
+/**
+ * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
+ * Errors from different resources in one transaction MUST retain their API status mapping.
+ * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
+ */
+impl From<storage::Error<session::Error>> for storage::Error<Status> {
+    fn from(error: storage::Error<session::Error>) -> Self {
+        match error {
+            storage::Error::Transaction(error) => Self::Transaction(error),
+            error => Self::Resource(error.into()),
+        }
+    }
+}
+
 impl From<tenant::Error> for Status {
     fn from(error: tenant::Error) -> Self {
         match error {
@@ -153,6 +167,12 @@ mod tests {
             (
                 storage::Error::<Status>::from(storage::Error::Resource(tenant::Error::InvalidId)),
                 ErrorCode::InvalidInput,
+            ),
+            (
+                storage::Error::<Status>::from(storage::Error::Resource(
+                    session::Error::InvalidKey,
+                )),
+                ErrorCode::Unauthenticated,
             ),
             (
                 storage::Error::<Status>::from(storage::Error::Resource(

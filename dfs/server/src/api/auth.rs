@@ -10,8 +10,11 @@ use tonic::{Request, Status};
 use crate::{
     auth::{KEY_LENGTH, KeyHash, hash_key},
     storage::{
-        fdb,
-        resources::{session::SessionResource, tenant::TenantResource},
+        self, fdb,
+        resources::{
+            session::SessionResource,
+            tenant::{self, TenantResource},
+        },
     },
 };
 
@@ -37,20 +40,27 @@ pub(super) struct CachedTenant {
 
 /**
  * @cc [owner:spolu,label:api;security] session-key-cache-expiry
- * Cached sessions MUST NOT authenticate at or after either their absolute expiry or 30,000
- * milliseconds from the start of the FDB lookup. Cache hits MUST NOT extend either deadline.
+ * Cached sessions and their tenants MUST NOT authenticate at or after either the session's absolute
+ * expiry or 30,000 milliseconds from the start of the FDB lookup. Cache hits MUST NOT extend either
+ * deadline.
  */
 pub(super) struct CachedSession {
     session: Arc<SessionResource>,
+    tenant: Arc<TenantResource>,
     expires_at: Instant,
 }
 
 impl CachedSession {
-    fn new(session: Arc<SessionResource>, lookup_started: Instant) -> Result<Self, Status> {
+    fn new(
+        session: Arc<SessionResource>,
+        tenant: Arc<TenantResource>,
+        lookup_started: Instant,
+    ) -> Result<Self, Status> {
         let now = Instant::now();
         let remaining = session.remaining_ttl()?;
         Ok(Self {
             session,
+            tenant,
             expires_at: (lookup_started + Duration::from_millis(SESSION_KEY_CACHE_TTL_MS))
                 .min(now + remaining),
         })
@@ -173,25 +183,36 @@ impl API {
      * @cc [owner:spolu,label:performance;concurrency] session-key-cache-concurrency
      * Cache hits MUST use shared read access. FDB authentication MUST run without a cache guard.
      */
+    /**
+     * @cc [owner:spolu,label:api;security] session-auth-tenant
+     * Authentication MUST return the session and its tenant together. On cache misses, the tenant
+     * MUST be fetched using the authenticated session's tenant ID in the same transaction. A missing
+     * tenant MUST return UNAUTHENTICATED; storage failures MUST propagate. Both resources MUST share
+     * the session cache deadline.
+     */
     pub(super) async fn require_session<T>(
         &self,
         request: &Request<T>,
-    ) -> Result<Arc<SessionResource>, Status> {
+    ) -> Result<(Arc<SessionResource>, Arc<TenantResource>), Status> {
         let key_hash = credentials(request)?;
         if let Some(cached) = self.session_key_cache.read().await.get(&key_hash)
             && cached.expires_at > Instant::now()
         {
             cached.session.remaining_ttl()?;
-            return Ok(Arc::clone(&cached.session));
+            return Ok((Arc::clone(&cached.session), Arc::clone(&cached.tenant)));
         }
         let lookup_started = Instant::now();
-        let session = Arc::new(
-            fdb::with_transaction(|tx| async move {
-                SessionResource::authenticate(&tx, &key_hash).await
-            })
-            .await?,
-        );
-        let cached = CachedSession::new(Arc::clone(&session), lookup_started)?;
+        let (session, tenant) = fdb::with_transaction(|tx| async move {
+            let session = SessionResource::authenticate(&tx, &key_hash).await?;
+            let tenant = TenantResource::fetch(&tx, &session.tenant_id)
+                .await?
+                .ok_or(storage::Error::Resource(tenant::Error::InvalidKey))?;
+            Ok::<_, storage::Error<Status>>((session, tenant))
+        })
+        .await?;
+        let session = Arc::new(session);
+        let tenant = Arc::new(tenant);
+        let cached = CachedSession::new(Arc::clone(&session), Arc::clone(&tenant), lookup_started)?;
         if cached.expires_at <= Instant::now() {
             return Err(status(ErrorCode::Unauthenticated));
         }
@@ -199,6 +220,6 @@ impl API {
             .write()
             .await
             .insert(key_hash, cached);
-        Ok(session)
+        Ok((session, tenant))
     }
 }

@@ -70,10 +70,11 @@ Creation atomically writes state, subjects, credential lookup, and expiry entry,
 collisions. IDs and keys are generated before the retrying transaction; an existing ID with the same
 hash succeeds without rewriting state, allowing retries to recognize their own commit.
 
-Authentication resolves the lookup and verifies the matching hash and unexpired state in one
-transaction. Successful results are cached per API instance for at most 30 seconds from the start
-of the lookup, capped by session expiry; hits do not extend this deadline. Revocation can therefore
-take up to 30 seconds to prevent new RPCs across servers; already admitted RPCs may finish.
+On a session cache miss, authentication resolves the lookup, verifies the matching hash and unexpired
+state, and fetches the session's tenant in one transaction; a missing tenant rejects authentication. The
+session and tenant are cached together per API instance for at most 30 seconds from the start of
+the lookup, capped by session expiry; hits do not extend this deadline. Revocation can therefore take
+up to 30 seconds to prevent new RPCs across servers; already admitted RPCs may finish.
 
 `RefreshSession` reads active state directly from FDB and atomically replaces the expiry index entry,
 extending expiry to the later of its current value and server time plus one hour. It never revives

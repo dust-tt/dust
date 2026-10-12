@@ -106,7 +106,7 @@ impl Dfs for API {
     }
 
     async fn current_session(&self, request: Request<Empty>) -> Result<Response<Session>, Status> {
-        let session = self.require_session(&request).await?;
+        let (session, _) = self.require_session(&request).await?;
         Ok(Response::new(Session::from(session.as_ref())))
     }
 
