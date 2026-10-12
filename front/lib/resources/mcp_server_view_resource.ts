@@ -1747,21 +1747,10 @@ export class MCPServerViewResource<
         CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES,
         transaction
       );
-      // The views already resolved their internal servers, restricted or not.
-      const internalServers =
-        await InternalMCPServerInMemoryResource.fetchByIds(
-          auth,
-          removeNulls(metadataViews.map((v) => v.internalMCPServerId)),
-          { includeCredentials: true, includeRestricted: true }
-        );
-      const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
-      for (const view of metadataViews) {
-        if (view.internalMCPServerId) {
-          view.internalMCPServer = internalServerMap.get(
-            view.internalMCPServerId
-          );
-        }
-      }
+      await InternalMCPServerInMemoryResource.hydrateCredentials(
+        auth,
+        removeNulls(metadataViews.map((v) => v.internalMCPServer ?? null))
+      );
       await this.populateToolsMetadata(auth, metadataViews, transaction);
       for (const view of metadataViews) {
         view.fetchMode = "configuration";

@@ -543,6 +543,23 @@ export class InternalMCPServerInMemoryResource {
     });
   }
 
+  /**
+   * JIT-hydrate the credentials of servers fetched without `includeCredentials`.
+   */
+  static async hydrateCredentials(
+    auth: Authenticator,
+    servers: InternalMCPServerInMemoryResource[]
+  ): Promise<void> {
+    const credentialsById = await this.fetchCredentialsByIds(
+      auth,
+      servers.map((server) => server.id)
+    );
+    for (const server of servers) {
+      server.internalServerCredential =
+        credentialsById.get(server.id) ?? NO_INTERNAL_MCP_SERVER_CREDENTIAL;
+    }
+  }
+
   // Fetch the credentials (API keys, headers) for MCP servers that have some.
   private static async fetchCredentialsByIds(
     auth: Authenticator,
