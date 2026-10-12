@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { ALL_SERVICES, aliasCompanions, type ServiceName } from "../../src/lib/services";
+import { ALL_SERVICES, type ServiceName } from "../../src/lib/services";
 
 describe("services", () => {
   describe("ALL_SERVICES", () => {
@@ -101,16 +101,6 @@ describe("services", () => {
         const name: ServiceName = service;
         expect(typeof name).toBe("string");
       }
-    });
-  });
-
-  describe("aliasCompanions", () => {
-    it("lists collab as a companion of front", () => {
-      expect(aliasCompanions("front")).toEqual(["collab"]);
-    });
-
-    it("has no companions for a single service", () => {
-      expect(aliasCompanions("front-api")).toEqual([]);
     });
   });
 });

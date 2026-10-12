@@ -29,23 +29,10 @@ export type ServiceName = (typeof ALL_SERVICES)[number];
 
 // Aliases expanding to several services, e.g. `dust-hive restart front`.
 export const SERVICE_ALIASES = {
-  front: ["front-api", "front-workers", "front-spa-poke", "front-spa-app"],
+  front: ["front-api", "front-workers", "front-spa-poke", "front-spa-app", "collab"],
 } as const satisfies Record<string, readonly ServiceName[]>;
 
 export type ServiceAlias = keyof typeof SERVICE_ALIASES;
-
-// Services an alias also restarts, but only when they are already running. collab runs
-// front-api's code, but only co-edition work starts it.
-export const SERVICE_ALIAS_RUNNING_COMPANIONS = {
-  front: ["collab"],
-} as const satisfies Record<ServiceAlias, readonly ServiceName[]>;
-
-/**
- * The services `value` also restarts when they are already running: none unless it is an alias.
- */
-export function aliasCompanions(value: string): readonly ServiceName[] {
-  return isServiceAlias(value) ? SERVICE_ALIAS_RUNNING_COMPANIONS[value] : [];
-}
 
 export function isServiceAlias(value: string | undefined): value is ServiceAlias {
   return value !== undefined && Object.hasOwn(SERVICE_ALIASES, value);

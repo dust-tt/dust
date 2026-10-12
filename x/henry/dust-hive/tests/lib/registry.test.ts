@@ -104,6 +104,7 @@ describe("registry", () => {
         "front-workers",
         "front-spa-poke",
         "front-spa-app",
+        "collab",
       ]);
     });
 
