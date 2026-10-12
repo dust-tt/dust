@@ -198,6 +198,43 @@ msgstr "Summary not generated due to data retention policy on conversations in t
 msgid "Summary not generated due to data retention policy on agents in this conversation."
 msgstr "Summary not generated due to data retention policy on agents in this conversation."
 
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "[Dust] Credit usage alert: {percentUsed}% of your credits consumed"
+msgstr "[Dust] Credit usage alert: {percentUsed}% of your credits consumed"
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+#: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
+msgid "You're receiving this as an admin of the Dust workspace {workspaceName}."
+msgstr "You're receiving this as an admin of the Dust workspace {workspaceName}."
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "Your workspace has consumed {percentUsed}% of its available programmatic usage credits."
+msgstr "Your workspace has consumed {percentUsed}% of its available programmatic usage credits."
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "• Total credits: {total}"
+msgstr "• Total credits: {total}"
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "• Consumed: {consumed}"
+msgstr "• Consumed: {consumed}"
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "• Remaining: {remaining}"
+msgstr "• Remaining: {remaining}"
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "To avoid service interruption, purchase additional credits from the Developers > Credits section."
+msgstr "To avoid service interruption, purchase additional credits from the Developers > Credits section."
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "Learn more about programmatic usage at Dust: {PROGRAMMATIC_USAGE_DOC_URL}"
+msgstr "Learn more about programmatic usage at Dust: {PROGRAMMATIC_USAGE_DOC_URL}"
+
+#: front/lib/notifications/workflows/credit-usage-alert.ts
+msgid "Purchase credits"
+msgstr "Purchase credits"
+
 #: front/lib/notifications/workflows/frame-sharing.ts
 msgid "Your Dust login code"
 msgstr "Your Dust login code"
@@ -225,6 +262,34 @@ msgstr "{sharedByName} is sharing a frame with you on Dust."
 #: front/lib/notifications/workflows/frame-sharing.ts
 msgid "View frame"
 msgstr "View frame"
+
+#: front/lib/notifications/workflows/github-connection-deleted.ts
+msgid "[Dust] GitHub connection deleted - important information"
+msgstr "[Dust] GitHub connection deleted - important information"
+
+#: front/lib/notifications/workflows/github-connection-deleted.ts
+msgid "The GitHub connection of the {workspaceName} workspace was deleted, along with all the related data on Dust servers."
+msgstr "The GitHub connection of the {workspaceName} workspace was deleted, along with all the related data on Dust servers."
+
+#: front/lib/notifications/workflows/github-connection-deleted.ts
+msgid "You can now uninstall the Dust app from your GitHub account to revoke the authorizations granted to Dust when you connected it."
+msgstr "You can now uninstall the Dust app from your GitHub account to revoke the authorizations granted to Dust when you connected it."
+
+#: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
+msgid "[Dust] Agents to reconfigure after sharing {toolName}"
+msgstr "[Dust] Agents to reconfigure after sharing {toolName}"
+
+#: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
+msgid "The tool {toolName} was just made available to all workspace members."
+msgstr "The tool {toolName} was just made available to all workspace members."
+
+#: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
+msgid "This removes older space-specific versions of the same tool. The following agents may need to be reconfigured:"
+msgstr "This removes older space-specific versions of the same tool. The following agents may need to be reconfigured:"
+
+#: front/lib/notifications/workflows/mcp-global-sharing-reconfiguration.ts
+msgid "Please review these agents and add the tool again if needed."
+msgstr "Please review these agents and add the tool again if needed."
 
 #: front/lib/notifications/workflows/pod-added-as-member.ts
 msgid "A Pod"
