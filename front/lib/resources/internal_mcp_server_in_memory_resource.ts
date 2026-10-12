@@ -50,17 +50,19 @@ type InternalMCPServerCredentialType = {
   customHeaders: Record<string, string> | null;
 };
 
+// Fetched credentials of a server that has none.
+const NO_INTERNAL_MCP_SERVER_CREDENTIAL: InternalMCPServerCredentialType = {
+  sharedSecret: null,
+  customHeaders: null,
+};
+
 export class InternalMCPServerInMemoryResource {
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
   >;
-  // `undefined` when the credentials were not fetched (see `includeCredentials`), `null` when
-  // the server has none.
-  private internalServerCredential:
-    | InternalMCPServerCredentialType
-    | null
-    | undefined;
+  // `null` when the credentials were not fetched (see `includeCredentials`).
+  private internalServerCredential: InternalMCPServerCredentialType | null;
 
   constructor(
     readonly id: string,
@@ -75,7 +77,7 @@ export class InternalMCPServerInMemoryResource {
         documentationUrl: null,
         tools: [],
       },
-      internalServerCredential,
+      internalServerCredential = null,
     }: {
       metadata?: Omit<
         MCPServerType,
@@ -239,7 +241,7 @@ export class InternalMCPServerInMemoryResource {
         tools: serverMetadata.tools,
       },
       // A new server has no credentials yet.
-      internalServerCredential: null,
+      internalServerCredential: NO_INTERNAL_MCP_SERVER_CREDENTIAL,
     });
 
     await MCPServerViewModel.create({
@@ -427,8 +429,8 @@ export class InternalMCPServerInMemoryResource {
           tools: serverMetadata.tools,
         },
         internalServerCredential: credentialsById
-          ? (credentialsById.get(id) ?? null)
-          : undefined,
+          ? (credentialsById.get(id) ?? NO_INTERNAL_MCP_SERVER_CREDENTIAL)
+          : null,
       });
     });
   }
@@ -467,8 +469,8 @@ export class InternalMCPServerInMemoryResource {
           tools: serverMetadata.tools,
         },
         internalServerCredential: credentialsById
-          ? (credentialsById.get(id) ?? null)
-          : undefined,
+          ? (credentialsById.get(id) ?? NO_INTERNAL_MCP_SERVER_CREDENTIAL)
+          : null,
       });
     });
   }
@@ -535,8 +537,8 @@ export class InternalMCPServerInMemoryResource {
           tools: serverMetadata.tools,
         },
         internalServerCredential: credentialsById
-          ? (credentialsById.get(id) ?? null)
-          : undefined,
+          ? (credentialsById.get(id) ?? NO_INTERNAL_MCP_SERVER_CREDENTIAL)
+          : null,
       });
     });
   }
@@ -642,12 +644,8 @@ export class InternalMCPServerInMemoryResource {
     }
 
     // Credentials are only serialized when fetched (see `includeCredentials`).
-    if (this.internalServerCredential === undefined) {
-      return {};
-    }
-
     if (!this.internalServerCredential) {
-      return { sharedSecret: null, customHeaders: null };
+      return {};
     }
 
     const redactedSecret = this.internalServerCredential.sharedSecret
