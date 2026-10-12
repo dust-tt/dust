@@ -17,6 +17,7 @@ import { compareStrings } from "@app/lib/i18n/format";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { classNames } from "@app/lib/utils";
 import { useCurrentPagePlugins } from "@app/poke/swr/currentPagePlugins";
+import { usePokeFavorites } from "@app/poke/swr/favorites";
 import { usePokeSearchAllCells } from "@app/poke/swr/search";
 import type { CellInfo } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
@@ -32,6 +33,19 @@ import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 const MIN_SEARCH_CHARACTERS = 2;
+const DEFAULT_VISIBLE_PLUGINS = 5;
+const PRIORITY_PLUGIN_IDS = [
+  "toggle-feature-flag",
+  "invite-user",
+  "upgrade-free-plan",
+  "batch-update-members",
+  "upgrade-enterprise-plan",
+];
+
+function getPluginPriority(plugin: PluginListItem): number {
+  const index = PRIORITY_PLUGIN_IDS.indexOf(plugin.id);
+  return index === -1 ? PRIORITY_PLUGIN_IDS.length : index;
+}
 
 interface PokeNavbarProps {
   cells?: CellInfo[];
@@ -169,13 +183,19 @@ function filterPlugins(
   searchTerm: string
 ): PluginListItem[] {
   const query = searchTerm.toLowerCase();
-  return plugins
+  const sorted = plugins
     .filter(
       (plugin) =>
         plugin.name.toLowerCase().includes(query) ||
         plugin.description.toLowerCase().includes(query)
     )
-    .toSorted((a, b) => compareStrings(a.name, b.name));
+    .toSorted(
+      (a, b) =>
+        getPluginPriority(a) - getPluginPriority(b) ||
+        compareStrings(a.name, b.name)
+    );
+
+  return query ? sorted : sorted.slice(0, DEFAULT_VISIBLE_PLUGINS);
 }
 
 /**
@@ -212,6 +232,9 @@ function PokeSearchCommandUI({
         : [],
     [currentPagePlugins, searchTerm]
   );
+  const { favorites } = usePokeFavorites();
+  const showFavorites = searchTerm.length < MIN_SEARCH_CHARACTERS;
+  const pluginsIndexOffset = showFavorites ? favorites.length : 0;
 
   return (
     <>
@@ -233,13 +256,19 @@ function PokeSearchCommandUI({
           className="border-none focus:outline-hidden focus:ring-0"
         />
         <PokeCommandList className="max-h-160">
+          {showFavorites && (
+            <PokeFavoritesCommandGroups
+              indexOffset={0}
+              onNavigate={() => onOpenChange(false)}
+            />
+          )}
           {currentPagePlugins && plugins.length > 0 && (
             <PokeCommandGroup heading="Plugins on this page">
               {plugins.map((plugin, index) => (
                 <PokeCommandItem
                   key={plugin.id}
                   value={`plugin-${plugin.id}`}
-                  index={index}
+                  index={pluginsIndexOffset + index}
                   onSelect={() => {
                     onOpenChange(false);
                     currentPagePlugins.onSelect(plugin);
@@ -270,12 +299,6 @@ function PokeSearchCommandUI({
               <div className="p-4 text-sm">No results found.</div>
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
-          {searchTerm.length < MIN_SEARCH_CHARACTERS && (
-            <PokeFavoritesCommandGroups
-              indexOffset={plugins.length}
-              onNavigate={() => onOpenChange(false)}
-            />
-          )}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <div className="p-4 text-sm">
               <div className="mb-3 text-muted-foreground">
