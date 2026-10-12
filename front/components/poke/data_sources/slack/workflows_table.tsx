@@ -35,6 +35,7 @@ function makeColumnsForSlackWorkflows(
       id: "actions",
       cell: ({ row }) => (
         <Button
+          tooltip="Revoke"
           icon={Trash01}
           size="xs"
           variant="warning-ghost"

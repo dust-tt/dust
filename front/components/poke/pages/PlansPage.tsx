@@ -155,11 +155,13 @@ export function PlansPage() {
                     {plan.code === editingPlan?.code || plan.isNewPlan ? (
                       <div className="flex flex-row justify-center">
                         <Button
+                          tooltip="Save"
                           icon={Check}
                           onClick={handleSavePlan}
                           variant="ghost-secondary"
                         />
                         <Button
+                          tooltip="Cancel"
                           icon={XClose}
                           onClick={resetEditingPlan}
                           variant="ghost-secondary"
@@ -168,6 +170,7 @@ export function PlansPage() {
                     ) : (
                       <div className="flex flex-row justify-center">
                         <Button
+                          tooltip="Edit"
                           icon={Edit04}
                           onClick={() => setEditingPlan(plan)}
                           variant="ghost-secondary"

@@ -142,6 +142,7 @@ export function makeColumnsForInvitations(
 
         return (
           <Button
+            tooltip="Revoke invitation"
             icon={Trash01}
             size="xs"
             variant="ghost-secondary"

@@ -49,7 +49,12 @@ export function makeColumnsForApps(
               target="_blank"
               rel="noopener noreferrer"
             >
-              <Button icon={Download01} size="xs" variant="ghost-secondary" />
+              <Button
+                tooltip="Export app"
+                icon={Download01}
+                size="xs"
+                variant="ghost-secondary"
+              />
             </a>
           </>
         );
