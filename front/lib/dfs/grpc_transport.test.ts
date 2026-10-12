@@ -189,7 +189,12 @@ describe("DfsGrpcTransport", () => {
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       status: "ok",
-      object: { id: ROOT_ID, name: "docs", kind: "directory" },
+      object: {
+        id: ROOT_ID,
+        name: "docs",
+        kind: "directory",
+        storeVersion: BigInt("42"),
+      },
     });
     expect(lookup.isOk() && lookup.value.results[0]).toMatchObject({
       object: {

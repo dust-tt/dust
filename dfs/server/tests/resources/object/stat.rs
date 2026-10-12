@@ -80,8 +80,7 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
         };
         assert_eq!(attributes.id, root.object_id.into());
         assert_eq!(attributes.mode, 0o500);
-        assert_eq!(attributes.view.store_version, version);
-        assert_eq!(attributes.view.auth_version, version);
+        assert_eq!(attributes.store_version, version);
     }
 
     assert!(matches!(
@@ -149,7 +148,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             (root.atime_ms, root.mtime_ms, root.ctime_ms)
         );
         assert!(projected.metadata.is_none());
-        assert_eq!(projected.view, shared.view);
+        assert_eq!(projected.store_version, shared.store_version);
         assert_eq!(
             results[3]
                 .as_ref()

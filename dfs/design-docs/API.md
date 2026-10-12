@@ -33,7 +33,7 @@ Attr {
   ctime?: Timestamp
   attr_version: uint64           // Version of attributes and metadata; excludes grant changes.
   content_version: uint64        // Version of bytes or directory entries; excludes grant changes.
-  view: ReadView                 // Store and authorization versions for these attributes.
+  store_version: int64           // FDB read snapshot or successful mutation commit version.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
 
@@ -41,11 +41,6 @@ ExtendedMetadata {
   created: Timestamp             // Creation time; Unix epoch for virtual projections.
   mime_type?: string
   xattrs: map<string, bytes>
-}
-
-ReadView {
-  store_version: int64           // Monotonically increasing store snapshot/commit version.
-  auth_version: int64            // Monotonically increasing authorization-state version.
 }
 
 ErrorDetails {
@@ -115,7 +110,8 @@ it even when file contents are unchanged. Grant changes never advance `attr_vers
 grants on the object or its ancestors change the reported mode. Comparing `attr_version` requires a
 fresh authorization check; matching versions alone never grant access or confirm that grant-dependent
 attributes are unchanged.
-Fetching optional metadata or returning a newer `ReadView` does not itself change `attr_version`.
+Fetching optional metadata or returning a newer `store_version` does not itself change
+`attr_version`.
 The version fields themselves are excluded from attribute-change detection, avoiding recursive
 version bumps. Content mutations advance `attr_version` whenever they change size or timestamps.
 
@@ -138,29 +134,11 @@ described above. Virtual `shared` has no stored timestamps; its `attr_version` a
 `content_version` stay fixed at 1, regardless of grants or topology changes. `Validate(shared)` always
 returns `CHANGED`. No version comparison replaces authorization or validates cached visibility.
 
-**Both `ReadView.store_version` and `ReadView.auth_version` are monotonically increasing within a
-tenant.** Each is a nonnegative `int64`: as its respective state advances, its version increases
-and never resets or wraps. Repeated observations of the same snapshot may return the same version;
-versions may have gaps and are not timestamps or counts of operations. Compare each field only with
-the same field for the same tenant.
-
-Monotonicity describes the ordering of states, not response arrival order. Responses can arrive out
-of order, and different authorization replicas can serve different versions within the allowed
-freshness bound.
-
-For reads, `store_version` identifies the store snapshot supplying the response. For mutations, it
-identifies the successful commit. `Attr.view` carries both versions with an individual object's
-attributes. `auth_version` identifies the permission and topology state used to authorize the
-operation, whether served from the RAM tree or the store fallback. The two fields do not promise a
-common snapshot, and a mutation response does not imply the RAM tree has applied that mutation yet.
-Neither field replaces `attr_version` or `content_version` for detecting changes to an object's
-attributes or contents.
-
-Authorization versions must use one tenant-wide ordering across server instances, restarts, tree
-rebuilds, and store fallback. A process-local counter that resets on restart, or unrelated counters
-for RAM and fallback, cannot implement this contract. The same authorization snapshot must retain
-its version whichever instance or authorization path serves it; equal versions identify the same
-authorization state.
+`Attr.store_version` is a nonnegative FDB `int64` version: the read snapshot for reads, or the
+successful commit for mutations. Authorization and attributes are read in the same transaction.
+Versions order store states within a tenant, may repeat or have gaps, and are not timestamps;
+responses can arrive out of order. This field does not replace `attr_version` or `content_version`
+for detecting object changes.
 
 ## Authorization and common limits
 
@@ -479,8 +457,7 @@ AttrResult {
 ```
 
 Results correspond to inputs by position, including repeated inputs. Each successful result
-identifies the object in `object.id` and carries its read view in `object.view`; the batch has no
-separate view.
+identifies the object in `object.id` and the shared FDB snapshot in `object.store_version`.
 An individual missing or inaccessible object does not prevent results for the other IDs. With
 `include_metadata=true`, each successful result populates `object.metadata` from the same FDB snapshot
 as its attributes. Virtual projections return synthetic metadata with MIME type `inode/directory`,
@@ -519,8 +496,8 @@ AttrBatch {
 
 Each target is resolved independently. A missing or inaccessible child produces `NOT_FOUND` in its
 result without preventing other results. For each real parent, the caller must have access to that
-directory. Results use the same attribute/error shape, per-object read views, metadata option, and
-4 MiB response budget as `Stat`.
+directory. Results use the same attribute/error shape, per-object store versions, metadata option,
+and 4 MiB response budget as `Stat`.
 
 ### List
 
@@ -560,7 +537,7 @@ Clients refresh cached pages through `List`. For real directories and virtual `r
 change visibility without changing the version. Refresh through `List` to obtain current visibility. An
 unchanged directory version also does not validate child attributes embedded in an old page; those
 require separate checks or a refetch. Each fetched page includes current child attributes sharing
-the same `Attr.view` for that request; the page has no separate view. Pages are independently
+the same `Attr.store_version` for that request. Pages are independently
 refreshed; traversal across pages does not promise a single snapshot, and validation does not
 retroactively make independently fetched pages coherent. The same refresh behavior applies to real
 directories and virtual projections. There is no separate listing token or version precondition on
@@ -598,7 +575,7 @@ ReadData {
 
 Reads stop at EOF and may return fewer bytes than requested. An offset at or beyond EOF returns
 empty data; a directory fails with `IS_DIRECTORY`. Returned bytes and attributes reflect the read's
-current snapshot, identified by `object.view`.
+current snapshot, identified by `object.store_version`.
 
 ### ReadFiles
 
@@ -630,7 +607,7 @@ FileResult {
 Each input has exactly one result, in input order. Files larger than 1 MiB or that cannot fit in
 the 4 MiB encoded reply budget receive individual `CAPACITY` errors without being downloaded. The
 reply budget accounts for every result, including errors. Attributes and contents share one FDB
-snapshot. All returned attributes carry the same `object.view`; the batch has no separate view.
+snapshot. All returned attributes carry the same `object.store_version`.
 
 ### Validate
 
@@ -660,7 +637,7 @@ rejects the request with `INVALID_INPUT`.
 ```text
 ValidationBatch {
   results: ValidationResult[]    // One result per check, in the same order.
-  view: ReadView
+  store_version: int64
 }
 
 ValidationResult {
@@ -761,10 +738,8 @@ attributes and listing pages. Attribute and content versions follow the shared r
 advance atomically with their corresponding changes.
 
 Every attribute returned in `mutation.object` or `mutation.related` across the batch carries the
-same `Attr.view`: `store_version` is the batch's commit version, and `auth_version` is the
-authorization-state version used by the committed attempt. For an attempt with no stored changes,
-`store_version` is the snapshot version checked by that attempt. A successful mutation returning no
-attributes carries no view.
+same `Attr.store_version`: the batch's commit version, or the transaction's read version when no
+stored changes were made. A successful mutation returning no attributes carries no store version.
 
 Accepted work continues after disconnection, so a lost response does not prove a mutation failed.
 The request has no idempotency key; callers must not blindly replay operations with uncertain outcomes.
@@ -871,7 +846,7 @@ RemoveOperation {
 ```
 
 **Successful result:** `mutation` is present, with no `object` attributes. Its `related` field
-includes the parent's final attributes, including `view`, unless that parent is also removed later
+includes the parent's final attributes and `store_version`, unless that parent is also removed later
 in the batch. Nonempty directories fail with `NOT_EMPTY`; recursive deletion requires explicitly
 removing descendants first.
 
@@ -944,7 +919,7 @@ SearchAttr {
 
 Each hit carries simplified attributes in `object`, using the same name, size, timestamp, and
 metadata semantics as `Attr`. Extended metadata is optional. Neither search results nor individual
-hits expose a `ReadView`: the search index's state is independent of the store's read snapshot.
+hits expose a `store_version`: the search index's state is independent of the store's read snapshot.
 Search attributes also omit mode and attribute/content versions and cannot validate cached
 attributes or permissions. Use `Stat` to fetch full attributes and versions.
 
@@ -980,3 +955,9 @@ Clients handle any failure using the gRPC status when details are absent. Indivi
 always carry `ErrorDetails`. Stable protocol codes are `INTERNAL`,
 `INVALID_INPUT`, `NOT_FOUND`, `FORBIDDEN`, `UNAUTHENTICATED`, `ALREADY_EXISTS`, `NOT_DIRECTORY`,
 `IS_DIRECTORY`, `NOT_EMPTY`, `CAPACITY`, `UNAVAILABLE`, `UNSUPPORTED`, and `NAME_TOO_LONG`.
+
+## Future work
+
+If search uses a full in-memory tree index instead of fan-out writes for indexed parents and grants,
+we may add `auth_version` to identify that index's authorization snapshot separately from
+`store_version`. See [storage future work](STORAGE.md#full-in-memory-tree-index).

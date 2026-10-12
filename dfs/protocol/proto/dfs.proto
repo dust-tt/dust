@@ -133,7 +133,8 @@ message Attr {
   required uint64 attr_version = 9;
   // Real directories and virtual root track topology changes, not grants. Shared stays fixed at 1.
   required uint64 content_version = 10;
-  required ReadView view = 11;
+  // The FDB read snapshot or successful mutation commit version.
+  required int64 store_version = 11;
   optional ExtendedMetadata metadata = 12;
 }
 
@@ -145,11 +146,6 @@ message ExtendedMetadata {
   required uint64 created = 1;
   optional string mime_type = 3;
   map<string, bytes> xattrs = 4;
-}
-
-message ReadView {
-  required int64 store_version = 1;
-  required int64 auth_version = 2;
 }
 
 // Exactly one rule is required. Rules inherit from root to object; a deeper ALLOW can restore bits.
@@ -368,7 +364,7 @@ message VersionCheck {
 
 message ValidationBatch {
   repeated ValidationResult results = 1;
-  required ReadView view = 2;
+  required int64 store_version = 2;
 }
 
 enum ValidationOutcome {
@@ -522,8 +518,8 @@ message SearchXattr {
 }
 
 // @cc [owner:spolu,label:api] dfs-search-read-view
-// Search responses MUST NOT expose ReadView, including on individual hits. Index-backed results
-// do not represent a store read snapshot.
+// Search responses MUST NOT expose store_version, including on individual hits. Index-backed
+// results do not represent a store read snapshot.
 
 // @cc [owner:spolu,label:api;performance] dfs-search-result-limits
 // Results MUST fit within 1 MiB of encoded protobuf and contain no more than the requested limit

@@ -3,7 +3,7 @@
 FoundationDB stores tenants, sessions, objects, directory entries, contents, and grants.
 [API.md](API.md) defines observable behavior. Session authentication uses a bounded cache backed by
 FDB; object authorization reads tree structure and grants from FDB. Search and a full in-memory
-authorization index are future work (depending on approach chosen for search).
+tree index are future work (depending on approach chosen for search).
 
 ## Key layout
 
@@ -120,8 +120,8 @@ IDs and content keys and require no descendant path rewrites. Virtual `root` and
 projections; the real tenant root is an ordinary stored object. Virtual `root` returns its real ID and
 versions; `shared` has no stored record and keeps both versions fixed at 1.
 
-Effective `mode` and `ReadView` are computed per response. Directory execute/traverse derives from
-read permission. File size, versions, and affected blocks commit together. Missing blocks read as
+Effective `mode` and `store_version` are computed per response. Directory execute/traverse derives
+from read permission. File size, versions, and affected blocks commit together. Missing blocks read as
 zeroes within the logical size; truncation discards trailing data so extension cannot restore it.
 
 ### Directory state and versions
@@ -201,10 +201,18 @@ changes. Workers publish conditionally and clear only a matching token, preservi
 and failed work. Hits require bounded existence, freshness, scope, and permission checks. FDB can
 provide these without a RAM tree; indexed ACLs are never authoritative. Results use `SearchAttr`.
 
-### Full in-memory authorization index
+One option is to index parents and grants in Elasticsearch, fanning out parent or grant changes to
+affected descendants. A full in-memory tree index is an alternative to that write fan-out.
 
-We may never build this. A complete tenant tree with compact parent slots and explicit grants could
-accelerate ancestry walks, at the cost of memory, bootstrap, freshness, and recovery machinery.
+### Full in-memory tree index
+
+We may never build this if we choose fan-out search indexing. A complete tenant tree with compact
+parent slots and explicit grants could accelerate ancestry walks, at the cost of memory, bootstrap,
+freshness, and recovery machinery.
+
+An `auth_version` could identify its parent/grant snapshot separately from `store_version`. It would
+need one tenant-wide ordering across instances, restarts, rebuilds, and FDB fallback; equal versions
+must identify the same authorization state. It would not imply a common snapshot with store data.
 
 | Key | Value | Rationale |
 | --- | --- | --- |

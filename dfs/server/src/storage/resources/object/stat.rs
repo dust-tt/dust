@@ -1,6 +1,6 @@
 use dfs_protocol::{
     ObjectId, ObjectRef,
-    rpc::{Attr, ObjectKind, ReadView},
+    rpc::{Attr, ObjectKind},
 };
 use foundationdb::{FdbBindingError, Transaction};
 use futures::future::try_join_all;
@@ -23,7 +23,8 @@ impl ObjectResource {
      * MUST preserve input order and duplicates, returning NotFound for missing objects and
      * NotAuthorized for unreadable real objects as per-object errors. FDB failures MUST propagate
      * through the outer result so the caller's transaction can retry.
-     * Both view versions MUST equal that transaction's read version. Metadata MUST remain unloaded.
+     * Returned store_version MUST equal the transaction's read version.
+     * Metadata MUST remain unloaded.
      */
     /**
      * @cc [owner:spolu,label:backend] object-stat-references
@@ -148,10 +149,7 @@ impl ObjectResource {
             ctime: None,
             attr_version: INITIAL_VERSION,
             content_version: INITIAL_VERSION,
-            view: ReadView {
-                store_version: version,
-                auth_version: version,
-            },
+            store_version: version,
             metadata: None,
         }
     }
@@ -168,10 +166,7 @@ impl ObjectResource {
             ctime: self.ctime_ms,
             attr_version: self.attr_version,
             content_version: self.content_version,
-            view: ReadView {
-                store_version: version,
-                auth_version: version,
-            },
+            store_version: version,
             metadata: None,
         }
     }
