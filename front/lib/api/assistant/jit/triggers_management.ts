@@ -6,12 +6,11 @@ import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_r
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 
 /**
- * Triggers management for the Dust default agent, and for a user's onboarding
- * conversation on any agent.
+ * Get the triggers_management MCP server for onboarding conversations.
+ * Only available if this is the user's onboarding conversation.
  */
 export async function getTriggersManagementServer(
   auth: Authenticator,
@@ -19,16 +18,7 @@ export async function getTriggersManagementServer(
   conversation: ConversationWithoutContentType,
   autoInternalViews: Map<AutoInternalMCPServerNameType, MCPServerViewResource>
 ): Promise<ServerSideMCPServerConfigurationType | null> {
-  // Schedules are user-specific, so there is nothing to manage without a user.
-  if (!auth.user()) {
-    return null;
-  }
-
-  const isDustDefaultAgent = agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST;
-  if (
-    !isDustDefaultAgent &&
-    !(await isUserOnboardingConversation(auth, conversation.sId))
-  ) {
+  if (!(await isUserOnboardingConversation(auth, conversation.sId))) {
     return null;
   }
 

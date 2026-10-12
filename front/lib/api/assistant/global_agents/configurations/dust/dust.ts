@@ -181,11 +181,6 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 - Erase memories that become irrelevant or that users ask you to forget
 </memory_hygiene>
 </memory_guidelines>`,
-
-  schedules: `<schedule_guidelines>
-You can create, list, and disable schedules that run you on a recurring basis.
-Use these tools only when the user asks to automate, schedule, or repeat a task. A schedule runs you.
-</schedule_guidelines>`,
 };
 
 /**
@@ -243,18 +238,15 @@ Toolsets remain valuable for **write operations** (posting a Slack message, crea
 function buildInstructions({
   hasDeepDive,
   hasAgentMemory,
-  hasSchedules,
 }: {
   hasDeepDive: boolean;
   hasAgentMemory: boolean;
-  hasSchedules: boolean;
 }): string {
   const parts: string[] = [
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
-    hasSchedules && INSTRUCTION_SECTIONS.schedules,
   ].filter((part): part is string => typeof part === "string");
 
   return parts.join("\n\n");
@@ -348,7 +340,6 @@ function _getDustLikeGlobalAgent(
   const instructions = buildInstructions({
     hasDeepDive,
     hasAgentMemory,
-    hasSchedules: agentId === GLOBAL_AGENTS_SID.DUST,
   });
 
   const dustAgent = {

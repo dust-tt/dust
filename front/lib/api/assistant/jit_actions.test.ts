@@ -557,6 +557,45 @@ describe("getJITServers", () => {
       expect(viewNames).toContain("pod_manager");
     });
 
+    it("auto-enables schedules for the dust default agent", async () => {
+      await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: {
+          ...agentConfig,
+          sId: GLOBAL_AGENTS_SID.DUST,
+        },
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "schedules", {
+        enabled: false,
+        system: true,
+        equipped: false,
+      });
+
+      const schedules = buckets.systemSkills.find((s) => s.sId === "schedules");
+      expect(schedules).toBeDefined();
+      const viewNames = schedules?.mcpServerConfigurations.map((c) => {
+        const json = c.view.toJSON();
+        return json.name ?? json.server.name;
+      });
+      expect(viewNames).toContain("triggers_management");
+    });
+
+    it("does not auto-enable schedules for other agents", async () => {
+      const buckets = await SkillResource.listForAgentLoop(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+      });
+
+      expectSkillBuckets(buckets, "schedules", {
+        enabled: false,
+        system: false,
+        equipped: false,
+      });
+    });
+
     it("auto-equips but does not auto-enable projects outside a project", async () => {
       const buckets = await SkillResource.listForAgentLoop(auth, {
         agentConfiguration: agentConfig,
@@ -900,24 +939,6 @@ describe("getJITServers", () => {
       );
 
       expect(triggersManagementServer).toBeUndefined();
-    });
-
-    it("should include triggers_management server for the dust default agent", async () => {
-      const jitServers = await getJITServers(auth, {
-        agentConfiguration: {
-          ...agentConfig,
-          sId: GLOBAL_AGENTS_SID.DUST,
-        },
-        conversation,
-        attachments: [],
-      });
-
-      const triggersManagementServer = jitServers.find(
-        (server) => server.name === "triggers_management"
-      );
-
-      expect(triggersManagementServer).toBeDefined();
-      expect(triggersManagementServer?.description).toContain("recurring");
     });
   });
 
