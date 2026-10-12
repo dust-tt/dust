@@ -158,37 +158,29 @@ create dfs://spolu%40dust.tt--<user-folder-id>/conversations/conv-<conversationS
 ## Virtual references
 
 The API's virtual `root` and `shared` references are out of scope for now. URIs only name real
-object IDs, and clients do not use these references. If a use case appears, we will specify how
-they map to URIs.
+object IDs, and clients do not use these references. The sandbox FUSE mount does not use them
+either: its root is synthesized by the FUSE client (see [Sandbox paths](#sandbox-paths)). If a use
+case appears, we will specify how they map to URIs.
 
 ## Sandbox paths
 
-Agents run code in sandboxes that mount dfs through FUSE. Code and shells only understand absolute
-paths, such as `cat /conversation/data.csv` or `python script.py > /pod/out.md`. A sandbox therefore
-maps mount points to anchor IDs when it starts:
+Agents run code in sandboxes where dfs is mounted through FUSE. Each sandbox has a single FUSE
+mount, with one session, whose root lists symlinks to the folders the sandbox works in:
 
 ```text
-sandbox for conversation C, in pod P:
-  /conversation → <C's folder id>
-  /pod          → <P's folder id>
+/mnt/dfs/
+  conversation -> conv-<conversationSId>--<conversation-folder-id>
+  pod          -> pod-<podSId>--<pod-folder-id>
 ```
 
-- The mapping is runtime configuration, not stored data. It is built from the IDs front already
-  stores, each time a sandbox starts.
-- It is local to one sandbox. `/conversation/out.csv` points to a different object in another
-  conversation's sandbox, so sandbox paths MUST NOT be persisted or passed outside the sandbox as
-  references.
-- A sandbox path translates directly into a URI: `/pod/out.md` becomes
-  `dfs://<P's folder id>/out.md`. When front needs to keep a file produced in a sandbox, it resolves
-  that URI once and stores the resulting object ID.
-- Mounting an anchor grants no access. The sandbox's session grants still apply to every object
-  under each mount point.
+- Front builds the symlinks from the IDs it stores. The FUSE client resolves a
+  `<name>--<object-id>` target like a URI anchor, then walks the rest of the path from it.
+- The session's grants are the only access restriction; the symlinks are for navigation.
+- Sandbox paths MUST NOT be persisted. A resolved path is directly a URI:
+  `/mnt/dfs/conv-<conversationSId>--<id>/out.csv` is `dfs://conv-<conversationSId>--<id>/out.csv`.
+  Front resolves it with its own session and stores the resulting object ID.
 
-When a sandbox starts, it receives a session key and a list of `{mountPath, objectId}` pairs built
-by front. It creates one FUSE mount per pair, each rooted at that object ID: the mount resolves
-every path under `mountPath` from its anchor, exactly like a URI with a path. This needs no
-synthetic root and no server change. The mount point names (`/conversation`, `/pod`, ...) are still
-to be decided. (This implementation may be open to change as write it).
+The mount path, symlink names and implementation details are still to be decided.
 
 ## Open questions
 
