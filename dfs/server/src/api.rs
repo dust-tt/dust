@@ -1,13 +1,14 @@
 use std::collections::HashMap;
 
 use dfs_protocol::{
+    ObjectRef,
     error::status,
     rpc::{
-        ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
-        ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
-        OperationBatch, ReadData, ReadFilesRequest, ReadRequest, RevokeSessionRequest,
-        SearchRequest, SearchResults, Session, StatRequest, Tenant, UpdateGrantsRequest,
-        ValidateRequest, ValidationBatch, dfs_server::Dfs,
+        ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
+        EntryPage, ErrorCode, ErrorDetails, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
+        LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
+        RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
+        UpdateGrantsRequest, ValidateRequest, ValidationBatch, dfs_server::Dfs,
     },
 };
 use tokio::sync::RwLock;
@@ -27,6 +28,8 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
+
+const STAT_MAX_OBJECTS: usize = 256;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -191,9 +194,73 @@ impl Dfs for API {
         Ok(Response::new(Empty {}))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] stat-batch-results
+     * Stat MUST accept 1-256 valid references and preserve their order and duplicates. Missing and
+     * unreadable real objects MUST return per-result NOT_FOUND without dropping other results.
+     * Each result MUST contain exactly one of object or error.
+     * Until implemented, metadata requests MUST fail with UNSUPPORTED and virtual references MUST
+     * return per-result UNSUPPORTED.
+     */
     async fn stat(&self, request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let StatRequest {
+            object_ids,
+            include_metadata,
+        } = request.into_inner();
+        if object_ids.is_empty() || object_ids.len() > STAT_MAX_OBJECTS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        for reference in &object_ids {
+            reference
+                .validate()
+                .map_err(|_| status(ErrorCode::InvalidInput))?;
+        }
+        if include_metadata.unwrap_or(false) {
+            return Err(status(ErrorCode::Unsupported));
+        }
+        let ids: Vec<_> = object_ids
+            .iter()
+            .filter_map(|reference| match reference {
+                ObjectRef::Object(id) => Some(*id),
+                _ => None,
+            })
+            .collect();
+        let attributes = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let ids = &ids;
+            async move { ObjectResource::stat(&tx, session, ids).await }
+        })
+        .await?;
+        let mut attributes = attributes.into_iter();
+        let results = object_ids
+            .into_iter()
+            .map(|reference| {
+                let result = match reference {
+                    ObjectRef::Object(_) => attributes
+                        .next()
+                        .ok_or_else(|| status(ErrorCode::Internal))?
+                        .map_err(ErrorDetails::from),
+                    ObjectRef::Root | ObjectRef::Shared => Err(ErrorDetails {
+                        code: ErrorCode::Unsupported.into(),
+                    }),
+                    ObjectRef::Invalid => Err(ErrorDetails {
+                        code: ErrorCode::InvalidInput.into(),
+                    }),
+                };
+                Ok(match result {
+                    Ok(object) => AttrResult {
+                        object: Some(object),
+                        error: None,
+                    },
+                    Err(error) => AttrResult {
+                        object: None,
+                        error: Some(error),
+                    },
+                })
+            })
+            .collect::<Result<_, Status>>()?;
+        Ok(Response::new(AttrBatch { results }))
     }
 
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {

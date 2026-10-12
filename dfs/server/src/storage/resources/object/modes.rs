@@ -107,11 +107,14 @@ impl ObjectResource {
             pending.extend(next);
         }
 
-        let modes_by_object: HashMap<_, _> = stream::iter(objects.values())
+        let reads: Vec<_> = objects
+            .values()
             .map(|object| async move {
                 let mode = object.object_mode(tx, session).await?;
                 Ok::<_, storage::Error<Error>>((object.object_id, mode))
             })
+            .collect();
+        let modes_by_object: HashMap<_, _> = stream::iter(reads)
             .buffer_unordered(CONCURRENT_READS)
             .try_collect()
             .await?;

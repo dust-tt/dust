@@ -1,4 +1,7 @@
-use dfs_protocol::{error::status, rpc::ErrorCode};
+use dfs_protocol::{
+    error::status,
+    rpc::{ErrorCode, ErrorDetails},
+};
 use tonic::Status;
 
 use crate::storage::{
@@ -17,7 +20,8 @@ use crate::storage::{
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
 
-impl From<object::Error> for Status {
+// Share the mapping between RPC statuses and individual batch errors.
+impl From<object::Error> for ErrorCode {
     fn from(error: object::Error) -> Self {
         match error {
             object::Error::InvalidXattrName
@@ -27,17 +31,33 @@ impl From<object::Error> for Status {
             | object::Error::TooManyGrants
             | object::Error::DuplicateGrant
             | object::Error::InvalidGrantLimit
-            | object::Error::InvalidGrantCursor => status(ErrorCode::InvalidInput),
-            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            object::Error::NotFound => status(ErrorCode::NotFound),
+            | object::Error::InvalidGrantCursor => ErrorCode::InvalidInput,
+            object::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            // Ordinary reads conceal inaccessible objects just like missing objects.
+            object::Error::NotFound | object::Error::NotAuthorized => ErrorCode::NotFound,
+            object::Error::UnsupportedKind => ErrorCode::Unsupported,
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
             | object::Error::InvalidStoredGrant
             | object::Error::InvalidAncestry => {
                 tracing::error!(%error, "object operation failed");
-                status(ErrorCode::Internal)
+                ErrorCode::Internal
             }
         }
+    }
+}
+
+impl From<object::Error> for ErrorDetails {
+    fn from(error: object::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<object::Error> for Status {
+    fn from(error: object::Error) -> Self {
+        status(error.into())
     }
 }
 

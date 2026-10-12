@@ -26,6 +26,7 @@ fn resources() -> Result<()> {
         object::tree_hints_follow_moves_and_recheck_grants().await?;
         object::session_modes_isolate_tenants_and_reject_invalid_ancestry().await?;
         object::permission_reads_conflict_with_changes_and_retry().await?;
+        object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::authentication_and_refresh_require_active_matching_state().await?;
