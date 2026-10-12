@@ -140,7 +140,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
     "contentful": "^11.9.0",
-    "convertapi": "^1.15.0",
     "cron-parser": "^5.5.0",
     "cronstrue": "^3.2.0",
     "csv-parse": "^6.1.0",
