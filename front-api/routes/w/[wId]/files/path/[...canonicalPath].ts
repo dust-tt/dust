@@ -1,3 +1,4 @@
+import { SessionWriteError } from "@app/lib/api/collab/session_write";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
@@ -29,11 +30,7 @@ import {
   isFolderExtractError,
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
-import {
-  isLiveFileContentWriteError,
-  type LiveFileContentWriteError,
-  writeFileContentThroughLiveSession,
-} from "@app/lib/api/files/live_file_content";
+import { writeFileContentThroughLiveSession } from "@app/lib/api/files/live_file_content";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -612,7 +609,7 @@ function mapMarkdownCheckError(
 }
 
 function mapLiveWriteError(
-  error: LiveFileContentWriteError
+  error: SessionWriteError
 ): APIErrorWithContentfulStatusCode {
   const { code } = error;
   switch (code) {
@@ -775,7 +772,7 @@ app.put(
     if (live.isErr()) {
       return apiError(
         ctx,
-        isLiveFileContentWriteError(live.error)
+        live.error instanceof SessionWriteError
           ? mapLiveWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );
@@ -783,7 +780,7 @@ app.put(
     if (live.value.kind === "written") {
       await dispatchCommentMentions(auth, {
         scopedPath: canonicalPath,
-        newMessages: live.value.newMessages,
+        newMessages: live.value.value,
       });
       return new Response(null, { status: 200 });
     }

@@ -1641,7 +1641,11 @@ describe("PUT of a Markdown file held by a live session", () => {
     const response = await put(workspace, `${path}/`, "# New\n");
 
     expect(response.status).toBe(200);
-    expect(fetchLiveSource).toHaveBeenCalledWith(expect.anything(), path);
+    expect(fetchLiveSource).toHaveBeenCalledWith(
+      expect.anything(),
+      path,
+      undefined
+    );
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
