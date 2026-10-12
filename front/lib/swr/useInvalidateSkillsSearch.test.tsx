@@ -1,10 +1,10 @@
-import { useInvalidateSkills } from "@app/lib/swr/skill_configurations";
+import { useInvalidateSkillsSearch } from "@app/lib/swr/skill_configurations";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { PropsWithChildren } from "react";
 import useSWR, { SWRConfig } from "swr";
 import { describe, expect, it, vi } from "vitest";
 
-describe("useInvalidateSkills", () => {
+describe("useInvalidateSkillsSearch", () => {
   it("refreshes search pages only in the requested workspace", async () => {
     const fetcher = vi.fn().mockResolvedValue("initial");
     const skillsUrl = "/api/w/workspace-a/skills";
@@ -16,7 +16,7 @@ describe("useInvalidateSkills", () => {
     );
     const { result } = renderHook(
       () => ({
-        invalidate: useInvalidateSkills({ workspaceId: "workspace-a" }),
+        invalidate: useInvalidateSkillsSearch({ workspaceId: "workspace-a" }),
         search: useSWR(
           [`${skillsUrl}/search`, { query: "", offset: 0 }],
           fetcher

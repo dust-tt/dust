@@ -1,7 +1,7 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import {
-  useInvalidateSkills,
+  useInvalidateSkillsSearch,
   useSkill,
 } from "@app/lib/swr/skill_configurations";
 import {
@@ -47,7 +47,9 @@ export function RedactedSkillMessage({
     skillId: skill.sId,
     disabled: true, // We only use the hook to mutate the cache
   });
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
   const [isJoiningSpaces, setIsJoiningSpaces] = useState(false);
   const confirm = useContext(ConfirmContext);
 
@@ -102,7 +104,7 @@ export function RedactedSkillMessage({
         { concurrency: 4 }
       );
       void mutateSkill();
-      void invalidateSkills();
+      void invalidateSkillsSearch();
     } finally {
       setIsJoiningSpaces(false);
     }

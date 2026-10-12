@@ -179,7 +179,6 @@ export function useSearchSkills({
   debounceMs?: number;
 }) {
   const { fetcherWithBody } = useFetcher();
-  const { mutate: globalMutate } = useSWRConfig();
   const truncatedSearchTerm = searchTerm.slice(
     0,
     SEARCH_SKILLS_QUERY_MAX_LENGTH
@@ -231,12 +230,6 @@ export function useSearchSkills({
     }
   );
 
-  // Search filters and offsets are in the body, so refresh every search key for this workspace.
-  const mutateRegardlessOfQueryParams = useCallback(
-    () => globalMutate((key) => Array.isArray(key) && key[0] === url),
-    [globalMutate, url]
-  );
-
   return {
     skills:
       (disabled ? undefined : data?.skills) ?? emptyArray<SkillListItemType>(),
@@ -248,7 +241,6 @@ export function useSearchSkills({
     isSkillsError: !!error,
     isSkillsLoading: !disabled && (isDebouncing || isLoading),
     mutate,
-    mutateRegardlessOfQueryParams,
   };
 }
 
@@ -346,11 +338,15 @@ export function useSearchSkillsInfinite({
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
+ * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-searches
  * Revalidate array-keyed skill searches for the given workspace, regardless of
  * search body.
  */
-export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
+export function useInvalidateSkillsSearch({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
   const { mutate } = useSWRConfig();
   const searchUrl = `/api/w/${workspaceId}/skills/search`;
 
@@ -369,7 +365,9 @@ export function useUpdateSkillsAvailability({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doUpdateAvailability = async (
     skillIds: string[],
@@ -382,7 +380,7 @@ export function useUpdateSkillsAvailability({
         body: JSON.stringify({ skillIds, availability }),
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       const skillCount = skillIds.length;
       sendNotification({
@@ -449,7 +447,9 @@ export function useArchiveSkill({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doArchive = async () => {
     if (!skill.sId) {
@@ -461,7 +461,7 @@ export function useArchiveSkill({
         method: "DELETE",
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -492,7 +492,9 @@ export function useBatchArchiveSkills({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doArchive = async () => {
     if (skillIds.length === 0) {
@@ -507,7 +509,7 @@ export function useBatchArchiveSkills({
         body: JSON.stringify({ skillIds }),
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -539,7 +541,9 @@ export function useUpdateSkillFavorite({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
   const router = useAppRouter();
 
   const updateSkillFavorite = useCallback(
@@ -552,7 +556,7 @@ export function useUpdateSkillFavorite({
           method: isFavorite ? "POST" : "DELETE",
         });
 
-        void invalidateSkills();
+        void invalidateSkillsSearch();
 
         if (isFavorite) {
           sendNotification({
@@ -587,7 +591,7 @@ export function useUpdateSkillFavorite({
     },
     [
       fetcher,
-      invalidateSkills,
+      invalidateSkillsSearch,
       owner.sId,
       router,
       sendNotification,
@@ -656,7 +660,9 @@ export function useRestoreSkill({
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const doRestore = async () => {
     if (!skill.sId) {
@@ -668,7 +674,7 @@ export function useRestoreSkill({
         method: "POST",
       });
 
-      void invalidateSkills();
+      void invalidateSkillsSearch();
 
       sendNotification({
         type: "success",
@@ -862,7 +868,9 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
   const sendApiErrorNotification = useSendApiErrorNotification();
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
-  const invalidateSkills = useInvalidateSkills({ workspaceId: owner.sId });
+  const invalidateSkillsSearch = useInvalidateSkillsSearch({
+    workspaceId: owner.sId,
+  });
 
   const [isImporting, setIsImporting] = useState(false);
 
@@ -899,7 +907,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
           }
         }
 
-        void invalidateSkills();
+        void invalidateSkillsSearch();
 
         return notifyImportResult(data, sendNotification, t);
       } catch (err) {
@@ -913,7 +921,7 @@ export function useImportSkills({ owner }: { owner: LightWorkspaceType }) {
       owner.sId,
       sendNotification,
       fetcher,
-      invalidateSkills,
+      invalidateSkillsSearch,
       sendApiErrorNotification,
       t,
     ]
