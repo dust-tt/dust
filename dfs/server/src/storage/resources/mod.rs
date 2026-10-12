@@ -1,6 +1,7 @@
 pub mod directory;
 pub mod keys;
 pub mod object;
+mod page;
 pub mod session;
 pub mod tenant;
 

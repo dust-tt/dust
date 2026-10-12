@@ -3,13 +3,12 @@ use std::{
     fmt,
 };
 
-use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use dfs_protocol::{
     ObjectId,
     rpc::{AllowGrant, DenyGrant, Grant, GrantPage, GrantUpdate, ObjectKind, grant},
 };
 use foundationdb::{
-    FdbBindingError, KeySelector, RangeOption, Transaction,
+    FdbBindingError, Transaction,
     tuple::{Subspace, pack, unpack},
 };
 
@@ -17,7 +16,7 @@ use crate::{
     clock,
     storage::{
         self,
-        resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, tenant::TenantResource},
+        resources::{SUBJECT_MAX_BYTES, keys::tenant_subspace, page, tenant::TenantResource},
     },
 };
 
@@ -367,43 +366,22 @@ impl ObjectResource {
         if limit == 0 || limit > GRANTS_MAX_COUNT {
             return Err(Error::InvalidGrantLimit.into());
         }
-        let mut range = RangeOption {
-            limit: Some(limit + 1),
-            ..RangeOption::from(self.grant_subspace().range())
-        };
-        if let Some(after) = after {
-            let key = URL_SAFE_NO_PAD
-                .decode(after)
-                .map_err(|_| Error::InvalidGrantCursor)?;
-            self.grant_from_key(&key)
-                .map_err(|_| Error::InvalidGrantCursor)?;
-            range.begin = KeySelector::first_greater_than(key);
-        }
-        let mut grants = Vec::new();
-        let mut last_key = None;
-        let mut next_range = Some(range);
-        let mut iteration = 1;
-        while let Some(range) = next_range {
-            let batch = tx
-                .get_range(&range, iteration, false)
-                .await
-                .map_err(FdbBindingError::from)?;
-            next_range = range.next_range(&batch);
-            for entry in &batch {
-                if grants.len() == limit {
-                    return Ok(GrantPage {
-                        grants,
-                        next_after: last_key,
-                    });
-                }
-                grants.push(self.grant_from_key(entry.key())?);
-                last_key = Some(URL_SAFE_NO_PAD.encode(entry.key()));
-            }
-            iteration += 1;
-        }
+        let subspace = self.grant_subspace();
+        let after = after
+            .map(|after| {
+                page::decode_cursor(&subspace, after, |key| self.grant_from_key(key).is_ok())
+                    .ok_or(Error::InvalidGrantCursor)
+            })
+            .transpose()?;
+        let page = page::read_page(tx, &subspace, after, limit).await?;
+        let grants = page
+            .entries
+            .iter()
+            .map(|(key, _)| self.grant_from_key(key))
+            .collect::<Result<_, _>>()?;
         Ok(GrantPage {
             grants,
-            next_after: None,
+            next_after: page.next_after,
         })
     }
 
