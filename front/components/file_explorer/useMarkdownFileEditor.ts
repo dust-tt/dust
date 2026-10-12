@@ -6,6 +6,7 @@ import { useRichMarkdownEditor } from "@app/components/file_explorer/useRichMark
 import { useSendNotification } from "@app/hooks/useNotification";
 import { formatError } from "@app/lib/api_error_messages";
 import { useCollabUrl, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { showDebugTools } from "@app/lib/development";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
@@ -58,8 +59,8 @@ export interface MarkdownFileEditor {
 
 /**
  * @cc [owner:tdraier,label:product] source-mode-toggle
- * `toggleSourceMode` MUST enter source mode only from an open rich editor on a file the plain editor
- * can edit, and MUST NOT switch while the open editor reports an unsaved or saving edit; a live
+ * `toggleSourceMode` MUST enter source mode only when debug tools are shown (`showDebugTools`), from
+ * an open rich editor on a file the plain editor can edit, and MUST NOT switch while the open editor reports an unsaved or saving edit; a live
  * editor reports none. In source mode the rich editor MUST NOT be open and the plain editor MUST
  * stay in edit mode on the file's text as fetched, unprocessed, savable even while a live session
  * holds the file. Without a live session, leaving it MUST reopen the rich editor on the file as
@@ -92,7 +93,7 @@ export function useMarkdownFileEditor({
   const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { mutate } = useSWRConfig();
-  const { hasFeature } = useFeatureFlags();
+  const { featureFlags, hasFeature } = useFeatureFlags();
   const collabUrl = useCollabUrl();
 
   const editablePath =
@@ -240,7 +241,10 @@ export function useMarkdownFileEditor({
     if (isDirty || isAnySaving) {
       return;
     }
-    if (!isSourceMode && (!rich.richEditor || !canEdit)) {
+    if (
+      !isSourceMode &&
+      (!showDebugTools(featureFlags) || !rich.richEditor || !canEdit)
+    ) {
       return;
     }
     setIsSourceMode(!isSourceMode);
