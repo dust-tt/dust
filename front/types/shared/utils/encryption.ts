@@ -23,8 +23,7 @@ function getSecretForUseCase(useCase: EncryptionUseCase): string {
     case "mcp_server_credentials":
       return config.getMCPServerCredentialsSecret();
     case "relocation_transport":
-      // Reuses the one secret every cell already shares, labelled so the derived key differs from
-      // the bearer token it is used as elsewhere.
+      // Labelled so the derived key differs from the bearer token it is used as elsewhere.
       return `relocation_transport:${cellConfig.getLookupApiSecret()}`;
     default:
       assertNever(useCase);

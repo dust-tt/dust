@@ -30,9 +30,7 @@ import { QueryTypes } from "sequelize";
  */
 /**
  * @cc [owner:avervaet,label:security] staged-secrets-always-cleaned-up
- * The staged secrets object MUST be deleted once the workflow is done with it, whether
- * re-encryption succeeded or failed for good, so transport-encrypted secrets never linger in
- * the relocation bucket.
+ * The staged object MUST be deleted once re-encryption ends, whether it succeeded or failed.
  */
 export async function reencryptSecretsInDestinationRegion({
   dataPath,
