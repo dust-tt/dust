@@ -558,7 +558,9 @@ export const InputBarAttachmentsPicker = ({
             size={buttonSize}
             disabled={disabled || isLoading || isAnyToolFileUploading}
             isLoading={isLoading || isAnyToolFileUploading}
-            label={buttonLabel}
+            {...(buttonLabel !== undefined
+              ? { label: buttonLabel }
+              : { "aria-label": t`Attach` })}
             onClick={() => setIsOpen(!isOpen)}
           />
         </DropdownMenuTrigger>

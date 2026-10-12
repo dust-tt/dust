@@ -22,10 +22,9 @@ export function CsvDownloadButton({
     <Button
       icon={label ? undefined : Download01}
       iconRight={label ? Download01 : undefined}
-      label={label}
+      {...(label ? { label } : { tooltip: t`Download CSV` })}
       variant="outline"
       size={size ?? (label ? "sm" : "xs")}
-      tooltip={label ? undefined : t`Download CSV`}
       onClick={handleDownload}
       disabled={disabled}
       isLoading={isDownloading}

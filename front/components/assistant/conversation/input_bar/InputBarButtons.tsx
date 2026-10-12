@@ -224,11 +224,14 @@ function InputBarAgentButton({
             variant="ghost-secondary"
             size={buttonSize}
             icon={Robot}
-            label={
-              !isWidthConstrained
-                ? t({ message: "Agent", context: "button label" })
-                : undefined
-            }
+            {...(isWidthConstrained
+              ? {
+                  "aria-label": t({
+                    message: "Agent",
+                    context: "button label",
+                  }),
+                }
+              : { label: t({ message: "Agent", context: "button label" }) })}
             isRounded
             className={cn(
               INPUT_BAR_PILL_SURFACE_CLASSNAME,
