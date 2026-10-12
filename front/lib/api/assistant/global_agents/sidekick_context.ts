@@ -1,5 +1,6 @@
 import { AGENT_SIDEKICK_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_sidekick_context/metadata";
 import { AGENT_TEMPLATES_SERVER_NAME } from "@app/lib/api/actions/servers/agent_templates/metadata";
+import { getAgentLocale } from "@app/lib/api/assistant/agent_locale";
 import type {
   AvailableSkill,
   AvailableTool,
@@ -11,6 +12,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getSelectableModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { GlobalAgentContext } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -19,6 +21,8 @@ import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { parseFavoritePlatforms } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
+import type { SupportedLocale } from "@app/types/locale";
+import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 interface SidekickUserMetadata {
   jobType: JobType | null;
@@ -30,6 +34,8 @@ export interface SidekickContext {
     context: MCPServerViewResource;
     templates: MCPServerViewResource | null;
   } | null;
+  // The locale of the static first reply to a new agent. Only resolved for that turn.
+  newAgentFirstReplyLocale?: SupportedLocale | null;
 }
 
 /**
@@ -251,13 +257,24 @@ export async function buildWorkspaceContext(
 
 export async function buildSidekickContext(
   auth: Authenticator,
-  agentsIdsToFetch: string[]
+  agentsIdsToFetch: string[],
+  {
+    globalAgentContext,
+    featureFlags,
+  }: {
+    globalAgentContext?: GlobalAgentContext;
+    featureFlags: WhitelistableFeature[];
+  }
 ): Promise<SidekickContext | null> {
   if (!agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.SIDEKICK)) {
     return null;
   }
 
-  const [context, templates] = await Promise.all([
+  const isNewAgentFirstTurn =
+    globalAgentContext?.userMessageRank === 0 &&
+    globalAgentContext.sidekickIsNewAgentFromScratch === true;
+
+  const [context, templates, newAgentFirstReplyLocale] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
       AGENT_SIDEKICK_CONTEXT_TOOL_NAME
@@ -266,8 +283,10 @@ export async function buildSidekickContext(
       auth,
       AGENT_TEMPLATES_SERVER_NAME
     ),
+    isNewAgentFirstTurn ? getAgentLocale(auth, featureFlags) : null,
   ]);
   return {
     mcpServerViews: context ? { context, templates } : null,
+    newAgentFirstReplyLocale,
   };
 }

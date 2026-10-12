@@ -459,6 +459,61 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(userSection?.content).toContain("Engineering");
   });
 
+  it("should state a non-English user language last in the prompt, outside cached tiers", () => {
+    const baseParams = {
+      userMessage: userMessage1,
+      modelInfo: agentLoopModel(agentConfig1, modelConfig),
+      hasAvailableActions: true,
+      systemSkills: [],
+      enabledSkills: [],
+      equippedSkills: [],
+    };
+    const dustConfig = withoutModel({
+      ...agentConfig1,
+      sId: GLOBAL_AGENTS_SID.DUST,
+      scope: "global" as const,
+    });
+
+    const structured = normalizePrompt(
+      constructPromptMultiActions(authenticator1, {
+        ...baseParams,
+        agentConfiguration: dustConfig,
+        locale: "fr-FR",
+      })
+    );
+    expect(structured.instructions[0].content).not.toContain("# LANGUE");
+    expect(structured.sharedContext.map((s) => s.content).join()).not.toContain(
+      "# LANGUE"
+    );
+    expect(structured.ephemeralContext.at(-1)?.content).toContain(
+      "La langue de l'utilisateur est le français."
+    );
+
+    const flat = normalizePrompt(
+      constructPromptMultiActions(authenticator1, {
+        ...baseParams,
+        agentConfiguration: withoutModel(agentConfig1),
+        locale: "fr-FR",
+      })
+    );
+    expect(flat.sharedContext.at(-1)?.content).toContain(
+      "La langue de l'utilisateur est le français."
+    );
+
+    for (const locale of ["en-US", "en-GB", null] as const) {
+      const { sharedContext } = normalizePrompt(
+        constructPromptMultiActions(authenticator1, {
+          ...baseParams,
+          agentConfiguration: withoutModel(agentConfig1),
+          locale,
+        })
+      );
+      expect(sharedContext.map((s) => s.content).join()).not.toContain(
+        "# LANGUE"
+      );
+    }
+  });
+
   it("should include branch context in flat prompts using user-facing branch wording", () => {
     const params = {
       userMessage: userMessage1,

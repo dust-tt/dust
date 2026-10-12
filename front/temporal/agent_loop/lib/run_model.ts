@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { getAgentLocale } from "@app/lib/api/assistant/agent_locale";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   constructPromptMultiActions,
@@ -586,6 +587,8 @@ export async function runModel(
     conversation,
   });
 
+  const locale = await getAgentLocale(auth, featureFlags);
+
   const isNewFileExplorer = conversation.metadata?.useFileSystem === true;
   const hasSandboxTools = isComputerFeatureEnabled(featureFlags);
   const disableFormattingPrompt = featureFlags.includes(
@@ -609,6 +612,7 @@ export async function runModel(
     hasSandboxTools,
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
+    locale,
   });
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
