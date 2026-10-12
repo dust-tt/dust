@@ -47,6 +47,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { destroyAgentMCPServerConfigurationsForViews } from "@app/lib/resources/agent_mcp_server_views";
+import type { InternalMCPServerCredentialsState } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -135,6 +136,12 @@ export type PostMCPServerViewResponseBody = {
  */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
 
+// The internal server of a `configuration` view carries its credentials.
+type InternalMCPServerCredentialsForMode<TMode extends MCPServerViewFetchMode> =
+  TMode extends "configuration"
+    ? "withCredentials"
+    : InternalMCPServerCredentialsState;
+
 const CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES = [
   "authorization",
   "cachedTools",
@@ -168,7 +175,9 @@ export class MCPServerViewResource<
   private internalToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteToolsMetadata?: Attributes<RemoteMCPServerToolMetadataModel>[];
   private remoteMCPServer?: RemoteMCPServerResource;
-  private internalMCPServer?: InternalMCPServerInMemoryResource;
+  private internalMCPServer?: InternalMCPServerInMemoryResource<
+    InternalMCPServerCredentialsForMode<TMode>
+  >;
   declare private readonly fetchModeType: TMode;
   private fetchMode?: MCPServerViewFetchMode;
 
@@ -251,10 +260,11 @@ export class MCPServerViewResource<
           "Internal server not found, it might have been deleted from the list of internal servers."
         );
       }
-      await InternalMCPServerInMemoryResource.loadCredentials(auth, [
-        internalServer,
-      ]);
-      resource.internalMCPServer = internalServer;
+      const [internalServerWithCredentials] =
+        await InternalMCPServerInMemoryResource.loadCredentials(auth, [
+          internalServer,
+        ]);
+      resource.internalMCPServer = internalServerWithCredentials;
     }
     // A new view has no tool permissions of its own yet.
     resource.fetchMode = "configuration";
@@ -1597,7 +1607,9 @@ export class MCPServerViewResource<
     return this.remoteMCPServer;
   }
 
-  private getInternalMCPServerResource(): InternalMCPServerInMemoryResource {
+  private getInternalMCPServerResource(): InternalMCPServerInMemoryResource<
+    InternalMCPServerCredentialsForMode<TMode>
+  > {
     if (this.serverType !== "internal") {
       throw new Error("This MCP server view is not an internal server view");
     }
@@ -2184,21 +2196,12 @@ export class MCPServerViewResource<
     }));
   }
 
-  private getInternalMCPServerResourceWithCredentials(
-    this: MCPServerViewResource<"configuration">
-  ): InternalMCPServerInMemoryResource<"withCredentials"> {
-    const server = this.getInternalMCPServerResource();
-    // `loadConfiguration` loads the credentials of the internal server.
-    assert(InternalMCPServerInMemoryResource.hasCredentials(server));
-    return server;
-  }
-
   // Serialization.
   toJSON(this: MCPServerViewResource<"configuration">): MCPServerViewType {
     const server =
       this.serverType === "remote"
         ? this.getRemoteMCPServerResource().toJSON()
-        : this.getInternalMCPServerResourceWithCredentials().toJSON();
+        : this.getInternalMCPServerResource().toJSON();
 
     // Override the server's default authorization scope with the admin-configured
     // restriction if one has been set. This ensures personal connections and

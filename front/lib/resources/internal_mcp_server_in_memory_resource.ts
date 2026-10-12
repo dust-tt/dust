@@ -43,7 +43,6 @@ import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactSecret } from "@app/types/shared/utils/string_utils";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
-import assert from "assert";
 import { Op } from "sequelize";
 
 type InternalMCPServerCredentialType = {
@@ -258,16 +257,18 @@ export class InternalMCPServerInMemoryResource<
     }
 
     const serverMetadata = getInternalMCPServerMetadata(serverName);
-    const created = new this(sid, getAvailabilityOfInternalMCPServerById(sid), {
-      metadata: {
-        ...serverMetadata.serverInfo,
-        tools: serverMetadata.tools,
-      },
-      // A new server has no credentials yet.
-      internalServerCredential: null,
-    });
-    assert(InternalMCPServerInMemoryResource.hasCredentials(created));
-    const server = created;
+    const server = new InternalMCPServerInMemoryResource<"withCredentials">(
+      sid,
+      getAvailabilityOfInternalMCPServerById(sid),
+      {
+        metadata: {
+          ...serverMetadata.serverInfo,
+          tools: serverMetadata.tools,
+        },
+        // A new server has no credentials yet.
+        internalServerCredential: null,
+      }
+    );
 
     await MCPServerViewModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
