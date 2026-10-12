@@ -64,6 +64,16 @@ export default defineConfig({
       include: ["<rootDir>/connectors/src/connectors/slack"],
       exclude: ["**/node_modules/**", "**/*.test.ts"],
     },
+    // The browser extension has a single catalog of its own: see `extension/CONTRACTS`.
+    {
+      path: "<rootDir>/extension/locales/{locale}/messages",
+      include: [
+        "<rootDir>/extension/platforms",
+        "<rootDir>/extension/shared",
+        "<rootDir>/extension/ui",
+      ],
+      exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.test.tsx"],
+    },
   ],
   orderBy: "origin",
   format: formatter({ lineNumbers: false }),

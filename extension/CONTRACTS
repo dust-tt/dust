@@ -8,3 +8,10 @@ Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`) MUST render its w
 `I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, then inside a
 `SparkleLocaleProvider`, so that shared `front` and sparkle components render in the locale that
 `UserLocaleSync` activates, and in `DEFAULT_LOCALE` before it activates one.
+
+@cc [owner:sfriquet,label:architecture] extension-strings-in-own-catalog
+User-visible strings of extension sources MUST be translated with Lingui macros and extracted into
+the single extension catalog of `lingui.config.ts` (`extension/locales/{locale}/messages.po`).
+Code that cannot use `t` of `useLingui` MUST translate them by passing a `msg` descriptor to `i18n._`
+of `@app/lib/i18n/i18n`, never with the global `t` of `@lingui/core/macro`: it binds to the
+`@lingui/core` copy resolved from `extension/`, which is never activated.

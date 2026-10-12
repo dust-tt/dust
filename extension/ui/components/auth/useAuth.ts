@@ -145,7 +145,7 @@ export const useAuthHook = () => {
     if (!newAccessToken) {
       setAuthError(
         new AuthError(
-          "not_authenticated",
+          "expired_oauth_token_error",
           "Session expired. Please sign in again."
         )
       );

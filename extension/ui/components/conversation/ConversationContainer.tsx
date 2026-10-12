@@ -12,6 +12,8 @@ import { Button, cn, Menu01 } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
 import { sendGetSessionInfoMessage } from "@extension/shared/messages";
 import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
+import { msg } from "@lingui/core/macro";
+import { useLingui } from "@lingui/react/macro";
 import { useContext, useEffect, useState } from "react";
 
 interface ConversationContainerProps {
@@ -25,17 +27,17 @@ interface ConversationContainerProps {
 const SUGGESTIONS = {
   formHelper: {
     id: "form_helper",
-    title: "Fill forms with Dust extension",
-    description:
-      "No more copy-pasting. Fill out forms directly from your agents.",
+    title: msg`Fill forms with Dust extension`,
+    description: msg`No more copy-pasting. Fill out forms directly from your agents.`,
   },
   multiTab: {
     id: "multi_tab",
-    title: "Bring any tab into your conversation",
-    description:
-      "Ask an agent to read, summarize, or act on any of your open tabs.",
+    title: msg`Bring any tab into your conversation`,
+    description: msg`Ask an agent to read, summarize, or act on any of your open tabs.`,
   },
 } as const;
+
+type Suggestion = (typeof SUGGESTIONS)[keyof typeof SUGGESTIONS];
 
 export const ConversationContainer = ({
   workspace,
@@ -44,6 +46,7 @@ export const ConversationContainer = ({
   conversationId,
   conversation,
 }: ConversationContainerProps) => {
+  const { t } = useLingui();
   const platform = usePlatform();
   const { currentPanel } = useConversationSidePanelContext();
   useRegisterSidePanelConversation(!!conversation);
@@ -51,14 +54,9 @@ export const ConversationContainer = ({
 
   const clientSideMCPServerIds = useClientSideMCPServerIds();
 
-  const [suggestion, setSuggestion] = useState<
-    | {
-        id: string;
-        title: string;
-        description: string;
-      }
-    | undefined
-  >(undefined);
+  const [suggestion, setSuggestion] = useState<Suggestion | undefined>(
+    undefined
+  );
 
   const handleDismissSuggestion = async (id: string) => {
     const dismissed = await platform.storage.get<string[]>(
@@ -107,7 +105,13 @@ export const ConversationContainer = ({
           subscription={subscription}
           conversationId={conversationId}
           clientSideMCPServerIds={clientSideMCPServerIds}
-          suggestion={suggestion}
+          suggestion={
+            suggestion && {
+              id: suggestion.id,
+              title: t(suggestion.title),
+              description: t(suggestion.description),
+            }
+          }
           onDismissSuggestion={handleDismissSuggestion}
         />
       </div>

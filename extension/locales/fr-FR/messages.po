@@ -1,0 +1,222 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-12 13:44+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: fr-FR\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "Something went wrong"
+msgstr "Une erreur s’est produite"
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "An unexpected error occurred. Please try again."
+msgstr "Une erreur inattendue s’est produite. Réessayez."
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "Try again"
+msgstr "Réessayer"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Fill forms with Dust extension"
+msgstr "Remplissez des formulaires avec l’extension Dust"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "No more copy-pasting. Fill out forms directly from your agents."
+msgstr "Fini les copier-coller. Remplissez vos formulaires directement depuis vos agents."
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Bring any tab into your conversation"
+msgstr "Ajoutez n’importe quel onglet à votre conversation"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Ask an agent to read, summarize, or act on any of your open tabs."
+msgstr "Demandez à un agent de lire, de résumer ou d’agir sur l’un de vos onglets ouverts."
+
+#: extension/ui/components/conversation/ConversationLayout.tsx
+msgid "Go back to Pod homepage"
+msgstr "Revenir à l’accueil du Pod"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Preferences"
+msgstr "Préférences"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Theme"
+msgstr "Thème"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Light"
+msgstr "Clair"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Dark"
+msgstr "Sombre"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "System"
+msgstr "Système"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Account"
+msgstr "Compte"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Sign out"
+msgstr "Se déconnecter"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Save page to Pod"
+msgstr "Enregistrer la page dans le Pod"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Search Pods"
+msgstr "Rechercher des Pods"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Failed to load Pods."
+msgstr "Impossible de charger les Pods."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Adding files to Pods is disabled by your workspace admin."
+msgstr "L’ajout de fichiers aux Pods est désactivé par l’administrateur de votre workspace."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "No Pods found."
+msgstr "Aucun Pod trouvé."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Cancel"
+msgstr "Annuler"
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Cannot get page content"
+msgstr "Impossible de récupérer le contenu de la page"
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "No content found."
+msgstr "Aucun contenu trouvé."
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Something wrong happened."
+msgstr "Une erreur s’est produite."
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Page saved"
+msgstr "Page enregistrée"
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Saved \"{pageTitle}\" to the selected Pod."
+msgstr "« {pageTitle} » a été enregistré dans le Pod sélectionné."
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Saved the page to the selected Pod."
+msgstr "La page a été enregistrée dans le Pod sélectionné."
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Cannot save page"
+msgstr "Impossible d’enregistrer la page"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Get more done, faster, with the power of your agents at your fingertips."
+msgstr "Faites-en plus, plus vite, avec la puissance de vos agents à portée de main."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Please sign up on the web to start using Dust extension."
+msgstr "Inscrivez-vous sur le web pour commencer à utiliser l’extension Dust."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign up"
+msgstr "S’inscrire"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign in"
+msgstr "Se connecter"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgstr "En vous connectant, vous acceptez les <0>conditions d’utilisation</0> et la <1>politique de confidentialité</1> de Dust."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "You are not a member of any workspace."
+msgstr "Vous n’êtes membre d’aucun workspace."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign up on Dust"
+msgstr "S’inscrire sur Dust"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Then"
+msgstr "Puis"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Or"
+msgstr "Ou"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Logout"
+msgstr "Se déconnecter"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt."
+msgstr "Une erreur inattendue s’est produite. Reconnectez-vous. Si le problème persiste, contactez-nous à support@dust.tt."
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Error loading conversation"
+msgstr "Erreur lors du chargement de la conversation"
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Conversation"
+msgstr "Conversation"
+
+#: extension/ui/pages/MainPage.tsx
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Files"
+msgstr "Fichiers"
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Conversation menu"
+msgstr "Menu de la conversation"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Pod not found"
+msgstr "Pod introuvable"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "The Pod you're looking for doesn't exist or you don't have access to it."
+msgstr "Le Pod que vous recherchez n’existe pas ou vous n’y avez pas accès."
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Conversations"
+msgstr "Conversations"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Tasks"
+msgstr "Tâches"
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Almost there!"
+msgstr "Vous y êtes presque !"
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Subscribe to start using Dust agent from anywhere in your browser."
+msgstr "Abonnez-vous pour utiliser les agents Dust partout dans votre navigateur."
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Get started"
+msgstr "Commencer"

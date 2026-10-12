@@ -81,6 +81,11 @@ The browser extension (`extension/`) mounts one in each platform app and compile
 webpack build (`extension/config/webpack_lingui.ts`). Once the user is logged in, it follows their
 locale like the web app (`UserLocaleSync`, mounted by `ExtensionAuthProvider`).
 
+The extension's own strings follow the front rules but go to a single catalog,
+`extension/locales/{locale}/messages.po`. Where `t` of `useLingui()` is not available, translate with
+``i18n._(msg`...`)`` and the `i18n` of `@app/lib/i18n/i18n`, never with the global `t` of
+`@lingui/core/macro` (see `extension/CONTRACTS`).
+
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
 `I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is
 reset to `en-US` after each test. Do not add an `I18nProvider` in tests. To assert a translation,
