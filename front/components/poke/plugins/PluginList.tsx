@@ -7,6 +7,7 @@ import {
 } from "@app/components/poke/shadcn/ui/card";
 import type { PluginListItem } from "@app/lib/api/poke/types";
 import { compareStrings } from "@app/lib/i18n/format";
+import { usePublishCurrentPagePlugins } from "@app/poke/swr/currentPagePlugins";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import { Button, cn, Input, Tooltip } from "@dust-tt/sparkle";
@@ -45,6 +46,8 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [showRuns, setShowRuns] = useState(false);
+
+  usePublishCurrentPagePlugins(plugins, setSelectedPlugin);
 
   const handlePluginSelect = (plugin: PluginListItem) => {
     setSelectedPlugin(plugin);
