@@ -10,7 +10,6 @@ import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_reso
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { SKILL_ICON } from "@app/lib/skill";
 import { CODE_DEFINED_SKILLS_WORKSPACE_ID } from "@app/lib/skill_search/constants";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -162,7 +161,7 @@ export class SkillFactory {
         requestedSpaceIds,
         manuallyRequestedSpaceIds,
         status,
-        icon: SKILL_ICON.name,
+        icon: null,
         availability,
       },
       {
