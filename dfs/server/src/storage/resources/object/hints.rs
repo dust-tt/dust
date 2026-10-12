@@ -17,6 +17,10 @@ mod tests;
 
 type Key = (String, ObjectId);
 
+// TODO(spolu): Hints only avoid sequential parent discovery; each mode check still reads all grants
+// along the ancestry. Explore a dirty index to invalidate cached objects across servers when their
+// grants or parents change, without maintaining a full in-memory tree.
+
 /**
  * @cc [owner:spolu,label:security] tree-hints-are-advisory
  * Hints MUST be tenant-scoped parent links used only to schedule reads. They MUST NOT authorize
