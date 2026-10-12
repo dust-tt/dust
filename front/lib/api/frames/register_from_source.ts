@@ -72,12 +72,6 @@ export async function registerFrameV2FromSourceUsingFileSystem(
     );
   }
 
-  if (!dustFs.isGCSBacked()) {
-    return registrationError(
-      "Frames v2 registration does not yet support the database-backed filesystem."
-    );
-  }
-
   const writeAccess = dustFs.checkWriteAccess(normalizedPath);
   if (writeAccess.isErr()) {
     return new Err(writeAccess.error);
@@ -142,7 +136,6 @@ export async function registerFrameV2FromSourceUsingFileSystem(
           useCase,
           useCaseMetadata,
           mountFilePath,
-          fileSystemNodeId: null,
         },
         { transaction }
       );

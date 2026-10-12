@@ -936,7 +936,6 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     isDustTool: true,
   })
   .withCapability("gcsfuse")
-  .withCapability("dust_filesystem")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(PROXY_ONLY_NETWORK_POLICY)
   .setWorkdir("/home/agent")

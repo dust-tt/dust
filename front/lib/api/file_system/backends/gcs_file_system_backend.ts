@@ -33,10 +33,7 @@ import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-import type {
-  FileSystemBackend,
-  FileSystemNodeIdentity,
-} from "./file_system_backend";
+import type { FileSystemBackend } from "./file_system_backend";
 
 // ---------------------------------------------------------------------------
 // Scoped-path helpers
@@ -397,7 +394,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
+  ): Promise<Result<void, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -421,7 +418,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         );
       }
 
-      return new Ok({ nodeId: null });
+      return new Ok(undefined);
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
@@ -431,12 +428,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async mkdir(
     scopedPath: string
-  ): Promise<
-    Result<
-      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
-      DustFileSystemError
-    >
-  > {
+  ): Promise<Result<{ entry: FileSystemDirectoryEntry }, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -473,7 +465,6 @@ export class GCSFileSystemBackend implements FileSystemBackend {
           sizeBytes: 0,
           lastModifiedMs: Date.now(),
         },
-        nodeId: null,
       });
     } catch (err) {
       return new Err(

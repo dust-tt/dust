@@ -173,7 +173,6 @@ export type LegacyFrameFields = Pick<
   | "contentType"
   | "fileName"
   | "fileSize"
-  | "fileSystemNodeId"
   | "mountFilePath"
   | "status"
   | "useCase"
@@ -862,13 +861,6 @@ export class FileResource extends BaseResource<FileModel> {
       return new Err(fileSystemResult.error);
     }
     const dustFileSystem = fileSystemResult.value;
-    if (!dustFileSystem.isGCSBacked()) {
-      return new Err(
-        new Error(
-          "Frames v2 deletion does not yet support the database-backed filesystem."
-        )
-      );
-    }
     const writeAccess = dustFileSystem.checkWriteAccess(sourceDirectory);
     if (writeAccess.isErr()) {
       return new Err(writeAccess.error);
@@ -1048,7 +1040,6 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
-      fileSystemNodeId: this.fileSystemNodeId,
       mountFilePath: this.mountFilePath,
       status: this.status,
       useCase: this.useCase,
@@ -1060,7 +1051,6 @@ export class FileResource extends BaseResource<FileModel> {
         contentType: frameV2ContentType,
         fileName: FRAME_MANIFEST_FILE,
         fileSize,
-        fileSystemNodeId: null,
         mountFilePath,
         useCase,
         useCaseMetadata,
