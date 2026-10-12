@@ -17,7 +17,11 @@ use crate::{
     auth::KeyHash,
     storage::{
         self, fdb,
-        resources::{object::ObjectResource, session::SessionResource, tenant::TenantResource},
+        resources::{
+            object::{self, ObjectResource},
+            session::SessionResource,
+            tenant::TenantResource,
+        },
     },
 };
 
@@ -48,23 +52,20 @@ impl Dfs for API {
             tenant_id,
             root_grants,
         } = request.into_inner();
-        if !root_grants.is_empty() {
-            return Err(status(ErrorCode::InvalidInput));
-        }
         // Call `new` before the transaction because FDB may retry its body. Keeping the same key
         // and root across attempts lets us recognize our own commit if its outcome was unknown.
         let (tenant, tenant_key) = TenantResource::new(tenant_id)?;
         let root = ObjectResource::new_root(&tenant)?;
         fdb::with_transaction(|tx| {
-            // TODO: Assign root grants in the tenant creation transaction.
             let tenant = &tenant;
             let root = &root;
+            let root_grants = &root_grants;
             async move {
                 // A false result means a retry found our earlier commit. Its root already exists,
                 // so skip creation to preserve it and avoid an AlreadyExists error.
                 let created = tenant.create(&tx).await?;
                 if created {
-                    root.create(&tx).await?;
+                    root.create(&tx, root_grants).await?;
                 }
                 Ok::<_, storage::Error<Status>>(())
             }
@@ -150,16 +151,44 @@ impl Dfs for API {
         &self,
         request: Request<ListGrantsRequest>,
     ) -> Result<Response<GrantPage>, Status> {
-        self.require_tenant(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let tenant = self.require_tenant(&request).await?;
+        let ListGrantsRequest {
+            object_id,
+            after,
+            limit,
+        } = request.into_inner();
+        let page = fdb::with_transaction(|tx| {
+            let tenant = tenant.as_ref();
+            let after = &after;
+            async move {
+                let object = ObjectResource::fetch(&tx, tenant, &object_id)
+                    .await?
+                    .ok_or(object::Error::NotFound)?;
+                object.list_grants(&tx, after.as_deref(), limit).await
+            }
+        })
+        .await?;
+        Ok(Response::new(page))
     }
 
     async fn update_grants(
         &self,
         request: Request<UpdateGrantsRequest>,
     ) -> Result<Response<Empty>, Status> {
-        self.require_tenant(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let tenant = self.require_tenant(&request).await?;
+        let UpdateGrantsRequest { object_id, changes } = request.into_inner();
+        fdb::with_transaction(|tx| {
+            let tenant = tenant.as_ref();
+            let changes = &changes;
+            async move {
+                let object = ObjectResource::fetch(&tx, tenant, &object_id)
+                    .await?
+                    .ok_or(object::Error::NotFound)?;
+                object.update_grants(&tx, changes)
+            }
+        })
+        .await?;
+        Ok(Response::new(Empty {}))
     }
 
     async fn stat(&self, request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {

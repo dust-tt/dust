@@ -26,7 +26,7 @@ The authenticated tenant key or session determines `tenantId`. Object IDs are st
 UUIDv7s. Subjects use their exact UTF-8 strings in keys. Block indices and the session expiry index
 use big-endian `u64` encoding; expiry timestamps are Unix milliseconds. Variable-length components
 need unambiguous boundaries and must preserve ordering where required for pagination. Apart from the
-tenant, session, and root object records below, family tags and value encodings remain proposals.
+tenant, session, object, and grant records below, family tags and value encodings remain proposals.
 
 UUIDv7 tends to cluster newly created objects within each family or reverse grant prefix. Directory
 entries cluster by parent and sort by name; blocks cluster by file and sort by offset. Subtrees are
@@ -41,9 +41,9 @@ concentration need measurement.
 | `dfs-v1-{env}/tenant-key/<keyHash>` | Tenant ID as an FDB tuple string. | Resolves an opaque tenant key before the tenant is known. |
 
 The root is 16 UUIDv7 bytes; `keyHash` is SHA-256 of the bearer key's UTF-8 bytes. Plaintext keys are
-returned at creation and never persisted. Creation atomically writes the record, lookup, and root
-object, checking credential uniqueness. Authentication resolves the lookup and verifies the tenant
-record's matching hash in the same transaction.
+returned at creation and never persisted. Creation atomically writes the record, lookup, root
+object, and initial root grants, checking credential uniqueness. Authentication resolves the lookup
+and verifies the tenant record's matching hash in the same transaction.
 
 Each API instance caches successful authentication by key hash for 30 seconds. Cache hits do not
 extend expiry; failures are not cached. A shared sweep removes expired tenant and session cache
@@ -102,8 +102,7 @@ attr_version, content_version)`, with null for absent parents or timestamps. Kin
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
 Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, an empty name,
 and both versions at 1.
-Retries that find the tenant already created leave its root unchanged. Root grants remain to be
-implemented.
+Retries that find the tenant already created leave its root and grants unchanged.
 
 Object creation validates all xattrs before staging writes and stores them with attributes and base
 metadata in the same transaction. Each xattr name is a separate tuple component. An empty value
@@ -143,11 +142,19 @@ grant values.
 | --- | --- | --- |
 | `dfs-v1-{env}/tenant/<tenantId>/object-grant/<objectId>/ALLOW/<subject>/<mode>` | Attachment marker. | Reads and paginates explicit ALLOW grants by subject, then mode. |
 | `dfs-v1-{env}/tenant/<tenantId>/object-grant/<objectId>/DENY/<mode>` | Attachment marker. | Reads and paginates subjectless DENY grants by mode. |
-| `dfs-v1-{env}/tenant/<tenantId>/grant-object/<subject>/<objectId>/<mode>` | Attachment marker. | Finds ALLOW candidates for `/shared` without scanning all objects. |
+| `dfs-v1-{env}/tenant/<tenantId>/grant-object/ALLOW/<subject>/<objectId>/<mode>` | Attachment marker. | Finds ALLOW candidates for `/shared` without scanning all objects. |
 
 The forward index also serves `ListGrants`: variants sort ALLOW before DENY, subjects in UTF-8 byte
 order, and modes numerically. Subject encoding preserves that order while delimiting subsequent
 components. Forward and reverse entries change atomically and are removed when their object is deleted.
+
+Grant entries use FDB tuples with literal `ALLOW` and `DENY` tags, string subjects, and integer modes;
+marker values are empty bytes. Initial grants are deduplicated by their complete value. Updates
+validate all changes before staging writes, reject duplicates, and preserve unmentioned attachments.
+Both grant RPCs first fetch the object's attributes without metadata in the same transaction, so a
+missing object fails and a concurrent deletion conflicts with updates. Listing reads at most one
+entry beyond the page limit and uses the last returned key, encoded as URL-safe unpadded base64, as
+an exclusive cursor. Cursors are validated against the authenticated tenant and requested object.
 
 Authorization walks the real ancestor chain in one transaction. At each level, DENY removes inherited
 bits, then matching ALLOW adds bits. Only read/write bits exist; a deeper ALLOW can reopen access.

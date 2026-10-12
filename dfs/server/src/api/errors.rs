@@ -20,12 +20,20 @@ use crate::storage::{
 impl From<object::Error> for Status {
     fn from(error: object::Error) -> Self {
         match error {
-            object::Error::InvalidXattrName | object::Error::XattrsTooLarge => {
-                status(ErrorCode::InvalidInput)
-            }
+            object::Error::InvalidXattrName
+            | object::Error::XattrsTooLarge
+            | object::Error::InvalidId
+            | object::Error::InvalidGrant
+            | object::Error::TooManyGrants
+            | object::Error::DuplicateGrant
+            | object::Error::InvalidGrantLimit
+            | object::Error::InvalidGrantCursor => status(ErrorCode::InvalidInput),
             object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            object::Error::TimestampGeneration | object::Error::MissingMetadata => {
-                tracing::error!(%error, "object creation failed");
+            object::Error::NotFound => status(ErrorCode::NotFound),
+            object::Error::TimestampGeneration
+            | object::Error::MissingMetadata
+            | object::Error::InvalidStoredGrant => {
+                tracing::error!(%error, "object operation failed");
                 status(ErrorCode::Internal)
             }
         }

@@ -15,6 +15,13 @@ use dfs_api::storage::{
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, tuple::unpack};
 
+mod grants;
+pub(crate) use grants::{
+    grant_creation_and_update_validation_preserve_state,
+    grant_listing_and_updates_preserve_indexes_and_attributes,
+    grant_pagination_handles_full_pages_and_object_deletion,
+};
+
 type StoredObject = (
     Option<Vec<u8>>,
     String,
@@ -44,7 +51,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         );
         fdb::with_transaction(|tx| {
             let root = &root;
-            async move { root.create(&tx).await }
+            async move { root.create(&tx, &[]).await }
         })
         .await?;
         let after_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis();
@@ -79,6 +86,19 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert_eq!(mtime_ms, atime_ms);
         assert_eq!(ctime_ms, atime_ms);
         assert_eq!(mime_type, None);
+        // Attribute fetches do not need to decode or read the optional metadata.
+        tx.set(&metadata_key, &[0xff]);
+        let fetched = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
+            .await?
+            .context("missing fetched root")?;
+        assert_eq!(fetched.object_id, root.object_id);
+        assert_eq!(fetched.tenant_id, root.tenant_id);
+        assert_eq!(fetched.parent_id, None);
+        assert_eq!(fetched.kind, ObjectKind::Directory);
+        assert_eq!(fetched.attr_version, root.attr_version);
+        assert_eq!(fetched.content_version, root.content_version);
+        assert_eq!(fetched.atime_ms, root.atime_ms);
+        assert!(fetched.metadata.is_none());
         let xattrs =
             subspace.subspace(&("metadata", tenant.root_id.as_bytes().as_slice(), "xattr"));
         assert!(
@@ -117,7 +137,7 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
     root.metadata.as_mut().context("missing metadata")?.xattrs = original_xattrs.clone();
     fdb::with_transaction(|tx| {
         let root = &root;
-        async move { root.create(&tx).await }
+        async move { root.create(&tx, &[]).await }
     })
     .await?;
     let subspace = tenant_subspace(&tenant.tenant_id);
@@ -138,7 +158,7 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
         let staged_key = &staged_key;
         async move {
             tx.set(staged_key, b"must not commit");
-            root.create(&tx).await
+            root.create(&tx, &[]).await
         }
     })
     .await;
@@ -182,7 +202,7 @@ pub(crate) async fn invalid_xattr_names_fail_before_staging_writes() -> Result<(
         let tx = fdb::database()?.create_trx()?;
 
         assert!(matches!(
-            root.create(&tx).await,
+            root.create(&tx, &[]).await,
             Err(storage::Error::Resource(object::Error::InvalidXattrName))
         ));
         let range = RangeOption::from(tenant_subspace(&tenant.tenant_id).range());
@@ -202,7 +222,7 @@ pub(crate) async fn xattr_size_limit_counts_all_names_and_values() -> Result<()>
         ]);
         root.metadata.as_mut().context("missing metadata")?.xattrs = xattrs.clone();
         let tx = fdb::database()?.create_trx()?;
-        let result = root.create(&tx).await;
+        let result = root.create(&tx, &[]).await;
         let subspace = tenant_subspace(&tenant.tenant_id);
 
         if accepted {

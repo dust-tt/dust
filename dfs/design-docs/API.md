@@ -304,6 +304,7 @@ Tenant {
 
 The supplied grants are attached to the root and inherit to future descendants. Identical grant
 values are deduplicated. An existing tenant ID fails with `ALREADY_EXISTS`.
+The tenant, root object, and initial grants are committed together; invalid grants create none of them.
 
 ### CreateSession
 
@@ -411,6 +412,8 @@ GrantPage {
 Inherited grants are excluded. Grants are ordered by variant (ALLOW before DENY), then by subject
 in UTF-8 byte order for ALLOW, then by numeric mode. Pass `next_after` unchanged as the next request's
 `after`; clients must not construct cursors from subject names.
+Cursors are scoped to the tenant and object. Malformed or mismatched cursors fail with `INVALID_INPUT`.
+A missing object, including an object from another tenant, fails with `NOT_FOUND`.
 
 ### UpdateGrants
 
@@ -433,6 +436,7 @@ GrantUpdate {
 
 **Returns:** `Empty {}` on success. Failures follow the [error rules](#errors) and commit no partial
 grant changes. The tenant key provides no session context, so this operation does not return `Attr`.
+A missing object, including an object from another tenant, fails with `NOT_FOUND`.
 
 A grant's identity is its complete value: variant, subject for ALLOW, and mode. A request cannot
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
