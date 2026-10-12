@@ -18,6 +18,7 @@ fn resources() -> Result<()> {
     runtime.block_on(async {
         directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
         directory::child_creation_rejections_leave_storage_unchanged().await?;
+        directory::child_lookup_resolves_names_within_each_directory().await?;
         object::root_creation_persists_isolated_records().await?;
         object::object_creation_retry_succeeds_without_changes().await?;
         object::object_collisions_preserve_records_and_abort_staged_writes().await?;

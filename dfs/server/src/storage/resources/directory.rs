@@ -1,7 +1,10 @@
 use std::{collections::HashMap, fmt};
 
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
-use foundationdb::{FdbBindingError, Transaction, tuple::pack};
+use foundationdb::{
+    FdbBindingError, Transaction,
+    tuple::{pack, unpack},
+};
 
 use crate::{
     clock,
@@ -125,6 +128,25 @@ impl DirectoryResource {
             .map_err(Error::Object)?;
         self.object.save_attributes(tx);
         Ok(object)
+    }
+
+    pub async fn lookup_child(
+        &self,
+        tx: &Transaction,
+        name: &str,
+    ) -> Result<Option<ObjectId>, storage::Error<Error>> {
+        validate_name(name)?;
+        let Some(entry) = tx
+            .get(&self.child_key(name), false)
+            .await
+            .map_err(FdbBindingError::from)?
+        else {
+            return Ok(None);
+        };
+        let child_id: Vec<u8> = unpack(&entry).map_err(FdbBindingError::PackError)?;
+        let child_id = ObjectId::try_from(child_id.as_slice())
+            .map_err(storage::Error::<Error>::InvalidObjectId)?;
+        Ok(Some(child_id))
     }
 
     fn child_key(&self, name: &str) -> Vec<u8> {
