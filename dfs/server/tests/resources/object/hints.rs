@@ -2,6 +2,30 @@ use super::*;
 use anyhow::{Context, Result};
 
 #[tokio::test]
+async fn hint_reads_refresh_recency_before_eviction() {
+    let hints = TreeHints::new(2);
+    let older = ObjectId::new_v7();
+    let newer = ObjectId::new_v7();
+    let incoming = ObjectId::new_v7();
+    let parent = ObjectId::new_v7();
+    hints
+        .remember("tenant", [(older, Some(parent)), (newer, Some(parent))], [])
+        .await;
+
+    hints.predict("tenant", &[older]).await;
+    hints.remember("tenant", [(incoming, None)], []).await;
+
+    assert_eq!(
+        hints.predict("tenant", &[older]).await,
+        HashSet::from([older, parent])
+    );
+    assert_eq!(
+        hints.predict("tenant", &[newer]).await,
+        HashSet::from([newer])
+    );
+}
+
+#[tokio::test]
 async fn hints_evict_by_recency_and_isolate_tenants() -> Result<()> {
     let hints = TreeHints::new(2);
     let frequent = ObjectId::new_v7();
