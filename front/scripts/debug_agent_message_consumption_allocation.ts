@@ -134,53 +134,14 @@ function ratio(numerator: number, denominator: number): number | "n/a" {
     : "n/a";
 }
 
-function formatCell(value: Cell): string {
-  if (value === null || value === undefined) {
-    return "-";
-  }
-  if (typeof value === "boolean") {
-    return value ? "yes" : "no";
-  }
-  return String(value);
-}
-
 function printTable(title: string, rows: Array<Record<string, Cell>>): void {
   console.log(`\n${title}`);
-  if (rows.length === 0) {
-    console.log("(none)");
-    return;
-  }
-  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))];
-  const widths = columns.map((column) =>
-    Math.max(
-      column.length,
-      ...rows.map((row) => formatCell(row[column]).length)
-    )
-  );
-  const formatLine = (cells: Cell[]) =>
-    cells
-      .map((cell, index) =>
-        typeof cell === "number"
-          ? formatCell(cell).padStart(widths[index])
-          : formatCell(cell).padEnd(widths[index])
-      )
-      .join("  ")
-      .trimEnd();
-  console.log(formatLine(columns));
-  console.log(formatLine(widths.map((width) => "-".repeat(width))));
-  for (const row of rows) {
-    console.log(formatLine(columns.map((column) => row[column])));
-  }
+  console.table(rows);
 }
 
 function printRecord(title: string, record: Record<string, Cell>): void {
-  printTable(
-    title,
-    Object.entries(record).map(([key, value]) => ({
-      key,
-      value: formatCell(value),
-    }))
-  );
+  console.log(`\n${title}`);
+  console.table(record);
 }
 
 function timeOf(date: Date): string {
