@@ -20,11 +20,12 @@ export function CostManagementRows({
     <>
       <FieldRow
         label="Credit checkpoint"
-        hint="Conversations keep going past it without asking for confirmation."
+        hint={
+          ignoreCreditThreshold
+            ? "Conversations keep going past the workspace credit alert without asking."
+            : "Conversations pause at the workspace credit alert and ask before continuing."
+        }
       >
-        <span className="text-sm text-muted-foreground">
-          {ignoreCreditThreshold ? "Ignore the alert" : "Ask before continuing"}
-        </span>
         <Switch
           aria-label="Credit checkpoint"
           checked={ignoreCreditThreshold}

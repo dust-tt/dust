@@ -1381,7 +1381,7 @@ export function CapabilitiesSection({
     <>
       <Button
         size="sm"
-        variant="primary"
+        variant="outline"
         icon={ShapesPlus}
         label="Add capabilities"
         onClick={() => openSheet({ id: "add" })}
@@ -1401,7 +1401,7 @@ export function CapabilitiesSection({
       title="Capabilities and knowledge"
       collapsible
       defaultOpen={hasItems}
-      summary={hasItems ? capabilitiesSummary : "Nothing added"}
+      summary={hasItems ? capabilitiesSummary : "None"}
       description={
         <>
           Skills, tools and knowledge your agent can use.{" "}
@@ -1414,7 +1414,7 @@ export function CapabilitiesSection({
           </Hoverable>
         </>
       }
-      headerActions={actionButtons}
+      headerActions={hasItems ? actionButtons : undefined}
     >
       {hasItems ? (
         <CardGrid>
@@ -1468,20 +1468,10 @@ export function CapabilitiesSection({
         <EmptyCTA
           className="gap-3 p-6"
           styleProps={EMPTY_STATE_STYLE}
-          message="Nothing added yet. Add tools, skills or knowledge to give your agent abilities."
+          message="Nothing added yet. Tools, skills and knowledge give your agent abilities."
           action={
-            <div
-              aria-hidden
-              className="pointer-events-none flex select-none flex-wrap items-center justify-center gap-2"
-            >
-              {CAPABILITY_LOGO_STRIP.map((Logo, index) => (
-                <div
-                  key={index}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-background shadow-sm"
-                >
-                  <Icon visual={Logo} size="sm" />
-                </div>
-              ))}
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {actionButtons}
             </div>
           }
         />

@@ -295,9 +295,6 @@ export function useIsScrolledAway(
   return isScrolledAway;
 }
 
-/** Height of the floating panel header the sticky bar pins under (Bar size md). */
-export const PANEL_HEADER_HEIGHT = 56;
-
 /**
  * The condensed identity row, pinned to the top of the scroll area while the
  * full header is out of view: small avatar, name and description (click to
@@ -324,7 +321,7 @@ export function IdentityStickyBar({
   onReveal: () => void;
 }) {
   return (
-    <div className="sticky top-14 z-10 h-0">
+    <div className="sticky top-0 z-10 h-0">
       <div className="absolute inset-x-0 top-0 border-b border-border bg-background transition-[opacity,translate] duration-150 ease-out starting:-translate-y-2 starting:opacity-0 motion-reduce:transition-none">
         {/* Aligned to the panel header above it (its mx-4 plus the Bar's own
             px-4 put the close button at 32px), not the form column. */}

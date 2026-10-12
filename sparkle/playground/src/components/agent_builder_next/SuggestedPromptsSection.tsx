@@ -1,5 +1,7 @@
 import { Button, Plus, XClose } from "@dust-tt/sparkle";
 
+import { useState } from "react";
+
 import { InlineText } from "./InlineText";
 import { BuilderSection } from "./SectionContainer";
 
@@ -18,12 +20,20 @@ export function SuggestedPromptsSection({
   onChange: (prompts: string[]) => void;
 }) {
   const canAdd = prompts.length < MAX_SUGGESTED_PROMPTS;
+  // The last prompt removed, restorable until the next change.
+  const [lastRemoved, setLastRemoved] = useState<{
+    index: number;
+    value: string;
+  } | null>(null);
   const hasContent = prompts.some((prompt) => prompt.trim().length > 0);
 
   const updatePrompt = (index: number, value: string) => {
     onChange(prompts.map((prompt, i) => (i === index ? value : prompt)));
   };
   const removePrompt = (index: number) => {
+    if (prompts[index].trim()) {
+      setLastRemoved({ index, value: prompts[index] });
+    }
     const next = prompts.filter((_, i) => i !== index);
     onChange(next.length === 0 ? [""] : next);
   };
@@ -52,14 +62,14 @@ export function SuggestedPromptsSection({
                 placeholder="e.g. Draft release notes for last week’s merges"
                 onChange={(value) => updatePrompt(index, value)}
                 ariaLabel={`Suggested prompt ${index + 1}`}
-                className="text-base text-foreground"
+                className="text-sm text-foreground"
                 placeholderClassName="text-muted-foreground"
                 singleLine={false}
               />
             </div>
             {prompts.length > 1 ? (
               <Button
-                size="xs"
+                size="sm"
                 variant="ghost"
                 icon={XClose}
                 tooltip="Remove prompt"
@@ -70,20 +80,43 @@ export function SuggestedPromptsSection({
           </li>
         ))}
       </ol>
-      <div className="-ml-2 flex items-center">
+      <div className="-ml-2 flex items-center gap-2">
         {canAdd ? (
           <Button
-            size="xs"
+            size="sm"
             variant="ghost"
             icon={Plus}
             label="Add prompt"
-            onClick={() => onChange([...prompts, ""])}
+            onClick={() => {
+              setLastRemoved(null);
+              onChange([...prompts, ""]);
+            }}
           />
         ) : (
           <span className="text-xs text-muted-foreground">
             All {MAX_SUGGESTED_PROMPTS} prompts added.
           </span>
         )}
+        {lastRemoved ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            label="Undo remove"
+            onClick={() => {
+              const next = [...prompts];
+              if (next.length === 1 && !next[0].trim()) {
+                next.splice(0, 1);
+              }
+              next.splice(
+                Math.min(lastRemoved.index, next.length),
+                0,
+                lastRemoved.value
+              );
+              onChange(next.slice(0, MAX_SUGGESTED_PROMPTS));
+              setLastRemoved(null);
+            }}
+          />
+        ) : null}
       </div>
     </BuilderSection>
   );

@@ -2,6 +2,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  ContentMessage,
   Icon,
   ListGroup,
   ListItem,
@@ -186,6 +187,8 @@ export function DataAccessSection({
 }) {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [spaceToRemove, setSpaceToRemove] = useState<BuilderSpace | null>(null);
+  // The last chip removed, so a slip can be undone until the next change.
+  const [lastRemoved, setLastRemoved] = useState<BuilderSpace | null>(null);
 
   const selected = useMemo(
     () =>
@@ -196,8 +199,14 @@ export function DataAccessSection({
   );
 
   const removeSpace = (id: string) => {
+    setLastRemoved(mockBuilderSpaces.find((space) => space.id === id) ?? null);
     onChange(selectedSpaceIds.filter((candidate) => candidate !== id));
   };
+  const restricted = selected.filter((space) => space.isRestricted);
+  const audience =
+    restricted.length === 0
+      ? "All workspace members"
+      : `Members of ${restricted.map((space) => space.name).join(", ")} only`;
 
   const dependents = spaceToRemove ? getDependents(spaceToRemove.id) : [];
   const hasKnowledgeReference = dependents.some((name) =>
@@ -212,14 +221,19 @@ export function DataAccessSection({
       summary={
         selected.length === 0
           ? "None"
-          : selected.length === 1
-            ? selected[0].name
-            : `${selected[0].name} +${selected.length - 1}`
+          : `${
+              selected.length === 1
+                ? selected[0].name
+                : `${selected[0].name} +${selected.length - 1}`
+            } · ${restricted.length === 0 ? "all members" : "members only"}`
       }
-      description="Spaces and Pods your agent can read. Only their members can use it."
+      description="Spaces and Pods your agent can read."
     >
       <FieldGroup>
-        <FieldRow label="Spaces and Pods">
+        <FieldRow
+          label="Spaces and Pods"
+          hint="Pods are team workspaces. Spaces hold shared data."
+        >
           {selected.map((space) => (
             <Chip
               key={space.id}
@@ -240,20 +254,51 @@ export function DataAccessSection({
               }
             />
           ))}
+          {lastRemoved ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              label={`Undo remove ${lastRemoved.name}`}
+              onClick={() => {
+                onChange([...selectedSpaceIds, lastRemoved.id]);
+                setLastRemoved(null);
+              }}
+            />
+          ) : null}
           <Button
-            size="xs"
+            size="sm"
             variant="outline"
             icon={Planet}
             label="Manage"
             onClick={() => setIsSheetOpen(true)}
           />
         </FieldRow>
+        <FieldRow
+          label="Who can use the agent"
+          hint={
+            restricted.length === 0
+              ? "No restricted space selected."
+              : "A restricted space limits the agent to its members."
+          }
+        >
+          <span className="text-sm text-foreground">{audience}</span>
+        </FieldRow>
       </FieldGroup>
+      {restricted.length > 0 ? (
+        <ContentMessage variant="warning" size="sm" icon={Lock01}>
+          Only members of {restricted.map((space) => space.name).join(", ")} can
+          use this agent. Remove the restricted space to open it to the whole
+          workspace.
+        </ContentMessage>
+      ) : null}
       <SpaceSelectionSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         selectedIds={selectedSpaceIds}
-        onSave={onChange}
+        onSave={(ids) => {
+          setLastRemoved(null);
+          onChange(ids);
+        }}
       />
       <ConfirmDialog
         open={spaceToRemove !== null}

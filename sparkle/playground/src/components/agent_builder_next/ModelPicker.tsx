@@ -16,22 +16,22 @@ import {
   Lock01,
   Popover,
   RefreshCw02,
-  SliderSteps,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   DEFAULT_TIER_ID,
   getModelById,
-  MODEL_MAKER_LOGOS,
   MODEL_TIERS,
   type ModelMaker,
   type ModelTierId,
   mockModels,
+  REASONING_EFFORT_LABELS,
   REASONING_EFFORTS,
   type ReasoningEffort,
   TIER_LOCK_TOOLTIPS,
 } from "./data";
+import { ValueMenu } from "./ValueMenu";
 
 export type ModelSelection = {
   /** A tier, or a specific model picked under "More models". */
@@ -51,9 +51,9 @@ export const DEFAULT_MODEL_SELECTION: ModelSelection = {
 const MAKERS: ModelMaker[] = ["Anthropic", "OpenAI", "Google", "Mistral"];
 
 /**
- * Reasoning effort for a specifically chosen model, as a step slider sized to
- * sit on the right of a FieldRow. Tiers pick their own effort, so this only
- * renders when the selection is not a tier.
+ * Reasoning effort for a specifically chosen model: only the levels that
+ * model offers, each named for what it buys. Tiers pick their own effort, so
+ * this only renders when the selection is not a tier.
  */
 export function ReasoningEffortPicker({
   modelId,
@@ -65,55 +65,26 @@ export function ReasoningEffortPicker({
   onChange: (effort: ReasoningEffort) => void;
 }) {
   const model = getModelById(modelId);
-  const value = REASONING_EFFORTS.indexOf(effort);
-  const lockedSteps = useMemo(
-    () =>
-      REASONING_EFFORTS.map((step, index) =>
-        model.availableEfforts.includes(step) ? -1 : index
-      ).filter((index) => index >= 0),
-    [model]
-  );
-  const stepTooltips = useMemo(
-    () =>
-      REASONING_EFFORTS.map((step) =>
-        model.availableEfforts.includes(step)
-          ? step
-          : `${step} is not available for ${model.displayName}`
-      ),
-    [model]
-  );
-
+  const options = REASONING_EFFORTS.filter((step) =>
+    model.availableEfforts.includes(step)
+  ).map((step) => ({
+    id: step,
+    label: REASONING_EFFORT_LABELS[step].label,
+    description: REASONING_EFFORT_LABELS[step].description,
+  }));
   return (
-    <div className="flex w-72 flex-col gap-1.5">
-      <SliderSteps
-        stepCount={REASONING_EFFORTS.length}
-        value={value < 0 ? 0 : value}
-        onChange={(index) => onChange(REASONING_EFFORTS[index])}
-        lockedSteps={lockedSteps}
-        disabled={model.availableEfforts.length <= 1}
-        ariaLabel="Reasoning effort"
-        stepTooltips={stepTooltips}
-      />
-      <div className="flex justify-between text-xs text-muted-foreground">
-        {REASONING_EFFORTS.map((step) => {
-          const isAvailable = model.availableEfforts.includes(step);
-          return (
-            <span
-              key={step}
-              className={[
-                "flex items-center gap-0.5",
-                step === effort ? "font-medium text-foreground" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {!isAvailable ? <Icon visual={Lock01} size="xs" /> : null}
-              {step}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+    <ValueMenu
+      value={effort}
+      options={options}
+      onSelect={onChange}
+      ariaLabel="Reasoning effort"
+      disabled={options.length <= 1}
+      tooltip={
+        options.length <= 1
+          ? `${model.displayName} has a single reasoning effort`
+          : undefined
+      }
+    />
   );
 }
 
@@ -128,9 +99,8 @@ export function ModelPicker({
   const selectedModel = getModelById(selection.modelId);
   const selectedTier = MODEL_TIERS.find((tier) => tier.id === selection.tierId);
   const label = selectedTier ? selectedTier.label : selectedModel.displayName;
-  const triggerIcon = selectedTier
-    ? MODEL_MAKER_LOGOS[getModelById(selectedTier.modelId).maker]
-    : selectedModel.logo;
+  // A tier is a policy, not a vendor, so only a specific model shows its logo.
+  const triggerIcon = selectedTier ? undefined : selectedModel.logo;
 
   const pickTier = (tierId: ModelTierId) => {
     const tier = MODEL_TIERS.find((candidate) => candidate.id === tierId)!;
@@ -154,8 +124,8 @@ export function ModelPicker({
       <DropdownMenuTrigger asChild>
         <Button
           size="sm"
-          variant="outline"
-          className="px-2"
+          variant="ghost-secondary"
+          isSelect
           icon={triggerIcon}
           label={label}
           tooltip={
@@ -166,7 +136,11 @@ export function ModelPicker({
           aria-label={`Model picker: ${label}`}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="top" className="w-84">
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        className="w-84 max-h-[var(--radix-dropdown-menu-content-available-height)] overflow-y-auto"
+      >
         <div className="flex items-center justify-between pr-2">
           <DropdownMenuLabel label="Model tier" />
           <Popover
@@ -202,7 +176,7 @@ export function ModelPicker({
           return (
             <DropdownMenuItem
               key={tier.id}
-              label={tier.label}
+              label={isDefault ? `${tier.label} (Default)` : tier.label}
               icon={tier.locked ? Lock01 : undefined}
               tooltip={
                 tier.locked ? TIER_LOCK_TOOLTIPS[tier.locked] : undefined

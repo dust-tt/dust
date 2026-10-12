@@ -1018,14 +1018,27 @@ export const TIME_SLOTS: string[] = Array.from({ length: 96 }, (_, index) => {
   return `${hours}:${minutes}`;
 });
 
-export const SCHEDULE_TIMEZONE = "CET";
+export const TIMEZONES: { id: string; label: string; short: string }[] = [
+  { id: "Europe/Paris", label: "Paris", short: "CET" },
+  { id: "Europe/London", label: "London", short: "GMT" },
+  { id: "America/New_York", label: "New York", short: "ET" },
+  { id: "America/Los_Angeles", label: "Los Angeles", short: "PT" },
+  { id: "Asia/Tokyo", label: "Tokyo", short: "JST" },
+  { id: "UTC", label: "UTC", short: "UTC" },
+];
+
+export function getTimezoneShort(id: string): string {
+  return TIMEZONES.find((zone) => zone.id === id)?.short ?? id;
+}
 
 export type ScheduleConfig = {
   repeat: ScheduleRepeat;
   intervalValue: number;
   intervalUnit: "minutes" | "hours";
-  /** "HH:MM" in SCHEDULE_TIMEZONE. */
+  /** "HH:MM" in `timezone`. */
   time: string;
+  /** An id from TIMEZONES. */
+  timezone: string;
   days: Weekday[];
   customUnit: "day" | "week" | "month";
   customEvery: number;
@@ -1039,6 +1052,7 @@ export const DEFAULT_SCHEDULE: ScheduleConfig = {
   intervalValue: 30,
   intervalUnit: "minutes",
   time: "09:00",
+  timezone: "Europe/Paris",
   days: ["mon", "tue", "wed", "thu", "fri"],
   customUnit: "week",
   customEvery: 1,
@@ -1065,7 +1079,7 @@ export function formatWeekdays(days: Weekday[]): string {
 
 /** One line for the section summary and the "next run" hint. */
 export function describeScheduleConfig(schedule: ScheduleConfig): string {
-  const at = `at ${schedule.time} ${SCHEDULE_TIMEZONE}`;
+  const at = `at ${schedule.time} ${getTimezoneShort(schedule.timezone)}`;
   switch (schedule.repeat) {
     case "never":
       return "Never";
@@ -1099,3 +1113,29 @@ export function describeScheduleConfig(schedule: ScheduleConfig): string {
     }
   }
 }
+
+/** Reasoning effort, in words a builder can weigh: what it costs and what it buys. */
+export const REASONING_EFFORT_LABELS: Record<
+  ReasoningEffort,
+  { label: string; description: string }
+> = {
+  none: {
+    label: "Off",
+    description: "No extra thinking. Fastest and cheapest.",
+  },
+  min: {
+    label: "Minimal",
+    description: "A moment of thought. Fast and cheap.",
+  },
+  low: { label: "Low", description: "Quick answers at low cost." },
+  medium: { label: "Balanced", description: "The default for most tasks." },
+  high: {
+    label: "High",
+    description: "Deeper reasoning. Slower and costlier.",
+  },
+  xhigh: {
+    label: "Very high",
+    description: "Extended reasoning for hard problems.",
+  },
+  max: { label: "Maximum", description: "The longest thinking. Highest cost." },
+};

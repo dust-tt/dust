@@ -1,4 +1,4 @@
-import { getModelById, MODEL_TIERS } from "./data";
+import { getModelById, MODEL_TIERS, REASONING_EFFORT_LABELS } from "./data";
 import {
   DEFAULT_MODEL_SELECTION,
   ModelPicker,
@@ -18,7 +18,7 @@ export function ModelSection({
   const selectedTier = MODEL_TIERS.find((tier) => tier.id === selection.tierId);
   const summary = selectedTier
     ? selectedTier.label
-    : `${getModelById(selection.modelId).displayName} · ${selection.effort}`;
+    : `${getModelById(selection.modelId).displayName} · ${REASONING_EFFORT_LABELS[selection.effort].label}`;
 
   return (
     <BuilderSection
@@ -33,7 +33,10 @@ export function ModelSection({
           <ModelPicker selection={selection} onChange={onChange} />
         </FieldRow>
         {selectedTier ? null : (
-          <FieldRow label="Reasoning effort">
+          <FieldRow
+            label="Reasoning effort"
+            hint="How much the model thinks before answering."
+          >
             <ReasoningEffortPicker
               modelId={selection.modelId}
               effort={selection.effort}

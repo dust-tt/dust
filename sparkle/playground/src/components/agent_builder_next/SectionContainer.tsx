@@ -46,6 +46,7 @@ export function BuilderSection({
   }
   const titleId = useId();
   const descriptionId = useId();
+  const summaryId = useId();
 
   if (!collapsible) {
     return (
@@ -64,6 +65,9 @@ export function BuilderSection({
     );
   }
 
+  // Folded, a section is a status line: title left, current value right, the
+  // description hidden. Open, it is title, description and body. The screen
+  // reader hears whichever of the two the row shows.
   // The whole header row is one disclosure button: a stretched, otherwise
   // empty trigger sits under the row and takes the click, the hover surface
   // and the focus ring. The visible text is layered above it and lets
@@ -73,18 +77,25 @@ export function BuilderSection({
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <section aria-labelledby={titleId} className="flex flex-col py-2">
-        <div className="relative -mx-3 flex items-center gap-3 px-3 py-2">
+        <div className="relative -mx-3 flex min-h-12 items-center gap-3 px-3 py-2">
           <CollapsibleTrigger
             hideChevron
             aria-labelledby={titleId}
-            aria-describedby={description ? descriptionId : undefined}
+            aria-describedby={
+              [
+                description && isOpen ? descriptionId : null,
+                summary && !isOpen ? summaryId : null,
+              ]
+                .filter(Boolean)
+                .join(" ") || undefined
+            }
             className="absolute inset-0 rounded-xl transition-colors hover:bg-muted-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring active:bg-muted-background motion-reduce:transition-none"
           />
           <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col gap-0.5">
             <h2 id={titleId} className="heading-lg text-foreground">
               {title}
             </h2>
-            {description ? (
+            {description && isOpen ? (
               <p
                 id={descriptionId}
                 className="text-pretty text-sm text-muted-foreground [&_a]:pointer-events-auto"
@@ -94,7 +105,10 @@ export function BuilderSection({
             ) : null}
           </div>
           {summary && !isOpen ? (
-            <span className="pointer-events-none relative max-w-[40%] shrink-0 truncate text-sm tabular-nums text-muted-foreground">
+            <span
+              id={summaryId}
+              className="pointer-events-none relative max-w-[55%] shrink-0 truncate text-sm tabular-nums text-foreground"
+            >
               {summary}
             </span>
           ) : null}
@@ -111,7 +125,7 @@ export function BuilderSection({
               visual={ChevronDown}
               size="sm"
               className={[
-                "transition-transform duration-200 ease-out motion-reduce:transition-none",
+                "transition-transform duration-250 ease-out motion-reduce:transition-none",
                 isOpen ? "rotate-180" : "",
               ]
                 .filter(Boolean)
@@ -119,8 +133,19 @@ export function BuilderSection({
             />
           </span>
         </div>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-3 pb-2 pt-1">{children}</div>
+        {/* The body is always mounted and its height is a CSS transition on
+            grid rows, not a keyframe: a second click mid-motion retargets
+            from the current height instead of restarting from zero. Closed,
+            it is inert so nothing inside can take focus. */}
+        <CollapsibleContent
+          forceMount
+          animated={false}
+          {...({ inert: isOpen ? undefined : "" } as Record<string, unknown>)}
+          className="grid transition-[grid-template-rows,opacity] duration-250 ease-out data-[state=closed]:grid-rows-[0fr] data-[state=closed]:opacity-0 data-[state=open]:grid-rows-[1fr] motion-reduce:transition-none"
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="flex flex-col gap-3 pb-2 pt-1">{children}</div>
+          </div>
         </CollapsibleContent>
       </section>
     </Collapsible>

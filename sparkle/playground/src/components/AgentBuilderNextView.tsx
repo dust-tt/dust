@@ -51,7 +51,6 @@ import {
 import {
   IdentityHeader,
   IdentityStickyBar,
-  PANEL_HEADER_HEIGHT,
   useIsScrolledAway,
 } from "./agent_builder_next/IdentityHeader";
 import { InstructionsSection } from "./agent_builder_next/InstructionsSection";
@@ -203,8 +202,7 @@ export function AgentBuilderNextView({
   );
   const isIdentityScrolledAway = useIsScrolledAway(
     identityHeader,
-    scrollContainer,
-    PANEL_HEADER_HEIGHT
+    scrollContainer
   );
   const [isEditorsOpen, setIsEditorsOpen] = useState(false);
   const sidekickPlaceholder = useMemo(
@@ -533,14 +531,11 @@ export function AgentBuilderNextView({
   });
 
   // ----- panels -----------------------------------------------------------
-  // The header floats over the scroll area so the form scrolls underneath it,
-  // with the condensed identity bar pinning right below. The column's top
-  // padding and the sticky bar's offset account for its 56px height.
   const leftPanel = (
-    <div className="relative flex h-full flex-col">
+    <div className="flex h-full flex-col">
       <BarHeader
         variant="default"
-        className="absolute inset-x-0 top-0 z-30 border-b-0 bg-background px-8"
+        className="border-b-0 px-8"
         title={headerTitle}
         leftActions={
           <Button
@@ -582,7 +577,7 @@ export function AgentBuilderNextView({
             onReveal={() => identityHeader?.scrollIntoView({ block: "start" })}
           />
         ) : null}
-        <div className="mx-auto flex w-full max-w-[85ch] flex-col gap-8 px-8 pb-16 pt-26">
+        <div className="mx-auto flex w-full max-w-[85ch] flex-col gap-8 px-8 pb-16 pt-8">
           {isEditorGateVisible ? (
             <EditorGateMessage
               isBecoming={isBecomingEditor}

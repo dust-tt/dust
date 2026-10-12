@@ -19,8 +19,12 @@ export function AdvancedSection({
 }) {
   const hasSchema = responseFormat.trim().length > 0;
   const summary = [
-    hasSchema ? "JSON schema" : "Text",
-    isManager ? (ignoreCreditThreshold ? "alert ignored" : "alert on") : null,
+    hasSchema ? "JSON schema" : "Text response",
+    isManager
+      ? ignoreCreditThreshold
+        ? "credit alert ignored"
+        : "pauses at credit alert"
+      : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -28,7 +32,7 @@ export function AdvancedSection({
   return (
     <BuilderSection
       title="Advanced"
-      description="Response format and credit checkpoint behaviour."
+      description="Response format and credit checkpoint behavior."
       collapsible
       defaultOpen={hasSchema || ignoreCreditThreshold}
       summary={summary}

@@ -3,7 +3,6 @@ import {
   AnimatedText,
   Button,
   CardGrid,
-  Check,
   CheckboxWithText,
   Chip,
   Clock,
@@ -17,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Hoverable,
-  Icon,
   Input,
   Label,
   MultiPageSheet,
@@ -41,15 +39,16 @@ import {
   mockRequestHistory,
   mockWebhookSources,
   NEXT_OCCURRENCES,
-  SCHEDULE_TIMEZONE,
   type ScheduleConfig,
   type ScheduleRepeat,
   TIME_SLOTS,
+  TIMEZONES,
   type Weekday,
   WEEKDAYS,
   type WebhookSource,
 } from "./data";
 import { NumberField } from "./CapabilitiesSection";
+import { ValueMenu } from "./ValueMenu";
 import { BuilderSection, FieldGroup, FieldRow } from "./SectionContainer";
 import { Switch } from "./Switch";
 
@@ -128,7 +127,23 @@ type ConversationFields = {
   podId?: string | null;
 };
 
-/** Message, credits and destination: shared by the inline schedule and the sheet pages. */
+const POOL_OPTIONS = [
+  {
+    id: "member" as const,
+    label: "My credits",
+    description: "Runs draw on your personal pool.",
+  },
+  {
+    id: "workspace" as const,
+    label: "Workspace credits",
+    description: "Runs draw on the shared workspace pool.",
+  },
+];
+
+/**
+ * Credits, destination and message: shared by the inline schedule and the
+ * sheet pages, laid out as the same label/control rows as every section.
+ */
 function CommonFields({
   value,
   onChange,
@@ -140,15 +155,34 @@ function CommonFields({
 }) {
   const pods = mockBuilderSpaces.filter((space) => space.kind === "pod");
   const id = useId();
+  const podOptions = [
+    { id: "", label: "My conversations" },
+    ...pods.map((pod) => ({ id: pod.id, label: pod.name })),
+  ];
   return (
     <>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${id}-message`} className="text-base font-semibold">
+      <FieldRow label="Credits" hint="Which pool the runs take credits from.">
+        <ValueMenu
+          value={value.pool}
+          options={POOL_OPTIONS}
+          onSelect={(pool) => onChange({ pool })}
+          ariaLabel="Credits"
+          disabled={readOnly}
+        />
+      </FieldRow>
+      <FieldRow label="Create conversation in">
+        <ValueMenu
+          value={value.podId ?? ""}
+          options={podOptions}
+          onSelect={(podId) => onChange({ podId: podId || null })}
+          ariaLabel="Create conversation in"
+          disabled={readOnly}
+        />
+      </FieldRow>
+      <div className="flex flex-col gap-2 py-2">
+        <Label htmlFor={`${id}-message`} className="text-sm">
           Message (optional)
         </Label>
-        <span className="text-sm text-muted-foreground">
-          Message for the agent when the trigger runs.
-        </span>
         <TextArea
           id={`${id}-message`}
           value={value.message ?? ""}
@@ -158,73 +192,6 @@ function CommonFields({
           minRows={3}
           resize="vertical"
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${id}-credits`} className="text-base font-semibold">
-          Credits
-        </Label>
-        <span className="text-sm text-muted-foreground">
-          Which pool this trigger’s runs take credits from.
-        </span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              id={`${id}-credits`}
-              size="sm"
-              variant="outline"
-              isSelect
-              className="self-start"
-              disabled={readOnly}
-              label={
-                value.pool === "member" ? "My credits" : "Workspace credits"
-              }
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label="My credits"
-              onSelect={() => onChange({ pool: "member" })}
-            />
-            <DropdownMenuItem
-              label="Workspace credits"
-              onSelect={() => onChange({ pool: "workspace" })}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${id}-pod`} className="text-base font-semibold">
-          Where to create this conversation? (optional)
-        </Label>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              id={`${id}-pod`}
-              size="sm"
-              variant="outline"
-              isSelect
-              className="self-start"
-              disabled={readOnly}
-              label={
-                pods.find((pod) => pod.id === value.podId)?.name ??
-                "My conversations (default)"
-              }
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent>
-            <DropdownMenuItem
-              label="My conversations (default)"
-              onSelect={() => onChange({ podId: null })}
-            />
-            {pods.map((pod) => (
-              <DropdownMenuItem
-                key={pod.id}
-                label={pod.name}
-                onSelect={() => onChange({ podId: pod.id })}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </>
   );
@@ -651,53 +618,11 @@ const REPEAT_OPTIONS: { id: ScheduleRepeat; label: string }[] = [
   { id: "custom", label: "Custom" },
 ];
 
-/** A text-like select for a field row: the value and a chevron, options with a check. */
-function ValueMenu<T extends string>({
-  value,
-  options,
-  onSelect,
-  ariaLabel,
-  contentClassName,
-}: {
-  value: T;
-  options: { id: T; label: string }[];
-  onSelect: (id: T) => void;
-  ariaLabel: string;
-  contentClassName?: string;
-}) {
-  const current = options.find((option) => option.id === value);
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="sm"
-          variant="ghost-secondary"
-          isSelect
-          label={current?.label ?? value}
-          aria-label={`${ariaLabel}: ${current?.label ?? value}`}
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={contentClassName}>
-        {options.map((option) => (
-          <DropdownMenuItem
-            key={option.id}
-            label={option.label}
-            onSelect={() => onSelect(option.id)}
-            endComponent={
-              option.id === value ? (
-                <Icon visual={Check} size="xs" />
-              ) : undefined
-            }
-          />
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+const TIME_OPTIONS = TIME_SLOTS.map((slot) => ({ id: slot, label: slot }));
 
-const TIME_OPTIONS = TIME_SLOTS.map((slot) => ({
-  id: slot,
-  label: `${slot} ${SCHEDULE_TIMEZONE}`,
+const TIMEZONE_OPTIONS = TIMEZONES.map((zone) => ({
+  id: zone.id,
+  label: `${zone.label} (${zone.short})`,
 }));
 
 function TimeMenu({
@@ -744,6 +669,7 @@ function DaysMenu({
             key={day.id}
             label={day.label}
             checked={days.includes(day.id)}
+            disabled={days.length === 1 && days[0] === day.id}
             onCheckedChange={(checked) =>
               onChange(
                 checked
@@ -888,6 +814,16 @@ function ScheduleCard({
                 />
               </FieldRow>
             </>
+          ) : null}
+          {schedule.repeat !== "never" && schedule.repeat !== "interval" ? (
+            <FieldRow label="Time zone" className={ROW_ENTER}>
+              <ValueMenu
+                value={schedule.timezone}
+                options={TIMEZONE_OPTIONS}
+                onSelect={(timezone) => patch({ timezone })}
+                ariaLabel="Time zone"
+              />
+            </FieldRow>
           ) : null}
         </FieldGroup>
       </div>
@@ -1185,14 +1121,14 @@ export function TriggersSection({
         </>
       }
     >
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col gap-3">
-          <ScheduleCard schedule={schedule} onChange={onScheduleChange} />
-          {hasSchedule ? (
-            <Collapsible>
-              <CollapsibleTrigger label="Advanced" variant="secondary" />
-              <CollapsibleContent>
-                <div className="flex flex-col gap-4 pt-3">
+      <div className="flex flex-col gap-4">
+        <ScheduleCard schedule={schedule} onChange={onScheduleChange} />
+        {hasSchedule ? (
+          <Collapsible>
+            <CollapsibleTrigger label="Run options" variant="secondary" />
+            <CollapsibleContent>
+              <div className="pt-1">
+                <FieldGroup>
                   <CommonFields
                     value={schedule}
                     onChange={(patch) =>
@@ -1200,20 +1136,24 @@ export function TriggersSection({
                     }
                     readOnly={false}
                   />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          ) : null}
-        </div>
+                </FieldGroup>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
 
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 flex-col">
-              <span className="heading-sm text-foreground">Webhooks</span>
-              <span className="text-pretty text-xs text-muted-foreground">
-                Run the agent when an external service sends an event.
-              </span>
-            </div>
+        <FieldGroup>
+          <FieldRow
+            label="Webhooks"
+            hint="Run when an external service sends an event."
+          >
+            <span className="text-sm tabular-nums text-muted-foreground">
+              {isLoading
+                ? "Loading…"
+                : webhooks.length === 0
+                  ? "None"
+                  : `${webhooks.length} added`}
+            </span>
             <Button
               size="sm"
               variant="outline"
@@ -1226,52 +1166,54 @@ export function TriggersSection({
                 })
               }
             />
-          </div>
-          {isLoading ? (
-            <CardGrid
-              aria-busy
-              className="animate-pulse motion-reduce:animate-none"
-            >
-              {[0, 1].map((index) => (
-                <div
-                  key={index}
-                  className="min-h-28 rounded-2xl bg-muted-background"
-                />
-              ))}
-            </CardGrid>
-          ) : webhooks.length > 0 ? (
-            <CardGrid>
-              {webhooks.map((trigger) => (
-                <TriggerCard
-                  key={trigger.id}
-                  trigger={trigger}
-                  onClick={() => openTrigger(trigger)}
-                  onRemove={() => onRemove(trigger)}
-                />
-              ))}
-            </CardGrid>
-          ) : null}
-        </div>
+          </FieldRow>
+        </FieldGroup>
+        {isLoading ? (
+          <CardGrid
+            aria-busy
+            className="animate-pulse motion-reduce:animate-none"
+          >
+            {[0, 1].map((index) => (
+              <div
+                key={index}
+                className="min-h-28 rounded-2xl bg-muted-background"
+              />
+            ))}
+          </CardGrid>
+        ) : webhooks.length > 0 ? (
+          <CardGrid>
+            {webhooks.map((trigger) => (
+              <TriggerCard
+                key={trigger.id}
+                trigger={trigger}
+                onClick={() => openTrigger(trigger)}
+                onRemove={() => onRemove(trigger)}
+              />
+            ))}
+          </CardGrid>
+        ) : null}
 
-        <Collapsible>
-          <CollapsibleTrigger
-            label="Other members’ triggers"
-            variant="secondary"
-          />
-          <CollapsibleContent>
-            <div className="pt-3">
-              <CardGrid>
-                {mockOtherMembersTriggers.map((trigger) => (
-                  <TriggerCard
-                    key={trigger.id}
-                    trigger={trigger}
-                    onClick={() => openTrigger(trigger)}
-                  />
-                ))}
-              </CardGrid>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
+        {mockOtherMembersTriggers.length > 0 ? (
+          <Collapsible>
+            <CollapsibleTrigger
+              label="Other members’ triggers"
+              variant="secondary"
+            />
+            <CollapsibleContent>
+              <div className="pt-3">
+                <CardGrid>
+                  {mockOtherMembersTriggers.map((trigger) => (
+                    <TriggerCard
+                      key={trigger.id}
+                      trigger={trigger}
+                      onClick={() => openTrigger(trigger)}
+                    />
+                  ))}
+                </CardGrid>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        ) : null}
       </div>
       <TriggersSheet
         open={sheet.open}
