@@ -1,5 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { Button, type ButtonProps } from "@sparkle/components/Button";
+import {
+  Button,
+  type ButtonBaseProps,
+  type ButtonProps,
+} from "@sparkle/components/Button";
 import {
   Dialog,
   DialogContainer,
@@ -76,7 +80,7 @@ export interface ToolbarProps {
   /** When provided, renders a leading close button and is called when it is clicked. */
   onClose?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   /** Extra Button props for the close button (e.g. size, variant). */
-  closeButtonProps?: Omit<ButtonProps, "icon" | "onClick" | "label">;
+  closeButtonProps?: Omit<ButtonBaseProps, "icon" | "onClick" | "label">;
   /** Leading content rendered before the actions, replacing the close button. */
   startSlot?: React.ReactNode;
 }
@@ -101,6 +105,7 @@ function Toolbar({
   closeButtonProps,
   startSlot,
 }: ToolbarProps) {
+  const { t } = useLingui();
   const isOverlay = variant === "overlay";
   const isScrollable = scroll ?? isOverlay;
   const {
@@ -137,6 +142,7 @@ function Toolbar({
     const buttonProps = {
       variant: closeVariant,
       icon: XClose,
+      tooltip: t`Close`,
       onClick: onClose,
       ...restCloseButtonProps,
     };
@@ -213,7 +219,7 @@ export interface ToolbarIconProps {
   size: ToolbarButtonSize;
   /** Whether the formatting is applied at the current selection; styles the button as active. */
   active?: boolean;
-  tooltip?: string;
+  tooltip: string;
 }
 
 /**
@@ -276,7 +282,7 @@ export interface ToolbarLinkProps {
   size: ToolbarButtonSize;
   /** Whether a link is applied at the current selection. */
   active?: boolean;
-  tooltip?: string;
+  tooltip: string;
 }
 
 /**

@@ -108,7 +108,7 @@ function PickerInputField({
   placeholder,
   title,
 }: {
-  buttonLabel?: string;
+  buttonLabel: string;
   control: Control<CreateTemplateFormType>;
   name: keyof CreateTemplateFormType;
   picker: Picker;

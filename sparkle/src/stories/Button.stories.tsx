@@ -99,6 +99,7 @@ const meta = {
       control: "text",
     },
   },
+  args: { label: "Button" },
   render: (args) => <Button {...args} />,
 } satisfies Meta<typeof Button>;
 

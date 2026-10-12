@@ -84,9 +84,10 @@ export function InputBarMessageNavigation({
     ) : (
       <Button
         variant={stopButtonVariant}
-        label={variant === "compact" ? undefined : stopButtonLabel}
+        {...(variant === "compact"
+          ? { "aria-label": stopButtonLabel }
+          : { label: stopButtonLabel })}
         icon={stopIcon}
-        aria-label={variant === "compact" ? stopButtonLabel : undefined}
         onClick={onStopClick}
         disabled={pendingAction !== null}
         size={variant === "compact" ? "mini" : "xs"}

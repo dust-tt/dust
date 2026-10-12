@@ -704,7 +704,9 @@ function ZendeskTicketCheck({
         <Button
           variant="outline"
           icon={idsIsLoading ? Spinner : SearchMd}
-          label={idsIsLoading ? undefined : "Check"}
+          {...(idsIsLoading
+            ? { "aria-label": "Checking" }
+            : { label: "Check" })}
           disabled={!ticketId || idsIsLoading}
           onClick={async () => {
             if (ticketId) {
@@ -735,7 +737,9 @@ function ZendeskTicketCheck({
         <Button
           variant="outline"
           icon={urlIsLoading ? Spinner : SearchMd}
-          label={urlIsLoading ? undefined : "Check"}
+          {...(urlIsLoading
+            ? { "aria-label": "Checking" }
+            : { label: "Check" })}
           disabled={!ticketUrl || urlIsLoading}
           onClick={async () => {
             if (ticketUrl) {

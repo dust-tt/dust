@@ -14,12 +14,25 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: src/components/ActionCard.tsx
+#: src/components/Chip.tsx
+#: src/components/Citation.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr "Retirer"
+
+#: src/components/ActionCard.tsx
 msgid "Added"
 msgstr "Ajouté"
 
 #: src/components/ActionCard.tsx
 msgid "Add"
 msgstr "Ajouter"
+
+#: src/components/AssistantCard.tsx
+#: src/components/DataTable/menu.tsx
+#: src/components/NavigationList.tsx
+msgid "More actions"
+msgstr "Plus d’actions"
 
 #: src/components/Bar.tsx
 msgid "Back"
@@ -29,6 +42,7 @@ msgstr "Retour"
 #: src/components/Dialog.tsx
 #: src/components/ImageZoomDialog.tsx
 #: src/components/Sheet.tsx
+#: src/components/Toolbar.tsx
 msgid "Close"
 msgstr "Fermer"
 
@@ -43,12 +57,6 @@ msgstr "Partager"
 #: src/components/Breadcrumbs.tsx
 msgid "Breadcrumb"
 msgstr "Fil d’Ariane"
-
-#: src/components/Chip.tsx
-#: src/components/Citation.tsx
-#: src/components/ImagePreview.tsx
-msgid "Remove"
-msgstr "Retirer"
 
 #: src/components/ComposerInput.tsx
 msgid "Get work done"
@@ -94,11 +102,6 @@ msgstr "Chargement de données supplémentaires…"
 #: src/components/DataTable/cells.tsx
 msgid "Copy to clipboard"
 msgstr "Copier dans le presse-papiers"
-
-#: src/components/DataTable/menu.tsx
-#: src/components/NavigationList.tsx
-msgid "More actions"
-msgstr "Plus d’actions"
 
 #: src/components/DataTable/selection.tsx
 msgid "Select {label}"

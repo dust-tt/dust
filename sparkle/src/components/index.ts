@@ -23,6 +23,7 @@ export {
   Breadcrumbs,
 } from "./Breadcrumbs";
 export type {
+  ButtonBaseProps,
   ButtonIconType,
   ButtonProps,
   ButtonSizeType,

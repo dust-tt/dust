@@ -59,6 +59,7 @@ export const GhostWithHighCount: Story = {
       icon: InfoCircle,
       size: "sm",
       variant: "ghost",
+      tooltip: "Warnings",
     },
     counterProps: {
       value: 99,

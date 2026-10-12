@@ -107,28 +107,23 @@ export const PodMainPage = () => {
             <TabsList border={false}>
               <TabsTrigger
                 value="conversations"
-                label={
-                  currentTab === "conversations"
-                    ? conversationsLabel
-                    : undefined
-                }
-                tooltip={
-                  currentTab !== "conversations"
-                    ? conversationsLabel
-                    : undefined
-                }
+                {...(currentTab === "conversations"
+                  ? { label: conversationsLabel }
+                  : { tooltip: conversationsLabel })}
                 icon={MessageChatSquare}
               />
               <TabsTrigger
                 value="tasks"
-                label={currentTab === "tasks" ? tasksLabel : undefined}
-                tooltip={currentTab !== "tasks" ? tasksLabel : undefined}
+                {...(currentTab === "tasks"
+                  ? { label: tasksLabel }
+                  : { tooltip: tasksLabel })}
                 icon={CheckCircle}
               />
               <TabsTrigger
                 value="files"
-                label={currentTab === "files" ? filesLabel : undefined}
-                tooltip={currentTab !== "files" ? filesLabel : undefined}
+                {...(currentTab === "files"
+                  ? { label: filesLabel }
+                  : { tooltip: filesLabel })}
                 icon={Folder}
               />
             </TabsList>

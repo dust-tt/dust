@@ -1,13 +1,17 @@
-import { Button, type ButtonProps } from "@sparkle/components/Button";
+import {
+  Button,
+  type ButtonProps,
+  type DistributiveOmit,
+} from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-export interface FlexSplitButtonProps extends Omit<ButtonProps, "size"> {
+export type FlexSplitButtonProps = DistributiveOmit<ButtonProps, "size"> & {
   /** className applied to the wrapping container rather than the main button. */
   containerClassName?: string;
   /** Secondary Button element attached after the divider — typically an icon-only `xs` chevron opening a menu; disabled automatically while `isLoading`. */
   splitAction: React.ReactElement<React.ComponentProps<typeof Button>>;
-}
+};
 
 /**
  * A primary action paired with an attached secondary affordance: a labelled `Button`
