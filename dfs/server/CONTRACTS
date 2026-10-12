@@ -8,3 +8,8 @@ A transaction closure returning a resource or stored-data decoding failure MUST 
 without committing or retrying. `fdb::with_transaction` MUST preserve the typed error returned by
 its closure through the runner. API closures MAY translate non-FDB failures to their API status
 before returning them.
+
+@cc [owner:spolu,label:testing;architecture] tests-under-tests
+Test implementations MUST live under `server/tests/`, never inline in `server/src/`. Unit tests MAY
+be included from source modules with `#[cfg(test)]` and `#[path = ...]` to retain access to private
+items.
