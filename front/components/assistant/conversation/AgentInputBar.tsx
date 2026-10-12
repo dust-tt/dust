@@ -91,11 +91,6 @@ interface AgentInputBarProps {
   context: VirtuosoMessageListContext;
 }
 
-/**
- * @cc [owner:avervaet,label:react;product] stop-pending-until-generation-ends
- * A stop/skip stays pending until the messages it targeted stop generating, not when its request
- * returns. A failed request releases it immediately.
- */
 export const AgentInputBar = ({ context }: AgentInputBarProps) => {
   const { t } = useLingui();
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
