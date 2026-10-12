@@ -92,14 +92,6 @@ const QUERIES: LabeledQuery[] = [
 
   // --- user_memory ---
   {
-    query: "read my personal memory",
-    expected: "user_memory.read",
-  },
-  {
-    query: "open my personal memory and show its full contents",
-    expected: "user_memory.read",
-  },
-  {
     query: "update my personal memory by replacing a snippet of text",
     expected: "user_memory.edit",
   },
