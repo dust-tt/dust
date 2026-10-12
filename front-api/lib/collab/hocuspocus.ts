@@ -1,20 +1,3 @@
-import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
-import type {
-  LiveAccessError,
-  LiveCheckpoint,
-  LiveFile,
-} from "@app/lib/api/collab/live_file";
-import {
-  checkLiveAccess,
-  checkpointLiveDocument,
-  loadLiveDocument,
-  recheckLiveAccess,
-} from "@app/lib/api/collab/live_file";
-import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
-import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import {
@@ -44,6 +27,23 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@front-api/lib/collab/live_comments";
+import type {
+  LiveAccessError,
+  LiveCheckpoint,
+  LiveFile,
+} from "@front-api/lib/collab/live_file";
+import {
+  checkLiveAccess,
+  checkpointLiveDocument,
+  loadLiveDocument,
+  recheckLiveAccess,
+} from "@front-api/lib/collab/live_file";
+import { redeemLiveTicket } from "@front-api/lib/collab/tickets";
+import { replaceYDocContent, yDocToDfm } from "@front-api/lib/collab/ydoc";
 import type { Connection, Document } from "@hocuspocus/server";
 import { Hocuspocus } from "@hocuspocus/server";
 import type * as Y from "yjs";

@@ -1,8 +1,3 @@
-import {
-  checkpointLiveDocument,
-  loadLiveDocument,
-  openLiveFile,
-} from "@app/lib/api/collab/live_file";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES,
@@ -18,6 +13,11 @@ import {
   toLiveDocumentName,
 } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  checkpointLiveDocument,
+  loadLiveDocument,
+  openLiveFile,
+} from "@front-api/lib/collab/live_file";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 

@@ -1,8 +1,3 @@
-import {
-  LIVE_TICKET_TTL_SECONDS,
-  mintLiveTicket,
-  redeemLiveTicket,
-} from "@app/lib/api/collab/tickets";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -10,6 +5,11 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import { Err } from "@app/types/shared/result";
+import {
+  LIVE_TICKET_TTL_SECONDS,
+  mintLiveTicket,
+  redeemLiveTicket,
+} from "@front-api/lib/collab/tickets";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {

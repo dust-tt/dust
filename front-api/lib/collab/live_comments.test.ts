@@ -1,10 +1,4 @@
 import { generateKeyPairSync } from "node:crypto";
-import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
@@ -12,6 +6,12 @@ import type { DfmComment } from "@app/lib/markdown/dfm";
 import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@front-api/lib/collab/live_comments";
+import type { LiveFile } from "@front-api/lib/collab/live_file";
+import { dfmToYDoc } from "@front-api/lib/collab/ydoc";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/lib/api/files/dfm_comment_mentions"), () => ({

@@ -1,6 +1,6 @@
-import type { LiveAccessError } from "@app/lib/api/collab/live_file";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LiveAccessError } from "@front-api/lib/collab/live_file";
 import { workspaceAccessErrorToApiError } from "@front-api/middlewares/workspace_auth";
 
 export function liveAccessErrorToApiError(

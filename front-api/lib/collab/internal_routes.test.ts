@@ -1,5 +1,3 @@
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
-import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
@@ -16,6 +14,8 @@ import {
 import { Err } from "@app/types/shared/result";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
 import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
+import { checkLiveAccess } from "@front-api/lib/collab/live_file";
+import { ENVELOPE_MAP_NAME } from "@front-api/lib/collab/ydoc";
 import { createHono } from "@front-api/lib/hono";
 import { unhandledErrorHandler } from "@front-api/middlewares/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";

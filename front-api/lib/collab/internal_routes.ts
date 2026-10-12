@@ -1,9 +1,4 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
-import {
-  checkLiveAccess,
-  checkLiveReadAccess,
-} from "@app/lib/api/collab/live_file";
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
@@ -24,6 +19,11 @@ import {
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
 import { liveAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
+import type { LiveFile } from "@front-api/lib/collab/live_file";
+import {
+  checkLiveAccess,
+  checkLiveReadAccess,
+} from "@front-api/lib/collab/live_file";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";

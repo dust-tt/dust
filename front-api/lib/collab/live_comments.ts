@@ -1,5 +1,3 @@
-import type { LiveFile } from "@app/lib/api/collab/live_file";
-import { yDocCommentedTexts } from "@app/lib/api/collab/ydoc";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
@@ -12,6 +10,8 @@ import type {
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { LiveFile } from "@front-api/lib/collab/live_file";
+import { yDocCommentedTexts } from "@front-api/lib/collab/ydoc";
 import type * as Y from "yjs";
 
 const signatureRefusal = ({

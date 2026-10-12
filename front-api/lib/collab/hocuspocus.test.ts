@@ -1,16 +1,4 @@
 import { createServer } from "node:http";
-import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
-import {
-  checkLiveAccess,
-  checkpointLiveDocument,
-  loadLiveDocument,
-} from "@app/lib/api/collab/live_file";
-import { mintLiveTicket } from "@app/lib/api/collab/tickets";
-import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystemError } from "@app/lib/api/file_system";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { Authenticator } from "@app/lib/auth";
@@ -45,6 +33,18 @@ import {
   UNLOAD_GRACE_PERIOD_MS,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
+import {
+  applyLiveCommentCommand,
+  dispatchLiveCommentMentions,
+} from "@front-api/lib/collab/live_comments";
+import type { LiveFile } from "@front-api/lib/collab/live_file";
+import {
+  checkLiveAccess,
+  checkpointLiveDocument,
+  loadLiveDocument,
+} from "@front-api/lib/collab/live_file";
+import { mintLiveTicket } from "@front-api/lib/collab/tickets";
+import { dfmToYDoc, yDocToDfm } from "@front-api/lib/collab/ydoc";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { WebSocketLike } from "@hocuspocus/server";
 import { Connection } from "@hocuspocus/server";
@@ -53,9 +53,9 @@ import crossws from "crossws/adapters/node";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 
-vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
+vi.mock("@front-api/lib/collab/live_file", async (importActual) => {
   const actual =
-    await importActual<typeof import("@app/lib/api/collab/live_file")>();
+    await importActual<typeof import("@front-api/lib/collab/live_file")>();
   return {
     ...actual,
     loadLiveDocument: vi.fn(),
@@ -65,7 +65,7 @@ vi.mock("@app/lib/api/collab/live_file", async (importActual) => {
   };
 });
 
-vi.mock("@app/lib/api/collab/live_comments", () => ({
+vi.mock("@front-api/lib/collab/live_comments", () => ({
   applyLiveCommentCommand: vi.fn(),
   dispatchLiveCommentMentions: vi.fn(async () => undefined),
 }));

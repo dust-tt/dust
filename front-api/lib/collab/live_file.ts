@@ -1,5 +1,3 @@
-import type { LiveDocument } from "@app/lib/api/collab/ydoc";
-import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import {
@@ -13,6 +11,8 @@ import { hasFeatureFlag } from "@app/lib/auth";
 import { isMarkdownContentType, stripMimeParameters } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LiveDocument } from "@front-api/lib/collab/ydoc";
+import { dfmToYDoc, yDocToDfm } from "@front-api/lib/collab/ydoc";
 
 /** A file the live session can open, with the caller's access to it. */
 export interface LiveFile {

@@ -1,4 +1,3 @@
-import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -8,6 +7,7 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
+import { redeemLiveTicket } from "@front-api/lib/collab/tickets";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {

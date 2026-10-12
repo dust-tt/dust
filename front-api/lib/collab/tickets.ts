@@ -1,10 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { LiveAccessError } from "@app/lib/api/collab/live_file";
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import type { LiveAccessError } from "@front-api/lib/collab/live_file";
+import { checkLiveAccess } from "@front-api/lib/collab/live_file";
 import { z } from "zod";
 
 export const LIVE_TICKET_TTL_SECONDS = 60;
