@@ -34,7 +34,7 @@ describe("SparkleLocaleProvider", () => {
     render(<DataTable.NumericCellContent value={1234.5} precision={1} />);
 
     const messages = await loadCatalog("en-US");
-    // As `UserLocaleSync` does: the format locale is set before the locale is activated.
+    // As `LocaleSync` does: the format locale is set before the locale is activated.
     act(() => {
       setFormatLocale("fr-FR");
       i18n.loadAndActivate({ locale: "en-GB", messages });
