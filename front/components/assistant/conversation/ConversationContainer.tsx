@@ -3,7 +3,6 @@ import {
   getWorkspaceLimitForSubmitError,
   ReachedLimitPopup,
 } from "@app/components/app/ReachedLimitPopup";
-import { AgentBrowserContainer } from "@app/components/assistant/conversation/AgentBrowserContainer";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
@@ -17,7 +16,6 @@ import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideP
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
@@ -118,14 +116,6 @@ const composerEntranceStyle = heroEntranceStyle({
   delaySeconds: COMPOSER_ENTER_DELAY_SECONDS,
 });
 
-const CHAT_WITH_ENTER_DELAY_SECONDS = 0.3;
-const chatWithEntranceStyle = heroEntranceStyle({
-  yPx: 8,
-  blurPx: 3,
-  durationSeconds: 0.28,
-  delaySeconds: CHAT_WITH_ENTER_DELAY_SECONDS,
-});
-
 const USE_CASES_ENTER_DELAY_SECONDS = 0.22;
 
 const DISCOVER_BUTTON_ENTER_DELAY_SECONDS = 0.42;
@@ -179,9 +169,6 @@ export function ConversationContainerVirtuoso({
   const workspaceDefaultAgentId = hasFeature("workspace_default_agent")
     ? getWorkspaceDefaultAgentId(owner)
     : null;
-
-  const { isAgentsSectionVisible } = useAgentsSectionVisibility();
-  const isDiscoveryHomepage = hasFeature("discovery_homepage");
 
   const handleUseCasePick = (useCase: HomepageUseCaseType) => {
     const references = [
@@ -367,7 +354,7 @@ export function ConversationContainerVirtuoso({
     isScrollLocked,
     pullProgress,
     scrollerRef,
-  } = useDiscoverScroll({ isLockEnabled: isDiscoveryHomepage && !isMobile });
+  } = useDiscoverScroll({ isLockEnabled: !isMobile });
 
   // Forces a full remount of ConversationViewer (Virtuoso list, messages, InputBar)
   // when switching conversations.
@@ -378,8 +365,7 @@ export function ConversationContainerVirtuoso({
       <div
         id="agent-input-header"
         className={classNames(
-          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4",
-          isDiscoveryHomepage ? "md:basis-[36vh]" : "md:min-h-[36vh]"
+          "flex h-fit w-full max-w-conversation flex-col items-center justify-end gap-4 pb-8 pt-4 md:basis-[36vh]"
         )}
         ref={startConversationRef}
       >
@@ -411,9 +397,7 @@ export function ConversationContainerVirtuoso({
           // px-1 keeps a constant gutter so the card's shadow ring never
           // clips at the scroller edge; max-w compensates so the card
           // still measures exactly --container-conversation when wide.
-          "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4",
-          // A sticky composer would ride along on the way down to Discover.
-          isDiscoveryHomepage ? "" : "sticky bottom-0 z-20"
+          "md:w-full md:max-w-[calc(var(--container-conversation)+0.5rem)] md:px-1 md:pb-4"
         )}
         style={shouldReduceMotion ? undefined : composerEntranceStyle}
         ref={inputBarRef}
@@ -423,19 +407,16 @@ export function ConversationContainerVirtuoso({
           user={user}
           onSubmit={handleConversationCreation}
           draftKey="home-new-conversation"
-          homepageVariant={isDiscoveryHomepage ? "discovery" : "classic"}
           disableAutoFocus={false}
           defaultAgentId={workspaceDefaultAgentId}
         />
       </div>
 
-      {isDiscoveryHomepage && (
-        <HomepageUseCases
-          enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
-          onPick={handleUseCasePick}
-          workspaceId={owner.sId}
-        />
-      )}
+      <HomepageUseCases
+        enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
+        onPick={handleUseCasePick}
+        workspaceId={owner.sId}
+      />
 
       {suggestion && (
         <div className="w-full max-w-conversation mt-1">
@@ -482,55 +463,38 @@ export function ConversationContainerVirtuoso({
         />
       ) : (
         <>
-          {isDiscoveryHomepage ? (
-            <div className="flex h-panel w-full shrink-0 flex-col items-center">
-              <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center md:justify-start">
-                {homeHero}
-              </div>
-              <div
-                className="flex shrink-0 pb-6"
-                style={
-                  shouldReduceMotion ? undefined : discoverButtonEntranceStyle
-                }
-              >
-                <DiscoverButtonTeaser
-                  workspaceId={owner.sId}
-                  pullProgress={pullProgress}
-                >
-                  <DiscoverButton onClick={goToDiscover} />
-                </DiscoverButtonTeaser>
-              </div>
+          <div className="flex h-panel w-full shrink-0 flex-col items-center">
+            <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center md:justify-start">
+              {homeHero}
             </div>
-          ) : (
-            homeHero
-          )}
-          {isDiscoveryHomepage ? (
-            <DiscoverContainer
-              ref={discoverRef}
-              onAgentConfigurationClick={async (agent) => {
-                await goToHome();
-                setSelectedSingleAgent(toRichAgentMentionType(agent));
-              }}
-              onFiltersChange={alignDiscover}
-              onSkillClick={async (skill) => {
-                await goToHome();
-                setPendingSkill(skill);
-              }}
-              owner={owner}
-              user={user}
-            />
-          ) : (
-            isAgentsSectionVisible && (
-              <AgentBrowserContainer
-                onAgentConfigurationClick={(agent) => {
-                  setSelectedSingleAgent(toRichAgentMentionType(agent));
-                }}
-                owner={owner}
-                style={shouldReduceMotion ? undefined : chatWithEntranceStyle}
-                user={user}
-              />
-            )
-          )}
+            <div
+              className="flex shrink-0 pb-6"
+              style={
+                shouldReduceMotion ? undefined : discoverButtonEntranceStyle
+              }
+            >
+              <DiscoverButtonTeaser
+                workspaceId={owner.sId}
+                pullProgress={pullProgress}
+              >
+                <DiscoverButton onClick={goToDiscover} />
+              </DiscoverButtonTeaser>
+            </div>
+          </div>
+          <DiscoverContainer
+            ref={discoverRef}
+            onAgentConfigurationClick={async (agent) => {
+              await goToHome();
+              setSelectedSingleAgent(toRichAgentMentionType(agent));
+            }}
+            onFiltersChange={alignDiscover}
+            onSkillClick={async (skill) => {
+              await goToHome();
+              setPendingSkill(skill);
+            }}
+            owner={owner}
+            user={user}
+          />
         </>
       )}
       <ReachedLimitPopup

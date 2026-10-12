@@ -13,10 +13,6 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
-#: front/components/assistant/conversation/AgentBrowserContainer.tsx
-msgid "Chat with..."
-msgstr "Chat with..."
-
 #: front/components/assistant/conversation/AgentInputBar.tsx
 msgid "Wait for compaction to finish."
 msgstr "Wait for compaction to finish."
