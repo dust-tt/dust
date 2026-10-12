@@ -271,7 +271,7 @@ export function HomepageUseCases({
             {isShowingAgentPrompts
               ? agentPrompts.map((prompt, index) => (
                   <HomepageRow
-                    key={`prompt-${prompt}`}
+                    key={`prompt-${index}-${prompt}`}
                     icon={PROMPT_ICONS[index % PROMPT_ICONS.length]}
                     isDisabled={areRowsDisabled}
                     isMotionReduced={!!shouldReduceMotion}
