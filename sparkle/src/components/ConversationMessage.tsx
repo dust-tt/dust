@@ -1,6 +1,6 @@
 import { useLingui } from "@lingui/react/macro";
 import { Avatar } from "@sparkle/components/Avatar";
-import type { Button } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { ConversationMessageContent } from "@sparkle/components/ConversationMessages";
 import {
   DropdownMenu,
@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@sparkle/components/Dropdown";
-import { IconButton } from "@sparkle/components/IconButton";
 import { DotsHorizontal } from "@sparkle/icons/v2-stroke";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -226,7 +225,7 @@ const ConversationMessageHeader = React.forwardRef<
             {actions && actions.length > 0 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <IconButton
+                  <Button
                     icon={DotsHorizontal}
                     size="xs"
                     variant="highlight-ghost"
