@@ -496,6 +496,38 @@ msgid "• {requester} (reason: {reason})"
 msgstr "• {requester} (motif : {reason})"
 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: personal limit reached (reason: {reason})"
+msgstr "• {requester} : limite personnelle atteinte (raison : {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: personal limit reached"
+msgstr "• {requester} : limite personnelle atteinte"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: {groupName} group budget used up (reason: {reason})"
+msgstr "• {requester} : budget du groupe {groupName} épuisé (raison : {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: {groupName} group budget used up"
+msgstr "• {requester} : budget du groupe {groupName} épuisé"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: group budget used up (reason: {reason})"
+msgstr "• {requester} : budget de groupe épuisé (raison : {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: group budget used up"
+msgstr "• {requester} : budget de groupe épuisé"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: no seat (reason: {reason})"
+msgstr "• {requester} : aucun siège (raison : {reason})"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "• {requester}: no seat"
+msgstr "• {requester} : aucun siège"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "[Dust] {count} members requested a spend-limit upgrade"
 msgstr "[Dust] {count} membres ont demandé une augmentation de leur limite de dépenses"
 
@@ -530,6 +562,54 @@ msgstr "Examinez la demande et ajustez sa limite depuis la page d’utilisation 
 #: front/lib/notifications/workflows/upgrade-request-created.ts
 msgid "Review request"
 msgstr "Examiner la demande"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {requester} requested a raise of the {groupName} budget"
+msgstr "[Dust] {requester} a demandé une augmentation du budget de {groupName}"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {requester} requested a group budget raise"
+msgstr "[Dust] {requester} a demandé une augmentation du budget de son groupe"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} is blocked because the {groupName} group budget is used up, and is requesting a raise."
+msgstr "{requester} est bloqué(e) car le budget du groupe {groupName} est épuisé, et demande une augmentation."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} is blocked because their group budget is used up, and is requesting a raise."
+msgstr "{requester} est bloqué(e) car le budget de son groupe est épuisé, et demande une augmentation."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Reason: {reason}"
+msgstr "Raison : {reason}"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the request and adjust the group budget from your workspace usage page."
+msgstr "Examinez la demande et ajustez le budget du groupe depuis la page d’utilisation de votre workspace."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {requester} requested a seat"
+msgstr "[Dust] {requester} a demandé un siège"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{requester} has no seat and is requesting one."
+msgstr "{requester} n’a pas de siège et en demande un."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the request and assign a seat from your workspace usage page."
+msgstr "Examinez la demande et attribuez un siège depuis la page d’utilisation de votre workspace."
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "[Dust] {count} members requested an upgrade"
+msgstr "[Dust] {count} membres ont demandé une augmentation"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "{count} members are requesting an upgrade:"
+msgstr "{count} membres demandent une augmentation :"
+
+#: front/lib/notifications/workflows/upgrade-request-created.ts
+msgid "Review the requests from your workspace usage page."
+msgstr "Examinez les demandes depuis la page d’utilisation de votre workspace."
 
 #: front/lib/notifications/workflows/user-awu-cap-reached.ts
 msgid "You've reached your usage limit"
