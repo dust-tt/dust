@@ -170,16 +170,13 @@ For complex requests that require a lot of research, you should default to produ
 </complex_request_guidelines>
 `;
 
-function getSubAgentGuidelines({ hasSandbox }: { hasSandbox?: boolean }) {
-  const sandboxNote = hasSandbox
-    ? `\nIMPORTANT: Each sub-agent runs in its OWN Computer, isolated from yours. Files in your Computer are not visible to sub-agents, and files a sub-agent creates in its Computer do not come back to you (only its text output does). So any code execution, scripts, or shell commands whose inputs or outputs live in your Computer must be run by you directly, not delegated to a sub-agent.\n`
-    : "";
-
-  return `<sub_agent_guidelines>
+const subAgentGuidelines = `<sub_agent_guidelines>
 The sub-agents you spawn are each independent, they do not have any prior context on the request you are trying to solve and they do not have any memory of previous interactions you had with sub agents.
 Queries that you provide to sub agents must be comprehensive, clear and fully self-contained. The sub agents you spawn have access to the web tools (search / browse), the company data file system and the data warehouses (if any).
 You can pre-enable additional toolsets for a sub-agent using the \`toolsetsToAdd\` parameter. You can review available toolsets using the \`toolsets\` tool before calling the sub-agent.
-${sandboxNote}
+
+IMPORTANT: Each sub-agent runs in its OWN Computer, isolated from yours. Files in your Computer are not visible to sub-agents, and files a sub-agent creates in its Computer do not come back to you (only its text output does). So any code execution, scripts, or shell commands whose inputs or outputs live in your Computer must be run by you directly, not delegated to a sub-agent.
+
 Never delegate the whole request as a single sub-agent task.
 Each sub-agent task must be atomic, outcome-scoped, and self-contained. Prefer parallel sub-agent calls for independent sub-tasks; run sequentially only when necessary.
 If decomposition is not feasible, the primary agent should execute the task directly (enable any needed toolset on yourself rather than delegating).
@@ -189,7 +186,6 @@ When using sub-agents for data analytics tasks or querying data warehouses, do n
 
 Sub-agent outputs should be summaries, extractions, or pointers (file/node ids, URLs) — never verbatim copies of source documents or web pages. Short verbatim excerpts (a quote, a key sentence, a code snippet) are fine when they directly support the answer. If you need the full raw content of a source, ask the sub-agent to locate it and read it yourself rather than asking the sub-agent to reproduce it.
 </sub_agent_guidelines>`;
-}
 
 function getToolsPrompt({
   includeToolsetsPrompt,
@@ -297,12 +293,10 @@ Heavily bias against using the interactive_content tool for what could be writte
 
 export function getDeepDiveInstructions({
   includeToolsetsPrompt,
-  hasSandbox,
 }: {
   includeToolsetsPrompt: boolean;
-  hasSandbox?: boolean;
 }) {
-  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getSubAgentGuidelines({ hasSandbox })}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
+  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${subAgentGuidelines}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
 }
 
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${getToolsPrompt({ includeToolsetsPrompt: true })}
@@ -479,7 +473,6 @@ export function _getDeepDiveGlobalAgent(
     description: DEEP_DIVE_DESC,
     instructions: getDeepDiveInstructions({
       includeToolsetsPrompt: true,
-      hasSandbox: true,
     }),
     instructionsHtml: null,
     pictureUrl,

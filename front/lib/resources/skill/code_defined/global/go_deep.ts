@@ -26,7 +26,6 @@ export const goDeepSkill = {
   ) =>
     getDeepDiveInstructions({
       includeToolsetsPrompt: false,
-      hasSandbox: true,
     }),
   mcpServers: [
     {
