@@ -93,8 +93,11 @@ RUN if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then 
 # Workers image (Full Node.js environment) for front-workers deployment
 FROM node:24.16.0-slim AS workers
 
+# tini runs as PID 1 in worker pods so that node does not: as PID 1, node ignores a SIGTERM that
+# arrives before any handler is installed, e.g. while a pod stopped seconds after starting is
+# still loading its modules.
 RUN apt-get update && \
-  apt-get install -y redis-tools postgresql-client libjemalloc2 curl procps && \
+  apt-get install -y redis-tools postgresql-client libjemalloc2 curl procps tini && \
   rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
