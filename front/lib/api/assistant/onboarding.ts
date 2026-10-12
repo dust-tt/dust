@@ -5,6 +5,8 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
+import { getLanguageName } from "@app/lib/i18n/language_name";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -156,6 +158,17 @@ function toLanguageCode(language: string | null): string | null {
   return code && /^[a-z]{2,3}$/i.test(code) ? code : null;
 }
 
+function toLanguageName(language: string | null): string | null {
+  const code = toLanguageCode(language);
+  return code ? getLanguageName(code) : null;
+}
+
+function buildLanguageInstruction(languageName: string): string {
+  return `## LANGUAGE
+
+You MUST respond in ${languageName}. All your messages, including greetings, instructions, and button labels, must be in ${languageName}.`;
+}
+
 function buildOnboardingPrompt(options: {
   emailProvider: EmailProviderType;
   userJobType: string | null;
@@ -220,9 +233,15 @@ function buildOnboardingPrompt(options: {
         suggestedTopToolNames
       );
 
-  const language = toLanguageCode(options.language);
-  const languageInstruction = language
-    ? `\n## LANGUAGE\n\nYou MUST respond in ${language}. All your messages, including greetings, instructions, and button labels, must be in ${language}.\n`
+  const languageName = toLanguageName(options.language);
+  const languageInstruction = languageName
+    ? `\n${buildLanguageInstruction(languageName)}\n`
+    : "";
+  const quickReplyLanguageRule = languageName
+    ? `\n- Write the label and the \`message\` value in ${languageName}. Examples and required endings in this prompt are in English for illustration only: translate them. Never translate \`:quickReply\` or attribute names.`
+    : "";
+  const toolSetupLanguageRule = languageName
+    ? `\n- Write the button label in ${languageName} (tool names stay as-is). Never translate \`:toolSetup\` or the \`sId\` value.`
     : "";
 
   return `<dust_system>
@@ -242,7 +261,7 @@ ${languageInstruction}${userContext}
 ### Quick reply format
 :quickReply[Label]{message="message to send"}
 - All quick replies MUST be on a SINGLE line at the end
-- 2-3 buttons maximum
+- 2-3 buttons maximum${quickReplyLanguageRule}
 - End with standard buttons on next line:
   :quickReply[Try something else]{message="What else can I try?"} :quickReply[Connect more]{message="What other tools can I connect?"}
 
@@ -283,7 +302,7 @@ Call create_schedule_trigger with:
 
 Rules:
 - Maximum 2 per message
-- **CRITICAL: Multiple toolSetup directives MUST be on the SAME line, separated by a space.**
+- **CRITICAL: Multiple toolSetup directives MUST be on the SAME line, separated by a space.**${toolSetupLanguageRule}
 
 ## Available tools
 
@@ -371,7 +390,7 @@ Write a SHORT welcome message (3-4 lines max):
 3. Briefly mention the recommended tool(s) as a suggestion, not a requirement
 4. End with the tool setup cards AND an option for users who already know what they want to do
 
-You MUST end your message EXACTLY like this:
+You MUST end your message with these directives:
 ${toolSetupDirectives}
 :quickReply[I have something in mind]{message="I already have an idea of what I want to do with Dust"} :quickReply[Skip for now]{message="I'd like to skip connecting tools for now"}
 
@@ -442,6 +461,28 @@ const TOOL_TASK_SUGGESTIONS: Record<string, string> = {
 :quickReply[Recent spreadsheets]{message="Show recently updated Excel files"} :quickReply[Changes this week]{message="Summarize changes to my Excel files this week"}`,
 };
 
+export async function getOnboardingLanguage(
+  auth: Authenticator,
+  { acceptLanguage }: { acceptLanguage: string | undefined }
+): Promise<string | null> {
+  // The browser's preferred language, even if Dust does not support it.
+  const browserLanguage = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
+
+  const user = auth.user();
+  if (!user || !(await hasFeatureFlag(auth, "localisation"))) {
+    return browserLanguage;
+  }
+
+  const storedLocale = await user.getStoredLocale();
+  if (storedLocale) {
+    return storedLocale.split("-")[0];
+  }
+
+  return (
+    browserLanguage ?? auth.getNonNullableWorkspace().locale.split("-")[0]
+  );
+}
+
 const DEFAULT_AUTO_QUERY_GUIDANCE = `Automatically explore this tool to see what data is available. Present 1-2 specific examples of what you found.`;
 
 export function buildOnboardingFollowUpPrompt(
@@ -452,9 +493,9 @@ export function buildOnboardingFollowUpPrompt(
     TOOL_TASK_SUGGESTIONS[toolId] ?? DEFAULT_AUTO_QUERY_GUIDANCE;
   const toolName = asDisplayName(toolId);
 
-  const languageCode = toLanguageCode(language);
-  const languageInstruction = languageCode
-    ? `\n**IMPORTANT:** You MUST respond in ${languageCode}. All your messages must be in ${languageCode}.\n`
+  const languageName = toLanguageName(language);
+  const languageInstruction = languageName
+    ? `\n${buildLanguageInstruction(languageName)}\n`
     : "";
 
   return `<dust_system>

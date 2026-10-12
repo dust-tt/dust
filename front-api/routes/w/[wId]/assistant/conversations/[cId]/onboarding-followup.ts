@@ -1,6 +1,9 @@
 import { isInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
-import { buildOnboardingFollowUpPrompt } from "@app/lib/api/assistant/onboarding";
+import {
+  buildOnboardingFollowUpPrompt,
+  getOnboardingLanguage,
+} from "@app/lib/api/assistant/onboarding";
 import { isUserOnboardingConversation } from "@app/lib/onboarding";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -70,9 +73,9 @@ app.post(
       });
     }
 
-    // Extract user's preferred language from Accept-Language header.
-    const acceptLanguage = ctx.req.header("accept-language");
-    const language = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
+    const language = await getOnboardingLanguage(auth, {
+      acceptLanguage: ctx.req.header("accept-language"),
+    });
 
     const followUpPrompt = buildOnboardingFollowUpPrompt(toolId, language);
 
