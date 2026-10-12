@@ -12,6 +12,7 @@ import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { messageSignaturePayload } from "@app/lib/markdown/dfm";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -1515,11 +1516,7 @@ describe("PUT of a Markdown file held by a live session", () => {
     if (coEdition) {
       await FeatureFlagFactory.basic(auth, "co_edition");
     }
-    const conversation = await createConversation(auth, {
-      title: null,
-      visibility: "unlisted",
-      spaceId: null,
-    });
+    const conversation = await ConversationFactory.createPlain(auth);
     return {
       workspace,
       user,
@@ -1576,6 +1573,7 @@ describe("PUT of a Markdown file held by a live session", () => {
     const response = await put(workspace, path, "# New\n");
 
     expect(response.status).toBe(412);
+    expect((await response.json()).error.type).toBe("live_document_conflict");
     expect(pushLiveSource).toHaveBeenCalledTimes(3);
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
@@ -1614,14 +1612,37 @@ describe("PUT of a Markdown file held by a live session", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("refuses a comment the server did not sign, checked against the session's source", async () => {
-    const { workspace, path } = await setupLive();
-    const unsigned = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=agent:someone name="Someone" at=2026-10-05T11:59:58.000Z}\n\nLooks good.\n:::\n`;
+  const agentComment = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=agent:someone name="Someone" at=2026-10-05T11:59:58.000Z}\n\nLooks good.\n:::\n`;
 
-    const response = await put(workspace, path, unsigned);
+  it("refuses a comment the server did not sign that the session's source lacks", async () => {
+    const { workspace, path } = await setupLive();
+
+    const response = await put(workspace, path, agentComment);
 
     expect(response.status).toBe(400);
     expect(pushLiveSource).not.toHaveBeenCalled();
+  });
+
+  it("keeps a comment the session's source already holds", async () => {
+    const { workspace, path } = await setupLive();
+    vi.mocked(fetchLiveSource).mockResolvedValue(
+      new Ok({ open: true, source: agentComment })
+    );
+
+    const response = await put(workspace, path, agentComment);
+
+    expect(response.status).toBe(200);
+    expect(pushLiveSource).toHaveBeenCalledTimes(1);
+  });
+
+  it("looks the session up without a trailing slash", async () => {
+    const { workspace, path } = await setupLive();
+
+    const response = await put(workspace, `${path}/`, "# New\n");
+
+    expect(response.status).toBe(200);
+    expect(fetchLiveSource).toHaveBeenCalledWith(expect.anything(), path);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("does not ask the collab server outside co_edition", async () => {

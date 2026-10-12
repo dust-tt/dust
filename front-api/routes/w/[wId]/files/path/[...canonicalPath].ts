@@ -30,7 +30,8 @@ import {
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
 import {
-  LiveFileContentWriteError,
+  isLiveFileContentWriteError,
+  type LiveFileContentWriteError,
   writeFileContentThroughLiveSession,
 } from "@app/lib/api/files/live_file_content";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
@@ -615,16 +616,25 @@ function mapLiveWriteError(
 ): APIErrorWithContentfulStatusCode {
   const { code } = error;
   switch (code) {
+    case "read_only":
+      return {
+        status_code: 403,
+        api_error: { type: "file_read_only", message: error.message },
+      };
+
     case "refused":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "live_document_write_refused",
+          message: error.message,
+        },
       };
 
     case "conflict":
       return {
         status_code: 412,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "live_document_conflict", message: error.message },
       };
 
     case "unavailable":
@@ -765,7 +775,7 @@ app.put(
     if (live.isErr()) {
       return apiError(
         ctx,
-        live.error instanceof LiveFileContentWriteError
+        isLiveFileContentWriteError(live.error)
           ? mapLiveWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );

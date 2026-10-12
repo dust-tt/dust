@@ -23,6 +23,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 const MAX_LIVE_WRITE_ATTEMPTS = 3;
 
 export type LiveFileContentWriteErrorCode =
+  | "read_only"
   | "refused"
   | "conflict"
   | "unavailable";
@@ -36,6 +37,12 @@ export class LiveFileContentWriteError extends Error {
   }
 }
 
+export function isLiveFileContentWriteError(
+  error: unknown
+): error is LiveFileContentWriteError {
+  return error instanceof LiveFileContentWriteError;
+}
+
 export type LiveFileContentWrite =
   | { kind: "no_session" }
   | { kind: "written"; newMessages: NewCommentMessage[] };
@@ -44,7 +51,9 @@ export type LiveFileContentWrite =
  * @cc [owner:tdraier,label:product;concurrency;security] live-file-content-write
  * In a workspace with `co_edition`, for a file whose name or request content type is
  * `text/markdown`, while a live session holds the file, `content` MUST be written through the
- * session and the file MUST NOT be written: `dustFs` MUST be able to write the file, the comments
+ * session and the file MUST NOT be written. The session MUST be looked up under the file's
+ * normalized path without a trailing slash, the only one a live document is named after
+ * (`live-file-access`). `dustFs` MUST be able to write the file, else `read_only`; the comments
  * MUST be validated with `validateCommentSignaturesForUser` against the session's source, and the
  * content MUST be pushed conditional on that source, starting over from a fresh read when the
  * session changed or was busy, and failing with `conflict` after `MAX_LIVE_WRITE_ATTEMPTS`. A write
@@ -75,12 +84,14 @@ export async function writeFileContentThroughLiveSession(
     LiveFileContentWriteError | DfmCommentSignatureError
   >
 > {
-  const filePath = DustFileSystem.resolveScopedPath(scopedPath);
-  if (filePath.isErr()) {
+  const resolved = DustFileSystem.resolveScopedPath(scopedPath);
+  if (resolved.isErr()) {
     return new Ok({ kind: "no_session" });
   }
+  // A trailing slash survives normalization but names the same file.
+  const filePath = resolved.value.replace(/\/+$/, "");
   const isMarkdown =
-    contentTypeFromFileName(filePath.value) === "text/markdown" ||
+    contentTypeFromFileName(filePath) === "text/markdown" ||
     isMarkdownContentType(stripMimeParameters(requestContentType ?? ""));
   // Only Markdown opens live, and only in a co_edition workspace: other writes never wait on the
   // collab server.
@@ -90,7 +101,7 @@ export async function writeFileContentThroughLiveSession(
 
   const next = decodeBuffer(content);
   for (let attempt = 0; attempt < MAX_LIVE_WRITE_ATTEMPTS; attempt++) {
-    const live = await fetchLiveSource(auth, filePath.value);
+    const live = await fetchLiveSource(auth, filePath);
     if (live.isErr()) {
       return new Err(
         new LiveFileContentWriteError(live.error.code, live.error.message)
@@ -107,14 +118,14 @@ export async function writeFileContentThroughLiveSession(
         )
       );
     }
-    const writable = dustFs.checkWriteAccess(filePath.value);
+    const writable = dustFs.checkWriteAccess(filePath);
     if (writable.isErr()) {
       return new Err(
-        new LiveFileContentWriteError("refused", writable.error.message)
+        new LiveFileContentWriteError("read_only", writable.error.message)
       );
     }
     const newMessages = validateCommentSignaturesForUser(auth, {
-      filePath: filePath.value,
+      filePath,
       previous: live.value.source,
       next,
     });
@@ -123,7 +134,7 @@ export async function writeFileContentThroughLiveSession(
     }
 
     const pushed = await pushLiveSource(auth, {
-      canonicalPath: filePath.value,
+      canonicalPath: filePath,
       base: live.value.source,
       source: next,
     });
