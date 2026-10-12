@@ -9,8 +9,10 @@ const EMAIL_ADDRESS_PATTERN_SOURCE = `[a-zA-Z0-9._%+\\-]+@(?:${DOMAIN_LABEL_PATT
 const FULL_EMAIL_ADDRESS_PATTERN = new RegExp(
   `^${EMAIL_ADDRESS_PATTERN_SOURCE}$`
 );
+// Only starts a match where the previous character is not a letter, a digit or one of . _ % + -,
+// so each run of these characters is read once.
 const GLOBAL_EMAIL_ADDRESS_PATTERN = new RegExp(
-  EMAIL_ADDRESS_PATTERN_SOURCE,
+  `(?<![a-zA-Z0-9._%+\\-])${EMAIL_ADDRESS_PATTERN_SOURCE}`,
   "g"
 );
 
@@ -59,7 +61,7 @@ export function extractEmailAddressesFromHeader(
   // First pass: extract addresses inside angle brackets (e.g., "Name <email@domain.com>").
   // This correctly handles display names with special characters (apostrophes, quotes, etc.)
   // and ensures case-insensitive matching by lowercasing here.
-  const anglePattern = /<([^>]+)>/g;
+  const anglePattern = /<([^<>]+)>/g;
   let match;
   while ((match = anglePattern.exec(headerValue)) !== null) {
     const content = match[1].trim();
