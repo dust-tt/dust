@@ -349,8 +349,6 @@ export function useSearchSkillsInfinite({
  * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
  * Revalidate array-keyed skill searches for the given workspace, regardless of
  * search body.
- * Do not revalidate other workspaces, individual skill detail endpoints or
- * reinforcement settings (refreshed by their own hooks).
  */
 export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRConfig();
