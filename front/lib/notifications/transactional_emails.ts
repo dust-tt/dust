@@ -85,21 +85,47 @@ export async function emailRecipientsFromAddresses(
   workspace: LightWorkspaceType,
   emails: string[]
 ): Promise<EmailRecipient[]> {
-  const users = await MembershipResource.filterActiveMembers({
-    users: await UserResource.fetchByEmails(emails.map((e) => e.trim())),
-    workspace,
-  });
-  const userByEmail = new Map<string, UserResource>();
-  for (const user of users) {
-    const key = user.email.toLowerCase();
-    const current = userByEmail.get(key);
+  return emailRecipientsFromWorkspaceAddresses(
+    emails.map((email) => ({ workspace, email }))
+  );
+}
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:product;security;performance] recipients-from-workspace-addresses
+ * Resolves each entry exactly as `emailRecipientsFromAddresses(entry.workspace, [entry.email])`
+ * would, in order, but MUST issue a constant number of queries regardless of how many entries or
+ * distinct workspaces are passed.
+ */
+export async function emailRecipientsFromWorkspaceAddresses(
+  entries: { workspace: Pick<LightWorkspaceType, "id">; email: string }[]
+): Promise<EmailRecipient[]> {
+  const users = await UserResource.fetchByEmails(
+    entries.map(({ email }) => email.trim())
+  );
+  const { memberships } =
+    users.length > 0
+      ? await MembershipResource.getActiveMemberships({ users })
+      : { memberships: [] };
+  const userById = new Map(users.map((user) => [user.id, user]));
+
+  // Keyed by workspace model id and lower-cased address.
+  const userByWorkspaceEmail = new Map<string, UserResource>();
+  for (const membership of memberships) {
+    const user = userById.get(membership.userId);
+    if (!user) {
+      continue;
+    }
+    const key = `${membership.workspaceId}:${user.email.toLowerCase()}`;
+    const current = userByWorkspaceEmail.get(key);
     if (!current || user.updatedAt.getTime() > current.updatedAt.getTime()) {
-      userByEmail.set(key, user);
+      userByWorkspaceEmail.set(key, user);
     }
   }
 
-  return emails.map((email) => {
-    const user = userByEmail.get(email.trim().toLowerCase());
+  return entries.map(({ workspace, email }) => {
+    const user = userByWorkspaceEmail.get(
+      `${workspace.id}:${email.trim().toLowerCase()}`
+    );
     if (user) {
       return emailRecipientFromUser(user);
     }

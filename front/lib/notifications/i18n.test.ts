@@ -2,6 +2,7 @@ import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import {
   emailRecipientsFromAddresses,
+  emailRecipientsFromWorkspaceAddresses,
   isExternalSubscriberId,
 } from "@app/lib/notifications/transactional_emails";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -93,6 +94,25 @@ describe("emailRecipientsFromAddresses", () => {
     expect(isExternalSubscriberId(recipient.subscriberId)).toBe(true);
     expect(recipient.email).toBe(user.email);
     expect(recipient.firstName).toBeUndefined();
+  });
+});
+
+describe("emailRecipientsFromWorkspaceAddresses", () => {
+  it("resolves each address against its own workspace", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const otherWorkspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    const [inMemberWorkspace, inOtherWorkspace] =
+      await emailRecipientsFromWorkspaceAddresses([
+        { workspace, email: user.email },
+        { workspace: otherWorkspace, email: user.email },
+      ]);
+
+    expect(inMemberWorkspace.subscriberId).toBe(user.sId);
+    expect(isExternalSubscriberId(inOtherWorkspace.subscriberId)).toBe(true);
+    expect(inOtherWorkspace.email).toBe(user.email);
   });
 });
 
