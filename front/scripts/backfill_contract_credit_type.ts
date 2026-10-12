@@ -1,5 +1,6 @@
 /**
- * Backfill `DUST_CONTRACT_CREDIT_TYPE` on live Metronome AWU contract credits.
+ * Backfill `DUST_CONTRACT_CREDIT_TYPE` on live Metronome AWU contract credits of
+ * CP_ENT_* workspaces (the only plans with recurring credits).
  *
  * Credits are stamped reactively by the `credit.create` / `credit.segment.start`
  * webhook handlers. Metronome materializes each period of a recurring credit
@@ -31,6 +32,7 @@ import {
   getCreditTypeAwuId,
   getProductExcessCreditsId,
 } from "@app/lib/metronome/constants";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -39,6 +41,8 @@ import { Op } from "sequelize";
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
+const CREDIT_PRICED_ENTERPRISE_PLAN_CODE_PREFIX = "CP_ENT_";
+
 async function backfillCreditsForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
@@ -46,6 +50,15 @@ async function backfillCreditsForWorkspace(
 ): Promise<void> {
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
+    return;
+  }
+
+  // Only credit-priced enterprise contracts carry recurring pool credits.
+  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
+    workspace.id
+  );
+  const planCode = subscription?.getPlan().code ?? "";
+  if (!planCode.startsWith(CREDIT_PRICED_ENTERPRISE_PLAN_CODE_PREFIX)) {
     return;
   }
 
