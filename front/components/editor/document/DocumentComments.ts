@@ -488,10 +488,13 @@ const changedRanges = (transactions: readonly Transaction[]) => {
     const { maps } = narrowedMapping(transaction);
     for (const [index, step] of transaction.steps.entries()) {
       const map = maps[index];
-      ranges = ranges.map(({ from, to }) => ({
-        from: map.map(from, -1),
-        to: map.map(to, 1),
-      }));
+      // Mark steps move nothing; remapping for them would make many-step marks quadratic.
+      if (map !== StepMap.empty) {
+        ranges = ranges.map(({ from, to }) => ({
+          from: map.map(from, -1),
+          to: map.map(to, 1),
+        }));
+      }
       if (step instanceof AddMarkStep || step instanceof RemoveMarkStep) {
         ranges.push({ from: step.from, to: step.to });
       }
@@ -581,7 +584,8 @@ declare module "@tiptap/core" {
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comment-anchor
  * Comment marks MUST store only the comment id. Marks MUST NOT extend to text typed at
- * their edges. Distinct comments MUST be allowed on overlapping text.
+ * their edges. Distinct comments MUST be allowed on overlapping text. Marks MUST sit only on
+ * text, never on inline nodes such as hard breaks, since anchors reopen as marks on text only.
  */
 /**
  * @cc [owner:tdraier,label:product] document-comment-not-pasted
@@ -975,11 +979,29 @@ export const DocumentComments = Extension.create({
         }
 
         if (dispatch) {
-          tr.addMark(
-            draft.from,
-            draft.to,
-            state.schema.marks[COMMENT_MARK_NAME].create({ id: comment.id })
-          );
+          // A range mark would also cover inline nodes such as hard breaks, which anchors
+          // cannot express, so the document would no longer save.
+          const mark = state.schema.marks[COMMENT_MARK_NAME].create({
+            id: comment.id,
+          });
+          // One step per run of adjacent text, as a range mark would make.
+          const runs: CommentRange[] = [];
+          state.doc.nodesBetween(draft.from, draft.to, (node, pos, parent) => {
+            if (!canCarryCommentMark(node, parent)) {
+              return;
+            }
+            const from = Math.max(pos, draft.from);
+            const to = Math.min(pos + node.nodeSize, draft.to);
+            const last = runs.at(-1);
+            if (last?.to === from) {
+              last.to = to;
+            } else {
+              runs.push({ from, to });
+            }
+          });
+          for (const { from, to } of runs) {
+            tr.addMark(from, to, mark);
+          }
           // A live document may already hold the thread, pushed by the session.
           tr.setDocAttribute(COMMENTS_ATTRIBUTE, [
             ...getDocumentComments(state.doc).filter(
