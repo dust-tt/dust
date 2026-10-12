@@ -3,6 +3,8 @@ import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import logger from "@app/logger/logger";
 import { PlanTypeSchema } from "@app/types/api/poke/plans";
+import type { SupportedLocale } from "@app/types/locale";
+import { isSupportedLocale } from "@app/types/locale";
 import type { SubscriptionType } from "@app/types/plan";
 import { SUBSCRIPTION_STATUSES } from "@app/types/plan";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -21,12 +23,16 @@ import { z } from "zod";
 const PROACTIVE_REFRESH_WINDOW_MS = 1000 * 60; // 1 minute
 
 // Subset of GetWorkspaceAuthContextResponseType consumed by the extension.
-// Unknown feature flags are dropped rather than failing the parse, since the
-// extension may be older than the server it talks to.
+// Unknown feature flags and locales are dropped rather than failing the parse,
+// since the extension may be older than the server it talks to.
 const WorkspaceAuthContextResponseSchema = z.object({
   featureFlags: z
     .array(z.string())
     .transform((flags) => flags.filter(isWhitelistableFeature)),
+  locale: z
+    .string()
+    .optional()
+    .transform((locale) => (isSupportedLocale(locale) ? locale : undefined)),
   subscription: z.object({
     sId: z.string().nullable(),
     status: z.enum(SUBSCRIPTION_STATUSES),
@@ -54,6 +60,7 @@ export const useAuthHook = () => {
   const [subscription, setSubscription] = useState<SubscriptionType | null>(
     null
   );
+  const [locale, setLocale] = useState<SupportedLocale | undefined>();
   const { setCellInfo } = useCellContext();
 
   // Set default fetch init for the extension (overrides CellContext's credentials: "include").
@@ -104,6 +111,7 @@ export const useAuthHook = () => {
     setUser(null);
     setSubscription(null);
     setFeatureFlags([]);
+    setLocale(undefined);
     setAuthError(null);
     setForcedConnection(undefined);
     if (refreshTimerRef.current) {
@@ -248,6 +256,7 @@ export const useAuthHook = () => {
     if (!isAuthenticated || !workspace || !tokens?.accessToken) {
       setFeatureFlags([]);
       setSubscription(null);
+      setLocale(undefined);
       return;
     }
 
@@ -256,6 +265,7 @@ export const useAuthHook = () => {
       if (!res.ok) {
         setFeatureFlags([]);
         setSubscription(null);
+        setLocale(undefined);
         return;
       }
 
@@ -269,11 +279,13 @@ export const useAuthHook = () => {
         );
         setFeatureFlags([]);
         setSubscription(null);
+        setLocale(undefined);
         return;
       }
 
       setFeatureFlags(parsed.data.featureFlags);
       setSubscription(parsed.data.subscription);
+      setLocale(parsed.data.locale);
     })();
   }, [workspace, tokens?.accessToken, isAuthenticated]);
 
@@ -339,5 +351,6 @@ export const useAuthHook = () => {
     handleSelectOrganization,
     featureFlags,
     subscription,
+    locale,
   };
 };
