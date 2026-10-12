@@ -1,3 +1,4 @@
+import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import type { ProviderType } from "@app/types/provider";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -40,6 +41,21 @@ app.post(
     const { pId } = ctx.req.valid("param");
 
     const body = ctx.req.valid("json");
+
+    if (pId === "azure_openai") {
+      const endpointError = validateAzureOpenAIEndpoint(
+        JSON.parse(body.config).endpoint
+      );
+      if (endpointError) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "provider_endpoint_error",
+            message: endpointError,
+          },
+        });
+      }
+    }
 
     let provider = await ProviderModel.findOne({
       where: {

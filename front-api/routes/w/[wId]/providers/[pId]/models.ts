@@ -1,5 +1,7 @@
+import { validateAzureOpenAIEndpoint } from "@app/lib/api/url_safety";
 import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { GEMINI_2_5_PRO_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -104,15 +106,41 @@ app.get(
       }
 
       case "azure_openai": {
-        const deploymentsRes = await fetch(
-          `${config.endpoint}openai/deployments?api-version=2022-12-01`,
-          {
-            method: "GET",
-            headers: {
-              "api-key": config.api_key,
+        const endpointError = validateAzureOpenAIEndpoint(config.endpoint);
+        if (endpointError) {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "provider_endpoint_error",
+              message: endpointError,
             },
-          }
-        );
+          });
+        }
+
+        let deploymentsRes: Response;
+        try {
+          deploymentsRes = await fetch(
+            `${config.endpoint}openai/deployments?api-version=2022-12-01`,
+            {
+              method: "GET",
+              headers: {
+                "api-key": config.api_key,
+              },
+            }
+          );
+        } catch (err) {
+          return apiError(
+            ctx,
+            {
+              status_code: 400,
+              api_error: {
+                type: "provider_endpoint_error",
+                message: "Could not reach the Azure OpenAI endpoint.",
+              },
+            },
+            normalizeError(err)
+          );
+        }
 
         if (!deploymentsRes.ok) {
           const err = await deploymentsRes.json();

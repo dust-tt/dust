@@ -40,6 +40,7 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   app_auth_error: msg`You don't have access to this app.`,
   provider_auth_error: msg`The model provider rejected the credentials.`,
   provider_not_found: msg`Model provider not found.`,
+  provider_endpoint_error: msg`The model provider endpoint is invalid or can't be reached.`,
   dataset_not_found: msg`Dataset not found.`,
   workspace_not_found: msg`Workspace not found.`,
   workspace_in_different_cell: msg`This workspace is hosted in another region.`,
