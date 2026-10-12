@@ -61,12 +61,8 @@ impl Dfs for API {
             let root = &root;
             let root_grants = &root_grants;
             async move {
-                // A false result means a retry found our earlier commit. Its root already exists,
-                // so skip creation to preserve it and avoid an AlreadyExists error.
-                let created = tenant.create(&tx).await?;
-                if created {
-                    root.create(&tx, root_grants).await?;
-                }
+                tenant.create(&tx).await?;
+                root.create(&tx, root_grants).await?;
                 Ok::<_, storage::Error<Status>>(())
             }
         })

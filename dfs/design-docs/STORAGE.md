@@ -102,11 +102,12 @@ attr_version, content_version)`, with null for absent parents or timestamps. Kin
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
 Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, an empty name,
 and both versions at 1.
-Retries that find the tenant already created leave its root and grants unchanged.
 
 Object creation validates all xattrs before staging writes and stores them with attributes and base
-metadata in the same transaction. Each xattr name is a separate tuple component. An empty value
-denotes a present xattr with empty bytes; a missing key denotes an absent xattr. Extended metadata
+metadata in the same transaction. A retry that finds exactly the attributes it would write succeeds
+without writing; any other occupant of the ID fails with `AlreadyExists`. Each xattr name is a
+separate tuple component. An empty value denotes a present xattr with empty bytes; a missing key
+denotes an absent xattr. Extended metadata
 reads combine the base entry and xattr entries from the same transaction. Xattr changes commit with
 `attr_version` and preserve the 32 KiB limit on combined xattr name/value bytes. Object deletion clears
 both the base metadata entry and all xattr entries.
@@ -171,8 +172,8 @@ existence, source/destination bindings, directory emptiness, and move-cycle chec
 Within `Apply`, each operation validates before staging writes; failed operations leave no changes.
 Later operations see earlier successes, and all successes commit together. Storage or commit
 failures fail the attempt. Retry definitely uncommitted transactions, recomputing reads and
-decisions. Retrying an unknown commit result requires operation-specific idempotency, as for tenant
-creation.
+decisions. Retrying an unknown commit result requires each resource write to recognize its own
+earlier commit, as tenant, object and session creation do.
 
 The 4 MiB RPC ceiling and 1 MiB `Apply` request budget are separate from FDB transaction accounting.
 Budget index maintenance, metadata, blocks, and required responses before commit. Scans use bounded

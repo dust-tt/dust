@@ -199,10 +199,11 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;error-handling] object-create-atomicity
      * Creation MUST write attributes, metadata, xattrs, and grants in the caller's transaction. An
-     * occupied object ID in the same tenant MUST return AlreadyExists before staging any writes,
-     * preserving the existing object and metadata. Missing metadata or invalid xattrs MUST fail
-     * before staging any writes. Initial grants MUST be validated and deduplicated, with at most
-     * 512 distinct values, before staging writes.
+     * object ID in the same tenant already holding exactly this object's attributes MUST succeed
+     * without writes so a retry can recognize its own commit; any other occupant MUST return
+     * AlreadyExists before staging any writes, preserving the existing object and metadata. Missing
+     * metadata or invalid xattrs MUST fail before staging any writes. Initial grants MUST be
+     * validated and deduplicated, with at most 512 distinct values, before staging writes.
      */
     /**
      * @cc [owner:spolu,label:backend] object-xattr-validation
@@ -220,14 +221,27 @@ impl ObjectResource {
         tx: &Transaction,
         grants: &[Grant],
     ) -> Result<(), storage::Error<Error>> {
+        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
+        let attributes = pack(&(
+            parent_id,
+            self.name.as_str(),
+            i32::from(self.kind),
+            self.size,
+            self.atime_ms,
+            self.mtime_ms,
+            self.ctime_ms,
+            self.attr_version,
+            self.content_version,
+        ));
         let key = Self::object_key(&self.tenant_id, &self.object_id);
-        if tx
-            .get(&key, false)
-            .await
-            .map_err(FdbBindingError::from)?
-            .is_some()
-        {
-            return Err(Error::AlreadyExists.into());
+        let existing = tx.get(&key, false).await.map_err(FdbBindingError::from)?;
+        if let Some(existing) = existing {
+            // A retry after an unknown commit result finds our own record.
+            return if existing.as_ref() == attributes.as_slice() {
+                Ok(())
+            } else {
+                Err(Error::AlreadyExists.into())
+            };
         }
 
         let metadata = self.metadata.as_ref().ok_or(Error::MissingMetadata)?;
@@ -250,21 +264,7 @@ impl ObjectResource {
             self.grant_keys(grant)?;
         }
 
-        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
-        tx.set(
-            &key,
-            &pack(&(
-                parent_id,
-                self.name.as_str(),
-                i32::from(self.kind),
-                self.size,
-                self.atime_ms,
-                self.mtime_ms,
-                self.ctime_ms,
-                self.attr_version,
-                self.content_version,
-            )),
-        );
+        tx.set(&key, &attributes);
         tx.set(
             &Self::metadata_key(&self.tenant_id, &self.object_id),
             &pack(&(metadata.created_at_ms, metadata.mime_type.as_deref())),

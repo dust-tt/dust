@@ -151,6 +151,8 @@ pub(crate) async fn object_collisions_preserve_records_and_abort_staged_writes()
         .await?
         .context("missing root metadata")?;
 
+    // Another object with the same ID: identical attributes would read as this test's own retry.
+    root.ctime_ms = root.ctime_ms.map(|ctime_ms| ctime_ms + 1);
     root.metadata.as_mut().context("missing metadata")?.xattrs =
         HashMap::from([("new".to_owned(), b"must not commit".to_vec())]);
     let result = fdb::with_transaction(|tx| {
