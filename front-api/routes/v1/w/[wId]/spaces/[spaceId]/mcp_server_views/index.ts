@@ -62,10 +62,10 @@ app.get(
     const space = ctx.get("space");
     const { includeAuto } = ctx.req.valid("query");
 
-    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
-      auth,
-      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space)
-    );
+    const mcpServerViews =
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
+        mode: "configuration",
+      });
     return ctx.json({
       success: true,
       serverViews: mcpServerViews

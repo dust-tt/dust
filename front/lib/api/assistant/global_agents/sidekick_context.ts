@@ -277,28 +277,18 @@ export async function buildSidekickContext(
   const [context, templates, newAgentFirstReplyLocale] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_SIDEKICK_CONTEXT_TOOL_NAME
+      AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+      { mode: "configuration" }
     ),
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_TEMPLATES_SERVER_NAME
+      AGENT_TEMPLATES_SERVER_NAME,
+      { mode: "configuration" }
     ),
     isNewAgentFirstTurn ? getAgentLocale(auth, featureFlags) : null,
   ]);
-  if (!context) {
-    return { mcpServerViews: null, newAgentFirstReplyLocale };
-  }
-
-  const [configuredContext, configuredTemplates = null] =
-    await MCPServerViewResource.loadConfiguration(
-      auth,
-      templates ? [context, templates] : [context]
-    );
   return {
-    mcpServerViews: {
-      context: configuredContext,
-      templates: configuredTemplates,
-    },
+    mcpServerViews: context ? { context, templates } : null,
     newAgentFirstReplyLocale,
   };
 }

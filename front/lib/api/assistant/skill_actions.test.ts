@@ -342,7 +342,8 @@ describe("resolveSkillMCPServers", () => {
     const autoInternalViews =
       await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
         authenticator,
-        [SKILL_MANAGEMENT_SERVER_NAME]
+        [SKILL_MANAGEMENT_SERVER_NAME],
+        { mode: "configuration" }
       );
     const skillManagementView = autoInternalViews.get(
       SKILL_MANAGEMENT_SERVER_NAME
@@ -351,10 +352,6 @@ describe("resolveSkillMCPServers", () => {
     if (!skillManagementView) {
       throw new Error("Expected skill management MCP server view.");
     }
-    const [configuredSkillManagementView] =
-      await MCPServerViewResource.loadConfiguration(authenticator, [
-        skillManagementView,
-      ]);
 
     const serverToolsAndInstructions = await tryListMCPTools(
       authenticator,
@@ -369,7 +366,7 @@ describe("resolveSkillMCPServers", () => {
         jitServers: [],
         skillServers: [
           buildServerSideMCPServerConfiguration({
-            mcpServerView: configuredSkillManagementView,
+            mcpServerView: skillManagementView,
             serverNameOverride: SKILL_MANAGEMENT_SERVER_NAME,
           }),
         ],

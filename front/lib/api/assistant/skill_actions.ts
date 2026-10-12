@@ -129,20 +129,22 @@ export async function getSkillServers(
     namesToFetch.length > 0
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
-          namesToFetch
+          namesToFetch,
+          { mode: "configuration" }
         )
-      : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+      : new Map<
+          AutoInternalMCPServerNameType,
+          MCPServerViewResource<"configuration">
+        >();
 
-  const [fileSystemServer, dataWarehouseServer] = await Promise.all([
-    createSkillKnowledgeFileSystemServer(auth, {
-      dataSourceConfigurations: documentDataSourceConfigurations,
-      mcpServerView: autoInternalViews.get("data_sources_file_system") ?? null,
-    }),
-    createSkillKnowledgeDataWarehouseServer(auth, {
-      dataSourceConfigurations: warehouseDataSourceConfigurations,
-      mcpServerView: autoInternalViews.get("data_warehouses") ?? null,
-    }),
-  ]);
+  const fileSystemServer = createSkillKnowledgeFileSystemServer({
+    dataSourceConfigurations: documentDataSourceConfigurations,
+    mcpServerView: autoInternalViews.get("data_sources_file_system") ?? null,
+  });
+  const dataWarehouseServer = createSkillKnowledgeDataWarehouseServer({
+    dataSourceConfigurations: warehouseDataSourceConfigurations,
+    mcpServerView: autoInternalViews.get("data_warehouses") ?? null,
+  });
 
   return {
     skillServers: [
@@ -263,49 +265,37 @@ export async function getSkillDataSourceConfigurations(
   };
 }
 
-async function createSkillKnowledgeFileSystemServer(
-  auth: Authenticator,
-  {
-    dataSourceConfigurations,
-    mcpServerView,
-  }: {
-    dataSourceConfigurations: DataSourceConfiguration[];
-    mcpServerView: MCPServerViewResource | null;
-  }
-): Promise<MCPServerConfigurationType | null> {
+function createSkillKnowledgeFileSystemServer({
+  dataSourceConfigurations,
+  mcpServerView,
+}: {
+  dataSourceConfigurations: DataSourceConfiguration[];
+  mcpServerView: MCPServerViewResource<"configuration"> | null;
+}): MCPServerConfigurationType | null {
   if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;
   }
 
-  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
-    mcpServerView,
-  ]);
   return buildServerSideMCPServerConfiguration({
-    mcpServerView: configuredView,
+    mcpServerView,
     dataSources: dataSourceConfigurations,
     serverNameOverride: SKILL_KNOWLEDGE_FILE_SYSTEM_SERVER_NAME,
   });
 }
 
-async function createSkillKnowledgeDataWarehouseServer(
-  auth: Authenticator,
-  {
-    dataSourceConfigurations,
-    mcpServerView,
-  }: {
-    dataSourceConfigurations: DataSourceConfiguration[];
-    mcpServerView: MCPServerViewResource | null;
-  }
-): Promise<MCPServerConfigurationType | null> {
+function createSkillKnowledgeDataWarehouseServer({
+  dataSourceConfigurations,
+  mcpServerView,
+}: {
+  dataSourceConfigurations: DataSourceConfiguration[];
+  mcpServerView: MCPServerViewResource<"configuration"> | null;
+}): MCPServerConfigurationType | null {
   if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;
   }
 
-  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
-    mcpServerView,
-  ]);
   return buildServerSideMCPServerConfiguration({
-    mcpServerView: configuredView,
+    mcpServerView,
     dataSources: dataSourceConfigurations,
     serverNameOverride: SKILL_KNOWLEDGE_DATA_WAREHOUSE_SERVER_NAME,
   });

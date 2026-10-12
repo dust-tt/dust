@@ -119,13 +119,13 @@ export type PostMCPServerViewResponseBody = {
 };
 
 /**
- * What a view carries, in its type:
- * - `metadata`: what the view is. Identity, display (name, description, icon), OAuth
- *   authorization and the tools of internal servers. Every fetch returns `metadata` views.
+ * What a view carries, in its type, chosen with the `mode` option of the fetches:
+ * - `metadata` (default): what the view is. Identity, display (name, description, icon), OAuth
+ *   authorization and the tools of internal servers.
  * - `configuration`: how the view is set up. Adds the remote server cached tools, custom headers,
  *   shared secret and last error, the tool permissions, and the internal server credentials.
- *   Obtained with `loadConfiguration`, required by `toJSON` and `getToolPermissions` (and by
- *   `getServerTools` on remote views, checked at runtime).
+ *   Required by `toJSON` and `getToolPermissions` (and by `getServerTools` on remote views,
+ *   checked at runtime). `loadConfiguration` upgrades views already fetched as `metadata`.
  * Neither is enough to run a tool: `connectToMCPServer` reads the plaintext secrets itself.
  */
 export type MCPServerViewFetchMode = "metadata" | "configuration";
@@ -300,12 +300,11 @@ export class MCPServerViewResource<
         name,
         tools.map((tool) => tool.name)
       );
-    const spaceViews = await this.listBySpace(auth, space);
     // Comparing against the tools existing views expose needs the remote cached tools.
     const existingViews =
       droppedPrefixNames.size > 0
-        ? await this.loadConfiguration(auth, spaceViews)
-        : spaceViews;
+        ? await this.listBySpace(auth, space, { mode: "configuration" })
+        : await this.listBySpace(auth, space);
     for (const view of existingViews) {
       if (view.sId === excludedMCPServerViewId) {
         continue;
@@ -532,15 +531,19 @@ export class MCPServerViewResource<
 
   // Fetching.
 
-  private static async baseFetch(
+  private static async baseFetch<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     options: ResourceFindOptions<MCPServerViewModel> = {},
     {
+      mode,
       includeMetadata = true,
       isRestrictedToSkills,
       includeRestricted = false,
       transaction,
     }: {
+      mode?: TMode;
       includeMetadata?: boolean;
       isRestrictedToSkills?: boolean;
       // Surface views whose internal server is gated behind a feature flag the
@@ -549,7 +552,7 @@ export class MCPServerViewResource<
       includeRestricted?: boolean;
       transaction?: Transaction;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const views = await this.baseFetchWithAuthorization(
       auth,
       {
@@ -582,7 +585,13 @@ export class MCPServerViewResource<
       const remoteServers = await RemoteMCPServerResource.fetchByModelIds(
         auth,
         removeNulls(views.map((v) => v.remoteMCPServerId)),
-        { transaction, includeHeavyAttributes: ["authorization"] }
+        {
+          transaction,
+          includeHeavyAttributes:
+            mode === "configuration"
+              ? CONFIGURATION_REMOTE_HEAVY_ATTRIBUTES
+              : ["authorization"],
+        }
       );
       const remoteServerMap = new Map(remoteServers.map((s) => [s.id, s]));
 
@@ -618,10 +627,10 @@ export class MCPServerViewResource<
       await this.populateToolsMetadata(auth, filteredViews, transaction);
     }
     for (const view of filteredViews) {
-      view.fetchMode = "metadata";
+      view.fetchMode = mode ?? "metadata";
     }
 
-    return filteredViews.filter(MCPServerViewResource.isMetadataView);
+    return filteredViews.filter(MCPServerViewResource.isFetchedAs(mode));
   }
 
   /**
@@ -697,29 +706,31 @@ export class MCPServerViewResource<
     }
   }
 
-  static async fetchById(
+  static async fetchById<TMode extends MCPServerViewFetchMode = "metadata">(
     auth: Authenticator,
     id: string,
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
       includeRestricted?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata"> | null> {
+  ): Promise<MCPServerViewResource<TMode> | null> {
     const [mcpServerView] = await this.fetchByIds(auth, [id], options);
 
     return mcpServerView ?? null;
   }
 
-  static async fetchByIds(
+  static async fetchByIds<TMode extends MCPServerViewFetchMode = "metadata">(
     auth: Authenticator,
     ids: string[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
       includeRestricted?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    const { isRestrictedToSkills, includeRestricted, ...findOptions } =
+    const { mode, isRestrictedToSkills, includeRestricted, ...findOptions } =
       options ?? {};
 
     const views = await this.baseFetch(
@@ -733,7 +744,7 @@ export class MCPServerViewResource<
           },
         },
       },
-      { isRestrictedToSkills, includeRestricted }
+      { mode, isRestrictedToSkills, includeRestricted }
     );
 
     return views ?? [];
@@ -749,17 +760,21 @@ export class MCPServerViewResource<
     return views[0];
   }
 
-  static async fetchByModelIds(
+  static async fetchByModelIds<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     ids: ModelId[],
     {
+      mode,
       includeMetadata = true,
       transaction,
     }: {
+      mode?: TMode;
       includeMetadata?: boolean;
       transaction?: Transaction;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const views = await this.baseFetch(
       auth,
       {
@@ -769,17 +784,20 @@ export class MCPServerViewResource<
           },
         },
       },
-      { includeMetadata, transaction }
+      { mode, includeMetadata, transaction }
     );
 
     return views ?? [];
   }
 
-  static async listByWorkspace(
+  static async listByWorkspace<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<MCPServerViewResource<"metadata">[]> {
-    return this.baseFetch(auth, options);
+    options?: ResourceFindOptions<MCPServerViewModel> & { mode?: TMode }
+  ): Promise<MCPServerViewResource<TMode>[]> {
+    const { mode, ...findOptions } = options ?? {};
+    return this.baseFetch(auth, findOptions, { mode });
   }
 
   static async listDisplayMetadataByWorkspace(
@@ -891,13 +909,14 @@ export class MCPServerViewResource<
     return metadata;
   }
 
-  static async listBySpaces(
+  static async listBySpaces<TMode extends MCPServerViewFetchMode = "metadata">(
     auth: Authenticator,
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     // Filter out spaces that the user does not have read or administrate access to
     const accessibleSpaces = spaces.filter(
       (space) => auth.can("read", space) || auth.can("admin", space)
@@ -905,7 +924,7 @@ export class MCPServerViewResource<
     if (accessibleSpaces.length === 0) {
       return [];
     }
-    const { isRestrictedToSkills, ...findOptions } = options ?? {};
+    const { mode, isRestrictedToSkills, ...findOptions } = options ?? {};
     return this.baseFetch(
       auth,
       {
@@ -917,21 +936,25 @@ export class MCPServerViewResource<
         },
         order: [["id", "ASC"]],
       },
-      { isRestrictedToSkills }
+      { mode, isRestrictedToSkills }
     );
   }
 
-  static async listBySpaceIds(
+  static async listBySpaceIds<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     spaceIds: string[],
     {
+      mode,
       includeGlobalSpace = false,
       isRestrictedToSkills,
     }: {
+      mode?: TMode;
       includeGlobalSpace?: boolean;
       isRestrictedToSkills?: boolean;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const spaceModelIds = removeNulls(spaceIds.map(getResourceIdFromSId));
 
     if (spaceModelIds.length === 0 && !includeGlobalSpace) {
@@ -959,7 +982,7 @@ export class MCPServerViewResource<
         ],
         order: [["id", "ASC"]],
       },
-      { isRestrictedToSkills }
+      { mode, isRestrictedToSkills }
     );
 
     // Permission parity with listBySpaces: the read-or-admin pre-filter on fetched
@@ -969,13 +992,14 @@ export class MCPServerViewResource<
     );
   }
 
-  static async listBySpace(
+  static async listBySpace<TMode extends MCPServerViewFetchMode = "metadata">(
     auth: Authenticator,
     space: SpaceResource,
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     return this.listBySpaces(auth, [space], options);
   }
 
@@ -985,71 +1009,90 @@ export class MCPServerViewResource<
   // created just in time. Use the plain variants for reads that must not write (e.g.
   // deletion paths).
 
-  static async listByWorkspaceEnsuringAutoViews(
+  static async listByWorkspaceEnsuringAutoViews<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+    options?: ResourceFindOptions<MCPServerViewModel> & { mode?: TMode }
+  ): Promise<MCPServerViewResource<TMode>[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listByWorkspace(auth, options);
   }
 
-  static async listBySpacesEnsuringAutoViews(
+  static async listBySpacesEnsuringAutoViews<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     spaces: SpaceResource[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaces(auth, spaces, options);
   }
 
-  static async listBySpaceEnsuringAutoViews(
+  static async listBySpaceEnsuringAutoViews<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     space: SpaceResource,
-    options?: ResourceFindOptions<MCPServerViewModel>
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+    options?: ResourceFindOptions<MCPServerViewModel> & { mode?: TMode }
+  ): Promise<MCPServerViewResource<TMode>[]> {
     return this.listBySpacesEnsuringAutoViews(auth, [space], options);
   }
 
-  static async listBySpaceIdsEnsuringAutoViews(
+  static async listBySpaceIdsEnsuringAutoViews<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     spaceIds: string[],
     {
+      mode,
       includeGlobalSpace = false,
       isRestrictedToSkills,
     }: {
+      mode?: TMode;
       includeGlobalSpace?: boolean;
       isRestrictedToSkills?: boolean;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     return this.listBySpaceIds(auth, spaceIds, {
+      mode,
       includeGlobalSpace,
       isRestrictedToSkills,
     });
   }
 
-  static async listForSystemSpace(
+  static async listForSystemSpace<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      mode?: TMode;
       isRestrictedToSkills?: boolean;
     }
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     return this.listBySpace(auth, systemSpace, options);
   }
 
-  static async listByMCPServers(
+  static async listByMCPServers<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     mcpServerIds: string[],
     {
+      mode,
       transaction,
     }: {
+      mode?: TMode;
       transaction?: Transaction;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
       ...getServerTypeAndIdFromSId(mcpServerId),
       mcpServerId,
@@ -1079,17 +1122,20 @@ export class MCPServerViewResource<
           ],
         },
       },
-      { transaction }
+      { mode, transaction }
     );
   }
 
-  static async listByMCPServer(
+  static async listByMCPServer<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
     mcpServerId: string,
     options: {
+      mode?: TMode;
       transaction?: Transaction;
     } = {}
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+  ): Promise<MCPServerViewResource<TMode>[]> {
     return this.listByMCPServers(auth, [mcpServerId], options);
   }
 
@@ -1114,26 +1160,33 @@ export class MCPServerViewResource<
   // Auto internal MCP servers are supposed to be created in the global space; missing views
   // are created just in time (see unsafeEnsureAutoViewsForWorkspace). The result can still
   // be null when the server is restricted for the workspace (feature flag, plan).
-  static async getMCPServerViewForAutoInternalTool(
+  static async getMCPServerViewForAutoInternalTool<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    name: AutoInternalMCPServerNameType
-  ): Promise<MCPServerViewResource<"metadata"> | null> {
+    name: AutoInternalMCPServerNameType,
+    { mode }: { mode?: TMode } = {}
+  ): Promise<MCPServerViewResource<TMode> | null> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     const views = await this.listByMCPServer(
       auth,
       autoInternalMCPServerNameToSId({
         name,
         workspaceId: auth.getNonNullableWorkspace().id,
-      })
+      }),
+      { mode }
     );
 
     return views.find((view) => view.space.kind === "global") ?? null;
   }
 
-  static async getMCPServerViewsForAutoInternalTools(
+  static async getMCPServerViewsForAutoInternalTools<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    names: AutoInternalMCPServerNameType[]
-  ): Promise<MCPServerViewResource<"metadata">[]> {
+    names: AutoInternalMCPServerNameType[],
+    { mode }: { mode?: TMode } = {}
+  ): Promise<MCPServerViewResource<TMode>[]> {
     await this.unsafeEnsureAutoViewsForWorkspace(auth);
     const views = await this.listByMCPServers(
       auth,
@@ -1142,7 +1195,8 @@ export class MCPServerViewResource<
           name,
           workspaceId: auth.getNonNullableWorkspace().id,
         })
-      )
+      ),
+      { mode }
     );
 
     return views.filter((view) => view.space.kind === "global");
@@ -1150,11 +1204,15 @@ export class MCPServerViewResource<
 
   static async getMCPServerViewsForAutoInternalToolsAsMap<
     T extends AutoInternalMCPServerNameType,
+    TMode extends MCPServerViewFetchMode = "metadata",
   >(
     auth: Authenticator,
     names: readonly T[],
-    { ensureAutoViews = true }: { ensureAutoViews?: boolean } = {}
-  ): Promise<Map<T, MCPServerViewResource<"metadata">>> {
+    {
+      ensureAutoViews = true,
+      mode,
+    }: { ensureAutoViews?: boolean; mode?: TMode } = {}
+  ): Promise<Map<T, MCPServerViewResource<TMode>>> {
     if (ensureAutoViews) {
       await this.unsafeEnsureAutoViewsForWorkspace(auth);
     }
@@ -1166,11 +1224,13 @@ export class MCPServerViewResource<
       ])
     );
 
-    const views = await this.listByMCPServers(auth, [
-      ...nameByInternalMCPServerId.keys(),
-    ]);
+    const views = await this.listByMCPServers(
+      auth,
+      [...nameByInternalMCPServerId.keys()],
+      { mode }
+    );
 
-    const map = new Map<T, MCPServerViewResource<"metadata">>();
+    const map = new Map<T, MCPServerViewResource<TMode>>();
     for (const view of views) {
       if (view.space.kind !== "global" || !view.internalMCPServerId) {
         continue;
@@ -1273,56 +1333,78 @@ export class MCPServerViewResource<
     return uniq(spaceRequirements);
   }
 
-  static async getMCPServerViewForSystemSpace(
+  static async getMCPServerViewForSystemSpace<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    mcpServerId: string
-  ): Promise<MCPServerViewResource<"metadata"> | null> {
+    mcpServerId: string,
+    { mode }: { mode?: TMode } = {}
+  ): Promise<MCPServerViewResource<TMode> | null> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
     if (serverType === "internal") {
-      const views = await this.baseFetch(auth, {
-        where: {
-          serverType: "internal",
-          internalMCPServerId: mcpServerId,
-          vaultId: systemSpace.id,
+      const views = await this.baseFetch(
+        auth,
+        {
+          where: {
+            serverType: "internal",
+            internalMCPServerId: mcpServerId,
+            vaultId: systemSpace.id,
+          },
         },
-      });
+        { mode }
+      );
       return views[0] ?? null;
     } else {
-      const views = await this.baseFetch(auth, {
-        where: {
-          serverType: "remote",
-          remoteMCPServerId: id,
-          vaultId: systemSpace.id,
+      const views = await this.baseFetch(
+        auth,
+        {
+          where: {
+            serverType: "remote",
+            remoteMCPServerId: id,
+            vaultId: systemSpace.id,
+          },
         },
-      });
+        { mode }
+      );
       return views[0] ?? null;
     }
   }
 
-  static async getMCPServerViewForGlobalSpace(
+  static async getMCPServerViewForGlobalSpace<
+    TMode extends MCPServerViewFetchMode = "metadata",
+  >(
     auth: Authenticator,
-    mcpServerId: string
-  ): Promise<MCPServerViewResource<"metadata"> | null> {
+    mcpServerId: string,
+    { mode }: { mode?: TMode } = {}
+  ): Promise<MCPServerViewResource<TMode> | null> {
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
     const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
     if (serverType === "internal") {
-      const views = await this.baseFetch(auth, {
-        where: {
-          serverType: "internal",
-          internalMCPServerId: mcpServerId,
-          vaultId: globalSpace.id,
+      const views = await this.baseFetch(
+        auth,
+        {
+          where: {
+            serverType: "internal",
+            internalMCPServerId: mcpServerId,
+            vaultId: globalSpace.id,
+          },
         },
-      });
+        { mode }
+      );
       return views[0] ?? null;
     } else {
-      const views = await this.baseFetch(auth, {
-        where: {
-          serverType: "remote",
-          remoteMCPServerId: id,
-          vaultId: globalSpace.id,
+      const views = await this.baseFetch(
+        auth,
+        {
+          where: {
+            serverType: "remote",
+            remoteMCPServerId: id,
+            vaultId: globalSpace.id,
+          },
         },
-      });
+        { mode }
+      );
       return views[0] ?? null;
     }
   }
@@ -1623,28 +1705,28 @@ export class MCPServerViewResource<
     };
   }
 
-  private static isMetadataView(
-    view: MCPServerViewResource
-  ): view is MCPServerViewResource<"metadata"> {
-    return view.fetchMode === "metadata";
-  }
-
-  private static isConfigurationView(
-    view: MCPServerViewResource
-  ): view is MCPServerViewResource<"configuration"> {
-    return view.fetchMode === "configuration";
+  private static isFetchedAs<TMode extends MCPServerViewFetchMode = "metadata">(
+    mode?: TMode
+  ) {
+    const expectedMode = mode ?? "metadata";
+    return (
+      view: MCPServerViewResource
+    ): view is MCPServerViewResource<TMode> => view.fetchMode === expectedMode;
   }
 
   /**
-   * Loads the configuration of the views (see `MCPServerViewFetchMode`), e.g. before serializing
-   * them with `toJSON`. Mutates and returns the given views.
+   * Upgrades views already fetched as `metadata` to `configuration` (see `MCPServerViewFetchMode`),
+   * e.g. to serialize a filtered subset. Prefer fetching with `mode: "configuration"`, which loads
+   * everything in the same query. Mutates and returns the given views.
    */
   static async loadConfiguration(
     auth: Authenticator,
     views: MCPServerViewResource[],
     transaction?: Transaction
   ): Promise<MCPServerViewResource<"configuration">[]> {
-    const metadataViews = views.filter(MCPServerViewResource.isMetadataView);
+    const metadataViews = views.filter(
+      MCPServerViewResource.isFetchedAs("metadata")
+    );
     if (metadataViews.length > 0) {
       await RemoteMCPServerResource.hydrateHeavyAttributes(
         auth,
@@ -1657,7 +1739,7 @@ export class MCPServerViewResource<
       }
     }
 
-    return views.filter(MCPServerViewResource.isConfigurationView);
+    return views.filter(MCPServerViewResource.isFetchedAs("configuration"));
   }
 
   get sId(): string {

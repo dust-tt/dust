@@ -22,25 +22,28 @@ app.get(
     const auth = ctx.get("auth");
     const { globalSpaceOnly, systemSpaceOnly } = ctx.req.valid("query");
 
-    let mcpServerViews: MCPServerViewResource<"metadata">[];
+    let mcpServerViews: MCPServerViewResource<"configuration">[];
     if (systemSpaceOnly === "true") {
-      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth);
+      mcpServerViews = await MCPServerViewResource.listForSystemSpace(auth, {
+        mode: "configuration",
+      });
     } else if (globalSpaceOnly === "true") {
       const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
       mcpServerViews = await MCPServerViewResource.listBySpace(
         auth,
-        globalSpace
+        globalSpace,
+        {
+          mode: "configuration",
+        }
       );
     } else {
-      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth);
+      mcpServerViews = await MCPServerViewResource.listByWorkspace(auth, {
+        mode: "configuration",
+      });
     }
-    const configuredViews = await MCPServerViewResource.loadConfiguration(
-      auth,
-      mcpServerViews
-    );
 
     return ctx.json({
-      serverViews: configuredViews.map((sv) => {
+      serverViews: mcpServerViews.map((sv) => {
         const space = sv.space.toJSON();
         return {
           ...sv.toJSON(),

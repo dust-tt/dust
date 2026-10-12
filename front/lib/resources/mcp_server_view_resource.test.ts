@@ -864,17 +864,15 @@ describe("MCPServerViewResource", () => {
       });
 
       // Fetch the system view through baseFetch (via listForSystemSpace).
-      const views = await MCPServerViewResource.listForSystemSpace(adminAuth);
+      const views = await MCPServerViewResource.listForSystemSpace(adminAuth, {
+        mode: "configuration",
+      });
       const view = views.find(
         (v) => v.internalMCPServerId === internalServer.id
       );
       expect(view).toBeDefined();
 
-      const [configuredView] = await MCPServerViewResource.loadConfiguration(
-        adminAuth,
-        [view!]
-      );
-      const json = configuredView.toJSON();
+      const json = view!.toJSON();
       expect(json.toolsMetadata).toHaveLength(2);
       expect(json.toolsMetadata).toEqual(
         expect.arrayContaining([
@@ -899,15 +897,12 @@ describe("MCPServerViewResource", () => {
       // Fetch the system view through baseFetch.
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId
+        remoteServer.sId,
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 
-      const [configuredView] = await MCPServerViewResource.loadConfiguration(
-        adminAuth,
-        [view!]
-      );
-      const json = configuredView.toJSON();
+      const json = view!.toJSON();
       expect(json.toolsMetadata).toHaveLength(1);
       expect(json.toolsMetadata?.[0]).toEqual({
         toolName: "remote_tool",
@@ -921,15 +916,12 @@ describe("MCPServerViewResource", () => {
 
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
-        remoteServer.sId
+        remoteServer.sId,
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 
-      const [configuredView] = await MCPServerViewResource.loadConfiguration(
-        adminAuth,
-        [view!]
-      );
-      const json = configuredView.toJSON();
+      const json = view!.toJSON();
       expect(json.toolsMetadata).toEqual([]);
     });
   });

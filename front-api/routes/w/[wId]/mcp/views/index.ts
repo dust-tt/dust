@@ -61,12 +61,12 @@ app.get(
     };
 
     // Without `spaceIds`, default to all the spaces the user is a member of.
-    let views: MCPServerViewResource<"metadata">[];
+    let views: MCPServerViewResource<"configuration">[];
     if (query.spaceIds) {
       views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
         auth,
         query.spaceIds,
-        listOptions
+        { ...listOptions, mode: "configuration" }
       );
     } else {
       const memberSpaces =
@@ -74,13 +74,11 @@ app.get(
       views = await MCPServerViewResource.listBySpacesEnsuringAutoViews(
         auth,
         memberSpaces,
-        listOptions
+        { ...listOptions, mode: "configuration" }
       );
     }
 
-    const flattenedServerViews = (
-      await MCPServerViewResource.loadConfiguration(auth, views)
-    )
+    const flattenedServerViews = views
       .map((v) => v.toJSON())
       .filter(
         (v) =>

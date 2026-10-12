@@ -63,7 +63,8 @@ export async function recordFramePublishAction(
 
   const view = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
     auth,
-    INTERACTIVE_CONTENT_SERVER_NAME
+    INTERACTIVE_CONTENT_SERVER_NAME,
+    { mode: "configuration" }
   );
   if (!view) {
     return new Err(
@@ -71,15 +72,11 @@ export async function recordFramePublishAction(
     );
   }
 
-  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
-    view,
-  ]);
-
   const toolName = getFramePublishBillingToolName(publication);
   const toolConfigurations = await buildToolConfigurationsFromRawTools(
     auth,
     view.mcpServerId,
-    buildServerSideMCPServerConfiguration({ mcpServerView: configuredView }),
+    buildServerSideMCPServerConfiguration({ mcpServerView: view }),
     [{ name: toolName, description: "" }],
     null
   );

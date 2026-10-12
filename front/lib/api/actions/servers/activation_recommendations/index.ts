@@ -430,14 +430,12 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
       const { conversation } = runContext;
       const spaceIds = conversation.spaceId ? [conversation.spaceId] : [];
 
-      const serverViews = await MCPServerViewResource.loadConfiguration(
-        auth,
+      const serverViews =
         await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
           auth,
           spaceIds,
-          { includeGlobalSpace: true }
-        )
-      );
+          { mode: "configuration", includeGlobalSpace: true }
+        );
 
       const connectedByType = await buildConnectedServerIdsByType(
         auth,

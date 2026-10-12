@@ -1671,11 +1671,6 @@ describe("POST /api/w/:wId/skills", () => {
 
     expect(response.status).toBe(200);
 
-    const [configuredView1, configuredView2] =
-      await MCPServerViewResource.loadConfiguration(auth, [
-        serverView1,
-        serverView2,
-      ]);
     const responseData = await response.json();
     expect(responseData.skill).toMatchObject({
       name: "Test Skill",
@@ -1683,7 +1678,7 @@ describe("POST /api/w/:wId/skills", () => {
       userFacingDescription: "A test skill description",
       instructions: "Test instructions for the skill",
       status: "active",
-      tools: [configuredView1.toJSON(), configuredView2.toJSON()],
+      tools: [serverView1.toJSON(), serverView2.toJSON()],
     });
 
     const createdSkill = await SkillResource.fetchById(

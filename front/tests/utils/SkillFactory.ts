@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/global";
 import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global_registry";
 import { SYSTEM_SKILLS_ARRAY } from "@app/lib/resources/skill/code_defined/system";
@@ -38,7 +38,7 @@ type CreateSkillOverrides = Partial<{
   manuallyRequestedSpaceIds: ModelId[];
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
-  mcpServerViews: MCPServerViewResource[];
+  mcpServerViews: MCPServerViewResource<"configuration">[];
   fileAttachments: FileResource[];
 }>;
 
@@ -148,10 +148,7 @@ export class SkillFactory {
     const requestedSpaceIds = overrides.requestedSpaceIds ?? [globalSpace.id];
     const manuallyRequestedSpaceIds = overrides.manuallyRequestedSpaceIds ?? [];
     const attachedKnowledge = overrides.attachedKnowledge ?? [];
-    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
-      auth,
-      overrides.mcpServerViews ?? []
-    );
+    const mcpServerViews = overrides.mcpServerViews ?? [];
 
     const skill = await SkillResource.makeNew(
       auth,

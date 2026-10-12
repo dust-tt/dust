@@ -29,11 +29,9 @@ export async function suggestMCPServersForDetectedSkill(
     return [];
   }
 
-  return MCPServerViewResource.loadConfiguration(
+  return MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
     auth,
-    await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
-      auth,
-      serverNames
-    )
+    serverNames,
+    { mode: "configuration" }
   );
 }

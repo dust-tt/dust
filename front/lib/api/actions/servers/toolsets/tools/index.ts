@@ -32,15 +32,16 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         .map((action) => action.mcpServerViewId);
 
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    const unrestrictedViews = (
+    const mcpServerViews = (
       await MCPServerViewResource.listBySpaceEnsuringAutoViews(
         auth,
-        globalSpace
+        globalSpace,
+        {
+          mode: "configuration",
+        }
       )
-    ).filter((mcpServerView) => !mcpServerView.isRestrictedToSkills);
-    const mcpServerViews = (
-      await MCPServerViewResource.loadConfiguration(auth, unrestrictedViews)
     )
+      .filter((mcpServerView) => !mcpServerView.isRestrictedToSkills)
       .map((mcpServerView) => mcpServerView.toJSON())
       .filter(
         (mcpServerView) =>

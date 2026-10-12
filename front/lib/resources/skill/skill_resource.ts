@@ -782,9 +782,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViewIds: string[];
     }
   ): Promise<Result<SkillResource, Error>> {
-    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds)
+      mcpServerViewIds,
+      { mode: "configuration" }
     );
 
     if (mcpServerViews.length !== mcpServerViewIds.length) {
@@ -1027,13 +1028,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             transaction,
           });
 
-        allMCPServerViews = await MCPServerViewResource.loadConfiguration(
+        allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
-          await MCPServerViewResource.fetchByModelIds(
-            auth,
-            removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-            { includeMetadata: withToolMetadata }
-          )
+          removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
+          { mode: "configuration", includeMetadata: withToolMetadata }
         );
       }
 
@@ -1164,12 +1162,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ).map((name) =>
         autoInternalMCPServerNameToSId({ name, workspaceId: workspace.id })
       );
-      const allMCPServerViews = await MCPServerViewResource.loadConfiguration(
+      const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
         auth,
-        await MCPServerViewResource.listByMCPServers(auth, mcpServerIds, {
-          transaction,
-        }),
-        transaction
+        mcpServerIds,
+        { mode: "configuration", transaction }
       );
       mcpServerViews = allMCPServerViews.filter(
         (view) =>
@@ -2926,9 +2922,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const allMcpServerViewIds = uniq(
       sortedVersionModels.flatMap((model) => model.mcpServerViewIds)
     );
-    const allMcpServerViews = await MCPServerViewResource.loadConfiguration(
+    const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
       auth,
-      await MCPServerViewResource.fetchByModelIds(auth, allMcpServerViewIds)
+      allMcpServerViewIds,
+      { mode: "configuration" }
     );
     const mcpServerViewMap = new Map(
       allMcpServerViews.map((view) => [view.id, view])

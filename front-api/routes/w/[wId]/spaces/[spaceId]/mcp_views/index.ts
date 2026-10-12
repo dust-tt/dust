@@ -133,10 +133,9 @@ app.get(
     const { availability = "manual" } = r.data;
 
     const serverViews = (
-      await MCPServerViewResource.loadConfiguration(
-        auth,
-        await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space)
-      )
+      await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
+        mode: "configuration",
+      })
     ).map((view) => view.toJSON());
 
     const filteredServerViews = serverViews.filter(

@@ -154,7 +154,9 @@ export async function createSandboxFunctionMCPAction(
   }
 
   const fetchViewStarted = performance.now();
-  const view = await MCPServerViewResource.fetchById(auth, serverViewId);
+  const view = await MCPServerViewResource.fetchById(auth, serverViewId, {
+    mode: "configuration",
+  });
   const fetchViewMs = roundMs(fetchViewStarted);
   // `fetchById` is workspace-scoped, so reproduce the listing endpoint's confinement: the view
   // must be in the function's runtime or global space (the spaces the listing queries) AND
@@ -176,12 +178,9 @@ export async function createSandboxFunctionMCPAction(
   }
 
   const resolveToolStarted = performance.now();
-  const [configuredView] = await MCPServerViewResource.loadConfiguration(auth, [
-    view,
-  ]);
   const toolConfigurationRes = await resolveSandboxFunctionTool(
     auth,
-    configuredView,
+    view,
     toolName
   );
   const resolveToolMs = roundMs(resolveToolStarted);

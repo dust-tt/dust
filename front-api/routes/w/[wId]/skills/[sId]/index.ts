@@ -325,24 +325,23 @@ app.patch(
     // Fetch MCP server views first to compute requestedSpaceIds. The views end up on the
     // updated skill, whose serialized response includes their tools — fetch the heavy attributes.
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
-    const fetchedMCPServerViews = await MCPServerViewResource.fetchByIds(
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
-      mcpServerViewIds
+      mcpServerViewIds,
+      {
+        mode: "configuration",
+      }
     );
 
-    if (mcpServerViewIds.length !== fetchedMCPServerViews.length) {
+    if (mcpServerViewIds.length !== mcpServerViews.length) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "invalid_request_error",
-          message: `MCP server views not all found, ${fetchedMCPServerViews.length} found, ${mcpServerViewIds.length} requested`,
+          message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
         },
       });
     }
-    const mcpServerViews = await MCPServerViewResource.loadConfiguration(
-      auth,
-      fetchedMCPServerViews
-    );
 
     const { attachedKnowledge, fileAttachments } = body;
 

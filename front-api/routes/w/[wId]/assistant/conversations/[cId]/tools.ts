@@ -47,9 +47,12 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const mcpServerViewIds = conversationMCPServerViews.map(
     (v) => v.mcpServerViewId
   );
-  const mcpServerViews = await MCPServerViewResource.loadConfiguration(
+  const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
     auth,
-    await MCPServerViewResource.fetchByModelIds(auth, mcpServerViewIds)
+    mcpServerViewIds,
+    {
+      mode: "configuration",
+    }
   );
 
   const tools = mcpServerViews.map((v) => v.toJSON());

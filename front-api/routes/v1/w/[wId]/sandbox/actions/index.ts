@@ -84,11 +84,13 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
     // Deliberately not the EnsuringAutoViews variant: token read paths must not write. Auto
     // views not yet materialized in the global space stay invisible until another surface
     // hydrates them.
-    const views = await MCPServerViewResource.loadConfiguration(
+    const views = await MCPServerViewResource.listBySpaceIds(
       auth,
-      await MCPServerViewResource.listBySpaceIds(auth, [claims.spaceId], {
+      [claims.spaceId],
+      {
         includeGlobalSpace: true,
-      })
+        mode: "configuration",
+      }
     );
 
     const serverViews = views.map((view) => view.toJSON());
@@ -185,10 +187,9 @@ app.get("/", async (ctx): HandlerResult<GetSandboxToolsResponseType> => {
   }
 
   // Fetch the server views with their tools metadata.
-  const views = await MCPServerViewResource.loadConfiguration(
-    auth,
-    await MCPServerViewResource.fetchByIds(auth, [...viewIds])
-  );
+  const views = await MCPServerViewResource.fetchByIds(auth, [...viewIds], {
+    mode: "configuration",
+  });
 
   return ctx.json(
     {
