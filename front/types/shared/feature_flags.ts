@@ -22,12 +22,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "rfrenoy",
   },
-  dust_filesystem: {
-    description:
-      "Allow fresh Pods and standalone conversations to use the database-backed filesystem",
-    stage: "dust_only",
-    owner: "flvndvd",
-  },
   frames_v2: {
     description: "Enable Frames v2",
     stage: "self_serve",
@@ -471,7 +465,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   localisation: {
     description: "Workspace and user language settings for the product UI",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "sfriquet",
   },
   co_edition: {

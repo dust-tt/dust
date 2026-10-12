@@ -6,13 +6,17 @@ import {
 import { PokeThemeSelector } from "@app/components/poke/PokeThemeSelector";
 import {
   PokeCommandDialog,
+  PokeCommandGroup,
   PokeCommandInput,
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
+import type { PluginListItem } from "@app/lib/api/poke/types";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { compareStrings } from "@app/lib/i18n/format";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { classNames } from "@app/lib/utils";
+import { useCurrentPagePlugins } from "@app/poke/swr/currentPagePlugins";
 import { usePokeSearchAllCells } from "@app/poke/swr/search";
 import type { CellInfo } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
@@ -25,7 +29,7 @@ import {
   Logo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 const MIN_SEARCH_CHARACTERS = 2;
 
@@ -160,6 +164,20 @@ interface PokeSearchCommandUIProps {
   showCell: boolean;
 }
 
+function filterPlugins(
+  plugins: PluginListItem[],
+  searchTerm: string
+): PluginListItem[] {
+  const query = searchTerm.toLowerCase();
+  return plugins
+    .filter(
+      (plugin) =>
+        plugin.name.toLowerCase().includes(query) ||
+        plugin.description.toLowerCase().includes(query)
+    )
+    .toSorted((a, b) => compareStrings(a.name, b.name));
+}
+
 /**
  * Shared UI component for the search command dialog.
  */
@@ -186,6 +204,15 @@ function PokeSearchCommandUI({
     return () => document.removeEventListener("keydown", down);
   }, [open, onOpenChange]);
 
+  const currentPagePlugins = useCurrentPagePlugins();
+  const plugins = useMemo(
+    () =>
+      currentPagePlugins
+        ? filterPlugins(currentPagePlugins.plugins, searchTerm)
+        : [],
+    [currentPagePlugins, searchTerm]
+  );
+
   return (
     <>
       <Button
@@ -197,7 +224,7 @@ function PokeSearchCommandUI({
       <PokeCommandDialog
         open={open}
         onOpenChange={onOpenChange}
-        className="bg-muted-background sm:max-w-[600px]"
+        className="bg-muted-background sm:max-w-4xl"
         shouldFilter={false}
       >
         <PokeCommandInput
@@ -205,18 +232,47 @@ function PokeSearchCommandUI({
           onValueChange={(value) => onSearchTermChange(value.trim())}
           className="border-none focus:outline-hidden focus:ring-0"
         />
-        <PokeCommandList>
+        <PokeCommandList className="max-h-160">
+          {currentPagePlugins && plugins.length > 0 && (
+            <PokeCommandGroup heading="Plugins on this page">
+              {plugins.map((plugin, index) => (
+                <PokeCommandItem
+                  key={plugin.id}
+                  value={`plugin-${plugin.id}`}
+                  index={index}
+                  onSelect={() => {
+                    onOpenChange(false);
+                    currentPagePlugins.onSelect(plugin);
+                  }}
+                >
+                  <div className="flex w-full min-w-0 items-center gap-3 px-2 text-foreground">
+                    <Chip size="xs" color="primary" className="shrink-0">
+                      Plugin
+                    </Chip>
+                    <span className="shrink-0 whitespace-nowrap text-sm font-medium">
+                      {plugin.name}
+                    </span>
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
+                      {plugin.description}
+                    </span>
+                  </div>
+                </PokeCommandItem>
+              ))}
+            </PokeCommandGroup>
+          )}
           {isLoading && <div className="p-4 text-sm">Searching...</div>}
           {searchTerm &&
             searchTerm.length >= MIN_SEARCH_CHARACTERS &&
             !isError &&
             !isLoading &&
-            results.length === 0 && (
+            results.length === 0 &&
+            plugins.length === 0 && (
               <div className="p-4 text-sm">No results found.</div>
             )}
           {isError && <div className="p-4 text-sm">Something went wrong.</div>}
           {searchTerm.length < MIN_SEARCH_CHARACTERS && (
             <PokeFavoritesCommandGroups
+              indexOffset={plugins.length}
               onNavigate={() => onOpenChange(false)}
             />
           )}
@@ -264,7 +320,7 @@ function PokeSearchCommandUI({
 
           {results.map((item, index) => {
             const CommandItemContent = () => (
-              <PokeCommandItem value={item.name} index={index}>
+              <PokeCommandItem value={item.name} index={plugins.length + index}>
                 <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground">
                   <div className="flex min-w-0 items-baseline gap-3">
                     <Chip size="xs" color={getPokeItemChipColor(item)}>

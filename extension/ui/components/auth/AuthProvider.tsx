@@ -71,6 +71,7 @@ export function ExtensionAuthProvider({
     handleSelectOrganization,
     featureFlags,
     subscription,
+    locale,
   } = useAuthHook();
 
   const extensionAuthValue = useMemo(
@@ -123,8 +124,9 @@ export function ExtensionAuthProvider({
       vizUrl: process.env.VIZ_PUBLIC_URL ?? "",
       providersHealth: null,
       workspacePermissions: emptyWorkspacePermissions(),
+      locale,
     };
-  }, [user, workspace, subscription, featureFlags]);
+  }, [user, workspace, subscription, featureFlags, locale]);
 
   return (
     <ExtensionAuthContext.Provider value={extensionAuthValue}>

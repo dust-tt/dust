@@ -335,6 +335,14 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
+  // `DFS_API_URL` is the dfs gRPC server URL (`http://host:port`, or `https://` for TLS).
+  getDfsAPIConfig: (): { url: string } => {
+    return { url: EnvironmentConfig.getEnvVariable("DFS_API_URL") };
+  },
+  // Only needed to create tenants.
+  getDfsMasterKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("DFS_API_MASTER_KEY");
+  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
@@ -747,9 +755,6 @@ const config = {
   },
   getDustWebhooksPublicUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DUST_WEBHOOKS_PUBLIC_URL");
-  },
-  getConvertAPIKey: (): string => {
-    return EnvironmentConfig.getEnvVariable("CONVERTAPI_API_KEY");
   },
   getImgproxyUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("IMGPROXY_URL");

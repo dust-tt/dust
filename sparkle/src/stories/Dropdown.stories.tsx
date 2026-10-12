@@ -153,7 +153,12 @@ export const GroupedWithSubmenus: Story = {
               icon={User01}
               label="Profile"
               endComponent={
-                <Button size="icon" icon={Upload01} variant="ghost" />
+                <Button
+                  tooltip="Upload"
+                  size="icon"
+                  icon={Upload01}
+                  variant="ghost"
+                />
               }
             />
             <DropdownMenuItem icon={ArrowDown} label="Billing" />

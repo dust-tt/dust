@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import {
   Avatar,
   type AvatarProps,
@@ -285,6 +286,7 @@ export function BasicCellContent({
   disabled,
   ...props
 }: BasicCellContentProps) {
+  const { t } = useLingui();
   const [isCopied, copyToClipboard] = useCopyToClipboard();
   const { density } = useDataTableLayout();
   const cellHeight = DENSITY_ROW_HEIGHT_CLASS[density];
@@ -321,6 +323,7 @@ export function BasicCellContent({
               {textToCopy && (
                 <Button
                   icon={isCopied ? ClipboardCheck : Clipboard}
+                  aria-label={t`Copy to clipboard`}
                   className="hidden group-hover:block"
                   variant="outline"
                   onClick={async (e) => {
@@ -350,6 +353,7 @@ export function BasicCellContent({
           {textToCopy && (
             <Button
               icon={isCopied ? ClipboardCheck : Clipboard}
+              tooltip={t`Copy to clipboard`}
               className="hidden group-hover:block"
               variant="outline"
               onClick={async (e) => {
@@ -578,6 +582,7 @@ export function CellContentWithCopy({
   textToCopy,
   className,
 }: CellContentWithCopyProps) {
+  const { t } = useLingui();
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
   const handleCopy = async () => {
@@ -595,6 +600,7 @@ export function CellContentWithCopy({
       <span className="truncate">{children}</span>
       <Button
         icon={isCopied ? ClipboardCheck : Clipboard}
+        tooltip={t`Copy to clipboard`}
         variant="ghost-secondary"
         onClick={async (e) => {
           e.stopPropagation();

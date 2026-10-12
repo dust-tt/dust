@@ -99,7 +99,11 @@ export function FrameView() {
               <div className="flex h-8 items-center gap-1">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button icon={DotsHorizontal} variant="ghost" />
+                    <Button
+                      aria-label="More actions"
+                      icon={DotsHorizontal}
+                      variant="ghost"
+                    />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuItem label="Revert" icon={ReverseLeft} />
@@ -127,7 +131,7 @@ export function FrameView() {
                 </DropdownMenu>
               </div>
               <div className="flex-1" />
-              <Button icon={XClose} variant="ghost" />
+              <Button tooltip="Close" icon={XClose} variant="ghost" />
             </div>
           </div>
         </Allotment.Pane>

@@ -23,6 +23,7 @@ export {
   Breadcrumbs,
 } from "./Breadcrumbs";
 export type {
+  ButtonBaseProps,
   ButtonIconType,
   ButtonProps,
   ButtonSizeType,
@@ -182,9 +183,9 @@ export {
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
+export { HoverScrollText } from "./HoverScrollText";
 export type { DoubleIconProps } from "./Icon";
 export { DoubleIcon, Icon } from "./Icon";
-export { IconButton } from "./IconButton";
 export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
 export { ImageGenerationPlaceholder } from "./ImageGenerationPlaceholder";
 export type {
@@ -201,6 +202,8 @@ export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export type { InputProps, InputSizeType } from "./Input";
 export { INPUT_SIZES, Input } from "./Input";
+export type { InputTypingAnimationProps } from "./InputTypingAnimation";
+export { InputTypingAnimation } from "./InputTypingAnimation";
 export type { InputWithSaveProps } from "./InputWithSave";
 export { InputWithSave } from "./InputWithSave";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";

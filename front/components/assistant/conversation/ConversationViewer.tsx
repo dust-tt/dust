@@ -61,7 +61,6 @@ import {
   CompactionCompletedEvent,
   CompactionStartedEvent,
 } from "@app/lib/notifications/events";
-import { useActivationPod } from "@app/lib/swr/activation";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { useConversationWakeUps } from "@app/lib/swr/wakeups";
@@ -305,10 +304,6 @@ export const ConversationViewer = ({
     workspaceId: owner.sId,
     spaceId: conversation?.spaceId ?? "",
     disabled: !conversation?.spaceId,
-  });
-
-  const { activationPodId } = useActivationPod({
-    workspaceId: owner.sId,
   });
 
   useConversationMarkAsRead({
@@ -1389,10 +1384,6 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       isOnboardingConversation,
-      uiView:
-        conversation?.spaceId && conversation.spaceId === activationPodId
-          ? "compact"
-          : "standard",
       draftKey: `conversation-${conversationId}`,
       agentBuilderContext,
       feedbacksByMessageId,
@@ -1413,7 +1404,6 @@ export const ConversationViewer = ({
     handleSubmit,
     conversation,
     isOnboardingConversation,
-    activationPodId,
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,

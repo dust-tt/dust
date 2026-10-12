@@ -163,6 +163,7 @@ export function CapabilitiesPickerItemsList({
             <Chip size="xs" color="info" label={t`Configure`} />
           ) : onSkillDetails && onToolDetails ? (
             <Button
+              tooltip={t`View details`}
               icon={DotsHorizontal}
               variant="outline"
               size="mini"

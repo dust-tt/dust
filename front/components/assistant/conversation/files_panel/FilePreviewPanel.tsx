@@ -15,6 +15,7 @@ import {
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
+import { SourceModeFileIcon } from "@app/components/file_explorer/SourceModeFileIcon";
 import type { FileEntry } from "@app/components/file_explorer/types";
 import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
@@ -37,7 +38,6 @@ import {
   Button,
   cn,
   Download01,
-  Icon,
   Maximize01,
   Minimize01,
   Spinner,
@@ -52,8 +52,8 @@ interface FilePreviewPanelProps {
 
 /**
  * @cc [owner:tdraier,label:product] file-preview-panel-full-screen
- * The full screen toggle MUST show only for a file open in the rich document editor, behind the
- * co_edition flag; other previews MUST keep the panel without it.
+ * The full screen toggle MUST show only for a file open in the rich document editor, or in its
+ * source mode, behind the co_edition flag; other previews MUST keep the panel without it.
  */
 export function FilePreviewPanel({
   conversation,
@@ -200,10 +200,12 @@ export function FilePreviewPanel({
           <>
             {markdown.canEdit && !markdown.richEditor && (
               <>
-                <MarkdownFilePreviewViewModeSwitch
-                  viewMode={markdown.viewMode}
-                  onViewModeChange={markdown.setViewMode}
-                />
+                {!markdown.isSourceMode && (
+                  <MarkdownFilePreviewViewModeSwitch
+                    viewMode={markdown.viewMode}
+                    onViewModeChange={markdown.setViewMode}
+                  />
+                )}
                 {markdown.isDirty && (
                   <>
                     <Button
@@ -235,24 +237,29 @@ export function FilePreviewPanel({
               target="_blank"
               rel="noopener noreferrer"
             />
-            {!isMobile && clientType !== "extension" && markdown.richEditor && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={isFullScreen ? Minimize01 : Maximize01}
-                tooltip={
-                  isFullScreen
-                    ? t`Exit full screen mode`
-                    : t`Go to full screen mode`
-                }
-                onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-              />
-            )}
+            {!isMobile &&
+              clientType !== "extension" &&
+              (markdown.richEditor || markdown.isSourceMode) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={isFullScreen ? Minimize01 : Maximize01}
+                  tooltip={
+                    isFullScreen
+                      ? t`Exit full screen mode`
+                      : t`Go to full screen mode`
+                  }
+                  onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+                />
+              )}
           </>
         }
       >
         <div className="flex min-w-0 items-center gap-1.5">
-          <Icon visual={FileIcon} size="sm" className="shrink-0" />
+          <SourceModeFileIcon
+            visual={FileIcon}
+            onToggleSourceMode={markdown.toggleSourceMode}
+          />
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>

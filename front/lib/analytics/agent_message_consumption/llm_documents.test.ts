@@ -8,7 +8,10 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { describe, expect, it } from "vitest";
 
@@ -37,10 +40,11 @@ describe("buildLlmConsumptionDocuments", () => {
       rank: 0,
       content: "Hello",
     });
+    const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
     const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
-      inputTokens: 100,
-      outputTokens: 20,
-      reasoningTokens: 5,
+      inputTokens: INPUT,
+      outputTokens: 4 * OUTPUT,
+      reasoningTokens: OUTPUT,
       modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
     });
     const agentMessage = await ConversationFactory.createAgentMessageWithRank({
@@ -80,25 +84,25 @@ describe("buildLlmConsumptionDocuments", () => {
         {
           itemType: "system",
           runUsageModelId,
-          inputTokensCount: 10,
+          inputTokensCount: INPUT / 10,
           grossAttributedCreditAmountMicro: 500_000,
         },
         {
           itemType: "input",
           runUsageModelId,
-          inputTokensCount: 90,
+          inputTokensCount: (INPUT * 9) / 10,
           grossAttributedCreditAmountMicro: 4_000_000,
         },
         {
           itemType: "output",
           runUsageModelId,
-          outputTokensCount: 15,
+          outputTokensCount: 3 * OUTPUT,
           grossAttributedCreditAmountMicro: 300_000,
         },
         {
           itemType: "reasoning",
           runUsageModelId,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT,
           grossAttributedCreditAmountMicro: 200_000,
         },
       ],
@@ -135,22 +139,22 @@ describe("buildLlmConsumptionDocuments", () => {
         consumption_type: "llm",
         credit_micro: 5_000_000,
         gross_credit_micro: {
-          system: 500_000,
-          input: 4_000_000,
+          system: 100_000,
+          input: 900_000,
           result_footprint: null,
-          output: 300_000,
-          reasoning: 200_000,
+          output: 3_000_000,
+          reasoning: 1_000_000,
           direct: 0,
           total: 5_000_000,
         },
         run_usage_id: runUsageModelId.toString(),
         step_index: 0,
         tokens: {
-          system: 10,
-          input: 90,
+          system: INPUT / 10,
+          input: (INPUT * 9) / 10,
           result_footprint: null,
-          output: 15,
-          reasoning: 5,
+          output: 3 * OUTPUT,
+          reasoning: OUTPUT,
         },
         tool: null,
         user: {

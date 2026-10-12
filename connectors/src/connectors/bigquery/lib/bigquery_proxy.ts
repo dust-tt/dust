@@ -1,3 +1,4 @@
+import { getStaticIpProxyUrl } from "@connectors/lib/proxy";
 import type { BigQueryOptions } from "@google-cloud/bigquery";
 import type { Interceptor } from "@google-cloud/common/build/src/service-object";
 import type { DecorateRequestOptions } from "@google-cloud/common/build/src/util";
@@ -33,17 +34,4 @@ export function withBigQueryStaticIpProxy(
     ...options,
     interceptors_: [...(options.interceptors_ ?? []), proxyInterceptor],
   };
-}
-
-export function getStaticIpProxyUrl(): string | undefined {
-  const host = process.env.PROXY_HOST;
-  const port = process.env.PROXY_PORT;
-  const user = process.env.PROXY_USER_NAME;
-  const password = process.env.PROXY_USER_PASSWORD;
-
-  if (!host || !port || !user || !password) {
-    return undefined;
-  }
-
-  return `http://${user}:${password}@${host}:${port}`;
 }

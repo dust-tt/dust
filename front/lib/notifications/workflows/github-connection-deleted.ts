@@ -2,12 +2,10 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import type { TransactionalEmailCopy } from "@app/lib/notifications/transactional_emails";
-import {
-  contactSupportLine,
-  TRANSACTIONAL_EMAIL_PREFERENCES,
-} from "@app/lib/notifications/transactional_emails";
+import { TRANSACTIONAL_EMAIL_PREFERENCES } from "@app/lib/notifications/transactional_emails";
 import type { GitHubConnectionDeletedPayloadType } from "@app/lib/notifications/triggers/github-connection-deleted";
 import { GitHubConnectionDeletedPayloadSchema } from "@app/lib/notifications/triggers/github-connection-deleted";
+import { contactSupportLine } from "@app/lib/notifications/workflows/contact-support";
 import { GITHUB_CONNECTION_DELETED_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { I18n } from "@lingui/core";
 import { msg } from "@lingui/core/macro";

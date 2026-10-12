@@ -1015,6 +1015,15 @@ msgstr "Shares members with <0>{groupName}</0>"
 msgid "{visibleCount} of {totalCount, plural, one {# group} other {# groups}}"
 msgstr "{visibleCount} of {totalCount, plural, one {# group} other {# groups}}"
 
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgid "{earlierGroupCount, plural, one {# group earlier in the order shares members with {groupName}.} other {# groups earlier in the order share members with {groupName}.}}"
+msgstr "{earlierGroupCount, plural, one {# group earlier in the order shares members with {groupName}.} other {# groups earlier in the order share members with {groupName}.}}"
+
+#: front/components/workspace/GroupBudgetOrderTab.tsx
+msgctxt "open the order of group budgets"
+msgid "Review"
+msgstr "Review"
+
 #: front/components/workspace/GroupsUsageTable.tsx
 #: front/components/workspace/MemberGroupLimitTable.tsx
 #: front/components/workspace/UsageMembersSection.tsx

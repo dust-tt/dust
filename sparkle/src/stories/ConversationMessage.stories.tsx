@@ -73,12 +73,14 @@ export const ConversationExample = () => {
             pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
             buttons={[
               <Button
+                tooltip="Mark as helpful"
                 icon={ThumbsUp}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
               />,
               <Button
+                tooltip="Mark as not helpful"
                 icon={ThumbsDown}
                 onClick={() => {}}
                 size="xs"
@@ -219,12 +221,14 @@ export const ConversationHandoffExample = () => {
             pictureUrl="https://avatars.githubusercontent.com/u/138893015?&v=4"
             buttons={[
               <Button
+                tooltip="Copy to clipboard"
                 icon={Clipboard}
                 onClick={() => {}}
                 size="xs"
                 variant={"outline"}
               />,
               <Button
+                tooltip="Retry"
                 icon={RefreshCw02}
                 onClick={() => {}}
                 size="xs"

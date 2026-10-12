@@ -384,7 +384,12 @@ export function AgentDetailsDropdownMenu({
       ) : showTrigger ? (
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button icon={DotsHorizontal} size="sm" variant="outline" />
+            <Button
+              aria-label={t`More options`}
+              icon={DotsHorizontal}
+              size="sm"
+              variant="outline"
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent>{menuItems}</DropdownMenuContent>
         </DropdownMenu>

@@ -1055,6 +1055,87 @@ describe("building_agents_and_skills tools", () => {
       expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
     });
 
+    describe("inside the sandbox", () => {
+      // Runs `suggest` as the sandbox does: with the authenticator of a sandbox token.
+      const runSuggestFromSandbox = async (
+        auth: Authenticator,
+        args: Record<string, unknown>
+      ) => {
+        const workspace = auth.getNonNullableWorkspace();
+        const conversation = await ConversationFactory.create(auth, {
+          agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+          messagesCreatedAt: [],
+        });
+        const sandboxAuthRes = await Authenticator.fromSandboxToken(
+          {
+            wId: workspace.sId,
+            cId: conversation.sId,
+            uId: auth.getNonNullableUser().sId,
+            aId: GLOBAL_AGENTS_SID.DUST,
+            aV: 0,
+            mId: "test-message-id",
+            sbId: "test-sandbox-id",
+            execId: "test-exec-id",
+            actionId: "test-action-id",
+          },
+          workspace.sId
+        );
+        assert(sandboxAuthRes.isOk());
+        const sandboxAuth = sandboxAuthRes.value;
+
+        const result = await getTool(SUGGEST_TOOL_NAME).handler(
+          args,
+          makeExtra(sandboxAuth, conversation.id, conversation.sId)
+        );
+        return { result, sandboxAuth };
+      };
+
+      it("records a skill creation", async () => {
+        const { authenticator } = await createSkillAuthorTestContext();
+
+        const { result, sandboxAuth } = await runSuggestFromSandbox(
+          authenticator,
+          {
+            title: "New skill",
+            analysis: "Notes keep coming up.",
+            suggestions: [createSkill],
+          }
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          sandboxAuth,
+          extractBatchId(result)
+        );
+        expect(batch?.skillSuggestions.map((s) => s.kind)).toEqual(["create"]);
+      });
+
+      it("records an agent creation", async () => {
+        const { authenticator } = await createAgentAuthorTestContext();
+
+        const { result, sandboxAuth } = await runSuggestFromSandbox(
+          authenticator,
+          {
+            title: "New agent",
+            analysis: "Incidents need a helper.",
+            suggestions: [
+              {
+                kind: "create_agent",
+                name: "IncidentHelper",
+                description: "Helps triage incidents.",
+                instructions: "<p>Triage incidents.</p>",
+              },
+            ],
+          }
+        );
+
+        const batch = await BatchSuggestionResource.fetchById(
+          sandboxAuth,
+          extractBatchId(result)
+        );
+        expect(batch?.agentSuggestions.map((s) => s.kind)).toEqual(["create"]);
+      });
+    });
+
     it("records a skill creation and an agent edit in one batch", async () => {
       const { authenticator } = await createSkillAuthorTestContext();
       const agent =

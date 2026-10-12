@@ -16,6 +16,7 @@ import type { APIError } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { Avatar, Button, Edit04 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useController, useWatch } from "react-hook-form";
 
@@ -47,6 +48,7 @@ interface AgentBuilderAvatarSectionProps {
 export function AgentBuilderAvatarSection({
   isCreatingNew,
 }: AgentBuilderAvatarSectionProps) {
+  const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const blurListenerRef = useRef<() => void>();
@@ -129,6 +131,7 @@ export function AgentBuilderAvatarSection({
       <div className="group relative">
         <Avatar size="lg" visual={field.value ?? null} />
         <Button
+          tooltip={t`Change avatar`}
           variant="outline"
           size="sm"
           icon={Edit04}

@@ -20,7 +20,6 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import type {
   AgentMessageStateWithControlEvent,
   AgentMessageWithStreaming,
-  UiView,
   VirtuosoMessage,
   VirtuosoMessageListContext,
 } from "@app/components/assistant/conversation/types";
@@ -155,12 +154,14 @@ import {
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import { marked } from "marked";
+import { Marked } from "marked";
 import type { ReactElement, ReactNode } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
+
+const messageMarked = new Marked();
 
 interface MessageInfoChipProps {
   children: ReactNode;
@@ -267,7 +268,6 @@ function PrunedContextChip() {
 interface AgentMessageProps {
   conversationId: string;
   spaceId: string | null;
-  uiView: UiView;
   hideHeader: boolean;
   isLastMessage: boolean;
   agentMessage: AgentMessageWithStreaming;
@@ -292,7 +292,6 @@ interface AgentMessageProps {
 export function AgentMessage({
   conversationId,
   spaceId,
-  uiView,
   hideHeader,
   isLastMessage,
   agentMessage,
@@ -720,7 +719,8 @@ export function AgentMessage({
     }
 
     const markdownText = processedMessageContent + footnotesMarkdown;
-    const htmlContent = (await marked(processedMessageContent)) + footnotesHtml;
+    const htmlContent =
+      (await messageMarked.parse(processedMessageContent)) + footnotesHtml;
 
     await copy(
       new ClipboardItem({
@@ -1219,7 +1219,7 @@ export function AgentMessage({
 
   const messageContent = (
     <ConversationMessageContent
-      citations={isDeleted || uiView === "compact" ? undefined : citations}
+      citations={isDeleted ? undefined : citations}
       type="agent"
     >
       {isDeleted ? (
@@ -1245,7 +1245,6 @@ export function AgentMessage({
           isAgentMessageHandingOver={isAgentMessageHandingOver}
           additionalMarkdownComponents={additionalMarkdownComponents}
           additionalMarkdownPlugins={additionalMarkdownPlugins}
-          uiView={uiView}
         />
       )}
     </ConversationMessageContent>
@@ -1333,7 +1332,6 @@ function AgentMessageContent({
   isAgentMessageHandingOver,
   additionalMarkdownComponents: propsAdditionalMarkdownComponents,
   additionalMarkdownPlugins,
-  uiView,
 }: {
   onOpenDetails?: (messageId: string, actionId?: string) => void;
   triggeringUser: UserType | null;
@@ -1367,7 +1365,6 @@ function AgentMessageContent({
   isAgentMessageHandingOver: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  uiView: UiView;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -1643,7 +1640,6 @@ function AgentMessageContent({
         {creditSpendCheckpointPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
-          collapsible={uiView === "compact"}
         />
         {allImages.length > 0 && <InteractiveImageGrid images={allImages} />}
 
@@ -1671,7 +1667,7 @@ function AgentMessageContent({
             )}
           </div>
         )}
-        {uiView !== "compact" && generatedFiles.length > 0 && (
+        {generatedFiles.length > 0 && (
           <div className="mt-2 grid grid-cols-2 gap-2 @xs:grid-cols-3 @sm:grid-cols-4 @md:grid-cols-5">
             {generatedFiles.map((file) => (
               <ToolGeneratedFileDetails
@@ -1703,6 +1699,7 @@ function AgentMessageContent({
               <ButtonGroupDropdown
                 trigger={
                   <Button
+                    aria-label={t`More options`}
                     variant="outline"
                     size="xs"
                     icon={DotsHorizontal}

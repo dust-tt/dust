@@ -210,6 +210,7 @@ function SlackChannelsList({
                   {sourceUrl && (
                     <div className="opacity-0 transition-opacity group-hover:opacity-100">
                       <Button
+                        tooltip={t`Open in Slack`}
                         href={sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"

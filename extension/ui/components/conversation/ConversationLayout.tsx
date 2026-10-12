@@ -14,6 +14,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -33,6 +34,7 @@ export const ConversationLayout = ({
   rightActions,
   children,
 }: ConversationLayoutProps) => {
+  const { t } = useLingui();
   const { workspace: owner } = useAuth();
   const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
   const navigate = useNavigate();
@@ -66,10 +68,11 @@ export const ConversationLayout = ({
                   variant="ghost"
                   icon={ArrowLeft}
                   onClick={() => navigate(backHref)}
-                  tooltip="Go back to Pod homepage"
+                  tooltip={t`Go back to Pod homepage`}
                 />
               ) : (
                 <Button
+                  tooltip="Open sidebar"
                   variant="ghost"
                   icon={Menu01}
                   onClick={() => setSidebarOpen(true)}

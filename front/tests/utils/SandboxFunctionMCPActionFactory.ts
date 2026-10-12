@@ -27,7 +27,7 @@ export class SandboxFunctionMCPActionFactory {
       argumentsRequiringApproval?: string[];
     }
   ): Promise<SandboxFunctionMCPActionResource> {
-    const serverName = mcpServerView.toJSON().server.name;
+    const serverName = mcpServerView.getServerDisplayMetadata().name;
 
     // Minimal synthesized snapshot, mirroring what creation derives from the view + manifest.
     const toolConfiguration: LightMCPToolConfigurationType = {

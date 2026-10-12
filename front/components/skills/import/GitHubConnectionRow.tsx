@@ -66,7 +66,12 @@ export function GitHubConnectionRow({
       {isAdmin(owner) && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled={isDisconnectingGitHub}>
-            <Button variant="ghost" size="sm" icon={DotsHorizontal} />
+            <Button
+              aria-label={t`More options`}
+              variant="ghost"
+              size="sm"
+              icon={DotsHorizontal}
+            />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem

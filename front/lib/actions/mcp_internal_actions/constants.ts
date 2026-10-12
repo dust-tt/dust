@@ -33,7 +33,6 @@ import { DOCUMENTS_SERVER } from "@app/lib/api/actions/servers/documents/metadat
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
-import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FILES_SERVER } from "@app/lib/api/actions/servers/files/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
@@ -158,11 +157,12 @@ export const ASHBY_SERVER_NAME = "ashby";
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
 // 1047 was workspace_people, folded into workspace_management as list_workspace_members.
 export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
+  // 3 (file_generation) was superseded by the Computer (sandbox), which generates and converts files.
   // 32 (openai_usage) was a preview MCP gated by openai_usage_mcp; unused, removed.
   // 45 (databricks) was removed in favor of the official Databricks managed MCP servers, added as
   // remote MCP server presets (see DEFAULT_REMOTE_MCP_SERVERS).
-  4,
-  28, 32, 45, 1004, 1016, 1047,
+  3,
+  4, 28, 32, 45, 1004, 1016, 1047,
 ];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
@@ -190,7 +190,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
   "exa_people_and_company",
-  "file_generation",
   "fathom",
   "freshservice",
   "github",
@@ -328,17 +327,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: IMAGE_GENERATION_SERVER,
-  },
-  file_generation: {
-    id: 3,
-    availability: "auto",
-    allowMultipleInstances: false,
-    isRestricted: undefined,
-    isPreview: false,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: FILE_GENERATION_SERVER,
   },
   [WEB_SEARCH_BROWSE_SERVER_NAME]: {
     id: 5,

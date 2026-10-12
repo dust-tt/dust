@@ -373,9 +373,7 @@ describe("search-backed Manage Skills", () => {
       isFavoritesOnly: false,
       facets: {},
     });
-    const [, nextButton] = screen
-      .getAllByRole("button", { name: "" })
-      .slice(-2);
+    const nextButton = screen.getByRole("button", { name: "Next page" });
     await userEvent.click(nextButton);
     await screen.findByRole("button", { name: /Second page/ });
 
@@ -752,9 +750,7 @@ describe("search-backed Manage Skills", () => {
     });
     mount();
     await screen.findByRole("button", { name: /Weekly report/ });
-    const [, nextPageButton] = screen
-      .getAllByRole("button", { name: "" })
-      .slice(-2);
+    const nextPageButton = screen.getByRole("button", { name: "Next page" });
     await userEvent.click(nextPageButton);
     await waitFor(() =>
       expect(fetcherWithBody).toHaveBeenLastCalledWith([
@@ -1102,9 +1098,7 @@ describe("search-backed Manage Skills", () => {
     mount();
     await screen.findByRole("button", { name: /Zebra/ });
     search.mockResolvedValue(secondPage);
-    const [, nextPageButton] = screen
-      .getAllByRole("button", { name: "" })
-      .slice(-2);
+    const nextPageButton = screen.getByRole("button", { name: "Next page" });
     await userEvent.click(nextPageButton);
     await screen.findByRole("button", { name: /Alpha/ });
     expect(fetcherWithBody).toHaveBeenLastCalledWith([
@@ -1117,9 +1111,10 @@ describe("search-backed Manage Skills", () => {
       screen.queryByRole("button", { name: /Zebra/ })
     ).not.toBeInTheDocument();
     expect(screen.getByText("Showing 51-51 of 51 items")).toBeInTheDocument();
-    const [previousPageButton, lastPageButton] = screen
-      .getAllByRole("button", { name: "" })
-      .slice(-2);
+    const previousPageButton = screen.getByRole("button", {
+      name: "Previous page",
+    });
+    const lastPageButton = screen.getByRole("button", { name: "Next page" });
     expect(lastPageButton).toBeDisabled();
 
     search.mockResolvedValue(firstPage);

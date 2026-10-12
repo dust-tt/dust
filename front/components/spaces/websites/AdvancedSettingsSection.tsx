@@ -81,6 +81,7 @@ export function AdvancedSettingsSection({
                     />
                   </div>
                   <Button
+                    tooltip={t`Remove header`}
                     variant="outline"
                     icon={XClose}
                     onClick={() => removeHeader(index)}

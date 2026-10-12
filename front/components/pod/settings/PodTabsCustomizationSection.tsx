@@ -342,6 +342,7 @@ export function PodTabsCustomizationSection({
                       </PopoverRoot>
                     ) : (
                       <Button
+                        aria-label={t`Tab icon`}
                         size="xs"
                         variant="outline"
                         icon={IconComponent}

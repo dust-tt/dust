@@ -329,13 +329,7 @@ app.patch(
       auth,
       mcpServerViewIds,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
 

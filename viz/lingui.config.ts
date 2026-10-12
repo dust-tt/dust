@@ -15,7 +15,7 @@ export default defineConfig({
         "<rootDir>/hooks",
         "<rootDir>/lib",
       ],
-      exclude: ["**/node_modules/**"],
+      exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.test.tsx"],
     },
   ],
   compileNamespace: "ts",

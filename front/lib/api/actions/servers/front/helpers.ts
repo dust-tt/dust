@@ -6,7 +6,7 @@ import {
 } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { marked } from "marked";
+import { Marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
@@ -25,13 +25,13 @@ interface FrontAPIOptions {
   params?: Record<string, unknown>;
 }
 
-export const convertMarkdownToHTML = async (text: string): Promise<string> => {
-  marked.setOptions({
-    breaks: true,
-    gfm: true,
-  });
+const frontMarked = new Marked({
+  breaks: true,
+  gfm: true,
+});
 
-  const html = await marked.parse(text);
+export const convertMarkdownToHTML = async (text: string): Promise<string> => {
+  const html = await frontMarked.parse(text);
 
   const sanitized = sanitizeHtml(html, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),

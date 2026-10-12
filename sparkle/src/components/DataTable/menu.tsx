@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import {
   DropdownMenu,
@@ -158,6 +159,7 @@ export function MoreButton({
   dropdownMenuProps,
   disabled,
 }: DataTableMoreButtonProps) {
+  const { t } = useLingui();
   const [open, setOpen] = useState(false);
 
   if (!menuItems?.length) {
@@ -192,6 +194,7 @@ export function MoreButton({
       >
         <Button
           icon={DotsHorizontal}
+          aria-label={t`More actions`}
           size="icon"
           variant="ghost-secondary"
           disabled={disabled}

@@ -47,3 +47,16 @@ export function moveGroupPastVisibleNeighbor(
     ...withoutGroup.slice(insertAt),
   ];
 }
+
+export function countEarlierGroupsSharingMembers(
+  order: string[],
+  groupId: string,
+  sharedMemberCountByGroupId: Map<string, number>
+): number {
+  const currentIndex = order.indexOf(groupId);
+  return currentIndex === -1
+    ? 0
+    : order
+        .slice(0, currentIndex)
+        .filter((id) => (sharedMemberCountByGroupId.get(id) ?? 0) > 0).length;
+}

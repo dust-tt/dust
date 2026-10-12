@@ -120,6 +120,7 @@ export default function NewBlock({
       <DropdownMenuTrigger asChild>
         {small ? (
           <Button
+            aria-label={t`Add block`}
             icon={Plus}
             disabled={disabled}
             variant="ghost-secondary"

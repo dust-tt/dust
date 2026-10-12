@@ -1,5 +1,6 @@
+import { useLingui } from "@lingui/react/macro";
 import { Avatar } from "@sparkle/components/Avatar";
-import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import type { ButtonBaseProps } from "@sparkle/components/Button";
 import type { CardVariantType } from "@sparkle/components/Card";
 import { Card, CardActionButton } from "@sparkle/components/Card";
 import { TruncatedText } from "@sparkle/components/TruncatedText";
@@ -25,7 +26,7 @@ interface BaseAssistantCardProps {
   variant?: CardVariantType;
 }
 
-type AssistantCardMore = Omit<IconOnlyButtonProps, "icon" | "size">;
+type AssistantCardMore = Omit<ButtonBaseProps, "icon" | "size">;
 
 /**
  * The "more" (dots) action button for an AssistantCard's `action` slot, commonly
@@ -36,8 +37,15 @@ export const AssistantCardMore = React.forwardRef<
   HTMLButtonElement,
   AssistantCardMore
 >(({ ...props }, ref) => {
+  const { t } = useLingui();
   return (
-    <CardActionButton size="xs" ref={ref} icon={DotsHorizontal} {...props} />
+    <CardActionButton
+      size="xs"
+      ref={ref}
+      icon={DotsHorizontal}
+      aria-label={t`More actions`}
+      {...props}
+    />
   );
 });
 AssistantCardMore.displayName = "AssistantCardMore";

@@ -1,4 +1,3 @@
-import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects/data_sources";
 import {
   createSpaceAndGroup,
@@ -16,7 +15,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -78,39 +76,6 @@ describe("createSpaceAndGroup", () => {
   });
 
   describe("successful creation", () => {
-    it("only allows fresh database filesystem Pods when the flag is enabled", async () => {
-      const params = {
-        name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Playground`,
-        isRestricted: true,
-        spaceKind: "project" as const,
-        memberIds: [],
-      };
-
-      const disabledRes = await createSpaceAndGroup(adminAuth, params);
-      expect(disabledRes.isErr() && disabledRes.error.code).toBe(
-        "invalid_request_error"
-      );
-
-      await FeatureFlagFactory.basic(adminAuth, "dust_filesystem");
-      const enabledRes = await createSpaceAndGroup(adminAuth, params);
-      expect(enabledRes.isOk()).toBe(true);
-      if (enabledRes.isErr()) {
-        return;
-      }
-
-      const sameModeRenameRes = await enabledRes.value.updateName(
-        adminAuth,
-        `${DATABASE_FILE_SYSTEM_POD_PREFIX}Renamed`
-      );
-      expect(sameModeRenameRes.isOk()).toBe(true);
-
-      const removePrefixRes = await enabledRes.value.updateName(
-        adminAuth,
-        "Regular Pod"
-      );
-      expect(removePrefixRes.isErr()).toBe(true);
-    });
-
     it("should create a regular space with manual management mode and members", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Regular Space",

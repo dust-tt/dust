@@ -10,7 +10,6 @@ import {
   literal,
   Op,
 } from "@app/lib/resources/storage/data_types";
-import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -38,9 +37,6 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare mountFilePath: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
-  // The file system node holding this file's live source. For a Frame this is
-  // the published entry file. The id survives every move and rename.
-  declare fileSystemNodeId: ForeignKey<FileSystemNodeModel["id"]> | null;
 
   declare user: NonAttribute<UserModel>;
 }
@@ -126,11 +122,6 @@ FileModel.init(
         concurrently: true,
         where: { contentType: frameV2ContentType },
       },
-      {
-        fields: ["fileSystemNodeId"],
-        concurrently: true,
-        where: { fileSystemNodeId: { [Op.ne]: null } },
-      },
     ],
   }
 );
@@ -139,13 +130,6 @@ UserModel.hasMany(FileModel, {
   onDelete: "RESTRICT",
 });
 FileModel.belongsTo(UserModel);
-FileSystemNodeModel.hasMany(FileModel, {
-  foreignKey: { name: "fileSystemNodeId", allowNull: true },
-  onDelete: "RESTRICT",
-});
-FileModel.belongsTo(FileSystemNodeModel, {
-  foreignKey: { name: "fileSystemNodeId", allowNull: true },
-});
 
 /**
  * Shared files logic.

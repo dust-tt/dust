@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
 import { Button, type ButtonProps } from "@sparkle/components/Button";
@@ -221,22 +222,30 @@ const DialogHeader = ({
   buttonVariant = "ghost",
   hideButton = false,
   ...props
-}: NewDialogHeaderProps) => (
-  <div
-    className={cn(
-      "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-modal-background px-5 pt-4 text-left",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    {!hideButton && (
-      <DialogClose asChild className="absolute right-3 top-3">
-        <Button icon={XClose} variant={buttonVariant} size={buttonSize} />
-      </DialogClose>
-    )}
-  </div>
-);
+}: NewDialogHeaderProps) => {
+  const { t } = useLingui();
+  return (
+    <div
+      className={cn(
+        "sticky top-0 z-50 flex flex-none flex-col gap-0 bg-modal-background px-5 pt-4 text-left",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {!hideButton && (
+        <DialogClose asChild className="absolute right-3 top-3">
+          <Button
+            icon={XClose}
+            aria-label={t`Close`}
+            variant={buttonVariant}
+            size={buttonSize}
+          />
+        </DialogClose>
+      )}
+    </div>
+  );
+};
 DialogHeader.displayName = "DialogHeader";
 
 interface DialogContainerProps extends React.HTMLAttributes<HTMLDivElement> {

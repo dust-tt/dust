@@ -5,7 +5,9 @@ import {
   ArrowUp,
   Button,
   Chip,
+  ContentMessage,
   DataTable,
+  Hoverable,
   Plus,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -206,5 +208,33 @@ export function GroupBudgetOrderTab({
       </div>
       <DataTable data={data} columns={columns} />
     </div>
+  );
+}
+
+interface GroupBudgetOrderBannerProps {
+  groupName: string;
+  earlierGroupCount: number;
+  onReview?: () => void;
+}
+
+export function GroupBudgetOrderBanner({
+  groupName,
+  earlierGroupCount,
+  onReview,
+}: GroupBudgetOrderBannerProps) {
+  const { t } = useLingui();
+
+  return (
+    <ContentMessage variant="blue" size="lg">
+      {t`${plural(earlierGroupCount, {
+        one: `# group earlier in the order shares members with ${groupName}.`,
+        other: `# groups earlier in the order share members with ${groupName}.`,
+      })}`}{" "}
+      {onReview && (
+        <Hoverable variant="highlight" onClick={onReview}>
+          {t({ message: "Review", context: "open the order of group budgets" })}
+        </Hoverable>
+      )}
+    </ContentMessage>
   );
 }

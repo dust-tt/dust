@@ -551,8 +551,6 @@ export type ConversationMetadata = Record<string, unknown> & {
   projectTaskId?: string;
   dfmDocumentPath?: string;
   useFileSystem?: boolean;
-  /** Selects the database-backed filesystem for a fresh standalone conversation. */
-  useDatabaseFileSystem?: boolean;
 };
 
 function isConversationUrlAccessMode(

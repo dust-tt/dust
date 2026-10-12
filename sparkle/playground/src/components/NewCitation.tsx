@@ -140,6 +140,7 @@ const NewCitation = React.forwardRef<HTMLDivElement, NewCitationProps>(
         action={
           onClose ? (
             <Button
+              tooltip="Remove"
               variant="ghost"
               size="xmini"
               icon={XClose}

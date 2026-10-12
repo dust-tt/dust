@@ -643,7 +643,7 @@ export async function readCanonicalFileContent(
   const normalizedPath = DustFileSystem.normalizeScopedPath(scopedPath);
   const mountFilePath =
     normalizedPath && dustFs.toMountFilePath(normalizedPath);
-  if (dustFs.isGCSBacked() && mountFilePath) {
+  if (mountFilePath) {
     return readFileWithRevision(mountFilePath);
   }
 
@@ -775,7 +775,7 @@ export async function writeCanonicalFileContent(
   const normalizedPath = DustFileSystem.normalizeScopedPath(scopedPath);
   const mountFilePath =
     normalizedPath && dustFs.toMountFilePath(normalizedPath);
-  if (dustFs.isGCSBacked() && mountFilePath) {
+  if (mountFilePath) {
     const writeResult = await writeFileWithRevision(mountFilePath, {
       content: contentBuffer,
       contentType,

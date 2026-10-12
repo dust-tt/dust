@@ -270,10 +270,7 @@ export const ICON_SIZE_MAP: Record<ButtonSizeType, ButtonSizeType> = {
 };
 
 export type RegularButtonSize = ButtonSizeType;
-export type IconOnlyButtonProps = ButtonProps;
-export type RegularButtonProps = ButtonProps;
-
-export interface ButtonProps
+export interface ButtonBaseProps
   extends
     Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "size">,
     Omit<LinkWrapperProps, "children" | "className"> {
@@ -306,6 +303,24 @@ export interface ButtonProps
   /** Keyboard shortcut hint displayed in the tooltip. */
   tooltipShortcut?: string;
 }
+
+// An icon-only button has no visible text, so it must carry its name in a tooltip or aria-label.
+type ButtonAccessibleNameProps =
+  | { label: string }
+  | { tooltip: string }
+  | { "aria-label": string }
+  | { isCounter: true }
+  | { isSelect: true };
+
+export type ButtonProps = ButtonBaseProps & ButtonAccessibleNameProps;
+export type IconOnlyButtonProps = ButtonBaseProps &
+  ({ tooltip: string } | { "aria-label": string });
+export type RegularButtonProps = ButtonProps;
+
+/** `Omit` applied to each member of a union, so the accessible-name variants survive. */
+export type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
 
 /**
  * Lets users trigger an action or event — submitting a form, opening a dialog, or

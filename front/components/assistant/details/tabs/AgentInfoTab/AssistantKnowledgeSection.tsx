@@ -551,6 +551,7 @@ function DataSourceViewSelectedNodes({
   setDataSourceViewToDisplay,
   setDocumentToDisplay,
 }: DataSourceViewSelectedNodesProps) {
+  const { t } = useLingui();
   const { nodes } = useDataSourceViewContentNodes({
     owner,
     dataSourceView,
@@ -570,6 +571,7 @@ function DataSourceViewSelectedNodes({
         actions={
           <div className="mr-8 flex flex-row gap-2">
             <Button
+              tooltip={t`Open in a new tab`}
               size="xs"
               icon={LinkExternal01}
               onClick={() => openSourceUrl(sourceUrl)}
@@ -580,6 +582,7 @@ function DataSourceViewSelectedNodes({
               variant="ghost-secondary"
             />
             <Button
+              tooltip={t`View document`}
               size="xs"
               icon={Brackets}
               onClick={() => {

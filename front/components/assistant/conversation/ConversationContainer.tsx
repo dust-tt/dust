@@ -8,6 +8,7 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { DiscoverButton } from "@app/components/assistant/conversation/discover/DiscoverButton";
 import { DiscoverButtonTeaser } from "@app/components/assistant/conversation/discover/DiscoverButtonTeaser";
 import { DiscoverContainer } from "@app/components/assistant/conversation/discover/DiscoverContainer";
+import { DiscoveryHomepageOptInLine } from "@app/components/assistant/conversation/discover/DiscoveryHomepageOptInLine";
 import { HOMEPAGE_USE_CASE_MESSAGES } from "@app/components/assistant/conversation/discover/homepageUseCaseMessages";
 import { HomepageUseCases } from "@app/components/assistant/conversation/discover/HomepageUseCases";
 import { useDiscoverScroll } from "@app/components/assistant/conversation/discover/useDiscoverScroll";
@@ -19,6 +20,7 @@ import { useConversations } from "@app/hooks/conversations";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
+import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import { useSendApiErrorNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
@@ -168,8 +170,12 @@ export function ConversationContainerVirtuoso({
 
   const [limitReachedCode, setLimitReachedCode] =
     useState<WorkspaceLimit | null>(null);
-  const { setPendingInputText, setSelectedSingleAgent, setPendingSkill } =
-    useContext(InputBarContext);
+  const {
+    selectedSingleAgent,
+    setPendingInputText,
+    setSelectedSingleAgent,
+    setPendingSkill,
+  } = useContext(InputBarContext);
 
   const router = useAppRouter();
 
@@ -181,7 +187,7 @@ export function ConversationContainerVirtuoso({
     : null;
 
   const { isAgentsSectionVisible } = useAgentsSectionVisibility();
-  const isDiscoveryHomepage = hasFeature("discovery_homepage");
+  const { isDiscoveryHomepage } = useDiscoveryHomepageOptIn();
 
   const handleUseCasePick = (useCase: HomepageUseCaseType) => {
     const references = [
@@ -415,7 +421,10 @@ export function ConversationContainerVirtuoso({
           // A sticky composer would ride along on the way down to Discover.
           isDiscoveryHomepage ? "" : "sticky bottom-0 z-20"
         )}
-        style={shouldReduceMotion ? undefined : composerEntranceStyle}
+        style={{
+          ...(shouldReduceMotion ? {} : composerEntranceStyle),
+          viewTransitionName: "home-composer",
+        }}
         ref={inputBarRef}
       >
         <InputBar
@@ -431,8 +440,12 @@ export function ConversationContainerVirtuoso({
 
       {isDiscoveryHomepage && (
         <HomepageUseCases
+          agentId={selectedSingleAgent?.id ?? null}
           enterDelaySeconds={USE_CASES_ENTER_DELAY_SECONDS}
           onPick={handleUseCasePick}
+          onPickPrompt={(prompt) =>
+            setPendingInputText("", { replace: true, typedSuffix: prompt })
+          }
           workspaceId={owner.sId}
         />
       )}
@@ -482,11 +495,24 @@ export function ConversationContainerVirtuoso({
         />
       ) : (
         <>
-          {isDiscoveryHomepage ? (
-            <div className="flex h-panel w-full shrink-0 flex-col items-center">
-              <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center md:justify-start">
-                {homeHero}
-              </div>
+          <DiscoveryHomepageOptInLine />
+          <div
+            className={
+              isDiscoveryHomepage
+                ? "flex h-panel w-full shrink-0 flex-col items-center"
+                : "contents"
+            }
+          >
+            <div
+              className={
+                isDiscoveryHomepage
+                  ? "flex min-h-0 w-full flex-1 flex-col items-center justify-center md:justify-start"
+                  : "contents"
+              }
+            >
+              {homeHero}
+            </div>
+            {isDiscoveryHomepage && (
               <div
                 className="flex shrink-0 pb-6"
                 style={
@@ -500,10 +526,8 @@ export function ConversationContainerVirtuoso({
                   <DiscoverButton onClick={goToDiscover} />
                 </DiscoverButtonTeaser>
               </div>
-            </div>
-          ) : (
-            homeHero
-          )}
+            )}
+          </div>
           {isDiscoveryHomepage ? (
             <DiscoverContainer
               ref={discoverRef}
@@ -526,7 +550,10 @@ export function ConversationContainerVirtuoso({
                   setSelectedSingleAgent(toRichAgentMentionType(agent));
                 }}
                 owner={owner}
-                style={shouldReduceMotion ? undefined : chatWithEntranceStyle}
+                style={{
+                  ...(shouldReduceMotion ? {} : chatWithEntranceStyle),
+                  viewTransitionName: "home-agents",
+                }}
                 user={user}
               />
             )

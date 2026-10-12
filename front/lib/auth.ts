@@ -7,7 +7,6 @@ import type {
 } from "@app/lib/api/sandbox/access_tokens";
 import {
   isSandboxExecTokenPayload,
-  isSandboxFileSystemTokenPayload,
   isSandboxFunctionInvocationTokenPayload,
   SANDBOX_TOKEN_PREFIX,
 } from "@app/lib/api/sandbox/access_tokens";
@@ -134,7 +133,7 @@ export interface AuthenticatorType {
   workspaceId: string;
   userId: string | null;
   role: RoleType;
-  groupIds: string[] | null;
+  groupIds: string[] | "all" | null;
   subscriptionId: string | null;
   isByok: boolean;
   key?: KeyAuthType;
@@ -160,7 +159,9 @@ export class Authenticator {
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
-  _requestedGroupModelIds: ModelId[] | null;
+  // `"all"` stands for every group of the workspace, listed again at each resolution: storing the
+  // list would make the auth grow with the workspace.
+  _requestedGroupModelIds: ModelId[] | "all" | null;
   _workspace: WorkspaceResource | null;
   _authMethod: AuthMethodType;
   _providersHealth: ProvidersHealth | null;
@@ -195,7 +196,7 @@ export class Authenticator {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
     role: RoleType;
-    requestedGroupModelIds?: ModelId[] | null;
+    requestedGroupModelIds?: ModelId[] | "all" | null;
     authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
@@ -373,11 +374,15 @@ export class Authenticator {
       return;
     }
 
-    // Group set to re-grant from: an explicit scope verbatim (can't be recomputed), else a user's
-    // live membership, else an API key's groups.
+    // Group set to re-grant from: every workspace group for the "all" scope, an explicit scope
+    // verbatim (can't be recomputed), else a user's live membership, else an API key's groups.
     let groupModelIds: ModelId[];
     if (this._requestedGroupModelIds !== null) {
-      groupModelIds = this._requestedGroupModelIds;
+      groupModelIds = await Authenticator.listScopeGroupModelIds(
+        this._workspace,
+        this._requestedGroupModelIds,
+        transaction
+      );
     } else if (this._user) {
       if (Authenticator.isMember(this._role)) {
         const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
@@ -407,6 +412,33 @@ export class Authenticator {
     });
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:security] self-granted-group-in-scope
+   * Some authenticators hold a fixed list of groups that `refresh()` reuses as is (e.g. a sandbox's,
+   * see `sandbox-exec-groups`); others re-read the user's memberships on every `refresh()`. On a
+   * fixed list, this method MUST add the group, so the next `refresh()` resolves its grants. On an
+   * `"all"` scope, it MUST change nothing: every workspace group is already in it.
+   * Callers MUST only pass the regular_auto group of a non-space grant they just added the
+   * authenticator's own user to, so that a fixed list never gains a space, nor a group the user
+   * already belonged to but was narrowed out of.
+   */
+  includeSelfGrantedGroupInScope(groupModelId: ModelId) {
+    if (
+      // Nothing to do if the auth do not use the fixed list of groups on refresh
+      this._requestedGroupModelIds === null ||
+      // or if the scope already covers every workspace group, re-listed on each refresh
+      this._requestedGroupModelIds === "all" ||
+      // or if the group is already present
+      this._requestedGroupModelIds.includes(groupModelId)
+    ) {
+      return;
+    }
+    this._requestedGroupModelIds = [
+      ...this._requestedGroupModelIds,
+      groupModelId,
+    ];
+  }
+
   // Re-derive a plain API key's groups. Workspace-scoped fetch, so a foreign-workspace key yields
   // none (matching `fromKey`). The requestedGroupIds override keeps an explicit scope and skips this.
   private async groupModelIdsFromKey(): Promise<ModelId[]> {
@@ -421,6 +453,26 @@ export class Authenticator {
       return [];
     }
     const groups = await GroupResource.listWorkspaceGroupsFromKey(key);
+    return groups.map((g) => g.id);
+  }
+
+  // The groups of a stored scope: the list itself, or every workspace group for "all". A `null`
+  // scope (re-derived from a principal, see `refresh()`) holds no stored group.
+  private static async listScopeGroupModelIds(
+    workspace: WorkspaceResource | null,
+    scope: ModelId[] | "all" | null,
+    transaction?: Transaction
+  ): Promise<ModelId[]> {
+    if (scope !== "all") {
+      return scope ?? [];
+    }
+    if (!workspace) {
+      return [];
+    }
+    const groups = await GroupResource.internalFetchAllWorkspaceGroups({
+      workspaceId: workspace.id,
+      transaction,
+    });
     return groups.map((g) => g.id);
   }
 
@@ -440,7 +492,12 @@ export class Authenticator {
       return groupModelIds;
     }
     if (this._key) {
-      return this._requestedGroupModelIds ?? this.groupModelIdsFromKey();
+      return this._requestedGroupModelIds !== null
+        ? Authenticator.listScopeGroupModelIds(
+            this._workspace,
+            this._requestedGroupModelIds
+          )
+        : this.groupModelIdsFromKey();
     }
     return [];
   }
@@ -544,8 +601,8 @@ export class Authenticator {
       user,
       role: "admin",
       // Poke acts with every workspace group, not the user's own membership (and often has no user
-      // at all), so this scope can't be re-derived on refresh and must be persisted.
-      requestedGroupModelIds: groupModelIds,
+      // at all), so this scope can't be re-derived from a principal and must be persisted.
+      requestedGroupModelIds: "all",
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -776,11 +833,6 @@ export class Authenticator {
       }
       groupModelIdSets.push(groupModelIdsRes.value);
     }
-    if (isSandboxFileSystemTokenPayload(claims)) {
-      // This token kind is accepted only by the filesystem route. File access
-      // comes from its signed conversation and Pod roots, not workspace groups.
-      groupModelIdSets.push([]);
-    }
     if (groupModelIdSets.length === 0) {
       return new Err({
         status_code: 401,
@@ -848,7 +900,8 @@ export class Authenticator {
    * spaces, plus those holding any grant on the token's agent, whatever their kind or grant type,
    * and no other: the sandbox holds the verbs the agent loop holds on that agent (see `agent-verbs`),
    * restricted to the conversation's spaces. A group kept for its agent grant brings its other grants
-   * along: the narrowing is per group.
+   * along: the narrowing is per group. The only later addition is a non-space grant the sandbox
+   * grants its own user (see `self-granted-group-in-scope`).
    */
   private static async restrictGroupsToSandboxExecSpaces(
     userGroupIds: ModelId[],
@@ -1195,8 +1248,12 @@ export class Authenticator {
       authMethod: "internal",
       workspace,
       role: "admin",
-      // No user and no key to re-derive from, so persist the resolved scope.
-      requestedGroupModelIds: groupModelIds,
+      // No user and no key to re-derive from, so persist the scope: "all" for every group, the
+      // resolved list when `groupKinds` filters them.
+      requestedGroupModelIds:
+        options?.dangerouslyRequestAllGroups && !options.groupKinds
+          ? "all"
+          : groupModelIds,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -1792,9 +1849,16 @@ export class Authenticator {
     });
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] all-scope-not-enumerated
+   * For the `"all"` group scope, the serialized auth MUST carry `groupIds: "all"` and no
+   * `permissions`: both would otherwise grow with the workspace (at least one grant per space), and
+   * serialized auths travel in size-limited Temporal payloads.
+   */
   toJSON(): AuthenticatorType {
     const workspace = this._workspace;
     assert(workspace, "Workspace is required to serialize Authenticator");
+    const scope = this._requestedGroupModelIds;
 
     return {
       authMethod: this._authMethod,
@@ -1802,18 +1866,19 @@ export class Authenticator {
       userId: this._user?.sId ?? null,
       role: this._role,
       // Only an explicit scope is serialized; `null` means "re-derive on refresh" (vs `[]`, an
-      // explicit empty scope).
-      groupIds: this._requestedGroupModelIds
-        ? this._requestedGroupModelIds.map((id) =>
-            GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
-          )
-        : null,
+      // explicit empty scope) and "all" every group of the workspace.
+      groupIds:
+        scope === "all" || scope === null
+          ? scope
+          : scope.map((id) =>
+              GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
+            ),
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
       attributionKey: this._attributionKey,
       clientIp: this._clientIp,
-      permissions: this._permissions.toJSON(),
+      permissions: scope === "all" ? undefined : this._permissions.toJSON(),
       globalGroupModelId: this._globalGroupModelId,
     };
   }
@@ -1850,9 +1915,14 @@ export class Authenticator {
 
     // Old payloads that stored the full group set rehydrate as an explicit scope, which is fine:
     // refresh reuses it until they cycle out.
-    const requestedGroupModelIds = authType.groupIds
-      ? removeNulls(authType.groupIds.map((sId) => getResourceIdFromSId(sId)))
-      : null;
+    const requestedGroupModelIds =
+      authType.groupIds === "all"
+        ? "all"
+        : authType.groupIds
+          ? removeNulls(
+              authType.groupIds.map((sId) => getResourceIdFromSId(sId))
+            )
+          : null;
 
     const providersHealth = await this.fetchByokProvidersHealth(
       workspace,
@@ -1873,12 +1943,16 @@ export class Authenticator {
       globalGroupModelId: authType.globalGroupModelId,
       permissions: authType.permissions
         ? GroupPermissions.fromJSON(authType.permissions)
-        : // Payloads serialized before governance grants existed (in-flight Temporal workflows
-          // across the deploy) carry no permissions: resolve them from the groups rather than
-          // running with an empty grant set, which would silently deny every capability check.
+        : // "all" payloads carry no permissions (see toJSON), nor do payloads serialized before
+          // governance grants existed (in-flight Temporal workflows across the deploy): resolve
+          // them from the groups rather than running with an empty grant set, which would
+          // silently deny every capability check.
           await this.resolvePermissions({
             workspace,
-            groupModelIds: requestedGroupModelIds ?? [],
+            groupModelIds: await this.listScopeGroupModelIds(
+              workspace,
+              requestedGroupModelIds
+            ),
           }),
     });
   }
@@ -1893,7 +1967,10 @@ export class Authenticator {
     authType: AuthenticatorType
   ): Promise<Authenticator> {
     const auth = await Authenticator.fromJSON(authType);
-    await auth.refresh();
+    // fromJSON already resolved an "all" payload from the current groups, as refresh would.
+    if (authType.groupIds !== "all") {
+      await auth.refresh();
+    }
     return auth;
   }
 }

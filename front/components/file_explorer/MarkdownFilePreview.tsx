@@ -59,15 +59,13 @@ export function MarkdownFilePreviewViewModeSwitch({
     >
       <ButtonsSwitch
         value="preview"
-        label={hideLabels ? undefined : previewLabel}
+        {...(hideLabels ? { tooltip: previewLabel } : { label: previewLabel })}
         icon={Eye}
-        tooltip={hideLabels ? previewLabel : undefined}
       />
       <ButtonsSwitch
         value="edit"
-        label={hideLabels ? undefined : editLabel}
+        {...(hideLabels ? { tooltip: editLabel } : { label: editLabel })}
         icon={Edit04}
-        tooltip={hideLabels ? editLabel : undefined}
       />
     </ButtonsSwitchList>
   );

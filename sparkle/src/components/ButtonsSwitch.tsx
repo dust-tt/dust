@@ -1,4 +1,8 @@
-import { Button } from "@sparkle/components/Button";
+import {
+  Button,
+  type ButtonProps,
+  type DistributiveOmit,
+} from "@sparkle/components/Button";
 import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
@@ -262,15 +266,10 @@ const activeOptionStyles = cn(
   "duration-200 ease-in-out"
 );
 
-interface ButtonsSwitchProps extends Omit<
-  React.ComponentProps<typeof Button>,
-  "size" | "variant"
-> {
+type ButtonsSwitchProps = DistributiveOmit<ButtonProps, "size" | "variant"> & {
   /** Unique value identifying this option within the list. */
   value: string;
-  label?: string;
-  icon?: React.ComponentProps<typeof Button>["icon"];
-}
+};
 
 /**
  * One option of a segmented toggle, identified by its `value` and rendered with a
@@ -280,7 +279,7 @@ interface ButtonsSwitchProps extends Omit<
 export const ButtonsSwitch = React.forwardRef<
   HTMLButtonElement,
   ButtonsSwitchProps
->(({ className, value, label, icon, disabled, onClick, ...props }, ref) => {
+>(({ className, value, icon, disabled, onClick, ...props }, ref) => {
   const {
     value: selected,
     onValueChange,
@@ -309,7 +308,6 @@ export const ButtonsSwitch = React.forwardRef<
       // foreground text. Both keep a transparent background; the selected
       // surface is the list's sliding indicator underneath.
       variant={isActive ? "ghost" : "ghost-secondary"}
-      label={label}
       icon={icon}
       className={cn(isActive && activeOptionStyles, className)}
       disabled={isDisabled}

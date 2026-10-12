@@ -51,13 +51,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     auth,
     mcpServerViewIds,
     {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
     }
   );
 

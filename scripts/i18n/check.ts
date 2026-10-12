@@ -14,7 +14,11 @@ import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../../front/types/locale";
 
 const ROOT_DIR = path.resolve(__dirname, "../..");
 // The `locales/` directories of every catalog in `lingui.config.ts`, relative to the repository root.
-const LOCALES_DIRS = ["front/locales", "connectors/locales"];
+const LOCALES_DIRS = [
+  "front/locales",
+  "connectors/locales",
+  "extension/locales",
+];
 
 async function listCatalogPaths(locale: string): Promise<string[]> {
   const catalogs = await getCatalogs(getConfig({ cwd: ROOT_DIR }));

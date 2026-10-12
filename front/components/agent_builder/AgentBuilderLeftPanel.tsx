@@ -3,7 +3,9 @@ import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuil
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
+import { AgentBuilderSuggestedPromptsBlock } from "@app/components/agent_builder/suggested_prompts/AgentBuilderSuggestedPromptsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   BarFooter,
@@ -44,6 +46,7 @@ export function AgentBuilderLeftPanel({
 }: AgentBuilderLeftPanelProps) {
   const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
+  const { isDiscoveryHomepage } = useDiscoveryHomepageOptIn();
 
   const handleCancel = async () => {
     onCancel();
@@ -56,6 +59,7 @@ export function AgentBuilderLeftPanel({
         title={title}
         rightActions={
           <Button
+            tooltip={t`Close`}
             icon={XClose}
             onClick={handleCancel}
             variant="ghost"
@@ -69,6 +73,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
+          {isDiscoveryHomepage && <AgentBuilderSuggestedPromptsBlock />}
           <AgentBuilderSpacesBlock
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />

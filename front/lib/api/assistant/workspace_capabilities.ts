@@ -157,13 +157,7 @@ export async function listAvailableTools(
       auth,
       userSpaces,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
 
@@ -214,13 +208,7 @@ export async function describeMcpServer(
   mcpId: string
 ): Promise<MCPServerType | null> {
   const [view] = await MCPServerViewResource.fetchByIds(auth, [mcpId], {
-    includeHeavyAttributes: [
-      "authorization",
-      "cachedTools",
-      "customHeaders",
-      "lastError",
-      "sharedSecret",
-    ],
+    mode: "configuration",
   });
   // A view the caller cannot read or admin is reported like an unknown id, so that the tool names and
   // schemas of restricted spaces are not disclosed.

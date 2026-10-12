@@ -65,6 +65,11 @@ msgstr "Files"
 msgid "Conversation files"
 msgstr "Conversation files"
 
+#: front/components/assistant/conversation/files_panel/ConversationFileExplorer.tsx
+#: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
+msgid "Close"
+msgstr "Close"
+
 #: front/components/assistant/conversation/files_panel/ConversationFilesPanel.tsx
 msgid "Failed to download the file."
 msgstr "Failed to download the file."

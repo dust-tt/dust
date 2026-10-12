@@ -230,6 +230,7 @@ const MultiPageDialogContent = React.forwardRef<
                   <div className="flex items-center gap-1">
                     <Button
                       icon={ChevronLeft}
+                      aria-label={t`Previous page`}
                       variant="ghost"
                       size="sm"
                       disabled={prevButtonDisabled}
@@ -242,6 +243,7 @@ const MultiPageDialogContent = React.forwardRef<
                     />
                     <Button
                       icon={ChevronRight}
+                      aria-label={t`Next page`}
                       variant="ghost"
                       size="sm"
                       disabled={nextButtonDisabled}

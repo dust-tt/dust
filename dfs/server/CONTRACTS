@@ -1,0 +1,10 @@
+@cc [owner:spolu,notify:spolu,label:backend;error-handling] preserve-fdb-retry-errors
+Within retrying transactions, FDB transaction failures MUST reach `Database::run` unchanged through
+every resource and API conversion so the runner can decide whether to retry. They MUST NOT be
+swallowed, stringified, or converted to domain errors or API statuses before the runner returns.
+
+@cc [owner:spolu,notify:spolu,label:backend;error-handling] transaction-domain-errors
+A transaction closure returning a resource or stored-data decoding failure MUST abort its attempt
+without committing or retrying. `fdb::with_transaction` MUST preserve the typed error returned by
+its closure through the runner. API closures MAY translate non-FDB failures to their API status
+before returning them.

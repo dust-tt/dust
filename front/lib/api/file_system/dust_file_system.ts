@@ -17,17 +17,8 @@
  */
 
 import config from "@app/lib/api/config";
-import { DatabaseFileSystemBackend } from "@app/lib/api/file_system/backends/database_file_system_backend";
-import type {
-  FileSystemBackend,
-  FileSystemNodeIdentity,
-} from "@app/lib/api/file_system/backends/file_system_backend";
+import type { FileSystemBackend } from "@app/lib/api/file_system/backends/file_system_backend";
 import { GCSFileSystemBackend } from "@app/lib/api/file_system/backends/gcs_file_system_backend";
-import type { FileSystemStorageMode } from "@app/lib/api/file_system/storage_mode";
-import {
-  fileSystemStorageModeForPod,
-  fileSystemStorageModeForStandaloneConversation,
-} from "@app/lib/api/file_system/storage_mode";
 import type { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
 import type { Authenticator } from "@app/lib/auth";
 import fileStorageConfig from "@app/lib/file_storage/config";
@@ -230,20 +221,10 @@ export class DustFileSystem {
     private readonly auth: Authenticator,
     private readonly mounts: ReadonlyArray<FileSystemMount>,
     private readonly backend: FileSystemBackend,
-    private readonly storageMode: FileSystemStorageMode,
     private readonly sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
   ) {}
 
-  private static createBackend(
-    auth: Authenticator,
-    mounts: ReadonlyArray<FileSystemMount>,
-    storageMode: FileSystemStorageMode,
-    sandboxOnlyMounts: ReadonlyArray<SandboxOnlyMount> = []
-  ): FileSystemBackend {
-    if (storageMode === "database") {
-      return new DatabaseFileSystemBackend(auth, mounts, sandboxOnlyMounts);
-    }
-
+  private static createBackend(auth: Authenticator): FileSystemBackend {
     return new GCSFileSystemBackend(
       auth.getNonNullableWorkspace().sId,
       fileStorageConfig.getGcsPrivateUploadsBucket()
@@ -296,12 +277,8 @@ export class DustFileSystem {
       }
     }
 
-    const storageModes = new Set<FileSystemStorageMode>();
-    for (const conversation of conversations) {
-      const pod = isPodConversation(conversation)
-        ? spaceById.get(conversation.spaceId)
-        : null;
-      if (isPodConversation(conversation) && !pod) {
+    for (const conversation of podConversations) {
+      if (!spaceById.has(conversation.spaceId)) {
         return new Err(
           new DustFileSystemError(
             "not_found",
@@ -309,24 +286,11 @@ export class DustFileSystem {
           )
         );
       }
-      storageModes.add(
-        pod
-          ? fileSystemStorageModeForPod(pod)
-          : fileSystemStorageModeForStandaloneConversation(conversation)
-      );
     }
-    if (storageModes.size > 1) {
-      return new Err(
-        new DustFileSystemError(
-          "internal",
-          "One filesystem cannot mix GCS roots and database-backed roots."
-        )
-      );
-    }
-    const storageMode = storageModes.values().next().value ?? "gcs";
-    const backend = DustFileSystem.createBackend(auth, mounts, storageMode);
 
-    return new Ok(new DustFileSystem(auth, mounts, backend, storageMode));
+    return new Ok(
+      new DustFileSystem(auth, mounts, DustFileSystem.createBackend(auth))
+    );
   }
 
   /**
@@ -362,23 +326,20 @@ export class DustFileSystem {
     }
 
     const mount = createPodMount(auth, space, { includeLegacy: false });
-    const storageMode = fileSystemStorageModeForPod(space);
-    const backend = DustFileSystem.createBackend(
-      auth,
-      [mount],
-      storageMode,
-      sandboxOnlyMounts
-    );
 
     return new Ok(
-      new DustFileSystem(auth, [mount], backend, storageMode, sandboxOnlyMounts)
+      new DustFileSystem(
+        auth,
+        [mount],
+        DustFileSystem.createBackend(auth),
+        sandboxOnlyMounts
+      )
     );
   }
 
   /**
-   * Build the publication-only filesystem mounted into a Frame-owned sandbox. Frame artifacts
-   * always live in GCS, independently of the storage mode used by the source conversation or Pod.
-   * No agent-visible source mount is included.
+   * Build the publication-only filesystem mounted into a Frame-owned sandbox. No agent-visible
+   * source mount is included.
    */
   static async forFrameSandboxProvisioning(
     auth: Authenticator,
@@ -395,15 +356,13 @@ export class DustFileSystem {
       );
     }
 
-    const backend = DustFileSystem.createBackend(
-      auth,
-      [],
-      "gcs",
-      sandboxOnlyMounts
-    );
-
     return new Ok(
-      new DustFileSystem(auth, [], backend, "gcs", sandboxOnlyMounts)
+      new DustFileSystem(
+        auth,
+        [],
+        DustFileSystem.createBackend(auth),
+        sandboxOnlyMounts
+      )
     );
   }
 
@@ -427,14 +386,12 @@ export class DustFileSystem {
       );
     }
 
-    const owner = auth.getNonNullableWorkspace();
-    const backend = new GCSFileSystemBackend(
-      owner.sId,
-      fileStorageConfig.getGcsPrivateUploadsBucket()
-    );
-
     return new Ok(
-      new DustFileSystem(auth, [createUserMount(user.sId)], backend, "gcs")
+      new DustFileSystem(
+        auth,
+        [createUserMount(user.sId)],
+        DustFileSystem.createBackend(auth)
+      )
     );
   }
 
@@ -510,12 +467,8 @@ export class DustFileSystem {
       (podId) => !hasMount(mounts, `${SCOPED_PREFIX_POD}${podId}`)
     );
 
-    const additionalSpaces =
-      podIdsToFetch.length > 0
-        ? await SpaceResource.fetchByIds(auth, podIdsToFetch)
-        : [];
     if (podIdsToFetch.length > 0) {
-      const spaces = additionalSpaces;
+      const spaces = await SpaceResource.fetchByIds(auth, podIdsToFetch);
       const spaceById = new Map(spaces.map((s) => [s.sId, s]));
 
       for (const podId of podIdsToFetch) {
@@ -539,23 +492,9 @@ export class DustFileSystem {
       return fsResult;
     }
 
-    const addedModes = new Set(
-      additionalSpaces.map((space) => fileSystemStorageModeForPod(space))
+    return new Ok(
+      new DustFileSystem(auth, mounts, DustFileSystem.createBackend(auth))
     );
-    addedModes.add(fsResult.value.storageMode);
-    if (addedModes.size > 1) {
-      return new Err(
-        new DustFileSystemError(
-          "invalid_path",
-          "One agent loop cannot mount GCS roots and database-backed roots together."
-        )
-      );
-    }
-
-    const storageMode = fsResult.value.storageMode;
-    const backend = DustFileSystem.createBackend(auth, mounts, storageMode);
-
-    return new Ok(new DustFileSystem(auth, mounts, backend, storageMode));
   }
 
   /**
@@ -787,10 +726,6 @@ export class DustFileSystem {
     return this.mounts;
   }
 
-  isGCSBacked(): boolean {
-    return this.storageMode === "gcs";
-  }
-
   checkWriteAccess(scopedPath: string): Result<void, DustFileSystemError> {
     const resolved = this.requireWriteMount(scopedPath);
     return resolved.isErr() ? new Err(resolved.error) : new Ok(undefined);
@@ -960,7 +895,7 @@ export class DustFileSystem {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
+  ): Promise<Result<void, DustFileSystemError>> {
     const resolved = this.requireWriteMount(scopedPath);
     if (resolved.isErr()) {
       return resolved;
@@ -982,12 +917,7 @@ export class DustFileSystem {
 
   async mkdir(
     scopedPath: string
-  ): Promise<
-    Result<
-      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
-      DustFileSystemError
-    >
-  > {
+  ): Promise<Result<{ entry: FileSystemDirectoryEntry }, DustFileSystemError>> {
     const resolved = this.requireWriteMount(scopedPath);
     if (resolved.isErr()) {
       return resolved;

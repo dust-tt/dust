@@ -10,6 +10,7 @@ let collabUrl: string | undefined;
 
 vi.mock("@app/lib/auth/AuthContext", () => ({
   useFeatureFlags: () => ({
+    featureFlags: [...flags],
     hasFeature: (flag: string) => flags.has(flag),
   }),
   useCollabUrl: () => collabUrl,
@@ -448,6 +449,141 @@ describe("useMarkdownFileEditor", () => {
 
     const { result } = renderHook(() => useMarkdownFileEditor(unsupported));
 
+    expect(result.current.richEditor).not.toBeNull();
+  });
+
+  it("switches the rich editor for the unprocessed source in edit mode, and back on the file as fetched", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+    expect(result.current.isSourceMode).toBe(true);
+    expect(result.current.richEditor).toBeNull();
+    expect(result.current.viewMode).toBe("edit");
+    expect(result.current.content).toBe("# Notes\n");
+
+    rerender(revised);
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+    expect(result.current.isSourceMode).toBe(false);
+    expect(result.current.richEditor?.initialContent).toBe(
+      "# Notes, revised\n"
+    );
+  });
+
+  it("does not leave the source while it holds an unsaved edit", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+    act(() => {
+      result.current.setDraft("# Notes, mine");
+    });
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(true);
+    expect(result.current.content).toBe("# Notes, mine");
+  });
+
+  it("does not switch to the source while the rich editor holds an unsaved edit", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.richEditor?.onStateChange({
+        dirty: true,
+        saving: false,
+        error: null,
+      });
+    });
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(false);
+    expect(result.current.richEditor).not.toBeNull();
+  });
+
+  it("keeps the source in edit mode when asked for the preview", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    act(() => {
+      result.current.setViewMode("preview");
+    });
+
+    expect(result.current.viewMode).toBe("edit");
+  });
+
+  it("ignores the source switch when the plain editor cannot edit the cut text", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result } = renderHook(() =>
+      useMarkdownFileEditor({ ...params, isTruncated: true })
+    );
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(false);
+  });
+
+  it("ignores the source switch when debug tools are not shown", () => {
+    flags.add("co_edition");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(false);
+    expect(result.current.richEditor).not.toBeNull();
+  });
+
+  it("ignores the source switch when co_edition is off", () => {
+    flags.add("show_debug_tools");
+    const { result } = renderHook(() => useMarkdownFileEditor(params));
+
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    expect(result.current.isSourceMode).toBe(false);
+    expect(result.current.viewMode).toBe("preview");
+  });
+
+  it("leaves the source when another file opens", () => {
+    flags.add("show_debug_tools");
+    flags.add("co_edition");
+    const { result, rerender } = renderHook(
+      (props) => useMarkdownFileEditor(props),
+      { initialProps: params }
+    );
+    act(() => {
+      result.current.toggleSourceMode();
+    });
+
+    rerender({ ...params, entryPath: "conversation-abc/other.md" });
+
+    expect(result.current.isSourceMode).toBe(false);
     expect(result.current.richEditor).not.toBeNull();
   });
 });

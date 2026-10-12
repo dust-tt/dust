@@ -237,7 +237,14 @@ export const WithDropdownMenu: Story = {
         size="xs"
       />
       <ButtonGroupDropdown
-        trigger={<Button variant="outline" size="xs" icon={ChevronDown} />}
+        trigger={
+          <Button
+            aria-label="More actions"
+            variant="outline"
+            size="xs"
+            icon={ChevronDown}
+          />
+        }
         items={[
           { label: "Retry", icon: RefreshCw02 },
           { label: "Delete", icon: Trash01, variant: "warning" },

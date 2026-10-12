@@ -19,7 +19,7 @@ const meta = {
 
 **Guidelines**
 - Set color with a text utility (e.g. \`text-highlight-500\`) rather than hard-coding fills.
-- For an icon overlaid with a provider badge use **DoubleIcon**; for clickable icons prefer **IconButton** or **Button** with an \`icon\`.`,
+- For an icon overlaid with a provider badge use **DoubleIcon**; for clickable icons use **Button** with an \`icon\`.`,
       },
     },
   },

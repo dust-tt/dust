@@ -108,6 +108,7 @@ export function ContextUsageIndicator({
       <PopoverRoot>
         <PopoverTrigger asChild>
           <Button
+            aria-label={t`Show context usage`}
             variant="ghost-secondary"
             size={buttonSize}
             icon={

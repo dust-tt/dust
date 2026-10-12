@@ -22,6 +22,8 @@ import {
   LoadingBlock,
   Tooltip,
 } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
+import { msg } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { SuggestionProps } from "@tiptap/suggestion";
 import type React from "react";
@@ -222,10 +224,12 @@ function getSlashCommandEndComponent({
   item,
   isHighlighted,
   onItemDetails,
+  t,
 }: {
   item: SlashCommand;
   isHighlighted: boolean;
   onItemDetails?: (item: SlashCommand) => void;
+  t: (descriptor: MessageDescriptor) => string;
 }): React.ReactNode | undefined {
   const canShowDetails = !!onItemDetails && !!item.hasDetails;
   if (
@@ -244,6 +248,7 @@ function getSlashCommandEndComponent({
     <div className="flex items-center gap-1">
       {canShowDetails ? (
         <Button
+          tooltip={t(msg`View details`)}
           icon={DotsHorizontal}
           variant="outline"
           size="mini"
@@ -572,6 +577,7 @@ export const SlashCommandDropdown = forwardRef<
                           item,
                           isHighlighted: entryIndex === selectedIndex,
                           onItemDetails,
+                          t,
                         })}
                         onClick={() => selectEntry(entryIndex)}
                         {...getPointerHighlightProps(
@@ -691,6 +697,7 @@ export const SlashCommandDropdown = forwardRef<
                         item,
                         isHighlighted: entryIndex === selectedIndex,
                         onItemDetails,
+                        t,
                       })}
                       onClick={() => selectEntry(entryIndex)}
                       {...getPointerHighlightProps(

@@ -50,6 +50,7 @@ const SampleSidebar = ({
       <div className="text-sm font-semibold text-foreground">Sidebar</div>
       {onToggle && (
         <Button
+          tooltip={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           variant="ghost-secondary"
           size="icon"
           icon={isCollapsed ? LayoutRight : LayoutLeft}
@@ -138,6 +139,7 @@ const ComplexSidebar = ({
       <div className="text-sm font-semibold text-foreground">Navigation</div>
       {onToggle && (
         <Button
+          tooltip={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           variant="ghost-secondary"
           size="icon"
           icon={isCollapsed ? LayoutRight : LayoutLeft}

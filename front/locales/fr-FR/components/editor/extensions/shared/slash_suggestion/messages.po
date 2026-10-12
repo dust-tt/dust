@@ -38,6 +38,10 @@ msgid "Loading"
 msgstr "Chargement"
 
 #: front/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown.tsx
+msgid "View details"
+msgstr "Voir les détails"
+
+#: front/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown.tsx
 msgid "No commands found"
 msgstr "Aucune commande trouvée"
 

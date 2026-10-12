@@ -144,7 +144,7 @@ import { Op } from "sequelize";
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
 export type SkillMCPServerConfiguration = {
-  view: MCPServerViewResource;
+  view: MCPServerViewResource<"configuration">;
   childAgentId?: string;
   serverNameOverride?: string;
 };
@@ -260,7 +260,7 @@ export type UpdateSkillParams = {
   // The spaces a person picked by hand: the subset of `requestedSpaceIds` that stays when
   // nothing in the skill requires it any more.
   manuallyRequestedSpaceIds: ModelId[];
-  mcpServerViews: MCPServerViewResource[];
+  mcpServerViews: MCPServerViewResource<"configuration">[];
   name: string;
   reinforcement?: SkillReinforcementMode;
   requestedSpaceIds: ModelId[];
@@ -442,7 +442,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  get mcpServerViews(): MCPServerViewResource[] {
+  get mcpServerViews(): MCPServerViewResource<"configuration">[] {
     return this._mcpServerConfigurations.map((config) => config.view);
   }
 
@@ -520,7 +520,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       excludedSkillId?: string;
       instructions: string;
       manuallyRequestedSpaceIds: ModelId[];
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
     }
   ): Promise<ModelId[]> {
     const toolAndKnowledgeSpaceIds = await this.computeToolAndKnowledgeSpaceIds(
@@ -578,7 +578,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       attachedKnowledge,
     }: {
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       attachedKnowledge: SkillAttachedKnowledge[];
     }
   ): Promise<ModelId[]> {
@@ -642,7 +642,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       fileAttachments = [],
       auditMetadata,
     }: {
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
       fileAttachments?: FileResource[];
@@ -785,15 +785,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const mcpServerViews = await MCPServerViewResource.fetchByIds(
       auth,
       mcpServerViewIds,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      { mode: "configuration" }
     );
 
     if (mcpServerViews.length !== mcpServerViewIds.length) {
@@ -1022,7 +1014,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     let allowedCustomSkillsRes: SkillResource[] = [];
     if (allowedCustomSkills.length > 0) {
       let mcpServerConfigurations: SkillMCPServerConfigurationModel[] = [];
-      let allMCPServerViews: MCPServerViewResource[] = [];
+      let allMCPServerViews: MCPServerViewResource<"configuration">[] = [];
 
       if (withTools) {
         mcpServerConfigurations =
@@ -1039,16 +1031,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          {
-            includeMetadata: withToolMetadata,
-            includeHeavyAttributes: [
-              "authorization",
-              "cachedTools",
-              "customHeaders",
-              "lastError",
-              "sharedSecret",
-            ],
-          }
+          { mode: "configuration", includeMetadata: withToolMetadata }
         );
       }
 
@@ -1170,7 +1153,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Batch-fetch MCP server views for all enabled global skills in a single query.
-    let mcpServerViews: MCPServerViewResource[] = [];
+    let mcpServerViews: MCPServerViewResource<"configuration">[] = [];
     if (withTools) {
       const mcpServerIds = uniq(
         enabledCodeDefinedSkills.flatMap(
@@ -1182,16 +1165,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const allMCPServerViews = await MCPServerViewResource.listByMCPServers(
         auth,
         mcpServerIds,
-        {
-          transaction,
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { mode: "configuration", transaction }
       );
       mcpServerViews = allMCPServerViews.filter(
         (view) =>
@@ -2585,7 +2559,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerViews: MCPServerViewResource<"configuration">[];
       withInstructions?: boolean;
     }
   ): Promise<SkillResource> {
@@ -2951,15 +2925,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
       auth,
       allMcpServerViewIds,
-      {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
-      }
+      { mode: "configuration" }
     );
     const mcpServerViewMap = new Map(
       allMcpServerViews.map((view) => [view.id, view])
@@ -4216,7 +4182,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   private async updateMCPServerViews(
     auth: Authenticator,
-    mcpServerViews: MCPServerViewResource[],
+    mcpServerViews: MCPServerViewResource<"configuration">[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();

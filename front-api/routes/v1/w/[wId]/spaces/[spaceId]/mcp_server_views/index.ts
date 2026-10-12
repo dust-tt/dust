@@ -64,13 +64,7 @@ app.get(
 
     const mcpServerViews =
       await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       });
     return ctx.json({
       success: true,

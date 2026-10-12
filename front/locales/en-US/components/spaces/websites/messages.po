@@ -34,6 +34,10 @@ msgid "Header value"
 msgstr "Header value"
 
 #: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Remove header"
+msgstr "Remove header"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
 msgid "Add header"
 msgstr "Add header"
 

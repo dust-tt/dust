@@ -41,7 +41,12 @@ export const LegacyFlexSplitButtonVariants: Story = {
         variant="highlight"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="highlight"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -49,7 +54,12 @@ export const LegacyFlexSplitButtonVariants: Story = {
         variant="primary"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="primary"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -57,7 +67,12 @@ export const LegacyFlexSplitButtonVariants: Story = {
         variant="outline"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="outline"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -66,6 +81,7 @@ export const LegacyFlexSplitButtonVariants: Story = {
         icon={ArrowUp}
         splitAction={
           <Button
+            tooltip="More send options"
             size="icon"
             variant="highlight-secondary"
             icon={ChevronDown}
@@ -77,7 +93,12 @@ export const LegacyFlexSplitButtonVariants: Story = {
         variant="warning"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="warning"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -85,21 +106,38 @@ export const LegacyFlexSplitButtonVariants: Story = {
         variant="warning-secondary"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="warning-secondary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="warning-secondary"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
         label="Send"
         variant="ghost"
         icon={ArrowUp}
-        splitAction={<Button size="icon" variant="ghost" icon={ChevronDown} />}
+        splitAction={
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="ghost"
+            icon={ChevronDown}
+          />
+        }
       />
       <LegacyFlexSplitButton
         label="Send"
         variant="ghost-secondary"
         icon={ArrowUp}
         splitAction={
-          <Button size="icon" variant="ghost-secondary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="ghost-secondary"
+            icon={ChevronDown}
+          />
         }
       />
     </div>
@@ -115,7 +153,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="highlight" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="highlight"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -124,7 +167,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="primary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="primary"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -133,7 +181,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="outline" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="outline"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -143,6 +196,7 @@ export const LegacyFlexSplitButtonLoading: Story = {
         isLoading
         splitAction={
           <Button
+            tooltip="More send options"
             size="icon"
             variant="highlight-secondary"
             icon={ChevronDown}
@@ -155,7 +209,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="warning" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="warning"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -164,7 +223,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="warning-secondary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="warning-secondary"
+            icon={ChevronDown}
+          />
         }
       />
       <LegacyFlexSplitButton
@@ -172,7 +236,14 @@ export const LegacyFlexSplitButtonLoading: Story = {
         variant="ghost"
         icon={ArrowUp}
         isLoading
-        splitAction={<Button size="icon" variant="ghost" icon={ChevronDown} />}
+        splitAction={
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="ghost"
+            icon={ChevronDown}
+          />
+        }
       />
       <LegacyFlexSplitButton
         label="Sending"
@@ -180,7 +251,12 @@ export const LegacyFlexSplitButtonLoading: Story = {
         icon={ArrowUp}
         isLoading
         splitAction={
-          <Button size="icon" variant="ghost-secondary" icon={ChevronDown} />
+          <Button
+            tooltip="More send options"
+            size="icon"
+            variant="ghost-secondary"
+            icon={ChevronDown}
+          />
         }
       />
     </div>

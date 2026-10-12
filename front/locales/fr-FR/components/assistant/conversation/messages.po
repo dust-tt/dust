@@ -216,6 +216,10 @@ msgid "Skipped. Running your next message."
 msgstr "Ignoré. Exécution de votre message suivant."
 
 #: front/components/assistant/conversation/AgentMessage.tsx
+msgid "More options"
+msgstr "Plus d’options"
+
+#: front/components/assistant/conversation/AgentMessage.tsx
 msgid "Unexpected error"
 msgstr "Erreur inattendue"
 
@@ -252,6 +256,7 @@ msgid "Compact now"
 msgstr "Compacter maintenant"
 
 #: front/components/assistant/conversation/ConversationContainer.tsx
+#: front/components/assistant/conversation/InAppBanner.tsx
 #: front/components/assistant/conversation/MentionInvalid.tsx
 msgid "Dismiss"
 msgstr "Ignorer"
@@ -419,6 +424,10 @@ msgstr "Continuer"
 msgctxt "verb, menu item"
 msgid "Leave"
 msgstr "Quitter"
+
+#: front/components/assistant/conversation/ConversationSidePanelHeader.tsx
+msgid "Close"
+msgstr "Fermer"
 
 #: front/components/assistant/conversation/ConversationTitle.tsx
 msgid "New conversation"
@@ -990,6 +999,10 @@ msgstr "À partir de zéro"
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "From existing"
 msgstr "À partir d’une compétence existante"
+
+#: front/components/assistant/conversation/SidebarMenu.tsx
+msgid "Cancel selection"
+msgstr "Annuler la sélection"
 
 #: front/components/assistant/conversation/SidebarMenu.tsx
 msgid "Error loading conversations"

@@ -3,6 +3,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 // oxlint-disable-next-line dust/noDirectSparkleNotification -- extension notification provider setup follows this pattern.
 import { useSendNotification } from "@dust-tt/sparkle";
 import { usePlatform } from "@extension/shared/context/PlatformContext";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 
 function sanitizeFileName(fileName: string) {
@@ -10,6 +11,7 @@ function sanitizeFileName(fileName: string) {
 }
 
 export function useSavePageToPod({ owner }: { owner: LightWorkspaceType }) {
+  const { t } = useLingui();
   const platform = usePlatform();
   const sendNotification = useSendNotification();
   const [isCapturing, setIsCapturing] = useState(false);
@@ -41,7 +43,7 @@ export function useSavePageToPod({ owner }: { owner: LightWorkspaceType }) {
 
         if (contentRes && contentRes.isErr()) {
           sendNotification({
-            title: "Cannot get page content",
+            title: t`Cannot get page content`,
             description: contentRes.error.message,
             type: "error",
           });
@@ -53,8 +55,8 @@ export function useSavePageToPod({ owner }: { owner: LightWorkspaceType }) {
 
         if (!tabContent?.content) {
           sendNotification({
-            title: "Cannot get page content",
-            description: "No content found.",
+            title: t`Cannot get page content`,
+            description: t`No content found.`,
             type: "error",
           });
           return false;
@@ -90,24 +92,27 @@ export function useSavePageToPod({ owner }: { owner: LightWorkspaceType }) {
           return false;
         }
 
+        const pageTitle =
+          tabContent.title ||
+          t({ message: "page", context: "name of a web page without title" });
         sendNotification({
-          title: "Page saved",
-          description: `Saved "${tabContent.title || "page"}" to the selected Pod.`,
+          title: t`Page saved`,
+          description: t`Saved "${pageTitle}" to the selected Pod.`,
           type: "success",
         });
 
         return true;
       } catch {
         sendNotification({
-          title: "Cannot save page",
-          description: "Something wrong happened.",
+          title: t`Cannot save page`,
+          description: t`Something went wrong.`,
           type: "error",
         });
         setIsCapturing(false);
         return false;
       }
     },
-    [handleFilesUpload, platform.capture, resetUpload, sendNotification]
+    [handleFilesUpload, platform.capture, resetUpload, sendNotification, t]
   );
 
   return useMemo(

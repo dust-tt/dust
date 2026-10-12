@@ -1,5 +1,6 @@
 import { ServerVisualizationWrapperClient } from "@viz/app/content/ServerVisualizationWrapperClient";
 import type { PreFetchedFile } from "@viz/app/lib/data-apis/cache-data-api";
+import type { VizCatalog } from "@viz/app/lib/i18n/catalogs";
 import logger from "@viz/app/lib/logger";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
 
@@ -105,6 +106,7 @@ interface ServerSideVisualizationWrapperProps {
   identifier: string;
   isFullHeight?: boolean;
   isPdfMode?: boolean;
+  catalog: VizCatalog;
 }
 
 /**
@@ -124,6 +126,7 @@ export async function ServerSideVisualizationWrapper({
   identifier,
   isFullHeight = false,
   isPdfMode = false,
+  catalog,
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
@@ -179,6 +182,7 @@ export async function ServerSideVisualizationWrapper({
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
       isAuthenticatedMember={isAuthenticatedMember}
+      catalog={catalog}
     />
   );
 }

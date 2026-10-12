@@ -158,7 +158,12 @@ export function PodFrameSheet({
               </div>
             )}
             <SheetClose asChild>
-              <Button icon={XClose} variant="ghost" size="sm" />
+              <Button
+                aria-label={t`Close`}
+                icon={XClose}
+                variant="ghost"
+                size="sm"
+              />
             </SheetClose>
           </div>
         </SheetHeader>

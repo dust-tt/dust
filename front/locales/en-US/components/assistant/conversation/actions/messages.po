@@ -21,6 +21,10 @@ msgstr "Tool detail"
 msgid "Nothing to display."
 msgstr "Nothing to display."
 
+#: front/components/assistant/conversation/actions/AgentActionsPanelHeader.tsx
+msgid "Close"
+msgstr "Close"
+
 #: front/components/assistant/conversation/actions/VisualizationActionIframe.tsx
 msgid "Export failed"
 msgstr "Export failed"

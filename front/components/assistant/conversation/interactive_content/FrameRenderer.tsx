@@ -577,6 +577,11 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
+              aria-label={
+                isFullScreen
+                  ? t`Exit full screen mode`
+                  : t`Go to full screen mode`
+              }
               icon={isFullScreen ? Minimize01 : Maximize01}
               variant="ghost"
               size="xs"
@@ -615,6 +620,7 @@ function PreviewActionButtons({
           tooltipTriggerAsChild
           trigger={
             <Button
+              aria-label={t`Revert the last change`}
               variant="ghost"
               disabled={!hasPreviousVersion}
               size="xs"
@@ -630,6 +636,7 @@ function PreviewActionButtons({
         tooltipTriggerAsChild
         trigger={
           <Button
+            aria-label={t`Reload the file`}
             icon={RefreshCw01}
             variant="ghost"
             size="xs"

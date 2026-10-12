@@ -31,8 +31,8 @@ interface SidekickUserMetadata {
 
 export interface SidekickContext {
   mcpServerViews: {
-    context: MCPServerViewResource;
-    templates: MCPServerViewResource | null;
+    context: MCPServerViewResource<"configuration">;
+    templates: MCPServerViewResource<"configuration"> | null;
   } | null;
   // The locale of the static first reply to a new agent. Only resolved for that turn.
   newAgentFirstReplyLocale?: SupportedLocale | null;
@@ -277,11 +277,13 @@ export async function buildSidekickContext(
   const [context, templates, newAgentFirstReplyLocale] = await Promise.all([
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_SIDEKICK_CONTEXT_TOOL_NAME
+      AGENT_SIDEKICK_CONTEXT_TOOL_NAME,
+      { mode: "configuration" }
     ),
     MCPServerViewResource.getMCPServerViewForAutoInternalTool(
       auth,
-      AGENT_TEMPLATES_SERVER_NAME
+      AGENT_TEMPLATES_SERVER_NAME,
+      { mode: "configuration" }
     ),
     isNewAgentFirstTurn ? getAgentLocale(auth, featureFlags) : null,
   ]);

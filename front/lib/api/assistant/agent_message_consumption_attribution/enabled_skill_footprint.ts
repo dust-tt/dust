@@ -52,7 +52,8 @@ function enabledSkillToolDefinitions(
       configuration.view.name ??
       configuration.view.getServerDisplayMetadata().name;
     const disabledToolNames = new Set(
-      configuration.view.getToolPermissions
+      configuration.view
+        .getToolPermissions()
         .filter(({ enabled }) => !enabled)
         .map(({ toolName }) => toolName)
     );

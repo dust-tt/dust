@@ -434,7 +434,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
           auth,
           spaceIds,
-          { includeGlobalSpace: true, includeHeavyAttributes: ["cachedTools"] }
+          { mode: "configuration", includeGlobalSpace: true }
         );
 
       const connectedByType = await buildConnectedServerIdsByType(
@@ -448,7 +448,7 @@ const handlers: ToolHandlers<typeof ACTIVATION_RECOMMENDATIONS_TOOLS_METADATA> =
         const serverName = view.getDisplayName();
         const serverConnected = isServerConnected(view, connectedByType);
 
-        for (const toolMeta of view.getToolPermissions) {
+        for (const toolMeta of view.getToolPermissions()) {
           const executionMode = await resolveToolExecutionMode(auth, {
             view,
             toolName: toolMeta.toolName,

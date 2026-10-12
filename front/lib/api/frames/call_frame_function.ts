@@ -132,15 +132,6 @@ export async function callFrameFunctionFromSource(
     return new Err(fsResult.error);
   }
   const dustFs = fsResult.value;
-  if (!dustFs.isGCSBacked()) {
-    return new Err(
-      new FrameFunctionCallError(
-        "invalid_source",
-        "Frames v2 calls do not support the database-backed filesystem."
-      )
-    );
-  }
-
   const readableMount = dustFs
     .getMounts()
     .find(

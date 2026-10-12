@@ -40,6 +40,7 @@ export function MCPServerMetaFields() {
               </div>
             </div>
             <Button
+              tooltip={t`Remove field`}
               variant="outline"
               icon={XClose}
               onClick={() => remove(index)}

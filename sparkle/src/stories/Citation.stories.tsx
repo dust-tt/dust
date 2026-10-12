@@ -157,6 +157,7 @@ export const NumberedCitationInPopover: StoryObj = {
           </CitationIcons>
           <CitationTitle>Slack thread: #help-onboarding</CitationTitle>
           <Button
+            tooltip="Open link"
             variant="ghost"
             icon={LinkExternal01}
             className="absolute right-2 top-2"

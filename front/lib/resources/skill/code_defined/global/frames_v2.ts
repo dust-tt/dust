@@ -735,6 +735,19 @@ The ID form requires Frame use rights; the path form additionally requires read 
 mounted source. Use this to exercise published server behavior directly; it does not test the Frame
 UI.
 
+Inspect a Frame's live databases with \`dsbx db\`, which requires write access to the Frame source:
+
+\`\`\`bash
+dsbx db list --frame <frame-id>
+echo "SELECT * FROM comments ORDER BY created_at DESC LIMIT 20" | dsbx db query comments --frame <frame-id>
+\`\`\`
+
+\`db query\` runs one SQL statement read from stdin against the named database. SELECT and DML are
+allowed; DDL is refused, because the schema changes only through publish. Results are capped: when
+\`truncated\` is set, narrow the query. Use it to check what a Frame actually stored instead of
+writing a throwaway function. It reads and writes the same data viewers see, so do not modify rows
+unless the user asked for it.
+
 `
     : ""
 }Two interactive-content MCP tools are available under Frames v2:

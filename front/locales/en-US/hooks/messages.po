@@ -101,6 +101,10 @@ msgstr "Message has been deleted successfully."
 msgid "Commenting is unavailable."
 msgstr "Commenting is unavailable."
 
+#: front/hooks/useDiscoveryHomepageOptIn.ts
+msgid "Could not switch homepage"
+msgstr "Could not switch homepage"
+
 #: front/hooks/useDismissFeedback.ts
 msgid "Failed to mark feedback as seen."
 msgstr "Failed to mark feedback as seen."

@@ -37,6 +37,7 @@ import {
   WriteFileRequestEnvelopeSchema,
 } from "@app/types/assistant/visualization";
 import { isAPIError } from "@app/types/error";
+import type { SupportedLocale } from "@app/types/locale";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
@@ -807,6 +808,8 @@ export interface VisualizationActionIframeProps {
    */
   stagedEditMode?: "preview" | "edit";
   isInDrawer?: boolean;
+  /** UI locale of the Frame's own text. Omitted, viz follows the browser's language. */
+  locale?: SupportedLocale;
   onEditText?: EditTextFn;
   scopedUserIdentity?: ScopedWorkspaceUserIdentity;
   spaceId?: string;
@@ -820,6 +823,11 @@ export interface VisualizationActionIframeProps {
  * @cc [owner:flvndvd,label:product] frame-theme-independent-of-host
  * The iframe URL MUST omit Dust's theme so Frames use Viz's default theme.
  * Changes to Dust's theme MUST NOT change the iframe URL or remount the iframe.
+ */
+/**
+ * @cc [owner:ykmsd,label:product] frame-locale-from-host
+ * When `locale` is set, the iframe URL MUST carry it as `locale`; otherwise the URL MUST omit
+ * `locale`, so that viz falls back to the browser's language.
  */
 /**
  * @cc [owner:flvndvd,label:security] frame-host-file-writes
@@ -1129,8 +1137,20 @@ export const VisualizationActionIframe = forwardRef<
       params.set("stagedEdits", "true");
     }
 
+    // A locale change reloads the Frame: users rarely switch, so it is not posted like edit mode.
+    if (props.locale) {
+      params.set("locale", props.locale);
+    }
+
     return `${props.vizUrl.replace(/\/$/, "")}/content?${params.toString()}`;
-  }, [visualization, isInDrawer, isEditable, hasStagedEdits, props.vizUrl]);
+  }, [
+    visualization,
+    isInDrawer,
+    isEditable,
+    hasStagedEdits,
+    props.locale,
+    props.vizUrl,
+  ]);
 
   // Toggle Preview|Edit affordances inside the already-loaded viz (no URL / remount change).
   const postEditMode = useCallback(() => {

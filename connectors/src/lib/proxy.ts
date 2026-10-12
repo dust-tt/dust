@@ -20,6 +20,21 @@ export function createProxyAgent(proxyUrl: string): ProxyAgent {
 // Replaces Undici's default agent, which uses HTTP/2 since Undici 8. See `createProxyAgent`.
 export const http1Agent = new Agent({ allowH2: false });
 
+// Static IP proxy URL when `PROXY_*` env vars are configured (always the case in deployed
+// environments), for providers that whitelist our egress IPs.
+export function getStaticIpProxyUrl(): string | undefined {
+  const host = process.env.PROXY_HOST;
+  const port = process.env.PROXY_PORT;
+  const user = process.env.PROXY_USER_NAME;
+  const password = process.env.PROXY_USER_PASSWORD;
+
+  if (!host || !port || !user || !password) {
+    return undefined;
+  }
+
+  return `http://${user}:${password}@${host}:${port}`;
+}
+
 /**
  * Creates a fetch function with proxy support if configured.
  * If UNTRUSTED_EGRESS_PROXY_HOST and UNTRUSTED_EGRESS_PROXY_PORT are set,

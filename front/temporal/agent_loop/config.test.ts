@@ -31,15 +31,23 @@ describe("getQueueForUserMessageOrigin", () => {
   });
 
   it("routes public API origins to the programmatic queue", () => {
-    const origins: UserMessageOrigin[] = [
-      "api",
-      "zapier",
-      "extension",
-      "gsheet",
-      "zendesk",
-    ];
+    const origins: UserMessageOrigin[] = ["api", "zapier"];
     for (const origin of origins) {
       expect(getQueueForUserMessageOrigin(origin)).toBe("programmatic");
+    }
+  });
+
+  it("routes interactive integration origins to the interactive queue", () => {
+    const origins: UserMessageOrigin[] = [
+      "extension",
+      "raycast",
+      "zendesk",
+      "excel",
+      "gsheet",
+      "powerpoint",
+    ];
+    for (const origin of origins) {
+      expect(getQueueForUserMessageOrigin(origin)).toBe("interactive");
     }
   });
 

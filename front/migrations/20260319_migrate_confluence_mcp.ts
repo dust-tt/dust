@@ -109,8 +109,8 @@ makeScript(
 
     logger.info(
       {
-        originView: originView.toJSON(),
-        destinationView: destinationView.toJSON(),
+        originView: originView.toJSONLight(),
+        destinationView: destinationView.toJSONLight(),
         count: agentIds.length,
       },
       "Loaded MCP server views and agent IDs."

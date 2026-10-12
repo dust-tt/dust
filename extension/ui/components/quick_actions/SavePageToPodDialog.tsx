@@ -19,6 +19,7 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RefreshPodFiles = () => Promise<void>;
@@ -38,6 +39,7 @@ export function SavePageToPodDialog({
   onSelect,
   isSaving,
 }: SavePageToPodDialogProps) {
+  const { t } = useLingui();
   const activePodId = useActivePodId();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPodId, setSelectedPodId] = useState<string | null>(null);
@@ -107,13 +109,15 @@ export function SavePageToPodDialog({
     >
       <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Save page to Pod</DialogTitle>
+          <DialogTitle>
+            <Trans>Save page to Pod</Trans>
+          </DialogTitle>
         </DialogHeader>
         <DialogContainer>
           <div className="flex flex-col gap-3">
             <SearchInput
               name="save-page-to-pod-search"
-              placeholder="Search Pods"
+              placeholder={t`Search Pods`}
               value={searchQuery}
               onChange={setSearchQuery}
               disabled={isBusy}
@@ -127,15 +131,17 @@ export function SavePageToPodDialog({
                   </div>
                 ) : isPodsError ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
-                    Failed to load Pods.
+                    <Trans>Failed to load Pods.</Trans>
                   </div>
                 ) : !canManuallyManagePodFiles ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
-                    Adding files to Pods is disabled by your workspace admin.
+                    <Trans>
+                      Adding files to Pods is disabled by your workspace admin.
+                    </Trans>
                   </div>
                 ) : filteredPods.length === 0 ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
-                    No Pods found.
+                    <Trans>No Pods found.</Trans>
                   </div>
                 ) : (
                   orderedPods.map((pod) => (
@@ -155,7 +161,7 @@ export function SavePageToPodDialog({
         </DialogContainer>
         <DialogFooter>
           <Button
-            label="Cancel"
+            label={t`Cancel`}
             variant="outline"
             onClick={onClose}
             disabled={isBusy}

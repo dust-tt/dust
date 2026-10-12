@@ -4,6 +4,7 @@ import {
   getSandboxFunctionInvocationAccessError,
   VisualizationActionIframe,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import {
   DUST_FILE_CAN_WRITE_HEADER,
@@ -213,6 +214,35 @@ describe("VisualizationActionIframe", () => {
     expect(new URL(iframe.src).searchParams.get("identifier")).toBe(
       "viz-fil_frame"
     );
+  });
+
+  it("passes the locale to viz only when the host sets one", () => {
+    const props = {
+      agentConfigurationId: null,
+      canInvokeFunctions: false,
+      conversationId: null,
+      viewer: null,
+      visualization: VisualizationFactory.buildPublic(),
+      vizUrl: "https://viz.dust.tt",
+      workspaceId: "w_current",
+    };
+    const getLocaleParam = (container: HTMLElement) => {
+      const iframe = container.querySelector("iframe");
+      if (!iframe) {
+        throw new Error("Expected the visualization iframe to be mounted.");
+      }
+      return new URL(iframe.src).searchParams.get("locale");
+    };
+
+    const { container, rerender } = render(
+      createElement(VisualizationActionIframe, props)
+    );
+    expect(getLocaleParam(container)).toBeNull();
+
+    rerender(
+      createElement(VisualizationActionIframe, { ...props, locale: "fr-FR" })
+    );
+    expect(getLocaleParam(container)).toBe("fr-FR");
   });
 
   it("records missing styles only for the mounted Frame and accepts bounded messages", () => {

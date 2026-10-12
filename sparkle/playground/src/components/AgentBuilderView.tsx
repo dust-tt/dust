@@ -1217,6 +1217,7 @@ export function AgentBuilderView({
               >
                 <TabsList className="pl-2 pr-6">
                   <Button
+                    tooltip="Close panel"
                     icon={LogIn01}
                     variant="ghost-secondary"
                     size="sm"
@@ -1462,6 +1463,7 @@ export function AgentBuilderView({
         {!isRightPanelOpen && (
           <div className="flex h-full w-14 flex-col items-center gap-2 py-3">
             <Button
+              tooltip="Open panel"
               icon={ArrowLeft}
               size="sm"
               variant="ghost-secondary"
@@ -1469,6 +1471,7 @@ export function AgentBuilderView({
             />
             {rightPanelTabs.map((tab) => (
               <Button
+                tooltip={tab.label}
                 key={tab.value}
                 icon={tab.icon}
                 size="sm"

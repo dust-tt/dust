@@ -245,6 +245,14 @@ msgstr "Add files that will be available to the skill at runtime. Templates, sch
 msgid "Restore files"
 msgstr "Restore files"
 
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Remove file"
+msgstr "Remove file"
+
+#: front/components/skill_builder/SkillBuilderIconSection.tsx
+msgid "Change icon"
+msgstr "Change icon"
+
 #: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
 msgid "See less"
 msgstr "See less"

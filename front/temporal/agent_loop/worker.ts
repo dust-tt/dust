@@ -53,7 +53,12 @@ import {
 } from "@temporalio/interceptors-opentelemetry/lib/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-// Must match front-agent-loop-worker's terminationGracePeriodSeconds.
+/**
+ * @cc [owner:philipperolet,label:performance] below-pod-grace-period
+ * `SHUTDOWN_GRACE_TIME_MS` MUST stay below the `terminationGracePeriodSeconds` of the agent loop
+ * deployments (dust-infra `helm/applications/charts/front/values.yaml`), so that the worker
+ * finishes draining before Kubernetes sends SIGKILL.
+ */
 const SHUTDOWN_GRACE_TIME_MS = 120 * 1_000;
 const SHUTDOWN_ABORT_BUFFER_MS = 10 * 1_000;
 const SHUTDOWN_TOOL_ABORT_DELAY_MS =

@@ -5,5 +5,17 @@ Every platform webpack config MUST run `linguiMacroLoader` (`config/webpack_ling
 
 @cc [owner:sfriquet,label:react] app-root-provides-i18n
 Each platform app root (`ChromeApp`, `FirefoxApp`, `FrontApp`) MUST render its whole tree inside an
-`I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, so shared `front` components
-using Lingui render in `DEFAULT_LOCALE`.
+`I18nProvider` given the `i18n` instance of `@app/lib/i18n/i18n`, itself wrapping a
+`SparkleLocaleProvider`, so that front, extension and sparkle components all render in the active
+locale.
+
+@cc [owner:Nils-Fedrigo,label:product] extension-follows-user-locale
+Once signed in, the extension MUST render in the locale `UserLocaleSync` resolves for the user:
+`ProtectedRoute` mounts it, and `ExtensionAuthProvider` MUST pass the `locale` of the workspace
+auth context to front's `AuthContext`. Before sign-in, it renders in `DEFAULT_LOCALE`.
+
+@cc [owner:Nils-Fedrigo,label:architecture] extension-catalog
+User-visible strings of `platforms/`, `shared/` and `ui/` MUST be written with the Lingui macros
+and extracted to the single extension catalog, `extension/locales/{locale}/messages.po`. Code
+running outside a React tree (background script, content scripts, page tools) and text sent to
+models MUST NOT be translated.

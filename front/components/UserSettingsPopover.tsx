@@ -193,6 +193,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   const isProvisioned = user?.origin === "provisioned";
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const pronounsInputRef = useRef<HTMLInputElement | null>(null);
 
   const fileUploaderService = useFileUploaderService({
     hasSandboxTools: false,
@@ -220,6 +221,8 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
     name: "jobType",
     control: form.control,
   });
+  const { ref: registerPronounsInput, ...pronounsField } =
+    form.register("pronouns");
   const [portalContainer] = useState<HTMLElement | undefined>(() =>
     typeof document !== "undefined" ? document.body : undefined
   );
@@ -312,6 +315,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
               <div className="group relative w-fit">
                 <Avatar size="md" visual={currentImageUrl} isRounded />
                 <Button
+                  tooltip={t`Change profile picture`}
                   variant="outline"
                   size="sm"
                   icon={Edit04}
@@ -375,7 +379,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
             action={
               <div className="flex w-64 flex-col gap-2">
                 <Input
-                  {...form.register("pronouns")}
+                  {...pronounsField}
+                  ref={(element) => {
+                    registerPronounsInput(element);
+                    pronounsInputRef.current = element;
+                  }}
                   placeholder={t`e.g. She/Her`}
                   isError={!!form.formState.errors.pronouns}
                   message={form.formState.errors.pronouns?.message}
@@ -384,6 +392,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                   }
                 />
                 <PronounPresetChips
+                  inputRef={pronounsInputRef}
                   value={form.watch("pronouns")}
                   onSelect={(pronouns) =>
                     form.setValue("pronouns", pronouns, {
@@ -1070,7 +1079,12 @@ export function UserSettingsPopover({
           <div className="flex flex-shrink-0 flex-col border-b border-border dark:border-border-dark sm:hidden">
             <div className="flex flex-shrink-0 items-center justify-end p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XClose} />
+                <Button
+                  aria-label={t`Close`}
+                  variant="ghost"
+                  size="mini"
+                  icon={XClose}
+                />
               </DialogClose>
             </div>
             <Tabs
@@ -1100,7 +1114,12 @@ export function UserSettingsPopover({
           <div className="hidden w-72 flex-shrink-0 flex-col border-r border-border dark:border-border-dark sm:flex">
             <div className="flex-shrink-0 p-2">
               <DialogClose asChild>
-                <Button variant="ghost" size="mini" icon={XClose} />
+                <Button
+                  aria-label={t`Close`}
+                  variant="ghost"
+                  size="mini"
+                  icon={XClose}
+                />
               </DialogClose>
             </div>
             <NavigationList className="flex-1 px-2 pb-3">

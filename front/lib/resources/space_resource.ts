@@ -1,4 +1,3 @@
-import { isDatabaseFileSystemPodName } from "@app/lib/api/file_system/storage_mode";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
@@ -1004,17 +1003,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     const trimmedName = newName.trim();
-    if (
-      this.isProject() &&
-      isDatabaseFileSystemPodName(this.name) !==
-        isDatabaseFileSystemPodName(trimmedName)
-    ) {
-      return new Err(
-        new Error(
-          "A Pod cannot add or remove the database filesystem prefix after creation."
-        )
-      );
-    }
     const existingSpace = await SpaceResource.fetchByName(auth, trimmedName);
     if (existingSpace && existingSpace.id !== this.id) {
       return new Err(new Error("This space name is already used."));

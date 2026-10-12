@@ -486,20 +486,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "advanced",
     },
   },
-  "file_generation": {
-    "convert_file_format": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "generate_file": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "get_supported_source_formats_for_output_format": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-  },
   "files": {
     "cat": {
       "freeUsage": true,
@@ -2913,11 +2899,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "fathom": {
     "get_transcript": "never_ask",
     "list_meetings": "never_ask",
-  },
-  "file_generation": {
-    "convert_file_format": "never_ask",
-    "generate_file": "never_ask",
-    "get_supported_source_formats_for_output_format": "never_ask",
   },
   "files": {
     "cat": "never_ask",

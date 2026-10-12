@@ -201,6 +201,7 @@ export function MembersList({
           <DataTable.CellContent>
             {info.row.original.canRemove && (
               <Button
+                tooltip={t`Remove member`}
                 icon={XClose}
                 onClick={info.row.original.onRemoveMemberClick}
                 variant="ghost-secondary"

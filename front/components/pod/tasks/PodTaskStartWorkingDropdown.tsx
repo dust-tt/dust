@@ -203,7 +203,13 @@ export function PodTaskStartWorkingDropdown({
         disabledReason ?? t`Can't start work on this task in this state yet.`
       }
       trigger={
-        <Button icon={Play} size={triggerSize} variant="outline" disabled />
+        <Button
+          aria-label={t`Start working on task`}
+          icon={Play}
+          size={triggerSize}
+          variant="outline"
+          disabled
+        />
       }
     />
   ) : (

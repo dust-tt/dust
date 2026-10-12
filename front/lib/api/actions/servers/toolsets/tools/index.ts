@@ -37,13 +37,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         auth,
         globalSpace,
         {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
+          mode: "configuration",
         }
       )
     )

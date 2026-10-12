@@ -264,6 +264,7 @@ export function makeColumnsForSkillSuggestions(
         const suggestion = row.original;
         return (
           <Button
+            tooltip="Delete suggestion"
             icon={Trash01}
             size="xs"
             variant="ghost-secondary"

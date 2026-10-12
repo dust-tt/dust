@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { FocusScope } from "@radix-ui/react-focus-scope";
 import { Button } from "@sparkle/components/Button";
@@ -253,23 +254,31 @@ const SheetHeader = ({
   children,
   hideButton = false,
   ...props
-}: SheetHeaderProps) => (
-  <div
-    className={cn(
-      "z-50 flex flex-none flex-col p-5 text-left",
-      "bg-modal-background",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    {!hideButton && (
-      <SheetClose asChild className="absolute right-3 top-4">
-        <Button icon={XClose} variant="ghost" size="sm" />
-      </SheetClose>
-    )}
-  </div>
-);
+}: SheetHeaderProps) => {
+  const { t } = useLingui();
+  return (
+    <div
+      className={cn(
+        "z-50 flex flex-none flex-col p-5 text-left",
+        "bg-modal-background",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {!hideButton && (
+        <SheetClose asChild className="absolute right-3 top-4">
+          <Button
+            icon={XClose}
+            aria-label={t`Close`}
+            variant="ghost"
+            size="sm"
+          />
+        </SheetClose>
+      )}
+    </div>
+  );
+};
 SheetHeader.displayName = "SheetHeader";
 
 interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {

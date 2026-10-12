@@ -60,7 +60,12 @@ export const Default: Story = {
     splitAction: (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size="xs" variant="highlight" icon={ChevronDown} />
+          <Button
+            aria-label="More send options"
+            size="xs"
+            variant="highlight"
+            icon={ChevronDown}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem label="Send now" />
@@ -84,7 +89,14 @@ export const Loading: Story = {
     variant: "highlight",
     icon: ArrowUp,
     isLoading: true,
-    splitAction: <Button size="xs" variant="highlight" icon={ChevronDown} />,
+    splitAction: (
+      <Button
+        tooltip="More send options"
+        size="xs"
+        variant="highlight"
+        icon={ChevronDown}
+      />
+    ),
   },
 };
 
@@ -104,7 +116,12 @@ export const VariantGallery: Story = {
           variant={variant}
           icon={ArrowUp}
           splitAction={
-            <Button size="xs" variant={variant} icon={ChevronDown} />
+            <Button
+              tooltip="More send options"
+              size="xs"
+              variant={variant}
+              icon={ChevronDown}
+            />
           }
         />
       ))}

@@ -2,10 +2,6 @@ import {
   canUserAccessConversation,
   rebuildConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
-import {
-  fileSystemStorageModeForPod,
-  fileSystemStorageModeForStandaloneConversation,
-} from "@app/lib/api/file_system/storage_mode";
 import { Authenticator } from "@app/lib/auth";
 import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
@@ -112,15 +108,6 @@ export async function moveConversationToProject(
       )
     );
   }
-  if (fileSystemStorageModeForPod(project) === "database") {
-    return new Err(
-      new DustError(
-        "invalid_request_error",
-        "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
-      )
-    );
-  }
-
   // One lifecycle-lock hold covers source validation, the strict sandbox
   // destroy, and the database move — validated against the conversation as
   // re-fetched under the lock, never the caller's snapshot, so a concurrent
@@ -145,18 +132,6 @@ export async function moveConversationToProject(
         >
       > => {
         const sourceSpaceId = freshConversation.spaceSId;
-        if (
-          !sourceSpaceId &&
-          fileSystemStorageModeForStandaloneConversation(freshConversation) ===
-            "database"
-        ) {
-          return new Err(
-            new DustError(
-              "invalid_request_error",
-              "A standalone conversation using the database-backed filesystem cannot be moved into a Pod yet."
-            )
-          );
-        }
         if (sourceSpaceId === project.sId) {
           return new Err(
             new DustError(
@@ -173,14 +148,6 @@ export async function moveConversationToProject(
           if (!previousProject) {
             return new Err(
               new DustError("space_not_found", "Previous project not found")
-            );
-          }
-          if (fileSystemStorageModeForPod(previousProject) === "database") {
-            return new Err(
-              new DustError(
-                "invalid_request_error",
-                "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
-              )
             );
           }
           if (!auth.can("admin", previousProject)) {
@@ -314,14 +281,6 @@ export async function moveConversationOutOfProject(
         const project = await SpaceResource.fetchById(auth, sourceSpaceId);
         if (!project) {
           return new Err(new DustError("space_not_found", "Project not found"));
-        }
-        if (fileSystemStorageModeForPod(project) === "database") {
-          return new Err(
-            new DustError(
-              "invalid_request_error",
-              "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
-            )
-          );
         }
         if (!auth.can("admin", project)) {
           return new Err(

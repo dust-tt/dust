@@ -1,9 +1,12 @@
 import { Button, cn, DustLogo, LogIn01, Page, Spinner } from "@dust-tt/sparkle";
+import type { AuthError } from "@extension/shared/services/auth";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 export const LoginPage = () => {
+  const { t } = useLingui();
   const navigate = useNavigate();
   const {
     user,
@@ -20,6 +23,18 @@ export const LoginPage = () => {
       navigate("/");
     }
   }, [navigate, user, isAuthenticated, isUserSetup]);
+
+  // Other auth errors carry technical details that are only shown as is.
+  const getAuthErrorMessage = (error: AuthError) => {
+    switch (error.code) {
+      case "sso_enforced":
+        return t`Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in.`;
+      case "expired_oauth_token_error":
+        return t`Session expired. Please sign in again.`;
+      default:
+        return error.message;
+    }
+  };
 
   const PRIVACY_POLICY_URL =
     "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084";
@@ -55,17 +70,23 @@ export const LoginPage = () => {
           </div>
           <div className="max-w-[400px] text-center">
             <Page.H variant="h4">
-              Get more done, faster, with the power of your agents at your
-              fingertips.
+              <Trans>
+                Get more done, faster, with the power of your agents at your
+                fingertips.
+              </Trans>
             </Page.H>
           </div>
           {authError && authError.code === "user_not_found" && (
             <div className="text-md text-center">
-              Please sign up on the web to start using Dust extension.
+              <Trans>
+                Please sign up on the web to start using the Dust extension.
+              </Trans>
             </div>
           )}
           {authError && authError.code !== "user_not_found" && (
-            <div className="text-md text-center">{authError.message}</div>
+            <div className="text-md text-center">
+              {getAuthErrorMessage(authError)}
+            </div>
           )}
 
           <div className="m-1 flex gap-2 text-center">
@@ -74,7 +95,7 @@ export const LoginPage = () => {
                 <Button
                   icon={LogIn01}
                   variant="primary"
-                  label="Sign up"
+                  label={t`Sign up`}
                   onClick={() => {
                     window.open(
                       "https://dust.tt/api/workos/login?returnTo=/api/login",
@@ -89,7 +110,7 @@ export const LoginPage = () => {
             <Button
               icon={LogIn01}
               variant="primary"
-              label="Sign in"
+              label={t`Sign in`}
               onClick={() => handleLogin()}
               disabled={isLoading}
               size="sm"
@@ -97,15 +118,17 @@ export const LoginPage = () => {
           </div>
         </div>
         <p className="text-muted-foreground mx-auto max-w-[300px] text-center">
-          By signing in, you agree to Dust's{" "}
-          <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
-            Terms of Use
-          </Link>{" "}
-          and{" "}
-          <Link to={PRIVACY_POLICY_URL} target="_blank" className="underline">
-            Privacy Policy
-          </Link>
-          .
+          <Trans>
+            By signing in, you agree to Dust's{" "}
+            <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
+              Terms of Use
+            </Link>{" "}
+            and{" "}
+            <Link to={PRIVACY_POLICY_URL} target="_blank" className="underline">
+              Privacy Policy
+            </Link>
+            .
+          </Trans>
         </p>
       </div>
     );
@@ -120,23 +143,29 @@ export const LoginPage = () => {
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
-          <Page.SectionHeader title="You are not a member of any workspace." />
+          <Page.SectionHeader
+            title={t`You are not a member of any workspace.`}
+          />
           <Button
-            label="Sign up on Dust"
+            label={t`Sign up on Dust`}
             onClick={() => {
               window.open("https://dust.tt", "_blank");
             }}
           />
-          <div className="text-center">Then</div>
+          <div className="text-center">
+            <Trans>Then</Trans>
+          </div>
           <Button
             icon={LogIn01}
             variant="primary"
-            label="Sign in"
+            label={t`Sign in`}
             onClick={() => handleLogin()}
             disabled={isLoading}
           />
-          <div className="text-center">Or</div>
-          <Button label="Logout" onClick={() => handleLogout()} />
+          <div className="text-center">
+            <Trans>Or</Trans>
+          </div>
+          <Button label={t`Sign out`} onClick={() => handleLogout()} />
         </div>
       </div>
     );
@@ -151,26 +180,28 @@ export const LoginPage = () => {
         )}
       >
         <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
-          <Page.SectionHeader title={authError.message} />
+          <Page.SectionHeader title={getAuthErrorMessage(authError)} />
           {authError.code === "user_not_found" ? (
             <>
               <Button
-                label="Sign up on Dust"
+                label={t`Sign up on Dust`}
                 onClick={() => {
                   window.open("https://dust.tt", "_blank");
                 }}
               />
-              <div className="text-center">Then</div>
+              <div className="text-center">
+                <Trans>Then</Trans>
+              </div>
               <Button
                 icon={LogIn01}
                 variant="primary"
-                label="Sign in"
+                label={t`Sign in`}
                 onClick={() => handleLogin()}
                 disabled={isLoading}
               />
             </>
           ) : (
-            <Button label="Logout" onClick={() => handleLogout()} />
+            <Button label={t`Sign out`} onClick={() => handleLogout()} />
           )}
         </div>
       </div>
@@ -185,8 +216,10 @@ export const LoginPage = () => {
       )}
     >
       <div className="flex h-screen flex-col items-center justify-center text-center">
-        <Page.SectionHeader title="Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt." />
-        <Button label="Logout" onClick={() => handleLogout()} />
+        <Page.SectionHeader
+          title={t`Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt.`}
+        />
+        <Button label={t`Sign out`} onClick={() => handleLogout()} />
       </div>
     </div>
   );

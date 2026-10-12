@@ -317,7 +317,6 @@ export async function handleBase64Upload(
     logger.error(
       {
         action: "mcp_tool",
-        tool: "generate_file",
         workspaceId: auth.getNonNullableWorkspace().sId,
         error: writeResult.error,
       },

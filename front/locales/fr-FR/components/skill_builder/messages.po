@@ -245,6 +245,14 @@ msgstr "Ajoutez des fichiers accessibles à la compétence lors de son exécutio
 msgid "Restore files"
 msgstr "Restaurer les fichiers"
 
+#: front/components/skill_builder/SkillBuilderFilesSection.tsx
+msgid "Remove file"
+msgstr "Retirer le fichier"
+
+#: front/components/skill_builder/SkillBuilderIconSection.tsx
+msgid "Change icon"
+msgstr "Changer l’icône"
+
 #: front/components/skill_builder/SkillBuilderInstructionsReferenceSummary.tsx
 msgid "See less"
 msgstr "Voir moins"

@@ -9,6 +9,8 @@ import { getTwilioClient, getTwilioVerifyServiceSid } from "./client";
 
 const MAX_SEND_OTP_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
+// Twilio rejects code checks after 5 wrong codes, until a new code is sent.
+const MAX_CHECK_ATTEMPTS_ERROR_CODE = 60202;
 
 const TRANSIENT_NETWORK_ERROR_PATTERNS = [
   /ECONNRESET/i,
@@ -129,7 +131,7 @@ export type VerifyOtpResult = {
   status: string;
 };
 
-export type VerifyOtpErrorCode = "invalid_code" | "expired";
+export type VerifyOtpErrorCode = "invalid_code" | "expired" | "max_attempts";
 
 export class VerifyOtpError extends Error {
   constructor(
@@ -141,6 +143,12 @@ export class VerifyOtpError extends Error {
   }
 }
 
+/**
+ * @cc [owner:philipperolet,label:error-handling] user-errors-returned
+ * Check failures caused by the user (wrong code, expired or unknown verification, too many wrong
+ * codes) MUST be returned as a `VerifyOtpError`, not thrown. Only unexpected Twilio failures are
+ * thrown.
+ */
 export async function checkOtp(
   phoneNumber: string,
   code: string
@@ -166,7 +174,12 @@ export async function checkOtp(
         )
       );
     }
-    throw new Error("Failed to verify code. Please try again.");
+    if (getTwilioErrorCode(error) === MAX_CHECK_ATTEMPTS_ERROR_CODE) {
+      return new Err(
+        new VerifyOtpError("max_attempts", "Max check attempts reached")
+      );
+    }
+    throw new Error("Failed to verify code. Please try again.", { cause: err });
   }
 
   if (verificationCheck.status !== "approved") {

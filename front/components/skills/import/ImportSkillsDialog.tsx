@@ -167,14 +167,16 @@ export function ImportSkillsDialog({
         >
           <Button
             className="w-20"
-            label={
-              isImporting
-                ? undefined
-                : t({ message: "Import", context: "verb, button label" })
-            }
+            {...(isImporting
+              ? { "aria-label": t`Importing skills` }
+              : {
+                  label: t({
+                    message: "Import",
+                    context: "verb, button label",
+                  }),
+                })}
             icon={isImporting ? <PuzzleSpinner /> : undefined}
             disabled={isImporting || isDetecting || selectedCount === 0}
-            aria-label={isImporting ? t`Importing skills` : undefined}
             onClick={form.handleSubmit(onSubmit)}
           />
         </DialogFooter>

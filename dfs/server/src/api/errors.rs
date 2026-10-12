@@ -1,4 +1,7 @@
-use dfs_protocol::{error::status, rpc::ErrorCode};
+use dfs_protocol::{
+    error::status,
+    rpc::{ErrorCode, ErrorDetails},
+};
 use tonic::Status;
 
 use crate::storage::{
@@ -17,7 +20,8 @@ use crate::storage::{
 // This replaces the original resource or decoding error variant with its API status inside the
 // transaction closure. Resource modules still return typed errors and remain independent of tonic.
 
-impl From<object::Error> for Status {
+// Share the mapping between RPC statuses and individual batch errors.
+impl From<object::Error> for ErrorCode {
     fn from(error: object::Error) -> Self {
         match error {
             object::Error::InvalidXattrName
@@ -27,24 +31,38 @@ impl From<object::Error> for Status {
             | object::Error::TooManyGrants
             | object::Error::DuplicateGrant
             | object::Error::InvalidGrantLimit
-            | object::Error::InvalidGrantCursor => status(ErrorCode::InvalidInput),
-            object::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
-            object::Error::NotFound => status(ErrorCode::NotFound),
+            | object::Error::InvalidGrantCursor => ErrorCode::InvalidInput,
+            object::Error::AlreadyExists => ErrorCode::AlreadyExists,
+            // Ordinary reads conceal inaccessible objects just like missing objects.
+            object::Error::NotFound | object::Error::NotAuthorized => ErrorCode::NotFound,
+            object::Error::UnsupportedKind | object::Error::UnsupportedReference => {
+                ErrorCode::Unsupported
+            }
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
-            | object::Error::InvalidStoredGrant => {
+            | object::Error::InvalidStoredGrant
+            | object::Error::InvalidAncestry => {
                 tracing::error!(%error, "object operation failed");
-                status(ErrorCode::Internal)
+                ErrorCode::Internal
             }
         }
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
- * Errors from different resources in one transaction MUST retain their API status mapping.
- * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
- */
+impl From<object::Error> for ErrorDetails {
+    fn from(error: object::Error) -> Self {
+        Self {
+            code: ErrorCode::from(error).into(),
+        }
+    }
+}
+
+impl From<object::Error> for Status {
+    fn from(error: object::Error) -> Self {
+        status(error.into())
+    }
+}
+
 impl From<storage::Error<object::Error>> for storage::Error<Status> {
     fn from(error: storage::Error<object::Error>) -> Self {
         match error {
@@ -63,6 +81,7 @@ impl From<session::Error> for Status {
             session::Error::InvalidKey => status(ErrorCode::Unauthenticated),
             session::Error::NotFound => status(ErrorCode::NotFound),
             session::Error::AlreadyExists => status(ErrorCode::AlreadyExists),
+            session::Error::Tenant(error) => error.into(),
             session::Error::KeyGeneration
             | session::Error::ExpiryGeneration
             | session::Error::KeyCollision => {
@@ -91,11 +110,6 @@ impl From<tenant::Error> for Status {
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] transaction-error-conversion
- * Errors from different resources in one transaction MUST retain their API status mapping.
- * FDB transaction errors MUST pass through unchanged so the transaction runner can retry them.
- */
 impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
     fn from(error: storage::Error<tenant::Error>) -> Self {
         match error {
@@ -105,12 +119,6 @@ impl From<storage::Error<tenant::Error>> for storage::Error<Status> {
     }
 }
 
-/**
- * @cc [owner:spolu,label:api;error-handling] storage-status-conversion
- * Database and stored-data decoding failures MUST return INTERNAL with protocol ErrorDetails and a
- * generic public message. Resource failures MUST retain their resource-specific status mapping.
- * Database, decoding, and transaction error details MUST NOT be included in the response.
- */
 impl<E: Into<Status>> From<storage::Error<E>> for Status {
     fn from(error: storage::Error<E>) -> Self {
         match error {
@@ -176,6 +184,27 @@ mod tests {
             // Follow the runner's boxing and unboxing before translating the final API response.
             let error = FdbBindingError::from(error);
             let error = storage::Error::<Status>::from(error);
+            let status: Status = error.into();
+            assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn tenant_errors_preserve_retries_and_statuses_through_sessions()
+    -> Result<(), prost::DecodeError> {
+        let error: storage::Error<tenant::Error> =
+            FdbBindingError::from(FdbError::from_code(1020)).into();
+        let error = FdbBindingError::from(storage::Error::<session::Error>::from(error));
+        assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1020));
+
+        for (error, expected) in [
+            (tenant::Error::InvalidId, ErrorCode::InvalidInput),
+            (tenant::Error::InvalidKey, ErrorCode::Unauthenticated),
+        ] {
+            let error = storage::Error::<session::Error>::from(storage::Error::Resource(error));
+            let error = FdbBindingError::from(error);
+            let error = storage::Error::<session::Error>::from(error);
             let status: Status = error.into();
             assert_eq!(ErrorDetails::decode(status.details())?.code(), expected);
         }

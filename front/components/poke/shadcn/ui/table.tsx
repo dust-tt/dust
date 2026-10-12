@@ -120,6 +120,7 @@ const TableCellWithCopy = React.forwardRef<
       <div className="flex items-center space-x-2">
         <Label>{label}</Label>
         <Button
+          tooltip="Copy to clipboard"
           size="xs"
           variant="outline"
           onClick={handleCopy}

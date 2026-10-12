@@ -268,6 +268,7 @@ export function AgentPicker({
                       )}
                       {onAgentDetailsClick && clientType !== "extension" ? (
                         <Button
+                          tooltip={t`View agent details`}
                           icon={DotsHorizontal}
                           variant="outline"
                           size="xmini"

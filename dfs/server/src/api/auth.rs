@@ -37,8 +37,9 @@ pub(super) struct CachedTenant {
 
 /**
  * @cc [owner:spolu,label:api;security] session-key-cache-expiry
- * Cached sessions MUST NOT authenticate at or after either their absolute expiry or 30,000
- * milliseconds from the start of the FDB lookup. Cache hits MUST NOT extend either deadline.
+ * Cached sessions and their tenants MUST NOT authenticate at or after either the session's absolute
+ * expiry or 30,000 milliseconds from the start of the FDB lookup. Cache hits MUST NOT extend either
+ * deadline.
  */
 pub(super) struct CachedSession {
     session: Arc<SessionResource>,
@@ -172,6 +173,13 @@ impl API {
     /**
      * @cc [owner:spolu,label:performance;concurrency] session-key-cache-concurrency
      * Cache hits MUST use shared read access. FDB authentication MUST run without a cache guard.
+     */
+    /**
+     * @cc [owner:spolu,label:api;security] session-auth-tenant
+     * Authentication MUST return a session holding its tenant. On cache misses, the tenant
+     * MUST be fetched using the authenticated session's tenant ID in the same transaction. A missing
+     * tenant MUST return UNAUTHENTICATED; storage failures MUST propagate. Both resources MUST share
+     * the session cache deadline.
      */
     pub(super) async fn require_session<T>(
         &self,

@@ -6,6 +6,7 @@ import type {
   CaptureOptions,
   CaptureService,
 } from "@extension/shared/services/capture";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useMemo, useState } from "react";
 
 export function useFileUploaderService(
@@ -13,6 +14,7 @@ export function useFileUploaderService(
   conversationId: string | null
 ) {
   const [isCapturing, setIsCapturing] = useState(false);
+  const { t } = useLingui();
   const sendNotification = useSendNotification();
   const { workspace } = useAuth();
 
@@ -81,7 +83,7 @@ export function useFileUploaderService(
 
         if (contentRes && contentRes.isErr()) {
           sendNotification({
-            title: "Cannot get page content",
+            title: t`Cannot get page content`,
             description: contentRes.error.message,
             type: "error",
           });
@@ -96,8 +98,8 @@ export function useFileUploaderService(
         if (includeContent) {
           if (!tabContent?.content) {
             sendNotification({
-              title: "Cannot get page content",
-              description: "No content found.",
+              title: t`Cannot get page content`,
+              description: t`No content found.`,
               type: "error",
             });
             return;
@@ -143,8 +145,8 @@ export function useFileUploaderService(
         if (includeCapture) {
           if (!tabContent?.captures) {
             sendNotification({
-              title: "Cannot get page content",
-              description: "No content found.",
+              title: t`Cannot get page content`,
+              description: t`No content found.`,
               type: "error",
             });
             return;
@@ -177,8 +179,8 @@ export function useFileUploaderService(
       } catch (err) {
         console.log(err);
         sendNotification({
-          title: "Cannot get page content",
-          description: "Something wrong happened.",
+          title: t`Cannot get page content`,
+          description: t`Something went wrong.`,
           type: "error",
         });
         setIsCapturing(false);
@@ -190,6 +192,7 @@ export function useFileUploaderService(
       findAvailableTitle,
       handleFilesUpload,
       sendNotification,
+      t,
     ]
   );
 

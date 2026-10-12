@@ -382,7 +382,7 @@ async function searchPokeResourcesBySId(
       return [
         {
           id: mcpServerView.id,
-          name: `${workspace.name}'s ${mcpServerView.toJSON().server.name} server view`,
+          name: `${workspace.name}'s ${mcpServerView.getServerDisplayMetadata().name} server view`,
           link: `${workspaceUrl}/spaces/${mcpServerView.space.sId}/mcp_server_views/${mcpServerView.sId}`,
           type: "MCP Server View",
         },
