@@ -16,9 +16,11 @@ import {
   Sun,
 } from "@dust-tt/sparkle";
 import { useExtensionAuth } from "@extension/ui/components/auth/AuthProvider";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 export const UserDropdownMenu = () => {
+  const { t } = useLingui();
   const { theme, setTheme } = useTheme();
   const { user, workspace, handleLogout, handleSelectOrganization } =
     useExtensionAuth();
@@ -53,7 +55,7 @@ export const UserDropdownMenu = () => {
       <DropdownMenuContent>
         {hasMultipleOrgs && workspace && (
           <>
-            <DropdownMenuLabel label="Workspace" />
+            <DropdownMenuLabel label={t`Workspace`} />
             <WorkspacePickerRadioGroup
               user={user}
               workspace={workspace}
@@ -61,33 +63,33 @@ export const UserDropdownMenu = () => {
             />
           </>
         )}
-        <DropdownMenuLabel label="Preferences" />
+        <DropdownMenuLabel label={t`Preferences`} />
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger label="Theme" icon={Sun} />
+          <DropdownMenuSubTrigger label={t`Theme`} icon={Sun} />
           <DropdownMenuSubContent>
             <DropdownMenuRadioGroup value={theme}>
               <DropdownMenuRadioItem
                 value="light"
-                label="Light"
+                label={t({ message: "Light", context: "theme" })}
                 onClick={() => setTheme("light")}
               />
               <DropdownMenuRadioItem
                 value="dark"
-                label="Dark"
+                label={t({ message: "Dark", context: "theme" })}
                 onClick={() => setTheme("dark")}
               />
               <DropdownMenuRadioItem
                 value="system"
-                label="System"
+                label={t({ message: "System", context: "theme" })}
                 onClick={() => setTheme("system")}
               />
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuLabel label="Account" />
+        <DropdownMenuLabel label={t`Account`} />
         <DropdownMenuItem
           icon={LogOut01}
-          label="Sign out"
+          label={t`Sign out`}
           onClick={handleLogout}
         />
       </DropdownMenuContent>

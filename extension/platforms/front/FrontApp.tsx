@@ -1,4 +1,5 @@
 import { RootLayout } from "@app/components/app/RootLayout";
+import { SparkleLocaleProvider } from "@app/components/app/SparkleLocaleProvider";
 import { CellProvider } from "@app/lib/auth/CellContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { i18n } from "@app/lib/i18n/i18n";
@@ -46,21 +47,23 @@ export const FrontApp = () => {
 
   return (
     <I18nProvider i18n={i18n}>
-      <ClientTypeProvider value="extension">
-        <CellProvider>
-          <FrontContextProvider>
-            <FrontPlatformProvider>
-              <ExtensionAuthProvider>
-                <ExtensionFetcherProvider>
-                  <RootLayout>
-                    <RouterProvider router={router} key="front-router" />
-                  </RootLayout>
-                </ExtensionFetcherProvider>
-              </ExtensionAuthProvider>
-            </FrontPlatformProvider>
-          </FrontContextProvider>
-        </CellProvider>
-      </ClientTypeProvider>
+      <SparkleLocaleProvider>
+        <ClientTypeProvider value="extension">
+          <CellProvider>
+            <FrontContextProvider>
+              <FrontPlatformProvider>
+                <ExtensionAuthProvider>
+                  <ExtensionFetcherProvider>
+                    <RootLayout>
+                      <RouterProvider router={router} key="front-router" />
+                    </RootLayout>
+                  </ExtensionFetcherProvider>
+                </ExtensionAuthProvider>
+              </FrontPlatformProvider>
+            </FrontContextProvider>
+          </CellProvider>
+        </ClientTypeProvider>
+      </SparkleLocaleProvider>
     </I18nProvider>
   );
 };

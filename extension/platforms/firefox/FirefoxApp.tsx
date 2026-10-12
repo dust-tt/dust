@@ -1,4 +1,5 @@
 import { RootLayout } from "@app/components/app/RootLayout";
+import { SparkleLocaleProvider } from "@app/components/app/SparkleLocaleProvider";
 import { CellProvider, useCellContext } from "@app/lib/auth/CellContext";
 import { ClientTypeProvider } from "@app/lib/context/clientType";
 import { i18n } from "@app/lib/i18n/i18n";
@@ -20,11 +21,13 @@ import { FirefoxExtensionWrapper } from "./FirefoxExtensionWrapper";
 export const FirefoxApp = () => {
   return (
     <I18nProvider i18n={i18n}>
-      <ClientTypeProvider value="extension">
-        <CellProvider>
-          <FirefoxAppInner />
-        </CellProvider>
-      </ClientTypeProvider>
+      <SparkleLocaleProvider>
+        <ClientTypeProvider value="extension">
+          <CellProvider>
+            <FirefoxAppInner />
+          </CellProvider>
+        </ClientTypeProvider>
+      </SparkleLocaleProvider>
     </I18nProvider>
   );
 };
