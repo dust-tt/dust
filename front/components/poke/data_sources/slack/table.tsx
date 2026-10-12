@@ -52,6 +52,7 @@ function makeColumnsForSlackAutoReadPatterns(
       cell: ({ row }) => {
         return (
           <Button
+            tooltip="Delete"
             icon={Trash01}
             size="xs"
             variant="warning-ghost"

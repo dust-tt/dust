@@ -242,6 +242,7 @@ export function AssistantDetailsPage() {
                                     target="_blank"
                                   >
                                     <Button
+                                      tooltip="Open skill"
                                       icon={LinkExternal01}
                                       size="xs"
                                       variant="ghost-secondary"

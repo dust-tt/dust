@@ -43,6 +43,7 @@ const makeColumnsForConversations = (
           <div className="flex space-x-2">
             <p>Conversation ID</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
@@ -70,6 +71,7 @@ const makeColumnsForConversations = (
           <div className="flex space-x-2">
             <p>Created at</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
@@ -90,6 +92,7 @@ const makeColumnsForConversations = (
           <div className="flex space-x-2">
             <p>Title</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>

@@ -24,6 +24,7 @@ export function PokeDataTablePagination<TData>({
         </div>
         <div className="flex items-center space-x-2">
           <Button
+            tooltip="Previous page"
             icon={ArrowLeft}
             className="h-8 w-8 p-0"
             onClick={() => table.previousPage()}
@@ -31,6 +32,7 @@ export function PokeDataTablePagination<TData>({
             variant="ghost-secondary"
           />
           <Button
+            tooltip="Next page"
             icon={ArrowRight}
             className="h-8 w-8 p-0"
             onClick={() => table.nextPage()}

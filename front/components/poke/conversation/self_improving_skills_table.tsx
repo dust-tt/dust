@@ -40,6 +40,7 @@ const makeColumnsForSelfImprovingSkillsConversations = (
           <div className="flex space-x-2">
             <p>Id</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
@@ -67,6 +68,7 @@ const makeColumnsForSelfImprovingSkillsConversations = (
           <div className="flex space-x-2">
             <p>Created at</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
@@ -87,6 +89,7 @@ const makeColumnsForSelfImprovingSkillsConversations = (
           <div className="flex space-x-2">
             <p>Title</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
@@ -104,6 +107,7 @@ const makeColumnsForSelfImprovingSkillsConversations = (
           <div className="flex space-x-2">
             <p>Type</p>
             <Button
+              tooltip="Sort"
               variant="ghost-secondary"
               icon={ArrowsUpDownIcon}
               onClick={() =>
