@@ -13,6 +13,7 @@ import {
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 
@@ -609,6 +610,62 @@ describe("saveDfm", () => {
     const source = '- ::embed_frame{path="pod-abc/x.tsx"}\n';
     expect(JSON.stringify(load(source).content)).not.toContain("frameEmbed");
     expect(roundTrip(source)).toBe('- ::embed\\_frame{path="pod-abc/x.tsx"}\n');
+  });
+
+  it("reads an image's width after its alt text, and keeps alt text ending like one", () => {
+    for (const source of [
+      "![Chart|400](pod-abc/chart.png)\n",
+      "![|240](pod-abc/chart.png)\n",
+      '![A \\[draft\\] chart|560](<conversation-c1/my chart.png> "Q3")\n',
+      "![Chart\\|2024](pod-abc/chart.png)\n",
+      "![Chart|2024|400](pod-abc/chart.png)\n",
+      "![Chart|0](pod-abc/chart.png)\n",
+    ]) {
+      expect(roundTrip(source)).toBe(source);
+    }
+
+    const image = (source: string) =>
+      load(source).content.content?.[0].content?.[0].attrs;
+    expect(image("![Chart|400](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart",
+      width: 400,
+    });
+    expect(image("![Chart\\|2024](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart|2024",
+      width: null,
+    });
+    expect(image("![Chart|0](pod-abc/chart.png)\n")).toMatchObject({
+      alt: "Chart|0",
+      width: null,
+    });
+  });
+
+  it("writes an image's width after its alt text, escaping alt text ending like one", () => {
+    const save = (attrs: Record<string, unknown>) =>
+      saveDfm(
+        { frontMatter: null, anchorOrder: [] },
+        {
+          type: "doc",
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "image",
+                  attrs: { src: "pod-abc/chart.png", ...attrs },
+                },
+              ],
+            },
+          ],
+        }
+      );
+
+    expect(save({ alt: "Chart", width: 240 })).toEqual(
+      new Ok("![Chart|240](pod-abc/chart.png)\n")
+    );
+    expect(save({ alt: "Chart|2024", width: null })).toEqual(
+      new Ok("![Chart\\|2024](pod-abc/chart.png)\n")
+    );
   });
 
   it("refuses content the editor cannot write as Markdown", () => {

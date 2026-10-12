@@ -1197,6 +1197,113 @@ describe("Document images", () => {
   });
 });
 
+describe("Document image menu", () => {
+  const SOURCE_WITH_IMAGES =
+    "![Chart](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n";
+
+  const renderImages = async ({ readOnly = false } = {}) => {
+    const { container } = render(
+      <Document
+        initialContent={SOURCE_WITH_IMAGES}
+        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        readOnly={readOnly}
+        autosaveDebounceMs={60_000}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={(src) => `https://files.test/${src}`}
+      />
+    );
+    return waitFor(() => {
+      const element = container.querySelector(".tiptap");
+      if (!hasEditor(element)) {
+        throw new Error("Editor did not mount.");
+      }
+      return element;
+    });
+  };
+
+  const hoverImage = (dom: HTMLElement, name: string) => {
+    const image = within(dom).getByRole("img", { name });
+    fireEvent.mouseOver(image);
+    return image;
+  };
+
+  it("shows over a hovered image and hides when the pointer leaves it", async () => {
+    const dom = await renderImages();
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+
+    const image = hoverImage(dom, "Chart");
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+
+    fireEvent.mouseOut(image, { relatedTarget: dom });
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+  });
+
+  it("stays while the pointer moves from the image onto it", async () => {
+    const dom = await renderImages();
+    const image = hoverImage(dom, "Chart");
+    const menu = screen.getByRole("toolbar", { name: "Image" });
+
+    fireEvent.mouseOut(image, { relatedTarget: menu });
+    expect(screen.getByRole("toolbar", { name: "Image" })).toBeInTheDocument();
+  });
+
+  it("removes only the hovered image, as one undoable edit", async () => {
+    const dom = await renderImages();
+    hoverImage(dom, "Logo");
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove image" }));
+
+    expect(dom.editor.getMarkdown()).not.toContain("Logo");
+    expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+    act(() => {
+      dom.editor.commands.undo();
+    });
+    expect(dom.editor.getMarkdown()).toContain("![Logo](pod-abc/logo.png)");
+  });
+
+  it("resizes the hovered image to a preset width, and back to its original size", async () => {
+    const dom = await renderImages();
+    hoverImage(dom, "Chart");
+
+    fireEvent.keyDown(screen.getByRole("button", { name: "Resize image" }), {
+      key: "Enter",
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Small" })
+    );
+
+    expect(dom.editor.getMarkdown()).toContain(
+      "![Chart|240](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)"
+    );
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      "240px"
+    );
+
+    hoverImage(dom, "Chart");
+    fireEvent.keyDown(screen.getByRole("button", { name: "Resize image" }), {
+      key: "Enter",
+    });
+    fireEvent.click(
+      await screen.findByRole("menuitemradio", { name: "Original size" })
+    );
+
+    expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
+      ""
+    );
+  });
+
+  it("does not show in a read-only document", async () => {
+    const dom = await renderImages({ readOnly: true });
+
+    hoverImage(dom, "Chart");
+
+    expect(screen.queryByRole("toolbar", { name: "Image" })).toBeNull();
+  });
+});
+
 describe("Document Escape inside a host dialog", () => {
   // Radix dialogs prevent the default of every Escape before the document sees it.
   const preventEscape = (event: KeyboardEvent) => {

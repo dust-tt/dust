@@ -5,7 +5,8 @@ import { DOMSerializer } from "@tiptap/pm/model";
 
 export const DOCUMENT_IMAGE_NODE_NAME = "image";
 
-const IMAGE_SOURCE_ATTRIBUTE = "data-document-image";
+export const IMAGE_SOURCE_ATTRIBUTE = "data-document-image";
+const IMAGE_WIDTH_ATTRIBUTE = "data-width";
 
 export interface DocumentImageOptions {
   resolveSource: (src: string) => string | null;
@@ -13,11 +14,43 @@ export interface DocumentImageOptions {
 
 const escapeAlt = (alt: string) => alt.replace(/[\\[\]]/g, "\\$&");
 
+// The width follows the alt text after a pipe, as Obsidian writes it: `![Chart|400](chart.png)`.
+// Alt text that itself ends with a pipe and digits escapes that pipe.
+const ALT_WITH_WIDTH = /^([\s\S]*?)(\\?)\|([1-9]\d*)$/;
+
+const altWithWidth = (alt: string, width: number | null) =>
+  width !== null
+    ? `${escapeAlt(alt)}|${width}`
+    : escapeAlt(alt).replace(/\|([1-9]\d*)$/, "\\|$1");
+
+const parseAltWithWidth = (
+  text: string
+): { alt: string; width: number | null } => {
+  const match = ALT_WITH_WIDTH.exec(text);
+  if (!match) {
+    return { alt: text, width: null };
+  }
+  const [, alt, escaped, width] = match;
+  return escaped
+    ? { alt: `${alt}|${width}`, width: null }
+    : { alt, width: Number(width) };
+};
+
+export const parseImageWidth = (value: unknown): number | null => {
+  const width = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(width) && width > 0 ? width : null;
+};
+
 // A destination with spaces or parentheses only reads back whole between angle brackets.
 const destination = (src: string) => (/[\s()]/.test(src) ? `<${src}>` : src);
 
-const imageMarkdown = (src: string, alt: string, title: string | null) =>
-  `![${escapeAlt(alt)}](${destination(src)}${
+const imageMarkdown = (
+  src: string,
+  alt: string,
+  title: string | null,
+  width: number | null
+) =>
+  `![${altWithWidth(alt, width)}](${destination(src)}${
     title ? ` "${title.replace(/["\\]/g, "\\$&")}"` : ""
   })`;
 
@@ -33,10 +66,12 @@ const imageSpec = (
   resolveSource: DocumentImageOptions["resolveSource"]
 ): DOMOutputSpec => {
   const { src, alt, title } = node.attrs;
+  const width = parseImageWidth(node.attrs.width);
   const attributes = {
     [IMAGE_SOURCE_ATTRIBUTE]: src,
     "data-alt": alt,
     ...(title ? { title } : {}),
+    ...(width ? { [IMAGE_WIDTH_ATTRIBUTE]: String(width) } : {}),
   };
   const url = isString(src) ? resolveSource(src) : null;
   return url
@@ -46,6 +81,7 @@ const imageSpec = (
           ...attributes,
           src: url,
           alt,
+          ...(width ? { style: `width: ${width}px` } : {}),
           class: "inline-block max-w-full rounded-lg align-bottom",
         },
       ]
@@ -62,11 +98,11 @@ const imageSpec = (
 
 /**
  * @cc [owner:tdraier,label:product;security] document-image-source
- * An image MUST keep its alt text, destination and title through load and save, and MUST be
- * displayed only from the URL `resolveSource` returns for its destination; without one it MUST
- * show as text, its alt text or its destination when the alt text is empty, so the editor never
- * loads a source the host did not resolve. Copied and pasted, it MUST keep its destination. In
- * the editor, a resolved image MUST show as busy until it loads or fails.
+ * An image MUST keep its alt text, destination, title and width through load and save, and MUST
+ * be displayed only from the URL `resolveSource` returns for its destination; without one it
+ * MUST show as text, its alt text or its destination when the alt text is empty, so the editor
+ * never loads a source the host did not resolve. Copied and pasted, it MUST keep its destination.
+ * In the editor, a resolved image MUST show as busy until it loads or fails.
  */
 export const DocumentImage = Node.create<DocumentImageOptions>({
   name: DOCUMENT_IMAGE_NODE_NAME,
@@ -92,6 +128,12 @@ export const DocumentImage = Node.create<DocumentImageOptions>({
       default: null,
       rendered: false,
       parseHTML: (element) => element.getAttribute("title"),
+    },
+    width: {
+      default: null,
+      rendered: false,
+      parseHTML: (element) =>
+        parseImageWidth(element.getAttribute(IMAGE_WIDTH_ATTRIBUTE)),
     },
   }),
   parseHTML: () => [{ tag: `[${IMAGE_SOURCE_ATTRIBUTE}]` }],
@@ -121,7 +163,7 @@ export const DocumentImage = Node.create<DocumentImageOptions>({
     type: DOCUMENT_IMAGE_NODE_NAME,
     attrs: {
       src: token.href,
-      alt: token.text ?? "",
+      ...parseAltWithWidth(token.text ?? ""),
       title: token.title ?? null,
     },
   }),
@@ -130,7 +172,8 @@ export const DocumentImage = Node.create<DocumentImageOptions>({
       ? imageMarkdown(
           node.attrs.src,
           isString(node.attrs.alt) ? node.attrs.alt : "",
-          isString(node.attrs.title) ? node.attrs.title : null
+          isString(node.attrs.title) ? node.attrs.title : null,
+          parseImageWidth(node.attrs.width)
         )
       : "",
 });

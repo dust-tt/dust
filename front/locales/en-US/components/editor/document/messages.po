@@ -167,6 +167,38 @@ msgstr "Resolved ({resolvedCount})"
 msgid "All comments"
 msgstr "All comments"
 
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "image size"
+msgid "Small"
+msgstr "Small"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "image size"
+msgid "Medium"
+msgstr "Medium"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "image size"
+msgid "Large"
+msgstr "Large"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr "Original size"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgctxt "toolbar over a hovered image"
+msgid "Image"
+msgstr "Image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Resize image"
+msgstr "Resize image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Remove image"
+msgstr "Remove image"
+
 #: front/components/editor/document/DocumentMarkdownPreview.tsx
 msgid "This document can't be edited here because a table row has more cells than its header."
 msgstr "This document can't be edited here because a table row has more cells than its header."
