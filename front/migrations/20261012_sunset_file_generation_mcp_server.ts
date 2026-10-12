@@ -31,10 +31,14 @@ async function deleteFileGenerationServerFromWorkspace(
     }
   );
 
-  const mcpServerViews = await MCPServerViewResource.listByMCPServer(
-    auth,
-    fileGenerationServerId
-  );
+  // includeDeleted skips resolving the internal server, which no longer exists.
+  const mcpServerViews = await MCPServerViewResource.listByWorkspace(auth, {
+    where: {
+      serverType: "internal",
+      internalMCPServerId: fileGenerationServerId,
+    },
+    includeDeleted: true,
+  });
 
   const foundToolMetadataCount = await RemoteMCPServerToolMetadataModel.count({
     where: {
