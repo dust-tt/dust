@@ -949,6 +949,10 @@ msgstr "Limits"
 msgid "Order"
 msgstr "Order"
 
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Groups join the order once they have a group budget."
+msgstr "Groups join the order once they have a group budget."
+
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
 msgstr "Edit spend limit for {memberName}"
@@ -1002,10 +1006,6 @@ msgstr "Move down"
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "The order of group budgets could not be loaded."
 msgstr "The order of group budgets could not be loaded."
-
-#: front/components/workspace/GroupBudgetOrderTab.tsx
-msgid "No group has a budget yet."
-msgstr "No group has a budget yet."
 
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "Shares members with <0>{groupName}</0>"

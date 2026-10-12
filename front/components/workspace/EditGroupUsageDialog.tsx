@@ -42,6 +42,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Tooltip,
 } from "@dust-tt/sparkle";
 import { plural } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -226,6 +227,7 @@ function useGroupBudgetOrderDraft(
     rows,
     order,
     baseOrder,
+    hasBudget: budgetAwuCredits !== null,
     isOrderChanged: hasLoadedOverlaps && !isSameBudgetOrder(order, baseOrder),
     isOverlapsLoading,
     overlapsError,
@@ -550,7 +552,19 @@ function EditGroupUsageForm({
           <div className="px-5 pt-3">
             <TabsList>
               <TabsTrigger value="limits" label={t`Limits`} />
-              <TabsTrigger value="order" label={t`Order`} />
+              {orderDraft.hasBudget ? (
+                <TabsTrigger value="order" label={t`Order`} />
+              ) : (
+                <Tooltip
+                  tooltipTriggerAsChild
+                  label={t`Groups join the order once they have a group budget.`}
+                  trigger={
+                    <div>
+                      <TabsTrigger value="order" label={t`Order`} disabled />
+                    </div>
+                  }
+                />
+              )}
             </TabsList>
           </div>
           <TabsContent value="limits">

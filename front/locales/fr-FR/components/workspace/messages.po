@@ -949,6 +949,10 @@ msgstr "Limites"
 msgid "Order"
 msgstr "Ordre"
 
+#: front/components/workspace/EditGroupUsageDialog.tsx
+msgid "Groups join the order once they have a group budget."
+msgstr "Un groupe rejoint l’ordre dès qu’il a un budget de groupe."
+
 #: front/components/workspace/EditMemberSpendLimitModal.tsx
 msgid "Edit spend limit for {memberName}"
 msgstr "Modifier la limite de dépenses de {memberName}"
@@ -1002,10 +1006,6 @@ msgstr "Descendre"
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "The order of group budgets could not be loaded."
 msgstr "Impossible de charger l’ordre des budgets de groupe."
-
-#: front/components/workspace/GroupBudgetOrderTab.tsx
-msgid "No group has a budget yet."
-msgstr "Aucun groupe n’a encore de budget."
 
 #: front/components/workspace/GroupBudgetOrderTab.tsx
 msgid "Shares members with <0>{groupName}</0>"
