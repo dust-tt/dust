@@ -2,13 +2,7 @@ import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortabl
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
 import { formatDateTime } from "@app/lib/i18n/format";
 import type { MembershipInvitationTypeWithLink } from "@app/types/membership_invitation";
-import {
-  Clipboard,
-  IconButton,
-  Mail01,
-  Tooltip,
-  Trash01,
-} from "@dust-tt/sparkle";
+import { Button, Clipboard, Mail01, Tooltip, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 function formatExpiresIn(expiresAtMs: number): {
@@ -82,9 +76,9 @@ export function makeColumnsForInvitations(
           <>
             <a href={inviteLink}>link</a>
             &nbsp;
-            <IconButton
+            <Button
               icon={Clipboard}
-              variant="outline"
+              variant="ghost-secondary"
               tooltip="Copy invite link to clipboard"
               size="xs"
               onClick={() =>
@@ -108,10 +102,10 @@ export function makeColumnsForInvitations(
         const invitation = row.original;
 
         return (
-          <IconButton
+          <Button
             icon={Mail01}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             tooltip="Reinvite (revokes current and sends a new invitation)"
             onClick={async () => {
               await onReinvite(invitation.sId);
@@ -147,10 +141,10 @@ export function makeColumnsForInvitations(
         const invitation = row.original;
 
         return (
-          <IconButton
+          <Button
             icon={Trash01}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             onClick={async () => {
               await onRevokeInvitation(invitation.inviteEmail);
             }}

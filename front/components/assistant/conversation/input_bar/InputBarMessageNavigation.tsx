@@ -3,15 +3,7 @@ import {
   INPUT_BAR_COMPACT_PILL_INNER_CLASSES,
   INPUT_BAR_SURFACE_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
-import {
-  ArrowDown,
-  ArrowUp,
-  Button,
-  cn,
-  IconButton,
-  Stop,
-  Zap,
-} from "@dust-tt/sparkle";
+import { ArrowDown, ArrowUp, Button, Stop, Zap, cn } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
 
 interface InputBarMessageNavigationProps {
@@ -68,13 +60,14 @@ export function InputBarMessageNavigation({
     }
 
     return (
-      <IconButton
+      <Button
         icon={icon}
         onClick={onClick}
         disabled={disabled}
         size="xs"
         tooltip={ariaLabel}
         aria-label={ariaLabel}
+        variant="ghost-secondary"
       />
     );
   };

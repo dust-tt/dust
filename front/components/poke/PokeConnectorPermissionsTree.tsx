@@ -7,7 +7,6 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
   DatadogLogo,
-  IconButton,
   InfoCircle,
   LinkExternal01,
   Popover,
@@ -109,7 +108,7 @@ export function PokePermissionTree({
             }
             className="max-w-md"
             trigger={
-              <IconButton size="xs" icon={InfoCircle} variant="outline" />
+              <Button size="xs" icon={InfoCircle} variant="ghost-secondary" />
             }
           />
         )}

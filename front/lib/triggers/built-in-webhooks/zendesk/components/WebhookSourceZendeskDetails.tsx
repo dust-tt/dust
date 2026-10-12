@@ -1,6 +1,6 @@
 import type { WebhookDetailsComponentProps } from "@app/components/triggers/webhook_preset_components";
 import { ZendeskWebhookStoredMetadataSchema } from "@app/lib/triggers/built-in-webhooks/zendesk/types";
-import { IconButton, LinkExternal01, Page } from "@dust-tt/sparkle";
+import { Button, LinkExternal01, Page } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 
 export function WebhookSourceZendeskDetails({
@@ -42,10 +42,11 @@ export function WebhookSourceZendeskDetails({
               rel="noopener noreferrer"
               className="text-action-500 hover:text-action-600 inline-flex items-center gap-1 text-xs"
             >
-              <IconButton
+              <Button
                 icon={LinkExternal01}
                 size="xs"
                 tooltip={t`See webhook`}
+                variant="ghost-secondary"
               />{" "}
             </a>
           )}

@@ -7,7 +7,7 @@ import type {
 import { MEMBERSHIP_SEAT_TYPES } from "@app/types/memberships";
 import type { ActiveRoleType, RoleType } from "@app/types/user";
 import { ASSIGNABLE_ROLES } from "@app/types/user";
-import { IconButton, Trash01 } from "@dust-tt/sparkle";
+import { Button, Trash01 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 export type MemberDisplayType = {
@@ -238,10 +238,10 @@ export function makeColumnsForMembers({
         // Revoked members have no revoke action; reactivation is done via the
         // role dropdown. Hide the revoke button for provisioned users.
         return member.role !== "none" && member.origin !== "provisioned" ? (
-          <IconButton
+          <Button
             icon={Trash01}
             size="xs"
-            variant="outline"
+            variant="ghost-secondary"
             tooltip="Revoke member"
             onClick={async () => {
               await onRevokeMember(member);
