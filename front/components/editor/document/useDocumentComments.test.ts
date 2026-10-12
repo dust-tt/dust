@@ -15,8 +15,9 @@ import type {
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { JSONContent } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import type { Transaction } from "@tiptap/pm/state";
 import { Plugin } from "@tiptap/pm/state";
@@ -41,22 +42,20 @@ const nextTick = () => new Promise((resolve) => setTimeout(resolve, 0));
 async function renderCommentedEditor(
   initialContent: string,
   {
-    sign,
     verify,
     isSavable,
     live,
   }: {
-    live?: LiveCommentChannel;
-    sign?: (
-      commentId: string,
-      thread: DfmMessage[],
-      body: string
-    ) => Promise<Result<DfmMessage, string>>;
+    /** The session's comment side; an accepting one by default, none with null. */
+    live?: LiveCommentChannel | null;
     verify?: DfmMessageVerifier;
     isSavable?: (document: JSONContent) => boolean;
   } = {}
 ) {
   const onSave = vi.fn().mockResolvedValue(new Ok(undefined));
+  let currentEditor: Editor | null = null;
+  const session =
+    live === null ? undefined : (live ?? acceptingSession(() => currentEditor));
   const rendered = renderHook(
     ({ currentVerify }: { currentVerify?: DfmMessageVerifier }) => {
       const document = useDocumentEditor({
@@ -67,14 +66,14 @@ async function renderCommentedEditor(
         onStateChange: undefined,
         resolveImageSource: () => null,
       });
+      currentEditor = document.editor;
       const comments = useDocumentComments({
         editor: document.editor,
         canComment: document.editable,
         author: AUTHOR,
         isSavable: isSavable ?? document.isSavable,
-        sign,
         verify: currentVerify,
-        live,
+        live: session,
       });
       return { document, comments };
     },
@@ -131,7 +130,65 @@ const sessionThread = (id: string, body: string): DfmComment => ({
   ],
 });
 
+/**
+ * A live session accepting every command: it creates each new thread as `sessionThread`, and
+ * sends the editor the threads every other command leaves, as the server does.
+ */
+function acceptingSession(getEditor: () => Editor | null) {
+  return liveChannel((command) => {
+    if (command.type === "add") {
+      return new Ok(sessionThread(command.commentId, command.body));
+    }
+    const editor = getEditor();
+    editor?.commands.setCommentThreads(
+      getDocumentComments(editor.state.doc).flatMap((thread): DfmComment[] => {
+        if (thread.id !== command.commentId) {
+          return [thread];
+        }
+        switch (command.type) {
+          case "delete":
+            return [];
+          case "resolve":
+            return [
+              { ...thread, status: command.resolved ? "resolved" : "open" },
+            ];
+          case "reply":
+            return [
+              {
+                ...thread,
+                messages: [
+                  ...thread.messages,
+                  sessionThread(thread.id, command.body).messages[0],
+                ],
+              },
+            ];
+          default:
+            return assertNever(command);
+        }
+      })
+    );
+    return new Ok(null);
+  }).channel;
+}
+
 describe("useDocumentComments", () => {
+  it("refuses to start a comment without a live session", async () => {
+    const { result } = await renderCommentedEditor(SOURCE, { live: null });
+    const editor = result.current.document.editor;
+    if (!editor) {
+      throw new Error("Editor did not mount.");
+    }
+
+    let started = true;
+    act(() => {
+      select(editor, "there");
+      started = result.current.comments.startDraft();
+    });
+
+    expect(result.current.comments.canWrite).toBe(false);
+    expect(started).toBe(false);
+  });
+
   it("shows the file's threads with the text they cover", async () => {
     const { result } = await renderCommentedEditor(SOURCE);
 
@@ -187,7 +244,7 @@ describe("useDocumentComments", () => {
     );
   });
 
-  it("saves a new comment as an anchor pair and a thread", async () => {
+  it("saves a new comment as an anchor pair and the thread the session created", async () => {
     const { result, onSave } = await renderCommentedEditor(
       "Hello brave world.\n"
     );
@@ -216,9 +273,9 @@ describe("useDocumentComments", () => {
         `Hello :comment-start{id=${comment.id}}brave:comment-end{id=${comment.id}} world.`
       );
       expect(comment.status).toBe("open");
-      expect(comment.messages).toEqual([
-        expect.objectContaining({ author: AUTHOR, body: "Too bold?" }),
-      ]);
+      expect(comment.messages).toEqual(
+        sessionThread(comment.id, "Too bold?").messages
+      );
     }
   });
 
@@ -822,103 +879,6 @@ describe("useDocumentComments", () => {
     expect(result.current.document.dirty).toBe(false);
   });
 
-  it("inserts the message the server signed, with the server's name and time", async () => {
-    const sign = vi.fn(
-      async (_commentId: string, _thread: DfmMessage[], body: string) =>
-        new Ok<DfmMessage>({
-          author: { ...AUTHOR, name: "Tom Draier" },
-          createdAt: SIGNED_AT,
-          body,
-          signature: "server-signature",
-        })
-    );
-    const { result, onSave } = await renderCommentedEditor(SOURCE, { sign });
-
-    await act(async () => {
-      expect(
-        (await result.current.comments.reply("c1", "Agreed.")).isOk()
-      ).toBe(true);
-    });
-    await act(() => result.current.document.save());
-
-    expect(sign).toHaveBeenCalledWith(
-      "c1",
-      [expect.objectContaining({ body: "Note." })],
-      "Agreed."
-    );
-    expect(result.current.comments.comments[0].messages[1]).toEqual({
-      author: { ...AUTHOR, name: "Tom Draier" },
-      createdAt: SIGNED_AT,
-      body: "Agreed.",
-      signature: "server-signature",
-    });
-    expect(onSave.mock.calls[0][0]).toContain(
-      `name="Tom Draier" at=${SIGNED_AT} sig=server-signature}`
-    );
-  });
-
-  it("refuses a reply signed after a message that is no longer the thread's last", async () => {
-    let appendWhileSigning = () => undefined as unknown;
-    const sign = vi.fn(
-      async (_commentId: string, _thread: DfmMessage[], body: string) => {
-        appendWhileSigning();
-        return new Ok<DfmMessage>({
-          author: AUTHOR,
-          createdAt: SIGNED_AT,
-          body,
-          signature: "server-signature",
-        });
-      }
-    );
-    const { result } = await renderCommentedEditor(SOURCE, { sign });
-    appendWhileSigning = () =>
-      result.current.document.editor?.commands.replyToComment("c1", {
-        author: AUTHOR,
-        createdAt: SIGNED_AT,
-        body: "Sent elsewhere.",
-      });
-
-    await act(async () => {
-      expect(
-        (await result.current.comments.reply("c1", "Agreed.")).isErr()
-      ).toBe(true);
-    });
-
-    expect(
-      result.current.comments.comments[0].messages.map(({ body }) => body)
-    ).toEqual(["Note.", "Sent elsewhere."]);
-  });
-
-  it("leaves the document unchanged when the server refuses to sign", async () => {
-    const sign = vi.fn(
-      async () => new Err("Commenting is not available here.")
-    );
-    const { result } = await renderCommentedEditor(SOURCE, { sign });
-
-    await act(async () => {
-      const replied = await result.current.comments.reply("c1", "Agreed.");
-      expect(replied.isErr() && replied.error).toBe(
-        "Commenting is not available here."
-      );
-    });
-
-    expect(result.current.comments.comments[0].messages).toHaveLength(1);
-    expect(result.current.document.dirty).toBe(false);
-  });
-
-  it("does not ask the server to sign a message the codec cannot write", async () => {
-    const sign = vi.fn();
-    const { result } = await renderCommentedEditor(SOURCE, { sign });
-
-    await act(async () => {
-      expect(
-        (await result.current.comments.reply("c1", "::message{}")).isErr()
-      ).toBe(true);
-    });
-
-    expect(sign).not.toHaveBeenCalled();
-  });
-
   it("reads each message as verified or not from the verifier", async () => {
     const signedSource = SOURCE.replace(
       `at=${AT}}`,
@@ -1011,31 +971,6 @@ describe("useDocumentComments", () => {
     rerender({ currentVerify: () => new Promise<boolean>(() => undefined) });
 
     expect(result.current.comments.isVerified("c1", 0)).toBeNull();
-  });
-
-  it("refuses a reply when the document turns read-only while it is signed", async () => {
-    let turnReadOnly = () => undefined as unknown;
-    const sign = vi.fn(
-      async (_commentId: string, _thread: DfmMessage[], body: string) => {
-        turnReadOnly();
-        return new Ok<DfmMessage>({
-          author: AUTHOR,
-          createdAt: SIGNED_AT,
-          body,
-          signature: "server-signature",
-        });
-      }
-    );
-    const { result } = await renderCommentedEditor(SOURCE, { sign });
-    turnReadOnly = () => result.current.document.editor?.setEditable(false);
-
-    await act(async () => {
-      expect(
-        (await result.current.comments.reply("c1", "Agreed.")).isErr()
-      ).toBe(true);
-    });
-
-    expect(result.current.comments.comments[0].messages).toHaveLength(1);
   });
 
   it("reads every message as unknown without a verifier", async () => {

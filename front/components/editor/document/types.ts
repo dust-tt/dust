@@ -1,6 +1,6 @@
 // Shared by Document and its hook to avoid circular type imports.
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { DfmAuthor, DfmMessage } from "@app/lib/markdown/dfm";
+import type { DfmAuthor } from "@app/lib/markdown/dfm";
 import type { Result } from "@app/types/shared/result";
 import type { Extensions } from "@tiptap/core";
 import type { ReactNode } from "react";
@@ -49,16 +49,6 @@ export interface DocumentProps {
     author: DfmAuthor,
     size: DocumentCommentAvatarSize
   ) => ReactNode;
-  /**
-   * Has the server write and sign a new message for the comment, after the messages already in
-   * `thread` (none for a new thread); resolve with the message to insert, or Err with the reason.
-   * Without it, new messages are built locally and unsigned.
-   */
-  signCommentMessage?: (
-    commentId: string,
-    thread: DfmMessage[],
-    body: string
-  ) => Promise<Result<DfmMessage, string>>;
   /** Checks a message's signature; without it, messages are shown without a verification mark. */
   verifyCommentMessage?: DfmMessageVerifier;
   renderCommentBody: (body: string) => ReactNode;

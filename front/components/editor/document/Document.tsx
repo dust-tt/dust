@@ -251,7 +251,6 @@ export const DocumentView = ({
   liveView,
   commentAuthor,
   renderCommentAuthorAvatar,
-  signCommentMessage,
   verifyCommentMessage,
   renderCommentBody,
   commentInputExtensions,
@@ -287,7 +286,6 @@ export const DocumentView = ({
     canComment: editable,
     author: commentAuthor,
     isSavable,
-    sign: signCommentMessage,
     verify: verifyCommentMessage,
     live: live.binding?.comments,
   });

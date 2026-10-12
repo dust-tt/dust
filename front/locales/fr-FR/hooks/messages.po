@@ -97,10 +97,6 @@ msgstr "Erreur lors de la suppression de la conversation."
 msgid "Message has been deleted successfully."
 msgstr "Le message a bien été supprimé."
 
-#: front/hooks/useDfmCommentSignatures.ts
-msgid "Commenting is unavailable."
-msgstr "Les commentaires sont indisponibles."
-
 #: front/hooks/useDiscoveryHomepageOptIn.ts
 msgid "Could not switch homepage"
 msgstr "Impossible de changer de page d'accueil"
