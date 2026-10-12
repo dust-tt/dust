@@ -184,7 +184,6 @@ export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
 export type { DoubleIconProps } from "./Icon";
 export { DoubleIcon, Icon } from "./Icon";
-export { IconButton } from "./IconButton";
 export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
 export { ImageGenerationPlaceholder } from "./ImageGenerationPlaceholder";
 export type {

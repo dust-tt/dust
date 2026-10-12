@@ -28,8 +28,8 @@ const IconSizes = {
  * Renders an SVG icon component passed via `visual` at a consistent size.
  * Color is inherited from text color, so apply a `text-*` class via
  * `className`. Use it to display a standalone glyph inside labels, buttons,
- * list items, or status indicators; for clickable icons prefer IconButton or
- * Button with an `icon`, and for an icon overlaid with a badge use DoubleIcon.
+ * list items, or status indicators; for clickable icons use Button with an
+ * `icon`, and for an icon overlaid with a badge use DoubleIcon.
  *
  * @summary Sized standalone SVG glyph.
  */
