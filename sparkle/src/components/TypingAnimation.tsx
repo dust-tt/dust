@@ -2,6 +2,9 @@ import { prefersReducedMotion } from "@sparkle/lib/internal_utils";
 import { cn } from "@sparkle/lib/utils";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+// Matches the `duration-200` of each character's fade-in.
+const FADE_IN_MS = 200;
+
 interface TypingAnimationProps {
   text: string;
   /** Delay in milliseconds between each revealed character (defaults to 50). */
@@ -12,8 +15,8 @@ interface TypingAnimationProps {
 }
 
 /**
- * Reveals a string one character at a time to mimic live typing. Use it for playful
- * intros, hero text, or to suggest an agent is "typing" a short message, keeping `text`
+ * Reveals a string one character at a time, each fading in, to mimic live typing. Use it for
+ * playful intros, hero text, or to suggest an agent is "typing" a short message, keeping `text`
  * concise so the reveal does not feel slow; for streaming model output that genuinely
  * arrives token-by-token, render the real tokens rather than this decorative effect.
  *
@@ -43,25 +46,40 @@ export function TypingAnimation({
   durationMsRef.current = duration;
 
   useEffect(() => {
+    const durationMs = durationMsRef.current;
     let count = initialCount;
+    let completeTimeout: ReturnType<typeof setTimeout> | undefined;
     const typingEffect = setInterval(() => {
       if (count < characters.length) {
         count += 1;
         setProgress({ text, count });
       } else {
         clearInterval(typingEffect);
-        onCompleteRef.current?.();
+        // Complete once the last character, revealed one tick ago, has fully faded in.
+        completeTimeout = setTimeout(
+          () => onCompleteRef.current?.(),
+          reduceMotion ? 0 : Math.max(0, FADE_IN_MS - durationMs)
+        );
       }
-    }, durationMsRef.current);
+    }, durationMs);
 
     return () => {
       clearInterval(typingEffect);
+      clearTimeout(completeTimeout);
     };
-  }, [characters, initialCount, text]);
+  }, [characters, initialCount, reduceMotion, text]);
 
   return (
-    <span className={cn("notranslate", className)}>
-      {characters.slice(0, revealedCount).join("")}
+    // Keyed by text so that a new text fades in from its first character again.
+    <span key={text} className={cn("notranslate", className)}>
+      {characters.slice(0, revealedCount).map((character, index) => (
+        <span
+          key={index}
+          className="animate-in fade-in-0 duration-200 ease-enter motion-reduce:animate-none"
+        >
+          {character}
+        </span>
+      ))}
     </span>
   );
 }
