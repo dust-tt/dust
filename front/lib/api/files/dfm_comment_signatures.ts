@@ -504,7 +504,8 @@ export interface MarkdownCommentsCheck {
  * @cc [owner:tdraier,label:security] dfm-comment-validation-scope
  * Validation MUST run on every content write through the file API's PUT of a file whose name,
  * request content type or stored content type is `text/markdown`, in a workspace with
- * `co_edition`, against the file as stored right before the write, and MUST NOT run anywhere else
+ * `co_edition`, against the file as stored right before the write, or against the live session's
+ * source when the write goes through one (`live-file-content-write`), and MUST NOT run anywhere else
  * until the codec bounds its input before parsing. For a write it validates, it MUST return the
  * revision it validated against, when storage has one, so the write can be conditional on it, and
  * the accepted new messages. For a write it does not validate, `newMessages` MUST be null, and
@@ -601,16 +602,32 @@ export async function validateMarkdownCommentsForWrite(
     }
   }
 
+  const validated = validateCommentSignaturesForUser(auth, {
+    filePath: resolvedPath.value,
+    previous: storedText,
+    next: decodeBuffer(content),
+  });
+  return validated.isErr()
+    ? validated
+    : new Ok({ revision: storedRevision, newMessages: validated.value });
+}
+
+/** `validateCommentSignatures` for `auth`'s user saving `next` over `previous` at `filePath`. */
+export function validateCommentSignaturesForUser(
+  auth: Authenticator,
+  {
+    filePath,
+    previous,
+    next,
+  }: { filePath: string; previous: string | null; next: string }
+): Result<NewCommentMessage[], DfmCommentSignatureError> {
   const key = getSigningKey();
   const publicKey = key ? createPublicKey(key) : null;
-  const validated = validateCommentSignatures(
-    {
-      previous: storedText,
-      next: decodeBuffer(content),
-    },
+  return validateCommentSignatures(
+    { previous, next },
     {
       workspaceId: auth.getNonNullableWorkspace().sId,
-      filePath: resolvedPath.value,
+      filePath,
       userId: auth.user()?.sId ?? null,
       verify: publicKey
         ? (payload, signature) =>
@@ -623,9 +640,6 @@ export async function validateMarkdownCommentsForWrite(
         : null,
     }
   );
-  return validated.isErr()
-    ? validated
-    : new Ok({ revision: storedRevision, newMessages: validated.value });
 }
 
 const unreadableFileError = () =>

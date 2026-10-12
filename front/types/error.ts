@@ -117,6 +117,8 @@ const API_ERROR_TYPES = [
   "file_type_not_supported",
   "file_is_empty",
   "file_read_only",
+  "live_document_conflict",
+  "live_document_write_refused",
   // Runs:
   "run_not_found",
   // Spaces:

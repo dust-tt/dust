@@ -63,7 +63,7 @@ export interface MarkdownFileEditor {
  * an open rich editor on a file the plain editor can edit, and MUST NOT switch while the open editor reports an unsaved or saving edit; a live
  * editor reports none. In source mode the rich editor MUST NOT be open and the plain editor MUST
  * stay in edit mode on the file's text as fetched, unprocessed, savable even while a live session
- * holds the file. Without a live session, leaving it MUST reopen the rich editor on the file as
+ * holds the file, unless that session refuses outside writes (`collab-live-source-write`). Without a live session, leaving it MUST reopen the rich editor on the file as
  * fetched then, not on what it held before. Source mode MUST end when another file opens or the
  * preview closes.
  */
@@ -235,8 +235,6 @@ export function useMarkdownFileEditor({
   const isDirty = rich.richEditor ? rich.isDirty : isPlainDirty;
   const isAnySaving = rich.richEditor ? rich.isSaving : isSaving;
 
-  // TODO(co-edition): source saves bypass an open live session, whose checkpoints then conflict;
-  // the file write route should go through the session instead.
   const toggleSourceMode = () => {
     if (isDirty || isAnySaving) {
       return;

@@ -402,6 +402,14 @@ msgid "You can only read this file."
 msgstr "You can only read this file."
 
 #: front/lib/api_error_messages.ts
+msgid "This file is being edited live and changed before your edit could be saved. Reload it and try again."
+msgstr "This file is being edited live and changed before your edit could be saved. Reload it and try again."
+
+#: front/lib/api_error_messages.ts
+msgid "This file is being edited live and can't take this change."
+msgstr "This file is being edited live and can't take this change."
+
+#: front/lib/api_error_messages.ts
 msgid "Run not found."
 msgstr "Run not found."
 

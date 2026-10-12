@@ -29,6 +29,11 @@ import {
   isFolderExtractError,
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
+import {
+  isLiveFileContentWriteError,
+  type LiveFileContentWriteError,
+  writeFileContentThroughLiveSession,
+} from "@app/lib/api/files/live_file_content";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -85,6 +90,8 @@ const ParamsSchema = z.object({
  * GET and HEAD expose current mount write permission in X-Dust-File-Can-Write.
  * A PUT of a Markdown file bringing a comment the server did not sign for the caller is refused;
  * a new comment that mentions agents or users is posted to the document's conversation.
+ * While a live session holds a Markdown file, a PUT goes through the session instead of the file
+ * and returns no revision; one with X-Dust-If-Revision-Match returns 412.
  */
 const app = workspaceApp();
 
@@ -604,6 +611,43 @@ function mapMarkdownCheckError(
   }
 }
 
+function mapLiveWriteError(
+  error: LiveFileContentWriteError
+): APIErrorWithContentfulStatusCode {
+  const { code } = error;
+  switch (code) {
+    case "read_only":
+      return {
+        status_code: 403,
+        api_error: { type: "file_read_only", message: error.message },
+      };
+
+    case "refused":
+      return {
+        status_code: 400,
+        api_error: {
+          type: "live_document_write_refused",
+          message: error.message,
+        },
+      };
+
+    case "conflict":
+      return {
+        status_code: 412,
+        api_error: { type: "live_document_conflict", message: error.message },
+      };
+
+    case "unavailable":
+      return {
+        status_code: 503,
+        api_error: { type: "service_unavailable", message: error.message },
+      };
+
+    default:
+      return assertNever(code);
+  }
+}
+
 /** @ignoreswagger */
 app.post(
   "/:canonicalPath{.+}",
@@ -716,6 +760,34 @@ app.put(
     }
 
     const content = new Uint8Array(contentBuffer);
+    const ifRevisionMatch = ctx.req.valid("header")["x-dust-if-revision-match"];
+
+    const live = await writeFileContentThroughLiveSession(
+      auth,
+      dustFs,
+      canonicalPath,
+      {
+        content,
+        requestContentType: ctx.req.header("content-type") ?? undefined,
+        ifRevisionMatch,
+      }
+    );
+    if (live.isErr()) {
+      return apiError(
+        ctx,
+        isLiveFileContentWriteError(live.error)
+          ? mapLiveWriteError(live.error)
+          : mapMarkdownCheckError(live.error)
+      );
+    }
+    if (live.value.kind === "written") {
+      await dispatchCommentMentions(auth, {
+        scopedPath: canonicalPath,
+        newMessages: live.value.newMessages,
+      });
+      return new Response(null, { status: 200 });
+    }
+
     // Only Markdown in a co_edition workspace has its comments checked and new messages; any
     // other write gets null `newMessages`, and possibly a revision binding it to what was checked.
     const markdownCheck = await validateMarkdownCommentsForWrite(
@@ -737,7 +809,7 @@ app.put(
       canonicalPath,
       content,
       ctx.req.header("content-type") ?? undefined,
-      ctx.req.valid("header")["x-dust-if-revision-match"] ?? checkedRevision
+      ifRevisionMatch ?? checkedRevision
     );
 
     if (writeResult.isErr()) {
