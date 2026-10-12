@@ -262,10 +262,12 @@ function PokeNavCommandItem({
 }
 
 interface PokeFavoritesCommandGroupsProps {
+  indexOffset: number;
   onNavigate: () => void;
 }
 
 export function PokeFavoritesCommandGroups({
+  indexOffset,
   onNavigate,
 }: PokeFavoritesCommandGroupsProps) {
   const { favorites } = usePokeFavorites();
@@ -280,7 +282,7 @@ export function PokeFavoritesCommandGroups({
         <PokeNavCommandItem
           key={item.url}
           item={item}
-          index={index}
+          index={indexOffset + index}
           onNavigate={onNavigate}
         />
       ))}
