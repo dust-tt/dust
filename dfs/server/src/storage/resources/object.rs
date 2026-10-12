@@ -61,6 +61,7 @@ pub enum Error {
     InvalidStoredGrant,
     InvalidAncestry,
     UnsupportedKind,
+    VersionOverflow,
 }
 
 impl fmt::Display for Error {
@@ -82,6 +83,7 @@ impl fmt::Display for Error {
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
             Self::UnsupportedKind => f.write_str("unsupported object kind"),
+            Self::VersionOverflow => f.write_str("object version overflow"),
         }
     }
 }
@@ -111,6 +113,15 @@ pub struct ObjectResource {
 
 pub struct Metadata {
     pub created_at_ms: u64,
+    pub mime_type: Option<String>,
+    pub xattrs: HashMap<String, Vec<u8>>,
+}
+
+pub struct ObjectCreateParams {
+    pub object_id: ObjectId,
+    pub parent_id: Option<ObjectId>,
+    pub name: String,
+    pub kind: ObjectKind,
     pub mime_type: Option<String>,
     pub xattrs: HashMap<String, Vec<u8>>,
 }
@@ -195,12 +206,24 @@ impl ObjectResource {
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
         let now_ms = clock::now_ms().map_err(|_| Error::TimestampGeneration)?;
-        Ok(Self {
-            tenant_id: tenant.tenant_id.clone(),
+        let root = ObjectCreateParams {
             object_id: tenant.root_id,
             parent_id: None,
             name: String::new(),
             kind: ObjectKind::Directory,
+            mime_type: None,
+            xattrs: HashMap::new(),
+        };
+        Ok(Self::new(&tenant.tenant_id, root, now_ms))
+    }
+
+    pub fn new(tenant_id: &str, object: ObjectCreateParams, now_ms: u64) -> Self {
+        Self {
+            tenant_id: tenant_id.to_owned(),
+            object_id: object.object_id,
+            parent_id: object.parent_id,
+            name: object.name,
+            kind: object.kind,
             size: EMPTY_SIZE_BYTES,
             atime_ms: Some(now_ms),
             mtime_ms: Some(now_ms),
@@ -209,10 +232,10 @@ impl ObjectResource {
             content_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
-                mime_type: None,
-                xattrs: HashMap::new(),
+                mime_type: object.mime_type,
+                xattrs: object.xattrs,
             }),
-        })
+        }
     }
 
     /**
@@ -240,18 +263,7 @@ impl ObjectResource {
         tx: &Transaction,
         grants: &[Grant],
     ) -> Result<(), storage::Error<Error>> {
-        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
-        let attributes = pack(&(
-            parent_id,
-            self.name.as_str(),
-            i32::from(self.kind),
-            self.size,
-            self.atime_ms,
-            self.mtime_ms,
-            self.ctime_ms,
-            self.attr_version,
-            self.content_version,
-        ));
+        let attributes = self.packed_attributes();
         let key = Self::object_key(&self.tenant_id, &self.object_id);
         let existing = tx.get(&key, false).await.map_err(FdbBindingError::from)?;
         if let Some(existing) = existing {
@@ -297,6 +309,44 @@ impl ObjectResource {
         for grant in unique_grants {
             self.write_grant(tx, grant, false)?;
         }
+        Ok(())
+    }
+
+    pub fn save_attributes(&self, tx: &Transaction) {
+        tx.set(
+            &Self::object_key(&self.tenant_id, &self.object_id),
+            &self.packed_attributes(),
+        );
+    }
+
+    fn packed_attributes(&self) -> Vec<u8> {
+        let parent_id = self.parent_id.as_ref().map(|id| id.as_bytes().as_slice());
+        pack(&(
+            parent_id,
+            self.name.as_str(),
+            i32::from(self.kind),
+            self.size,
+            self.atime_ms,
+            self.mtime_ms,
+            self.ctime_ms,
+            self.attr_version,
+            self.content_version,
+        ))
+    }
+
+    pub fn record_content_change(&mut self, now_ms: u64) -> Result<(), Error> {
+        let attr_version = self
+            .attr_version
+            .checked_add(1)
+            .ok_or(Error::VersionOverflow)?;
+        let content_version = self
+            .content_version
+            .checked_add(1)
+            .ok_or(Error::VersionOverflow)?;
+        self.attr_version = attr_version;
+        self.content_version = content_version;
+        self.mtime_ms = Some(now_ms);
+        self.ctime_ms = Some(now_ms);
         Ok(())
     }
 
