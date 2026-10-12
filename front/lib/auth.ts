@@ -378,13 +378,12 @@ export class Authenticator {
     // Group set to re-grant from: every workspace group for the "all" scope, an explicit scope
     // verbatim (can't be recomputed), else a user's live membership, else an API key's groups.
     let groupModelIds: ModelId[];
-    if (this._requestedGroupModelIds === "all") {
-      groupModelIds = await Authenticator.listAllGroupModelIds(
+    if (this._requestedGroupModelIds !== null) {
+      groupModelIds = await Authenticator.listScopeGroupModelIds(
         this._workspace,
+        this._requestedGroupModelIds,
         transaction
       );
-    } else if (this._requestedGroupModelIds !== null) {
-      groupModelIds = this._requestedGroupModelIds;
     } else if (this._user) {
       if (Authenticator.isMember(this._role)) {
         const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
@@ -431,11 +430,16 @@ export class Authenticator {
     return groups.map((g) => g.id);
   }
 
-  // Every group of the workspace, which the "all" scope stands for.
-  private static async listAllGroupModelIds(
+  // The groups of a stored scope: the list itself, or every workspace group for "all". A `null`
+  // scope (re-derived from a principal, see `refresh()`) holds no stored group.
+  private static async listScopeGroupModelIds(
     workspace: WorkspaceResource | null,
+    scope: ModelId[] | "all" | null,
     transaction?: Transaction
   ): Promise<ModelId[]> {
+    if (scope !== "all") {
+      return scope ?? [];
+    }
     if (!workspace) {
       return [];
     }
@@ -462,10 +466,12 @@ export class Authenticator {
       return groupModelIds;
     }
     if (this._key) {
-      if (this._requestedGroupModelIds === "all") {
-        return Authenticator.listAllGroupModelIds(this._workspace);
-      }
-      return this._requestedGroupModelIds ?? this.groupModelIdsFromKey();
+      return this._requestedGroupModelIds !== null
+        ? Authenticator.listScopeGroupModelIds(
+            this._workspace,
+            this._requestedGroupModelIds
+          )
+        : this.groupModelIdsFromKey();
     }
     return [];
   }
@@ -1220,7 +1226,8 @@ export class Authenticator {
       authMethod: "internal",
       workspace,
       role: "admin",
-      // No user and no key to re-derive from, so persist the resolved scope.
+      // No user and no key to re-derive from, so persist the scope: "all" for every group, the
+      // resolved list when `groupKinds` filters them.
       requestedGroupModelIds:
         options?.dangerouslyRequestAllGroups && !options.groupKinds
           ? "all"
@@ -1837,7 +1844,7 @@ export class Authenticator {
       userId: this._user?.sId ?? null,
       role: this._role,
       // Only an explicit scope is serialized; `null` means "re-derive on refresh" (vs `[]`, an
-      // explicit empty scope).
+      // explicit empty scope) and "all" every group of the workspace.
       groupIds:
         scope === "all" || scope === null
           ? scope
@@ -1920,10 +1927,10 @@ export class Authenticator {
           // silently deny every capability check.
           await this.resolvePermissions({
             workspace,
-            groupModelIds:
-              requestedGroupModelIds === "all"
-                ? await this.listAllGroupModelIds(workspace)
-                : (requestedGroupModelIds ?? []),
+            groupModelIds: await this.listScopeGroupModelIds(
+              workspace,
+              requestedGroupModelIds
+            ),
           }),
     });
   }
@@ -1938,7 +1945,10 @@ export class Authenticator {
     authType: AuthenticatorType
   ): Promise<Authenticator> {
     const auth = await Authenticator.fromJSON(authType);
-    await auth.refresh();
+    // fromJSON already resolved an "all" payload from the current groups, as refresh would.
+    if (authType.groupIds !== "all") {
+      await auth.refresh();
+    }
     return auth;
   }
 }

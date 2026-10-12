@@ -223,10 +223,20 @@ describe("Authenticator.fromJSON", () => {
     // Created after serialization: only readable if rehydrate lists the groups again.
     const space = await SpaceFactory.regular(workspace);
 
-    const rehydrated = await Authenticator.fromJSON(authJson);
+    const rehydrated = await Authenticator.fromJsonWithRefrehedGroups(authJson);
     const refetched = await SpaceResource.fetchById(rehydrated, space.sId);
     expect(refetched).not.toBeNull();
     expect(rehydrated.can("read", refetched!)).toBe(true);
+  });
+
+  it("keeps serializing the group list of an all-groups internal auth filtered by group kinds", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
+      dangerouslyRequestAllGroups: true,
+      groupKinds: ["global"],
+    });
+
+    expect(Array.isArray(auth.toJSON().groupIds)).toBe(true);
   });
 
   it("keeps a user-less poke super-user's workspace-wide groups across refresh", async () => {
