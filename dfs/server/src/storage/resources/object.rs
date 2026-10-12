@@ -21,6 +21,7 @@ use crate::storage::{
 
 mod hints;
 mod modes;
+mod stat;
 pub use hints::TreeHints;
 pub use modes::Mode;
 
@@ -49,6 +50,7 @@ pub enum Error {
     XattrsTooLarge,
     InvalidId,
     NotFound,
+    NotAuthorized,
     InvalidGrant,
     TooManyGrants,
     DuplicateGrant,
@@ -56,6 +58,8 @@ pub enum Error {
     InvalidGrantCursor,
     InvalidStoredGrant,
     InvalidAncestry,
+    UnsupportedKind,
+    UnsupportedReference,
 }
 
 impl fmt::Display for Error {
@@ -68,6 +72,7 @@ impl fmt::Display for Error {
             Self::XattrsTooLarge => f.write_str("xattrs exceed the size limit"),
             Self::InvalidId => f.write_str("invalid object ID"),
             Self::NotFound => f.write_str("object not found"),
+            Self::NotAuthorized => f.write_str("object access not authorized"),
             Self::InvalidGrant => f.write_str("invalid grant"),
             Self::TooManyGrants => f.write_str("too many grants"),
             Self::DuplicateGrant => f.write_str("duplicate grant change"),
@@ -75,6 +80,8 @@ impl fmt::Display for Error {
             Self::InvalidGrantCursor => f.write_str("invalid grant cursor"),
             Self::InvalidStoredGrant => f.write_str("invalid stored grant"),
             Self::InvalidAncestry => f.write_str("invalid object ancestry"),
+            Self::UnsupportedKind => f.write_str("unsupported object kind"),
+            Self::UnsupportedReference => f.write_str("unsupported object reference"),
         }
     }
 }

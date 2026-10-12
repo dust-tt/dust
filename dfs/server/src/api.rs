@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use dfs_protocol::{
     error::status,
     rpc::{
-        ApplyRequest, AttrBatch, CreateSessionRequest, CreateTenantRequest, Empty, EntryPage,
-        ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
+        ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
+        EntryPage, ErrorCode, FilesBatch, GrantPage, ListGrantsRequest, ListRequest, LookupRequest,
         OperationBatch, ReadData, ReadFilesRequest, ReadRequest, RevokeSessionRequest,
         SearchRequest, SearchResults, Session, StatRequest, Tenant, UpdateGrantsRequest,
         ValidateRequest, ValidationBatch, dfs_server::Dfs,
@@ -27,6 +27,8 @@ use crate::{
 
 pub(crate) mod auth;
 mod errors;
+
+const STAT_MAX_OBJECTS: usize = 256;
 
 /// RPCs without an implementation answer UNSUPPORTED after their implemented authentication checks.
 #[allow(clippy::upper_case_acronyms)]
@@ -191,9 +193,45 @@ impl Dfs for API {
         Ok(Response::new(Empty {}))
     }
 
+    /**
+     * @cc [owner:spolu,label:api;security] stat-batch-results
+     * Stat MUST accept 1-256 valid references and preserve their order and duplicates. Missing and
+     * unreadable real objects MUST return per-result NOT_FOUND without dropping other results.
+     * Each result MUST contain exactly one of object or error.
+     * Until implemented, metadata requests MUST fail with UNSUPPORTED.
+     */
     async fn stat(&self, request: Request<StatRequest>) -> Result<Response<AttrBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let StatRequest {
+            object_ids,
+            include_metadata,
+        } = request.into_inner();
+        if object_ids.is_empty() || object_ids.len() > STAT_MAX_OBJECTS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        if include_metadata.unwrap_or(false) {
+            return Err(status(ErrorCode::Unsupported));
+        }
+        let attributes = fdb::with_transaction(|tx| {
+            let session = session.as_ref();
+            let object_ids = &object_ids;
+            async move { ObjectResource::stat(&tx, session, object_ids).await }
+        })
+        .await?;
+        let results = attributes
+            .into_iter()
+            .map(|result| match result {
+                Ok(object) => AttrResult {
+                    object: Some(object),
+                    error: None,
+                },
+                Err(error) => AttrResult {
+                    object: None,
+                    error: Some(error.into()),
+                },
+            })
+            .collect();
+        Ok(Response::new(AttrBatch { results }))
     }
 
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {
