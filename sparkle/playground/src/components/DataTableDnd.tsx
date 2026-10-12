@@ -1020,6 +1020,7 @@ DataTable.MoreButton = function MoreButton({
         asChild
       >
         <Button
+          aria-label="More actions"
           icon={DotsHorizontal}
           size="icon"
           variant="ghost-secondary"
@@ -1197,6 +1198,7 @@ DataTable.BasicCellContent = function BasicCellContent({
               <span className="truncate">{label}</span>
               {textToCopy && (
                 <Button
+                  aria-label="Copy to clipboard"
                   icon={isCopied ? ClipboardCheck : Clipboard}
                   className="hidden group-hover:block"
                   variant="outline"
@@ -1225,6 +1227,7 @@ DataTable.BasicCellContent = function BasicCellContent({
           <span className="truncate">{label}</span>
           {textToCopy && (
             <Button
+              tooltip="Copy to clipboard"
               icon={isCopied ? ClipboardCheck : Clipboard}
               className="hidden group-hover:block"
               variant="outline"
@@ -1268,6 +1271,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
     <div className={cn("flex items-center space-x-2", className)}>
       <span className="truncate">{children}</span>
       <Button
+        tooltip="Copy to clipboard"
         icon={isCopied ? ClipboardCheck : Clipboard}
         variant="ghost-secondary"
         onClick={async (e) => {

@@ -264,6 +264,7 @@ const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
 >(({ className, forceVisible, ...props }, ref) => {
+  const { t } = useLingui();
   return (
     <div
       ref={ref}
@@ -280,6 +281,7 @@ const NavigationListItemAction = React.forwardRef<
       <Button
         size="xmini"
         icon={DotsHorizontal}
+        aria-label={t`More actions`}
         variant="ghost"
         className="hover:bg-hover active:bg-selected"
       />

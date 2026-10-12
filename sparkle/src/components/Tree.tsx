@@ -1,3 +1,4 @@
+import { useLingui } from "@lingui/react/macro";
 import { Button } from "@sparkle/components/Button";
 import { Icon } from "@sparkle/components/Icon";
 import { Spinner } from "@sparkle/components/Spinner";
@@ -180,6 +181,7 @@ Tree.Item = React.forwardRef<
     },
     ref
   ) => {
+    const { t } = useLingui();
     const [isTruncated, setIsTruncated] = useState(false);
     const labelRef = React.useRef<HTMLDivElement>(null);
 
@@ -283,6 +285,7 @@ Tree.Item = React.forwardRef<
           {type === "node" && (
             <Button
               icon={isExpanded ? ChevronDown : ChevronRight}
+              tooltip={isExpanded ? t`Collapse` : t`Expand`}
               size="xmini"
               variant="ghost-secondary"
               disabled={!effectiveOnChevronClick}

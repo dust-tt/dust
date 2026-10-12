@@ -394,6 +394,7 @@ export function InputBar({
               className="px-2"
             />
             <Button
+              tooltip="Record voice message"
               variant="ghost-secondary"
               icon={Microphone01}
               size="xs"

@@ -211,6 +211,7 @@ export function TodoInputBar({
           <div className="grow" />
           <div className="flex items-center gap-2 md:gap-1">
             <Button
+              tooltip="Record voice message"
               variant="ghost-secondary"
               icon={Microphone01}
               size="xs"

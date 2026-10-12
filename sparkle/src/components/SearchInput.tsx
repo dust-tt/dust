@@ -98,6 +98,7 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           ) : value ? (
             <Button
               icon={XClose}
+              tooltip={t`Clear search`}
               variant="ghost"
               size="xs"
               onClick={clearInputField}

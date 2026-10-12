@@ -1565,6 +1565,7 @@ function Pods() {
                     <PopoverRoot>
                       <PopoverTrigger asChild>
                         <Button
+                          aria-label="More actions"
                           size="xs"
                           icon={DotsHorizontal}
                           variant="ghost"

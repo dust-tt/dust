@@ -26,6 +26,9 @@ msgid "Back"
 msgstr "Back"
 
 #: src/components/Bar.tsx
+#: src/components/Dialog.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/Sheet.tsx
 msgid "Close"
 msgstr "Close"
 
@@ -42,6 +45,7 @@ msgid "Breadcrumb"
 msgstr "Breadcrumb"
 
 #: src/components/Chip.tsx
+#: src/components/Citation.tsx
 #: src/components/ImagePreview.tsx
 msgid "Remove"
 msgstr "Remove"
@@ -86,6 +90,15 @@ msgstr "Message actions"
 #: src/components/DataTable/ScrollableDataTable.tsx
 msgid "Loading more data…"
 msgstr "Loading more data…"
+
+#: src/components/DataTable/cells.tsx
+msgid "Copy to clipboard"
+msgstr "Copy to clipboard"
+
+#: src/components/DataTable/menu.tsx
+#: src/components/NavigationList.tsx
+msgid "More actions"
+msgstr "More actions"
 
 #: src/components/DataTable/selection.tsx
 msgid "Select {label}"
@@ -132,6 +145,14 @@ msgstr "Generated image"
 msgid "Download"
 msgstr "Download"
 
+#: src/components/ImageZoomDialog.tsx
+msgid "Previous image"
+msgstr "Previous image"
+
+#: src/components/ImageZoomDialog.tsx
+msgid "Next image"
+msgstr "Next image"
+
 #: src/components/InputWithSave.tsx
 #: src/components/LegacyInputWithSave.tsx
 #: src/components/Toolbar.tsx
@@ -174,11 +195,13 @@ msgstr "Dismiss"
 
 #: src/components/MultiPageDialog.tsx
 #: src/components/MultiPageSheet.tsx
+#: src/components/Pagination.tsx
 msgid "Previous page"
 msgstr "Previous page"
 
 #: src/components/MultiPageDialog.tsx
 #: src/components/MultiPageSheet.tsx
+#: src/components/Pagination.tsx
 msgid "Next page"
 msgstr "Next page"
 
@@ -217,6 +240,10 @@ msgid "Search"
 msgstr "Search"
 
 #: src/components/SearchInput.tsx
+msgid "Clear search"
+msgstr "Clear search"
+
+#: src/components/SearchInput.tsx
 msgid "{itemCount, plural, one {{formattedItemCount} search result} other {{formattedItemCount} search results}} (out of {formattedTotalItems})."
 msgstr "{itemCount, plural, one {{formattedItemCount} search result} other {{formattedItemCount} search results}} (out of {formattedTotalItems})."
 
@@ -247,6 +274,14 @@ msgstr "Link"
 #: src/components/Toolbar.tsx
 msgid "Cancel"
 msgstr "Cancel"
+
+#: src/components/Tree.tsx
+msgid "Collapse"
+msgstr "Collapse"
+
+#: src/components/Tree.tsx
+msgid "Expand"
+msgstr "Expand"
 
 #: src/components/VoicePicker.tsx
 msgctxt "verb, stop recording"
