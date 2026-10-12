@@ -43,14 +43,21 @@ import { runOnAllWorkspaces } from "./workspace_helpers";
 
 const CREDIT_PRICED_ENTERPRISE_PLAN_CODE_PREFIX = "CP_ENT_";
 
+type AffectedWorkspace = {
+  workspaceId: string;
+  workspaceName: string;
+  creditIds: string[];
+  failedCreditIds: string[];
+};
+
 async function backfillCreditsForWorkspace(
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
-): Promise<void> {
+): Promise<AffectedWorkspace | null> {
   const { metronomeCustomerId } = workspace;
   if (!metronomeCustomerId) {
-    return;
+    return null;
   }
 
   // Only credit-priced enterprise contracts carry recurring pool credits.
@@ -59,7 +66,7 @@ async function backfillCreditsForWorkspace(
   );
   const planCode = subscription?.getPlan().code ?? "";
   if (!planCode.startsWith(CREDIT_PRICED_ENTERPRISE_PLAN_CODE_PREFIX)) {
-    return;
+    return null;
   }
 
   const creditsResult = await listMetronomeCustomerCredits({
@@ -71,11 +78,12 @@ async function backfillCreditsForWorkspace(
       { workspaceId: workspace.sId, error: creditsResult.error },
       "[Backfill credit type] Failed to list credits"
     );
-    return;
+    return null;
   }
 
   const now = new Date();
-  let stampedCount = 0;
+  const creditIds: string[] = [];
+  const failedCreditIds: string[] = [];
   for (const credit of creditsResult.value) {
     if (credit.custom_fields?.[CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY]) {
       continue;
@@ -107,6 +115,7 @@ async function backfillCreditsForWorkspace(
       value,
     };
 
+    creditIds.push(credit.id);
     if (!execute) {
       logger.info(
         logContext,
@@ -124,28 +133,38 @@ async function backfillCreditsForWorkspace(
         { ...logContext, error: setResult.error },
         "[Backfill credit type] Failed to stamp credit"
       );
+      failedCreditIds.push(credit.id);
       continue;
     }
-    stampedCount++;
     logger.info(logContext, "[Backfill credit type] Stamped credit");
   }
 
-  if (stampedCount === 0) {
-    return;
+  if (creditIds.length === 0) {
+    return null;
+  }
+  const affected: AffectedWorkspace = {
+    workspaceId: workspace.sId,
+    workspaceName: workspace.name,
+    creditIds,
+    failedCreditIds,
+  };
+  if (!execute || failedCreditIds.length === creditIds.length) {
+    return affected;
   }
 
   const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
   if (!workspaceResource) {
-    return;
+    return affected;
   }
   await syncPoolCreditStateFromBalance({
     workspace: workspaceResource,
     metronomeCustomerId,
   });
   logger.info(
-    { workspaceId: workspace.sId, stampedCount },
+    { workspaceId: workspace.sId },
     "[Backfill credit type] Reconciled pool credit state from live balance"
   );
+  return affected;
 }
 
 makeScript(
@@ -158,15 +177,42 @@ makeScript(
     },
   },
   async ({ workspaceId, execute }, logger) => {
+    const affectedWorkspaces: AffectedWorkspace[] = [];
     await runOnAllWorkspaces(
       async (workspace) => {
-        await backfillCreditsForWorkspace(workspace, execute, logger);
+        const affected = await backfillCreditsForWorkspace(
+          workspace,
+          execute,
+          logger
+        );
+        if (affected) {
+          affectedWorkspaces.push(affected);
+        }
       },
       {
         concurrency: 4,
         wId: workspaceId,
         where: { metronomeCustomerId: { [Op.ne]: null } },
       }
+    );
+
+    logger.info(
+      {
+        execute,
+        affectedWorkspaceCount: affectedWorkspaces.length,
+        creditCount: affectedWorkspaces.reduce(
+          (sum, w) => sum + w.creditIds.length,
+          0
+        ),
+        failedCreditCount: affectedWorkspaces.reduce(
+          (sum, w) => sum + w.failedCreditIds.length,
+          0
+        ),
+        affectedWorkspaces,
+      },
+      execute
+        ? "[Backfill credit type] Summary: workspaces with stamped credits"
+        : "[Backfill credit type] [DRY RUN] Summary: workspaces with credits to stamp"
     );
   }
 );
