@@ -1,7 +1,7 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn } from "@sparkle/lib/utils";
 import { useReducedMotion } from "framer-motion";
 import type { CSSProperties } from "react";
-import { useLayoutEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 
 const SCROLL_SPEED_PX_PER_SECOND = 50;
 
