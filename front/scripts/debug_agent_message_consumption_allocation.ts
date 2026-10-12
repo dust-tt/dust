@@ -11,6 +11,7 @@
  */
 
 import {
+  allocateUsageCredits,
   buildLatestMessageConsumptionAllocation,
   compareRunsChronologically,
   groupToolResultsByReadingUsage,
@@ -401,11 +402,47 @@ makeScript(
       )
     );
 
+    const itemsByRunUsageModelId = new Map<
+      ModelId,
+      AgentMessageConsumptionItemResource[]
+    >();
+    for (const item of reportedItems) {
+      const usageItems = itemsByRunUsageModelId.get(item.runUsageId) ?? [];
+      usageItems.push(item);
+      itemsByRunUsageModelId.set(item.runUsageId, usageItems);
+    }
+    let creditMicroBeforeRoundingByItem: Map<
+      AgentMessageConsumptionItemResource,
+      number
+    > | null = new Map(
+      reportedItems.map((item) => [item, item.directCreditAmountMicro ?? 0])
+    );
+    for (const usage of usages) {
+      const sharesResult = allocateUsageCredits({
+        usage,
+        billedCreditMicro: Math.round(
+          creditMicroFromCostMicroUsd(usage.costMicroUsd)
+        ),
+        usageItems: itemsByRunUsageModelId.get(usage.runUsageModelId) ?? [],
+        toolResults: toolResultsByReadingUsage.get(usage.runUsageModelId) ?? [],
+      });
+      if (sharesResult.isErr()) {
+        creditMicroBeforeRoundingByItem = null;
+        break;
+      }
+      for (const { item, creditMicro } of sharesResult.value) {
+        creditMicroBeforeRoundingByItem.set(
+          item,
+          (creditMicroBeforeRoundingByItem.get(item) ?? 0) + creditMicro
+        );
+      }
+    }
+
     const actionSIdByModelId = new Map(
       actions.map((action) => [action.id, action.sId])
     );
     console.log(
-      "\nStep 5: items receive their usages' shares, plus their tool fees"
+      "\nStep 5: items receive their usages' shares, plus their tool fees (before rounding: each usage shares its recorded cost instead of its billed share)"
     );
     console.table(
       reportedItems.map((item) => {
@@ -428,24 +465,35 @@ makeScript(
           outputTokens: item.outputTokensCount ?? "n/a",
           grossCredits: credits(item.grossAttributedCreditAmountMicro),
           toolFeeCredits: credits(item.directCreditAmountMicro),
+          reconciledCreditsBeforeRounding: credits(
+            creditMicroBeforeRoundingByItem?.get(item)
+          ),
           reconciledCredits: credits(reconciledCreditMicroByItem?.get(item)),
         };
       })
     );
 
-    if (reconciledCreditMicroByItem) {
-      console.log("\nTotal");
-      console.table([
-        {
-          bill: billedCredits ?? "n/a",
-          reconciledCredits: credits(
-            sumCreditMicro(
-              reportedItems,
-              (item) => reconciledCreditMicroByItem.get(item) ?? 0
+    console.log("\nTotal");
+    console.table([
+      {
+        bill: billedCredits ?? "n/a",
+        reconciledCreditsBeforeRounding: creditMicroBeforeRoundingByItem
+          ? credits(
+              sumCreditMicro(
+                reportedItems,
+                (item) => creditMicroBeforeRoundingByItem?.get(item) ?? 0
+              )
             )
-          ),
-        },
-      ]);
-    }
+          : "n/a",
+        reconciledCredits: reconciledCreditMicroByItem
+          ? credits(
+              sumCreditMicro(
+                reportedItems,
+                (item) => reconciledCreditMicroByItem.get(item) ?? 0
+              )
+            )
+          : "n/a",
+      },
+    ]);
   }
 );

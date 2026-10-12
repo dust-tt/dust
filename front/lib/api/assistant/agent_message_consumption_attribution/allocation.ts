@@ -289,7 +289,7 @@ export function toolResultShareOfInputCost({
  * An LLM call's credits MUST only go to what that call paid for: its output, its reasoning, the tool
  * calls it emitted, its prompt, and the tool results it read.
  */
-function allocateUsageCredits({
+export function allocateUsageCredits({
   usage,
   billedCreditMicro,
   usageItems,
