@@ -4,13 +4,13 @@ import {
   getSandboxFunctionInvocationAccessError,
   VisualizationActionIframe,
 } from "@app/components/assistant/conversation/actions/VisualizationActionIframe";
+import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
 import type { ScopedWorkspaceUserIdentity } from "@app/types/assistant/visualization";
 import {
   DUST_FILE_CAN_WRITE_HEADER,
   DUST_FILE_REVISION_HEADER,
   DUST_IF_REVISION_MATCH_HEADER,
 } from "@app/types/files";
-import { VisualizationFactory } from "@app/tests/utils/VisualizationFactory";
 import { cleanup, render, waitFor } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
