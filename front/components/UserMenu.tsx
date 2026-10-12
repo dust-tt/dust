@@ -652,13 +652,11 @@ export function UserMenu({
                       onClick={devMode.toggle}
                       icon={Terminal}
                     />
-                    {isAdmin(owner) && (
-                      <DropdownMenuItem
-                        label={t`Send onboarding conversation`}
-                        onClick={handleSendOnboarding}
-                        icon={MessagePlusCircle}
-                      />
-                    )}
+                    <DropdownMenuItem
+                      label={t`Send onboarding conversation`}
+                      onClick={handleSendOnboarding}
+                      icon={MessagePlusCircle}
+                    />
                   </DropdownMenuSubContent>
                 </DropdownMenuPortal>
               </DropdownMenuSub>
