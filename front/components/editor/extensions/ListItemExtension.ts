@@ -56,12 +56,12 @@ const originalParseMarkdown = ListItem.config.parseMarkdown;
  * are wrapped in paragraphs.
  */
 export const ListItemExtension = ListItem.extend({
-  parseMarkdown: (token, helpers) => {
+  parseMarkdown(token, helpers) {
     if (!originalParseMarkdown) {
       return [];
     }
 
-    const result = originalParseMarkdown(token, helpers);
+    const result = originalParseMarkdown.call(this, token, helpers);
 
     // The original returns { type: "listItem", content: [...] } or [] for
     // non-list_item tokens.
