@@ -95,7 +95,7 @@ const GCS_LIST_PAGE_SIZE = 200;
  *
  * Path translation (internal, never exposed):
  *   `conversation-{cId}/{rel}` -> `w/{wId}/conversations/{cId}/files/{rel}`
- *   `conversation_metadata-{cId}/{name}` -> `w/{wId}/conversations/{cId}/{name}` (flat names only)
+ *   `conversation_metadata-{cId}/{rel}` -> `w/{wId}/conversations/{cId}/{rel}` (`files` reserved)
  *   `pod-{pId}/{rel}`          -> `w/{wId}/pods/{pId}/files/{rel}`
  */
 export class GCSFileSystemBackend implements FileSystemBackend {
@@ -114,12 +114,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
       case "conversation":
         return `w/${this.workspaceId}/conversations/${p.id}/files/${p.rel}`;
 
-      // Flat names only, at the conversation root: a nested path could reach the conversation's
-      // files or other data stored under the same prefix.
-      case "conversation_metadata":
-        return p.rel.length > 0 && !p.rel.includes("/")
+      // At the conversation root, where `files` is reserved for the conversation's own files. The
+      // root itself is rejected too: listing it would walk them.
+      case "conversation_metadata": {
+        const [firstSegment] = p.rel.split("/");
+        return firstSegment.length > 0 && firstSegment !== "files"
           ? `w/${this.workspaceId}/conversations/${p.id}/${p.rel}`
           : null;
+      }
 
       case "pod":
         return `w/${this.workspaceId}/pods/${p.id}/files/${p.rel}`;
