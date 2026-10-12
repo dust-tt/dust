@@ -5,12 +5,13 @@ import { createPortal } from "react-dom";
 const LETTER_STAGGER_MS = 20;
 const LETTER_MS = 450;
 
-// Letters show up in these colors, one after the other, then blend into the text color.
+// The Dust logo's saturated colors: letters show up in them, one after the other, then blend into
+// the text color.
 const LETTER_COLOR_CLASSES = [
-  "text-blue-500",
-  "text-green-500",
-  "text-golden-500",
-  "text-rose-500",
+  "text-brand-electric-blue",
+  "text-brand-hunter-green",
+  "text-brand-orange-golden",
+  "text-brand-red-rose",
 ];
 
 export interface PronounFill {
