@@ -8,10 +8,10 @@ const LETTER_MS = 450;
 // The Dust logo's saturated colors: letters show up in them, one after the other, then blend into
 // the text color.
 const LETTER_COLOR_CLASSES = [
-  "text-brand-electric-blue",
-  "text-brand-hunter-green",
-  "text-brand-orange-golden",
-  "text-brand-red-rose",
+  "text-blue-500",
+  "text-green-600",
+  "text-golden-500",
+  "text-rose-500",
 ];
 
 export interface PronounFill {
