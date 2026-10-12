@@ -3423,6 +3423,20 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return conversations.filter((c) => visibleModelIds.has(c.id));
   }
 
+  static async countParticipants(
+    auth: Authenticator,
+    {
+      conversation,
+    }: { conversation: ConversationWithoutContentType | ConversationResource }
+  ): Promise<number> {
+    return ConversationParticipantModel.count({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   static async isConversationParticipant(
     auth: Authenticator,
     {
