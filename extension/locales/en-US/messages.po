@@ -1,0 +1,251 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-12 11:58+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-US\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "New version ready"
+msgstr "New version ready"
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Install the latest version to keep using Dust."
+msgstr "Install the latest version to keep using Dust."
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Relaunch from the toolbar."
+msgstr "Relaunch from the toolbar."
+
+#: extension/platforms/chrome/ChromeExtensionWrapper.tsx
+#: extension/platforms/firefox/FirefoxExtensionWrapper.tsx
+msgid "Update now"
+msgstr "Update now"
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "Something went wrong"
+msgstr "Something went wrong"
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "An unexpected error occurred. Please try again."
+msgstr "An unexpected error occurred. Please try again."
+
+#: extension/ui/components/ErrorFallback.tsx
+msgid "Try again"
+msgstr "Try again"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Fill forms with the Dust extension"
+msgstr "Fill forms with the Dust extension"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "No more copy-pasting. Fill out forms directly from your agents."
+msgstr "No more copy-pasting. Fill out forms directly from your agents."
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Bring any tab into your conversation"
+msgstr "Bring any tab into your conversation"
+
+#: extension/ui/components/conversation/ConversationContainer.tsx
+msgid "Ask an agent to read, summarize, or act on any of your open tabs."
+msgstr "Ask an agent to read, summarize, or act on any of your open tabs."
+
+#: extension/ui/components/conversation/ConversationLayout.tsx
+msgid "Go back to Pod homepage"
+msgstr "Go back to Pod homepage"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Preferences"
+msgstr "Preferences"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgctxt "theme"
+msgid "Light"
+msgstr "Light"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgctxt "theme"
+msgid "Dark"
+msgstr "Dark"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgctxt "theme"
+msgid "System"
+msgstr "System"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+msgid "Account"
+msgstr "Account"
+
+#: extension/ui/components/navigation/UserDropdownMenu.tsx
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Save page to Pod"
+msgstr "Save page to Pod"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Search Pods"
+msgstr "Search Pods"
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Failed to load Pods."
+msgstr "Failed to load Pods."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Adding files to Pods is disabled by your workspace admin."
+msgstr "Adding files to Pods is disabled by your workspace admin."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "No Pods found."
+msgstr "No Pods found."
+
+#: extension/ui/components/quick_actions/SavePageToPodDialog.tsx
+msgid "Cancel"
+msgstr "Cancel"
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Cannot get page content"
+msgstr "Cannot get page content"
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "No content found."
+msgstr "No content found."
+
+#: extension/ui/hooks/useFileUploaderService.ts
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Something went wrong."
+msgstr "Something went wrong."
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgctxt "name of a web page without title"
+msgid "page"
+msgstr "page"
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Page saved"
+msgstr "Page saved"
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Saved \"{pageTitle}\" to the selected Pod."
+msgstr "Saved \"{pageTitle}\" to the selected Pod."
+
+#: extension/ui/hooks/useSavePageToPod.ts
+msgid "Cannot save page"
+msgstr "Cannot save page"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+msgstr "Access requires Single Sign-On (SSO) authentication. Use your SSO provider to sign in."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Session expired. Please sign in again."
+msgstr "Session expired. Please sign in again."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Get more done, faster, with the power of your agents at your fingertips."
+msgstr "Get more done, faster, with the power of your agents at your fingertips."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Please sign up on the web to start using the Dust extension."
+msgstr "Please sign up on the web to start using the Dust extension."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign up"
+msgstr "Sign up"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign in"
+msgstr "Sign in"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+msgstr "By signing in, you agree to Dust's <0>Terms of Use</0> and <1>Privacy Policy</1>."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "You are not a member of any workspace."
+msgstr "You are not a member of any workspace."
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Sign up on Dust"
+msgstr "Sign up on Dust"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Then"
+msgstr "Then"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Or"
+msgstr "Or"
+
+#: extension/ui/pages/LoginPage.tsx
+msgid "Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt."
+msgstr "Something unexpected occurred. Please try logging in again. If the problem persists, contact us at support@dust.tt."
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Error loading conversation"
+msgstr "Error loading conversation"
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Conversation"
+msgstr "Conversation"
+
+#: extension/ui/pages/MainPage.tsx
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Files"
+msgstr "Files"
+
+#: extension/ui/pages/MainPage.tsx
+msgid "Conversation menu"
+msgstr "Conversation menu"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Pod not found"
+msgstr "Pod not found"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "The Pod you're looking for doesn't exist or you don't have access to it."
+msgstr "The Pod you're looking for doesn't exist or you don't have access to it."
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Conversations"
+msgstr "Conversations"
+
+#: extension/ui/pages/PodMainPage.tsx
+msgid "Tasks"
+msgstr "Tasks"
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Almost there!"
+msgstr "Almost there!"
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Subscribe to start using Dust agents from anywhere in your browser."
+msgstr "Subscribe to start using Dust agents from anywhere in your browser."
+
+#: extension/ui/pages/SubscribePage.tsx
+msgid "Get started"
+msgstr "Get started"

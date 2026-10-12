@@ -9,9 +9,11 @@ import {
   Rocket02,
 } from "@dust-tt/sparkle";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { Link } from "react-router-dom";
 
 export const SubscribePage = () => {
+  const { t } = useLingui();
   const { workspace } = useAuth();
   const { cellInfo } = useCellContext();
   return (
@@ -38,10 +40,15 @@ export const SubscribePage = () => {
             </Link>
           </div>
           <div className="max-w-[400px] text-center">
-            <Page.H variant="h4">Almost there!</Page.H>
+            <Page.H variant="h4">
+              <Trans>Almost there!</Trans>
+            </Page.H>
           </div>
           <div className="text-center text-lg">
-            Subscribe to start using Dust agent from anywhere in your browser.
+            <Trans>
+              Subscribe to start using Dust agents from anywhere in your
+              browser.
+            </Trans>
           </div>
 
           {cellInfo && (
@@ -50,7 +57,7 @@ export const SubscribePage = () => {
                 <Button
                   icon={Rocket02}
                   variant="primary"
-                  label="Get started"
+                  label={t`Get started`}
                   onClick={() => {
                     window.open(
                       `${cellInfo.url}/w/${workspace.sId}/subscribe`,

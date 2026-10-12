@@ -58,6 +58,16 @@ export default defineConfig({
         exclude: ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx"],
       })
     ),
+    // The browser extension has a single catalog of its own: see `extension/CONTRACTS`.
+    {
+      path: "<rootDir>/extension/locales/{locale}/messages",
+      include: [
+        "<rootDir>/extension/platforms",
+        "<rootDir>/extension/shared",
+        "<rootDir>/extension/ui",
+      ],
+      exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.test.tsx"],
+    },
     // The Slack bot has a single catalog of its own: see `connectors/src/connectors/slack/CONTRACTS`.
     {
       path: "<rootDir>/connectors/locales/{locale}/messages",
