@@ -53,7 +53,7 @@ app.post(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "connector_oauth_connection_not_found",
           message: "Connection not found",
         },
       });

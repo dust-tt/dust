@@ -123,7 +123,7 @@ export async function handleSearch(
     return new Err({
       status: 400,
       error: {
-        type: "invalid_request_error",
+        type: "no_searchable_space",
         message: "No accessible spaces found.",
       },
     });

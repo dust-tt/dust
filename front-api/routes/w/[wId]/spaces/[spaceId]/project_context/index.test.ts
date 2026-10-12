@@ -66,7 +66,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/project_context/files/:fileId", () 
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_space_required");
   });
 
   it("does not delete a project file that belongs to another pod", async () => {

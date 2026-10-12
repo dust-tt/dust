@@ -37,7 +37,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message:
             "Only project spaces support project context knowledge removal.",
         },

@@ -104,7 +104,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/project_tasks/bulk-actions", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_task_not_found");
   });
 
   it("allows bulk status updates for todos assigned to other project members", async () => {

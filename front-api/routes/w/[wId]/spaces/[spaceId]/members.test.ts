@@ -169,7 +169,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/members", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "open_pods_disabled",
         message:
           "Open projects are disabled by your workspace admin. Keep this project private.",
       },

@@ -39,7 +39,7 @@ describe("POST /api/w/:wId/pods/:podId/tasks/seed", () => {
 
     const second = await seedInitialTasks(workspace, project.sId);
     expect(second.status).toBe(409);
-    expect((await second.json()).error.type).toBe("invalid_request_error");
+    expect((await second.json()).error.type).toBe("pod_tasks_already_seeded");
   });
 
   it("returns 404 for non-editor project members", async () => {
@@ -84,6 +84,6 @@ describe("POST /api/w/:wId/pods/:podId/tasks/seed", () => {
     const response = await seedInitialTasks(workspace, regularSpace.sId);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_space_required");
   });
 });

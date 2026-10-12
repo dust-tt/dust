@@ -35,7 +35,7 @@ function membersAdministrationError(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "space_kind_has_no_members",
         message:
           "Only projects, regular spaces and the global space can have members.",
       },
@@ -92,7 +92,7 @@ function membersMutationError(ctx: Context, code: MembersMutationErrorCode) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "workspace_user_not_found",
           message: "The user is not a member of the workspace.",
         },
       });
@@ -108,7 +108,7 @@ function membersMutationError(ctx: Context, code: MembersMutationErrorCode) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "user_already_space_member",
           message: "The user is already a member of the space.",
         },
       });
@@ -133,7 +133,7 @@ function membersMutationError(ctx: Context, code: MembersMutationErrorCode) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "space_group_kind_not_supported",
           message:
             "Only provisioned and manual groups can be given access to a space.",
         },
@@ -142,16 +142,17 @@ function membersMutationError(ctx: Context, code: MembersMutationErrorCode) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "system_group_members_not_editable",
           message:
             "Users cannot be added to or removed from system or global groups.",
         },
       });
+    // Only produced by `updatePermissions` when asked to restrict the global space.
     case "invalid_request_error":
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "global_space_cannot_be_restricted",
           message: "The requested space permissions are not supported.",
         },
       });
@@ -222,7 +223,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "open_pods_disabled",
           message:
             "Open projects are disabled by your workspace admin. Keep this project private.",
         },

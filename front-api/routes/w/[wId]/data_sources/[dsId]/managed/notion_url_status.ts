@@ -65,7 +65,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "notion_connector_required",
           message: "Data source is not a Notion connector",
         },
       });
@@ -86,7 +86,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "data_source_not_managed",
           message: "Data source does not have a connector",
         },
       });

@@ -150,7 +150,7 @@ describe("POST /api/w/:wId/google_drive/picker_token", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.type).toBe("mcp_server_not_found");
     expect(body).not.toHaveProperty("accessToken");
     expect(mocks.getAccessToken).not.toHaveBeenCalled();
   });

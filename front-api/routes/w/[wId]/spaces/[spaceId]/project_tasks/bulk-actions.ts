@@ -59,7 +59,11 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type:
+                result.error.code === "project_task_not_found"
+                  ? "project_task_not_found"
+                  : // Malformed task ids.
+                    "invalid_request_error",
               message: result.error.message,
             },
           });

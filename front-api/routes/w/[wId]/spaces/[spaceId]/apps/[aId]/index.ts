@@ -82,7 +82,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "app_name_invalid",
           message:
             "The app name is invalid, expects a string with a length of 1-64 characters, containing only alphanumeric characters, underscores, and dashes.",
         },
@@ -124,7 +124,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 409,
         api_error: {
-          type: "invalid_request_error",
+          type: "app_in_use",
           message: deleteRes.error.message,
         },
       });

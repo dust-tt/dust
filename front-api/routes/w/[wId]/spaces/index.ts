@@ -224,7 +224,7 @@ app.post(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "invalid_request_error",
+          type: "open_pods_disabled",
           message:
             "Open projects are disabled by your workspace admin. Create a private project instead.",
         },
@@ -259,11 +259,11 @@ app.post(
               message: spaceRes.error.message,
             },
           });
-        case "invalid_request_error":
+        case "invalid_group_kind":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "space_group_kind_not_supported",
               message: spaceRes.error.message,
             },
           });
