@@ -3,10 +3,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { getNotificationI18n } from "@app/lib/notifications/i18n";
 import { getNotificationLocale } from "@app/lib/notifications/locale";
 import type { TransactionalEmailCopy } from "@app/lib/notifications/transactional_emails";
-import {
-  contactSupportLine,
-  TRANSACTIONAL_EMAIL_PREFERENCES,
-} from "@app/lib/notifications/transactional_emails";
+import { TRANSACTIONAL_EMAIL_PREFERENCES } from "@app/lib/notifications/transactional_emails";
 import type {
   SubscriptionCanceledPayloadType,
   SubscriptionPaymentFailedPayloadType,
@@ -19,6 +16,7 @@ import {
   SubscriptionReactivatedPayloadSchema,
   WorkspaceDataDeletionPayloadSchema,
 } from "@app/lib/notifications/triggers/subscription-lifecycle";
+import { contactSupportLine } from "@app/lib/notifications/workflows/contact-support";
 import {
   SUBSCRIPTION_CANCELED_TRIGGER_ID,
   SUBSCRIPTION_PAYMENT_FAILED_TRIGGER_ID,

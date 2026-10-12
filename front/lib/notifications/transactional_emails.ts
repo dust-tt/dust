@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import { getNovuClient } from "@app/lib/notifications/novu-client";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -8,8 +7,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import type { I18n } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { createHash } from "crypto";
 import chunk from "lodash/chunk";
 
@@ -31,12 +28,6 @@ export type TransactionalEmailCopy = {
   content: string;
   action?: { label: string; url: string };
 };
-
-// Transactional emails come from a no-reply sender: point recipients to support instead.
-export function contactSupportLine(i18n: I18n): string {
-  const supportEmail = config.getSupportEmailAddress().email;
-  return i18n._(msg`If you have any questions, contact us at ${supportEmail}.`);
-}
 
 export type EmailRecipient = {
   subscriberId: string;
