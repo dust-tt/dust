@@ -1,5 +1,9 @@
-import { canRaiseReasoningEffortPerMessage } from "@app/lib/api/llm/per_message_reasoning_effort";
+import {
+  canRaiseReasoningEffortPerMessage,
+  filterRaisingReasoningEfforts,
+} from "@app/lib/api/llm/per_message_reasoning_effort";
 import type { StreamModelInfo } from "@app/types/assistant/agent_run";
+import type { ModelMessageTypeMultiActions } from "@app/types/assistant/generation";
 import { getTierForModelConfiguration } from "@app/types/assistant/models/model_tiers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type {
@@ -38,4 +42,32 @@ export function getNextRaisedReasoningEffort(
         keepsModelTier(modelConfig, { from: reasoningEffort, to })
     ) ?? null
   );
+}
+
+// Keeps the effort changes this run can apply: the ones that keep its model in the tier of its
+// top-level effort (raise-keeps-model-tier). Also returns the effort in effect once they apply,
+// following the filter the LLM layer applies before sending them (effort-messages-only-raise).
+export function filterEffortChangesForRun<
+  M extends ModelMessageTypeMultiActions,
+>(
+  { endpoint: { modelConfig }, reasoningEffort }: StreamModelInfo,
+  messages: M[]
+): { messages: M[]; effortInEffect: ReasoningEffort | null } {
+  const kept = messages.filter(
+    (m) =>
+      m.role !== "effort_change" ||
+      keepsModelTier(modelConfig, { from: reasoningEffort, to: m.effort })
+  );
+  const lastEffortChange = filterRaisingReasoningEfforts(modelConfig, kept, {
+    effort: reasoningEffort ?? null,
+    getEffort: (m) => (m.role === "effort_change" ? m.effort : null),
+  }).findLast((m) => m.role === "effort_change");
+
+  return {
+    messages: kept,
+    effortInEffect:
+      lastEffortChange?.role === "effort_change"
+        ? lastEffortChange.effort
+        : (reasoningEffort ?? null),
+  };
 }

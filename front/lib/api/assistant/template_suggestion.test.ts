@@ -212,9 +212,9 @@ describe("getSuggestedTemplatesForQuery", () => {
     const [, , input] = mockRunMultiActionsAgent.mock.calls[0];
 
     // Query should be trimmed.
-    expect(input.conversation.messages[0].content).toEqual([
-      { type: "text", text: "sales emails" },
-    ]);
+    expect(input.conversation.messages[0]).toMatchObject({
+      content: [{ type: "text", text: "sales emails" }],
+    });
 
     // Prompt should contain formatted templates.
     expect(input.prompt).toContain(template1.sId);

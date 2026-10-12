@@ -12,6 +12,7 @@ import type {
   ConversationWindowResult,
 } from "@app/lib/api/assistant/conversation_rendering/window_types";
 import logger from "@app/logger/logger";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -150,6 +151,13 @@ const persistedMessageBaseSchema = z.discriminatedUnion("role", [
     .object({
       role: z.literal("compaction"),
       content: z.string(),
+      tokenCount: tokenCountSchema,
+    })
+    .strict(),
+  z
+    .object({
+      role: z.literal("effort_change"),
+      effort: z.enum(ORDERED_REASONING_EFFORTS),
       tokenCount: tokenCountSchema,
     })
     .strict(),
