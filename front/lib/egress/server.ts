@@ -50,11 +50,6 @@ export function getStaticIPProxyAgent(): ProxyAgent | undefined {
 
 // Fetch helper that automatically routes outbound requests through the untrusted egress proxy
 // when configured. If the proxy is not configured, it falls back to a direct fetch.
-/**
- * @cc [owner:philipperolet,label:security] proxy-when-configured
- * When the untrusted egress proxy host and port are both configured, the request MUST go through
- * that proxy, even if `init` sets its own `dispatcher`.
- */
 export function untrustedFetch(
   input: RequestInfo,
   init?: RequestInit
