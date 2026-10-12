@@ -1,6 +1,6 @@
 ---
 name: dust-i18n
-description: Make front and sparkle UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code or in `sparkle/src` components, when wrapping existing strings for translation, or when reviewing UI text changes.
+description: Make front, sparkle and browser extension UI strings translatable with Lingui. Use when adding or changing user-visible text in `front/components`, `front/hooks` or `front/lib` React code, in `sparkle/src` components or in `extension/` React code, when wrapping existing strings for translation, or when reviewing UI text changes.
 ---
 
 # Translatable UI strings (Lingui)
@@ -78,7 +78,9 @@ the factory directly with `(descriptor) => i18n._(descriptor)`.
 Lingui components need an `I18nProvider`. Every front-spa entry mounts one at its root (e.g.
 `front-spa/src/app/App.tsx`); the `poke`, `share`, `oauth` and `email` entries render in `en-US`.
 The browser extension (`extension/`) mounts one in each platform app and compiles the macros in its
-webpack build (`extension/config/webpack_lingui.ts`). It always renders `en-US`.
+webpack build (`extension/config/webpack_lingui.ts`). It renders in the user's locale once signed in
+(`UserLocaleSync` in `ProtectedRoute`), and its own strings live in a single catalog,
+`extension/locales/{locale}/messages.po`, merged into the same `.catalog` imports as front's.
 
 In front tests, `render` and `renderHook` from `@testing-library/react` already wrap the tree in an
 `I18nProvider` (see `front/vite.i18nSetup.ts`), around any `wrapper` the test passes, and the locale is

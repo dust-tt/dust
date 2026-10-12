@@ -14,6 +14,19 @@ export function isFlexUnavailableError(error: unknown): error is APIError {
   return error instanceof APIError && error.code === "flex_unavailable";
 }
 
+function getEffectiveHttpStatus(error: APIError): number | undefined {
+  switch (error.code) {
+    case "flex_unavailable":
+      return 429;
+    // OpenAI reports overload as an in-band SSE `error` event on a 200 stream, so the SDK
+    // throws a statusless `APIError` carrying this code instead of an HTTP 503.
+    case "server_is_overloaded":
+      return 503;
+    default:
+      return error.status;
+  }
+}
+
 // Shared by every adapter built on the `openai` SDK (Fireworks via chat
 // completions, OpenAI/xAI/Fireworks via responses). The SDK error classes and
 // the way a typed HTTP error exposes its status are identical; only the provider
@@ -22,6 +35,11 @@ export function isFlexUnavailableError(error: unknown): error is APIError {
  * @cc [owner:philipperolet,label:error-handling] flex-unavailable-is-capacity-refusal
  * `flex_unavailable` API errors MUST map to a Dust-attributed `rate_limit_error`, including
  * statusless SSE errors, so expected flex capacity refusals do not count as provider failures.
+ */
+/**
+ * @cc [owner:aubin,label:error-handling] server-overloaded-is-provider-overload
+ * `server_is_overloaded` API errors MUST map to a provider-attributed, retryable
+ * `overloaded_error`, including statusless SSE errors, so the UI blames the provider.
  */
 export function openaiStreamErrorToErrorEvent(
   metadata: EndpointMetadata,
@@ -62,7 +80,8 @@ export function openaiStreamErrorToErrorEvent(
     // transient provider outage, so we attribute it to the provider but leave it
     // as a non-retryable `unknown_error` rather than a retryable `server_error`.
     // We do not inspect free-form message text to upgrade it.
-    if (error.status === undefined && !isFlexUnavailableError(error)) {
+    const status = getEffectiveHttpStatus(error);
+    if (status === undefined) {
       return buildErrorEvent({
         errorSource: "provider",
         metadata,
@@ -73,7 +92,7 @@ export function openaiStreamErrorToErrorEvent(
     }
     return buildHttpStatusErrorEvent({
       metadata,
-      status: isFlexUnavailableError(error) ? 429 : error.status,
+      status,
       provider: providerName,
       detail: error.message,
       originalError: error,

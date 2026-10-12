@@ -14,10 +14,12 @@ import { Attachment01, Button, DotsHorizontal } from "@dust-tt/sparkle";
 import { usePanelStateListener } from "@extension/shared/hooks/usePanelStateListener";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { UserDropdownMenu } from "@extension/ui/components/navigation/UserDropdownMenu";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 import { ConversationContainer } from "../components/conversation/ConversationContainer";
 
 export const MainPage = () => {
+  const { t } = useLingui();
   const { user, workspace, subscription } = useAuth();
   useSetupNotifications();
   const isMac = /macintosh|mac os x/i.test(navigator.userAgent);
@@ -54,10 +56,16 @@ export const MainPage = () => {
       return "...";
     }
     if (conversationError) {
-      return "Error loading conversation";
+      return t`Error loading conversation`;
     }
-    return conversation?.title || "Conversation";
-  }, [conversation, isConversationLoading, conversationId, conversationError]);
+    return conversation?.title || t`Conversation`;
+  }, [
+    conversation,
+    isConversationLoading,
+    conversationId,
+    conversationError,
+    t,
+  ]);
 
   return (
     <ConversationLayout
@@ -72,7 +80,7 @@ export const MainPage = () => {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              label="Files"
+              label={t`Files`}
               icon={Attachment01}
               variant="ghost"
               onClick={() => openPanel({ type: "files" })}
@@ -86,7 +94,7 @@ export const MainPage = () => {
                   size="sm"
                   variant="ghost"
                   icon={DotsHorizontal}
-                  aria-label="Conversation menu"
+                  aria-label={t`Conversation menu`}
                 />
               }
               isConversationDisplayed={true}

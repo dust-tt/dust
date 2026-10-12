@@ -25,6 +25,7 @@ export function MobileNavigation() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button
+            aria-label="Open menu"
             size="md"
             icon={Menu01}
             className="text-gray-900"
@@ -42,6 +43,7 @@ export function MobileNavigation() {
             <SheetTitle className="flex w-full items-center justify-between">
               <DustLogo className="h-6 w-24" />
               <Button
+                tooltip="Close menu"
                 size="sm"
                 variant="outline"
                 icon={XClose}

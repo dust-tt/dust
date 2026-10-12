@@ -21,9 +21,11 @@ import {
 import { usePanelStateListener } from "@extension/shared/hooks/usePanelStateListener";
 import { ConversationLayout } from "@extension/ui/components/conversation/ConversationLayout";
 import { useClientSideMCPServerIds } from "@extension/ui/components/conversation/ExtensionClientSideMCPServerProvider";
+import { Trans, useLingui } from "@lingui/react/macro";
 import { useParams } from "react-router-dom";
 
 export const PodMainPage = () => {
+  const { t } = useLingui();
   const { workspace } = useAuth();
   const { podId } = useParams<{ podId: string }>();
   const clientSideMCPServerIds = useClientSideMCPServerIds();
@@ -74,16 +76,24 @@ export const PodMainPage = () => {
       <ConversationLayout title="">
         <div className="flex h-full w-full items-center justify-center">
           <div className="text-center">
-            <h2 className="text-lg font-semibold">Pod not found</h2>
+            <h2 className="text-lg font-semibold">
+              <Trans>Pod not found</Trans>
+            </h2>
             <p className="text-muted-foreground">
-              The Pod you&apos;re looking for doesn&apos;t exist or you
-              don&apos;t have access to it.
+              <Trans>
+                The Pod you're looking for doesn't exist or you don't have
+                access to it.
+              </Trans>
             </p>
           </div>
         </div>
       </ConversationLayout>
     );
   }
+
+  const conversationsLabel = t`Conversations`;
+  const tasksLabel = t`Tasks`;
+  const filesLabel = t`Files`;
 
   return (
     <Tabs
@@ -98,23 +108,27 @@ export const PodMainPage = () => {
               <TabsTrigger
                 value="conversations"
                 label={
-                  currentTab === "conversations" ? "Conversations" : undefined
+                  currentTab === "conversations"
+                    ? conversationsLabel
+                    : undefined
                 }
                 tooltip={
-                  currentTab !== "conversations" ? "Conversations" : undefined
+                  currentTab !== "conversations"
+                    ? conversationsLabel
+                    : undefined
                 }
                 icon={MessageChatSquare}
               />
               <TabsTrigger
                 value="tasks"
-                label={currentTab === "tasks" ? "Tasks" : undefined}
-                tooltip={currentTab !== "tasks" ? "Tasks" : undefined}
+                label={currentTab === "tasks" ? tasksLabel : undefined}
+                tooltip={currentTab !== "tasks" ? tasksLabel : undefined}
                 icon={CheckCircle}
               />
               <TabsTrigger
                 value="files"
-                label={currentTab === "files" ? "Files" : undefined}
-                tooltip={currentTab !== "files" ? "Files" : undefined}
+                label={currentTab === "files" ? filesLabel : undefined}
+                tooltip={currentTab !== "files" ? filesLabel : undefined}
                 icon={Folder}
               />
             </TabsList>
