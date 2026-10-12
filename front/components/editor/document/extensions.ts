@@ -109,6 +109,15 @@ const DocumentOrderedList = OrderedList.extend({
     withOrderedListFirstLineCheck(tiptapOrderedListTokenizer),
 }).configure({ HTMLAttributes: { class: "my-3 list-decimal pl-6" } });
 
+// TipTap builds each editor's parser from the extension's options, which every editor built from
+// the same extensions shares: setting the instance right before it does gives each its own.
+const DocumentMarkdown = Markdown.extend({
+  onBeforeCreate(event) {
+    this.options.marked = createDocumentMarked();
+    this.parent?.(event);
+  },
+});
+
 /** The schema; a live document protects comment marks without a thread and drops StarterKit's undo. */
 const buildSchemaExtensions = ({
   live,
@@ -130,7 +139,7 @@ const buildSchemaExtensions = ({
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),
   DocumentOrderedList,
-  Markdown.configure({ marked: createDocumentMarked() }),
+  DocumentMarkdown,
 ];
 
 export const documentExtensions = buildSchemaExtensions({ live: false });
