@@ -52,8 +52,9 @@ type RateLimiterArgs = {
  */
 /**
  * @cc [owner:philipperolet,label:performance;security] blocked-returns-zero
- * When the request would exceed `maxPerTimeframe`, MUST return exactly `0` (never a negative
- * number); otherwise returns a positive number. Callers MUST treat `<= 0` as blocked.
+ * Never returns a negative number: a request that is not allowed (over `maxPerTimeframe`, or a
+ * store error with `onStoreError: "deny"`) returns exactly `0`. Callers checking whether a request
+ * is blocked MUST test `<= 0` or `=== 0`, never `< 0`.
  */
 export async function rateLimiter({
   key,
