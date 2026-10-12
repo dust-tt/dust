@@ -1,0 +1,4 @@
+@cc [owner:philipperolet,label:performance;security] no-runtime-image-processing
+The marketing server MUST NOT decode or resize images at runtime: images rendered with `next/image`
+MUST NOT be served through Next's built-in optimizer (`/_next/image`), and `sharp` MUST stay out of
+the standalone runtime output. Images are resized by Contentful's image CDN or at build time.
