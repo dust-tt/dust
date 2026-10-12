@@ -7,7 +7,7 @@ use dfs_api::storage::{
         tenant::TenantResource,
     },
 };
-use dfs_protocol::{ObjectId, rpc::ObjectKind};
+use dfs_protocol::{ObjectId, ObjectRef, rpc::ObjectKind};
 
 use super::grants::{allow, deny};
 
@@ -36,19 +36,29 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
         &tx,
         &session,
         &[
-            root.object_id,
-            missing,
-            hidden.object_id,
-            symlink.object_id,
-            root.object_id,
+            root.object_id.into(),
+            ObjectRef::Root,
+            missing.into(),
+            hidden.object_id.into(),
+            ObjectRef::Shared,
+            symlink.object_id.into(),
+            root.object_id.into(),
         ],
     )
     .await?;
-    assert_eq!(results.len(), 5);
-    assert!(matches!(results[1], Err(object::Error::NotFound)));
-    assert!(matches!(results[2], Err(object::Error::NotAuthorized)));
-    assert!(matches!(results[3], Err(object::Error::UnsupportedKind)));
-    for index in [0, 4] {
+    assert_eq!(results.len(), 7);
+    assert!(matches!(
+        results[1],
+        Err(object::Error::UnsupportedReference)
+    ));
+    assert!(matches!(results[2], Err(object::Error::NotFound)));
+    assert!(matches!(results[3], Err(object::Error::NotAuthorized)));
+    assert!(matches!(
+        results[4],
+        Err(object::Error::UnsupportedReference)
+    ));
+    assert!(matches!(results[5], Err(object::Error::UnsupportedKind)));
+    for index in [0, 6] {
         let Ok(attributes) = &results[index] else {
             anyhow::bail!("readable root must retain its successful result");
         };
@@ -58,10 +68,15 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
         assert_eq!(attributes.view.auth_version, version);
     }
 
+    assert!(matches!(
+        ObjectResource::stat(&tx, &session, &[ObjectRef::Invalid]).await,
+        Err(storage::Error::Resource(object::Error::InvalidId))
+    ));
+
     // An expired read version must fail outside the per-object results.
     let stale_tx = fdb::database()?.create_trx()?;
     stale_tx.set_read_version(1);
-    let result = ObjectResource::stat(&stale_tx, &session, &[root.object_id]).await;
+    let result = ObjectResource::stat(&stale_tx, &session, &[root.object_id.into()]).await;
     let Err(storage::Error::Transaction(error)) = result else {
         anyhow::bail!("FDB failures must escape the batch unchanged");
     };

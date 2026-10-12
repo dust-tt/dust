@@ -35,7 +35,9 @@ impl From<object::Error> for ErrorCode {
             object::Error::AlreadyExists => ErrorCode::AlreadyExists,
             // Ordinary reads conceal inaccessible objects just like missing objects.
             object::Error::NotFound | object::Error::NotAuthorized => ErrorCode::NotFound,
-            object::Error::UnsupportedKind => ErrorCode::Unsupported,
+            object::Error::UnsupportedKind | object::Error::UnsupportedReference => {
+                ErrorCode::Unsupported
+            }
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
             | object::Error::InvalidStoredGrant
