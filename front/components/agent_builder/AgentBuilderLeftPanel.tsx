@@ -5,7 +5,7 @@ import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/setting
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderSuggestedPromptsBlock } from "@app/components/agent_builder/suggested_prompts/AgentBuilderSuggestedPromptsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import type { ButtonProps } from "@dust-tt/sparkle";
 import {
   BarFooter,
@@ -46,7 +46,7 @@ export function AgentBuilderLeftPanel({
 }: AgentBuilderLeftPanelProps) {
   const { t } = useLingui();
   const { owner } = useAgentBuilderContext();
-  const { hasFeature } = useFeatureFlags();
+  const { isDiscoveryHomepage } = useDiscoveryHomepageOptIn();
 
   const handleCancel = async () => {
     onCancel();
@@ -73,9 +73,7 @@ export function AgentBuilderLeftPanel({
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          {hasFeature("discovery_homepage") && (
-            <AgentBuilderSuggestedPromptsBlock />
-          )}
+          {isDiscoveryHomepage && <AgentBuilderSuggestedPromptsBlock />}
           <AgentBuilderSpacesBlock
             initialRequestedSpaceIds={initialRequestedSpaceIds}
           />

@@ -105,8 +105,11 @@ vi.mock("@app/hooks/useAgentSuggestedPrompts", () => ({
   }),
 }));
 
-vi.mock("@app/lib/auth/AuthContext", () => ({
-  useFeatureFlags: () => ({ hasFeature: () => true }),
+vi.mock("@app/hooks/useDiscoveryHomepageOptIn", () => ({
+  useDiscoveryHomepageOptIn: () => ({
+    isDiscoveryHomepage: true,
+    isDiscoveryHomepageLoading: false,
+  }),
 }));
 
 vi.mock("@app/lib/swr/permissions", () => ({
