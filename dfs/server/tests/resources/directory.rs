@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
 use anyhow::{Context, Result};
+use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use dfs_api::storage::{
     self, fdb,
     resources::{
-        directory::{self, ChildCreateParams, DirectoryResource},
+        directory::{self, ChildCreateParams, ChildPage, DirectoryResource},
         keys::tenant_subspace,
         object::{self, ObjectResource},
         tenant::TenantResource,
@@ -208,5 +209,106 @@ pub(crate) async fn child_lookup_resolves_names_within_each_directory() -> Resul
         root.lookup_child(&tx, &"é".repeat(128)).await,
         Err(storage::Error::Resource(directory::Error::NameTooLong))
     ));
+    clear_tenant(&tenant).await
+}
+
+fn page_names(page: &ChildPage) -> Vec<&str> {
+    page.entries
+        .iter()
+        .map(|entry| entry.name.as_str())
+        .collect()
+}
+
+pub(crate) async fn child_listing_pages_through_entries_in_name_order() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    let docs_params = child_params("docs", ObjectKind::Directory);
+    let empty_params = child_params("empty", ObjectKind::Directory);
+    let (docs_id, empty_id) = (docs_params.object_id, empty_params.object_id);
+
+    let tx = fdb::database()?.create_trx()?;
+    let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+    for name in ["b.txt", "é.txt", "a.txt", "B.txt", "c.txt"] {
+        root.create_child(&tx, child_params(name, ObjectKind::File))
+            .await?;
+    }
+    root.create_child(&tx, docs_params).await?;
+    let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    docs.create_child(&tx, empty_params).await?;
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+    let first = root.list_children(&tx, None, 4).await?;
+    assert_eq!(page_names(&first), ["B.txt", "a.txt", "b.txt", "c.txt"]);
+    let second = root
+        .list_children(&tx, first.next_after.as_deref(), 4)
+        .await?;
+    assert_eq!(page_names(&second), ["docs", "é.txt"]);
+    assert_eq!(second.next_after, None);
+    let docs_entry = second.entries.first().context("missing docs entry")?;
+    assert_eq!(docs_entry.object_id, docs_id);
+
+    let exact = root.list_children(&tx, None, 6).await?;
+    assert_eq!(exact.entries.len(), 6);
+    assert_eq!(exact.next_after, None);
+
+    let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    assert_eq!(
+        page_names(&docs.list_children(&tx, None, 4_096).await?),
+        ["empty"]
+    );
+    let empty = fetch_directory(&tx, &tenant, &empty_id).await?;
+    let empty_page = empty.list_children(&tx, None, 1).await?;
+    assert!(empty_page.entries.is_empty());
+    assert_eq!(empty_page.next_after, None);
+    clear_tenant(&tenant).await
+}
+
+pub(crate) async fn child_listing_rejects_invalid_limits_and_cursors() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    let docs_params = child_params("docs", ObjectKind::Directory);
+    let docs_id = docs_params.object_id;
+
+    let tx = fdb::database()?.create_trx()?;
+    let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+    root.create_child(&tx, docs_params).await?;
+    let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    for name in ["a.txt", "b.txt"] {
+        docs.create_child(&tx, child_params(name, ObjectKind::File))
+            .await?;
+    }
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+    let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    for limit in [0, 4_097] {
+        assert!(matches!(
+            root.list_children(&tx, None, limit).await,
+            Err(storage::Error::Resource(directory::Error::InvalidPageLimit))
+        ));
+    }
+    let docs_cursor = docs
+        .list_children(&tx, None, 1)
+        .await?
+        .next_after
+        .context("missing docs cursor")?;
+    let mut malformed_key = tenant_subspace(&tenant.tenant_id)
+        .subspace(&("child", tenant.root_id.as_bytes().as_slice()))
+        .bytes()
+        .to_vec();
+    malformed_key.extend([0xff, 0xff]);
+    let malformed_cursor = URL_SAFE_NO_PAD.encode(malformed_key);
+    for cursor in [
+        docs_cursor.as_str(),
+        malformed_cursor.as_str(),
+        "not base64!",
+        "AAAA",
+    ] {
+        assert!(matches!(
+            root.list_children(&tx, Some(cursor), 1).await,
+            Err(storage::Error::Resource(directory::Error::InvalidCursor))
+        ));
+    }
     clear_tenant(&tenant).await
 }

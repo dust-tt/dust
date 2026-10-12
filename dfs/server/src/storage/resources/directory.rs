@@ -3,7 +3,7 @@ use std::{collections::HashMap, fmt};
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{
     FdbBindingError, Transaction,
-    tuple::{pack, unpack},
+    tuple::{Subspace, pack, unpack},
 };
 
 use crate::{
@@ -13,12 +13,14 @@ use crate::{
         resources::{
             keys::tenant_subspace,
             object::{self, ObjectCreateParams, ObjectResource},
+            page,
         },
     },
 };
 
 const FAMILY: &str = "child";
 const NAME_MAX_BYTES: usize = 255;
+const PAGE_MAX_ENTRIES: usize = 4_096;
 
 #[derive(Debug)]
 pub enum Error {
@@ -28,6 +30,8 @@ pub enum Error {
     UnsupportedKind,
     AlreadyExists,
     TimestampGeneration,
+    InvalidPageLimit,
+    InvalidCursor,
     Object(object::Error),
 }
 
@@ -40,6 +44,8 @@ impl fmt::Display for Error {
             Self::UnsupportedKind => f.write_str("unsupported child kind"),
             Self::AlreadyExists => f.write_str("child name already exists"),
             Self::TimestampGeneration => f.write_str("child timestamp generation failed"),
+            Self::InvalidPageLimit => f.write_str("invalid child page limit"),
+            Self::InvalidCursor => f.write_str("invalid child cursor"),
             Self::Object(error) => error.fmt(f),
         }
     }
@@ -78,6 +84,16 @@ pub struct ChildCreateParams {
     pub kind: ObjectKind,
     pub mime_type: Option<String>,
     pub xattrs: HashMap<String, Vec<u8>>,
+}
+
+pub struct ChildEntry {
+    pub name: String,
+    pub object_id: ObjectId,
+}
+
+pub struct ChildPage {
+    pub entries: Vec<ChildEntry>,
+    pub next_after: Option<String>,
 }
 
 pub struct DirectoryResource {
@@ -143,18 +159,49 @@ impl DirectoryResource {
         else {
             return Ok(None);
         };
-        let child_id: Vec<u8> = unpack(&entry).map_err(FdbBindingError::PackError)?;
-        let child_id = ObjectId::try_from(child_id.as_slice())
-            .map_err(storage::Error::<Error>::InvalidObjectId)?;
-        Ok(Some(child_id))
+        Ok(Some(decode_child_id(&entry)?))
+    }
+
+    pub async fn list_children(
+        &self,
+        tx: &Transaction,
+        after: Option<&str>,
+        limit: u32,
+    ) -> Result<ChildPage, storage::Error<Error>> {
+        let limit = usize::try_from(limit).map_err(|_| Error::InvalidPageLimit)?;
+        if limit == 0 || limit > PAGE_MAX_ENTRIES {
+            return Err(Error::InvalidPageLimit.into());
+        }
+        let children = self.children_subspace();
+        let after = after
+            .map(|after| {
+                page::decode_cursor(&children, after, |key| {
+                    children.unpack::<String>(key).is_ok()
+                })
+                .ok_or(Error::InvalidCursor)
+            })
+            .transpose()?;
+        let page = page::read_page(tx, &children, after, limit).await?;
+        let mut entries = Vec::with_capacity(page.entries.len());
+        for (key, value) in &page.entries {
+            entries.push(ChildEntry {
+                name: children.unpack(key).map_err(FdbBindingError::PackError)?,
+                object_id: decode_child_id(value)?,
+            });
+        }
+        Ok(ChildPage {
+            entries,
+            next_after: page.next_after,
+        })
+    }
+
+    fn children_subspace(&self) -> Subspace {
+        tenant_subspace(&self.object.tenant_id)
+            .subspace(&(FAMILY, self.object.object_id.as_bytes().as_slice()))
     }
 
     fn child_key(&self, name: &str) -> Vec<u8> {
-        tenant_subspace(&self.object.tenant_id).pack(&(
-            FAMILY,
-            self.object.object_id.as_bytes().as_slice(),
-            name,
-        ))
+        self.children_subspace().pack(&name)
     }
 }
 
@@ -167,6 +214,11 @@ impl TryFrom<ObjectResource> for DirectoryResource {
         }
         Ok(Self { object })
     }
+}
+
+fn decode_child_id(value: &[u8]) -> Result<ObjectId, storage::Error<Error>> {
+    let child_id: Vec<u8> = unpack(value).map_err(FdbBindingError::PackError)?;
+    ObjectId::try_from(child_id.as_slice()).map_err(storage::Error::InvalidObjectId)
 }
 
 fn validate_name(name: &str) -> Result<(), Error> {
