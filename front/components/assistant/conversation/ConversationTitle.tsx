@@ -1,3 +1,4 @@
+import { ConversationMemoryNotice } from "@app/components/assistant/conversation/ConversationMemoryNotice";
 import {
   ConversationMenu,
   useConversationMenu,
@@ -179,6 +180,12 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           currentTitle={currentTitle}
         />
         <div className="flex items-center gap-2">
+          {activeConversationId && (
+            <ConversationMemoryNotice
+              owner={owner}
+              conversationId={activeConversationId}
+            />
+          )}
           <div className="contents [&>button>span]:sr-only @sm:[&>button>span]:not-sr-only">
             <FilterChip
               label={isMobile ? undefined : t`Credit usage`}

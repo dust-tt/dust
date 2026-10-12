@@ -2,8 +2,8 @@ import { useConversationParticipants } from "@app/hooks/conversations";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useUserMemory } from "@app/lib/swr/user";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Brain, ContentMessageInline } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import { Brain, Icon, Tooltip } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 
 interface ConversationMemoryNoticeProps {
   owner: LightWorkspaceType;
@@ -16,6 +16,7 @@ export function ConversationMemoryNotice({
   owner,
   conversationId,
 }: ConversationMemoryNoticeProps) {
+  const { t } = useLingui();
   const { hasFeature } = useFeatureFlags();
   const hasUserMemory = hasFeature("user_memory");
   const { isMemoryEnabled } = useUserMemory({
@@ -38,15 +39,14 @@ export function ConversationMemoryNotice({
   }
 
   return (
-    <ContentMessageInline
-      icon={Brain}
-      variant="outline"
-      className="mb-3 flex max-h-dvh w-full bg-background"
-    >
-      <Trans>
-        Agents don't use your memory in this conversation because other people
-        are in it.
-      </Trans>
-    </ContentMessageInline>
+    <Tooltip
+      label={t`Agents don't use your memory in this conversation because other people are in it.`}
+      trigger={
+        <span className="flex items-center">
+          <Icon visual={Brain} size="sm" className="text-muted-foreground" />
+          <span className="sr-only">{t`Memory off`}</span>
+        </span>
+      }
+    />
   );
 }
