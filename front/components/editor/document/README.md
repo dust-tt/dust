@@ -121,8 +121,11 @@ Markdown surface: a file path in a conversation or a pod, such as
 `![Chart](fil_<id>)`, to the file API, which checks the reader's access; it resolves nothing else,
 so an external URL never loads: like any image it does not resolve, it shows as its alt text, or
 its destination without one, in the editor and in the read-only previews. Users insert one with
-the Image entry of the `/` menu; agents and raw edits write them. In an editable document, hovering an image shows a menu at its top right
-to resize it to a preset width or back to its original size, and to remove it.
+the Image entry of the `/` menu; agents and raw edits write them.
+
+In an editable document, hovering an image shows a menu at its top right with a width slider,
+which previews while dragged and saves on release, a reset to the original size once the image
+has a width, and a remove action.
 
 ## Inserting embeds
 
@@ -158,7 +161,7 @@ the embed shows its path.
 | `DocumentImage.ts` | The `image` node, its Markdown and its display through the host's resolver. |
 | `DocumentTable.ts` | The `table` node, its rows and cells, and its GFM Markdown. |
 | `DocumentFrame.tsx`, `DocumentEmbeds.ts` | The `frameEmbed` node, its Markdown, and the host's renderers its view reads. |
-| `DocumentImageMenu.tsx` | The resize and remove menu over a hovered image. |
+| `DocumentImageMenu.tsx` | The width slider, reset and remove menu over a hovered image. |
 | `blocks.ts`, `DocumentBlockMenu.tsx` | The `/` block menu, and its file search for embeds. |
 | `DocumentSelectionToolbar.tsx` | The Comment action and formatting controls on a text selection. |
 | `DocumentSaveStatus.tsx` | The status row, the live status and the agent at work. |

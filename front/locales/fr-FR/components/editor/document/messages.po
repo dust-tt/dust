@@ -168,32 +168,21 @@ msgid "All comments"
 msgstr "Tous les commentaires"
 
 #: front/components/editor/document/DocumentImageMenu.tsx
-msgctxt "image size"
-msgid "Small"
-msgstr "Petite"
-
-#: front/components/editor/document/DocumentImageMenu.tsx
-msgctxt "image size"
-msgid "Medium"
-msgstr "Moyenne"
-
-#: front/components/editor/document/DocumentImageMenu.tsx
-msgctxt "image size"
-msgid "Large"
-msgstr "Grande"
-
-#: front/components/editor/document/DocumentImageMenu.tsx
-msgid "Original size"
-msgstr "Taille d'origine"
-
-#: front/components/editor/document/DocumentImageMenu.tsx
 msgctxt "toolbar over a hovered image"
 msgid "Image"
 msgstr "Image"
 
 #: front/components/editor/document/DocumentImageMenu.tsx
-msgid "Resize image"
-msgstr "Redimensionner l'image"
+msgid "Image width"
+msgstr "Largeur de l'image"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "{value} px"
+msgstr "{value} px"
+
+#: front/components/editor/document/DocumentImageMenu.tsx
+msgid "Original size"
+msgstr "Taille d'origine"
 
 #: front/components/editor/document/DocumentImageMenu.tsx
 msgid "Remove image"

@@ -1198,13 +1198,32 @@ describe("Document images", () => {
 });
 
 describe("Document image menu", () => {
+  // The width slider measures itself.
+  beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      }
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   const SOURCE_WITH_IMAGES =
     "![Chart](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n";
 
-  const renderImages = async ({ readOnly = false } = {}) => {
+  const renderImages = async ({
+    readOnly = false,
+    initialContent = SOURCE_WITH_IMAGES,
+  } = {}) => {
     const { container } = render(
       <Document
-        initialContent={SOURCE_WITH_IMAGES}
+        initialContent={initialContent}
         onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
         readOnly={readOnly}
         autosaveDebounceMs={60_000}
@@ -1263,33 +1282,28 @@ describe("Document image menu", () => {
     expect(dom.editor.getMarkdown()).toContain("![Logo](pod-abc/logo.png)");
   });
 
-  it("resizes the hovered image to a preset width, and back to its original size", async () => {
-    const dom = await renderImages();
+  it("resizes the hovered image with the slider, and back to its original size", async () => {
+    const dom = await renderImages({
+      initialContent:
+        "![Chart|400](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)\n",
+    });
     hoverImage(dom, "Chart");
 
-    fireEvent.keyDown(screen.getByRole("button", { name: "Resize image" }), {
-      key: "Enter",
+    fireEvent.keyDown(screen.getByRole("slider", { name: "Image width" }), {
+      key: "Home",
     });
-    fireEvent.click(
-      await screen.findByRole("menuitemradio", { name: "Small" })
-    );
 
     expect(dom.editor.getMarkdown()).toContain(
-      "![Chart|240](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)"
+      "![Chart|64](pod-abc/chart.png) and ![Logo](pod-abc/logo.png)"
     );
     expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
-      "240px"
+      "64px"
     );
 
-    hoverImage(dom, "Chart");
-    fireEvent.keyDown(screen.getByRole("button", { name: "Resize image" }), {
-      key: "Enter",
-    });
-    fireEvent.click(
-      await screen.findByRole("menuitemradio", { name: "Original size" })
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Original size" }));
 
     expect(dom.editor.getMarkdown()).toContain("![Chart](pod-abc/chart.png)");
+    expect(screen.queryByRole("button", { name: "Original size" })).toBeNull();
     expect(within(dom).getByRole("img", { name: "Chart" }).style.width).toBe(
       ""
     );

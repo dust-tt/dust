@@ -6,31 +6,17 @@ import {
 import { useEditorLayoutVersion } from "@app/components/editor/document/useEditorLayoutVersion";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
   HoveringBar,
-  Maximize01,
+  ReverseLeft,
+  Slider,
   Trash01,
 } from "@dust-tt/sparkle";
-import type { MessageDescriptor } from "@lingui/core";
-import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { Editor } from "@tiptap/core";
 import type React from "react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
-const ORIGINAL_SIZE = "original";
-
-const IMAGE_SIZES: { value: string; label: MessageDescriptor }[] = [
-  { value: "240", label: msg({ message: "Small", context: "image size" }) },
-  { value: "400", label: msg({ message: "Medium", context: "image size" }) },
-  { value: "560", label: msg({ message: "Large", context: "image size" }) },
-  { value: ORIGINAL_SIZE, label: msg`Original size` },
-];
-
+const MIN_IMAGE_WIDTH_PX = 64;
 const MENU_INSET_PX = 8;
 
 const isDocumentImage = (
@@ -58,10 +44,11 @@ interface DocumentImageMenuProps {
 
 /**
  * @cc [owner:tdraier,label:product] document-image-menu
- * In an editable document, hovering an image MUST show, at its top right, a menu to resize it to
- * a preset width or back to its original size, and to remove it. Each action MUST change only the
- * hovered image, as one undoable edit. The menu MUST stay while the pointer moves onto it or its
- * size list is open, and hide otherwise.
+ * In an editable document, hovering an image MUST show, at its top right, a menu with a width
+ * slider, an action back to the original size once the image has a width, and an action to
+ * remove it. Dragging the slider MUST preview the width and save it once, on release, so each
+ * action is one undoable edit that changes only the hovered image. The menu MUST stay while the
+ * pointer is on it or the slider is dragged, and hide otherwise.
  */
 export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
   const { t } = useLingui();
@@ -69,15 +56,16 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
   const menuRef = useRef<HTMLDivElement>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [hovering, setHovering] = useState(false);
-  const [sizesOpen, setSizesOpen] = useState(false);
+  const [draftWidth, setDraftWidth] = useState<number | null>(null);
   const [offset, setOffset] = useState<{ top: number; right: number } | null>(
     null
   );
   const layoutVersion = useEditorLayoutVersion(editor, containerRef);
+  const resizing = draftWidth !== null;
 
-  // While the size list is open, the menu stays on its image.
+  // While the slider is dragged, the menu stays on its image.
   useEffect(() => {
-    if (sizesOpen) {
+    if (resizing) {
       return;
     }
     const dom = editor.view.dom;
@@ -104,9 +92,14 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
       dom.removeEventListener("mouseover", onOver);
       dom.removeEventListener("mouseout", onOut);
     };
-  }, [editor, sizesOpen]);
+  }, [editor, resizing]);
 
+  // Frozen while the slider is dragged, so the slider does not move under the pointer as the
+  // image resizes.
   useLayoutEffect(() => {
+    if (resizing) {
+      return;
+    }
     const container = containerRef.current;
     if (!image?.isConnected || !container) {
       setOffset(null);
@@ -118,33 +111,52 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
       top: imageRect.top - containerRect.top + MENU_INSET_PX,
       right: containerRect.right - imageRect.right + MENU_INSET_PX,
     });
-  }, [image, layoutVersion]);
+  }, [image, layoutVersion, resizing]);
 
   const pos = image && imagePosition(editor, image);
-  const visible = pos !== null && offset !== null && (hovering || sizesOpen);
+  const visible = pos !== null && offset !== null && (hovering || resizing);
   const width =
     pos !== null
       ? parseImageWidth(editor.state.doc.nodeAt(pos)?.attrs.width)
       : null;
+  const maxWidth = Math.max(
+    editor.view.dom.clientWidth,
+    width ?? 0,
+    MIN_IMAGE_WIDTH_PX
+  );
+  const sliderWidth =
+    draftWidth ??
+    width ??
+    Math.min(
+      maxWidth,
+      Math.max(
+        MIN_IMAGE_WIDTH_PX,
+        Math.round(image?.getBoundingClientRect().width ?? 0)
+      )
+    );
 
-  const resize = (value: string) => {
+  const setWidth = (nextWidth: number | null) => {
+    setDraftWidth(null);
     if (pos === null) {
       return;
     }
     editor
       .chain()
       .command(({ tr }) => {
-        tr.setNodeAttribute(
-          pos,
-          "width",
-          value === ORIGINAL_SIZE ? null : Number(value)
-        );
+        tr.setNodeAttribute(pos, "width", nextWidth);
         return true;
       })
       .run();
     // The image is drawn again with its new width.
     const resized = editor.view.nodeDOM(pos);
     setImage(isDocumentImage(resized) ? resized : null);
+  };
+
+  const previewWidth = (nextWidth: number) => {
+    setDraftWidth(nextWidth);
+    if (image) {
+      image.style.width = `${nextWidth}px`;
+    }
   };
 
   const remove = () => {
@@ -178,41 +190,29 @@ export const DocumentImageMenu = ({ editor }: DocumentImageMenuProps) => {
           onMouseLeave={(event) => setHovering(event.relatedTarget === image)}
         >
           <HoveringBar size="xs">
-            <DropdownMenu
-              modal={false}
-              open={sizesOpen}
-              onOpenChange={(open) => {
-                setSizesOpen(open);
-                // The list covered the image: the next pointer move shows the menu again.
-                setHovering(open);
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="xs"
-                  variant="ghost-secondary"
-                  icon={Maximize01}
-                  tooltip={t`Resize image`}
-                  aria-label={t`Resize image`}
-                  isSelect
-                  onMouseDown={keepSelection}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" mountPortal={false}>
-                <DropdownMenuRadioGroup
-                  value={width === null ? ORIGINAL_SIZE : String(width)}
-                  onValueChange={resize}
-                >
-                  {IMAGE_SIZES.map(({ value, label }) => (
-                    <DropdownMenuRadioItem
-                      key={value}
-                      value={value}
-                      label={t(label)}
-                    />
-                  ))}
-                </DropdownMenuRadioGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="w-28 px-2">
+              <Slider
+                min={MIN_IMAGE_WIDTH_PX}
+                max={maxWidth}
+                value={[sliderWidth]}
+                onValueChange={([nextWidth]) => previewWidth(nextWidth)}
+                onValueCommit={([nextWidth]) => setWidth(nextWidth)}
+                ariaLabel={t`Image width`}
+                showValueTooltip
+                formatValue={(value) => t`${value} px`}
+              />
+            </div>
+            {width !== null && (
+              <Button
+                size="xs"
+                variant="ghost-secondary"
+                icon={ReverseLeft}
+                tooltip={t`Original size`}
+                aria-label={t`Original size`}
+                onMouseDown={keepSelection}
+                onClick={() => setWidth(null)}
+              />
+            )}
             <HoveringBar.Separator />
             <Button
               size="xs"
