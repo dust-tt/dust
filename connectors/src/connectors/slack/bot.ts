@@ -30,12 +30,12 @@ import {
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
 import { getRepliesFromThread } from "@connectors/connectors/slack/lib/thread";
-import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import {
   isBotAllowed,
   makeSlackBotNotIdentifiedMessage,
   notifyIfSlackUserIsNotAllowed,
 } from "@connectors/connectors/slack/lib/workspace_limits";
+import { getSlackI18nForWorkspace } from "@connectors/connectors/slack/lib/workspace_locale";
 import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
@@ -252,11 +252,7 @@ export async function botAnswerMessage(
 
     const slackClient = await getSlackClient(connector.id);
     try {
-      const i18n = await getSlackI18nForUser(
-        connector,
-        slackClient,
-        params.slackUserId
-      );
+      const i18n = await getSlackI18nForWorkspace(connector);
       reportSlackUsage({
         connectorId: connector.id,
         method: "chat.postMessage",
@@ -354,11 +350,7 @@ export async function botReplaceMention(
       useCase: "bot",
     });
     try {
-      const i18n = await getSlackI18nForUser(
-        connector,
-        slackClient,
-        params.slackUserId
-      );
+      const i18n = await getSlackI18nForWorkspace(connector);
       if (e instanceof ProviderRateLimitError) {
         await slackClient.chat.postMessage({
           channel: slackChannel,
@@ -529,11 +521,7 @@ export async function botValidateToolExecution(
     return connectorRes;
   }
   const { connector, slackConfig } = connectorRes.value;
-  const i18n = await getSlackI18nForUser(
-    connector,
-    await getSlackClient(connector.id),
-    slackUserId
-  );
+  const i18n = await getSlackI18nForWorkspace(connector);
 
   try {
     const slackChatBotMessage = await SlackChatBotMessageModel.findOne({
@@ -774,7 +762,7 @@ export async function botAnswerUserQuestion({
       : undefined;
 
   const slackClient = await getSlackClient(connector.id);
-  const i18n = await getSlackI18nForUser(connector, slackClient, slackUserId);
+  const i18n = await getSlackI18nForWorkspace(connector);
 
   const requestedGroupsRes = await getInteractingSlackUserGroups(
     i18n,
@@ -872,11 +860,7 @@ async function processErrorResult(
     );
 
     const slackClient = await getSlackClient(connector.id);
-    const i18n = await getSlackI18nForUser(
-      connector,
-      slackClient,
-      params.slackUserId
-    );
+    const i18n = await getSlackI18nForWorkspace(connector);
     const errorMessage =
       res.error instanceof SlackExternalUserError
         ? res.error.message
@@ -1032,11 +1016,7 @@ async function answerMessage(
         },
         "Could not identify the bot posting a Slack message"
       );
-      const workspaceI18n = await getSlackI18nForUser(
-        connector,
-        slackClient,
-        null
-      );
+      const workspaceI18n = await getSlackI18nForWorkspace(connector);
       return new Err(
         new SlackExternalUserError(
           makeSlackBotNotIdentifiedMessage(workspaceI18n)
@@ -1049,7 +1029,7 @@ async function answerMessage(
     throw new Error("Failed to get slack user info");
   }
 
-  const i18n = await getSlackI18nForUser(connector, slackClient, slackUserId);
+  const i18n = await getSlackI18nForWorkspace(connector);
 
   let requestedGroups: string[] | undefined = undefined;
   let skipToolsValidation = false;

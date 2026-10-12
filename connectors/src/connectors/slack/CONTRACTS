@@ -16,9 +16,7 @@ placeholders. The `message` of other `Error`s is diagnostic: it MAY stay English
 users through the placeholder of a translated sentence. Text sent to the Dust API or to models
 (message content, content fragments) MUST NOT be translated.
 
-@cc [owner:Nils-Fedrigo,label:product] slack-text-in-recipient-locale
-Slack text MUST be rendered with the `I18n` that `lib/user_locale.ts` returns for the Slack user it
-is written to, `getSlackI18nForUser`. Text with no single human recipient (channel announcements,
-replies to Slack workflows) MUST use the workspace locale, from `getSlackI18nForUser` with a `null`
-`slackUserId`. Production code MUST NOT pick a locale
-with `getSlackI18n` directly.
+@cc [owner:Nils-Fedrigo,label:product] slack-text-in-workspace-locale
+Slack text MUST be rendered with the `I18n` that `getSlackI18nForWorkspace` (`lib/workspace_locale.ts`)
+returns: the locale set in the Dust workspace settings, whoever the Slack user it is written to.
+Production code MUST NOT pick a locale with `getSlackI18n` directly.

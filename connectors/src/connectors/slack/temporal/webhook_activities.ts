@@ -7,11 +7,11 @@ import {
   reportSlackUsage,
   withSlackErrorHandling,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { getSlackI18nForUser } from "@connectors/connectors/slack/lib/user_locale";
 import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
+import { getSlackI18nForWorkspace } from "@connectors/connectors/slack/lib/workspace_locale";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
@@ -391,8 +391,7 @@ async function announceBotJoinedPrivateChannel(
   );
 
   if (channelInfo?.channel?.is_private) {
-    // Posted to the whole channel: written in the workspace locale.
-    const i18n = await getSlackI18nForUser(connector, slackClient, null);
+    const i18n = await getSlackI18nForWorkspace(connector);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",
