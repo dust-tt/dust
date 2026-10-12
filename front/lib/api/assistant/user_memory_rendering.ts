@@ -11,7 +11,7 @@ import type { UserMessageTypeModel } from "@app/types/assistant/generation";
  * @cc [owner:aubin-tchoi,label:product;security] redacted-in-multi-user-conversations
  * When the conversation has more than one participant, the returned message MUST NOT contain the
  * memory: it is replaced by a placeholder at the same position, saying the memory was redacted
- * for the other users and that earlier answers may have relied on it.
+ * for the other users and that earlier messages and actions may have relied on it.
  */
 export async function renderUserMemoryUserMessage(
   auth: Authenticator,
@@ -49,10 +49,10 @@ export async function renderUserMemoryUserMessage(
           type: "text",
           text:
             `<dust_system>\n` +
-            `The user's memory was loaded here but has been redacted: other users take part in ` +
-            `this conversation and it must not be disclosed to them. Answers given earlier in ` +
-            `this conversation may have taken it into account. Do not disclose details that ` +
-            `came from it.\n` +
+            `Until other users joined the conversation, this message contained a user's ` +
+            `personal memory. It has been redacted so that it is not disclosed to them. Your ` +
+            `earlier messages and actions in the conversation may have relied on the memory, ` +
+            `but it is no longer available: do not reveal details that came from it.\n` +
             `</dust_system>`,
         },
       ],
