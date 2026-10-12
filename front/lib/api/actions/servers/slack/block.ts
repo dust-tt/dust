@@ -84,15 +84,6 @@ function hasMarkdownTable(text: string): boolean {
   return found;
 }
 
-// Messages carrying blocks lose the Edit option in the Slack client, so blocks
-// are reserved for tables, the one thing legacy mrkdwn cannot render.
-/**
- * @cc [owner:avervaet,label:product] blocks-only-for-tables
- * When `message` contains no markdown table, the payload MUST have no blocks and its `text` MUST
- * be the slackified message, untruncated, followed by the footer text when `footer` is set. When
- * it contains a table, the payload MUST carry `message` as a `markdown` block, followed by the
- * footer as a separate context block when `footer` is set.
- */
 export function makeMessagePayload(
   message: string,
   footer: { agentName: string; agentUrl: string } | undefined
@@ -107,8 +98,7 @@ export function makeMessagePayload(
   }
 
   return {
-    // Plain fallback for places that cannot render blocks, such as push
-    // notifications.
+    // Plain fallback for places that cannot render blocks
     text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     blocks: [
       ...makeMarkdownBlocks(message, false),
