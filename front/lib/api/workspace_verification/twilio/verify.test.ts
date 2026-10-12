@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { sendOtp } from "./verify";
+import { checkOtp, sendOtp } from "./verify";
 
 const mockVerificationsCreate = vi.fn();
+const mockVerificationChecksCreate = vi.fn();
 
 vi.mock("./client", () => ({
   getTwilioClient: () => ({
@@ -10,6 +11,9 @@ vi.mock("./client", () => ({
         services: () => ({
           verifications: {
             create: mockVerificationsCreate,
+          },
+          verificationChecks: {
+            create: mockVerificationChecksCreate,
           },
         }),
       },
@@ -183,5 +187,20 @@ describe("sendOtp", () => {
       expect(result.isErr()).toBe(true);
       expect(mockVerificationsCreate).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe("checkOtp", () => {
+  it("should return max_attempts error when Twilio rejects further checks (error code 60202)", async () => {
+    const twilioError = new Error("Max check attempts reached");
+    Object.assign(twilioError, { code: 60202 });
+    mockVerificationChecksCreate.mockRejectedValue(twilioError);
+
+    const result = await checkOtp(VALID_PHONE_NUMBER, "123456");
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("max_attempts");
+    }
   });
 });
