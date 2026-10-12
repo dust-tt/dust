@@ -32,7 +32,7 @@ const ROOT_ID = "0190c3a0b1c27d4e8f0a1b2c3d4e5f60";
 const MASTER_KEY = "s".repeat(64);
 const TENANT_KEY = "t".repeat(64);
 
-function serverClient(answer: FakeDfsAnswer) {
+function masterClient(answer: FakeDfsAnswer) {
   const transport = new FakeDfsTransport({ CreateTenant: answer });
   return { transport, client: new DfsClient(transport, MASTER_KEY) };
 }
@@ -50,10 +50,10 @@ describe("createDfsTenant", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const { transport, client } = serverClient(tenantAnswer(workspace.sId));
+    const { transport, client } = masterClient(tenantAnswer(workspace.sId));
 
     const res = await createDfsTenant(authenticator, {
-      serverClient: client,
+      masterClient: client,
       rootGrants: [{ type: "deny", mode: 0o2 }],
     });
 
@@ -82,9 +82,9 @@ describe("createDfsTenant", () => {
       tenantKey: TENANT_KEY,
       rootId: ROOT_ID,
     });
-    const { transport, client } = serverClient(tenantAnswer(workspace.sId));
+    const { transport, client } = masterClient(tenantAnswer(workspace.sId));
 
-    const res = await createDfsTenant(authenticator, { serverClient: client });
+    const res = await createDfsTenant(authenticator, { masterClient: client });
 
     expect(res.isErr() && res.error).toMatchObject({ code: "already_exists" });
     expect(transport.calls).toHaveLength(0);
@@ -92,9 +92,9 @@ describe("createDfsTenant", () => {
 
   it("reports a dfs tenant whose key was never stored", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const { client } = serverClient(new Err(new DfsError("already_exists")));
+    const { client } = masterClient(new Err(new DfsError("already_exists")));
 
-    const res = await createDfsTenant(authenticator, { serverClient: client });
+    const res = await createDfsTenant(authenticator, { masterClient: client });
 
     expect(res.isErr() && res.error).toMatchObject({ code: "already_exists" });
     expect(await DfsTenantResource.fetchByWorkspace(authenticator)).toBeNull();
@@ -102,9 +102,9 @@ describe("createDfsTenant", () => {
 
   it("propagates dfs failures without storing anything", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    const { client } = serverClient(new Err(new DfsError("unavailable")));
+    const { client } = masterClient(new Err(new DfsError("unavailable")));
 
-    const res = await createDfsTenant(authenticator, { serverClient: client });
+    const res = await createDfsTenant(authenticator, { masterClient: client });
 
     expect(res.isErr() && res.error).toMatchObject({ code: "unavailable" });
     expect(await DfsTenantResource.fetchByWorkspace(authenticator)).toBeNull();

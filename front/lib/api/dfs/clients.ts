@@ -38,7 +38,7 @@ function getDfsTransport(): DfsGrpcTransport {
 }
 
 /** A client authenticated with the dfs master key, which can only create tenants. */
-export function getDfsServerClient(): DfsClient {
+export function getDfsMasterClient(): DfsClient {
   return new DfsClient(getDfsTransport(), config.getDfsMasterKey());
 }
 
