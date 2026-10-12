@@ -43,15 +43,27 @@ export interface MarkdownFileEditor {
   /** Unsaved edits in whichever editor is open. */
   isDirty: boolean;
   isSaving: boolean;
+  /** The rich editor is set aside for the plain editor on the file's Markdown source. */
+  isSourceMode: boolean;
   revert: () => void;
   /** Set when the file opens in the rich editor: every Markdown file behind the co_edition flag. */
   richEditor: MarkdownRichEditor | null;
   save: () => Promise<void>;
   setDraft: (content: string) => void;
   setViewMode: (mode: MarkdownFilePreviewViewMode) => void;
+  /** Hidden switch between the rich editor and the source; a no-op while an edit is unsaved. */
+  toggleSourceMode: () => void;
   viewMode: MarkdownFilePreviewViewMode;
 }
 
+/**
+ * @cc [owner:tdraier,label:product] source-mode-toggle
+ * `toggleSourceMode` MUST switch only when the rich editor is wanted for the file (co_edition flag,
+ * editable Markdown) and neither editor holds an unsaved or saving edit. In source mode the rich
+ * editor MUST NOT be open and the plain editor MUST show the source in edit mode; leaving it MUST
+ * reopen the rich editor on the file as fetched then, not on what it held before. Source mode MUST
+ * end when another file opens or the preview closes.
+ */
 export function useMarkdownFileEditor({
   category,
   entryPath,
@@ -71,6 +83,7 @@ export function useMarkdownFileEditor({
   const [savedContent, setSavedContent] = useState("");
   const [sourcePath, setSourcePath] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSourceMode, setIsSourceMode] = useState(false);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
   const initKeyRef = useRef<string | null>(null);
 
@@ -86,10 +99,12 @@ export function useMarkdownFileEditor({
       : null;
   const canOpenEditor =
     category === "markdown" && !!editablePath && !isTooLarge && canWrite;
+  const wantsRichEditor = hasFeature("co_edition") && canOpenEditor;
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
     setViewMode("preview");
+    setIsSourceMode(false);
     setSourcePath(null);
     setDraft("");
     setSavedContent("");
@@ -204,10 +219,11 @@ export function useMarkdownFileEditor({
 
   const rich = useRichMarkdownEditor({
     // Not `canEdit`: an open rich editor must not unmount when the file grows past the cut.
-    enabled: hasFeature("co_edition") && canOpenEditor,
+    enabled: wantsRichEditor && !isSourceMode,
     liveUrl: collabUrl,
     entryPath,
-    isActive,
+    // Each switch resets the rich editor, so it reopens on the file rather than its old content.
+    isActive: isActive && !isSourceMode,
     rawContent,
     isTruncated,
     writeFile,
@@ -218,18 +234,35 @@ export function useMarkdownFileEditor({
     },
   });
 
+  const isDirty = rich.richEditor ? rich.isDirty : isPlainDirty;
+  const isAnySaving = rich.richEditor ? rich.isSaving : isSaving;
+
+  const toggleSourceMode = () => {
+    if (!wantsRichEditor || isDirty || isAnySaving) {
+      return;
+    }
+    if (!isSourceMode && fileUrl) {
+      // A live session checkpoints the file on its own, so the fetched source may be behind.
+      void mutate(fileUrl);
+    }
+    setViewMode(isSourceMode ? "preview" : "edit");
+    setIsSourceMode(!isSourceMode);
+  };
+
   return {
     canEdit,
     content:
       canEdit && sourcePath === entryPath ? draft : processedContent?.text,
     holdsNavigation: rich.holdsNavigation,
-    isDirty: rich.richEditor ? rich.isDirty : isPlainDirty,
-    isSaving: rich.richEditor ? rich.isSaving : isSaving,
+    isDirty,
+    isSaving: isAnySaving,
+    isSourceMode,
     revert: () => setDraft(savedContent),
     richEditor: rich.richEditor,
     save,
     setDraft,
     setViewMode,
+    toggleSourceMode,
     viewMode: canEdit ? viewMode : "preview",
   };
 }

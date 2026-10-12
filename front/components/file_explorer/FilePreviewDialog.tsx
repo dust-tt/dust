@@ -158,11 +158,20 @@ export function FilePreviewDialog({
             <DialogTitle className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 overflow-hidden">
                 {FileIcon && (
-                  <Icon
-                    visual={FileIcon}
-                    size="sm"
-                    className="shrink-0 text-foreground"
-                  />
+                  <span
+                    className="flex shrink-0"
+                    onClick={(event) => {
+                      if (event.altKey) {
+                        markdown.toggleSourceMode();
+                      }
+                    }}
+                  >
+                    <Icon
+                      visual={FileIcon}
+                      size="sm"
+                      className="text-foreground"
+                    />
+                  </span>
                 )}
                 <span className="min-w-16 truncate leading-5 text-foreground">
                   {entry?.fileName ?? t`Preview data`}

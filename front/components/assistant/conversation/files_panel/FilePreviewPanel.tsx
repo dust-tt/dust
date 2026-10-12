@@ -52,8 +52,8 @@ interface FilePreviewPanelProps {
 
 /**
  * @cc [owner:tdraier,label:product] file-preview-panel-full-screen
- * The full screen toggle MUST show only for a file open in the rich document editor, behind the
- * co_edition flag; other previews MUST keep the panel without it.
+ * The full screen toggle MUST show only for a file open in the rich document editor, or in its
+ * source mode, behind the co_edition flag; other previews MUST keep the panel without it.
  */
 export function FilePreviewPanel({
   conversation,
@@ -235,24 +235,35 @@ export function FilePreviewPanel({
               target="_blank"
               rel="noopener noreferrer"
             />
-            {!isMobile && clientType !== "extension" && markdown.richEditor && (
-              <Button
-                variant="ghost"
-                size="sm"
-                icon={isFullScreen ? Minimize01 : Maximize01}
-                tooltip={
-                  isFullScreen
-                    ? t`Exit full screen mode`
-                    : t`Go to full screen mode`
-                }
-                onClick={isFullScreen ? exitFullScreen : enterFullScreen}
-              />
-            )}
+            {!isMobile &&
+              clientType !== "extension" &&
+              (markdown.richEditor || markdown.isSourceMode) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  icon={isFullScreen ? Minimize01 : Maximize01}
+                  tooltip={
+                    isFullScreen
+                      ? t`Exit full screen mode`
+                      : t`Go to full screen mode`
+                  }
+                  onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+                />
+              )}
           </>
         }
       >
         <div className="flex min-w-0 items-center gap-1.5">
-          <Icon visual={FileIcon} size="sm" className="shrink-0" />
+          <span
+            className="flex shrink-0"
+            onClick={(event) => {
+              if (event.altKey) {
+                markdown.toggleSourceMode();
+              }
+            }}
+          >
+            <Icon visual={FileIcon} size="sm" />
+          </span>
           <span className="min-w-16 truncate text-sm font-medium">
             {fileName}
           </span>
