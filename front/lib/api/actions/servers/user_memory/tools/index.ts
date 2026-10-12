@@ -47,11 +47,11 @@ const handlers: ToolHandlers<typeof USER_MEMORY_TOOLS_METADATA> = {
     // The memory is redacted when other users take part in the conversation, and the edit output
     // would disclose it to them.
     if (isAgentLoopRunContext(runContext)) {
-      const participantCount = await ConversationResource.countParticipants(
+      const participants = await ConversationResource.listParticipantDetails(
         auth,
-        { conversation: runContext.conversation }
+        runContext.conversation
       );
-      if (participantCount > 1) {
+      if (participants.length > 1) {
         return new Err(
           new MCPError(
             "The user's personal memory is not available in conversations with several users, " +

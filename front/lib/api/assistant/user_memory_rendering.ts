@@ -36,10 +36,11 @@ export async function renderUserMemoryUserMessage(
     return null;
   }
 
-  const participantCount = await ConversationResource.countParticipants(auth, {
-    conversation,
-  });
-  if (participantCount > 1) {
+  const participants = await ConversationResource.listParticipantDetails(
+    auth,
+    conversation
+  );
+  if (participants.length > 1) {
     return {
       role: "user",
       name: "user",
