@@ -84,24 +84,24 @@ function hasMarkdownTable(text: string): boolean {
 /**
  * @cc [owner:avervaet,label:product] untruncated-mrkdwn-text
  * The result MUST be the slackified `message`, untruncated, followed by the footer text on a new
- * line when `footer` is set.
+ * line when `footerData` is set.
  */
 export function makeMrkdwnText(
   message: string,
-  footer: { agentName: string; agentUrl: string } | undefined
+  footerData: { agentName: string; agentUrl: string } | undefined
 ): string {
   const text = slackifyMarkdown(message);
-  return footer
-    ? `${text}\n${makeSentByFooterText(footer.agentName, footer.agentUrl)}`
+  return footerData
+    ? `${text}\n${makeSentByFooterText(footerData.agentName, footerData.agentUrl)}`
     : text;
 }
 
 export function makeMessagePayload(
   message: string,
-  footer: { agentName: string; agentUrl: string } | undefined
+  footerData: { agentName: string; agentUrl: string } | undefined
 ): { text: string; blocks?: KnownBlock[] } {
   if (!hasMarkdownTable(message)) {
-    return { text: makeMrkdwnText(message, footer) };
+    return { text: makeMrkdwnText(message, footerData) };
   }
 
   return {
@@ -109,8 +109,8 @@ export function makeMessagePayload(
     text: truncate(message, MAX_SLACK_MESSAGE_LENGTH),
     blocks: [
       ...makeMarkdownBlocks(message, false),
-      ...(footer
-        ? [makeSentByFooterBlock(footer.agentName, footer.agentUrl)]
+      ...(footerData
+        ? [makeSentByFooterBlock(footerData.agentName, footerData.agentUrl)]
         : []),
     ],
   };
