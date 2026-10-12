@@ -101,6 +101,42 @@ export async function ensureConversationMemoryFile(
   return new Ok(memoryFilePath);
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product;performance] read-from-conversation-memory-file
+ * Returns the content of the conversation's memory file, read from GCS at the path returned by
+ * `ensureConversationMemoryFile`, never from the live user memory, whichever participant runs the
+ * loop. Returns null when there is no file, i.e. the user had no memory when it was copied.
+ */
+export async function readConversationMemoryFile(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<Result<string | null, DustFileSystemError>> {
+  const memoryFilePathResult = await ensureConversationMemoryFile(
+    auth,
+    conversation
+  );
+  if (memoryFilePathResult.isErr()) {
+    return memoryFilePathResult;
+  }
+
+  const fsResult = await DustFileSystem.forConversationMetadata(
+    auth,
+    conversation
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  const readResult = await fsResult.value.readBuffer(
+    memoryFilePathResult.value
+  );
+  if (readResult.isErr()) {
+    return readResult;
+  }
+
+  return new Ok(readResult.value?.toString("utf-8") ?? null);
+}
+
 export async function setUserMemory(
   auth: Authenticator,
   content: string
