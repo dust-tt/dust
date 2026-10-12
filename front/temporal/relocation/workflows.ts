@@ -57,18 +57,23 @@ export async function workspaceRelocationWorkflow({
     },
   ];
 
-  await concurrentExecutor(
-    workflowDetails,
-    async (w) => {
-      await executeChild(w.workflow, {
+  // Wait for both children to settle before failing: closing this workflow terminates any child
+  // still running, which would skip its cleanup.
+  const results = await Promise.allSettled(
+    workflowDetails.map((w) =>
+      executeChild(w.workflow, {
         workflowId: `${w.name}-${workspaceId}`,
         searchAttributes: parentSearchAttributes,
         args: [{ sourceCell, destCell, workspaceId }],
         memo,
-      });
-    },
-    { concurrency: 2 }
+      })
+    )
   );
+  for (const result of results) {
+    if (result.status === "rejected") {
+      throw result.reason;
+    }
+  }
 
   // 3) Relocate the core data source documents to the destination cell.
   await executeChild(workspaceRelocateCoreWorkflow, {

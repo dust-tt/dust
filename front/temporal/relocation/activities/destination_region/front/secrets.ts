@@ -81,28 +81,12 @@ export async function reencryptSecretsInDestinationRegion({
     tableSecrets.values.push(value);
   }
 
-  // Check every row first so a missing one fails before anything is written.
-  for (const [tableName, { ids }] of secretsByTable) {
-    const [{ count }] = await frontSequelize.query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM "${tableName}"
-       WHERE id = ANY($ids::bigint[]) AND "workspaceId" = $workspaceModelId`,
-      {
-        bind: { ids, workspaceModelId: workspace.id },
-        type: QueryTypes.SELECT,
-      }
-    );
-    if (Number(count) !== ids.length) {
-      throw new Error(
-        `Expected ${ids.length} ${tableName} rows to re-encrypt, found ${count}.`
-      );
-    }
-  }
-
+  // A missing row throws inside the transaction, so no row is updated.
   await withTransaction(async (transaction) => {
     for (const [tableName, { ids, values }] of secretsByTable) {
       const { column } = RELOCATED_SECRET_COLUMNS[tableName];
 
-      await frontSequelize.query(
+      const updatedCount = await frontSequelize.query(
         `UPDATE "${tableName}" AS t
          SET "${column}" = s.value
          FROM UNNEST($ids::bigint[], $values::text[]) AS s(id, value)
@@ -113,6 +97,11 @@ export async function reencryptSecretsInDestinationRegion({
           type: QueryTypes.BULKUPDATE,
         }
       );
+      if (updatedCount !== ids.length) {
+        throw new Error(
+          `Expected ${ids.length} ${tableName} rows to re-encrypt, updated ${updatedCount}.`
+        );
+      }
     }
   });
 
