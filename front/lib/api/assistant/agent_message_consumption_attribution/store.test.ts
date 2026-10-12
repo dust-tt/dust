@@ -1,14 +1,18 @@
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
 import { Authenticator } from "@app/lib/auth";
+import { buildAgentMessageBillingPlan } from "@app/lib/credits/agent_message_billing";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
+import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { RunResource } from "@app/lib/resources/run_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
@@ -29,6 +33,7 @@ import type {
   ModelConfigurationType,
   ModelIdType,
 } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -43,7 +48,6 @@ vi.mock("@app/lib/tokenization", () => ({
 const INPUT_TOKENS_COUNT = 100;
 const OUTPUT_TOKENS_COUNT = 20;
 const REASONING_TOKENS_COUNT = 5;
-const BILLED_CREDIT_AMOUNT_MICRO = 10_000_000;
 const OUTPUT_TOKENS_COUNT_ABOVE_ONE_DEFAULT_TIER_CREDIT = 6_000;
 
 // Every tokenized footprint counts as this many tokens, so tool-call output and tool input
@@ -57,7 +61,7 @@ async function setupSettledMessageWithUsage({
   retiredModel,
   outputTokens = OUTPUT_TOKENS_COUNT,
   serviceTier,
-  billedCredits = BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
+  billedCredits,
 }: {
   runCount?: number;
   restrictedConversation?: boolean;
@@ -112,12 +116,19 @@ async function setupSettledMessageWithUsage({
     agentConfig: agentConfiguration,
     runIds: runs.map(({ dustRunId }) => dustRunId),
   });
+  // Bill the runs as production does, unless a test overrides it.
+  const llmBilledCredits = buildAgentMessageBillingPlan({
+    actions: [],
+    contextOrigin: null,
+    runUsages: await RunResource.listRunUsagesForRuns(auth, { runs }),
+  }).totals.llmBilledCredits;
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
-    costCredits: billedCredits,
+    costCredits: billedCredits ?? llmBilledCredits,
   });
 
   return {
+    billedCreditAmountMicro: (billedCredits ?? llmBilledCredits) * 1_000_000,
     auth,
     agentConfiguration,
     globalSpace,
@@ -131,6 +142,36 @@ async function setupSettledMessageWithUsage({
   };
 }
 
+// Bills the message from its runs and actions as finalize does, and returns the bill.
+async function billMessageFromBillingPlan(
+  auth: Authenticator,
+  {
+    agentMessageModelId,
+    runs,
+  }: { agentMessageModelId: ModelId; runs: RunResource[] }
+): Promise<number> {
+  const [runUsages, actions] = await Promise.all([
+    RunResource.listRunUsagesForRuns(auth, { runs }),
+    AgentMCPActionResource.listByAgentMessageIds(auth, [agentMessageModelId]),
+  ]);
+  const { billedCredits } = buildAgentMessageBillingPlan({
+    actions: actions.map((action) => ({
+      actionId: action.sId,
+      internalMCPServerName: action.metadata.internalMCPServerName,
+      mcpServerId: action.metadata.mcpServerId ?? null,
+      status: action.status,
+      toolName: getToolNameFromFunctionCallName(action.functionCallName),
+    })),
+    contextOrigin: null,
+    runUsages,
+  }).totals;
+  await ConversationResource.updateAgentMessageCostCredits(auth, {
+    agentMessageModelId,
+    costCredits: billedCredits,
+  });
+  return billedCredits * 1_000_000;
+}
+
 describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -141,8 +182,13 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   });
 
   it("writes one input, output and reasoning row per run usage", async () => {
-    const { auth, conversationId, agentMessageId, agentMessageModelId } =
-      await setupSettledMessageWithUsage();
+    const {
+      billedCreditAmountMicro,
+      auth,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
 
     const consumptionUpdate =
       await computeAndStoreAgentMessageConsumptionAttribution(auth, {
@@ -151,7 +197,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       });
 
     expect(consumptionUpdate).toEqual({
-      costCredits: BILLED_CREDIT_AMOUNT_MICRO / 1_000_000,
+      costCredits: billedCreditAmountMicro / 1_000_000,
     });
 
     const items =
@@ -194,55 +240,40 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
         0
       )
-    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+    ).toBe(billedCreditAmountMicro);
   });
 
-  it("reconciles a flex message whose default-tier output would exceed the bill", async () => {
-    const billedCredits = 1;
-    const setupAtServiceTier = (serviceTier: ServiceTier) =>
-      setupSettledMessageWithUsage({
+  it.each(["default", "flex"] as const)(
+    "reconciles a %s-tier message priced at its own tier",
+    async (serviceTier: ServiceTier) => {
+      const message = await setupSettledMessageWithUsage({
         outputTokens: OUTPUT_TOKENS_COUNT_ABOVE_ONE_DEFAULT_TIER_CREDIT,
         serviceTier,
-        billedCredits,
       });
+      expect(
+        await computeAndStoreAgentMessageConsumptionAttribution(message.auth, {
+          agentMessageId: message.agentMessageId,
+          conversationId: message.conversationId,
+        })
+      ).toEqual({ costCredits: message.billedCreditAmountMicro / 1_000_000 });
 
-    const defaultMessage = await setupAtServiceTier("default");
-    expect(
-      await computeAndStoreAgentMessageConsumptionAttribution(
-        defaultMessage.auth,
-        {
-          agentMessageId: defaultMessage.agentMessageId,
-          conversationId: defaultMessage.conversationId,
-        }
-      )
-    ).toBeUndefined();
-
-    const flexMessage = await setupAtServiceTier("flex");
-    expect(
-      await computeAndStoreAgentMessageConsumptionAttribution(
-        flexMessage.auth,
-        {
-          agentMessageId: flexMessage.agentMessageId,
-          conversationId: flexMessage.conversationId,
-        }
-      )
-    ).toEqual({ costCredits: billedCredits });
-
-    const items =
-      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
-        flexMessage.auth,
-        {
-          agentMessageModelIds: [flexMessage.agentMessageModelId],
-          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-        }
-      );
-    expect(
-      items.reduce(
-        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
-        0
-      )
-    ).toBe(billedCredits * 1_000_000);
-  });
+      const items =
+        await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+          message.auth,
+          {
+            agentMessageModelIds: [message.agentMessageModelId],
+            maxAttributionVersion:
+              AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+          }
+        );
+      expect(
+        items.reduce(
+          (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+          0
+        )
+      ).toBe(message.billedCreditAmountMicro);
+    }
+  );
 
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
     const { workspace, conversationId, agentMessageId, agentMessageModelId } =
@@ -338,6 +369,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
 
   it("appends a late sandbox child after its parent evidence completed", async () => {
     const {
+      billedCreditAmountMicro,
       auth,
       workspace,
       conversation,
@@ -423,7 +455,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
         0
       )
-    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+    ).toBe(billedCreditAmountMicro);
   });
 
   it("writes a tool row per action and carves the tool output from the assistant output", async () => {
@@ -634,6 +666,11 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       throw new Error("Expected two actions");
     }
 
+    const billedCreditAmountMicro = await billMessageFromBillingPlan(auth, {
+      agentMessageModelId,
+      runs,
+    });
+
     const getItems = async () => {
       const items =
         await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
@@ -703,7 +740,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
         0
       )
-    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+    ).toBe(billedCreditAmountMicro);
 
     // A retry cannot subtract the result twice or restore it from stale potential evidence.
     await computeAndStoreAgentMessageConsumptionAttribution(auth, {
@@ -1033,6 +1070,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       workspace,
       conversation,
       run,
+      runs,
       conversationId,
       agentMessageId,
       agentMessageModelId,
@@ -1066,6 +1104,10 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     await AgentMCPActionFactory.setStatus(auth, {
       action,
       status: "succeeded",
+    });
+    const billedCreditAmountMicro = await billMessageFromBillingPlan(auth, {
+      agentMessageModelId,
+      runs,
     });
     await computeAndStoreAgentMessageConsumptionAttribution(auth, {
       agentMessageId,
@@ -1106,11 +1148,11 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
         0
       )
-    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+    ).toBe(billedCreditAmountMicro);
     expect(
       settledItems.find((item) => item.itemType === "input")
         ?.reconciledCreditAmountMicro
-    ).toBeLessThan(pendingInputCreditAmountMicro ?? 0);
+    ).toBe(pendingInputCreditAmountMicro);
   });
 
   it("keeps a completed tool single and stable across a redundant re-finalize", async () => {

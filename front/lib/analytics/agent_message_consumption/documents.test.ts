@@ -20,7 +20,10 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
@@ -47,6 +50,8 @@ type SettledMessageOptions = {
   origin?: UserMessageOrigin;
   testContext?: ResourceTestContext;
 };
+
+const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
 
 async function setupSettledMessage({
   agentName,
@@ -94,8 +99,8 @@ async function setupSettledMessage({
         ...(origin ? { origin } : {}),
       });
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
-    inputTokens: 100,
-    outputTokens: 20,
+    inputTokens: INPUT,
+    outputTokens: 4 * OUTPUT,
     modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
   });
   const agentMessage = await ConversationFactory.createAgentMessageWithRank({
@@ -177,13 +182,13 @@ async function setupLlmAndToolConsumptionScenario(
         {
           itemType: "input",
           runUsageModelId: context.runUsageModelId,
-          inputTokensCount: 100,
+          inputTokensCount: INPUT,
           grossAttributedCreditAmountMicro: 1_000_000,
         },
         {
           itemType: "output",
           runUsageModelId: context.runUsageModelId,
-          outputTokensCount: 18,
+          outputTokensCount: 3 * OUTPUT,
           grossAttributedCreditAmountMicro: 500_000,
         },
         {
@@ -192,7 +197,7 @@ async function setupLlmAndToolConsumptionScenario(
           action,
           attributedSkillIds: [],
           inputTokensCount: 2,
-          outputTokensCount: 2,
+          outputTokensCount: OUTPUT,
           directCreditAmountMicro: 3_000_000,
           grossAttributedCreditAmountMicro: 3_100_000,
         },
@@ -249,7 +254,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     }
 
     const [llmDocument, toolDocument] = documents;
-    const toolAttributedCreditMicro = 3_100_000;
+    const toolAttributedCreditMicro = 3_000_000 + 1_000_000;
     expect(llmDocument).toMatchObject({
       agent: {
         id: context.agent.sId,
@@ -275,8 +280,8 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       run_usage_id: context.runUsageModelId.toString(),
       step_index: 1,
       tokens: {
-        input: 100,
-        output: 18,
+        input: INPUT,
+        output: 3 * OUTPUT,
       },
       usage_type: USAGE_TYPE_USER,
       user: { id: context.auth.getNonNullableUser().sId },
@@ -292,14 +297,14 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         direct: 3_000_000,
         output: null,
         result_footprint: null,
-        total: 3_100_000,
+        total: toolAttributedCreditMicro,
       },
       status: "succeeded",
       run_usage_id: context.runUsageModelId.toString(),
       step_index: 1,
       tokens: {
         input: null,
-        output: 2,
+        output: OUTPUT,
         result_footprint: 2,
       },
       tool: {
@@ -402,7 +407,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 1_500_000,
           },
           {
@@ -436,6 +441,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       }
     );
 
+    await ConversationResource.updateAgentMessageCostCredits(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      costCredits: 5 + 3,
+    });
+
     const documents = await buildDocuments(context);
     if (!documents) {
       throw new Error("Consumption documents were not built");
@@ -468,10 +478,10 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     });
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
-    ).toBe(5_000_000);
+    ).toBe(8_000_000);
   });
 
-  it("reconciles the message bill while preserving full tool attribution", async () => {
+  it("splits the message bill by the recorded cost of its call", async () => {
     const context = await setupSettledMessage();
     const { action: freeToolAction } = await AgentMCPActionFactory.create(
       context.auth,
@@ -504,13 +514,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 2_000_000,
           },
           {
             itemType: "output",
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 18,
+            outputTokensCount: 2 * OUTPUT,
             grossAttributedCreditAmountMicro: 100_000,
           },
           {
@@ -519,7 +529,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action: freeToolAction,
             attributedSkillIds: [],
             inputTokensCount: 2,
-            outputTokensCount: 2,
+            outputTokensCount: OUTPUT,
             directCreditAmountMicro: 0,
             grossAttributedCreditAmountMicro: 300_000,
           },
@@ -529,7 +539,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action: chargedToolAction,
             attributedSkillIds: [],
             inputTokensCount: 2,
-            outputTokensCount: 2,
+            outputTokensCount: OUTPUT,
             directCreditAmountMicro: 3_000_000,
             grossAttributedCreditAmountMicro: 3_400_000,
           },
@@ -537,6 +547,11 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         pendingToolItems: [],
       }
     );
+
+    await ConversationResource.updateAgentMessageCostCredits(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      costCredits: 5 + 3,
+    });
 
     const documents = await buildDocuments(context);
     if (!documents) {
@@ -554,27 +569,27 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
 
     expect(documents).toHaveLength(3);
     expect(llmDocument).toMatchObject({
-      credit_micro: 1_300_000,
+      credit_micro: 3_000_000,
       gross_credit_micro: {
-        input: 1_200_000,
-        output: 100_000,
-        total: 1_300_000,
+        input: 1_000_000,
+        output: 2_000_000,
+        total: 3_000_000,
       },
     });
     expect(freeToolDocument).toMatchObject({
-      credit_micro: 300_000,
+      credit_micro: 1_000_000,
       gross_credit_micro: {
         input: null,
         direct: 0,
-        total: 300_000,
+        total: 1_000_000,
       },
     });
     expect(chargedToolDocument).toMatchObject({
-      credit_micro: 3_400_000,
+      credit_micro: 4_000_000,
       gross_credit_micro: {
         input: null,
         direct: 3_000_000,
-        total: 3_400_000,
+        total: 4_000_000,
       },
     });
 
@@ -586,7 +601,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     ).toBe(true);
     expect(
       documents.reduce((total, document) => total + document.credit_micro, 0)
-    ).toBe(5_000_000);
+    ).toBe(8_000_000);
   });
 
   it("indexes only the executions billed before a message failed", async () => {
@@ -607,13 +622,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 2_000_000,
           },
           {
             itemType: "output",
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 15,
+            outputTokensCount: 3 * OUTPUT,
             grossAttributedCreditAmountMicro: 400_000,
           },
         ],
@@ -622,7 +637,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action,
             attributedSkillIds: [],
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 5,
+            outputTokensCount: OUTPUT,
             grossAttributedCreditAmountMicro: 100_000,
           },
         ],
@@ -669,7 +684,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
     expect(
       documents.find((document) => document.tool?.action_id === action.sId)
     ).toMatchObject({
-      credit_micro: 100_000,
+      credit_micro: 1_000_000,
       gross_credit_micro: { direct: 0 },
     });
     expect(
@@ -739,13 +754,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 4_600_000,
           },
           {
             itemType: "output",
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 18,
+            outputTokensCount: 3 * OUTPUT,
             grossAttributedCreditAmountMicro: 100_000,
           },
           {
@@ -754,7 +769,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action,
             attributedSkillIds: [skillA.sId, skillB.sId],
             inputTokensCount: 2,
-            outputTokensCount: 2,
+            outputTokensCount: OUTPUT,
             directCreditAmountMicro: 0,
             grossAttributedCreditAmountMicro: 300_000,
           },
@@ -780,7 +795,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
 
     expect(toolDocuments).toHaveLength(1);
     expect(toolDocuments[0]).toMatchObject({
-      credit_micro: 300_000,
+      credit_micro: 1_000_000,
       tool: {
         action_id: action.sId,
         attributed_skill_ids: expect.arrayContaining([skillA.sId, skillB.sId]),
@@ -856,13 +871,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 4_600_000,
           },
           {
             itemType: "output",
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 18,
+            outputTokensCount: 3 * OUTPUT,
             grossAttributedCreditAmountMicro: 100_000,
           },
           {
@@ -871,7 +886,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action,
             attributedSkillIds: [],
             inputTokensCount: 2,
-            outputTokensCount: 2,
+            outputTokensCount: OUTPUT,
             directCreditAmountMicro: 0,
             grossAttributedCreditAmountMicro: 300_000,
           },
@@ -925,13 +940,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
           {
             itemType: "input",
             runUsageModelId: context.runUsageModelId,
-            inputTokensCount: 100,
+            inputTokensCount: INPUT,
             grossAttributedCreditAmountMicro: 4_600_000,
           },
           {
             itemType: "output",
             runUsageModelId: context.runUsageModelId,
-            outputTokensCount: 18,
+            outputTokensCount: 3 * OUTPUT,
             grossAttributedCreditAmountMicro: 100_000,
           },
           {
@@ -940,7 +955,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             action,
             attributedSkillIds: [skill.sId],
             inputTokensCount: 2,
-            outputTokensCount: 2,
+            outputTokensCount: OUTPUT,
             directCreditAmountMicro: 0,
             grossAttributedCreditAmountMicro: 300_000,
           },

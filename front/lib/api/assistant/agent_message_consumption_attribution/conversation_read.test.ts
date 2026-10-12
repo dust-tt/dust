@@ -8,16 +8,24 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { RunFactory } from "@app/tests/utils/RunFactory";
+import {
+  GPT_5_MINI_TOKENS_PER_CREDIT,
+  RunFactory,
+} from "@app/tests/utils/RunFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
-const BILLED_CREDITS = 10;
+const { input: INPUT, output: OUTPUT } = GPT_5_MINI_TOKENS_PER_CREDIT;
+// The standard run costs 1 credit of input and 2 credits of output.
+const BILLED_CREDITS = 3;
+const TOOL_DIRECT_CREDITS = 3;
 const PREVIOUS_ATTRIBUTION_VERSION =
   AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1;
 
-async function setupMessage() {
+async function setupMessage({
+  billedCredits = BILLED_CREDITS,
+}: { billedCredits?: number } = {}) {
   const { authenticator: auth, workspace } = await createResourceTest({});
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
@@ -35,9 +43,9 @@ async function setupMessage() {
     throw new Error("Just-created conversation not found.");
   }
   const { run, runUsageModelId } = await RunFactory.createWithUsage(auth, {
-    inputTokens: 100,
-    outputTokens: 20,
-    reasoningTokens: 5,
+    inputTokens: INPUT,
+    outputTokens: 2 * OUTPUT,
+    reasoningTokens: 0,
   });
   const { agentMessage } = await ConversationFactory.createAgentMessage(auth, {
     workspace,
@@ -47,7 +55,7 @@ async function setupMessage() {
   });
   await ConversationResource.updateAgentMessageCostCredits(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
-    costCredits: BILLED_CREDITS,
+    costCredits: billedCredits,
   });
   await ConversationFactory.setAgentMessageStatus({
     workspace,
@@ -71,19 +79,19 @@ function modelRecords(runUsageModelId: ModelId) {
     {
       itemType: "input" as const,
       runUsageModelId,
-      inputTokensCount: 100,
+      inputTokensCount: INPUT,
       grossAttributedCreditAmountMicro: 2_000_000,
     },
     {
       itemType: "output" as const,
       runUsageModelId,
-      outputTokensCount: 15,
+      outputTokensCount: OUTPUT,
       grossAttributedCreditAmountMicro: 1_000_000,
     },
     {
       itemType: "reasoning" as const,
       runUsageModelId,
-      outputTokensCount: 5,
+      outputTokensCount: 0,
       grossAttributedCreditAmountMicro: 1_000_000,
     },
   ];
@@ -98,7 +106,9 @@ describe("getConversationConsumption", () => {
       run,
       runUsageModelId,
       agentMessage,
-    } = await setupMessage();
+    } = await setupMessage({
+      billedCredits: BILLED_CREDITS + TOOL_DIRECT_CREDITS,
+    });
     const { action } = await AgentMCPActionFactory.create(auth, {
       workspace,
       conversationModelId: conversation.id,
@@ -119,9 +129,9 @@ describe("getConversationConsumption", () => {
           action,
           attributedSkillIds: [],
           inputTokensCount: 20,
-          outputTokensCount: 5,
+          outputTokensCount: OUTPUT,
           grossAttributedCreditAmountMicro: 5_000_000,
-          directCreditAmountMicro: 3_000_000,
+          directCreditAmountMicro: TOOL_DIRECT_CREDITS * 1_000_000,
         },
       ],
       pendingToolItems: [],
@@ -132,14 +142,14 @@ describe("getConversationConsumption", () => {
     });
 
     expect(consumption).toMatchObject({
-      billedCredits: BILLED_CREDITS,
+      billedCredits: BILLED_CREDITS + TOOL_DIRECT_CREDITS,
       details: {
-        agentWorkCredits: 5,
+        agentWorkCredits: 1 + 1,
         tools: [
           {
             label: "Test tool",
             callCount: 1,
-            attributedCredits: 5,
+            attributedCredits: 3 + 1,
             directCredits: 3,
             pending: false,
             toolName: "test_tool",
@@ -148,15 +158,15 @@ describe("getConversationConsumption", () => {
         models: [
           {
             displayName: "GPT-5 Mini",
-            attributedCredits: BILLED_CREDITS,
+            attributedCredits: BILLED_CREDITS + TOOL_DIRECT_CREDITS,
             modelId: "gpt-5-mini",
             providerId: "openai",
           },
         ],
         agents: [
           expect.objectContaining({
-            billedCredits: BILLED_CREDITS,
-            agentWorkCredits: 5,
+            billedCredits: BILLED_CREDITS + TOOL_DIRECT_CREDITS,
+            agentWorkCredits: 1 + 1,
           }),
         ],
       },
@@ -174,9 +184,9 @@ describe("getConversationConsumption", () => {
     } = await setupMessage();
     const { run: previousRun, runUsageModelId: previousRunUsageModelId } =
       await RunFactory.createWithUsage(auth, {
-        inputTokens: 100,
-        outputTokens: 20,
-        reasoningTokens: 5,
+        inputTokens: INPUT,
+        outputTokens: 2 * OUTPUT,
+        reasoningTokens: 0,
       });
     const previousMessage =
       await ConversationFactory.createAgentMessageWithRank({
@@ -408,9 +418,9 @@ describe("getConversationConsumption", () => {
       }
       const { run, runUsageModelId: childRunUsageModelId } =
         await RunFactory.createWithUsage(auth, {
-          inputTokens: 100,
-          outputTokens: 20,
-          reasoningTokens: 5,
+          inputTokens: costCredits * INPUT,
+          outputTokens: 0,
+          reasoningTokens: 0,
         });
       const { messageRow: childUserMessage } =
         await ConversationFactory.createUserMessage({

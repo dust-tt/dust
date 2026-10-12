@@ -37,7 +37,7 @@ export type AgentMessageConsumptionToolDetails = {
   internalMCPServerName: InternalMCPServerNameType | null;
   toolName: string;
   callCount: number;
-  /** Share of the authoritative bill after reconciling exclusively through model input rows. */
+  /** Share of the authoritative bill, split by the recorded cost of each LLM call. */
   attributedCredits: number;
   directCredits: number;
   pending: boolean;
@@ -52,7 +52,7 @@ export type AgentMessageConsumptionModelDetails = {
 
 export type AgentMessageConsumptionDetails = {
   attributionVersion: number;
-  /** Agent work after assigning the billing reconciliation exclusively to model input rows. */
+  /** Agent work's share of the authoritative bill, split by the recorded cost of each LLM call. */
   agentWorkCredits: number;
   tools: AgentMessageConsumptionToolDetails[];
 };
