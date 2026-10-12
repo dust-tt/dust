@@ -195,6 +195,18 @@ msgstr "Ce document ne peut pas encore être modifié ici, car il contient une d
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr "Ce document utilise une mise en forme que l’éditeur ne prend pas encore en charge, il ne peut donc pas être modifié ici."
 
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "Edit the diagram"
+msgstr "Modifier le diagramme"
+
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "This diagram has an error. Edit its code to fix it."
+msgstr "Ce diagramme contient une erreur. Modifiez son code pour la corriger."
+
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "This diagram isn't shown because it refers to another website."
+msgstr "Ce diagramme n’est pas affiché, car il fait référence à un autre site web."
+
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Connecting…"
 msgstr "Connexion…"

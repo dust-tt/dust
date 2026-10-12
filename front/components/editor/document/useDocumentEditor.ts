@@ -7,6 +7,7 @@ import {
   getDocumentJSONComments,
   withDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
+import { documentMermaid } from "@app/components/editor/document/DocumentMermaid";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { DocumentProps } from "@app/components/editor/document/types";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
@@ -93,8 +94,12 @@ export const useDocumentEditor = ({
   const editable = !readOnly && initial.isOk() && (live?.connected ?? false);
 
   const savedExtensions = useMemo(
-    () =>
-      buildDocumentEditorExtensions(t, { resolveImageSource: resolveSource }),
+    () => [
+      ...buildDocumentEditorExtensions(t, {
+        resolveImageSource: resolveSource,
+      }),
+      documentMermaid(t),
+    ],
     [t, resolveSource]
   );
 

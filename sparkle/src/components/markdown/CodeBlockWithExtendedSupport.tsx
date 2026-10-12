@@ -6,6 +6,7 @@ import {
   type GetContentToDownloadFunction,
 } from "@sparkle/components/markdown/ContentBlockWrapper";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
+import { isSafeMermaidChart } from "@sparkle/components/markdown/mermaidSafety";
 import {
   type JsonValueType,
   PrettyJsonViewer,
@@ -162,9 +163,19 @@ const mermaidStyles = `
   }
 `;
 
-const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
+const MermaidGraph: React.FC<{
+  chart: string;
+  onRender?: (rendered: boolean) => void;
+}> = ({ chart, onRender }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
   const graphId = `mermaid-${React.useId().replaceAll(":", "")}`;
+  // A fresh id per render: mermaid removes the element with the id it renders, the last diagram.
+  const renderCountRef = useRef(0);
+  // Read when a render ends, so a new callback does not render the chart again.
+  const onRenderRef = useRef(onRender);
+  useEffect(() => {
+    onRenderRef.current = onRender;
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -173,12 +184,19 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
       if (!graphRef.current) {
         return;
       }
+      if (!isSafeMermaidChart(chart)) {
+        onRenderRef.current?.(false);
+        return;
+      }
 
       const palette = getMermaidPalette();
       const mermaid = (await import("mermaid")).default;
 
       mermaid.initialize({
         startOnLoad: false,
+        securityLevel: "strict",
+        // Otherwise an invalid chart leaves its error diagram in the page's body.
+        suppressErrorRendering: true,
         theme: "base",
         themeVariables: {
           fontFamily: "Geist",
@@ -277,12 +295,26 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
         },
       });
 
-      const { bindFunctions, svg } = await mermaid.render(graphId, chart);
+      // An invalid chart keeps the last diagram.
+      let rendered: Awaited<ReturnType<typeof mermaid.render>>;
+      try {
+        renderCountRef.current += 1;
+        rendered = await mermaid.render(
+          `${graphId}-${renderCountRef.current}`,
+          chart
+        );
+      } catch {
+        if (!cancelled) {
+          onRenderRef.current?.(false);
+        }
+        return;
+      }
       if (cancelled || !graphRef.current) {
         return;
       }
-      graphRef.current.innerHTML = svg;
-      bindFunctions?.(graphRef.current);
+      graphRef.current.innerHTML = rendered.svg;
+      rendered.bindFunctions?.(graphRef.current);
+      onRenderRef.current?.(true);
     };
 
     void renderMermaid();
@@ -309,6 +341,11 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
 interface StyledMermaidGraphProps {
   children?: React.ReactNode;
   className?: string;
+  /**
+   * Called after each render with whether the chart rendered. An invalid chart keeps the last
+   * diagram shown.
+   */
+  onRender?: (rendered: boolean) => void;
 }
 
 /**
@@ -320,12 +357,13 @@ interface StyledMermaidGraphProps {
 export function StyledMermaidGraph({
   children,
   className,
+  onRender,
 }: StyledMermaidGraphProps) {
   const validChildrenContent = String(children).trim();
 
   return (
     <div className={cn("relative", className)}>
-      <MermaidGraph chart={validChildrenContent} />
+      <MermaidGraph chart={validChildrenContent} onRender={onRender} />
     </div>
   );
 }
@@ -379,6 +417,12 @@ export const CodeBlockWithExtendedSupport = memo(
       }
       if (language === "mermaid") {
         const checkValidMermaid = async () => {
+          // An unsafe chart shows as code, like an invalid one.
+          if (!isSafeMermaidChart(validChildrenContent)) {
+            setIsValidMermaid(false);
+            setShowMermaid(false);
+            return;
+          }
           try {
             const mermaid = (await import("mermaid")).default;
             await mermaid.parse(validChildrenContent);

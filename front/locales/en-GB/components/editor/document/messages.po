@@ -195,6 +195,18 @@ msgstr ""
 msgid "This document uses formatting the editor doesn't support yet, so it can't be edited here."
 msgstr ""
 
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "Edit the diagram"
+msgstr ""
+
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "This diagram has an error. Edit its code to fix it."
+msgstr ""
+
+#: front/components/editor/document/DocumentMermaid.tsx
+msgid "This diagram isn't shown because it refers to another website."
+msgstr ""
+
 #: front/components/editor/document/DocumentSaveStatus.tsx
 msgid "Connecting…"
 msgstr ""

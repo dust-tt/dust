@@ -1,6 +1,7 @@
 import { agentEdits } from "@app/components/editor/document/AgentEdits";
 import { getDocumentComments } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
+import { documentMermaid } from "@app/components/editor/document/DocumentMermaid";
 import type { Translate } from "@app/components/editor/document/extensions";
 import { buildDocumentEditorExtensions } from "@app/components/editor/document/extensions";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
@@ -94,6 +95,7 @@ export const buildCollabExtensions = ({
   provider?: HocuspocusProvider;
 }): AnyExtension[] => [
   ...buildDocumentEditorExtensions(t, { live: true, resolveImageSource }),
+  documentMermaid(t),
   collabCommentThreads(comments),
   ...(provider ? [agentEdits(provider)] : []),
   Collaboration.configure({ document, field: BODY_FRAGMENT_NAME }),
