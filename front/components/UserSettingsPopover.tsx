@@ -21,7 +21,6 @@ import {
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
-import { useDiscoveryHomepageOptIn } from "@app/hooks/useDiscoveryHomepageOptIn";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -551,12 +550,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
   const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
     isAgentsSectionVisible
   );
-  const { canToggleHomepage, hasOptedIn, setOptedIn } =
-    useDiscoveryHomepageOptIn();
-  const [localDiscoveryHomepage, setLocalDiscoveryHomepage] = useState<
-    boolean | null
-  >(null);
-  const isDiscoveryHomepageSelected = localDiscoveryHomepage ?? hasOptedIn;
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
   const {
@@ -596,7 +589,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
     localAgentsSectionVisible !== isAgentsSectionVisible ||
-    isDiscoveryHomepageSelected !== hasOptedIn ||
     (localLocale !== null && localLocale !== userLocale);
 
   const handleSave = () => {
@@ -613,17 +605,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
-    if (isDiscoveryHomepageSelected !== hasOptedIn) {
-      trackEvent({
-        area: TRACKING_AREAS.SETTINGS,
-        object: "discovery_homepage",
-        action: TRACKING_ACTIONS.SELECT,
-        extra: { opted_in: isDiscoveryHomepageSelected },
-      });
-      void setOptedIn(isDiscoveryHomepageSelected).then(() =>
-        setLocalDiscoveryHomepage(null)
-      );
-    }
     if (
       fontContext !== null &&
       localConversationFont !== fontContext.conversationFont
@@ -780,21 +761,6 @@ function CustomizationSection({ owner }: CustomizationSectionProps) {
             />
           }
         />
-
-        {canToggleHomepage && (
-          <SettingsList.Row
-            title={t`Use the new homepage`}
-            description={t`Try the new homepage, built to discover skills and agents.`}
-            action={
-              <SliderToggle
-                selected={isDiscoveryHomepageSelected}
-                onClick={() =>
-                  setLocalDiscoveryHomepage(!isDiscoveryHomepageSelected)
-                }
-              />
-            }
-          />
-        )}
       </SettingsList>
     </SectionContent>
   );

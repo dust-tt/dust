@@ -10,8 +10,8 @@ const DISCOVERY_HOMEPAGE_OPT_IN_METADATA_KEY = "discoveryHomepageOptIn";
  * @cc [owner:adrsimon,label:product] discovery-homepage-user-opt-in
  * Discovery homepage features (homepage, agent suggested prompts) MUST be on when the workspace has
  * the `discovery_homepage` flag or the user opted in through their own metadata: client code MUST
- * read `isDiscoveryHomepage` from this hook, not the flag. Opt-in and opt-out surfaces (homepage
- * line, settings toggle) MUST only show once the metadata has loaded and the workspace flag is off.
+ * read `isDiscoveryHomepage` from this hook, not the flag. The homepage opt-in line MUST only show
+ * once the metadata has loaded and the workspace flag is off.
  */
 export function useDiscoveryHomepageOptIn() {
   const { t } = useLingui();
