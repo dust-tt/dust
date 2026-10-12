@@ -99,7 +99,10 @@ export async function deleteSeededSearchDocuments(
   await deleteWorkspaceAgentSearchActivity({ workspaceId });
 }
 
-type SeededToolView = { view: MCPServerViewResource; name: string };
+type SeededToolView = {
+  view: MCPServerViewResource<"configuration">;
+  name: string;
+};
 
 function getToolView(
   toolViewsByKey: Map<string, SeededToolView>,

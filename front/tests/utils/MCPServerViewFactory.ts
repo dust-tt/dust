@@ -10,7 +10,7 @@ export class MCPServerViewFactory {
     workspace: LightWorkspaceType,
     mcpServerId: string,
     space: SpaceResource
-  ): Promise<MCPServerViewResource> {
+  ): Promise<MCPServerViewResource<"configuration">> {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
@@ -36,7 +36,7 @@ export class MCPServerViewFactory {
     workspace: LightWorkspaceType,
     name: InternalMCPServerNameType,
     space: SpaceResource
-  ): Promise<MCPServerViewResource> {
+  ): Promise<MCPServerViewResource<"configuration">> {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
       name,

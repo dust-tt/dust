@@ -430,13 +430,7 @@ app.post(
     const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
     const mcpServerViews = (
       await MCPServerViewResource.fetchByIds(auth, mcpServerViewIds, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       })
     ).filter((view) => auth.can("read", view));
 

@@ -63,7 +63,8 @@ export async function recordFramePublishAction(
 
   const view = await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
     auth,
-    INTERACTIVE_CONTENT_SERVER_NAME
+    INTERACTIVE_CONTENT_SERVER_NAME,
+    { mode: "configuration" }
   );
   if (!view) {
     return new Err(

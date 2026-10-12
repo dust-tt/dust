@@ -29,18 +29,18 @@ export async function getCommonUtilitiesServer(
     return null;
   }
 
-  const commonUtilitiesViewJSON = commonUtilitiesView.toJSON();
+  const serverDisplayMetadata = commonUtilitiesView.getServerDisplayMetadata();
   return {
     id: -1,
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name:
-      commonUtilitiesViewJSON.name ??
-      commonUtilitiesViewJSON.server.name ??
+      commonUtilitiesView.name ??
+      serverDisplayMetadata.name ??
       "common_utilities",
     description:
-      commonUtilitiesViewJSON.description ??
-      commonUtilitiesViewJSON.server.description ??
+      commonUtilitiesView.description ??
+      serverDisplayMetadata.description ??
       "Conversation helpers (titles, mark read), random numbers, timers, and other common utilities.",
     dataSources: null,
     tables: null,
@@ -50,7 +50,7 @@ export async function getCommonUtilitiesServer(
     secretName: null,
     dustProject: null,
     additionalConfiguration: {},
-    mcpServerViewId: commonUtilitiesViewJSON.sId,
+    mcpServerViewId: commonUtilitiesView.sId,
     dustAppConfiguration: null,
     internalMCPServerId: commonUtilitiesView.mcpServerId,
   };

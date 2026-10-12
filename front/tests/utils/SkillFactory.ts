@@ -38,7 +38,7 @@ type CreateSkillOverrides = Partial<{
   manuallyRequestedSpaceIds: ModelId[];
   addCurrentUserAsEditor: boolean;
   attachedKnowledge: SkillAttachedKnowledge[];
-  mcpServerViews: MCPServerViewResource[];
+  mcpServerViews: MCPServerViewResource<"configuration">[];
   fileAttachments: FileResource[];
 }>;
 

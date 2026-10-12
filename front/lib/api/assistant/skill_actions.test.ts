@@ -342,7 +342,8 @@ describe("resolveSkillMCPServers", () => {
     const autoInternalViews =
       await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
         authenticator,
-        [SKILL_MANAGEMENT_SERVER_NAME]
+        [SKILL_MANAGEMENT_SERVER_NAME],
+        { mode: "configuration" }
       );
     const skillManagementView = autoInternalViews.get(
       SKILL_MANAGEMENT_SERVER_NAME

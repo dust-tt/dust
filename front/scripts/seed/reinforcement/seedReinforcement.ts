@@ -161,9 +161,8 @@ export async function seedReinforcement(
           ctx.auth,
           [WEB_SEARCH_BROWSE_SERVER_NAME]
         );
-      const webSearchViewJson = webSearchView?.toJSON();
-      if (webSearchViewJson) {
-        placeholders.__WEB_SEARCH_TOOL_ID__ = webSearchViewJson.sId;
+      if (webSearchView) {
+        placeholders.__WEB_SEARCH_TOOL_ID__ = webSearchView.sId;
       }
     }
   } catch (e) {

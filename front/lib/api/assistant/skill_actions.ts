@@ -129,9 +129,13 @@ export async function getSkillServers(
     namesToFetch.length > 0
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
-          namesToFetch
+          namesToFetch,
+          { mode: "configuration" }
         )
-      : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
+      : new Map<
+          AutoInternalMCPServerNameType,
+          MCPServerViewResource<"configuration">
+        >();
 
   const fileSystemServer = createSkillKnowledgeFileSystemServer({
     dataSourceConfigurations: documentDataSourceConfigurations,
@@ -266,7 +270,7 @@ function createSkillKnowledgeFileSystemServer({
   mcpServerView,
 }: {
   dataSourceConfigurations: DataSourceConfiguration[];
-  mcpServerView: MCPServerViewResource | null;
+  mcpServerView: MCPServerViewResource<"configuration"> | null;
 }): MCPServerConfigurationType | null {
   if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;
@@ -284,7 +288,7 @@ function createSkillKnowledgeDataWarehouseServer({
   mcpServerView,
 }: {
   dataSourceConfigurations: DataSourceConfiguration[];
-  mcpServerView: MCPServerViewResource | null;
+  mcpServerView: MCPServerViewResource<"configuration"> | null;
 }): MCPServerConfigurationType | null {
   if (dataSourceConfigurations.length === 0 || !mcpServerView) {
     return null;

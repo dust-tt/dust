@@ -95,7 +95,7 @@ export async function dataSourceViewToPokeJSON(
 }
 
 export async function mcpServerViewToPokeJSON(
-  mcpServerView: MCPServerViewResource,
+  mcpServerView: MCPServerViewResource<"configuration">,
   auth: Authenticator
 ): Promise<PokeMCPServerViewType> {
   const workspace = await WorkspaceResource.fetchByModelId(

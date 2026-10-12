@@ -23,8 +23,6 @@ import { format } from "date-fns";
 import fs from "fs";
 
 function summarizeMcpServerView(view: MCPServerViewResource) {
-  const { server } = view.toJSON();
-
   return {
     sId: view.sId,
     name: view.name,
@@ -32,8 +30,8 @@ function summarizeMcpServerView(view: MCPServerViewResource) {
     spaceId: view.space.sId,
     spaceKind: view.space.kind,
     serverType: view.serverType,
-    serverId: server.sId,
-    serverName: server.name,
+    serverId: view.mcpServerId,
+    serverName: view.getServerDisplayMetadata().name,
     internalMCPServerId: view.internalMCPServerId,
     remoteMCPServerId: view.remoteMCPServerId,
     oAuthUseCase: view.oAuthUseCase,

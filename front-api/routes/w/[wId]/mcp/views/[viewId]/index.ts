@@ -35,13 +35,7 @@ app.get(
     const { viewId } = ctx.req.valid("param");
 
     const serverView = await MCPServerViewResource.fetchById(auth, viewId, {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ],
+      mode: "configuration",
     });
 
     if (!serverView) {
@@ -144,13 +138,7 @@ app.patch(
       auth,
       viewId,
       {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       }
     );
 

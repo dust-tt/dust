@@ -57,23 +57,16 @@ app.get(
       query.includeRestrictedToSkills === "true";
 
     const listOptions = {
-      includeHeavyAttributes: [
-        "authorization",
-        "cachedTools",
-        "customHeaders",
-        "lastError",
-        "sharedSecret",
-      ] as const,
       isRestrictedToSkills: includeRestrictedToSkills ? undefined : false,
     };
 
     // Without `spaceIds`, default to all the spaces the user is a member of.
-    let views: MCPServerViewResource[];
+    let views: MCPServerViewResource<"configuration">[];
     if (query.spaceIds) {
       views = await MCPServerViewResource.listBySpaceIdsEnsuringAutoViews(
         auth,
         query.spaceIds,
-        listOptions
+        { ...listOptions, mode: "configuration" }
       );
     } else {
       const memberSpaces =
@@ -81,7 +74,7 @@ app.get(
       views = await MCPServerViewResource.listBySpacesEnsuringAutoViews(
         auth,
         memberSpaces,
-        listOptions
+        { ...listOptions, mode: "configuration" }
       );
     }
 

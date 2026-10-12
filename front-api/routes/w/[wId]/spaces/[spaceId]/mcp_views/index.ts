@@ -123,13 +123,7 @@ app.get(
 
     const serverViews = (
       await MCPServerViewResource.listBySpaceEnsuringAutoViews(auth, space, {
-        includeHeavyAttributes: [
-          "authorization",
-          "cachedTools",
-          "customHeaders",
-          "lastError",
-          "sharedSecret",
-        ],
+        mode: "configuration",
       })
     ).map((view) => view.toJSON());
 

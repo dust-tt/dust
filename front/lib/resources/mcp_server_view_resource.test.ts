@@ -864,7 +864,9 @@ describe("MCPServerViewResource", () => {
       });
 
       // Fetch the system view through baseFetch (via listForSystemSpace).
-      const views = await MCPServerViewResource.listForSystemSpace(adminAuth);
+      const views = await MCPServerViewResource.listForSystemSpace(adminAuth, {
+        mode: "configuration",
+      });
       const view = views.find(
         (v) => v.internalMCPServerId === internalServer.id
       );
@@ -896,15 +898,7 @@ describe("MCPServerViewResource", () => {
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
         remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 
@@ -923,15 +917,7 @@ describe("MCPServerViewResource", () => {
       const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
         adminAuth,
         remoteServer.sId,
-        {
-          includeHeavyAttributes: [
-            "authorization",
-            "cachedTools",
-            "customHeaders",
-            "lastError",
-            "sharedSecret",
-          ],
-        }
+        { mode: "configuration" }
       );
       expect(view).not.toBeNull();
 

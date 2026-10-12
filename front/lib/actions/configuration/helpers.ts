@@ -93,7 +93,7 @@ export function buildServerSideMCPServerConfiguration({
   childAgentId = null,
   additionalConfiguration = {},
 }: {
-  mcpServerView: MCPServerViewResource;
+  mcpServerView: MCPServerViewResource<"configuration">;
   dataSources?: DataSourceConfiguration[] | null;
   serverNameOverride?: string;
   childAgentId?: string | null;
