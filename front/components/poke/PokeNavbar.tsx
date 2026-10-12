@@ -224,7 +224,7 @@ function PokeSearchCommandUI({
       <PokeCommandDialog
         open={open}
         onOpenChange={onOpenChange}
-        className="bg-muted-background sm:max-w-[600px]"
+        className="bg-muted-background sm:max-w-4xl"
         shouldFilter={false}
       >
         <PokeCommandInput
@@ -232,7 +232,7 @@ function PokeSearchCommandUI({
           onValueChange={(value) => onSearchTermChange(value.trim())}
           className="border-none focus:outline-hidden focus:ring-0"
         />
-        <PokeCommandList>
+        <PokeCommandList className="max-h-160">
           {currentPagePlugins && plugins.length > 0 && (
             <PokeCommandGroup heading="Plugins on this page">
               {plugins.map((plugin, index) => (
@@ -245,12 +245,14 @@ function PokeSearchCommandUI({
                     currentPagePlugins.onSelect(plugin);
                   }}
                 >
-                  <div className="flex w-full items-center gap-3 px-2 text-foreground">
-                    <Chip size="xs" color="primary">
+                  <div className="flex w-full min-w-0 items-center gap-3 px-2 text-foreground">
+                    <Chip size="xs" color="primary" className="shrink-0">
                       Plugin
                     </Chip>
-                    <span className="text-sm font-medium">{plugin.name}</span>
-                    <span className="truncate text-xs text-muted-foreground">
+                    <span className="shrink-0 whitespace-nowrap text-sm font-medium">
+                      {plugin.name}
+                    </span>
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">
                       {plugin.description}
                     </span>
                   </div>
