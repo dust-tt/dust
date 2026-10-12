@@ -235,8 +235,6 @@ export function useMarkdownFileEditor({
   const isDirty = rich.richEditor ? rich.isDirty : isPlainDirty;
   const isAnySaving = rich.richEditor ? rich.isSaving : isSaving;
 
-  // TODO(co-edition): source saves bypass an open live session, whose checkpoints then conflict;
-  // the file write route should go through the session instead.
   const toggleSourceMode = () => {
     if (isDirty || isAnySaving) {
       return;

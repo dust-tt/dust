@@ -3,6 +3,10 @@
 import assert from "node:assert";
 import { generateKeyPairSync, sign } from "node:crypto";
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import {
+  fetchLiveSource,
+  pushLiveSource,
+} from "@app/lib/api/collab/live_source";
 import config from "@app/lib/api/config";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
@@ -22,6 +26,7 @@ import {
   DUST_IF_REVISION_MATCH_HEADER,
   frameV2ContentType,
 } from "@app/types/files";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
@@ -29,6 +34,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/files/dfm_comment_mentions", () => ({
   dispatchCommentMentions: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/collab/live_source", () => ({
+  fetchLiveSource: vi.fn(),
+  pushLiveSource: vi.fn(),
 }));
 
 vi.mock("@app/lib/lock", () => ({
@@ -60,6 +70,7 @@ function getInspectablePrivateUploadBucket() {
 
 beforeEach(() => {
   fileStorageMock.setFileExists(() => false);
+  vi.mocked(fetchLiveSource).mockResolvedValue(new Ok({ open: false }));
 });
 
 async function setup() {
@@ -1485,5 +1496,153 @@ describe("comment signatures on Markdown saves", () => {
     expect(fileStorageMock.getObject(mountPath)).toBe(
       file("user:usr_someone_else")
     );
+  });
+});
+
+describe("PUT of a Markdown file held by a live session", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(fetchLiveSource).mockResolvedValue(
+      new Ok({ open: true, source: "Live text\n" })
+    );
+    vi.mocked(pushLiveSource).mockResolvedValue(new Ok("written"));
+  });
+
+  const setupLive = async ({ coEdition = true } = {}) => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    if (coEdition) {
+      await FeatureFlagFactory.basic(auth, "co_edition");
+    }
+    const conversation = await createConversation(auth, {
+      title: null,
+      visibility: "unlisted",
+      spaceId: null,
+    });
+    return {
+      workspace,
+      user,
+      path: `conversation-${conversation.sId}/notes.md`,
+    };
+  };
+
+  const put = (
+    workspace: { sId: string },
+    path: string,
+    body: string,
+    headers: Record<string, string> = {}
+  ) =>
+    request(workspace, path, {
+      method: "PUT",
+      headers: { "Content-Type": "text/markdown", ...headers },
+      body,
+    });
+
+  it("writes through the session, not the file", async () => {
+    const { workspace, path } = await setupLive();
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get(DUST_FILE_REVISION_HEADER)).toBeNull();
+    expect(pushLiveSource).toHaveBeenCalledWith(expect.anything(), {
+      canonicalPath: path,
+      base: "Live text\n",
+      source: "# New\n",
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("starts over from a fresh read when the session changed meanwhile", async () => {
+    const { workspace, path } = await setupLive();
+    vi.mocked(fetchLiveSource)
+      .mockResolvedValueOnce(new Ok({ open: true, source: "First\n" }))
+      .mockResolvedValueOnce(new Ok({ open: true, source: "Second\n" }));
+    vi.mocked(pushLiveSource)
+      .mockResolvedValueOnce(new Ok("changed"))
+      .mockResolvedValueOnce(new Ok("written"));
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(200);
+    expect(vi.mocked(pushLiveSource).mock.calls[1][1].base).toBe("Second\n");
+  });
+
+  it("returns 412 once the session kept changing", async () => {
+    const { workspace, path } = await setupLive();
+    vi.mocked(pushLiveSource).mockResolvedValue(new Ok("busy"));
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(412);
+    expect(pushLiveSource).toHaveBeenCalledTimes(3);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns 412 for a write conditional on a file revision", async () => {
+    const { workspace, path } = await setupLive();
+
+    const response = await put(workspace, path, "# New\n", {
+      [DUST_IF_REVISION_MATCH_HEADER]: "1",
+    });
+
+    expect(response.status).toBe(412);
+    expect(pushLiveSource).not.toHaveBeenCalled();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("writes the file once the session closed", async () => {
+    const { workspace, path } = await setupLive();
+    vi.mocked(pushLiveSource).mockResolvedValue(new Ok("closed"));
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(201);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+  });
+
+  it("returns 503 without writing when the collab server cannot tell", async () => {
+    const { workspace, path } = await setupLive();
+    vi.mocked(fetchLiveSource).mockResolvedValue(
+      new Err({ code: "unavailable", message: "Collab server error (500)." })
+    );
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(503);
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("refuses a comment the server did not sign, checked against the session's source", async () => {
+    const { workspace, path } = await setupLive();
+    const unsigned = `Hi :comment-start{id=c1}there:comment-end{id=c1}\n\n:::annotations\n::comment{id=c1 status=open}\n\n::message{author=agent:someone name="Someone" at=2026-10-05T11:59:58.000Z}\n\nLooks good.\n:::\n`;
+
+    const response = await put(workspace, path, unsigned);
+
+    expect(response.status).toBe(400);
+    expect(pushLiveSource).not.toHaveBeenCalled();
+  });
+
+  it("does not ask the collab server outside co_edition", async () => {
+    const { workspace, path } = await setupLive({ coEdition: false });
+
+    const response = await put(workspace, path, "# New\n");
+
+    expect(response.status).toBe(201);
+    expect(fetchLiveSource).not.toHaveBeenCalled();
+  });
+
+  it("does not ask the collab server for a file that is not Markdown", async () => {
+    const { workspace, path } = await setupLive();
+
+    const response = await request(workspace, path.replace(".md", ".txt"), {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: "plain",
+    });
+
+    expect(response.status).toBe(201);
+    expect(fetchLiveSource).not.toHaveBeenCalled();
   });
 });
