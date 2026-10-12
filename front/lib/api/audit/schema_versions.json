@@ -149,6 +149,7 @@
   "workspace.published_agents_restricted_models_updated": 1,
   "workspace.regional_models_only_updated": 1,
   "workspace.reinforcement_cap_updated": 1,
+  "workspace.secrets_relocated": 1,
   "workspace.self_improvement_cap_per_skill_updated": 1,
   "workspace.sharing_policy_updated": 1,
   "workspace.slack_personal_footer_removal_updated": 1,
