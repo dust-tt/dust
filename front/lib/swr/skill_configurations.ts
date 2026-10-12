@@ -44,7 +44,6 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
-import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg, plural } from "@lingui/core/macro";
@@ -349,22 +348,17 @@ export function useSearchSkillsInfinite({
 /**
  * @cc [owner:aubin-tchoi,label:react] invalidate-workspace-skill-lists
  * Revalidate array-keyed skill searches for the given workspace, regardless of
- * search body, plus its reinforcement settings.
- * Do not revalidate other workspaces or individual skill detail endpoints.
+ * search body.
+ * Do not revalidate other workspaces, individual skill detail endpoints or
+ * reinforcement settings (refreshed by their own hooks).
  */
 export function useInvalidateSkills({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRConfig();
-  const skillsUrl = `/api/w/${workspaceId}/skills`;
-  const searchUrl = `${skillsUrl}/search`;
+  const searchUrl = `/api/w/${workspaceId}/skills/search`;
 
   return useCallback(
-    () =>
-      mutate((key) =>
-        isString(key)
-          ? key === `${skillsUrl}/reinforcement_settings`
-          : Array.isArray(key) && key[0] === searchUrl
-      ),
-    [mutate, skillsUrl, searchUrl]
+    () => mutate((key) => Array.isArray(key) && key[0] === searchUrl),
+    [mutate, searchUrl]
   );
 }
 
