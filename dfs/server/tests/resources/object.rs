@@ -109,7 +109,11 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
             .await?
             .context("missing fetched root")?;
         assert_eq!(fetched.object_id, root.object_id);
-        assert_eq!(fetched.tenant_id, root.tenant_id);
+        for object in [&root, &fetched] {
+            assert_eq!(object.tenant.tenant_id, tenant.tenant_id);
+            assert_eq!(object.tenant.root_id, tenant.root_id);
+            assert_eq!(object.tenant.key_hash, tenant.key_hash);
+        }
         assert_eq!(fetched.parent_id, None);
         assert_eq!(fetched.kind, ObjectKind::Directory);
         assert_eq!(fetched.attr_version, root.attr_version);
