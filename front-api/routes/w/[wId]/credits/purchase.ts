@@ -78,7 +78,7 @@ function purchaseErrorToApi(
       return {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "credit_purchase_amount_out_of_range",
           message: `Amount exceeds maximum allowed: $${maxDollars}. Please contact support for higher limits.`,
         },
       };

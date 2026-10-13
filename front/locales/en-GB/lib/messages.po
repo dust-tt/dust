@@ -1218,6 +1218,202 @@ msgid "This URL can't be used to download a file."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
+msgid "This workspace isn't set up for credit-based billing."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available on credit-based plans."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The limit is outside the allowed range."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The current billing period couldn't be found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the API key."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An API key with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "System keys can't have a spend limit."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "One or more email addresses are invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "There are too many pending invitations. Ask members to accept theirs before sending more."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This invitation link is invalid. Ask your admin to send a new invitation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Add a reason to request an upgrade."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade request not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This upgrade request was already approved or denied."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You already have a workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Enter your first and last name."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your name is managed by your identity provider and can't be changed here."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A group with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for manual or provisioned groups."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This group is managed automatically and can't be edited."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This change would leave the group without a required member."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the group."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't a member of the group."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A group must keep at least one member. To remove everyone, delete the group."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "No active members match the selection."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A workspace must keep at least one admin."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The free seat is only for first-time members and can't be assigned again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade your workspace before assigning a paid seat."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This seat type has reached its limit for your workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace contract doesn't include this seat type."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The seat change preview couldn't be computed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Seats can't be changed while a subscription cancellation is scheduled."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace is already on a Pro or Business plan."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace must be on the free plan to activate this subscription."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Payment setup hasn't completed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Enterprise workspaces can't buy credits here. Contact your Dust sales representative."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "No billing account was found for this workspace. Contact support."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A credit purchase is already in progress. Wait for it to complete."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The credit amount is outside the allowed range."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Verify your workspace's phone number before starting a trial."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The phone number couldn't be verified. Try again or request a new code."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This memory is too long. Shorten it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A tag with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Verified domain not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data classification labels aren't supported for this source."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Some active agents use models outside your region. Update them first."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Each redirect URI must be unique and include a scheme, such as https://."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr ""
 

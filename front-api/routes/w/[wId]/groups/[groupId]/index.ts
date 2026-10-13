@@ -28,6 +28,7 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import { groupMemberChangeApiError } from "../errors";
 import discovery from "./discovery";
 
 const ParamsSchema = z.object({
@@ -196,7 +197,7 @@ app.patch(
             type:
               assignment.kind === "unauthorized"
                 ? "workspace_auth_error"
-                : "invalid_request_error",
+                : "workspace_user_not_found",
             message:
               assignment.kind === "unauthorized"
                 ? "Only workspace admins and managers can appoint group managers."
@@ -243,7 +244,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 409,
             api_error: {
-              type: "invalid_request_error",
+              type: "group_already_exists",
               message: updateRes.error.message,
             },
           });
@@ -268,13 +269,13 @@ app.patch(
         case "group_requirements_not_met":
         case "last_group_member":
         case "system_or_global_group":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: updateRes.error.message,
-            },
-          });
+          return apiError(
+            ctx,
+            groupMemberChangeApiError(
+              updateRes.error.code,
+              updateRes.error.message
+            )
+          );
         default:
           assertNever(updateRes.error);
       }

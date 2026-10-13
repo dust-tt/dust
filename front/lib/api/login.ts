@@ -102,7 +102,7 @@ export async function performLogin(
         error: {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "invitation_token_invalid",
             message: error.message,
           },
         },

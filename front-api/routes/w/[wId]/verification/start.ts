@@ -4,12 +4,12 @@ import { PHONE_REGEXP } from "@app/lib/resources/workspace_verification_attempt_
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   StartVerificationResponse,
-  VerificationErrorResponse,
   VerificationErrorType,
 } from "@app/types/workspace_verification";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
@@ -26,7 +26,7 @@ export function getStatusCodeForError(
   switch (type) {
     case "rate_limit_error":
       return 429;
-    case "invalid_request_error":
+    case "phone_number_not_accepted":
     case "verification_error":
     case "invalid_captcha":
       return 400;
@@ -50,9 +50,7 @@ app.post(
   "/",
   ensureIsAdmin(),
   validate("json", PostStartVerificationRequestBody),
-  async (
-    ctx
-  ): HandlerResult<StartVerificationResponse | VerificationErrorResponse> => {
+  async (ctx): HandlerResult<StartVerificationResponse> => {
     const auth = ctx.get("auth");
 
     const { phoneNumber, captchaToken } = ctx.req.valid("json");
@@ -62,33 +60,29 @@ app.post(
       remoteIp: auth.clientIp(),
     });
     if (captchaResult.isErr()) {
-      return ctx.json(
-        {
-          error: {
-            type: "invalid_captcha" as const,
-            message: "Captcha verification failed. Please try again.",
-          },
+      return apiError(ctx, {
+        status_code: getStatusCodeForError("invalid_captcha"),
+        api_error: {
+          type: "invalid_captcha",
+          message: "Captcha verification failed. Please try again.",
         },
-        getStatusCodeForError("invalid_captcha")
-      );
+      });
     }
 
     const result = await startVerification(auth, phoneNumber);
 
     if (result.isErr()) {
       const error = result.error;
-      return ctx.json(
-        {
-          error: {
-            type: error.type,
-            message: error.message,
-            ...(error.retryAfterSeconds !== undefined && {
-              retryAfterSeconds: error.retryAfterSeconds,
-            }),
-          },
+      return apiError(ctx, {
+        status_code: getStatusCodeForError(error.type),
+        api_error: {
+          type: error.type,
+          message: error.message,
+          ...(error.retryAfterSeconds !== undefined && {
+            retryAfterSeconds: error.retryAfterSeconds,
+          }),
         },
-        getStatusCodeForError(error.type)
-      );
+      });
     }
 
     if (result.value.status === "already_verified") {

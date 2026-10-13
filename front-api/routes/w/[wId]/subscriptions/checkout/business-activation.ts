@@ -174,7 +174,7 @@ function mapBusinessActivationError(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "free_plan_required",
           message:
             "Workspace is not on the free plan; subscription activation requires a free plan workspace.",
         },

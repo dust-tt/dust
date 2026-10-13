@@ -53,7 +53,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "metronome_billing_not_configured",
               message:
                 "Credit coupons are not available for this workspace. Please contact support.",
             },

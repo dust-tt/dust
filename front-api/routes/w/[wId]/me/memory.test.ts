@@ -125,7 +125,7 @@ describe("PATCH /api/w/:wId/me/memory", () => {
 
     expect(response.status).toBe(400);
     const data = ApiErrorSchema.parse(await response.json());
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("user_memory_too_long");
     expect(setUserMemory).not.toHaveBeenCalled();
   });
 

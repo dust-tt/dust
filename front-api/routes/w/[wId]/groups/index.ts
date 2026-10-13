@@ -35,6 +35,7 @@ import grantedRole from "./[groupId]/granted_role";
 import grantedSeatType from "./[groupId]/granted_seat_type";
 import sharedUsageLimit from "./[groupId]/shared_usage_limit";
 import spendLimit from "./[groupId]/spend_limit";
+import { groupMemberChangeApiError } from "./errors";
 
 const GetGroupsQuerySchema = z.object({
   kind: z.union([GroupKindCodec, z.array(GroupKindCodec)]).optional(),
@@ -142,7 +143,7 @@ app.post(
           return apiError(ctx, {
             status_code: 409,
             api_error: {
-              type: "invalid_request_error",
+              type: "group_already_exists",
               message: groupRes.error.message,
             },
           });
@@ -157,13 +158,13 @@ app.post(
         case "user_already_member":
         case "group_requirements_not_met":
         case "system_or_global_group":
-          return apiError(ctx, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: groupRes.error.message,
-            },
-          });
+          return apiError(
+            ctx,
+            groupMemberChangeApiError(
+              groupRes.error.code,
+              groupRes.error.message
+            )
+          );
         default:
           assertNever(groupRes.error.code);
       }

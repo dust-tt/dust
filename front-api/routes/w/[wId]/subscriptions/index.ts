@@ -85,13 +85,22 @@ app.post(
         targetUserId,
       });
       if (result.isErr()) {
-        const message =
-          result.error.type === "already_on_pro_plan"
-            ? "Workspace is already subscribed to a Pro or Business plan."
-            : "seatType and targetUserId are required for CP checkout.";
+        if (result.error.type === "already_on_pro_plan") {
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "already_on_paid_plan",
+              message:
+                "Workspace is already subscribed to a Pro or Business plan.",
+            },
+          });
+        }
         return apiError(ctx, {
           status_code: 400,
-          api_error: { type: "invalid_request_error", message },
+          api_error: {
+            type: "invalid_request_error",
+            message: "seatType and targetUserId are required for CP checkout.",
+          },
         });
       }
 

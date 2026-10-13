@@ -25,7 +25,9 @@ import { Err, Ok } from "@app/types/shared/result";
 export const MAX_API_KEY_CREATION_PER_DAY = 30;
 
 type CreateApiKeyErrorCode =
-  | "invalid_request_error"
+  | "api_key_name_required"
+  | "usage_limit_out_of_range"
+  | "credit_priced_plan_required"
   | "name_conflict"
   | "unauthorized"
   | "group_not_found"
@@ -186,14 +188,14 @@ export async function createApiKey(
   const trimmedName = name.trim();
   if (trimmedName.length === 0) {
     return new Err(
-      new DustError("invalid_request_error", "API key name cannot be empty.")
+      new DustError("api_key_name_required", "API key name cannot be empty.")
     );
   }
 
   if (monthlyCapMicroUsd !== null && monthlyCapMicroUsd < 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "usage_limit_out_of_range",
         "monthly_cap_micro_usd must be greater than or equal to 0"
       )
     );
@@ -206,7 +208,7 @@ export async function createApiKey(
     if (!plan || !isCreditPricedPlan(plan)) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "credit_priced_plan_required",
           "Per-key credit spend limits are only available on credit-priced plans."
         )
       );
@@ -217,7 +219,7 @@ export async function createApiKey(
     ) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "usage_limit_out_of_range",
           `monthly_cap_awu_credits must be between ` +
             `${MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS} and ` +
             `${MAX_API_KEY_SPEND_LIMIT_AWU_CREDITS}.`

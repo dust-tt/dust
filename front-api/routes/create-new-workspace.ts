@@ -19,7 +19,7 @@ createNewWorkspaceApp.post("/", async (ctx) => {
     return apiError(ctx, {
       status_code: 401,
       api_error: {
-        type: "invalid_request_error",
+        type: "user_not_found",
         message: "The user is not found.",
       },
     });
@@ -29,7 +29,7 @@ createNewWorkspaceApp.post("/", async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "user_already_has_workspace",
         message: "The user already has a workspace.",
       },
     });

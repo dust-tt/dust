@@ -200,7 +200,7 @@ app.post(
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "last_admin_cannot_be_removed",
                 message: "Cannot revoke the last admin of a workspace.",
               },
             });
@@ -240,7 +240,7 @@ app.post(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "last_admin_cannot_be_removed",
               message:
                 "Cannot change your role as you are the sole admin of this workspace.",
             },
@@ -280,7 +280,7 @@ app.post(
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "last_admin_cannot_be_removed",
                 message: "Cannot remove the last admin of a workspace.",
               },
             });

@@ -77,7 +77,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "no_matching_members",
           message: "No active members matched the selection.",
         },
       });

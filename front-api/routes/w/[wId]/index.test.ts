@@ -157,7 +157,9 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe(
+      "agent_configuration_not_found"
+    );
   });
 
   it("returns 400 for a hidden agent the admin cannot read", async () => {
@@ -174,7 +176,9 @@ describe("POST /api/w/:wId (workspace default agent)", () => {
     });
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe(
+      "agent_configuration_not_found"
+    );
     const updated = await WorkspaceResource.fetchById(workspace.sId);
     expect(updated?.metadata?.workspaceDefaultAgentId).toBeUndefined();
   });

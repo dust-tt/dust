@@ -77,7 +77,7 @@ app.put(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "group_kind_not_supported",
               message: setRes.error.message,
             },
           });

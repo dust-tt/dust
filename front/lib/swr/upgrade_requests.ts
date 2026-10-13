@@ -30,6 +30,15 @@ function usageStatusUrl(workspaceId: string): string {
 
 // `error` is formatted by the caller with `formatError`.
 export type RequestUpgradeError = { errorType: string; error: unknown };
+
+// A rejected reason (missing while required, or failing the body schema) is shown inline on the
+// reason field rather than as a toast.
+export function isUpgradeRequestReasonError(errorType: string): boolean {
+  return (
+    errorType === "upgrade_request_reason_required" ||
+    errorType === "invalid_request_error"
+  );
+}
 export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
 
 // Member-initiated: request a spend-limit upgrade for the current user. On
@@ -55,7 +64,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
           "type" in errorData ? errorData.type : "unknown_error";
         // A rejected reason is shown inline on the field by the caller, not as
         // a toast.
-        if (errorType !== "invalid_request_error") {
+        if (!isUpgradeRequestReasonError(errorType)) {
           sendApiErrorNotification({
             title: t`Failed to request an upgrade`,
             error: errorData,

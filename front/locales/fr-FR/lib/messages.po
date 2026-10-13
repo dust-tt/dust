@@ -1218,6 +1218,202 @@ msgid "This URL can't be used to download a file."
 msgstr "Cette URL ne peut pas être utilisée pour télécharger un fichier."
 
 #: front/lib/api_error_messages.ts
+msgid "This workspace isn't set up for credit-based billing."
+msgstr "Ce workspace n’est pas configuré pour la facturation au crédit."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available on credit-based plans."
+msgstr "Disponible uniquement avec les forfaits au crédit."
+
+#: front/lib/api_error_messages.ts
+msgid "The limit is outside the allowed range."
+msgstr "La limite est en dehors de la plage autorisée."
+
+#: front/lib/api_error_messages.ts
+msgid "The current billing period couldn't be found."
+msgstr "La période de facturation en cours est introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the API key."
+msgstr "Saisissez un nom pour la clé d’API."
+
+#: front/lib/api_error_messages.ts
+msgid "An API key with this name already exists."
+msgstr "Une clé d’API portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "System keys can't have a spend limit."
+msgstr "Les clés système ne peuvent pas avoir de limite de dépenses."
+
+#: front/lib/api_error_messages.ts
+msgid "One or more email addresses are invalid."
+msgstr "Une ou plusieurs adresses e-mail ne sont pas valides."
+
+#: front/lib/api_error_messages.ts
+msgid "There are too many pending invitations. Ask members to accept theirs before sending more."
+msgstr "Il y a trop d’invitations en attente. Demandez aux membres d’accepter la leur avant d’en envoyer d’autres."
+
+#: front/lib/api_error_messages.ts
+msgid "This invitation link is invalid. Ask your admin to send a new invitation."
+msgstr "Ce lien d’invitation n’est pas valide. Demandez à votre administrateur de vous envoyer une nouvelle invitation."
+
+#: front/lib/api_error_messages.ts
+msgid "Add a reason to request an upgrade."
+msgstr "Ajoutez un motif pour faire une demande d’augmentation."
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade request not found."
+msgstr "Demande d’augmentation introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "This upgrade request was already approved or denied."
+msgstr "Cette demande d’augmentation a déjà été approuvée ou refusée."
+
+#: front/lib/api_error_messages.ts
+msgid "You already have a workspace."
+msgstr "Vous avez déjà un workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter your first and last name."
+msgstr "Saisissez votre prénom et votre nom."
+
+#: front/lib/api_error_messages.ts
+msgid "Your name is managed by your identity provider and can't be changed here."
+msgstr "Votre nom est géré par votre fournisseur d’identité et ne peut pas être modifié ici."
+
+#: front/lib/api_error_messages.ts
+msgid "A group with this name already exists."
+msgstr "Un groupe portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for manual or provisioned groups."
+msgstr "Disponible uniquement pour les groupes manuels ou provisionnés."
+
+#: front/lib/api_error_messages.ts
+msgid "This group is managed automatically and can't be edited."
+msgstr "Ce groupe est géré automatiquement et ne peut pas être modifié."
+
+#: front/lib/api_error_messages.ts
+msgid "This change would leave the group without a required member."
+msgstr "Cette modification laisserait le groupe sans un membre requis."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the group."
+msgstr "Ce membre fait déjà partie du groupe."
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't a member of the group."
+msgstr "Ce membre ne fait pas partie du groupe."
+
+#: front/lib/api_error_messages.ts
+msgid "A group must keep at least one member. To remove everyone, delete the group."
+msgstr "Un groupe doit conserver au moins un membre. Pour retirer tout le monde, supprimez le groupe."
+
+#: front/lib/api_error_messages.ts
+msgid "No active members match the selection."
+msgstr "Aucun membre actif ne correspond à la sélection."
+
+#: front/lib/api_error_messages.ts
+msgid "A workspace must keep at least one admin."
+msgstr "Un workspace doit conserver au moins un administrateur."
+
+#: front/lib/api_error_messages.ts
+msgid "The free seat is only for first-time members and can't be assigned again."
+msgstr "Le siège gratuit est réservé aux nouveaux membres et ne peut pas être réattribué."
+
+#: front/lib/api_error_messages.ts
+msgid "Upgrade your workspace before assigning a paid seat."
+msgstr "Passez à un forfait supérieur avant d’attribuer un siège payant."
+
+#: front/lib/api_error_messages.ts
+msgid "This seat type has reached its limit for your workspace."
+msgstr "Ce type de siège a atteint sa limite pour votre workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace contract doesn't include this seat type."
+msgstr "Le contrat de votre workspace n’inclut pas ce type de siège."
+
+#: front/lib/api_error_messages.ts
+msgid "The seat change preview couldn't be computed."
+msgstr "Impossible de calculer l’aperçu du changement de siège."
+
+#: front/lib/api_error_messages.ts
+msgid "Seats can't be changed while a subscription cancellation is scheduled."
+msgstr "Les sièges ne peuvent pas être modifiés tant qu’une résiliation d’abonnement est programmée."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace is already on a Pro or Business plan."
+msgstr "Votre workspace est déjà sur un forfait Pro ou Business."
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace must be on the free plan to activate this subscription."
+msgstr "Votre workspace doit être sur le forfait gratuit pour activer cet abonnement."
+
+#: front/lib/api_error_messages.ts
+msgid "Payment setup hasn't completed."
+msgstr "La configuration du paiement n’est pas terminée."
+
+#: front/lib/api_error_messages.ts
+msgid "Enterprise workspaces can't buy credits here. Contact your Dust sales representative."
+msgstr "Les workspaces Enterprise ne peuvent pas acheter de crédits ici. Contactez votre interlocuteur commercial Dust."
+
+#: front/lib/api_error_messages.ts
+msgid "No billing account was found for this workspace. Contact support."
+msgstr "Aucun compte de facturation n’a été trouvé pour ce workspace. Contactez le support."
+
+#: front/lib/api_error_messages.ts
+msgid "A credit purchase is already in progress. Wait for it to complete."
+msgstr "Un achat de crédits est déjà en cours. Attendez qu’il se termine."
+
+#: front/lib/api_error_messages.ts
+msgid "The credit amount is outside the allowed range."
+msgstr "Le montant de crédits est en dehors de la plage autorisée."
+
+#: front/lib/api_error_messages.ts
+msgid "Verify your workspace's phone number before starting a trial."
+msgstr "Vérifiez le numéro de téléphone de votre workspace avant de commencer un essai."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number can't be used for verification."
+msgstr "Ce numéro de téléphone ne peut pas être utilisé pour la vérification."
+
+#: front/lib/api_error_messages.ts
+msgid "This phone number is already used by another workspace."
+msgstr "Ce numéro de téléphone est déjà utilisé par un autre workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "The phone number couldn't be verified. Try again or request a new code."
+msgstr "Le numéro de téléphone n’a pas pu être vérifié. Réessayez ou demandez un nouveau code."
+
+#: front/lib/api_error_messages.ts
+msgid "The captcha check failed. Try again."
+msgstr "La vérification du captcha a échoué. Réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "This memory is too long. Shorten it and try again."
+msgstr "Cette mémoire est trop longue. Raccourcissez-la et réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "A tag with this name already exists."
+msgstr "Un tag portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "Verified domain not found."
+msgstr "Domaine vérifié introuvable."
+
+#: front/lib/api_error_messages.ts
+msgid "Data classification labels aren't supported for this source."
+msgstr "Les étiquettes de classification des données ne sont pas prises en charge pour cette source."
+
+#: front/lib/api_error_messages.ts
+msgid "Some active agents use models outside your region. Update them first."
+msgstr "Certains agents actifs utilisent des modèles hors de votre région. Mettez-les d’abord à jour."
+
+#: front/lib/api_error_messages.ts
+msgid "Each redirect URI must be unique and include a scheme, such as https://."
+msgstr "Chaque URI de redirection doit être unique et inclure un schéma, comme https://."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code : {code}"
 

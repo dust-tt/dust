@@ -32,7 +32,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "tag_not_found",
           message: "Tag not found",
         },
       });
@@ -69,7 +69,7 @@ app.put(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "tag_not_found",
           message: "Tag not found",
         },
       });

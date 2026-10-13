@@ -1,11 +1,9 @@
 import { validateVerification } from "@app/lib/api/workspace_verification";
-import type {
-  VerificationErrorResponse,
-  VerifyCodeResponse,
-} from "@app/types/workspace_verification";
+import type { VerifyCodeResponse } from "@app/types/workspace_verification";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
@@ -24,9 +22,7 @@ app.post(
   "/",
   ensureIsAdmin(),
   validate("json", PostValidateVerificationRequestBody),
-  async (
-    ctx
-  ): HandlerResult<VerifyCodeResponse | VerificationErrorResponse> => {
+  async (ctx): HandlerResult<VerifyCodeResponse> => {
     const auth = ctx.get("auth");
 
     const { phoneNumber, code } = ctx.req.valid("json");
@@ -35,15 +31,10 @@ app.post(
 
     if (result.isErr()) {
       const error = result.error;
-      return ctx.json(
-        {
-          error: {
-            type: error.type,
-            message: error.message,
-          },
-        },
-        getStatusCodeForError(error.type)
-      );
+      return apiError(ctx, {
+        status_code: getStatusCodeForError(error.type),
+        api_error: { type: error.type, message: error.message },
+      });
     }
 
     return ctx.json({

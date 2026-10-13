@@ -344,6 +344,55 @@ const API_ERROR_TYPES = [
   "file_upload_expired",
   "file_url_fetch_failed",
   "file_url_not_allowed",
+  "metronome_billing_not_configured",
+  "credit_priced_plan_required",
+  "usage_limit_out_of_range",
+  "billing_period_unavailable",
+  "api_key_name_required",
+  "api_key_already_exists",
+  "system_key_spend_limit_not_supported",
+  "invalid_email_address",
+  "pending_invitations_limit_exceeded",
+  "invitation_token_invalid",
+  "upgrade_request_reason_required",
+  "upgrade_request_not_found",
+  "upgrade_request_already_resolved",
+  "user_already_has_workspace",
+  "user_name_required",
+  "provisioned_user_name_not_editable",
+  "group_already_exists",
+  "group_kind_not_supported",
+  "group_not_editable",
+  "group_requirements_not_met",
+  "user_already_group_member",
+  "user_not_group_member",
+  "last_group_member_cannot_be_removed",
+  "no_matching_members",
+  "last_admin_cannot_be_removed",
+  "free_seat_already_used",
+  "paid_seat_requires_paid_plan",
+  "seat_limit_reached",
+  "seat_type_not_in_contract",
+  "seat_change_preview_unavailable",
+  "subscription_cancellation_scheduled",
+  "already_on_paid_plan",
+  "free_plan_required",
+  "payment_setup_incomplete",
+  "enterprise_credit_purchase_not_supported",
+  "stripe_customer_not_found",
+  "credit_purchase_pending",
+  "credit_purchase_amount_out_of_range",
+  "workspace_phone_not_verified",
+  "phone_number_not_accepted",
+  "phone_already_used_error",
+  "verification_error",
+  "invalid_captcha",
+  "user_memory_too_long",
+  "tag_already_exists",
+  "verified_domain_not_found",
+  "data_classification_source_not_supported",
+  "non_regional_models_in_use",
+  "redirect_uri_invalid",
 ] as const;
 
 export type RegionRedirectError = CellInfo;
@@ -366,6 +415,8 @@ export type APIError = {
   connectors_error?: ConnectorsAPIError;
   redirect?: CellInfo;
   unverifiableRefs?: string[];
+  // Unix timestamp (seconds) after which a rate-limited verification can be retried.
+  retryAfterSeconds?: number;
 };
 
 export function isAPIError(obj: unknown): obj is APIError {

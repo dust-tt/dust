@@ -124,6 +124,10 @@ export type DustErrorCode =
   | "conversation_agent_running"
   | "conversation_locked"
   | "fork_source_message_not_found"
+  // Workspace errors (domain:workspace)
+  | "api_key_name_required"
+  | "usage_limit_out_of_range"
+  | "credit_priced_plan_required"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"

@@ -78,7 +78,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "user_memory_too_long",
             message: `Memory content exceeds the ${MAX_USER_MEMORY_CONTENT_LENGTH} character limit.`,
           },
         });

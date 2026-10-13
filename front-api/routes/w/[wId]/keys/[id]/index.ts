@@ -84,7 +84,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "usage_limit_out_of_range",
             message:
               `monthly_cap_awu_credits must be between ` +
               `${MIN_API_KEY_SPEND_LIMIT_AWU_CREDITS} and ` +
@@ -114,12 +114,26 @@ app.patch(
               },
             });
           case "system_key":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "system_key_spend_limit_not_supported",
+                message: result.error.message,
+              },
+            });
           case "workspace_not_credit_priced":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "credit_priced_plan_required",
+                message: result.error.message,
+              },
+            });
           case "workspace_not_metronome_billed":
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "metronome_billing_not_configured",
                 message: result.error.message,
               },
             });
@@ -184,7 +198,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "usage_limit_out_of_range",
           message: "monthly_cap_micro_usd must be greater than or equal to 0.",
         },
       });
