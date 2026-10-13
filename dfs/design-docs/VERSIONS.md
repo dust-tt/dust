@@ -44,7 +44,8 @@ Every choice below has been agreed on. When discussing one, refer to it by its n
 15. **Virtual projections.** Virtual `root` reports the stored tenant root's versions and
     timestamps. Virtual `shared` has no timestamps, and all its versions stay at 1.
 16. **One `grants_version` advance per `UpdateGrants` request**, however many grants it attaches or
-    detaches. Following choice 3, it advances even when every change is a no-op.
+    detaches. Following choice 3, it advances even when every change is a no-op. A retry after an
+    unknown commit result may advance it again.
 
 ## Legend
 

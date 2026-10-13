@@ -225,6 +225,7 @@ export const WireAttrSchema = z
     ctime: WireNumberUint64Schema.optional(),
     attrVersion: WireBigUint64Schema,
     contentVersion: WireBigUint64Schema,
+    grantsVersion: WireBigUint64Schema,
     storeVersion: WireBigInt64Schema,
     metadata: WireExtendedMetadataSchema.optional(),
   })
@@ -239,6 +240,7 @@ export const WireAttrSchema = z
     ctimeMs: a.ctime,
     attrVersion: a.attrVersion,
     contentVersion: a.contentVersion,
+    grantsVersion: a.grantsVersion,
     storeVersion: a.storeVersion,
     metadata: a.metadata,
   }));

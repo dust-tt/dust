@@ -107,6 +107,7 @@ pub struct ObjectResource {
     pub ctime_ms: Option<u64>,
     pub attr_version: u64,
     pub content_version: u64,
+    pub grants_version: u64,
     pub metadata: Option<Metadata>,
 }
 
@@ -124,6 +125,7 @@ type StoredAttributes = (
     Option<u64>,
     Option<u64>,
     Option<u64>,
+    u64,
     u64,
     u64,
 );
@@ -219,6 +221,7 @@ impl ObjectResource {
             ctime_ms,
             attr_version,
             content_version,
+            grants_version,
         ): StoredAttributes = unpack(value).map_err(FdbBindingError::PackError)?;
         Ok(Self {
             tenant_id: tenant_id.to_owned(),
@@ -236,6 +239,7 @@ impl ObjectResource {
             ctime_ms,
             attr_version,
             content_version,
+            grants_version,
             metadata: None,
         })
     }
@@ -243,7 +247,7 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] tenant-root-initial-state
      * A new root MUST use the tenant's root ID and be an empty directory with no parent, MIME type,
-     * or xattrs, and an empty name. Both versions MUST start at 1. Creation, access, modification, and
+     * or xattrs, and an empty name. All versions MUST start at 1. Creation, access, modification, and
      * change times MUST be initialized to the same server timestamp.
      */
     pub fn new_root(tenant: &TenantResource) -> Result<Self, Error> {
@@ -283,6 +287,7 @@ impl ObjectResource {
             ctime_ms: Some(now_ms),
             attr_version: INITIAL_VERSION,
             content_version: INITIAL_VERSION,
+            grants_version: INITIAL_VERSION,
             metadata: Some(Metadata {
                 created_at_ms: now_ms,
                 mime_type,
@@ -384,6 +389,7 @@ impl ObjectResource {
             self.ctime_ms,
             self.attr_version,
             self.content_version,
+            self.grants_version,
         ))
     }
 
@@ -447,11 +453,19 @@ impl ObjectResource {
      * Callers MUST fetch or create this object in the same transaction. Updates MUST reject more
      * than 512 changes, invalid grants, or repeated complete grant values before staging writes.
      * ALLOW forward and reverse entries MUST change together; DENY MUST have no reverse entry.
-     * Attaching an existing grant or removing an absent grant MUST be a no-op. Unmentioned grants,
-     * object attributes, metadata, and versions MUST remain unchanged.
+     * Attaching an existing grant or removing an absent grant MUST leave the grant set unchanged.
+     * Unmentioned grants, non-version attributes, metadata, attr_version, and content_version MUST
+     * remain unchanged.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] object-grants-version
+     * Each successful update MUST increment only this object's grants_version once, atomically
+     * with the grants, including empty or no-op updates. Initial grants MUST NOT advance it.
+     * Overflow MUST fail before staging writes. A retry after an unknown commit result MAY
+     * increment it again; versions MUST NOT wrap or reset.
      */
     pub fn update_grants(
-        &self,
+        &mut self,
         tx: &Transaction,
         changes: &[GrantUpdate],
     ) -> Result<(), storage::Error<Error>> {
@@ -465,9 +479,15 @@ impl ObjectResource {
                 return Err(Error::DuplicateGrant.into());
             }
         }
+        let grants_version = self
+            .grants_version
+            .checked_add(1)
+            .ok_or(Error::VersionOverflow)?;
         for change in changes {
             self.write_grant(tx, &change.grant, change.remove)?;
         }
+        self.grants_version = grants_version;
+        self.save_attributes(tx);
         Ok(())
     }
 

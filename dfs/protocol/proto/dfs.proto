@@ -130,6 +130,8 @@ message Attr {
   required uint64 attr_version = 9;
   // Real directories and virtual root track topology changes, not grants. Shared stays fixed at 1.
   required uint64 content_version = 10;
+  // Tracks grants attached to this object, not inherited grants or effective mode. Shared stays at 1.
+  required uint64 grants_version = 14;
   // The FDB read snapshot or successful mutation commit version.
   required int64 store_version = 11;
   optional ExtendedMetadata metadata = 12;
@@ -239,6 +241,11 @@ message GrantPage {
 // The tenant is derived exclusively from the authenticated tenant key.
 // @cc [owner:spolu,label:api] dfs-update-grants-limit
 // Changes MUST contain at most 512 elements, with no repeated grant value.
+
+// @cc [owner:spolu,label:api] dfs-update-grants-version
+// Each successful request MUST advance only the object's grants_version, including empty or no-op
+// changes. Other versions and timestamps MUST remain unchanged. An unknown-commit retry MAY advance
+// grants_version again.
 message UpdateGrantsRequest {
   required ObjectId object_id = 1;
   repeated GrantUpdate changes = 2;

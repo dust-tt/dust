@@ -112,6 +112,7 @@ fn attributes_carry_names_store_versions_and_optional_metadata() -> Result<()> {
         ctime: None,
         attr_version: 2,
         content_version: 1,
+        grants_version: u64::MAX,
         store_version: i64::MAX,
         metadata: None,
     };
@@ -162,6 +163,7 @@ fn lookup_batches_preserve_targets_and_errors_without_object_ids() -> Result<()>
                     mode: 0o500,
                     attr_version: 1,
                     content_version: 1,
+                    grants_version: 1,
                     store_version: 123,
                     ..Default::default()
                 }),
@@ -239,6 +241,7 @@ fn apply_preserves_operation_order_and_per_operation_outcomes() -> Result<()> {
                         mode: 0o700,
                         attr_version: 2,
                         content_version: 2,
+                        grants_version: 1,
                         store_version: 123,
                         ..Default::default()
                     }],

@@ -154,8 +154,8 @@ impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend] virtual-shared-stat
      * Virtual shared MUST report a read-only directory named shared with zero size, no stored
-     * timestamps, and both attr_version and content_version fixed at 1, regardless of grants or
-     * topology changes. Its reference MUST remain Shared.
+     * timestamps, and attr_version, content_version, and grants_version fixed at 1, regardless of
+     * grants or topology changes. Its reference MUST remain Shared.
      */
     fn stat_shared(version: i64, include_metadata: bool) -> Attr {
         Attr {
@@ -169,6 +169,7 @@ impl ObjectResource {
             ctime: None,
             attr_version: INITIAL_VERSION,
             content_version: INITIAL_VERSION,
+            grants_version: INITIAL_VERSION,
             store_version: version,
             metadata: include_metadata.then(Self::virtual_metadata),
         }
@@ -194,6 +195,7 @@ impl ObjectResource {
             ctime: self.ctime_ms,
             attr_version: self.attr_version,
             content_version: self.content_version,
+            grants_version: self.grants_version,
             store_version: version,
             metadata: self.metadata.map(|metadata| ExtendedMetadata {
                 created: metadata.created_at_ms,
