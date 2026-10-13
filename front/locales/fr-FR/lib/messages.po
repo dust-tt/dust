@@ -899,15 +899,15 @@ msgstr "Un agent doit avoir au moins un éditeur."
 
 #: front/lib/api_error_messages.ts
 msgid "This user is already an editor of the agent."
-msgstr "Cet utilisateur est déjà éditeur de l’agent."
+msgstr "Ce membre est déjà éditeur de l’agent."
 
 #: front/lib/api_error_messages.ts
 msgid "This user isn't an editor of the agent."
-msgstr "Cet utilisateur n’est pas éditeur de l’agent."
+msgstr "Ce membre n’est pas éditeur de l’agent."
 
 #: front/lib/api_error_messages.ts
 msgid "Editors must be active members of the workspace."
-msgstr "Les éditeurs doivent être des membres actifs de l’espace de travail."
+msgstr "Les éditeurs doivent être des membres actifs du workspace."
 
 #: front/lib/api_error_messages.ts
 msgid "These suggestions can't be applied together."
@@ -931,15 +931,15 @@ msgstr "Seules les suggestions de Sidekick peuvent être examinées ici."
 
 #: front/lib/api_error_messages.ts
 msgid "This model isn't available in your workspace."
-msgstr "Ce modèle n’est pas disponible dans votre espace de travail."
+msgstr "Ce modèle n’est pas disponible dans votre workspace."
 
 #: front/lib/api_error_messages.ts
 msgid "No model is available in your workspace."
-msgstr "Aucun modèle n’est disponible dans votre espace de travail."
+msgstr "Aucun modèle n’est disponible dans votre workspace."
 
 #: front/lib/api_error_messages.ts
 msgid "This model doesn't support the selected reasoning effort."
-msgstr "Ce modèle ne prend pas en charge le niveau de raisonnement sélectionné."
+msgstr "Ce modèle ne prend pas en charge le niveau d’effort sélectionné."
 
 #: front/lib/api_error_messages.ts
 msgid "This model doesn't support structured output."
