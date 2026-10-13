@@ -45,6 +45,13 @@ const driveChildItemSchema = z.object({
   lastModifiedDateTime: z.string().optional(),
 });
 
+const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
+
+/**
+ * @cc [owner:tdraier,label:mcp;performance] file-size-checked-before-download
+ * `get_file_content` MUST return an error without downloading the file when its Graph `size`
+ * exceeds `MAX_FILE_SIZE_BYTES`.
+ */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
     { query, dataSource, maximumResults },
@@ -387,7 +394,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
 
       const response = await client
         .api(endpoint)
-        .select("sensitivityLabel,name,file,@microsoft.graph.downloadUrl")
+        .select("sensitivityLabel,name,size,file,@microsoft.graph.downloadUrl")
         .get();
 
       if (allowedLabels.length > 0) {
@@ -406,6 +413,14 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         return new Err(
           new MCPError(
             "The specified item is not a file (it may be a folder or other non-file resource)."
+          )
+        );
+      }
+      if (response.size > MAX_FILE_SIZE_BYTES) {
+        return new Err(
+          new MCPError(
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`,
+            { tracked: false }
           )
         );
       }
@@ -480,7 +495,20 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       const result = await processAttachment({
         mimeType,
         filename: fileName,
-        extractText: async () => extractTextFromBuffer(buffer, mimeType),
+        extractText: async () => {
+          const textResult = await extractTextFromBuffer(buffer, mimeType);
+          if (textResult.isErr()) {
+            return textResult;
+          }
+          const text = textResult.value;
+          const endIndex = Math.min(text.length, offset + limit);
+          const page = text.slice(offset, endIndex);
+          return new Ok(
+            endIndex < text.length
+              ? `${page}\n\n[Truncated: characters ${offset}-${endIndex} of ${text.length}. Call again with offset=${endIndex} to read more.]`
+              : page
+          );
+        },
         downloadContent: async () => new Ok(buffer),
       });
 
