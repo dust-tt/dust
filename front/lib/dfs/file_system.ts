@@ -4,9 +4,13 @@ import type { DfsAttr, DfsEntry, DfsObjectId } from "@app/types/dfs";
 import { DfsError, isDfsObjectId } from "@app/types/dfs";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { Readable } from "stream";
 
 /** The `DfsClient` calls the file system relies on. */
-export type DfsFileSystemClient = Pick<DfsClient, "list" | "lookup" | "stat">;
+export type DfsFileSystemClient = Pick<
+  DfsClient,
+  "list" | "lookup" | "read" | "stat"
+>;
 
 /** An object's attributes with its canonical URI (`dfs://<name>--<id>`, no path). */
 export interface DfsResolvedObject {
@@ -20,6 +24,8 @@ export interface DfsListedEntry {
   object?: DfsResolvedObject;
 }
 
+// Server limit for one `Read`.
+const MAX_READ_CHUNK_BYTES = 1024 * 1024;
 const LIST_PAGE_LIMIT = 4096;
 
 function isDirectory(attr: DfsAttr): boolean {
@@ -56,8 +62,30 @@ function resolved(attr: DfsAttr): Result<DfsResolvedObject, DfsError> {
  * Every returned `uri` MUST be the object's canonical URI: `formatDfsUri` of its real ID and current
  * name from the returned attributes, without a path. It MUST NOT echo the URI the caller passed.
  */
+/**
+ * @cc [owner:fabiencelier,label:product] consistent-reads
+ * Multi-chunk reads MUST check every chunk's returned `contentVersion` against the one observed when
+ * resolving the file, so that a concurrent modification fails the read with `content_changed`
+ * instead of mixing two versions. Since a read MAY return fewer bytes than requested, reads MUST
+ * continue until the file's `size` observed when resolving it, and fail with `invalid_response` on
+ * an empty read before that.
+ */
 export class DfsFileSystem {
-  constructor(private readonly client: DfsFileSystemClient) {}
+  private readonly readChunkBytes: number;
+
+  constructor(
+    private readonly client: DfsFileSystemClient,
+    options: { readChunkBytes?: number } = {}
+  ) {
+    // At least one byte, so that every read makes progress.
+    this.readChunkBytes = Math.max(
+      1,
+      Math.min(
+        options.readChunkBytes ?? MAX_READ_CHUNK_BYTES,
+        MAX_READ_CHUNK_BYTES
+      )
+    );
+  }
 
   // Resolution.
 
@@ -249,5 +277,110 @@ export class DfsFileSystem {
       after = page.value.nextAfter;
     } while (after !== undefined);
     return new Ok(entries);
+  }
+
+  /**
+   * Reads the chunk at `offset`, before the end of the file, failing with `content_changed` if
+   * `contentVersion` moved.
+   */
+  private async readChunk(
+    objectId: DfsObjectId,
+    offset: number,
+    contentVersion: bigint
+  ): Promise<Result<Buffer, DfsError>> {
+    const res = await this.client.read({
+      objectId,
+      offset,
+      length: this.readChunkBytes,
+    });
+    if (res.isErr()) {
+      return res;
+    }
+    const { data, object } = res.value;
+    if (object.contentVersion !== contentVersion) {
+      return new Err(
+        new DfsError(
+          "content_changed",
+          "The file changed while it was being read."
+        )
+      );
+    }
+    if (data.length === 0) {
+      // Callers only read before the end of the file, at an unchanged version.
+      return new Err(
+        new DfsError(
+          "invalid_response",
+          "Empty read before the end of the file."
+        )
+      );
+    }
+    return new Ok(Buffer.from(data));
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:error-handling] read-stream-errors
+   * Exception to `no-catching-own-errors`, which requires expected failures to be returned as `Err`:
+   * an async generator can only report failures by throwing, so read failures MUST be thrown as the
+   * `DfsError` returned by `readChunk` (`Readable.from` then emits them as stream errors).
+   */
+  private async *readChunks(
+    objectId: DfsObjectId,
+    { contentVersion, size }: DfsAttr
+  ): AsyncGenerator<Buffer> {
+    for (let offset = 0; offset < size;) {
+      const chunk = await this.readChunk(objectId, offset, contentVersion);
+      if (chunk.isErr()) {
+        throw chunk.error;
+      }
+      yield chunk.value;
+      offset += chunk.value.length;
+    }
+  }
+
+  private async resolveFile(
+    uri: string
+  ): Promise<Result<{ objectId: DfsObjectId; attr: DfsAttr }, DfsError>> {
+    const attr = await this.require(uri);
+    if (attr.isErr()) {
+      return attr;
+    }
+    if (isDirectory(attr.value)) {
+      return new Err(new DfsError("is_directory"));
+    }
+    const objectId = realIdOf(attr.value);
+    return objectId.isErr()
+      ? objectId
+      : new Ok({ objectId: objectId.value, attr: attr.value });
+  }
+
+  /**
+   * Streams the file at `uri`. Read failures, including `content_changed` when the file changes
+   * while streaming, are emitted as stream errors carrying a `DfsError`.
+   */
+  async readStream(uri: string): Promise<Result<Readable, DfsError>> {
+    const file = await this.resolveFile(uri);
+    if (file.isErr()) {
+      return file;
+    }
+    const { objectId, attr } = file.value;
+    return new Ok(Readable.from(this.readChunks(objectId, attr)));
+  }
+
+  async readBuffer(uri: string): Promise<Result<Buffer, DfsError>> {
+    const file = await this.resolveFile(uri);
+    if (file.isErr()) {
+      return file;
+    }
+    const { objectId, attr } = file.value;
+    const chunks: Buffer[] = [];
+    for (let offset = 0; offset < attr.size;) {
+      const chunk = await this.readChunk(objectId, offset, attr.contentVersion);
+      if (chunk.isErr()) {
+        return chunk;
+      }
+      chunks.push(chunk.value);
+      offset += chunk.value.length;
+    }
+    return new Ok(Buffer.concat(chunks));
   }
 }
