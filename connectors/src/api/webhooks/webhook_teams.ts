@@ -23,10 +23,15 @@ import {
   validateToolApprovalData,
 } from "@connectors/api/webhooks/teams/utils";
 import { apiConfig } from "@connectors/lib/api/config";
+import { getBotI18n } from "@connectors/lib/bot/i18n";
+import { AgentMentionError } from "@connectors/lib/bot/mentions";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
+import { DEFAULT_LOCALE } from "@connectors/types/locale";
+import { assertNever } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { TurnContext } from "botbuilder";
 import {
   CloudAdapter,
@@ -58,9 +63,10 @@ adapter.onTurnError = async (context, error) => {
 
   // Try to send error message if context allows
   try {
+    const i18n = await getBotI18n(DEFAULT_LOCALE);
     await sendTextMessage(
       context,
-      "❌ An error occurred processing your request."
+      i18n._("❌ An error occurred processing your request.")
     );
   } catch (e) {
     logger.error("Failed to send error activity", e);
@@ -161,6 +167,8 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         workspaceId: connector?.workspaceId,
       });
 
+      const i18n = await getBotI18n(DEFAULT_LOCALE);
+
       // Handle different activity types
       switch (context.activity.type) {
         case "message":
@@ -170,9 +178,9 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
           }
 
           if (context.activity.value?.verb) {
-            await handleInteraction(context, connector, localLogger);
+            await handleInteraction(context, connector, i18n, localLogger);
           } else {
-            await handleMessage(context, connector, localLogger);
+            await handleMessage(context, connector, i18n, localLogger);
           }
           break;
         case "invoke":
@@ -203,13 +211,16 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             const cardResponse = {
               statusCode: 200,
               type: "application/vnd.microsoft.card.adaptive",
-              value: createInteractiveToolApprovalAdaptiveCard(validatedData),
+              value: createInteractiveToolApprovalAdaptiveCard(
+                i18n,
+                validatedData
+              ),
             };
 
             res.set("Content-Type", "application/json; charset=utf-8");
             res.status(200).json(cardResponse);
           } else {
-            await handleToolApproval(context, connector, localLogger);
+            await handleToolApproval(context, connector, i18n, localLogger);
           }
           break;
         case "installationUpdate":
@@ -217,7 +228,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
             localLogger.info("Installed app from Microsoft Teams");
 
             if (apiConfig.getIsMicrosoftPrimaryRegion()) {
-              await sendActivity(context, createWelcomeAdaptiveCard());
+              await sendActivity(context, createWelcomeAdaptiveCard(i18n));
             }
           }
 
@@ -242,6 +253,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
 async function handleMessage(
   context: TurnContext,
   connector: ConnectorResource,
+  i18n: I18n,
   localLogger: Logger,
   message?: string
 ) {
@@ -253,7 +265,7 @@ async function handleMessage(
   localLogger.info("Handling regular text message");
 
   // Send thinking message
-  const thinkingCard = createThinkingAdaptiveCard();
+  const thinkingCard = createThinkingAdaptiveCard(i18n);
 
   // Use utility function for reliable messaging
   const thinkingActivity = await sendActivity(context, thinkingCard);
@@ -265,7 +277,8 @@ async function handleMessage(
     await sendActivity(
       context,
       createErrorAdaptiveCard({
-        error: thinkingActivity.error.message,
+        i18n,
+        error: makeErrorMessage(i18n, thinkingActivity.error),
         workspaceId: connector.workspaceId,
       })
     );
@@ -277,6 +290,7 @@ async function handleMessage(
     message,
     connector,
     thinkingActivity.value,
+    i18n,
     localLogger
   );
 
@@ -288,7 +302,8 @@ async function handleMessage(
     await sendActivity(
       context,
       createErrorAdaptiveCard({
-        error: result.error.message,
+        i18n,
+        error: makeErrorMessage(i18n, result.error),
         workspaceId: connector!.workspaceId,
       })
     );
@@ -298,6 +313,7 @@ async function handleMessage(
 async function handleInteraction(
   context: TurnContext,
   connector: ConnectorResource,
+  i18n: I18n,
   localLogger: Logger
 ) {
   const { verb } = context.activity.value;
@@ -306,12 +322,13 @@ async function handleInteraction(
 
   switch (verb) {
     case "ask_agent":
-      await handleAgentSelection(context, connector, localLogger);
+      await handleAgentSelection(context, connector, i18n, localLogger);
       break;
     case "like":
       await sendFeedback({
         context,
         connector,
+        i18n,
         thumbDirection: "up",
         localLogger,
       });
@@ -320,6 +337,7 @@ async function handleInteraction(
       await sendFeedback({
         context,
         connector,
+        i18n,
         thumbDirection: "down",
         localLogger,
       });
@@ -333,6 +351,7 @@ async function handleInteraction(
 async function handleToolApproval(
   context: TurnContext,
   connector: ConnectorResource,
+  i18n: I18n,
   localLogger: Logger
 ) {
   const { verb } = context.activity.value.action;
@@ -384,6 +403,7 @@ async function handleToolApproval(
     messageId,
     actionId,
     microsoftBotMessageId,
+    i18n,
     localLogger,
   });
 
@@ -403,7 +423,7 @@ async function handleToolApproval(
       await updateActivity(context, {
         id: replyToId,
         type: "message",
-        text: "❌ Failed to validate tool execution. Please try again.",
+        text: i18n._("❌ Failed to validate tool execution. Please try again."),
         attachments: [],
       });
     } catch (updateError) {
@@ -414,9 +434,16 @@ async function handleToolApproval(
     }
   } else {
     // Update the card with success message, removing the buttons
-    const resultText = `Agent **@${agentName}**'s request to use tool **${toolName}** was ${
-      approved === "approved" ? "✅ approved" : "❌ rejected"
-    }`;
+    const resultText =
+      approved === "approved"
+        ? i18n._(
+            "Agent **@{agentName}**'s request to use tool **{toolName}** was ✅ approved",
+            { agentName, toolName }
+          )
+        : i18n._(
+            "Agent **@{agentName}**'s request to use tool **{toolName}** was ❌ rejected",
+            { agentName, toolName }
+          );
 
     try {
       await updateActivity(context, {
@@ -448,6 +475,7 @@ async function handleToolApproval(
 async function handleAgentSelection(
   context: TurnContext,
   connector: ConnectorResource,
+  i18n: I18n,
   localLogger: Logger
 ) {
   const { selectedAgent, originalMessage } = context.activity.value;
@@ -457,9 +485,31 @@ async function handleAgentSelection(
     .replace(/:mention\[([^\]]+)\]\{sId=([^}]+)\}/g, "")
     .trim();
   const agentMessage = `@${selectedAgent} ${cleanMessage}`;
-  await handleMessage(context, connector, localLogger, agentMessage);
+  await handleMessage(context, connector, i18n, localLogger, agentMessage);
   localLogger.info(
     { selectedAgent, originalMessage },
     "Handling agent selection from adaptive card"
   );
+}
+
+function makeErrorMessage(i18n: I18n, error: Error): string {
+  if (!(error instanceof AgentMentionError)) {
+    return i18n._("An error occurred: {errorMessage}", {
+      errorMessage: error.message,
+    });
+  }
+  const { code, mentionCandidate } = error;
+  switch (code) {
+    case "agent_not_available":
+      return i18n._(
+        "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access.",
+        { mentionCandidate }
+      );
+    case "agent_not_found":
+      return i18n._("Agent {mentionCandidate} has not been found.", {
+        mentionCandidate,
+      });
+    default:
+      assertNever(code);
+  }
 }

@@ -29,11 +29,10 @@ vi.mock(
 vi.mock(
   "@connectors/connectors/slack/lib/user_locale",
   async (importOriginal) => {
-    const { getSlackI18n } =
-      await import("@connectors/connectors/slack/lib/i18n");
+    const { getBotI18n } = await import("@connectors/lib/bot/i18n");
     return {
       ...(await importOriginal()),
-      getSlackI18nForUser: vi.fn(async () => getSlackI18n("en-US")),
+      getSlackI18nForUser: vi.fn(async () => getBotI18n("en-US")),
     };
   }
 );

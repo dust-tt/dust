@@ -1,9 +1,9 @@
 import { isSlackWebAPIError } from "@connectors/connectors/slack/lib/errors";
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
 import type { SlackUserInfo } from "@connectors/connectors/slack/lib/slack_client";
 import { getSlackUserInfoMemoized } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
+import { getBotI18n } from "@connectors/lib/bot/i18n";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { cacheWithRedisResult } from "@connectors/types";
@@ -141,7 +141,7 @@ export async function getSlackI18nForUser(
     );
   }
 
-  return getSlackI18n(
+  return getBotI18n(
     resolveSlackLocale({
       dustLocales: dustLocalesRes.isOk() ? dustLocalesRes.value : null,
       slackLocale: human?.locale,
