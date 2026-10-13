@@ -24,6 +24,7 @@ export function isBinaryWithinFileOffloadLimit({
   byteLength: number;
   mimeType: string;
 }): boolean {
+  // Base64 encodes each 3-byte group (padded) as 4 characters.
   return (
     Math.ceil(byteLength / 3) * 4 <= getFileOffloadMaxBase64Length(mimeType)
   );
