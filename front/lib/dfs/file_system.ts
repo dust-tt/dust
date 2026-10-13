@@ -618,11 +618,23 @@ export class DfsFileSystem {
     content: DfsWriteContent,
     options: { mimeType?: string } = {}
   ): Promise<Result<DfsResolvedObject, DfsError>> {
-    const written = await this.writeContent(uri, content, options);
-    if (content instanceof Readable && !content.readableEnded) {
-      content.destroy();
+    if (!(content instanceof Readable)) {
+      return this.writeContent(uri, content, options);
     }
-    return written;
+    // Until `contentChunks` iterates the stream, nothing listens to its errors: an error emitted
+    // while the target is being resolved would be unhandled. Iterating an errored stream rethrows
+    // its error, which then fails the write.
+    const ignoreUntilConsumed = () => {};
+    content.on("error", ignoreUntilConsumed);
+    try {
+      const written = await this.writeContent(uri, content, options);
+      if (!content.readableEnded) {
+        content.destroy();
+      }
+      return written;
+    } finally {
+      content.off("error", ignoreUntilConsumed);
+    }
   }
 
   private async writeContent(

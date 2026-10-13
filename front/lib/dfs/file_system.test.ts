@@ -308,6 +308,30 @@ describe("DfsFileSystem", () => {
     expect(await readText(fs, at("data.bin"))).toBe("01234567");
   });
 
+  it("fails the write when the content stream fails before it is read", async () => {
+    // Lookups wait for the event loop, like real network calls, so the stream's error is emitted
+    // while the write is still resolving its target.
+    class SlowInMemoryDfs extends InMemoryDfs {
+      override async lookup(args: Parameters<InMemoryDfs["lookup"]>[0]) {
+        await new Promise((resolve) => setImmediate(resolve));
+        return super.lookup(args);
+      }
+    }
+    const dfs = new SlowInMemoryDfs({
+      maxWriteBytesPerApply: WRITE_CHUNK_BYTES,
+    });
+    const fs = new DfsFileSystem(dfs, { writeChunkBytes: WRITE_CHUNK_BYTES });
+    const at = (path: string) =>
+      formatDfsUri(dfs.rootId, { path: path.split("/") });
+    const content = new Readable({ read() {} });
+    content.destroy(new Error("socket hang up"));
+
+    const res = await fs.write(at("dir/data.bin"), content);
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+    expect(dfs.paths()).toEqual(["/dir"]);
+  });
+
   it("leaves an existing file untouched when its new MIME type is invalid", async () => {
     const { fs, at } = setup();
     await fs.write(at("notes.txt"), "abc", { mimeType: "text/plain" });
