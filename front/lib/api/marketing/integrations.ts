@@ -184,6 +184,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   ahrefs: "data",
   webflow: "development",
   "bright data": "data",
+  swarmia: "development",
 };
 
 // Category mapping for connectors

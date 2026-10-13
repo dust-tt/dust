@@ -110,6 +110,7 @@ export { default as StatuspageLogo } from "./Statuspage";
 export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";
 export { default as SuperhumanLogo } from "./Superhuman";
+export { default as SwarmiaLogo } from "./Swarmia";
 export { default as TableLogo } from "./Table";
 export { default as TemporalLogo } from "./Temporal";
 export { default as ThinkingMachinesLogo } from "./ThinkingMachines";
