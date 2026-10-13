@@ -150,7 +150,7 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   "stack one": "StackOne",
-  "n 8n": "n8n",
+  "n8n": "n8n",
   mcp: "MCP",
   webbrowser: "Web browsing",
   websearch: "Web search",
