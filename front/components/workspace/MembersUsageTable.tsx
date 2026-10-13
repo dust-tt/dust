@@ -1562,7 +1562,7 @@ interface MembersUsageTableProps {
   onSetUserModelTier?: (
     member: MemberUsageType,
     selection: UserModelTierSelection
-  ) => void | Promise<void>;
+  ) => Promise<void>;
   showModelTiersColumn?: boolean;
   // Whether the workspace has an active credit pool. Only affects the credit
   // column header.
@@ -1787,7 +1787,10 @@ export function MembersUsageTable({
                       checked: tierItem.checked,
                     })),
                     onSelect: (itemId: string) =>
-                      onSetUserModelTier(m, toUserModelTierSelection(itemId)),
+                      void onSetUserModelTier(
+                        m,
+                        toUserModelTierSelection(itemId)
+                      ),
                   },
                 ]
               : []),
