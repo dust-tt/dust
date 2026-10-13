@@ -1,7 +1,12 @@
 import type { EventPayload } from "@app/lib/api/redis-hybrid-manager";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
+import logger from "@app/logger/logger";
 
 const LIVE_EVENT_BATCH_DELAY_MS = 50;
+
+function isConnectionResetError(err: unknown): boolean {
+  return err instanceof Error && "code" in err && err.code === "ECONNRESET";
+}
 
 /**
  * @cc [owner:id13,label:concurrency;performance] redis-event-batch-lifecycle
@@ -13,6 +18,12 @@ const LIVE_EVENT_BATCH_DELAY_MS = 50;
  * @cc [owner:id13,label:concurrency;reliability] redis-poll-stream-order
  * Poll batches MUST contain a contiguous page of Redis stream events after the resume cursor.
  * Pub/sub notification order or delay MUST NOT reorder events or skip earlier persisted events.
+ */
+/**
+ * @cc [owner:tdraier,label:error-handling;reliability] redis-connection-reset-empty-batch
+ * When the Redis connection resets (`ECONNRESET`) while reading the stream, the batch MUST resolve
+ * to an empty page logged at `warn` rather than throw, so the client re-polls from its unchanged
+ * cursor. Any other read failure MUST propagate.
  */
 export async function getRedisEventsBatch({
   channel,
@@ -60,6 +71,15 @@ export async function getRedisEventsBatch({
     return signal.aborted
       ? []
       : await manager.readEventsAfter(channel, lastEventId);
+  } catch (err) {
+    if (isConnectionResetError(err)) {
+      logger.warn(
+        { err, channel, origin },
+        "Redis connection reset while reading event batch"
+      );
+      return [];
+    }
+    throw err;
   } finally {
     clearTimeout(batchTimer);
     signal.removeEventListener("abort", onAbort);
