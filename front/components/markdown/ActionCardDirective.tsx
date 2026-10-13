@@ -92,9 +92,10 @@ function ActionCard({
     [icon]
   );
 
+  let card: ReactNode;
   switch (status) {
     case "actioned":
-      return (
+      card = (
         <ActionCardBlock
           title={title}
           applyLabel={applyLabel}
@@ -103,8 +104,9 @@ function ActionCard({
           state="accepted"
         />
       );
+      break;
     case "dismissed":
-      return (
+      card = (
         <ActionCardBlock
           title={title}
           applyLabel={applyLabel}
@@ -113,8 +115,9 @@ function ActionCard({
           state="rejected"
         />
       );
+      break;
     case "active":
-      return (
+      card = (
         <ActionCardBlock
           title={title}
           subtitle={subtitle}
@@ -142,10 +145,14 @@ function ActionCard({
           }}
         />
       );
+      break;
     default:
       assertNeverAndIgnore(status);
       return null;
   }
+
+  // Rendered inside the agent's answer: keep the app font over the user's conversation font.
+  return <div className="font-sans">{card}</div>;
 }
 
 interface ActionCardPluginProps {
@@ -181,23 +188,20 @@ export function getActionCardPlugin(
       return null;
     }
     return (
-      // Rendered inside the agent's answer: keep the app font over the user's conversation font.
-      <div className="font-sans">
-        <ActionCard
-          title={title}
-          subtitle={subtitle}
-          description={description}
-          icon={icon}
-          cta={cta}
-          dismiss={dismiss}
-          actionMessage={actionMessage}
-          dismissMessage={dismissMessage}
-          collapsibleContent={children}
-          collapsibleLabel={collapsibleLabel}
-          isLastMessage={isLastMessage}
-          onSend={onSend}
-        />
-      </div>
+      <ActionCard
+        title={title}
+        subtitle={subtitle}
+        description={description}
+        icon={icon}
+        cta={cta}
+        dismiss={dismiss}
+        actionMessage={actionMessage}
+        dismissMessage={dismissMessage}
+        collapsibleContent={children}
+        collapsibleLabel={collapsibleLabel}
+        isLastMessage={isLastMessage}
+        onSend={onSend}
+      />
     );
   };
 
