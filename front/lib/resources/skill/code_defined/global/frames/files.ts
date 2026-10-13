@@ -1,5 +1,3 @@
-import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import type { CodeDefinedSkillFile } from "@app/lib/resources/skill/code_defined/shared";
 import { readFileSync } from "fs";
 
@@ -45,24 +43,3 @@ export const FRAME_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
     contentType: "text/plain",
   },
 ].map(loadSkillFile);
-
-const DOCUMENT_SKILL_FILES: readonly CodeDefinedSkillFile[] = [
-  { fileName: "document.md", contentType: "text/markdown" },
-  {
-    fileName: "document.example.tsx",
-    assetName: "document.example.tsx.txt",
-    contentType: "text/plain",
-  },
-  { fileName: "document.example.json", contentType: "application/json" },
-].map(loadSkillFile);
-
-export const fetchFrameSkillFiles = async (
-  auth: Authenticator
-): Promise<readonly CodeDefinedSkillFile[]> => {
-  const flags = await getFeatureFlags(auth);
-  if (flags.includes("frames_v2") && flags.includes("frame_documents")) {
-    return [...FRAME_SKILL_FILES, ...DOCUMENT_SKILL_FILES];
-  }
-
-  return FRAME_SKILL_FILES;
-};
