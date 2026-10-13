@@ -31,8 +31,7 @@ export function SecurityPage() {
   const { subscription } = useAuth();
   const plan = subscription.plan;
   const { hasFeature } = useFeatureFlags();
-  const { isComputerEnabled, canAdministrateComputer } =
-    useComputerAdminAccess();
+  const { canAdministrateComputer } = useComputerAdminAccess();
   const showAuditLogs =
     (plan.isAuditLogsAllowed || hasFeature("audit_logs")) &&
     owner.metadata?.disableAuditLogs !== true;
@@ -44,8 +43,6 @@ export function SecurityPage() {
     SECURITY_TABS,
     "identity"
   );
-  const activeTab: SecurityTab =
-    tab === "network" && !isComputerEnabled ? "identity" : tab;
 
   if (isVerifiedDomainsLoading) {
     return (
@@ -65,14 +62,12 @@ export function SecurityPage() {
           description={t`Verify your domain, manage authentication and network access.`}
         />
         <Tabs
-          value={activeTab}
+          value={tab}
           onValueChange={(value) => setTab(value as SecurityTab)}
         >
           <TabsList className="mb-6">
             <TabsTrigger value="identity" label={t`Domains & SSO`} />
-            {isComputerEnabled && (
-              <TabsTrigger value="network" label={t`Network`} />
-            )}
+            <TabsTrigger value="network" label={t`Network`} />
             <TabsTrigger value="audit" label={t`Audit Logs`} />
           </TabsList>
           <TabsContent value="identity" className="flex flex-col gap-4">
@@ -85,14 +80,12 @@ export function SecurityPage() {
               showAuditLogs={false}
             />
           </TabsContent>
-          {isComputerEnabled && (
-            <TabsContent value="network" className="flex flex-col gap-6">
-              <AgentRequestedDomainsSetting />
-              <ComputerNetworkSection
-                canAdministrateComputer={canAdministrateComputer}
-              />
-            </TabsContent>
-          )}
+          <TabsContent value="network" className="flex flex-col gap-6">
+            <AgentRequestedDomainsSetting />
+            <ComputerNetworkSection
+              canAdministrateComputer={canAdministrateComputer}
+            />
+          </TabsContent>
           <TabsContent value="audit" className="flex flex-col gap-4">
             {showAuditLogs && <AuditLogsSection owner={owner} />}
             <AuditLogsGovernanceSection owner={owner} />

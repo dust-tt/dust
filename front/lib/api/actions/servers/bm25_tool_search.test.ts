@@ -1366,10 +1366,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "files.delete",
   },
   {
-    query: "extract text from a pdf or docx binary document",
-    expected: "files.extract_text",
-  },
-  {
     query: "copy a file from one scoped path to another keeping the source",
     expected: "files.copy",
   },

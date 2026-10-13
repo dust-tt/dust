@@ -195,22 +195,6 @@ describe("GET /api/v1/w/[wId]/sandbox/actions", () => {
     expect(serverViewIds).not.toContain(laterServerView.sId);
   });
 
-  it("returns 403 when Computer is disabled", async () => {
-    const { token, workspace } = await createSandboxTokenTestContext({
-      disableComputerFeature: true,
-    });
-
-    const response = await getSandboxActions(workspace, token);
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({
-      error: {
-        type: "invalid_request_error",
-        message: "Computer is disabled for this workspace.",
-      },
-    });
-  });
-
   it("lists servers of the pod and global spaces for invocation tokens", async () => {
     const { auth, token, workspace, globalSpace } =
       await createSandboxFunctionInvocationTokenTestContext();

@@ -158,7 +158,7 @@ export async function renderAllMessages(
     enabledSkills: EnabledSkill[];
   }
 ): Promise<ModelMessageTypeMultiActions[]> {
-  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
+  const capabilities = getAttachmentCapabilityContext(conversation);
   const messages: ModelMessageTypeMultiActions[] = [];
   const enabledSkillById = new Map(
     enabledSkills.map((skill) => [skill.sId, skill])

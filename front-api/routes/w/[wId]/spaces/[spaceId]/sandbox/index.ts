@@ -5,8 +5,7 @@ import envVars from "./env-vars";
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox. Access control is per leaf —
 // egress-policy and env-vars open their reads to Pod readers, writes are
-// workspace-admin only. The Computer feature flag gates the UI only
-// (PodSettingsSection/PodSettingsAdvancedTab), not the routes.
+// workspace-admin only.
 const app = workspaceApp();
 
 app.route("/egress-policy", egressPolicy);

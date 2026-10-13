@@ -1,7 +1,7 @@
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import type {
   RichAgentMention,
   RichMention,
@@ -10,7 +10,6 @@ import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { ContentFragmentsType } from "@app/types/content_fragment";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import type { ReactNode } from "react";
 import { createContext, useCallback, useMemo, useState } from "react";
 
@@ -340,7 +339,6 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
   const { workspace } = useAuth();
-  const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
     if (!conversationId) {
@@ -352,7 +350,7 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
   }, [conversationId]);
 
   const fileUploaderService = useFileUploaderService({
-    hasSandboxTools: isComputerFeatureEnabled(featureFlags),
+    hasSandboxTools: true,
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,
