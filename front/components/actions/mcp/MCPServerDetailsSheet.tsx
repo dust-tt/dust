@@ -8,12 +8,10 @@ import {
 } from "@app/components/actions/mcp/MCPServerDetailsTools";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { SensitivityLabelsController } from "@app/components/shared/labels/types";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { useDeleteMCPServer } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
@@ -95,12 +93,12 @@ export function MCPServerDetailsSheet({
         <div className="min-w-0">
           <SheetTitle>{getMcpServerViewDisplayName(mcpServerView)}</SheetTitle>
           <SheetDescription className="line-clamp-2 break-words">
-            {getMcpServerViewDescription(mcpServerView)}
+            {getMcpServerViewDisplayDescription(t, mcpServerView)}
           </SheetDescription>
         </div>
       </div>
     );
-  }, [mcpServerView]);
+  }, [mcpServerView, t]);
 
   const handleOpenChange = async (open: boolean) => {
     if (open) {

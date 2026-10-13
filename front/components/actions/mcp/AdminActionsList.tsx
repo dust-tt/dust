@@ -10,7 +10,6 @@ import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import {
   getMcpServerDisplayName,
-  getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   isRemoteMCPServerType,
   mcpServersSortingFn,
@@ -20,6 +19,10 @@ import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { formatTimestampToFriendlyDate } from "@app/lib/client/friendly_date";
+import {
+  getMCPServerDisplayDescription,
+  getMcpServerViewDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getActiveLocale } from "@app/lib/i18n/active_locale";
 import { compareStrings, formatList } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
@@ -125,8 +128,8 @@ const NameCell = ({ row }: { row: RowData }) => {
           </div>
           <div className="truncate text-sm text-muted-foreground">
             {mcpServerView
-              ? getMcpServerViewDescription(mcpServerView)
-              : mcpServer.description}
+              ? getMcpServerViewDisplayDescription(t, mcpServerView)
+              : getMCPServerDisplayDescription(t, mcpServer)}
           </div>
         </div>
 

@@ -3,6 +3,7 @@ import {
   CapabilitiesPickerLoading,
 } from "@app/components/assistant/CapabilitiesPicker";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useSearchSkillsInfinite } from "@app/lib/swr/skill_configurations";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -108,7 +109,7 @@ export function PodDefaultSkillPicker({
                 icon: <SkillAvatar size="sm" />,
                 label: skill.name,
                 sortName: skill.name.toLowerCase(),
-                description: skill.userFacingDescription,
+                description: getSkillDisplayDescription(t, skill),
               };
             })}
             onItemSelect={(item) => {

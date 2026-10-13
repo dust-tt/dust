@@ -7,10 +7,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
@@ -20,6 +17,10 @@ import {
 import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isRemoteDatabase } from "@app/lib/data_sources";
+import {
+  getMCPServerDisplayDescription,
+  getMcpServerViewDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import {
   Button,
   ContentMessage,
@@ -226,7 +227,7 @@ export function ProcessingMethodSection() {
                   )}
                   icon={getAvatar(view.server)}
                   onClick={() => onChange(view)}
-                  description={getMcpServerViewDescription(view)}
+                  description={getMcpServerViewDisplayDescription(t, view)}
                 />
               ))}
           </DropdownMenuContent>
@@ -234,7 +235,8 @@ export function ProcessingMethodSection() {
       </div>
 
       <span className="text-sm text-muted-foreground">
-        {mcpServerView?.server.description}
+        {mcpServerView &&
+          getMCPServerDisplayDescription(t, mcpServerView.server)}
       </span>
 
       {warningContent && (

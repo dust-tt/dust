@@ -3,6 +3,7 @@ import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getDefaultRemoteMCPServerByName } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { getMCPServerDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { compareStrings } from "@app/lib/i18n/format";
 import { filterMCPServer } from "@app/lib/mcp";
 import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
@@ -34,18 +35,22 @@ interface AddToolCardProps {
   onClick: () => void;
 }
 
-const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => (
-  <ActionCard
-    icon={getIcon(mcpServer.icon)}
-    label={getMcpServerDisplayName(mcpServer)}
-    description={mcpServer.description}
-    canAdd={false}
-    disabled={isPending}
-    onClick={onClick}
-    cardContainerClassName="h-28"
-    descriptionLineClamp={3}
-  />
-);
+const AddToolCard = ({ mcpServer, isPending, onClick }: AddToolCardProps) => {
+  const { t } = useLingui();
+
+  return (
+    <ActionCard
+      icon={getIcon(mcpServer.icon)}
+      label={getMcpServerDisplayName(mcpServer)}
+      description={getMCPServerDisplayDescription(t, mcpServer)}
+      canAdd={false}
+      disabled={isPending}
+      onClick={onClick}
+      cardContainerClassName="h-28"
+      descriptionLineClamp={3}
+    />
+  );
+};
 
 interface AddToolsButtonProps {
   onClick: () => void;

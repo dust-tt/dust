@@ -13,6 +13,7 @@ import {
 import { useSearchSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
 import { buildCapabilitySlashCommandItems } from "./buildSlashCommandItems";
@@ -70,6 +71,7 @@ export function useInputBarSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { t } = useLingui();
   const { spaces: globalSpaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
@@ -118,6 +120,7 @@ export function useInputBarSlashCommandCapabilities({
                 (favorite) => favorite.sId === skill.sId
               ),
             })),
+            t,
             tools: hasSkillsSettled ? serverViews : [],
           }),
     [
@@ -128,6 +131,7 @@ export function useInputBarSlashCommandCapabilities({
       hasSkillsSettled,
       serverViews,
       skills,
+      t,
     ]
   );
 
@@ -152,6 +156,7 @@ export function useSkillBuilderSlashCommandCapabilities({
   owner: LightWorkspaceType;
   query: string;
 }) {
+  const { t } = useLingui();
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
     kinds: "all",
@@ -181,12 +186,13 @@ export function useSkillBuilderSlashCommandCapabilities({
         excludeSkillId,
         query: capabilityQuery,
         skills,
+        t,
         tools,
         useSearchRanking: true,
         toolFilter: (serverView) =>
           getMCPServerRequirements(serverView).noRequirement,
       }),
-    [capabilityQuery, excludeSkillId, skills, tools]
+    [capabilityQuery, excludeSkillId, skills, t, tools]
   );
 
   return {

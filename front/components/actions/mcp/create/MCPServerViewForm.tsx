@@ -1,6 +1,6 @@
 import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { Input, Label, TextArea } from "@dust-tt/sparkle";
 import { Trans, useLingui } from "@lingui/react/macro";
 import { useFormContext } from "react-hook-form";
@@ -39,7 +39,7 @@ export function MCPServerViewForm({ mcpServerView }: MCPServerViewFormProps) {
           showErrorLabel
           minRows={3}
           resize="vertical"
-          placeholder={getMcpServerViewDescription(mcpServerView)}
+          placeholder={getMcpServerViewDisplayDescription(t, mcpServerView)}
         />
       </div>
     </div>

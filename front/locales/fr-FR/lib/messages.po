@@ -795,6 +795,434 @@ msgstr "Vous ne pouvez pas modifier le compte Gong. Ajoutez plutôt une nouvelle
 msgid "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
 msgstr "Vous ne pouvez pas modifier le Pod Dust. Ajoutez plutôt une nouvelle connexion Pod Dust."
 
+#: front/lib/dust_provided_descriptions.ts
+msgid "An agent with context on your company data."
+msgstr "Un agent qui a accès au contexte des données de votre entreprise."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Dust with no tools, skills, or company knowledge by default. Add capabilities to the conversation as needed."
+msgstr "Dust sans outils, compétences ni connaissances de l’entreprise par défaut. Ajoutez des capacités à la conversation selon vos besoins."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Conducts comprehensive, in-depth analysis across all company data, databases, and web sources—thorough investigation that may take several minutes."
+msgstr "Mène une analyse complète et approfondie de toutes les données de l’entreprise, des bases de données et des sources web. Une recherche minutieuse qui peut prendre plusieurs minutes."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Help on how to use Dust"
+msgstr "Aide sur l’utilisation de Dust"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Agent for admins and managers that answers questions about how your workspace is being used."
+msgstr "Agent pour les administrateurs et les managers qui répond aux questions sur l’utilisation de votre workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Get a recommendation for the next best action to get more value from Dust"
+msgstr "Obtenez une recommandation sur la prochaine action à mener pour tirer le meilleur parti de Dust"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let this agent propose improvements to your Skills from a conversation, as suggestions for their editors to review."
+msgstr "Permettez à cet agent de proposer des améliorations de vos compétences depuis une conversation, sous forme de suggestions à valider par leurs éditeurs."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create text documents (.docx) in the sandbox."
+msgstr "Lire, modifier et créer des documents texte (.docx) dans la sandbox."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders."
+msgstr "Transformez vos analyses en tableaux de bord et présentations interactifs que votre équipe peut explorer, personnaliser et partager. Des documents vivants qui s’adaptent à chaque interlocuteur."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Enable comprehensive analysis across company data, databases, and web sources — thorough analysis that may take several minutes."
+msgstr "Activer une analyse complète des données de l’entreprise, des bases de données et des sources web. Une analyse approfondie qui peut prendre plusieurs minutes."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Keep a Pod's job moving with the next evidence-backed action"
+msgstr "Faites avancer la mission d’un Pod avec la prochaine action étayée par des faits"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Write and edit Markdown documents that open in the editor, with images from the conversation or pod, and answer their comments."
+msgstr "Rédiger et modifier des documents Markdown qui s’ouvrent dans l’éditeur, avec des images de la conversation ou du Pod, et répondre à leurs commentaires."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Allow agents to mention and notify workspace users in conversations."
+msgstr "Permettre aux agents de mentionner et de notifier les membres du workspace dans les conversations."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, OCR scans, extract text and tables, create, and edit PDFs in the Computer."
+msgstr "Lire des PDF, appliquer l’OCR aux scans, extraire du texte et des tableaux, créer et modifier des PDF dans le Computer."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create slide presentations"
+msgstr "Lire, modifier et créer des présentations"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Allow agents to create conversations & messages in Pods, leverage Pods knowledge."
+msgstr "Permettre aux agents de créer des conversations et des messages dans les Pods, et d’exploiter leurs connaissances."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment)."
+msgstr "Exécuter du code, des scripts et des commandes shell dans le Computer de la conversation (un environnement Linux isolé)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn a data-entry spreadsheet into a real app: a form that fills in the obvious, formulas that become fields nobody types, and your existing rows carried over."
+msgstr "Transformer une feuille de saisie en véritable application : un formulaire qui pré-remplit l’évident, des formules qui deviennent des champs que personne n’a à saisir, et vos lignes existantes reprises."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Deprecated: use the \"Build Agents and Skills\" skill instead. Let this agent create and refine reusable Skills for your workspace."
+msgstr "Obsolète : utilisez plutôt la compétence « Build Agents and Skills ». Permet à cet agent de créer et d’améliorer des compétences réutilisables pour votre workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Get help with Dust using public docs, open-source issues, and community knowledge."
+msgstr "Obtenez de l’aide sur Dust grâce à la documentation publique, aux issues open source et aux connaissances de la communauté."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Analyze how your workspace is used: who and what consumes credits and drives activity, headline figures, and trends over time."
+msgstr "Analyser l’utilisation de votre workspace : qui et quoi consomme des crédits et génère de l’activité, chiffres clés et tendances dans le temps."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read, edit, and create spreadsheets (.xlsx, .csv)"
+msgstr "Lire, modifier et créer des feuilles de calcul (.xlsx, .csv)"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search across all your company documents and data warehouses to surface the information you need without manual configuration."
+msgstr "Rechercher dans tous les documents et entrepôts de données de votre entreprise pour trouver les informations dont vous avez besoin, sans configuration manuelle."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Automatically discover and activate workspace skills as needed."
+msgstr "Découvrir et activer automatiquement les compétences du workspace selon les besoins."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration."
+msgstr "Découvrir et activer automatiquement des outils spécialisés selon les besoins. Étendez les capacités de votre agent à la demande, sans configuration manuelle."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let agents maintain a live plan.md the user can follow as work progresses."
+msgstr "Permettre aux agents de tenir à jour un plan.md que le membre peut suivre au fil du travail."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Give agents a persistent memory of the user's preferences and context across conversations."
+msgstr "Donner aux agents une mémoire persistante des préférences et du contexte du membre d’une conversation à l’autre."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage issues, pull requests, and discussions."
+msgstr "Gérer les issues, pull requests et discussions."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Generate, create, draw, or edit images from text prompts and optional reference images."
+msgstr "Générer, créer, dessiner ou modifier des images à partir de prompts textuels et d’images de référence facultatives."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Agent can search (Google) and retrieve information from specific websites."
+msgstr "L’agent peut effectuer des recherches (Google) et récupérer des informations sur des sites web précis."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access CRM contacts, deals and customer activities."
+msgstr "Accéder aux contacts, aux affaires et aux activités clients du CRM."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Tools with access to the agents of the workspace."
+msgstr "Outils ayant accès aux agents du workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data."
+msgstr "Charger l’intégralité du contenu pour un contexte complet, dans la limite de la mémoire. Remarque : n’inclut pas les données des feuilles de calcul et des tables."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run Dust Apps with specified parameters."
+msgstr "Exécuter des apps Dust avec les paramètres indiqués."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access workspace pages, databases and datasources."
+msgstr "Accéder aux pages, bases de données et sources de données du workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Parse documents to create structured datasets."
+msgstr "Analyser des documents pour créer des jeux de données structurés."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "To be used to catch errors and avoid erroring."
+msgstr "Sert à intercepter les erreurs pour éviter les échecs."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Salesforce tools."
+msgstr "Outils Salesforce."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and send Gmail emails: manage inbox messages, threads, drafts, labels, and attachments."
+msgstr "Lire et envoyer des e-mails Gmail : gérer les messages de la boîte de réception, les fils, les brouillons, les libellés et les pièces jointes."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Google Calendar: list calendars, create and update meeting events, check free/busy availability, and look up attendee timezones."
+msgstr "Gérer Google Agenda : lister les agendas, créer et modifier des réunions, vérifier les disponibilités et consulter les fuseaux horaires des participants."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "List, read, and semantically search files and content nodes attached to the conversation."
+msgstr "Lister, lire et rechercher sémantiquement les fichiers et contenus joints à la conversation."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations."
+msgstr "Outils Slack pour rechercher et publier des messages. Fonctionne avec votre compte Slack personnel et prend en charge toutes les opérations Slack courantes."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Work with spreadsheet data and tables."
+msgstr "Travailler avec les données et les tableaux de feuilles de calcul."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Interact with Monday.com boards, items, and workflows. Manage tasks, track projects, and automate CRM workflows."
+msgstr "Interagir avec les tableaux, éléments et workflows Monday.com. Gérer des tâches, suivre des projets et automatiser des workflows CRM."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "User-scoped long-term memory tools for agents."
+msgstr "Outils de mémoire à long terme propre à chaque membre, pour les agents."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create, update and track project issues."
+msgstr "Créer, modifier et suivre les tickets de projet."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create dashboards, presentations, or any interactive content."
+msgstr "Créer des tableaux de bord, des présentations ou tout autre contenu interactif."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and send Outlook emails (Microsoft 365): manage inbox messages, drafts, mail folders, contacts, and shared mailboxes."
+msgstr "Lire et envoyer des e-mails Outlook (Microsoft 365) : gérer les messages de la boîte de réception, les brouillons, les dossiers, les contacts et les boîtes aux lettres partagées."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Outlook Calendar (Microsoft 365): list calendars, create and update meeting events, check free/busy availability."
+msgstr "Gérer le calendrier Outlook (Microsoft 365) : lister les calendriers, créer et modifier des réunions, vérifier les disponibilités."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Freshservice IT service desk tickets, service requests, knowledge base articles, and service catalog items. An ITSM (IT Service Management) helpdesk platform."
+msgstr "Gérer les tickets du service desk informatique Freshservice, les demandes de service, les articles de la base de connaissances et les éléments du catalogue de services. Une plateforme d’assistance ITSM (gestion des services informatiques)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations)."
+msgstr "Rechercher, lire, créer, dupliquer, modifier et commenter des fichiers dans Google Drive (Docs, Sheets, Slides), et gérer leurs autorisations."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added."
+msgstr "Intégration Slack dédiée à la publication de messages au nom du bot du workspace. Limitée aux canaux où le bot a été ajouté."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve page information."
+msgstr "Récupérer les informations des pages."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Turn written text into spoken audio or dialogue"
+msgstr "Transformer un texte écrit en audio parlé ou en dialogue"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search, read, and upload files in Microsoft OneDrive and SharePoint."
+msgstr "Rechercher, lire et importer des fichiers dans Microsoft OneDrive et SharePoint."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Microsoft Teams for searching and posting messages."
+msgstr "Microsoft Teams pour rechercher et publier des messages."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create music tracks and sound effects"
+msgstr "Créer des morceaux de musique et des effets sonores"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and write Excel spreadsheets in Microsoft OneDrive and SharePoint."
+msgstr "Lire et modifier des classeurs Excel dans Microsoft OneDrive et SharePoint."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Make HTTP requests to external APIs with optional Bearer token authentication."
+msgstr "Envoyer des requêtes HTTP à des API externes, avec authentification facultative par jeton Bearer."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access and manage Ashby ATS (applicant tracking system) data for recruiting: candidates, job postings, interview feedback, referrals, and hiring."
+msgstr "Consulter et gérer les données de recrutement de l’ATS (système de suivi des candidatures) Ashby : candidats, offres d’emploi, retours d’entretien, cooptations et embauches."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Salesloft sales cadences (outreach sequences), tasks, and due actions for sales engagement and pipeline outreach."
+msgstr "Accéder aux cadences commerciales Salesloft (séquences de prospection), aux tâches et aux actions à effectuer pour l’engagement commercial et la prospection du pipeline."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access and manage support tickets, help center, and customer interactions."
+msgstr "Consulter et gérer les tickets de support, le centre d’aide et les interactions clients."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search and read from your Slab knowledge base"
+msgstr "Rechercher et lire dans votre base de connaissances Slab"
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Review compliance posture powered by Vanta's security platform."
+msgstr "Examiner votre niveau de conformité grâce à la plateforme de sécurité Vanta."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Productboard product management data: features, initiatives, roadmaps, OKRs, customer feedback notes, companies, and product hierarchy entities."
+msgstr "Gérer les données produit Productboard : fonctionnalités, initiatives, roadmaps, OKR, retours clients, entreprises et entités de la hiérarchie produit."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Execute read-only SQL queries and browse schema in Snowflake."
+msgstr "Exécuter des requêtes SQL en lecture seule et parcourir le schéma dans Snowflake."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage employee time-off requests, schedules, and accrual balances in UKG Ready."
+msgstr "Gérer les demandes de congés, les plannings et les soldes de congés des employés dans UKG Ready."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Monitor and manage Atlassian Statuspage incidents."
+msgstr "Surveiller et gérer les incidents Atlassian Statuspage."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Luma events, guests, and attendance insights."
+msgstr "Gérer les événements Luma, les invités et les statistiques de participation."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Fathom meeting recordings, transcripts, summaries, and action items."
+msgstr "Accéder aux enregistrements, transcriptions, résumés et actions de suivi des réunions Fathom."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Gong sales calls, transcripts, conversation analytics, and revenue intelligence for deal coaching and pipeline review."
+msgstr "Accéder aux appels commerciaux Gong, aux transcriptions, aux analyses de conversations et aux données de revenue intelligence pour le coaching des affaires et la revue du pipeline."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search content whose meaning best matches your message (not suited for analytics)."
+msgstr "Rechercher le contenu dont le sens correspond le mieux à votre message (non adapté aux analyses chiffrées)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run a child agent (agent as tool)."
+msgstr "Exécuter un sous-agent (agent utilisé comme outil)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Query structured data like a spreadsheet or database. Use list_tables to discover available tables, get_database_schema for the tables you need, then execute_database_query to run SQL analyses."
+msgstr "Interroger des données structurées comme une feuille de calcul ou une base de données. Utilisez list_tables pour découvrir les tables disponibles, get_database_schema pour les tables nécessaires, puis execute_database_query pour lancer des analyses SQL."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse and search content with filesystem-like navigation."
+msgstr "Parcourir et rechercher du contenu avec une navigation de type système de fichiers."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse tables organized by warehouse and schema."
+msgstr "Parcourir les tables organisées par entrepôt et par schéma."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Browse available toolsets and functions."
+msgstr "Parcourir les ensembles d’outils et les fonctions disponibles."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and manage Val Town vals: serverless TypeScript/JavaScript functions, HTTP endpoints, email handlers, and scheduled scripts."
+msgstr "Créer et gérer des vals Val Town : fonctions TypeScript/JavaScript serverless, endpoints HTTP, gestionnaires d’e-mails et scripts planifiés."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Conversation helpers (titles, mark read), random numbers, timers, and other common utilities."
+msgstr "Utilitaires de conversation (titres, marquer comme lu), nombres aléatoires, minuteurs et autres outils courants."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage support conversations, messages, and customer interactions."
+msgstr "Gérer les conversations de support, les messages et les interactions clients."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and update reusable workspace Skills."
+msgstr "Créer et modifier des compétences réutilisables du workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
+msgstr "Créer des planifications et des déclencheurs d’événements pour automatiser des tâches récurrentes ou déclenchées par des événements."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Pod metadata, members, conversations, and Company Data references. Raw Pod file operations (create, read, search, write, delete) live in the `files` MCP server under `pod-<id>/<rel>` scoped paths."
+msgstr "Gérer les métadonnées, les membres, les conversations et les références Company Data d’un Pod. Les opérations brutes sur les fichiers du Pod (création, lecture, recherche, écriture, suppression) se trouvent dans le serveur MCP `files`, sous les chemins `pod-<id>/<rel>`."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Manage Pod tasks: list, create, update, and complete action items."
+msgstr "Gérer les tâches d’un Pod : lister, créer, modifier et terminer des actions."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve context about available models, skills, tools, and agent-specific feedback and insights. Create and manage suggestions for agent configuration changes."
+msgstr "Récupérer le contexte sur les modèles, compétences et outils disponibles, ainsi que les retours et analyses propres à l’agent. Créer et gérer des suggestions de modification de la configuration de l’agent."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools."
+msgstr "Récupérer la configuration de l’agent actuel, notamment son nom, sa description, ses instructions, son modèle et ses outils."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Execute code and commands in the conversation's Computer (an isolated Linux environment)."
+msgstr "Exécuter du code et des commandes dans le Computer de la conversation (un environnement Linux isolé)."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Tools for mentioning users in conversations."
+msgstr "Outils pour mentionner des membres dans les conversations."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Ask the user a question with multiple-choice options."
+msgstr "Poser une question à choix multiples au membre."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Schedule wake-ups that re-invoke the agent at a later time."
+msgstr "Planifier des réveils qui relancent l’agent plus tard."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access Clari Copilot call transcripts, AI summaries, and action items."
+msgstr "Accéder aux transcriptions d’appels, résumés IA et actions de suivi de Clari Copilot."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create and maintain a living `plan.md` that gives the user visibility on genuinely multi-step work. When you need explicit sign-off before proceeding, ask the user with the standard question flow."
+msgstr "Créer et tenir à jour un `plan.md` qui donne au membre de la visibilité sur un travail réellement en plusieurs étapes. Pour obtenir une validation explicite avant de continuer, poser la question au membre via le flux de questions standard."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "File system interface for the agent loop conversation and any accessible conversation or Pod. Defaults to the current conversation (and its Pod when applicable). Files include user uploads, sandbox outputs, and tool results. Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files and can be used to reference or display them in responses. Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation."
+msgstr "Interface de système de fichiers pour la conversation de l’agent et toute conversation ou tout Pod accessible. Par défaut, la conversation actuelle (et son Pod le cas échéant). Les fichiers comprennent les imports des membres, les sorties de la sandbox et les résultats d’outils. Des chemins comme `conversation-<id>/chart.png` ou `pod-<id>/spec.md` identifient les fichiers et permettent de les référencer ou de les afficher dans les réponses. Les versions traitées (images redimensionnées, transcriptions audio) sont listées à côté de leur source avec une annotation."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Collaborate on Markdown documents in the file system alongside their human editors."
+msgstr "Collaborer sur des documents Markdown du système de fichiers avec leurs éditeurs humains."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Workspace usage analytics for admins and managers: credit consumption, message and execution volume by entity, headline figures, and trends over time."
+msgstr "Statistiques d’utilisation du workspace pour les administrateurs et les managers : consommation de crédits, volume de messages et d’exécutions par entité, chiffres clés et tendances dans le temps."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search the workspace's agents and skills, and inventory tools, tags and groups."
+msgstr "Rechercher les agents et les compétences du workspace, et recenser les outils, les tags et les groupes."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search for people and companies using Exa's AI-powered search."
+msgstr "Rechercher des personnes et des entreprises avec la recherche IA d’Exa."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Fetch personal usage stats and anonymized workspace activity data."
+msgstr "Récupérer des statistiques d’utilisation personnelles et des données d’activité anonymisées du workspace."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Track activation recommendations and record user decisions on them."
+msgstr "Suivre les recommandations d’activation et enregistrer les décisions du membre à leur sujet."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Search and retrieve agent templates."
+msgstr "Rechercher et récupérer des modèles d’agents."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Read and manage records in ServiceNow."
+msgstr "Lire et gérer des enregistrements dans ServiceNow."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Access catalog, customers and orders data from a Shopify store."
+msgstr "Accéder aux données du catalogue, des clients et des commandes d’une boutique Shopify."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
+msgstr "Enregistrer et récupérer la mémoire personnelle du membre actuel, partagée entre ses agents."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Run an accessible workspace agent by ID."
+msgstr "Exécuter un agent accessible du workspace à partir de son ID."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Build and improve agents and skills from a conversation by proposing suggestions their editors can review."
+msgstr "Créer et améliorer des agents et des compétences depuis une conversation, en proposant des suggestions que leurs éditeurs peuvent valider."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Launch, manage, and inspect Cursor Cloud Agents, coding runs, repositories, models, usage, and artifacts."
+msgstr "Lancer, gérer et inspecter les Cursor Cloud Agents, les exécutions de code, les dépôts, les modèles, l’utilisation et les artefacts."
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Let the agent adjust its own configuration mid-conversation."
+msgstr "Permettre à l’agent d’ajuster sa propre configuration en cours de conversation."
+
 #: front/lib/invitations.ts
 msgid "Revoke invitation"
 msgstr "Révoquer l’invitation"

@@ -4,6 +4,7 @@ import {
 } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMCPServerDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { ActionIcons } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -24,7 +25,7 @@ export function getInfoPageDescription(
   t: (descriptor: MessageDescriptor) => string
 ): string {
   if (infoMCPServerView?.server.description) {
-    return infoMCPServerView.server.description;
+    return getMCPServerDisplayDescription(t, infoMCPServerView.server);
   }
 
   return t(msg`No description available`);

@@ -1,9 +1,7 @@
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { filterMCPServerView } from "@app/lib/mcp";
 import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
@@ -99,7 +97,7 @@ export default function SpaceManagedActionsViewsModel({
               key={serverView.sId}
               label={getMcpServerViewDisplayName(serverView)}
               icon={() => getAvatar(serverView.server, "xs")}
-              description={getMcpServerViewDescription(serverView)}
+              description={getMcpServerViewDisplayDescription(t, serverView)}
               onClick={() => {
                 onAddServerView(serverView);
               }}

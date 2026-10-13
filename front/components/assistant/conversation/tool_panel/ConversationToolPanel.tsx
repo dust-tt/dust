@@ -1,16 +1,14 @@
 import { MCPServerDetailsGeneral } from "@app/components/actions/mcp/MCPServerDetailsGeneral";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 
 interface ConversationToolPanelProps {
   owner: LightWorkspaceType;
@@ -23,6 +21,8 @@ interface ToolPanelBodyProps {
 }
 
 function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
+  const { t } = useLingui();
+
   if (isError) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -48,7 +48,7 @@ function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
             {getMcpServerViewDisplayName(serverView)}
           </div>
           <div className="text-sm text-muted-foreground">
-            {getMcpServerViewDescription(serverView)}
+            {getMcpServerViewDisplayDescription(t, serverView)}
           </div>
         </div>
       </div>

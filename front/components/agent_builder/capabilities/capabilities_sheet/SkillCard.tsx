@@ -1,3 +1,4 @@
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import {
   getSkillIcon,
   SKILL_AVATAR_BACKGROUND_COLOR,
@@ -28,7 +29,7 @@ export function SkillCard({
       iconBackgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
       iconColor={SKILL_AVATAR_ICON_COLOR}
       label={skill.name}
-      description={skill.userFacingDescription}
+      description={getSkillDisplayDescription(t, skill)}
       isSelected={isSelected}
       canAdd={!isSelected}
       onClick={onClick}

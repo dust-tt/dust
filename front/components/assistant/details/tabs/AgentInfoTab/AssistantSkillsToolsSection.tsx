@@ -3,7 +3,6 @@ import { useEditedAgentSections } from "@app/components/assistant/details/Sugges
 import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
-  getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
@@ -20,6 +19,10 @@ import type {
   MCPServerViewLightType,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
+import {
+  getAgentDisplayDescription,
+  getMcpServerViewDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import type { PreviewedAgentCapabilities } from "@app/lib/editor/preview_agent_suggestions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
@@ -34,6 +37,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar, Button, Command, Spinner, Tooltip } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
@@ -140,11 +144,11 @@ export function AssistantSkillsToolsSection({
     const keptTools = agentConfiguration.actions
       .filter((action) => (isDustAgent ? !isHiddenDustAction(action) : true))
       .filter((action) => !isRemovedTool(action))
-      .map((action) => renderOtherAction(action, serverViewsById));
+      .map((action) => renderOtherAction(t, action, serverViewsById));
 
     const addedTools = (previewedCapabilities?.addedToolIds ?? [])
       .filter((toolId) => !currentToolIds.has(toolId))
-      .map((toolId) => renderServerSideTool(serverViewsById.get(toolId)));
+      .map((toolId) => renderServerSideTool(t, serverViewsById.get(toolId)));
 
     const actions = removeNulls([...keptTools, ...addedTools]);
     return sortBy(uniqBy(actions, "title"), ["order", "title"]);
@@ -153,6 +157,7 @@ export function AssistantSkillsToolsSection({
     serverViewsById,
     isDustAgent,
     previewedCapabilities,
+    t,
   ]);
 
   const sortedSkills = useMemo(() => {
@@ -257,7 +262,10 @@ export function AssistantSkillsToolsSection({
                   }
                   const avatar = getAvatarFromIcon(tool.server.icon, "xs");
                   const displayName = getMcpServerViewDisplayName(tool);
-                  const description = getMcpServerViewDescription(tool);
+                  const description = getMcpServerViewDisplayDescription(
+                    t,
+                    tool
+                  );
                   return (
                     <Tooltip
                       key={tool.sId}
@@ -392,6 +400,7 @@ interface AddedSubAgentItemProps {
 }
 
 function AddedSubAgentItem({ owner, subAgentId }: AddedSubAgentItemProps) {
+  const { t } = useLingui();
   const { agentConfiguration: subAgent, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
@@ -405,7 +414,7 @@ function AddedSubAgentItem({ owner, subAgentId }: AddedSubAgentItemProps) {
   }
   return (
     <Tooltip
-      label={subAgent.description || subAgent.name}
+      label={getAgentDisplayDescription(t, subAgent) || subAgent.name}
       trigger={
         <div className="flex flex-row items-center gap-2">
           <Avatar size="xs" visual={subAgent.pictureUrl} />
@@ -423,6 +432,7 @@ interface ServerView {
 }
 
 function renderServerSideTool(
+  t: (descriptor: MessageDescriptor) => string,
   serverView: ServerView | undefined,
   action?: MCPServerConfigurationType
 ): ActionData | null {
@@ -434,18 +444,20 @@ function renderServerSideTool(
 
   return {
     title: getMcpServerViewDisplayName(view, action),
-    description: getMcpServerViewDescription(view),
+    description: getMcpServerViewDisplayDescription(t, view),
     avatar: getAvatar(server, "xs"),
     order: serverType === "internal" ? 1 : 3,
   };
 }
 
 function renderOtherAction(
+  t: (descriptor: MessageDescriptor) => string,
   action: MCPServerConfigurationType,
   serverViewsById: Map<string, ServerView>
 ): ActionData | null {
   if (isServerSideMCPServerConfiguration(action)) {
     return renderServerSideTool(
+      t,
       serverViewsById.get(action.mcpServerViewId),
       action
     );

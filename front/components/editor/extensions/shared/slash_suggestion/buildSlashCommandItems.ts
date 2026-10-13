@@ -84,6 +84,7 @@ export function buildCapabilitySlashCommandItems<
   skillFilter,
   skills,
   toolFilter,
+  t,
   tools,
   useSearchRanking = false,
 }: {
@@ -91,6 +92,7 @@ export function buildCapabilitySlashCommandItems<
   query: string;
   skillFilter?: (skill: SlashCommandSkillSuggestion) => boolean;
   skills: SlashCommandSkillSuggestion[];
+  t: Translate;
   toolFilter?: (tool: SlashCommandToolSuggestion<V>) => boolean;
   tools: SlashCommandToolSuggestion<V>[];
   useSearchRanking?: boolean;
@@ -143,9 +145,9 @@ export function buildCapabilitySlashCommandItems<
     matches.map((match) => {
       switch (match.kind) {
         case "skill":
-          return getSkillSlashCommandItem(match.skill);
+          return getSkillSlashCommandItem(t, match.skill);
         case "tool":
-          return getToolSlashCommandItem(match.tool);
+          return getToolSlashCommandItem(t, match.tool);
         default:
           assertNeverAndIgnore(match);
           return null;

@@ -1,10 +1,11 @@
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import {
+  getMcpServerViewDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { compareStrings } from "@app/lib/i18n/format";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { compareForAutocompleteSort, subFilter } from "@app/lib/utils";
@@ -13,6 +14,7 @@ import type {
   SkillWithoutInstructionsAndToolsType,
 } from "@app/types/assistant/skill_configuration";
 import { StarFilled } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import React from "react";
 
 export const SELECT_SKILL_SLASH_COMMAND_ACTION = "select-skill";
@@ -241,6 +243,7 @@ export function getToolSlashCommandLabel(tool: SlashCommandToolSuggestion) {
 }
 
 export function getSkillSlashCommandItem(
+  t: (descriptor: MessageDescriptor) => string,
   skill: SlashCommandSkillSuggestion
 ): SkillSlashCommand {
   return {
@@ -248,7 +251,7 @@ export function getSkillSlashCommandItem(
     data: {
       skill,
     },
-    description: skill.userFacingDescription,
+    description: getSkillDisplayDescription(t, skill),
     endIcon: skill.isFavorite ? StarFilled : undefined,
     hasDetails: true,
     icon: () => React.createElement(getSkillAvatarIcon(skill)),
@@ -259,10 +262,11 @@ export function getSkillSlashCommandItem(
 }
 
 export function getToolSlashCommandItem<V extends MCPServerViewLightType>(
+  t: (descriptor: MessageDescriptor) => string,
   tool: SlashCommandToolSuggestion<V>
 ): ToolSlashCommand<V> {
   const name = getToolSlashCommandLabel(tool);
-  const description = getMcpServerViewDescription(tool);
+  const description = getMcpServerViewDisplayDescription(t, tool);
 
   return {
     action: SELECT_TOOL_SLASH_COMMAND_ACTION,

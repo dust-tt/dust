@@ -3,12 +3,10 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { useSendNotification } from "@app/hooks/useNotification";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getMcpServerViewDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { compareStrings } from "@app/lib/i18n/format";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import {
@@ -298,14 +296,14 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
           (serverView.name ?? serverView.server.name)
             .toLowerCase()
             .includes(searchQuery.toLowerCase()) ||
-          getMcpServerViewDescription(serverView)
+          getMcpServerViewDisplayDescription(t, serverView)
             .toLowerCase()
             .includes(searchQuery.toLowerCase())
       )
       .map((serverView) => ({
         id: serverView.sId,
         name: getMcpServerViewDisplayName(serverView),
-        description: getMcpServerViewDescription(serverView),
+        description: getMcpServerViewDisplayDescription(t, serverView),
         serverView: serverView,
         connection: connectionsByServerId[serverView.server.sId],
         canConnect: isConnectable(serverView),
@@ -313,7 +311,7 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
         visual: getAvatar(serverView.server),
         onClick: () => {},
       }));
-  }, [serverViews, hiddenServerViews, connections, approvals, searchQuery]);
+  }, [serverViews, hiddenServerViews, connections, approvals, searchQuery, t]);
 
   // Define columns for the actions table
   const actionColumns = useMemo<ColumnDef<UserTableRow>[]>(
@@ -335,7 +333,10 @@ export function UserToolsTable({ owner }: UserToolsTableProps) {
                   {getMcpServerViewDisplayName(row.original.serverView)}
                 </div>
                 <div className="truncate text-sm text-muted-foreground">
-                  {getMcpServerViewDescription(row.original.serverView)}
+                  {getMcpServerViewDisplayDescription(
+                    t,
+                    row.original.serverView
+                  )}
                 </div>
               </div>
 

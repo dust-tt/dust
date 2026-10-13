@@ -1,4 +1,6 @@
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { i18n } from "@app/lib/i18n/i18n";
+import type { MessageDescriptor } from "@lingui/core";
 import { describe, expect, it } from "vitest";
 import { buildCapabilitySlashCommandItems } from "./slash_suggestion/buildSlashCommandItems";
 import type {
@@ -12,6 +14,8 @@ import {
   matchesSlashCommandCapabilityQuery,
   searchCapabilityIndex,
 } from "./SlashCommandCapabilitiesItems";
+
+const t = (descriptor: MessageDescriptor) => i18n._(descriptor);
 
 function toolSuggestion({
   description = "Search data.",
@@ -333,7 +337,7 @@ describe("getSkillSlashCommandItem", () => {
       userFacingDescription: "Draft structured memos.",
     });
 
-    const item = getSkillSlashCommandItem(skill);
+    const item = getSkillSlashCommandItem(t, skill);
 
     expect(item).toMatchObject({
       action: "select-skill",
@@ -360,7 +364,7 @@ describe("getToolSlashCommandItem", () => {
       sId: "mcp_server_view_linear",
     });
 
-    const item = getToolSlashCommandItem(tool);
+    const item = getToolSlashCommandItem(t, tool);
 
     expect(item).toMatchObject({
       action: "select-tool",
@@ -383,6 +387,7 @@ describe("getToolSlashCommandItem", () => {
 describe("buildCapabilitySlashCommandItems", () => {
   it("reranks search results by autocomplete relevance", () => {
     const result = buildCapabilitySlashCommandItems({
+      t,
       query: "guide",
       useSearchRanking: true,
       skills: [
@@ -396,6 +401,7 @@ describe("buildCapabilitySlashCommandItems", () => {
 
   it("ranks skills and locally matched tools together", () => {
     const result = buildCapabilitySlashCommandItems({
+      t,
       query: "guide",
       useSearchRanking: true,
       skills: [
@@ -419,6 +425,7 @@ describe("buildCapabilitySlashCommandItems", () => {
 
   it("does not re-filter skills returned by the search server", () => {
     const result = buildCapabilitySlashCommandItems({
+      t,
       query: "Deep Dive",
       useSearchRanking: true,
       skills: [
@@ -446,6 +453,7 @@ describe("buildCapabilitySlashCommandItems", () => {
     });
 
     const result = buildCapabilitySlashCommandItems({
+      t,
       query: "Deep Dive",
       skills: [deepDiveAssistant, goDeep],
       tools: [],

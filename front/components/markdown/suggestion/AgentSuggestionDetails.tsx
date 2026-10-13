@@ -14,10 +14,12 @@ import { SuggestionFieldEditSection } from "@app/components/shared/SuggestionFie
 import { SuggestionInstructionsDiffBlock } from "@app/components/shared/SuggestionInstructionsDiffBlock";
 import { SuggestionNewInstructionsBlock } from "@app/components/shared/SuggestionNewInstructionsBlock";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+  getAgentDisplayDescription,
+  getMcpServerViewDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPServerView } from "@app/lib/swr/mcp_servers";
@@ -121,7 +123,7 @@ function SuggestedSkillRow({
       action={action}
       visual={<SkillAvatar size="xs" />}
       title={displayName}
-      description={skill?.userFacingDescription}
+      description={skill ? getSkillDisplayDescription(t, skill) : undefined}
     />
   );
 }
@@ -156,7 +158,9 @@ function SuggestedToolRow({ owner, action, toolId }: SuggestedToolRowProps) {
       }
       title={displayName}
       description={
-        serverView ? getMcpServerViewDescription(serverView) : undefined
+        serverView
+          ? getMcpServerViewDisplayDescription(t, serverView)
+          : undefined
       }
     />
   );
@@ -191,7 +195,9 @@ function SuggestedSubAgentRow({
       action={action}
       visual={<Avatar size="xs" visual={subAgent?.pictureUrl} />}
       title={displayName}
-      description={subAgent?.description}
+      description={
+        subAgent ? getAgentDisplayDescription(t, subAgent) : undefined
+      }
     />
   );
 }

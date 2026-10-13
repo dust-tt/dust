@@ -23,6 +23,7 @@ import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MC
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import {
   getSkillIcon,
   SKILL_AVATAR_BACKGROUND_COLOR,
@@ -50,13 +51,18 @@ interface SkillCardProps {
 }
 
 function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
+  const { t } = useLingui();
+
   return (
     <ActionCard
       icon={getSkillIcon(skill.icon)}
       iconBackgroundColor={SKILL_AVATAR_BACKGROUND_COLOR}
       iconColor={SKILL_AVATAR_ICON_COLOR}
       label={skill.name}
-      description={skill.description}
+      description={getSkillDisplayDescription(t, {
+        sId: skill.sId,
+        userFacingDescription: skill.description,
+      })}
       canAdd={false}
       onClick={onClick}
       onRemove={onRemove}
