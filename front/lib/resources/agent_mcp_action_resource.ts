@@ -101,6 +101,8 @@ const OUTPUT_ITEMS_BATCH_SIZE = 32;
 
 const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
+const UPDATE_OUTPUT_ITEMS_GCS_PATH_CONCURRENCY = 8;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
@@ -1214,12 +1216,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     try {
-      await Promise.all(
-        outputItems.map(async (item, index) => {
+      await concurrentExecutor(
+        outputItems,
+        async (item, index) => {
           const contentGcsPath = gcsResult.value[index];
           assert(contentGcsPath, "GCS path not found for output item.");
           await item.update({ contentGcsPath });
-        })
+        },
+        { concurrency: UPDATE_OUTPUT_ITEMS_GCS_PATH_CONCURRENCY }
       );
     } catch (err) {
       // Keep the GCS objects rather than risk deleting content that may already be

@@ -86,6 +86,45 @@ function sanitizeStringsDeep<T>(input: T): T {
   return input;
 }
 
+// Some remote MCP servers return one text block per record (e.g. Looker, one per query row). Each
+// block becomes an output item row plus a GCS object, and small blocks evade the text offload.
+const MAX_UNMERGED_TOOL_OUTPUT_BLOCKS = 50;
+
+/**
+ * @cc [owner:tdraier,label:performance] merge-text-runs-past-block-threshold
+ * When `content` has more than `MAX_UNMERGED_TOOL_OUTPUT_BLOCKS` blocks, each run of consecutive
+ * `text` blocks MUST be replaced by a single `text` block joining their texts with "\n", keeping
+ * non-text blocks unchanged and in order. Otherwise `content` MUST be returned unchanged.
+ */
+export function mergeTextBlockRuns(
+  content: CallToolResult["content"]
+): CallToolResult["content"] {
+  if (content.length <= MAX_UNMERGED_TOOL_OUTPUT_BLOCKS) {
+    return content;
+  }
+
+  const merged: CallToolResult["content"] = [];
+  let textRun: string[] = [];
+  const flushTextRun = () => {
+    if (textRun.length > 0) {
+      merged.push({ type: "text", text: textRun.join("\n") });
+      textRun = [];
+    }
+  };
+
+  for (const block of content) {
+    if (block.type === "text") {
+      textRun.push(block.text);
+    } else {
+      flushTextRun();
+      merged.push(block);
+    }
+  }
+  flushTextRun();
+
+  return merged;
+}
+
 function getFileName(resource: { uri: string }): string {
   return isResourceWithName(resource)
     ? resource.name
@@ -293,13 +332,18 @@ export async function processToolResults(
   assert(runContext, "processToolResults requires a tool run context.");
   const { toolConfiguration } = runContext;
 
+  // Sandbox function outputs are a single GCS object read by code: keep their block structure.
+  const contentBlocks = isAgentLoopRunContext(runContext)
+    ? mergeTextBlockRuns(toolCallResultContent)
+    : toolCallResultContent;
+
   const timestamp = Date.now();
   const processBlocksStarted = performance.now();
   const cleanContent: {
     content: CallToolResult["content"][number];
     file: FileResource | null;
   }[] = await concurrentExecutor(
-    toolCallResultContent,
+    contentBlocks,
     async (block, idx) => {
       const res = await persistToolOutput(auth, runContext, block, {
         toolName: toolConfiguration.name,
