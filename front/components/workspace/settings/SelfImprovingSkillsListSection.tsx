@@ -68,8 +68,6 @@ function isReinforcementEnabled(
   return reinforcement !== "off";
 }
 
-type ColumnHeader = ColumnDef<RowData, unknown>["header"];
-
 function getColumns(
   unit: ReinforcementBillingUnit,
   capUnit: string,
@@ -77,8 +75,8 @@ function getColumns(
     name: string;
     editors: string;
     enabled: string;
-    currentlySpent: ColumnHeader;
-    cap: ColumnHeader;
+    currentlySpent: string;
+    cap: string;
     lockState: string;
   }
 ): ColumnDef<RowData, unknown>[] {
@@ -153,7 +151,7 @@ function getColumns(
           label={info.row.original.currentSpentFormatted}
         />
       ),
-      meta: { className: "w-44" },
+      meta: { type: "numeric", className: "w-60" },
     },
     {
       header: headers.cap,
@@ -396,32 +394,11 @@ export function SelfImprovingSkillsListSection({
         name: t`Name`,
         editors: t`Editors`,
         enabled: t`Enabled`,
-        // "(credits)" goes on its own line: the single-line header is too wide and
-        // overlaps the neighboring columns.
         currentlySpent:
           unit === "awu_credits"
-            ? () => (
-                <span>
-                  <Trans>
-                    Currently Spent
-                    <br />
-                    (credits)
-                  </Trans>
-                </span>
-              )
+            ? t`Currently Spent (credits)`
             : t`Currently Spent ($)`,
-        cap:
-          unit === "awu_credits"
-            ? () => (
-                <span>
-                  <Trans>
-                    Cap
-                    <br />
-                    (credits)
-                  </Trans>
-                </span>
-              )
-            : t`Cap ($)`,
+        cap: unit === "awu_credits" ? t`Cap (credits)` : t`Cap ($)`,
         lockState: t`Lock State`,
       }),
     [t, unit, capUnit]
