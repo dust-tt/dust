@@ -1,0 +1,32 @@
+import { db } from "@dust/pod";
+import { desc } from "drizzle-orm";
+import { z } from "zod";
+
+import { tasks } from "../../databases/tasks.db.ts";
+
+export const TaskListSchema = z.object({
+  tasks: z.array(
+    z.object({
+      id: z.number(),
+      title: z.string(),
+      done: z.boolean(),
+      createdBy: z.string(),
+    })
+  ),
+});
+
+export function listTasks() {
+  const rows = db("tasks")
+    .select()
+    .from(tasks)
+    .orderBy(desc(tasks.createdAt))
+    .all();
+  return {
+    tasks: rows.map(({ id, title, done, createdBy }) => ({
+      id,
+      title,
+      done,
+      createdBy,
+    })),
+  };
+}

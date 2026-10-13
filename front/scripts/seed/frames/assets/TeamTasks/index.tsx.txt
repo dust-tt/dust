@@ -1,0 +1,91 @@
+import {
+  useFrameFunction,
+  useFrameFunctionMutation,
+  useUserIdentity,
+} from "@dust/react-hooks";
+import { useState } from "react";
+
+type TaskList = {
+  tasks: { id: number; title: string; done: boolean; createdBy: string }[];
+};
+
+export default function App() {
+  const [title, setTitle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const identity = useUserIdentity();
+  const list = useFrameFunction("list-tasks", {});
+  const addTask = useFrameFunctionMutation("add-task");
+  const toggleTask = useFrameFunctionMutation("toggle-task");
+  const deleteTask = useFrameFunctionMutation("delete-task");
+  const payload = list.data as TaskList | undefined;
+  const items = payload?.tasks ?? [];
+
+  async function run(call: () => Promise<unknown>) {
+    setError(null);
+    try {
+      const updated = (await call()) as TaskList;
+      await list.mutate(updated, { revalidate: false });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  async function handleAdd() {
+    if (!title.trim() || addTask.isMutating) {
+      return;
+    }
+    await run(() => addTask.trigger({ title: title.trim() }));
+    setTitle("");
+  }
+
+  return (
+    <div className="min-h-screen bg-background p-8 text-foreground">
+      <h1 className="mb-2 text-3xl font-bold">Team tasks</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Anyone in the workspace can list and tick tasks. Adding needs a live
+        session. Deleting is for the Frame author only (you are
+        {identity.isFrameAuthor ? "" : " not"} the author).
+      </p>
+      <div className="mb-6 flex gap-2">
+        <input
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder="New task"
+          className="flex-1 rounded-md border border-border px-3 py-2"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={addTask.isMutating}
+          className="rounded-md bg-primary px-4 py-2 text-primary-foreground"
+        >
+          Add
+        </button>
+      </div>
+      {error && <p className="mb-4 text-red-600">{error}</p>}
+      {list.isLoading && <p className="text-muted-foreground">Loading...</p>}
+      <ul className="space-y-2">
+        {items.map((task) => (
+          <li key={task.id} className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              checked={task.done}
+              onChange={() =>
+                run(() => toggleTask.trigger({ id: task.id, done: !task.done }))
+              }
+            />
+            <span className={task.done ? "line-through text-muted-foreground" : ""}>
+              {task.title}
+            </span>
+            <span className="text-sm text-muted-foreground">{task.createdBy}</span>
+            <button
+              onClick={() => run(() => deleteTask.trigger({ id: task.id }))}
+              className="ml-auto text-sm text-muted-foreground underline"
+            >
+              Delete (author only)
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}

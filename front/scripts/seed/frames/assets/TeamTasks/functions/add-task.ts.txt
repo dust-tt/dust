@@ -1,0 +1,29 @@
+import { currentUser, db } from "@dust/pod";
+import { z } from "zod";
+
+import { tasks } from "../databases/tasks.db.ts";
+import { listTasks, TaskListSchema } from "./lib/tasks.ts";
+
+export const schema = {
+  description: "Add a task.",
+  userIdentity: "interactive_workspace_user_required",
+  input: z.object({ title: z.string().min(1).max(200) }),
+  output: TaskListSchema,
+};
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    const { title } = await request.json();
+    const user = currentUser();
+    db("tasks")
+      .insert(tasks)
+      .values({
+        title,
+        done: false,
+        createdBy: user?.fullName ?? "unknown",
+        createdAt: new Date(),
+      })
+      .run();
+    return Response.json(listTasks());
+  },
+};

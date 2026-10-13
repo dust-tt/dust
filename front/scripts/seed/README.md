@@ -20,6 +20,7 @@ DEV_WORKSPACE_SID=MyWorkspace npx tsx scripts/seed/<folder>/seed.ts --execute
 - `basics/` - Creates a custom agent with skills and sample conversations
 - `byok/` - Setup workspace to test Bring your own key
 - `conversational_building/` - Creates a skill with conversational suggestions and a Dust conversation rendering them, for testing the conversational builder
+- `frames/` - Publishes Frames v2 (client-only and shared publicly, functions and database) with conversations linking to them, for testing Frames and their caller policies
 - `governance/` - Creates users and skills for testing admin governance
 - `mcp_tools/` - Creates data-source-backed agents with internal MCP tools
 - `pagination/` - Creates 100 agents and 100 skills for testing search, sorting and pagination on the Manage pages
