@@ -952,7 +952,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyCustom,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
       ...otherOptions
     } = options;
@@ -1031,7 +1030,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         allMCPServerViews = await MCPServerViewResource.fetchByModelIds(
           auth,
           removeNulls(mcpServerConfigurations.map((c) => c.mcpServerViewId)),
-          { mode: "configuration", includeMetadata: withToolMetadata }
+          { mode: "configuration" }
         );
       }
 
@@ -1298,7 +1297,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       onlyActive = false,
       withInstructions = true,
       withTools = true,
-      withToolMetadata = false,
       withFileAttachments = true,
     }: SkillFetchContext & SkillHydrationOptions & { onlyActive?: boolean } = {}
   ): Promise<SkillResource[]> {
@@ -1337,7 +1335,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       { agentLoopData, effectiveSpaceIds, permissionFiltering }
@@ -1567,7 +1564,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction,
       withInstructions,
       withTools,
-      withToolMetadata,
       withFileAttachments,
     }: SkillHydrationOptions & {
       agentLoopData?: AgentLoopExecutionData;
@@ -1590,7 +1586,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         },
         withInstructions,
         withTools,
-        withToolMetadata,
         withFileAttachments,
       },
       {
@@ -4734,8 +4729,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentMessageId(
     auth: Authenticator,
-    agentMessageId: ModelId,
-    { withToolMetadata = false }: { withToolMetadata?: boolean } = {}
+    agentMessageId: ModelId
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -4751,7 +4745,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Include all statuses for historical accuracy.
     return this.fetchBySkillReferences(auth, agentMessageSkills, {
       status: ["active", "archived", "suggested"],
-      withToolMetadata,
     });
   }
 

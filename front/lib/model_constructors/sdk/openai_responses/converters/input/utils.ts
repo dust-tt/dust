@@ -292,6 +292,9 @@ export function conversationToInput(
         return userMessageToInputItems(message, converters);
       case "assistant":
         return assistantMessageToInputItems(message, converters);
+      case "system":
+        // Per-message reasoning effort is Anthropic-only.
+        return [];
       default:
         assertNever(message);
     }

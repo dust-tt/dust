@@ -1,8 +1,8 @@
-import type { LiveFile } from "@app/lib/api/collab/live_file";
+import type { CollabAccess } from "@app/lib/api/collab/access";
 import { yDocCommentedTexts } from "@app/lib/api/collab/ydoc";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
-import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
-import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
+import { dispatchCommentMentions } from "@app/lib/api/documents/comment_mentions";
+import { signDfmCommentMessage } from "@app/lib/api/documents/comment_signatures";
+import type { DfmCommentSignatureError } from "@app/lib/api/documents/comment_signatures";
 import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { extractFromString } from "@app/lib/mentions/format";
 import type {
@@ -20,7 +20,7 @@ const signatureRefusal = ({
   code === "unwritable_message" ? "unwritable" : "unavailable";
 
 /**
- * @cc [owner:tdraier,label:security;product] live-comment-commands
+ * @cc [owner:tdraier,label:security;product] collab-comment-requests
  * A command MUST be refused as `unavailable` when `file` cannot write. `add` and `reply` MUST
  * store the message `signDfmCommentMessage` writes for `file`'s user and path after the thread's
  * last message, never a message, author or time from the command, and return it as `added`, which
@@ -34,8 +34,8 @@ const signatureRefusal = ({
  * Callers MUST apply a session's commands one at a time, each to the threads the previous one
  * left: the result is built from `comments` across an await, so overlapping calls would drop one.
  */
-export async function applyLiveCommentCommand(
-  file: LiveFile,
+export async function applyCommentRequest(
+  file: CollabAccess,
   comments: DfmComment[],
   command: LiveCommentCommand
 ): Promise<
@@ -132,16 +132,16 @@ export async function applyLiveCommentCommand(
 }
 
 /**
- * @cc [owner:tdraier,label:product] live-comment-mentions
- * `message`, the one `applyLiveCommentCommand` stored for an accepted `command`, MUST be handed
+ * @cc [owner:tdraier,label:product] collab-comment-mentions
+ * `message`, the one `applyCommentRequest` stored for an accepted `command`, MUST be handed
  * to `dispatchCommentMentions` for `file`'s user and path. Its quote MUST be the one an `add`
  * carries, as the browser anchors its thread only once it is accepted, and for a `reply` the
  * text its thread's anchors cover in `doc` as `yDocCommentedTexts` gives it, so agents get the
  * editor's text either way, and none only when the body cannot be read. A message without
  * mentions MUST NOT read `doc`, as that converts the whole document.
  */
-export async function dispatchLiveCommentMentions(
-  file: LiveFile,
+export async function dispatchSessionCommentMentions(
+  file: CollabAccess,
   doc: Y.Doc,
   command: LiveCommentCommand,
   message: DfmMessage

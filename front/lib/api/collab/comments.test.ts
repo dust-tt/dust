@@ -1,20 +1,20 @@
 import { generateKeyPairSync } from "node:crypto";
+import type { CollabAccess } from "@app/lib/api/collab/access";
 import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
+  applyCommentRequest,
+  dispatchSessionCommentMentions,
+} from "@app/lib/api/collab/comments";
 import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
+import { dispatchCommentMentions } from "@app/lib/api/documents/comment_mentions";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { serializeDfm } from "@app/lib/markdown/dfm";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock(import("@app/lib/api/files/dfm_comment_mentions"), () => ({
+vi.mock(import("@app/lib/api/documents/comment_mentions"), () => ({
   dispatchCommentMentions: vi.fn(),
 }));
 
@@ -33,8 +33,8 @@ const THREAD: DfmComment = {
 };
 const OTHER: DfmComment = { ...THREAD, id: "c2" };
 
-describe("applyLiveCommentCommand", () => {
-  let file: LiveFile;
+describe("applyCommentRequest", () => {
+  let file: CollabAccess;
 
   beforeEach(async () => {
     const { authenticator: auth, workspace } = await createResourceTest({});
@@ -56,7 +56,7 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("adds a thread signed for the file's user, whatever the command says", async () => {
-    const result = await applyLiveCommentCommand(file, [THREAD], {
+    const result = await applyCommentRequest(file, [THREAD], {
       type: "add",
       commentId: "c-new",
       body: "Looks good.",
@@ -80,7 +80,7 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("refuses every command when the file cannot be written", async () => {
-    const result = await applyLiveCommentCommand(
+    const result = await applyCommentRequest(
       { ...file, canWrite: false },
       [THREAD],
       { type: "resolve", commentId: "c1", resolved: true }
@@ -90,7 +90,7 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("refuses to add a thread whose id is taken", async () => {
-    const result = await applyLiveCommentCommand(file, [THREAD], {
+    const result = await applyCommentRequest(file, [THREAD], {
       type: "add",
       commentId: "c1",
       body: "Again.",
@@ -101,7 +101,7 @@ describe("applyLiveCommentCommand", () => {
 
   it("refuses to sign outside a workspace with co_edition", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    const result = await applyLiveCommentCommand({ ...file, auth }, [], {
+    const result = await applyCommentRequest({ ...file, auth }, [], {
       type: "add",
       commentId: "c-new",
       body: "Hi.",
@@ -111,7 +111,7 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("appends a signed reply after the thread's last message", async () => {
-    const result = await applyLiveCommentCommand(file, [THREAD, OTHER], {
+    const result = await applyCommentRequest(file, [THREAD, OTHER], {
       type: "reply",
       commentId: "c1",
       position: 1,
@@ -136,13 +136,13 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("refuses a reply to a thread that moved on, or that is gone", async () => {
-    const stale = await applyLiveCommentCommand(file, [THREAD], {
+    const stale = await applyCommentRequest(file, [THREAD], {
       type: "reply",
       commentId: "c1",
       position: 2,
       body: "Late.",
     });
-    const missing = await applyLiveCommentCommand(file, [THREAD], {
+    const missing = await applyCommentRequest(file, [THREAD], {
       type: "reply",
       commentId: "c-gone",
       position: 1,
@@ -154,12 +154,12 @@ describe("applyLiveCommentCommand", () => {
   });
 
   it("resolves and deletes only the given thread", async () => {
-    const resolved = await applyLiveCommentCommand(file, [THREAD, OTHER], {
+    const resolved = await applyCommentRequest(file, [THREAD, OTHER], {
       type: "resolve",
       commentId: "c1",
       resolved: true,
     });
-    const deleted = await applyLiveCommentCommand(file, [THREAD, OTHER], {
+    const deleted = await applyCommentRequest(file, [THREAD, OTHER], {
       type: "delete",
       commentId: "c1",
     });
@@ -174,7 +174,7 @@ describe("applyLiveCommentCommand", () => {
   });
 });
 
-describe("dispatchLiveCommentMentions", () => {
+describe("dispatchSessionCommentMentions", () => {
   const TOM = { kind: "user", id: "usr_tom", name: "Tom" } as const;
   const MENTION = ":mention[dust]{sId=dust}";
   const SOURCE = serializeDfm({
@@ -206,7 +206,7 @@ describe("dispatchLiveCommentMentions", () => {
       },
     ],
   });
-  let file: LiveFile;
+  let file: CollabAccess;
 
   function loadLive() {
     if (SOURCE.isErr()) {
@@ -239,7 +239,7 @@ describe("dispatchLiveCommentMentions", () => {
     const live = loadLive();
     const message = live.comments[0].messages[1];
 
-    await dispatchLiveCommentMentions(
+    await dispatchSessionCommentMentions(
       file,
       live.doc,
       { type: "reply", commentId: "c1", position: 1, body: message.body },
@@ -256,7 +256,7 @@ describe("dispatchLiveCommentMentions", () => {
     const live = loadLive();
     const message = live.comments[1].messages[0];
 
-    await dispatchLiveCommentMentions(
+    await dispatchSessionCommentMentions(
       file,
       live.doc,
       { type: "add", commentId: "c2", body: message.body, quote: "Ship it" },
@@ -272,7 +272,7 @@ describe("dispatchLiveCommentMentions", () => {
     const live = loadLive();
     const message = live.comments[0].messages[0];
 
-    await dispatchLiveCommentMentions(
+    await dispatchSessionCommentMentions(
       file,
       live.doc,
       { type: "reply", commentId: "c1", position: 1, body: message.body },

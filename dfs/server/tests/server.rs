@@ -54,6 +54,7 @@ fn server() -> Result<()> {
         api::create_tenant::tenant_creation_persists_root_and_rejects_duplicates().await?;
         api::grants::grants_are_scoped_paginated_and_atomic().await?;
         api::stat::stat_returns_authorized_attributes_and_rechecks_grants().await?;
+        api::stat::stat_returns_metadata_and_enforces_response_budget().await?;
         api::create_session::creates_durable_sessions_for_authenticated_tenants().await?;
         api::session::session_rpcs_enforce_credentials_and_preserve_identity().await?;
         api::session::session_authentication_requires_and_caches_existing_tenants().await?;

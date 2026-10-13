@@ -29,6 +29,7 @@ export function useAutoOpenSidePanel({
     openPanel,
     currentPanel,
     data: panelData,
+    wasAutoOpenDismissedForFileId,
   } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
   const clientType = useClientType();
@@ -107,6 +108,19 @@ export function useAutoOpenSidePanel({
         ) {
           return;
         }
+        // User closed this Frame earlier in the session — do not reopen it, even
+        // for a republish. Still refresh if the panel is already showing it.
+        const panelShowingThisFile =
+          currentPanel === "interactive_content" &&
+          !!panelData &&
+          (panelData === firstFile.fileId ||
+            panelData.startsWith(`${firstFile.fileId}@`));
+        if (
+          wasAutoOpenDismissedForFileId(firstFile.fileId) &&
+          !panelShowingThisFile
+        ) {
+          return;
+        }
         lastOpenedFileIdRef.current = firstFile.fileId;
         lastOpenedFromProgressRef.current = true;
         openPanel({
@@ -161,6 +175,13 @@ export function useAutoOpenSidePanel({
         return;
       }
 
+      if (
+        wasAutoOpenDismissedForFileId(firstFile.fileId) &&
+        !panelShowingThisFile
+      ) {
+        return;
+      }
+
       lastOpenedFileIdRef.current = firstFile.fileId;
       lastOpenedFromProgressRef.current = false;
       openPanel({
@@ -193,5 +214,6 @@ export function useAutoOpenSidePanel({
     currentPanel,
     panelData,
     isPanelOverlay,
+    wasAutoOpenDismissedForFileId,
   ]);
 }

@@ -6311,6 +6311,297 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10050,
+    name: "n8n",
+    description:
+      "n8n tools to search, run and build workflows, and to manage data tables and AI agents on your n8n instance.",
+    url: "",
+    icon: "N8NLogo",
+    documentationUrl: "https://docs.n8n.io/connect/connect-to-n8n-mcp-server",
+    connectionInstructions:
+      "Enter your n8n instance's MCP server URL, found in n8n under Settings > Instance-level MCP (e.g. https://your-instance.app.n8n.cloud/mcp-server/http, or https://your-domain/mcp-server/http when self-hosted). The instance must be reachable over HTTPS. n8n uses OAuth with dynamic client registration. Sign in with your n8n account to connect. An instance owner or admin must first enable instance-level MCP, and each workflow or agent must be marked as available in MCP.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_workflows: "never_ask",
+      get_workflow_details: "never_ask",
+      get_workflow_execution: "never_ask",
+      search_workflow_executions: "never_ask",
+      get_workflow_history: "never_ask",
+      get_workflow_version: "never_ask",
+      get_workflow_versions_diff: "never_ask",
+      prepare_workflow_pin_data: "never_ask",
+      list_credentials: "never_ask",
+      list_n8n_gateway_services: "never_ask",
+      list_workflow_tags: "never_ask",
+      search_data_tables: "never_ask",
+      get_data_table_rows: "never_ask",
+      search_nodes: "never_ask",
+      get_node_types: "never_ask",
+      get_workflow_best_practices: "never_ask",
+      explore_node_resources: "never_ask",
+      validate_workflow: "never_ask",
+      validate_node_config: "never_ask",
+      get_workflow_sdk_reference: "never_ask",
+      search_projects: "never_ask",
+      search_folders: "never_ask",
+      search_agents: "never_ask",
+      get_agent: "never_ask",
+      list_agent_versions: "never_ask",
+      get_agent_builder_reference: "never_ask",
+      discover_agent_assets: "never_ask",
+      validate_agent: "never_ask",
+      execute_workflow: "high",
+      test_workflow: "high",
+      publish_workflow: "high",
+      unpublish_workflow: "high",
+      create_workflow_from_code: "high",
+      update_workflow: "high",
+      archive_workflow: "high",
+      restore_workflow_version: "high",
+      create_data_table: "high",
+      rename_data_table: "high",
+      add_data_table_column: "high",
+      delete_data_table_column: "high",
+      rename_data_table_column: "high",
+      add_data_table_rows: "high",
+      create_folder: "high",
+      update_folder: "high",
+      move_workflows_to_folder: "high",
+      install_community_node: "high",
+      create_agent: "high",
+      mutate_agent: "high",
+      call_agent: "high",
+      publish_agent: "high",
+      unpublish_agent: "high",
+      revert_agent: "high",
+      delete_agent: "high",
+      verify_agent_mcp_server: "high",
+      update_agent_integration: "high",
+    },
+    toolDisplayLabels: {
+      search_workflows: {
+        running: "Searching workflows on n8n",
+        done: "Searched workflows on n8n",
+      },
+      get_workflow_details: {
+        running: "Getting workflow details from n8n",
+        done: "Got workflow details from n8n",
+      },
+      get_workflow_execution: {
+        running: "Getting an execution from n8n",
+        done: "Got an execution from n8n",
+      },
+      search_workflow_executions: {
+        running: "Searching executions on n8n",
+        done: "Searched executions on n8n",
+      },
+      get_workflow_history: {
+        running: "Loading workflow history from n8n",
+        done: "Loaded workflow history from n8n",
+      },
+      get_workflow_version: {
+        running: "Getting a workflow version from n8n",
+        done: "Got a workflow version from n8n",
+      },
+      get_workflow_versions_diff: {
+        running: "Comparing workflow versions on n8n",
+        done: "Compared workflow versions on n8n",
+      },
+      prepare_workflow_pin_data: {
+        running: "Preparing test data on n8n",
+        done: "Prepared test data on n8n",
+      },
+      list_credentials: {
+        running: "Listing credentials on n8n",
+        done: "Listed credentials on n8n",
+      },
+      list_n8n_gateway_services: {
+        running: "Listing gateway services on n8n",
+        done: "Listed gateway services on n8n",
+      },
+      list_workflow_tags: {
+        running: "Listing workflow tags on n8n",
+        done: "Listed workflow tags on n8n",
+      },
+      search_data_tables: {
+        running: "Searching data tables on n8n",
+        done: "Searched data tables on n8n",
+      },
+      get_data_table_rows: {
+        running: "Reading data table rows from n8n",
+        done: "Read data table rows from n8n",
+      },
+      search_nodes: {
+        running: "Searching nodes on n8n",
+        done: "Searched nodes on n8n",
+      },
+      get_node_types: {
+        running: "Getting node types from n8n",
+        done: "Got node types from n8n",
+      },
+      get_workflow_best_practices: {
+        running: "Checking workflow best practices on n8n",
+        done: "Checked workflow best practices on n8n",
+      },
+      explore_node_resources: {
+        running: "Exploring node resources on n8n",
+        done: "Explored node resources on n8n",
+      },
+      validate_workflow: {
+        running: "Validating a workflow on n8n",
+        done: "Validated a workflow on n8n",
+      },
+      validate_node_config: {
+        running: "Validating a node config on n8n",
+        done: "Validated a node config on n8n",
+      },
+      get_workflow_sdk_reference: {
+        running: "Reading the workflow SDK reference on n8n",
+        done: "Read the workflow SDK reference on n8n",
+      },
+      search_projects: {
+        running: "Searching projects on n8n",
+        done: "Searched projects on n8n",
+      },
+      search_folders: {
+        running: "Searching folders on n8n",
+        done: "Searched folders on n8n",
+      },
+      search_agents: {
+        running: "Searching agents on n8n",
+        done: "Searched agents on n8n",
+      },
+      get_agent: {
+        running: "Getting an agent from n8n",
+        done: "Got an agent from n8n",
+      },
+      list_agent_versions: {
+        running: "Listing agent versions on n8n",
+        done: "Listed agent versions on n8n",
+      },
+      get_agent_builder_reference: {
+        running: "Reading the agent builder reference on n8n",
+        done: "Read the agent builder reference on n8n",
+      },
+      discover_agent_assets: {
+        running: "Discovering agent assets on n8n",
+        done: "Discovered agent assets on n8n",
+      },
+      validate_agent: {
+        running: "Validating an agent on n8n",
+        done: "Validated an agent on n8n",
+      },
+      execute_workflow: {
+        running: "Running a workflow on n8n",
+        done: "Ran a workflow on n8n",
+      },
+      test_workflow: {
+        running: "Testing a workflow on n8n",
+        done: "Tested a workflow on n8n",
+      },
+      publish_workflow: {
+        running: "Publishing a workflow on n8n",
+        done: "Published a workflow on n8n",
+      },
+      unpublish_workflow: {
+        running: "Unpublishing a workflow on n8n",
+        done: "Unpublished a workflow on n8n",
+      },
+      create_workflow_from_code: {
+        running: "Creating a workflow on n8n",
+        done: "Created a workflow on n8n",
+      },
+      update_workflow: {
+        running: "Updating a workflow on n8n",
+        done: "Updated a workflow on n8n",
+      },
+      archive_workflow: {
+        running: "Archiving a workflow on n8n",
+        done: "Archived a workflow on n8n",
+      },
+      restore_workflow_version: {
+        running: "Restoring a workflow version on n8n",
+        done: "Restored a workflow version on n8n",
+      },
+      create_data_table: {
+        running: "Creating a data table on n8n",
+        done: "Created a data table on n8n",
+      },
+      rename_data_table: {
+        running: "Renaming a data table on n8n",
+        done: "Renamed a data table on n8n",
+      },
+      add_data_table_column: {
+        running: "Adding a column on n8n",
+        done: "Added a column on n8n",
+      },
+      delete_data_table_column: {
+        running: "Deleting a column on n8n",
+        done: "Deleted a column on n8n",
+      },
+      rename_data_table_column: {
+        running: "Renaming a column on n8n",
+        done: "Renamed a column on n8n",
+      },
+      add_data_table_rows: {
+        running: "Adding rows on n8n",
+        done: "Added rows on n8n",
+      },
+      create_folder: {
+        running: "Creating a folder on n8n",
+        done: "Created a folder on n8n",
+      },
+      update_folder: {
+        running: "Updating a folder on n8n",
+        done: "Updated a folder on n8n",
+      },
+      move_workflows_to_folder: {
+        running: "Moving workflows on n8n",
+        done: "Moved workflows on n8n",
+      },
+      install_community_node: {
+        running: "Installing a community node on n8n",
+        done: "Installed a community node on n8n",
+      },
+      create_agent: {
+        running: "Creating an agent on n8n",
+        done: "Created an agent on n8n",
+      },
+      mutate_agent: {
+        running: "Updating an agent on n8n",
+        done: "Updated an agent on n8n",
+      },
+      call_agent: {
+        running: "Calling an agent on n8n",
+        done: "Called an agent on n8n",
+      },
+      publish_agent: {
+        running: "Publishing an agent on n8n",
+        done: "Published an agent on n8n",
+      },
+      unpublish_agent: {
+        running: "Unpublishing an agent on n8n",
+        done: "Unpublished an agent on n8n",
+      },
+      revert_agent: {
+        running: "Reverting an agent on n8n",
+        done: "Reverted an agent on n8n",
+      },
+      delete_agent: {
+        running: "Deleting an agent on n8n",
+        done: "Deleted an agent on n8n",
+      },
+      verify_agent_mcp_server: {
+        running: "Testing an MCP server on n8n",
+        done: "Tested an MCP server on n8n",
+      },
+      update_agent_integration: {
+        running: "Updating an agent integration on n8n",
+        done: "Updated an agent integration on n8n",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

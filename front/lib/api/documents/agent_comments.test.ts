@@ -1,11 +1,11 @@
 import { generateKeyPairSync, verify } from "node:crypto";
 import { Readable } from "node:stream";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   addAgentComment,
   replyToAgentComment,
-} from "@app/lib/api/files/dfm_agent_comments";
+} from "@app/lib/api/documents/agent_comments";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   readCanonicalFileContent,
   WriteCanonicalFileContentError,

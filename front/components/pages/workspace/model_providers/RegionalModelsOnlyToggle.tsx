@@ -22,7 +22,7 @@ const REGIONAL_MODELS_ONLY_TOGGLE_CONFIG: Record<
   "europe-west1": {
     label: msg`EU-hosted models only`,
     description: msg`Limit available models to EU-based ones. Useful for data residency requirements.`,
-    icon: <RegionalFlag region="europe-west1" size={32} />,
+    icon: <RegionalFlag region="europe-west1" size="lg" />,
   },
   "us-central1": null,
 };

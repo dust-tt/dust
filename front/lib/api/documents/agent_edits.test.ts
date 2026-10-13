@@ -1,9 +1,9 @@
 import { Readable } from "node:stream";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   editAgentDocument,
   readAgentDocument,
-} from "@app/lib/api/files/dfm_agent_documents";
+} from "@app/lib/api/documents/agent_edits";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   readCanonicalFileContent,
   WriteCanonicalFileContentError,

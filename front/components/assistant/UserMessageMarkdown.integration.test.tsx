@@ -74,6 +74,7 @@ vi.mock(
       setVirtuosoMsg: vi.fn(),
       virtuosoMsg: null,
       data: undefined,
+      wasAutoOpenDismissedForFileId: () => false,
     }),
   })
 );

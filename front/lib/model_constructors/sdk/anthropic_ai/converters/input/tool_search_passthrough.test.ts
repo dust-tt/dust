@@ -9,6 +9,7 @@ import {
   parseAnthropicToolSearchBlock,
   stripUnreplayableToolSearchBlocks,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import type { AnthropicMessageParam } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 describe("parseAnthropicToolSearchBlock", () => {
@@ -113,6 +114,10 @@ function user(...content: ContentBlockParam[]): MessageParam {
   return { role: "user", content };
 }
 
+function effortChange(): AnthropicMessageParam {
+  return { role: "system", content: [], output_config: { effort: "high" } };
+}
+
 function blockTypes(message: MessageParam): string[] {
   if (typeof message.content === "string") {
     throw new Error("expected block content");
@@ -137,6 +142,32 @@ describe("stripUnreplayableToolSearchBlocks", () => {
     const messages = [
       user(text("Find my meetings.")),
       assistant(thinking(), search("srv_1"), toolUse("tool_1")),
+      user(toolResult("tool_1")),
+    ];
+
+    expect(
+      stripUnreplayableToolSearchBlocks(messages, { toolSearchInRequest: true })
+    ).toBe(messages);
+  });
+
+  it("keeps a dangling search when an effort change follows the tool results", () => {
+    const messages: AnthropicMessageParam[] = [
+      user(text("Find my meetings.")),
+      assistant(thinking(), search("srv_1"), toolUse("tool_1")),
+      user(toolResult("tool_1")),
+      effortChange(),
+    ];
+
+    expect(
+      stripUnreplayableToolSearchBlocks(messages, { toolSearchInRequest: true })
+    ).toBe(messages);
+  });
+
+  it("keeps a dangling search when an effort change sits before the tool results", () => {
+    const messages: AnthropicMessageParam[] = [
+      user(text("Find my meetings.")),
+      assistant(thinking(), search("srv_1"), toolUse("tool_1")),
+      effortChange(),
       user(toolResult("tool_1")),
     ];
 

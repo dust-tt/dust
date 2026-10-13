@@ -1,17 +1,13 @@
-import type { StorageService } from "@extension/shared/services/storage";
+/// <reference types="office-js" />
 
-export class ExcelStorageService implements StorageService {
-  async get<T>(): Promise<T | undefined> {
-    return undefined;
-  }
+const DUST_KEY_PREFIX = "dust:";
 
-  async set(): Promise<void> {}
-
-  async delete(): Promise<void> {}
-
-  async clear(): Promise<void> {}
-
-  onChanged(): () => void {
-    return () => {};
-  }
+/**
+ * Returns `<partitionKey>:dust:` when `Office.context.partitionKey` is set (Office on the web), and
+ * `dust:` otherwise (desktop).
+ * See https://learn.microsoft.com/en-us/office/dev/add-ins/develop/persisting-add-in-state-and-settings#browser-storage
+ */
+export function getOfficeKeyPrefix(): string {
+  const partitionKey = Office.context?.partitionKey;
+  return partitionKey ? `${partitionKey}:${DUST_KEY_PREFIX}` : DUST_KEY_PREFIX;
 }

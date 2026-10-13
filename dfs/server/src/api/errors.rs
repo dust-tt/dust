@@ -43,7 +43,8 @@ impl From<object::Error> for ErrorCode {
             object::Error::TimestampGeneration
             | object::Error::MissingMetadata
             | object::Error::InvalidStoredGrant
-            | object::Error::InvalidAncestry => {
+            | object::Error::InvalidAncestry
+            | object::Error::VersionOverflow => {
                 tracing::error!(%error, "object operation failed");
                 ErrorCode::Internal
             }

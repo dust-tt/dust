@@ -87,6 +87,6 @@ describe("ModelPickerModelRow", () => {
       />
     );
 
-    expect(await screen.findByAltText("EU")).toBeInTheDocument();
+    expect(await screen.findByRole("img", { name: "EU" })).toBeInTheDocument();
   });
 });

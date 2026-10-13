@@ -1,29 +1,29 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { LiveFile } from "@app/lib/api/collab/live_file";
+import type { CollabAccess } from "@app/lib/api/collab/access";
 import {
-  checkLiveAccess,
-  checkLiveReadAccess,
-} from "@app/lib/api/collab/live_file";
+  checkCollabAccess,
+  checkCollabReadAccess,
+} from "@app/lib/api/collab/access";
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
+import { toLiveDocumentName } from "@app/types/collab";
 import type {
-  LiveSourceReadResponse,
-  LiveSourceWriteResponse,
-} from "@app/types/collab";
+  CollabSourceReadResponse,
+  CollabSourceWriteResponse,
+} from "@app/types/collab_internal";
 import {
-  LIVE_SOURCE_READ_PATH,
-  LIVE_SOURCE_WRITE_PATH,
-  liveSourceReadRequestSchema,
-  liveSourceWriteRequestSchema,
-  toLiveDocumentName,
-} from "@app/types/collab";
+  COLLAB_SOURCE_READ_PATH,
+  COLLAB_SOURCE_WRITE_PATH,
+  collabSourceReadRequestSchema,
+  collabSourceWriteRequestSchema,
+} from "@app/types/collab_internal";
+import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import {
   readLiveSource,
   showLiveAgentActivity,
   writeLiveSource,
 } from "@front-api/lib/collab/hocuspocus";
-import { liveAccessErrorToApiError } from "@front-api/lib/collab/live_access_errors";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -49,14 +49,16 @@ function isAuthorized(authorization: string | undefined): boolean {
  * @cc [owner:tdraier,label:security] collab-internal-routes
  * Every internal route MUST answer 401 unless the request carries the configured internal secret,
  * and MUST answer 401 to every request when none is configured. A read MUST return a document's
- * source only for the file `checkLiveReadAccess` opens for the request's user, workspace and path,
- * so a reader can read it, and a write MUST be applied only for the file `checkLiveAccess` opens
+ * source only for the file `checkCollabReadAccess` opens for the request's user, workspace and path,
+ * so a reader can read it, and a write MUST be applied only for the file `checkCollabAccess` opens
  * for them, both answering as the collab ticket route does when they refuse. A read of an open
  * document, readable or not, MUST answer 403 when the request has no user, and a write MUST carry
  * one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused
  * before it reaches the session, since no checkpoint could write it.
  */
-export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
+export function createInternalDocumentsApp(
+  hocuspocus: Hocuspocus<CollabAccess>
+) {
   const app = createHono();
 
   app.use("*", async (ctx, next) => {
@@ -74,8 +76,8 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
 
   /** @ignoreswagger */
   app.post(
-    LIVE_SOURCE_READ_PATH,
-    validate("json", liveSourceReadRequestSchema),
+    COLLAB_SOURCE_READ_PATH,
+    validate("json", collabSourceReadRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, agent } =
         ctx.req.valid("json");
@@ -83,7 +85,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
 
       const read = await readLiveSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
-        return ctx.json<LiveSourceReadResponse>(read.value);
+        return ctx.json<CollabSourceReadResponse>(read.value);
       }
 
       // Open, readable or not: only a user who can open the file learns more of it.
@@ -97,12 +99,12 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
           },
         });
       }
-      const file = await checkLiveReadAccess(
+      const file = await checkCollabReadAccess(
         await Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId),
         canonicalPath
       );
       if (file.isErr()) {
-        return apiError(ctx, liveAccessErrorToApiError(file.error));
+        return apiError(ctx, collabAccessErrorToApiError(file.error));
       }
       if (read.isErr()) {
         // TODO(co-edition): answer a distinct outcome telling the agent a person's edit cannot be
@@ -123,30 +125,30 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
       if (agent) {
         showLiveAgentActivity(hocuspocus, documentName, agent, "reading");
       }
-      return ctx.json<LiveSourceReadResponse>(read.value);
+      return ctx.json<CollabSourceReadResponse>(read.value);
     }
   );
 
   /** @ignoreswagger */
   app.post(
-    LIVE_SOURCE_WRITE_PATH,
-    validate("json", liveSourceWriteRequestSchema),
+    COLLAB_SOURCE_WRITE_PATH,
+    validate("json", collabSourceWriteRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, base, source, agent } =
         ctx.req.valid("json");
 
-      const file = await checkLiveAccess(
+      const file = await checkCollabAccess(
         await Authenticator.fromUserIdAndWorkspaceId(userId, workspaceId),
         canonicalPath
       );
       if (file.isErr()) {
-        return apiError(ctx, liveAccessErrorToApiError(file.error));
+        return apiError(ctx, collabAccessErrorToApiError(file.error));
       }
       if (
         Buffer.byteLength(source, "utf8") >
         WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
       ) {
-        return ctx.json<LiveSourceWriteResponse>({
+        return ctx.json<CollabSourceWriteResponse>({
           result: "refused",
           message: "This document would be too large to edit live.",
         });
@@ -158,7 +160,7 @@ export function createInternalDocumentsApp(hocuspocus: Hocuspocus<LiveFile>) {
         source,
         agent,
       });
-      return ctx.json<LiveSourceWriteResponse>(
+      return ctx.json<CollabSourceWriteResponse>(
         written.isOk()
           ? { result: written.value }
           : { result: "refused", message: written.error }

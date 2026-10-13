@@ -1,4 +1,4 @@
-import { getDfmCommentPublicKey } from "@app/lib/api/files/dfm_comment_signatures";
+import { getDfmCommentPublicKey } from "@app/lib/api/documents/comment_signatures";
 import type { GetDfmCommentSigningKeyResponseBody } from "@app/types/api/file_system/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";

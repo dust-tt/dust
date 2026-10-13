@@ -283,6 +283,11 @@ pub(crate) async fn session_creation_retry_succeeds_without_changes() -> Result<
 
 pub(crate) async fn session_refresh_retry_keeps_the_session_and_one_expiry_entry() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    fdb::with_transaction(|tx| {
+        let tenant = &tenant;
+        async move { tenant.create(&tx).await }
+    })
+    .await?;
     let (session, _) = SessionResource::new(&tenant, vec!["u:retry".to_owned()])?;
     fdb::with_transaction(|tx| {
         let session = &session;
@@ -301,7 +306,7 @@ pub(crate) async fn session_refresh_retry_keeps_the_session_and_one_expiry_entry
     let retried = refresh().await?;
 
     assert_eq!(retried.session_id, refreshed.session_id);
-    assert_eq!(retried.tenant_id, refreshed.tenant_id);
+    assert_eq!(retried.tenant.tenant_id, refreshed.tenant.tenant_id);
     assert_eq!(retried.subjects, refreshed.subjects);
     assert_eq!(retried.key_hash, refreshed.key_hash);
     assert!(retried.expires_at_ms >= refreshed.expires_at_ms);

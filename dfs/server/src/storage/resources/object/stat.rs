@@ -1,6 +1,6 @@
 use dfs_protocol::{
     ObjectId, ObjectRef,
-    rpc::{Attr, ObjectKind},
+    rpc::{Attr, ExtendedMetadata, ObjectKind},
 };
 use foundationdb::{FdbBindingError, Transaction};
 use futures::future::try_join_all;
@@ -15,6 +15,11 @@ const OWNER_MODE_SHIFT_BITS: u32 = 6;
 const DIRECTORY_EXECUTE_MODE: u32 = 0o100;
 const VIRTUAL_READ_MODE: u32 = (GRANT_READ_MODE << OWNER_MODE_SHIFT_BITS) | DIRECTORY_EXECUTE_MODE;
 const OWNER_WRITE_MODE: u32 = GRANT_WRITE_MODE << OWNER_MODE_SHIFT_BITS;
+const VIRTUAL_CREATED_AT_MS: u64 = 0;
+
+// This is the first of a series of computer MIME types when one has not been explicitely
+// specified. Will be moved to a dedicated file once we have more of them.
+const VIRTUAL_DIRECTORY_MIME_TYPE: &str = "inode/directory";
 
 impl ObjectResource {
     /**
@@ -24,13 +29,19 @@ impl ObjectResource {
      * NotAuthorized for unreadable real objects as per-object errors. FDB failures MUST propagate
      * through the outer result so the caller's transaction can retry.
      * Returned store_version MUST equal the transaction's read version.
-     * Metadata MUST remain unloaded.
+     * Requested stored metadata MUST use that same transaction and follow authorization.
+     * When not requested, metadata MUST remain unloaded and absent from the response.
      */
     /**
      * @cc [owner:spolu,label:backend] object-stat-references
      * Stat MUST validate every reference before reading. Invalid references MUST fail the batch
      * with InvalidId. Virtual root MUST return the tenant's real root ID; shared MUST retain its
      * virtual reference.
+     */
+    /**
+     * @cc [owner:spolu,label:backend] virtual-stat-metadata
+     * When metadata is requested, virtual root and shared MUST return created at zero, MIME type
+     * inode/directory, and an empty xattr map, without reading stored metadata.
      */
     /**
      * @cc [owner:spolu,label:api;security] object-stat-mode
@@ -41,6 +52,7 @@ impl ObjectResource {
         tx: &Transaction,
         session: &SessionResource,
         object_refs: &[ObjectRef],
+        include_metadata: bool,
     ) -> Result<Vec<Result<Attr, Error>>, storage::Error<Error>> {
         for reference in object_refs {
             reference.validate().map_err(|_| Error::InvalidId)?;
@@ -65,10 +77,12 @@ impl ObjectResource {
             async move {
                 match reference {
                     ObjectRef::Object(id) => {
-                        Self::stat_object(tx, session, id, mode, version).await
+                        Self::stat_object(tx, session, id, mode, version, include_metadata).await
                     }
-                    ObjectRef::Root => Self::stat_root(tx, session, mode, version).await,
-                    ObjectRef::Shared => Ok(Ok(Self::stat_shared(version))),
+                    ObjectRef::Root => {
+                        Self::stat_root(tx, session, mode, version, include_metadata).await
+                    }
+                    ObjectRef::Shared => Ok(Ok(Self::stat_shared(version, include_metadata))),
                     ObjectRef::Invalid => Ok(Err(Error::InvalidId)),
                 }
             }
@@ -82,6 +96,7 @@ impl ObjectResource {
         id: &ObjectId,
         mode: Option<Mode>,
         version: i64,
+        include_metadata: bool,
     ) -> Result<Result<Attr, Error>, storage::Error<Error>> {
         let Some(mode) = mode else {
             return Ok(Err(Error::NotFound));
@@ -89,7 +104,7 @@ impl ObjectResource {
         if !mode.can_read() {
             return Ok(Err(Error::NotAuthorized));
         }
-        let Some(object) = Self::fetch(tx, &session.tenant, id).await? else {
+        let Some(mut object) = Self::fetch(tx, &session.tenant, id).await? else {
             return Ok(Err(Error::NotFound));
         };
         let mode = match object.kind {
@@ -99,6 +114,9 @@ impl ObjectResource {
             }
             ObjectKind::Symlink => return Ok(Err(Error::UnsupportedKind)),
         };
+        if include_metadata {
+            object.load_metadata(tx).await?;
+        }
         Ok(Ok(object.into_attr(mode, version)))
     }
 
@@ -113,6 +131,7 @@ impl ObjectResource {
         session: &SessionResource,
         mode: Option<Mode>,
         version: i64,
+        include_metadata: bool,
     ) -> Result<Result<Attr, Error>, storage::Error<Error>> {
         let Some(mode) = mode else {
             return Ok(Err(Error::NotFound));
@@ -128,6 +147,7 @@ impl ObjectResource {
             };
         let mut attr = root.into_attr(mode, version);
         attr.name.clear();
+        attr.metadata = include_metadata.then(Self::virtual_metadata);
         Ok(Ok(attr))
     }
 
@@ -137,7 +157,7 @@ impl ObjectResource {
      * timestamps, and both attr_version and content_version fixed at 1, regardless of grants or
      * topology changes. Its reference MUST remain Shared.
      */
-    fn stat_shared(version: i64) -> Attr {
+    fn stat_shared(version: i64, include_metadata: bool) -> Attr {
         Attr {
             id: ObjectRef::Shared,
             name: "shared".to_owned(),
@@ -150,7 +170,15 @@ impl ObjectResource {
             attr_version: INITIAL_VERSION,
             content_version: INITIAL_VERSION,
             store_version: version,
-            metadata: None,
+            metadata: include_metadata.then(Self::virtual_metadata),
+        }
+    }
+
+    fn virtual_metadata() -> ExtendedMetadata {
+        ExtendedMetadata {
+            created: VIRTUAL_CREATED_AT_MS,
+            mime_type: Some(VIRTUAL_DIRECTORY_MIME_TYPE.to_owned()),
+            xattrs: Default::default(),
         }
     }
 
@@ -167,7 +195,11 @@ impl ObjectResource {
             attr_version: self.attr_version,
             content_version: self.content_version,
             store_version: version,
-            metadata: None,
+            metadata: self.metadata.map(|metadata| ExtendedMetadata {
+                created: metadata.created_at_ms,
+                mime_type: metadata.mime_type,
+                xattrs: metadata.xattrs.into_iter().collect(),
+            }),
         }
     }
 }

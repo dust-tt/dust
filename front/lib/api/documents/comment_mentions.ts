@@ -2,11 +2,11 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import type { NewCommentMessage } from "@app/lib/api/documents/comment_signatures";
 import {
   DustFileSystem,
   parseScopedPrefix,
 } from "@app/lib/api/file_system/dust_file_system";
-import type { NewCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLockResult } from "@app/lib/lock";
 import { getFileNameFromScopedPath } from "@app/lib/markdown/file_preview";

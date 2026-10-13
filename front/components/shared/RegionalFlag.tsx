@@ -1,28 +1,24 @@
 import type { RegionType } from "@app/types/region";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import type { FlagSize } from "@dust-tt/sparkle";
+import { FlagIcon } from "@dust-tt/sparkle";
 import { useLingui } from "@lingui/react/macro";
-
-const DEFAULT_FLAG_SIZE = 16;
 
 interface RegionalFlagProps {
   region: RegionType;
-  size?: number;
+  size?: FlagSize;
 }
 
-export function RegionalFlag({
-  region,
-  size = DEFAULT_FLAG_SIZE,
-}: RegionalFlagProps) {
+export function RegionalFlag({ region, size = "xs" }: RegionalFlagProps) {
   const { t } = useLingui();
 
   switch (region) {
     case "europe-west1":
       return (
-        <img
-          src="/static/EuropeanFlag.svg"
-          alt={t({ message: "EU", context: "European Union" })}
-          width={size}
-          height={size}
+        <FlagIcon
+          code="EU"
+          size={size}
+          label={t({ message: "EU", context: "European Union" })}
         />
       );
     case "us-central1":

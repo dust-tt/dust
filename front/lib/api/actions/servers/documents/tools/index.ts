@@ -11,11 +11,11 @@ import { getDustFileSystemForAgentLoop } from "@app/lib/api/actions/servers/file
 import {
   addAgentComment,
   replyToAgentComment,
-} from "@app/lib/api/files/dfm_agent_comments";
+} from "@app/lib/api/documents/agent_comments";
 import {
   editAgentDocument,
   readAgentDocument,
-} from "@app/lib/api/files/dfm_agent_documents";
+} from "@app/lib/api/documents/agent_edits";
 import type { LiveAgent } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";

@@ -1,7 +1,7 @@
 // @vitest-environment node: signs with node:crypto and checks with WebCrypto, as browsers do.
 
 import { generateKeyPairSync, sign, verify } from "node:crypto";
-import { validateCommentSignatures } from "@app/lib/api/files/dfm_comment_signatures";
+import { validateCommentSignatures } from "@app/lib/api/documents/comment_signatures";
 import { createDfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmMessage } from "@app/lib/markdown/dfm";
 import { messageSignaturePayload } from "@app/lib/markdown/dfm";

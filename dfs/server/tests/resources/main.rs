@@ -1,5 +1,6 @@
 use anyhow::Result;
 
+mod directory;
 mod object;
 mod session;
 mod tenant;
@@ -15,6 +16,11 @@ fn resources() -> Result<()> {
         .build()?;
 
     runtime.block_on(async {
+        directory::child_creation_records_the_entry_and_bumps_the_directory().await?;
+        directory::child_creation_rejections_leave_storage_unchanged().await?;
+        directory::child_lookup_resolves_names_within_each_directory().await?;
+        directory::child_listing_pages_through_entries_in_name_order().await?;
+        directory::child_listing_rejects_invalid_limits_and_cursors().await?;
         object::root_creation_persists_isolated_records().await?;
         object::object_creation_retry_succeeds_without_changes().await?;
         object::object_collisions_preserve_records_and_abort_staged_writes().await?;
@@ -30,6 +36,7 @@ fn resources() -> Result<()> {
         object::permission_reads_conflict_with_changes_and_retry().await?;
         object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;
         object::virtual_stat_projects_root_and_keeps_shared_versions_fixed().await?;
+        object::metadata_reads_preserve_snapshot_and_tenant_scope().await?;
         session::subjects_are_exact_deduplicated_and_bounded()?;
         session::creation_persists_indexes_and_preserves_existing_sessions().await?;
         session::session_creation_retry_succeeds_without_changes().await?;

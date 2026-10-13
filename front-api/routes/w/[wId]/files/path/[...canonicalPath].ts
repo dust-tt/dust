@@ -1,13 +1,14 @@
 import {
-  isLiveSessionWriteError,
-  type LiveSessionWriteError,
-} from "@app/lib/api/collab/live_session_write";
+  isCollabSessionWriteError,
+  type CollabSessionWriteError,
+} from "@app/lib/api/collab/write_through_session";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   type DfmCommentSignatureError,
   validateMarkdownCommentsForWrite,
-} from "@app/lib/api/files/dfm_comment_signatures";
+} from "@app/lib/api/documents/comment_signatures";
+import { writeFileContentThroughCollabSession } from "@app/lib/api/documents/file_api_write";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -32,7 +33,6 @@ import {
   isFolderExtractError,
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
-import { writeFileContentThroughLiveSession } from "@app/lib/api/files/live_file_content";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -609,8 +609,8 @@ function mapMarkdownCheckError(
   }
 }
 
-function mapLiveWriteError(
-  error: LiveSessionWriteError
+function mapCollabWriteError(
+  error: CollabSessionWriteError
 ): APIErrorWithContentfulStatusCode {
   const { code } = error;
   switch (code) {
@@ -624,7 +624,7 @@ function mapLiveWriteError(
       return {
         status_code: 400,
         api_error: {
-          type: "live_document_write_refused",
+          type: "collab_session_write_refused",
           message: error.message,
         },
       };
@@ -632,7 +632,7 @@ function mapLiveWriteError(
     case "conflict":
       return {
         status_code: 412,
-        api_error: { type: "live_document_conflict", message: error.message },
+        api_error: { type: "collab_session_conflict", message: error.message },
       };
 
     case "unavailable":
@@ -760,7 +760,7 @@ app.put(
     const content = new Uint8Array(contentBuffer);
     const ifRevisionMatch = ctx.req.valid("header")["x-dust-if-revision-match"];
 
-    const live = await writeFileContentThroughLiveSession(
+    const live = await writeFileContentThroughCollabSession(
       auth,
       dustFs,
       canonicalPath,
@@ -773,8 +773,8 @@ app.put(
     if (live.isErr()) {
       return apiError(
         ctx,
-        isLiveSessionWriteError(live.error)
-          ? mapLiveWriteError(live.error)
+        isCollabSessionWriteError(live.error)
+          ? mapCollabWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );
     }

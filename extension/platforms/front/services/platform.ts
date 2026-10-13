@@ -1,13 +1,13 @@
 import type { CellInfo } from "@app/types/cell";
 import { FrontAuthService } from "@extension/platforms/front/services/auth";
 import { FrontMcpService } from "@extension/platforms/front/services/mcp";
-import { FrontStorageService } from "@extension/platforms/front/services/storage";
+import { LocalStorageService } from "@extension/shared/services/local_storage";
 import { PlatformService } from "@extension/shared/services/platform";
 import type { WebViewContext } from "@frontapp/plugin-sdk/dist/webViewSdkTypes";
 
 export class FrontPlatformService extends PlatformService {
   constructor(frontContext: WebViewContext, cells: CellInfo[]) {
-    const storage = new FrontStorageService();
+    const storage = new LocalStorageService();
     const mcpService = new FrontMcpService();
 
     // Pass the Front context to the MCP service.

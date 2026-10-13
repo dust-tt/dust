@@ -174,6 +174,10 @@ export const ModelConfigurationSchema = z.object({
   // its active context until searched/discovered on demand. Must not be enabled
   // based on a feature flag alone, since unsupported models reject the request.
   supportsToolSearch: z.boolean().optional(),
+  // Whether the model accepts effort-only messages that change the reasoning effort mid-conversation
+  // without restarting the prompt cache. On by default for Anthropic models (see
+  // `supportsPerMessageReasoningEffort`), so older ones opt out with `false`.
+  supportsPerMessageReasoningEffort: z.boolean().optional(),
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
   availableIfOneOf: AvailabilityConditionSchema.optional(),

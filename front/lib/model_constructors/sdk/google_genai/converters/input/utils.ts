@@ -304,6 +304,9 @@ export async function conversationToContents(
             return Promise.resolve(
               assistantMessageToContent(message, converters)
             );
+          case "system":
+            // Per-message reasoning effort is Anthropic-only.
+            return Promise.resolve(null);
           default:
             assertNever(message);
         }

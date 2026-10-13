@@ -150,26 +150,37 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   "stack one": "StackOne",
+  "n 8n": "n8n",
   mcp: "MCP",
   webbrowser: "Web browsing",
   websearch: "Web search",
   id: "ID",
 };
 
-// Match "id" in "user id", but not inside "video".
+// Match "id" in "user id", but not inside "video". Case-insensitive so a special case still matches
+// once the first letter is capitalized.
 const SPECIAL_CASES_PATTERN = new RegExp(
   `\\b(?:${Object.keys(SPECIAL_CASES).join("|")})\\b`,
-  "g"
+  "gi"
 );
 
+function isSpecialCase(s: string): s is keyof typeof SPECIAL_CASES {
+  return Object.hasOwn(SPECIAL_CASES, s);
+}
+
+/**
+ * @cc [owner:thomasc2a,label:product] special-cases-keep-their-casing
+ * A `SPECIAL_CASES` value MUST appear exactly as written in the output, including when it starts
+ * the name (e.g. `n8n` stays lowercase, it is not capitalized to `N8n`).
+ */
 export function formatAsDisplayName(name: string): string {
   return slugify(name)
     .replace(/_/g, " ")
-    .replace(
-      SPECIAL_CASES_PATTERN,
-      (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
-    )
-    .replace(/\b\w/, (char) => char.toUpperCase());
+    .replace(/\b\w/, (char) => char.toUpperCase())
+    .replace(SPECIAL_CASES_PATTERN, (match) => {
+      const key = match.toLowerCase();
+      return isSpecialCase(key) ? SPECIAL_CASES[key] : match;
+    });
 }
 
 export function asDisplayToolName(name?: string | null) {
