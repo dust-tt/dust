@@ -8,7 +8,7 @@
   <Version>1.0</Version>
   <ProviderName>Dust</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Dust (dev)"/>
+  <DisplayName DefaultValue="Dust"/>
   <Description DefaultValue="Dust in Excel."/>
   <Hosts>
     <Host Name="Workbook"/>
@@ -61,7 +61,7 @@
         <bt:Url id="Dust.Taskpane" DefaultValue="https://localhost:3014/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="Dust.Label" DefaultValue="Dust (dev)"/>
+        <bt:String id="Dust.Label" DefaultValue="Dust"/>
       </bt:ShortStrings>
       <bt:LongStrings>
         <bt:String id="Dust.Tooltip" DefaultValue="Open Dust."/>
