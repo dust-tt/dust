@@ -3667,6 +3667,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "AshbyLogo"
   | "AttioLogo"
   | "BigQueryLogo"
+  | "BrightDataLogo"
   | "ToolsIcon"
   | "CanvaLogo"
   | "ClariLogo"

@@ -13,6 +13,7 @@ import AshbyLogo from "./Ashby";
 import AtlassianLogo from "./Atlassian";
 import AttioLogo from "./Attio";
 import BigQueryLogo from "./BigQuery";
+import BrightDataLogo from "./BrightData";
 import CanvaLogo from "./Canva";
 import ChromeLogo from "./Chrome";
 import ClariLogo from "./Clari";
@@ -144,6 +145,7 @@ export const PLATFORM_LOGOS = {
   AtlassianLogo,
   AttioLogo,
   BigQueryLogo,
+  BrightDataLogo,
   CanvaLogo,
   ChromeLogo,
   ClariLogo,
