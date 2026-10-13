@@ -52,11 +52,6 @@ const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
  * `get_file_content` MUST return an error without downloading the file when its Graph `size`
  * exceeds `MAX_FILE_SIZE_BYTES`.
  */
-/**
- * @cc [owner:tdraier,label:mcp;performance] extracted-text-paginated
- * `get_file_content` MUST return at most `limit` characters of the file's extracted text,
- * starting at `offset`, whether or not `getAsXml` is set.
- */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
     { query, dataSource, maximumResults },
