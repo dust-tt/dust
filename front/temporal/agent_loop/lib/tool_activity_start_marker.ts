@@ -1,8 +1,9 @@
 import { runOnRedis } from "@app/lib/api/redis";
 
-// Must outlive the tool activity start-to-close timeout: the workflow claims the marker right after
-// the activity timed out.
-const TOOL_ACTIVITY_START_MARKER_TTL_SECONDS = 60 * 60;
+// Must outlive the tool activity start-to-close timeout plus any delay before the workflow claims
+// the marker after the activity timed out, which can be long when agent loop workers are down or
+// backlogged.
+const TOOL_ACTIVITY_START_MARKER_TTL_SECONDS = 24 * 60 * 60;
 
 type ToolActivityStartMarker = "started" | "abandoned";
 
