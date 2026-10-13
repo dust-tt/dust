@@ -32,10 +32,10 @@ fn resources() -> Result<()> {
         object::grant_versions_advance_for_no_ops_and_reject_overflow().await?;
         object::grant_creation_and_update_validation_preserve_state().await?;
         object::grant_pagination_handles_full_pages_and_object_deletion().await?;
-        object::session_modes_evaluate_full_paths_and_all_grants().await?;
+        object::modes_for_session_evaluate_full_paths_and_all_grants().await?;
         object::grant_cache_skips_matching_versions_and_preserves_session_snapshots().await?;
         object::tree_hints_follow_moves_and_recheck_grants().await?;
-        object::session_modes_isolate_tenants_and_reject_invalid_ancestry().await?;
+        object::modes_for_session_isolate_tenants_and_reject_invalid_ancestry().await?;
         object::permission_reads_conflict_with_changes_and_retry().await?;
         object::stat_distinguishes_object_errors_and_preserves_transaction_failures().await?;
         object::virtual_stat_projects_root_and_keeps_shared_versions_fixed().await?;

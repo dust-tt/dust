@@ -1,5 +1,5 @@
 use dfs_protocol::{
-    ObjectId, ObjectRef,
+    ObjectRef,
     rpc::{Attr, ExtendedMetadata, ObjectKind},
 };
 use foundationdb::{FdbBindingError, Transaction};
@@ -66,23 +66,21 @@ impl ObjectResource {
                 ObjectRef::Shared | ObjectRef::Invalid => None,
             })
             .collect();
-        let mut modes = Self::session_modes(tx, session, &object_ids)
+        let mut modes = Self::modes_for_session(tx, session, &object_ids)
             .await?
             .into_iter();
         let version = tx.get_read_version().await.map_err(FdbBindingError::from)?;
         try_join_all(object_refs.iter().map(|reference| {
-            let mode = match reference {
+            let object = match reference {
                 ObjectRef::Object(_) | ObjectRef::Root => modes.next().flatten(),
                 ObjectRef::Shared | ObjectRef::Invalid => None,
             };
             async move {
                 match reference {
-                    ObjectRef::Object(id) => {
-                        Self::stat_object(tx, session, id, mode, version, include_metadata).await
+                    ObjectRef::Object(_) => {
+                        Self::stat_object(tx, object, version, include_metadata).await
                     }
-                    ObjectRef::Root => {
-                        Self::stat_root(tx, session, mode, version, include_metadata).await
-                    }
+                    ObjectRef::Root => Ok(Self::stat_root(object, version, include_metadata)),
                     ObjectRef::Shared => Ok(Ok(Self::stat_shared(version, include_metadata))),
                     ObjectRef::Invalid => Ok(Err(Error::InvalidId)),
                 }
@@ -93,21 +91,16 @@ impl ObjectResource {
 
     async fn stat_object(
         tx: &Transaction,
-        session: &SessionResource,
-        id: &ObjectId,
-        mode: Option<Mode>,
+        object: Option<(Self, Mode)>,
         version: i64,
         include_metadata: bool,
     ) -> Result<Result<Attr, Error>, storage::Error<Error>> {
-        let Some(mode) = mode else {
+        let Some((mut object, mode)) = object else {
             return Ok(Err(Error::NotFound));
         };
         if !mode.can_read() {
             return Ok(Err(Error::NotAuthorized));
         }
-        let Some(mut object) = Self::fetch(tx, &session.tenant, id).await? else {
-            return Ok(Err(Error::NotFound));
-        };
         let mode = match object.kind {
             ObjectKind::File => mode.bits() << OWNER_MODE_SHIFT_BITS,
             ObjectKind::Directory => {
@@ -127,19 +120,12 @@ impl ObjectResource {
      * and real root ID. It MUST remain readable regardless of stored-root read access, reporting
      * 0o700 when the session has write access on the stored root and 0o500 otherwise.
      */
-    async fn stat_root(
-        tx: &Transaction,
-        session: &SessionResource,
-        mode: Option<Mode>,
+    fn stat_root(
+        object: Option<(Self, Mode)>,
         version: i64,
         include_metadata: bool,
-    ) -> Result<Result<Attr, Error>, storage::Error<Error>> {
-        let Some(mode) = mode else {
-            return Ok(Err(Error::NotFound));
-        };
-        let Some(root) = Self::fetch(tx, &session.tenant, &session.tenant.root_id).await? else {
-            return Ok(Err(Error::NotFound));
-        };
+    ) -> Result<Attr, Error> {
+        let (root, mode) = object.ok_or(Error::NotFound)?;
         let mode = VIRTUAL_READ_MODE
             | if mode.can_write() {
                 OWNER_WRITE_MODE
@@ -149,7 +135,7 @@ impl ObjectResource {
         let mut attr = root.into_attr(mode, version);
         attr.name.clear();
         attr.metadata = include_metadata.then(Self::virtual_metadata);
-        Ok(Ok(attr))
+        Ok(attr)
     }
 
     /**

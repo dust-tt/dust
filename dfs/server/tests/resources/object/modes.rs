@@ -62,8 +62,11 @@ async fn cleanup(tenant: &TenantResource) -> Result<()> {
     Ok(())
 }
 
-fn bits(modes: Vec<Option<Mode>>) -> Vec<Option<u32>> {
-    modes.into_iter().map(|mode| mode.map(Mode::bits)).collect()
+fn bits(modes: Vec<Option<(ObjectResource, Mode)>>) -> Vec<Option<u32>> {
+    modes
+        .into_iter()
+        .map(|entry| entry.map(|(_, mode)| mode.bits()))
+        .collect()
 }
 
 async fn grants_were_read(tx: &Transaction, tenant: &TenantResource, id: ObjectId) -> Result<bool> {
@@ -99,7 +102,7 @@ pub(crate) async fn grant_cache_skips_matching_versions_and_preserves_session_sn
 
     let old = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&old, &reader, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&old, &reader, &[leaf.object_id]).await?),
         [Some(4)]
     );
     assert!(grants_were_read(&old, &tenant, root.object_id).await?);
@@ -108,7 +111,7 @@ pub(crate) async fn grant_cache_skips_matching_versions_and_preserves_session_sn
     // The same complete grants, including empty sets, serve another session without grant reads.
     let warm = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&warm, &writer, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&warm, &writer, &[leaf.object_id]).await?),
         [Some(2)]
     );
     assert!(!grants_were_read(&warm, &tenant, root.object_id).await?);
@@ -130,7 +133,7 @@ pub(crate) async fn grant_cache_skips_matching_versions_and_preserves_session_sn
     // Only the root's grants changed; the leaf's cached empty set remains valid.
     let fresh = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&fresh, &reader, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&fresh, &reader, &[leaf.object_id]).await?),
         [Some(0)]
     );
     assert!(grants_were_read(&fresh, &tenant, root.object_id).await?);
@@ -138,26 +141,26 @@ pub(crate) async fn grant_cache_skips_matching_versions_and_preserves_session_sn
 
     // A newer cached version must not leak into an older transaction's snapshot.
     assert_eq!(
-        bits(ObjectResource::session_modes(&old, &reader, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&old, &reader, &[leaf.object_id]).await?),
         [Some(4)]
     );
     // The older observation can replace the cache entry, so equality must be checked both ways.
     let latest = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&latest, &reader, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&latest, &reader, &[leaf.object_id]).await?),
         [Some(0)]
     );
     assert!(grants_were_read(&latest, &tenant, root.object_id).await?);
     let warm = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&warm, &writer, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&warm, &writer, &[leaf.object_id]).await?),
         [Some(2)]
     );
     assert!(!grants_were_read(&warm, &tenant, root.object_id).await?);
     cleanup(&tenant).await
 }
 
-pub(crate) async fn session_modes_evaluate_full_paths_and_all_grants() -> Result<()> {
+pub(crate) async fn modes_for_session_evaluate_full_paths_and_all_grants() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let (mut session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
     session.tree_hints = Arc::new(TreeHints::new(32));
@@ -186,8 +189,15 @@ pub(crate) async fn session_modes_evaluate_full_paths_and_all_grants() -> Result
         missing,
     ];
     for _ in 0..2 {
-        let modes = ObjectResource::session_modes(&tx, &session, &ids).await?;
-        let mode = modes[2].context("missing branch mode")?;
+        let modes = ObjectResource::modes_for_session(&tx, &session, &ids).await?;
+        for (id, entry) in ids.iter().zip(&modes) {
+            if let Some((object, _)) = entry {
+                assert_eq!(object.object_id, *id);
+                assert_eq!(object.tenant.tenant_id, tenant.tenant_id);
+                assert!(object.metadata.is_none());
+            }
+        }
+        let (_, mode) = modes[2].as_ref().context("missing branch mode")?;
         assert!(!mode.can_read());
         assert!(mode.can_write());
         assert_eq!(
@@ -199,7 +209,7 @@ pub(crate) async fn session_modes_evaluate_full_paths_and_all_grants() -> Result
         let (mut other, _) = SessionResource::new(&tenant, subjects)?;
         other.tree_hints = Arc::clone(&session.tree_hints);
         assert_eq!(
-            bits(ObjectResource::session_modes(&tx, &other, &[leaf.object_id]).await?),
+            bits(ObjectResource::modes_for_session(&tx, &other, &[leaf.object_id]).await?),
             [Some(0)]
         );
     }
@@ -228,16 +238,19 @@ pub(crate) async fn session_modes_evaluate_full_paths_and_all_grants() -> Result
     let (mut last, _) = SessionResource::new(&tenant, vec!["z-reader".to_owned()])?;
     last.tree_hints = Arc::clone(&session.tree_hints);
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &last, &[leaf.object_id, root.object_id]).await?),
+        bits(
+            ObjectResource::modes_for_session(&tx, &last, &[leaf.object_id, root.object_id])
+                .await?
+        ),
         [Some(0), Some(6)]
     );
     assert!(
-        ObjectResource::session_modes(&tx, &session, &[])
+        ObjectResource::modes_for_session(&tx, &session, &[])
             .await?
             .is_empty()
     );
     assert!(matches!(
-        ObjectResource::session_modes(&tx, &session, &[ObjectId::default()]).await,
+        ObjectResource::modes_for_session(&tx, &session, &[ObjectId::default()]).await,
         Err(storage::Error::Resource(object::Error::InvalidId))
     ));
     cleanup(&tenant).await
@@ -264,7 +277,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
         .context("missing leaf")?;
     let old_version = old.get_read_version().await?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&old, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&old, &session, &[leaf.object_id]).await?),
         [Some(6)]
     );
     let tx = fdb::database()?.create_trx()?;
@@ -272,15 +285,19 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
-    assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
-        [Some(2)]
-    );
+    let modes =
+        ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id, branch.object_id])
+            .await?;
+    let (moved, _) = modes[1].as_ref().context("missing moved branch")?;
+    assert_eq!(moved.parent_id, Some(closed.object_id));
+    assert_eq!(bits(modes), [Some(2), Some(2)]);
     // Even after newer hints arrive, an existing transaction keeps its own read version.
-    assert_eq!(
-        bits(ObjectResource::session_modes(&old, &session, &[leaf.object_id]).await?),
-        [Some(6)]
-    );
+    let modes =
+        ObjectResource::modes_for_session(&old, &session, &[leaf.object_id, branch.object_id])
+            .await?;
+    let (original, _) = modes[1].as_ref().context("missing original branch")?;
+    assert_eq!(original.parent_id, Some(root.object_id));
+    assert_eq!(bits(modes), [Some(6), Some(6)]);
     assert_eq!(old.get_read_version().await?, old_version);
 
     let tx = fdb::database()?.create_trx()?;
@@ -297,7 +314,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id]).await?),
         [Some(0)]
     );
     let mut closed = ObjectResource::fetch(&tx, &tenant, &closed.object_id)
@@ -313,7 +330,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id]).await?),
         [Some(4)]
     );
 
@@ -330,7 +347,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id]).await?),
         [Some(0)]
     );
 
@@ -354,7 +371,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id]).await?),
         [Some(4)]
     );
     tx.clear(
@@ -363,13 +380,13 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[leaf.object_id]).await?),
         [None]
     );
     cleanup(&tenant).await
 }
 
-pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() -> Result<()> {
+pub(crate) async fn modes_for_session_isolate_tenants_and_reject_invalid_ancestry() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let (mut other, _) = TenantResource::new(format!("{}/other", tenant.tenant_id))?;
     other.root_id = tenant.root_id;
@@ -384,11 +401,11 @@ pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() 
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &session, &[root.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &session, &[root.object_id]).await?),
         [Some(6)]
     );
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &other_session, &[root.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &other_session, &[root.object_id]).await?),
         [Some(0)]
     );
     let foreign = child(&tenant, root.object_id)?;
@@ -396,7 +413,7 @@ pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() 
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert_eq!(
-        bits(ObjectResource::session_modes(&tx, &other_session, &[foreign.object_id]).await?),
+        bits(ObjectResource::modes_for_session(&tx, &other_session, &[foreign.object_id]).await?),
         [None]
     );
 
@@ -411,7 +428,7 @@ pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() 
         tx.commit().await?;
         let tx = fdb::database()?.create_trx()?;
         assert!(matches!(
-            ObjectResource::session_modes(&tx, &session, &[b.object_id]).await,
+            ObjectResource::modes_for_session(&tx, &session, &[b.object_id]).await,
             Err(storage::Error::Resource(object::Error::InvalidAncestry))
         ));
     }
@@ -423,7 +440,7 @@ pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() 
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert!(matches!(
-        ObjectResource::session_modes(&tx, &session, &[a.object_id]).await,
+        ObjectResource::modes_for_session(&tx, &session, &[a.object_id]).await,
         Err(storage::Error::Resource(object::Error::InvalidAncestry))
     ));
 
@@ -442,7 +459,7 @@ pub(crate) async fn session_modes_isolate_tenants_and_reject_invalid_ancestry() 
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
     assert!(matches!(
-        ObjectResource::session_modes(&tx, &session, &[root.object_id]).await,
+        ObjectResource::modes_for_session(&tx, &session, &[root.object_id]).await,
         Err(storage::Error::Resource(object::Error::InvalidStoredGrant))
     ));
     cleanup(&tenant).await?;
@@ -465,7 +482,7 @@ pub(crate) async fn permission_reads_conflict_with_changes_and_retry() -> Result
         let database = fdb::database()?;
         let warm = database.create_trx()?;
         assert_eq!(
-            bits(ObjectResource::session_modes(&warm, &session, &[leaf.object_id]).await?),
+            bits(ObjectResource::modes_for_session(&warm, &session, &[leaf.object_id]).await?),
             [Some(6)]
         );
         let attempts = AtomicUsize::new(0);
@@ -479,7 +496,8 @@ pub(crate) async fn permission_reads_conflict_with_changes_and_retry() -> Result
             let closed = &closed;
             let staged_key = &staged_key;
             async move {
-                let modes = ObjectResource::session_modes(&tx, session, &[leaf.object_id]).await?;
+                let modes =
+                    ObjectResource::modes_for_session(&tx, session, &[leaf.object_id]).await?;
                 if attempt == 0 {
                     assert_eq!(bits(modes.clone()), [Some(6)]);
                     let concurrent = database.create_trx().map_err(FdbBindingError::from)?;

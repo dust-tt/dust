@@ -95,6 +95,7 @@ impl From<Error> for storage::Error<Error> {
     }
 }
 
+#[derive(Clone)]
 pub struct ObjectResource {
     pub tenant: TenantResource,
     pub object_id: ObjectId,
@@ -111,6 +112,7 @@ pub struct ObjectResource {
     pub metadata: Option<Metadata>,
 }
 
+#[derive(Clone)]
 pub struct Metadata {
     pub created_at_ms: u64,
     pub mime_type: Option<String>,

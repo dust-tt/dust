@@ -27,10 +27,9 @@ pub(crate) use grants::{
 };
 pub(crate) use modes::{
     grant_cache_skips_matching_versions_and_preserves_session_snapshots,
-    permission_reads_conflict_with_changes_and_retry,
-    session_modes_evaluate_full_paths_and_all_grants,
-    session_modes_isolate_tenants_and_reject_invalid_ancestry,
-    tree_hints_follow_moves_and_recheck_grants,
+    modes_for_session_evaluate_full_paths_and_all_grants,
+    modes_for_session_isolate_tenants_and_reject_invalid_ancestry,
+    permission_reads_conflict_with_changes_and_retry, tree_hints_follow_moves_and_recheck_grants,
 };
 pub(crate) use stat::{
     metadata_reads_preserve_snapshot_and_tenant_scope,
