@@ -13,6 +13,7 @@ import {
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
+import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
@@ -698,7 +699,7 @@ describe("saveDfm", () => {
 
     const reopened = load(roundTrip(source)).content;
 
-    expect(JSON.stringify(reopened)).not.toContain("filePreview");
+    expect(JSON.stringify(reopened)).not.toContain(FILE_PREVIEW_NODE_TYPE);
     expect(reopened.content?.[0]?.content?.[0]?.text).toBe(source.trimEnd());
   });
 

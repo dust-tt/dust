@@ -2,6 +2,7 @@ import { DocumentEmbedsContext } from "@app/components/editor/document/DocumentE
 import type { DocumentFilePreview as FilePreview } from "@app/components/editor/document/types";
 import {
   FILE_PREVIEW_DIRECTIVE_NAME,
+  FILE_PREVIEW_NODE_TYPE,
   getFileNameFromScopedPath,
   parseFilePreviewMarkdownDirective,
   serializeFilePreviewMarkdownDirective,
@@ -11,8 +12,6 @@ import { Node } from "@tiptap/core";
 import type { NodeViewProps } from "@tiptap/react";
 import { NodeViewWrapper, ReactNodeViewRenderer } from "@tiptap/react";
 import { useContext } from "react";
-
-export const DOCUMENT_FILE_PREVIEW_NODE_NAME = "filePreview";
 
 const FILE_PREVIEW_PATH_ATTRIBUTE = "data-document-file-preview";
 
@@ -76,7 +75,7 @@ const DocumentFilePreviewView = ({ node }: NodeViewProps) => {
  * `renderFilePreview`, and without one as its title, or its file name when it has no title.
  */
 export const DocumentFilePreview = Node.create({
-  name: DOCUMENT_FILE_PREVIEW_NODE_NAME,
+  name: FILE_PREVIEW_NODE_TYPE,
   group: "inline",
   inline: true,
   atom: true,
@@ -119,7 +118,7 @@ export const DocumentFilePreview = Node.create({
   addNodeView: () =>
     ReactNodeViewRenderer(DocumentFilePreviewView, { as: "span" }),
   markdownTokenizer: {
-    name: DOCUMENT_FILE_PREVIEW_NODE_NAME,
+    name: FILE_PREVIEW_NODE_TYPE,
     level: "inline",
     start: (src) => src.indexOf(`:${FILE_PREVIEW_DIRECTIVE_NAME}{`),
     tokenize: (src) => {
@@ -132,7 +131,7 @@ export const DocumentFilePreview = Node.create({
         return undefined;
       }
       return {
-        type: DOCUMENT_FILE_PREVIEW_NODE_NAME,
+        type: FILE_PREVIEW_NODE_TYPE,
         raw: parsed.raw,
         attrs: {
           path: parsed.path,
@@ -143,7 +142,7 @@ export const DocumentFilePreview = Node.create({
     },
   },
   parseMarkdown: (token) => ({
-    type: DOCUMENT_FILE_PREVIEW_NODE_NAME,
+    type: FILE_PREVIEW_NODE_TYPE,
     attrs: token.attrs,
   }),
   renderMarkdown: (node) => {
