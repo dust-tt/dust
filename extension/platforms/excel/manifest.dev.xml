@@ -5,7 +5,7 @@
   xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
   xsi:type="TaskPaneApp">
   <Id>2e7ea4d8-8dea-4d0a-b674-c783bf76c981</Id>
-  <Version>0.1.0.0</Version>
+  <Version>1.0</Version>
   <ProviderName>Dust</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Dust (dev)"/>
