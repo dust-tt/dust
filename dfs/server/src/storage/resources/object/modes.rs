@@ -48,10 +48,11 @@ impl ObjectResource {
      * cache misses MUST read every explicit grant in that transaction with conflict tracking.
      * Results MUST preserve input order and duplicates, with None for missing targets and zero
      * mode for existing targets without access. Broken or cyclic ancestry MUST fail closed.
+     * Each returned object MUST be the record used to evaluate its mode, without optional metadata.
      */
     /**
      * @cc [owner:spolu,label:backend;security] grant-cache-committed-state
-     * Callers MUST call session_modes before staging any writes in the transaction and MUST NOT
+     * Callers MUST call modes_for_session before staging any writes in the transaction and MUST NOT
      * stage writes concurrently with it. Cached grant sets and their versions MUST come from the
      * same committed transaction view; staged grants MUST NOT enter the shared cache.
      */
@@ -62,11 +63,11 @@ impl ObjectResource {
      * MUST continue through zero permissions so a deeper ALLOW can restore access. Only read and
      * write bits may be returned.
      */
-    pub async fn session_modes(
+    pub async fn modes_for_session(
         tx: &Transaction,
         session: &SessionResource,
         object_ids: &[ObjectId],
-    ) -> Result<Vec<Option<Mode>>, storage::Error<Error>> {
+    ) -> Result<Vec<Option<(Self, Mode)>>, storage::Error<Error>> {
         for id in object_ids {
             id.validate().map_err(|_| Error::InvalidId)?;
         }
@@ -173,11 +174,12 @@ impl ObjectResource {
             };
             for id in path.into_iter().rev() {
                 let grants = grants_by_object.get(&id).ok_or(Error::InvalidAncestry)?;
-                let object_mode = Self::object_mode(session, grants)?;
+                let object_mode = Self::mode_for_grants(session, grants)?;
                 mode = Mode((mode.0 & !object_mode.deny) | object_mode.allow);
                 resolved.insert(id, mode);
             }
-            results.push(Some(mode));
+            let object = objects.get(id).ok_or(Error::InvalidAncestry)?;
+            results.push(Some((object.clone(), mode)));
         }
         hints
             .remember(
@@ -217,7 +219,7 @@ impl ObjectResource {
         Ok(grants)
     }
 
-    fn object_mode(session: &SessionResource, grants: &[Grant]) -> Result<ObjectMode, Error> {
+    fn mode_for_grants(session: &SessionResource, grants: &[Grant]) -> Result<ObjectMode, Error> {
         let mut mode = ObjectMode::default();
         for grant in grants {
             match &grant.kind {
