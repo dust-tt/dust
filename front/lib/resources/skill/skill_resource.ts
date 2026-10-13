@@ -2006,7 +2006,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listDiscoverable(
     auth: Authenticator,
-    { agentLoopData, effectiveSpaceIds }: SkillFetchContext = {}
+    {
+      agentLoopData,
+      effectiveSpaceIds,
+      ...hydrationOptions
+    }: SkillFetchContext & SkillHydrationOptions = {}
   ): Promise<SkillResource[]> {
     return this.baseFetch(
       auth,
@@ -2015,6 +2019,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           status: "active",
           availability: "users_and_agents",
         },
+        ...hydrationOptions,
       },
       { agentLoopData, effectiveSpaceIds }
     );
@@ -2243,7 +2248,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       conversation,
       agentLoopData,
       effectiveSpaceIds,
-    }: {
+      ...hydrationOptions
+    }: SkillHydrationOptions & {
       conversation: ConversationWithoutContentType;
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds: string[];
@@ -2262,6 +2268,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentLoopData,
       effectiveSpaceIds,
       onlyActive: true,
+      ...hydrationOptions,
     });
   }
 
@@ -2304,9 +2311,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
+    // Pod default, discoverable and favorite skills are listed to the model and enabled by
+    // `enable_skill`, which reads their instructions and files but never their tools.
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,
-      { conversation, agentLoopData, effectiveSpaceIds }
+      {
+        conversation,
+        agentLoopData,
+        effectiveSpaceIds,
+        withTools: false,
+      }
     );
 
     const allAgentSkills = await this.listByAgentConfiguration(
@@ -2323,10 +2337,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       discoverableSkills = await this.listDiscoverable(auth, {
         agentLoopData,
         effectiveSpaceIds,
+        withTools: false,
       });
       favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
         agentLoopData,
         effectiveSpaceIds,
+        withTools: false,
       });
     }
 
