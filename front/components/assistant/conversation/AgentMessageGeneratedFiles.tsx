@@ -6,17 +6,10 @@ import {
 } from "@app/types/files";
 import {
   ActionFrame,
-  Button,
   Card,
   CitationGrid,
   cn,
-  DotsHorizontal,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
   Icon,
-  LayoutRight,
 } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -145,31 +138,6 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                 </span>
               )}
             </div>
-            {!disabled && (
-              <div
-                className="flex shrink-0 items-center pr-2"
-                // React events bubble through the dropdown portal: keep them off the card.
-                onClick={(e) => e.stopPropagation()}
-              >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost-secondary"
-                      size="xs"
-                      icon={DotsHorizontal}
-                      aria-label={t`More Frame actions`}
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      label={t`Open`}
-                      icon={LayoutRight}
-                      onClick={handleClick}
-                    />
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
           </Card>
         );
       })}
