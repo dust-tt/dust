@@ -242,6 +242,6 @@ describe("POST /api/w/:wId/mcp/connections/:connectionType", () => {
     const response = await postConnection(workspace.sId, "not_an_sid");
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("invalid_mcp_server_id");
   });
 });

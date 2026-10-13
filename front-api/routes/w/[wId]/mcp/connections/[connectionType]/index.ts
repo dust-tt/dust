@@ -244,14 +244,17 @@ app.post(
 
     const serverTypeAndIdRes = parseServerTypeAndIdFromSId(mcpServerId);
     if (serverTypeAndIdRes.isErr()) {
-      return apiError(
-        ctx,
-        makeInvalidRequestError(serverTypeAndIdRes.error.message)
-      );
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_mcp_server_id",
+          message: serverTypeAndIdRes.error.message,
+        },
+      });
     }
     const { serverType } = serverTypeAndIdRes.value;
 
-    let remoteMCPServerId: number | null = null;
+    let remoteMCPServerModelId: number | null = null;
     if (serverType === "remote") {
       const remoteServer = await RemoteMCPServerResource.fetchById(
         auth,
@@ -266,7 +269,7 @@ app.post(
           },
         });
       }
-      remoteMCPServerId = remoteServer.id;
+      remoteMCPServerModelId = remoteServer.id;
     }
 
     const err = await validateAuthReferenceForMCPConnection(auth, {
@@ -289,7 +292,7 @@ app.post(
       connectionType,
       serverType,
       internalMCPServerId: serverType === "internal" ? mcpServerId : null,
-      remoteMCPServerId,
+      remoteMCPServerId: remoteMCPServerModelId,
     });
 
     return ctx.json({ success: true, connection: connectionResource.toJSON() });
