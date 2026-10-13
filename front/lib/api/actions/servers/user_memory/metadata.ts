@@ -2,7 +2,6 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { z } from "zod";
 
 export const USER_MEMORY_SERVER_NAME = "user_memory" as const;
-export const USER_MEMORY_READ_TOOL_NAME = "read";
 export const USER_MEMORY_EDIT_TOOL_NAME = "edit";
 
 // The tool descriptions deliberately name the user's "MEMORY.md": pointing the
@@ -10,19 +9,6 @@ export const USER_MEMORY_EDIT_TOOL_NAME = "edit";
 // reinforces the expected recall/update behavior, even though the file itself is
 // an implementation detail on our end.
 export const USER_MEMORY_TOOLS_METADATA = [
-  {
-    name: USER_MEMORY_READ_TOOL_NAME,
-    description:
-      "Read and recall the current user's personal memory: the full contents of their personal MEMORY.md, including preferences, facts, notes, and prior context.",
-    schema: {},
-    stake: "never_ask",
-    displayLabels: {
-      running: "Reading memory",
-      done: "Read memory",
-    },
-    toolCostCategory: "basic",
-    freeUsage: true,
-  },
   {
     name: USER_MEMORY_EDIT_TOOL_NAME,
     description:
