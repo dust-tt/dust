@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
@@ -24,7 +25,7 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 
 async function createOnboardingConversation(
   auth: Authenticator,
-  workspace: WorkspaceType
+  workspace: WorkspaceType,
 ): Promise<ConversationWithoutContentType> {
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
@@ -40,7 +41,7 @@ async function createOnboardingConversation(
 function postFollowUp(
   workspace: { sId: string },
   conversationId: string,
-  headers: Record<string, string> = {}
+  headers: Record<string, string> = {},
 ) {
   return honoApp.request(
     `/api/w/${workspace.sId}/assistant/conversations/${conversationId}/onboarding-followup`,
@@ -48,17 +49,17 @@ function postFollowUp(
       method: "POST",
       headers: { "Content-Type": "application/json", ...headers },
       body: JSON.stringify({ toolId: "gmail" }),
-    }
+    },
   );
 }
 
 async function listUserMessageContents(
   auth: Authenticator,
-  conversation: ConversationWithoutContentType
+  conversation: ConversationWithoutContentType,
 ): Promise<string[]> {
   const conversationResource = await ConversationResource.fetchById(
     auth,
-    conversation.sId
+    conversation.sId,
   );
   if (!conversationResource) {
     throw new Error("Conversation not found");
@@ -67,7 +68,7 @@ async function listUserMessageContents(
     limit: 10,
   });
   return messages.flatMap((m) =>
-    m.userMessage ? [m.userMessage.content] : []
+    m.userMessage ? [m.userMessage.content] : [],
   );
 }
 
@@ -101,14 +102,14 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
-      workspace.sId
+      workspace.sId,
     );
     const conversation = await createOnboardingConversation(
       otherAuth,
-      workspace
+      workspace,
     );
     expect(
-      await ConversationResource.fetchById(auth, conversation.sId)
+      await ConversationResource.fetchById(auth, conversation.sId),
     ).not.toBeNull();
 
     const response = await postFollowUp(workspace, conversation.sId);
@@ -197,6 +198,8 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
       method: "POST",
     });
     await FeatureFlagFactory.basic(auth, "localisation");
+    const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+    await workspaceResource?.updateWorkspaceSettings({ locale: "fr-FR" });
     const conversation = await createOnboardingConversation(auth, workspace);
 
     const response = await postFollowUp(workspace, conversation.sId, {
@@ -206,7 +209,25 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/onboarding-followup", ()
     expect(response.status).toBe(200);
     const contents = await listUserMessageContents(auth, conversation);
     expect(contents).toHaveLength(1);
-    expect(contents[0]).toContain("You MUST respond in English.");
+    expect(contents[0]).toContain("You MUST respond in French.");
+  });
+
+  it("adds no language instruction for English", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "user",
+      method: "POST",
+    });
+    await FeatureFlagFactory.basic(auth, "localisation");
+    const conversation = await createOnboardingConversation(auth, workspace);
+
+    const response = await postFollowUp(workspace, conversation.sId, {
+      "Accept-Language": "en-US,en;q=0.9",
+    });
+
+    expect(response.status).toBe(200);
+    const contents = await listUserMessageContents(auth, conversation);
+    expect(contents).toHaveLength(1);
+    expect(contents[0]).not.toContain("You MUST respond in");
   });
 
   it("drops an Accept-Language value that is not a bare language code", async () => {
