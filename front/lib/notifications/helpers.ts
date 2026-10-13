@@ -364,7 +364,7 @@ const unreadSummarySpecification: AgentActionSpecification = {
       conversation_summary: {
         type: "string",
         description:
-          'A 1-2 sentence summary of the unread messages only, addressed to the recipient as "you". Start with the substance (e.g. "@dust answered your question: ..."), never with "You received". Never "the user", never narrate who asked what.',
+          'A 1-2 sentence summary of the unread messages only, addressed to the recipient as "you". Start with the substance (e.g. "@Dust answered your question: ..."), never with "You received". Never "the user", never narrate who asked what.',
       },
     },
     required: ["conversation_summary"],
@@ -456,7 +456,7 @@ export const generateUnreadMessagesSummary = async ({
     `6. **Result phrasing**: Use neutral outcomes - "Draft is ready", "Meeting scheduled", "Sarah needs..."\n` +
     `7. **Use names**: Refer to other participants by name, never "the user"\n` +
     `8. **Accurate attribution**: Only include information actually in the messages\n` +
-    `9. **Narrator voice**: You are not a participant. Never write "I" or speak for the agent: write "@dust can add it as a tab", not "I can add it"\n` +
+    `9. **Narrator voice**: You are not a participant. Never write "I" or speak for the agent: write "@Dust can add it as a tab", not "I can add it"\n` +
     `10. **No filler openers**: Never start with "You received", "You got", or "Here is". Start with the substance\n\n` +
     `# Examples\n\n` +
     `## Action Needed (someone waiting on the recipient)\n` +
@@ -472,7 +472,7 @@ export const generateUnreadMessagesSummary = async ({
     `"Three design mockups are ready with Sarah's feedback. She's waiting on your approval to move forward."\n\n` +
     `## Agent replies (the recipient asked an agent something and left before it answered)\n` +
     `"@analyst explained where to find the summary Google Sheet you couldn't see. The enriched CSV is ready with Net Sales of $723,548.60."\n` +
-    `"@dust listed the steps to open the Copilot pane in Excel, with example prompts and a fix if the Copilot button is missing."\n\n` +
+    `"@Dust listed the steps to open the Copilot pane in Excel, with example prompts and a fix if the Copilot button is missing."\n\n` +
     `# Your Task\n` +
     `Read the UNREAD messages below and write a 1-2 sentence summary following ALL rules above.\n` +
     `Prioritize any actions needed from the recipient first, then updates. Include key specifics.\n` +

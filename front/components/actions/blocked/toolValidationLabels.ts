@@ -203,7 +203,7 @@ const MCP_TOOL_OVERRIDES: Partial<
         }
         const { agentName } = inputs;
         if (agentName === null) {
-          return t(msg`Allow agent to reset the Pod default agent to @dust?`);
+          return t(msg`Allow agent to reset the Pod default agent to @Dust?`);
         }
         return t(
           msg`Allow agent to set the Pod default agent to @${agentName}?`

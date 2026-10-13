@@ -94,7 +94,7 @@ export function PodSettingsCustomizationTab({
       if (agentId && agentId !== GLOBAL_AGENTS_SID.DUST) {
         const confirmed = await confirm({
           title: t`Warning`,
-          message: t`@dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?`,
+          message: t`@Dust is designed to give your users the best experience by default. A custom default agent may not handle every request as reliably. Do you want to set it as the default anyway?`,
           validateVariant: "warning",
           validateLabel: t`Yes`,
           cancelLabel: t`No`,
@@ -177,7 +177,7 @@ export function PodSettingsCustomizationTab({
               <Icon visual={InfoCircle} size="xs" />
             </span>
           }
-          label={t`This Pod's default agent isn't available to you, so @dust is used instead. Contact the editor of the Pod for more information.`}
+          label={t`This Pod's default agent isn't available to you, so @Dust is used instead. Contact the editor of the Pod for more information.`}
         />
       )}
       {interactive && (

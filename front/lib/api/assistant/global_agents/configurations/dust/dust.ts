@@ -500,7 +500,7 @@ export function _getDustGlobalAgent(
   }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
-    name: "dust",
+    name: "Dust",
     preferredModelConfiguration,
     preferredReasoningEffort,
   });
