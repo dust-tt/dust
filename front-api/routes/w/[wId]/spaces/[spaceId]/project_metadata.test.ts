@@ -67,7 +67,7 @@ describe("GET /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const response = await getMetadata(workspace, regularSpace.sId);
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("project_space_required");
   });
 
   it("returns only readable active defaults in alphabetical order", async () => {

@@ -58,8 +58,8 @@ msgid "Something went wrong on our side."
 msgstr "Une erreur s’est produite de notre côté."
 
 #: front/lib/api_error_messages.ts
-msgid "The request is invalid."
-msgstr "La requête n’est pas valide."
+msgid "The request is malformed."
+msgstr "La requête est mal formée."
 
 #: front/lib/api_error_messages.ts
 msgid "The table rows are invalid."
@@ -312,6 +312,14 @@ msgstr "Cette fonctionnalité n’est pas disponible pendant l’essai."
 #: front/lib/api_error_messages.ts
 msgid "The service is temporarily unavailable."
 msgstr "Le service est temporairement indisponible."
+
+#: front/lib/api_error_messages.ts
+msgid "This feature isn't enabled for your workspace."
+msgstr "Cette fonctionnalité n’est pas activée pour votre espace de travail."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in Pods."
+msgstr "Disponible uniquement dans les Pods."
 
 #: front/lib/api_error_messages.ts
 msgid "The agent couldn't be saved."

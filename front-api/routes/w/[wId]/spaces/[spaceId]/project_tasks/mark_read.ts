@@ -15,7 +15,7 @@ app.post("/", withSpace({ requireCanRead: true }), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "project_space_required",
         message: "Todos are only available for project spaces.",
       },
     });

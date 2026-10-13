@@ -62,7 +62,7 @@ async function buildContext(
       error: apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Files are only available for Pod spaces.",
         },
       }),
@@ -266,7 +266,7 @@ app.post(
       return apiError(c, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Files are only available for project spaces.",
         },
       });

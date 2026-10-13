@@ -117,7 +117,7 @@ describe("createInternalRoutes", () => {
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({
-      error: { type: "feature_flag_not_found" },
+      error: { type: "feature_not_enabled" },
     });
   });
 

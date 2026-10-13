@@ -61,7 +61,7 @@ describe("feature flag gating", () => {
 
     expect(response.status).toBe(403);
     const data = ApiErrorSchema.parse(await response.json());
-    expect(data.error.type).toBe("feature_flag_not_found");
+    expect(data.error.type).toBe("feature_not_enabled");
   });
 });
 

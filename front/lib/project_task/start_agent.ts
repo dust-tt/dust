@@ -181,7 +181,7 @@ export async function startAgentForProjectTask(
   if (!space.isProject()) {
     return new Err({
       statusCode: 400,
-      type: "invalid_request_error",
+      type: "project_space_required",
       message: "Tasks are only available for Pod spaces.",
     });
   }
