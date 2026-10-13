@@ -39,7 +39,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "data_source_not_found",
+          type: "mcp_server_view_not_found",
           message: "MCP Server View not found",
         },
       });
@@ -50,7 +50,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "regular_or_global_space_required",
           message:
             "Can only delete MCP Server Views from regular or global spaces.",
         },
@@ -71,7 +71,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "auto_tool_not_removable",
           message: "Auto tools cannot be removed from the company space.",
         },
       });

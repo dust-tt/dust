@@ -50,7 +50,7 @@ describe("GET /api/w/:wId/mcp/:serverId", () => {
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({
       error: {
-        type: "data_source_not_found",
+        type: "mcp_server_not_found",
         message: "Remote MCP Server not found",
       },
     });

@@ -47,7 +47,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "regular_or_global_space_required",
           message:
             "Can only create webhook source views from regular or global spaces.",
         },
@@ -63,7 +63,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "webhook_source_view_not_found",
           message:
             "Missing system view for webhook source, it should have been created when adding the webhook source.",
         },

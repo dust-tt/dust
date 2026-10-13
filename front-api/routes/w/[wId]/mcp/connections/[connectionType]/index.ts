@@ -19,7 +19,10 @@ import {
 } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
-import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
+import type {
+  APIErrorType,
+  APIErrorWithContentfulStatusCode,
+} from "@app/types/error";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -56,12 +59,13 @@ type PostConnectionAuthReference =
   | { kind: "oauth_connection"; connectionId: string }
   | { kind: "credential"; credentialId: string };
 
-function makeInvalidRequestError(
+function makeBadRequestError(
+  type: APIErrorType,
   message: string
 ): APIErrorWithContentfulStatusCode {
   return {
     status_code: 400,
-    api_error: { type: "invalid_request_error", message },
+    api_error: { type, message },
   };
 }
 
@@ -102,13 +106,15 @@ async function validateCredentialAuthReference(
   }
 ): Promise<APIErrorWithContentfulStatusCode | null> {
   if (connectionType !== "workspace") {
-    return makeInvalidRequestError(
+    return makeBadRequestError(
+      "mcp_credential_connection_not_supported",
       "Credential-backed MCP server connections are only supported for workspace connections."
     );
   }
 
   if (serverType !== "internal") {
-    return makeInvalidRequestError(
+    return makeBadRequestError(
+      "mcp_credential_connection_not_supported",
       "Credential-backed MCP server connections are only supported for internal MCP servers."
     );
   }
@@ -116,13 +122,17 @@ async function validateCredentialAuthReference(
   const internalServerNameRes =
     getInternalMCPServerNameAndWorkspaceId(mcpServerId);
   if (internalServerNameRes.isErr()) {
-    return makeInvalidRequestError(internalServerNameRes.error.message);
+    return makeBadRequestError(
+      "invalid_request_error",
+      internalServerNameRes.error.message
+    );
   }
 
   const internalServerName = internalServerNameRes.value.name;
   const policy = getInternalServerCredentialPolicy(internalServerName);
   if (!policy) {
-    return makeInvalidRequestError(
+    return makeBadRequestError(
+      "mcp_credential_connection_not_supported",
       "Credential-backed MCP server connections are not supported for this internal MCP server."
     );
   }
@@ -138,19 +148,24 @@ async function validateCredentialAuthReference(
   const owner = auth.getNonNullableWorkspace();
   const credential = credentialRes.value.credential;
   if (credential.metadata.workspace_id !== owner.sId) {
-    return makeInvalidRequestError(
+    return makeBadRequestError(
+      "connector_credentials_not_found",
       "The credential you requested does not belong to your workspace."
     );
   }
 
   if (credential.provider !== policy.provider) {
-    return makeInvalidRequestError(
+    return makeBadRequestError(
+      "credential_provider_mismatch",
       `The credential provided is not compatible with the ${internalServerName} internal MCP server.`
     );
   }
 
   if (!policy.validateContent(credential.content)) {
-    return makeInvalidRequestError(policy.invalidContentMessage);
+    return makeBadRequestError(
+      "connector_credentials_error",
+      policy.invalidContentMessage
+    );
   }
 
   return null;
@@ -176,7 +191,8 @@ async function validateAuthReferenceForMCPConnection(
       authReference.connectionId
     );
     if (ownershipRes.isErr()) {
-      return makeInvalidRequestError(
+      return makeBadRequestError(
+        "mcp_oauth_connection_error",
         "Failed to get the access token for the MCP server."
       );
     }

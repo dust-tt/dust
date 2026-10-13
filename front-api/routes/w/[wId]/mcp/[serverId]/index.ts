@@ -62,7 +62,7 @@ app.get(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "data_source_not_found",
+              type: "mcp_server_not_found",
               message: "Internal MCP Server not found",
             },
           });
@@ -85,7 +85,7 @@ app.get(
           return apiError(ctx, {
             status_code: 404,
             api_error: {
-              type: "data_source_not_found",
+              type: "mcp_server_not_found",
               message: "Remote MCP Server not found",
             },
           });
@@ -176,7 +176,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "data_source_not_found",
+          type: "mcp_server_not_found",
           message: "Remote MCP Server not found",
         },
       });
@@ -290,7 +290,7 @@ async function handleInternalPatch(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "mcp_server_icon_not_editable",
         message: "Internal MCP server does not support editing icon.",
       },
     });
@@ -300,7 +300,7 @@ async function handleInternalPatch(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "mcp_server_bearer_token_not_supported",
         message:
           "This internal MCP server does not support bearer token credentials.",
       },

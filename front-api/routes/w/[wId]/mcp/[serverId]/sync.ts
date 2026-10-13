@@ -38,7 +38,7 @@ app.post(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "data_source_not_found",
+          type: "mcp_server_not_found",
           message: "Remote MCP Server not found",
         },
       });
@@ -53,7 +53,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "remote_mcp_server_connection_failed",
           message: `Error fetching remote server metadata: ${r.error.message}`,
         },
       });

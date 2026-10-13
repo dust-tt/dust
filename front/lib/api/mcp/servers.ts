@@ -1,4 +1,5 @@
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/constants";
+import { isRemoteMCPServerError } from "@app/lib/actions/mcp_errors";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
@@ -20,6 +21,7 @@ import type {
 } from "@app/lib/api/mcp";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -38,6 +40,20 @@ const MAX_NAME_LENGTH = 2048;
 const MAX_VIEW_NAME_LENGTH = 255;
 
 type CustomHeader = { key: string; value: string };
+
+export type CreateMCPServerErrorCode =
+  | "missing_url"
+  | "url_too_long"
+  | "invalid_url"
+  | "invalid_name"
+  | "oauth_connection_error"
+  | "remote_server_error"
+  | "invalid_internal_server_name"
+  | "server_not_available"
+  | "server_already_installed"
+  | "system_view_not_found";
+
+export type CreateMCPServerError = DustError<CreateMCPServerErrorCode>;
 
 export async function listMCPServersWithViews(
   auth: Authenticator
@@ -94,7 +110,9 @@ interface CreateRemoteMCPServerInput {
 export async function createRemoteMCPServer(
   auth: Authenticator,
   input: CreateRemoteMCPServerInput
-): Promise<Result<MCPServerType, Error | MCPServerViewNameConflict>> {
+): Promise<
+  Result<MCPServerType, CreateMCPServerError | MCPServerViewNameConflict>
+> {
   const {
     url,
     sharedSecret,
@@ -106,11 +124,12 @@ export async function createRemoteMCPServer(
   const normalizedViewName = viewName?.trim();
 
   if (!url) {
-    return new Err(new Error("URL is required"));
+    return new Err(new DustError("missing_url", "URL is required"));
   }
   if (url.length > MAX_URL_LENGTH) {
     return new Err(
-      new Error(
+      new DustError(
+        "url_too_long",
         `MCP server URL exceeds maximum length (${MAX_URL_LENGTH} characters).`
       )
     );
@@ -121,7 +140,8 @@ export async function createRemoteMCPServer(
       normalizedViewName.length > MAX_VIEW_NAME_LENGTH
     ) {
       return new Err(
-        new Error(
+        new DustError(
+          "invalid_name",
           `viewName must be a non-empty string of at most ${MAX_VIEW_NAME_LENGTH} characters.`
         )
       );
@@ -136,13 +156,23 @@ export async function createRemoteMCPServer(
   if (connectionId) {
     const ownershipRes = await checkConnectionOwnership(auth, connectionId);
     if (ownershipRes.isErr()) {
-      return new Err(new Error("Error fetching OAuth connection access token"));
+      return new Err(
+        new DustError(
+          "oauth_connection_error",
+          "Error fetching OAuth connection access token"
+        )
+      );
     }
     const token = await getMCPConnectionAccessToken(auth, {
       connectionId,
     });
     if (token.isErr()) {
-      return new Err(new Error("Error fetching OAuth connection access token"));
+      return new Err(
+        new DustError(
+          "oauth_connection_error",
+          "Error fetching OAuth connection access token"
+        )
+      );
     }
     bearerToken = token.value.access_token;
     authorization = {
@@ -163,7 +193,16 @@ export async function createRemoteMCPServer(
 
   const metadataRes = await fetchRemoteServerMetaDataByURL(auth, url, headers);
   if (metadataRes.isErr()) {
-    return metadataRes;
+    // The remote server rejected or failed the connection; any other error is
+    // the URL failing to parse.
+    return new Err(
+      new DustError(
+        isRemoteMCPServerError(metadataRes.error)
+          ? "remote_server_error"
+          : "invalid_url",
+        metadataRes.error.message
+      )
+    );
   }
   const metadata = metadataRes.value;
 
@@ -178,7 +217,8 @@ export async function createRemoteMCPServer(
   const name = defaultConfig?.name ?? metadata.name;
   if (name.length > MAX_NAME_LENGTH) {
     return new Err(
-      new Error(
+      new DustError(
+        "invalid_name",
         `MCP server name exceeds maximum length (${MAX_NAME_LENGTH} characters).`
       )
     );
@@ -270,11 +310,18 @@ interface CreateInternalMCPServerInput {
 export async function createInternalMCPServer(
   auth: Authenticator,
   input: CreateInternalMCPServerInput
-): Promise<Result<MCPServerType, Error | MCPServerViewNameConflict>> {
+): Promise<
+  Result<MCPServerType, CreateMCPServerError | MCPServerViewNameConflict>
+> {
   const { name, viewName, connectionId, includeGlobal } = input;
 
   if (!isInternalMCPServerName(name)) {
-    return new Err(new Error("Invalid internal MCP server name"));
+    return new Err(
+      new DustError(
+        "invalid_internal_server_name",
+        "Invalid internal MCP server name"
+      )
+    );
   }
 
   const isRestricted =
@@ -283,13 +330,20 @@ export async function createInternalMCPServer(
       name
     );
   if (isRestricted) {
-    return new Err(new Error("This tool is not available for this workspace."));
+    return new Err(
+      new DustError(
+        "server_not_available",
+        "This tool is not available for this workspace."
+      )
+    );
   }
 
   if (viewName !== undefined) {
     const trimmed = viewName.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
-      return new Err(new Error("viewName must be a non-empty string."));
+      return new Err(
+        new DustError("invalid_name", "viewName must be a non-empty string.")
+      );
     }
   }
 
@@ -303,7 +357,8 @@ export async function createInternalMCPServer(
     );
     if (alreadyUsed) {
       return new Err(
-        new Error(
+        new DustError(
+          "server_already_installed",
           "This internal tool has already been added and only one instance is allowed."
         )
       );
@@ -416,14 +471,15 @@ async function createGlobalSpaceView(
   auth: Authenticator,
   serverId: string,
   serverType: "remote" | "internal"
-): Promise<Result<void, Error>> {
+): Promise<Result<void, CreateMCPServerError>> {
   const systemView = await MCPServerViewResource.getMCPServerViewForSystemSpace(
     auth,
     serverId
   );
   if (!systemView) {
     return new Err(
-      new Error(
+      new DustError(
+        "system_view_not_found",
         `Missing system view for ${serverType} MCP server, it should have been created when creating the ${serverType} server.`
       )
     );

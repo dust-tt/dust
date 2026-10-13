@@ -1414,6 +1414,94 @@ msgid "Each redirect URI must be unique and include a scheme, such as https://."
 msgstr "Chaque URI de redirection doit être unique et inclure un schéma, comme https://."
 
 #: front/lib/api_error_messages.ts
+msgid "This trigger's status is managed by Dust and can't be changed."
+msgstr "Le statut de ce déclencheur est géré par Dust et ne peut pas être modifié."
+
+#: front/lib/api_error_messages.ts
+msgid "Too many automations are selected. Select fewer and try again."
+msgstr "Trop d’automatisations sont sélectionnées. Sélectionnez-en moins et réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "The filter expression is invalid. Check its syntax."
+msgstr "L’expression de filtre n’est pas valide. Vérifiez sa syntaxe."
+
+#: front/lib/api_error_messages.ts
+msgid "A webhook source with this name already exists."
+msgstr "Une source de webhook portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "Select at least one event."
+msgstr "Sélectionnez au moins un événement."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in the company space and regular spaces."
+msgstr "Disponible uniquement dans l’espace de l’entreprise et les espaces standard."
+
+#: front/lib/api_error_messages.ts
+msgid "This can only be updated from the workspace settings."
+msgstr "Modifiable uniquement depuis les paramètres du workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "A tool with this name already exists."
+msgstr "Un outil portant ce nom existe déjà."
+
+#: front/lib/api_error_messages.ts
+msgid "Auto tools can't be removed from the company space."
+msgstr "Les outils automatiques ne peuvent pas être retirés de l’espace de l’entreprise."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool name is empty or too long."
+msgstr "Le nom de l’outil est vide ou trop long."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is too long."
+msgstr "L’URL de l’outil est trop longue."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is invalid or not allowed. Use a public HTTPS URL."
+msgstr "L’URL de l’outil n’est pas valide ou n’est pas autorisée. Utilisez une URL HTTPS publique."
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't connect to the tool's server. Check its URL and credentials."
+msgstr "Impossible de se connecter au serveur de l’outil. Vérifiez son URL et ses identifiants."
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's authorization couldn't be used. Reconnect it and try again."
+msgstr "Impossible d’utiliser l’autorisation de l’outil. Reconnectez-le et réessayez."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool isn't available for your workspace."
+msgstr "Cet outil n’est pas disponible pour votre workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool is already added, and only one instance is allowed."
+msgstr "Cet outil est déjà ajouté et une seule instance est autorisée."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool's icon can't be changed."
+msgstr "L’icône de cet outil ne peut pas être modifiée."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool doesn't support bearer token credentials."
+msgstr "Cet outil ne prend pas en charge les jetons d’accès de type bearer."
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can't be connected with stored credentials."
+msgstr "Cet outil ne peut pas être connecté avec des identifiants enregistrés."
+
+#: front/lib/api_error_messages.ts
+msgid "These credentials are for a different service."
+msgstr "Ces identifiants concernent un autre service."
+
+#: front/lib/api_error_messages.ts
+msgid "This BigQuery project is too large to check automatically. Contact support to connect it."
+msgstr "Ce projet BigQuery est trop volumineux pour être vérifié automatiquement. Contactez le support pour le connecter."
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't list the BigQuery project's locations. Check the credentials and their permissions."
+msgstr "Impossible de lister les emplacements du projet BigQuery. Vérifiez les identifiants et leurs autorisations."
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr "Code : {code}"
 

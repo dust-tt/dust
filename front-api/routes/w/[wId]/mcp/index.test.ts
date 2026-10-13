@@ -202,10 +202,10 @@ describe("POST /api/w/:wId/mcp/ — creation", () => {
       includeGlobal: true,
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "mcp_server_already_installed",
         message:
           "This internal tool has already been added and only one instance is allowed.",
       },

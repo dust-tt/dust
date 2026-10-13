@@ -96,7 +96,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "bigquery_project_too_large",
             message:
               "Failed to check BigQuery locations: timed out listing the " +
               "project's datasets and tables. The BigQuery project is very " +
@@ -117,7 +117,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "bigquery_locations_check_failed",
           message: `Failed to check BigQuery locations: ${normalizeError(err).message}`,
         },
       });

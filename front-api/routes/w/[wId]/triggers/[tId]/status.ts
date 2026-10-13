@@ -50,7 +50,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "trigger_status_managed_by_dust",
           message:
             "This trigger's status is managed by Dust and cannot be changed.",
         },
