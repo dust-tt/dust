@@ -15,10 +15,12 @@ import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functio
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
+import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -225,6 +227,9 @@ export async function validateFramePublication(
   const contracts = buildFramePublicationContracts({
     functionArtifacts: buildResult.value.functionArtifacts,
     manifest,
+    publicFunctionsEnabled: isFramesV2PublicFunctionsEnabled(
+      await getFeatureFlags(auth)
+    ),
     sourceFiles,
   });
   if (contracts.isErr()) {

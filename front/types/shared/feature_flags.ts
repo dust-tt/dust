@@ -40,6 +40,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "davidebbo",
   },
+  frames_v2_public_functions: {
+    description:
+      "Let Frames v2 declare public functions that anonymous visitors of a public share can call (requires frames_v2_functions)",
+    stage: "dust_only",
+    owner: "achilleburah",
+  },
   frame_documents: {
     description:
       "Expose editable Document guidance and examples in the Frame skill. Superseded by dust_documents (co-edition): do not roll out to other workspaces.",
@@ -523,6 +529,8 @@ export function isComputerFeatureEnabled(
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =
   "frames_v2_functions" as const satisfies WhitelistableFeature;
+const FRAMES_V2_PUBLIC_FUNCTIONS_FEATURE =
+  "frames_v2_public_functions" as const satisfies WhitelistableFeature;
 const DISABLE_FRAMES_V2_FEATURE =
   "disable_frames_v2" as const satisfies WhitelistableFeature;
 
@@ -553,6 +561,20 @@ export function isFramesV2FunctionsEnabled(
   return (
     featureFlags.includes(FRAMES_V2_FEATURE) &&
     featureFlags.includes(FRAMES_V2_FUNCTIONS_FEATURE)
+  );
+}
+
+/**
+ * @cc [owner:achilleburah,label:product;security] frames-v2-public-functions-requires-frames-v2-functions
+ * Public Frame functions MUST be reported enabled only when Frame functions are enabled (see
+ * isFramesV2FunctionsEnabled) and frames_v2_public_functions is on.
+ */
+export function isFramesV2PublicFunctionsEnabled(
+  featureFlags: WhitelistableFeature[]
+): boolean {
+  return (
+    isFramesV2FunctionsEnabled(featureFlags) &&
+    featureFlags.includes(FRAMES_V2_PUBLIC_FUNCTIONS_FEATURE)
   );
 }
 

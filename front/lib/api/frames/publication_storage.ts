@@ -16,6 +16,7 @@ import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH,
   getPrivateUploadBucket,
@@ -45,9 +46,13 @@ import {
   getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
-import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
+import type {
+  SandboxFunctionExecutionMode,
+  SandboxFunctionUserIdentityPolicy,
+} from "@app/types/api/sandbox_functions";
 import type { AllSupportedFileContentType } from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
+import { isFramesV2PublicFunctionsEnabled } from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -117,6 +122,63 @@ function getFrameIdentity(
   return new Ok({ workspaceId: owner.sId, frameId: frame.sId });
 }
 
+type CheckPublicFrameFunctionInput = {
+  name: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
+  executionMode: SandboxFunctionExecutionMode;
+  bundleCode: string;
+  publicFunctionsEnabled: boolean;
+};
+
+/**
+ * @cc [owner:achilleburah,label:product] public-function-publish-requirements
+ * A function declaring the `public` user identity policy MUST be refused with
+ * `invalid_function_artifact` unless public Frame functions are enabled for the workspace (see
+ * isFramesV2PublicFunctionsEnabled), its manifest declares the `fast` execution mode, and its
+ * bundle does not contain `DSEC_`. A function with any other policy MUST pass. The `DSEC_` check
+ * is an authoring guardrail against literal secret references, not a sandbox boundary.
+ */
+function checkPublicFrameFunction({
+  name,
+  userIdentity,
+  executionMode,
+  bundleCode,
+  publicFunctionsEnabled,
+}: CheckPublicFrameFunctionInput): Result<undefined, FramePublicationError> {
+  if (userIdentity !== "public") {
+    return new Ok(undefined);
+  }
+  if (!publicFunctionsEnabled) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_function_artifact",
+        `Frame function "${name}" declares \`userIdentity: "public"\`, but public Frame functions ` +
+          "are not enabled for this workspace. Declare another user identity policy, such as " +
+          "`workspace_user_required`."
+      )
+    );
+  }
+  if (executionMode !== "fast") {
+    return new Err(
+      new FramePublicationError(
+        "invalid_function_artifact",
+        `Frame function "${name}" is public, so its manifest entry must declare ` +
+          '`"executionMode": "fast"`. Public functions cannot call Dust tools.'
+      )
+    );
+  }
+  if (bundleCode.includes("DSEC_")) {
+    return new Err(
+      new FramePublicationError(
+        "invalid_function_artifact",
+        `Frame function "${name}" is public and references a secret (\`DSEC_\`). Public ` +
+          "functions cannot use secrets: remove the secret or declare another user identity policy."
+      )
+    );
+  }
+  return new Ok(undefined);
+}
+
 type FramePublicationContracts = Pick<
   FramePublicationDescriptor,
   "databases" | "functions"
@@ -125,10 +187,12 @@ type FramePublicationContracts = Pick<
 export function buildFramePublicationContracts({
   functionArtifacts,
   manifest,
+  publicFunctionsEnabled,
   sourceFiles,
 }: {
   functionArtifacts: FramePublicationFunctionArtifact[];
   manifest: FrameManifest;
+  publicFunctionsEnabled: boolean;
   sourceFiles: FramePublicationSourceFile[];
 }): Result<FramePublicationContracts, FramePublicationError> {
   const sourceFilesByPath = new Map<string, FramePublicationSourceFile>();
@@ -235,6 +299,16 @@ export function buildFramePublicationContracts({
         )
       );
     }
+    const publicCheck = checkPublicFrameFunction({
+      name: fn.name,
+      userIdentity: artifact.userIdentity,
+      executionMode: fn.executionMode,
+      bundleCode: artifact.bundleCode,
+      publicFunctionsEnabled,
+    });
+    if (publicCheck.isErr()) {
+      return publicCheck;
+    }
     functions.push({
       name: fn.name,
       bundleSha256: sha256(artifact.bundleCode),
@@ -277,6 +351,9 @@ export async function storeFramePublication(
   const contracts = buildFramePublicationContracts({
     functionArtifacts,
     manifest,
+    publicFunctionsEnabled: isFramesV2PublicFunctionsEnabled(
+      await getFeatureFlags(auth)
+    ),
     sourceFiles,
   });
   if (contracts.isErr()) {
@@ -516,10 +593,12 @@ async function loadFramePublicationFunctionDefinitions(
     frame,
     descriptor,
     publicationId,
+    publicFunctionsEnabled,
   }: {
     frame: FileResource;
     descriptor: FramePublicationDescriptor;
     publicationId: string;
+    publicFunctionsEnabled: boolean;
   }
 ): Promise<
   Result<FramePublicationFunctionDefinition[], FramePublicationError>
@@ -557,6 +636,16 @@ async function loadFramePublicationFunctionDefinitions(
             `Frame publication function bundle hash mismatch: ${fn.name}`
           )
         );
+      }
+      const publicCheck = checkPublicFrameFunction({
+        name: fn.name,
+        userIdentity: contract.userIdentity,
+        executionMode: fn.executionMode,
+        bundleCode,
+        publicFunctionsEnabled,
+      });
+      if (publicCheck.isErr()) {
+        return publicCheck;
       }
 
       return new Ok({
@@ -612,7 +701,14 @@ export async function activateFramePublication(
 
   const functionDefinitions = await loadFramePublicationFunctionDefinitions(
     auth,
-    { frame, descriptor: descriptor.value, publicationId }
+    {
+      frame,
+      descriptor: descriptor.value,
+      publicationId,
+      publicFunctionsEnabled: isFramesV2PublicFunctionsEnabled(
+        await getFeatureFlags(auth)
+      ),
+    }
   );
   if (functionDefinitions.isErr()) {
     return functionDefinitions;

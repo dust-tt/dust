@@ -7,10 +7,14 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  SandboxFunctionExecutionMode,
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 
 export type SandboxFunctionAuthorization =
   | {
@@ -48,73 +52,125 @@ export async function getAuthenticatedWorkspaceUser(
   return Authenticator.isMember(role) ? user : null;
 }
 
-export async function authorizeSandboxFunctionInvocation(
+export type SandboxFunctionCaller =
+  | { kind: "workspace_member"; user: UserResource }
+  | {
+      kind: "denied";
+      errorCode: SandboxFunctionInvocationErrorCode;
+      errorMessage: string;
+    };
+
+export type CheckSandboxFunctionCallerInput = {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  executionMode: SandboxFunctionExecutionMode;
+};
+
+/**
+ * @cc [owner:achilleburah,label:security;product] caller-check-is-scope-independent
+ * The caller MUST be denied unless it is a workspace member, and a `public` function MUST be denied
+ * unless its execution mode is `fast`. The check MUST NOT depend on the Frame's runtime scope, so
+ * `execute()` can run it before any sandbox wakeup.
+ */
+export async function checkSandboxFunctionCaller(
   auth: Authenticator,
-  {
-    userIdentity,
-    origin,
-    owner,
-  }: {
-    userIdentity: SandboxFunctionUserIdentityPolicy | null;
-    origin: SandboxFunctionInvocationOrigin;
-    owner: {
-      kind: "frame";
-      frame: FileResource;
-      scope?: FrameSandboxScope;
+  { userIdentity, executionMode }: CheckSandboxFunctionCallerInput
+): Promise<SandboxFunctionCaller> {
+  if (userIdentity === "public" && executionMode !== "fast") {
+    return {
+      kind: "denied",
+      errorCode: "user_authentication_required",
+      errorMessage:
+        "This public Frame function must declare the fast execution mode.",
     };
   }
-): Promise<SandboxFunctionAuthorization> {
-  const user = await getAuthenticatedWorkspaceUser(auth);
-  const { frame } = owner;
-  let runtimeSpaceId: string;
-  let pod: SpaceResource | null;
 
-  // Frames are always workspace-member execution, even when a declaration's identity policy is
-  // optional. Public and guest rendering may still work, but invocation fails before wakeup.
-  if (!user) {
-    return authorizationError(
-      "This Frame function requires a logged-in user from its workspace."
-    );
-  }
+  const user = await getAuthenticatedWorkspaceUser(auth);
+  return user
+    ? { kind: "workspace_member", user }
+    : {
+        kind: "denied",
+        errorCode: "user_authentication_required",
+        errorMessage:
+          "This Frame function requires a logged-in user from its workspace.",
+      };
+}
+
+type SandboxFunctionInvocationOwner = {
+  kind: "frame";
+  frame: FileResource;
+  scope?: FrameSandboxScope;
+};
+
+async function resolveMemberRuntime(
+  auth: Authenticator,
+  user: UserResource,
+  owner: SandboxFunctionInvocationOwner
+): Promise<SandboxFunctionAuthorization> {
+  const { frame } = owner;
   const scope =
     owner.scope ?? (await frame.resolveFrameScopedPathContext(auth));
-  if (scope.spaceId) {
-    const runtimeSpace = await SpaceResource.fetchById(auth, scope.spaceId);
-    if (!runtimeSpace) {
-      return authorizationError(
-        "This Frame's runtime scope no longer exists.",
-        "frame_runtime_unavailable"
-      );
-    }
-    runtimeSpaceId = runtimeSpace.sId;
-    pod = runtimeSpace.isProject() ? runtimeSpace : null;
-  } else {
+  if (!scope.spaceId) {
     // Standalone conversations have no space. Their functions still need a space claim so
     // sandbox tokens can expose workspace-level MCP servers; the global space is that scope.
     const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-    runtimeSpaceId = globalSpace.sId;
-    pod = null;
+    return {
+      authorized: true,
+      user,
+      runtimeSpaceId: globalSpace.sId,
+      pod: null,
+    };
   }
 
-  // Every policy below is evaluated for a workspace member: the guard above already refused
-  // anyone else, so these only add the requirement on top of membership.
+  const runtimeSpace = await SpaceResource.fetchById(auth, scope.spaceId);
+  if (!runtimeSpace) {
+    return authorizationError(
+      "This Frame's runtime scope no longer exists.",
+      "frame_runtime_unavailable"
+    );
+  }
+  return {
+    authorized: true,
+    user,
+    runtimeSpaceId: runtimeSpace.sId,
+    pod: runtimeSpace.isProject() ? runtimeSpace : null,
+  };
+}
+
+type AuthorizeWorkspaceMemberInput = {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  origin: SandboxFunctionInvocationOrigin;
+  owner: SandboxFunctionInvocationOwner;
+};
+
+async function authorizeWorkspaceMember(
+  auth: Authenticator,
+  user: UserResource,
+  { userIdentity, origin, owner }: AuthorizeWorkspaceMemberInput
+): Promise<SandboxFunctionAuthorization> {
   const policy = userIdentity ?? "optional";
   switch (policy) {
+    case "public":
     case "optional":
     case "workspace_user_required":
-      return { authorized: true, user, runtimeSpaceId, pod };
+      return resolveMemberRuntime(auth, user, owner);
     case "interactive_workspace_user_required": {
-      const authorized =
-        origin === "interactive_session" && auth.authMethod() === "session";
-      return authorized
-        ? { authorized: true, user, runtimeSpaceId, pod }
+      const authorization = await resolveMemberRuntime(auth, user, owner);
+      if (!authorization.authorized) {
+        return authorization;
+      }
+      return origin === "interactive_session" && auth.authMethod() === "session"
+        ? authorization
         : authorizationError(
             "This Frame function requires a logged-in workspace member in a live Dust session."
           );
     }
     case "frame_author_required": {
-      return (await canWriteFrameV2Source(auth, frame))
-        ? { authorized: true, user, runtimeSpaceId, pod }
+      const authorization = await resolveMemberRuntime(auth, user, owner);
+      if (!authorization.authorized) {
+        return authorization;
+      }
+      return (await canWriteFrameV2Source(auth, owner.frame))
+        ? authorization
         : authorizationError(
             "This Frame function requires permission to modify its source files."
           );
@@ -131,5 +187,46 @@ export async function authorizeSandboxFunctionInvocation(
       return authorizationError(
         "This Frame function uses an unsupported user identity policy."
       );
+  }
+}
+
+export type AuthorizeSandboxFunctionInvocationInput = {
+  userIdentity: SandboxFunctionUserIdentityPolicy | null;
+  executionMode: SandboxFunctionExecutionMode;
+  origin: SandboxFunctionInvocationOrigin;
+  owner: SandboxFunctionInvocationOwner;
+};
+
+/**
+ * @cc [owner:achilleburah,label:security;product] each-policy-decides-its-callers
+ * Every caller MUST first pass `checkSandboxFunctionCaller`. On top of it,
+ * `interactive_workspace_user_required` MUST require a live Dust session and
+ * `frame_author_required` write access to the Frame source. A policy this revision does not know
+ * MUST be denied.
+ */
+export async function authorizeSandboxFunctionInvocation(
+  auth: Authenticator,
+  {
+    userIdentity,
+    executionMode,
+    origin,
+    owner,
+  }: AuthorizeSandboxFunctionInvocationInput
+): Promise<SandboxFunctionAuthorization> {
+  const caller = await checkSandboxFunctionCaller(auth, {
+    userIdentity,
+    executionMode,
+  });
+  switch (caller.kind) {
+    case "denied":
+      return authorizationError(caller.errorMessage, caller.errorCode);
+    case "workspace_member":
+      return authorizeWorkspaceMember(auth, caller.user, {
+        userIdentity,
+        origin,
+        owner,
+      });
+    default:
+      return assertNever(caller);
   }
 }

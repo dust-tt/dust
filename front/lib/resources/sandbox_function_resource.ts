@@ -87,6 +87,8 @@ function userIdentityPolicyStrength(
   policy: SandboxFunctionUserIdentityPolicy
 ): number {
   switch (policy) {
+    case "public":
+      return -1;
     case "optional":
       return 0;
     case "workspace_user_required":
@@ -690,6 +692,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
+      executionMode: this.executionMode,
       origin,
       owner: { kind: "frame", frame: this.frame },
     });

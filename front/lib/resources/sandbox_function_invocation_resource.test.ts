@@ -960,6 +960,19 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
   });
 
+  it("denies a public function that is not fast before sandbox wakeup", async () => {
+    const { authenticator, invocation } = await setupExecutionTest(
+      "public",
+      "delegated",
+      "durable"
+    );
+
+    const result = await invocation.execute(authenticator);
+
+    expect(result.isErr()).toBe(true);
+    expect(ensureFrameSandboxReady).not.toHaveBeenCalled();
+  });
+
   it("reads back a spilled result and delivers the full output", async () => {
     const { authenticator, sandboxFunction, sandbox, invocation } =
       await setupExecutionTest();

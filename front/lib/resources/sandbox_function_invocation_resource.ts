@@ -23,6 +23,7 @@ import {
 } from "@app/lib/api/sandbox_functions/result_delivery";
 import {
   authorizeSandboxFunctionInvocation,
+  checkSandboxFunctionCaller,
   getAuthenticatedWorkspaceUser,
 } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
@@ -697,19 +698,19 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
-        // Frame invocations always require a workspace member. This scope-independent check
-        // gates the paid wakeup; Pod membership and token scope are evaluated below from the
-        // lifecycle-locked scope, after a concurrent move can no longer change it.
-        const user = await getAuthenticatedWorkspaceUser(auth);
+        // This scope-independent check gates the paid wakeup; Pod membership and token scope are
+        // evaluated below from the lifecycle-locked scope, after a concurrent move can no longer
+        // change it.
+        const caller = await checkSandboxFunctionCaller(auth, {
+          userIdentity: persistedFunction.userIdentity,
+          executionMode: persistedFunction.executionMode,
+        });
         return {
           persistedFunction,
-          error: user
-            ? null
-            : {
-                code: "user_authentication_required",
-                message:
-                  "This Frame function requires a logged-in user from its workspace.",
-              },
+          error:
+            caller.kind === "denied"
+              ? { code: caller.errorCode, message: caller.errorMessage }
+              : null,
         };
       };
       const runEnsure = async (): Promise<
@@ -765,6 +766,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const authorizeStartedAtMs = Date.now();
       const authorization = await authorizeSandboxFunctionInvocation(auth, {
         userIdentity: persistedFunction.userIdentity,
+        executionMode: persistedFunction.executionMode,
         origin: this.origin ?? "delegated",
         owner: {
           kind: "frame",

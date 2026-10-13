@@ -78,6 +78,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
       userlessAuth,
       {
         userIdentity: "optional",
+        executionMode: "durable",
         origin: "delegated",
         owner: { kind: "frame", frame },
       }
@@ -98,6 +99,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
       userIdentity: "workspace_user_required",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -127,6 +129,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
       userIdentity: "optional",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -151,6 +154,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
       userIdentity: "workspace_user_required",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: {
         kind: "frame",
@@ -189,6 +193,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
       userIdentity: "frame_author_required",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -219,6 +224,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
       userIdentity: "frame_author_required",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -245,6 +251,7 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
       userIdentity: "frame_author_required",
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -276,7 +283,66 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
       outsiderAuth,
       {
         userIdentity: "frame_author_required",
+        executionMode: "durable",
         origin: "interactive_session",
+        owner: { kind: "frame", frame },
+      }
+    );
+
+    expect(authorization.authorized).toBe(false);
+  });
+});
+
+describe("authorizeSandboxFunctionInvocation for public Frame functions", () => {
+  it("authorizes a workspace member on a fast public function", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    const member = await makeWorkspaceMember(workspace);
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
+      userIdentity: "public",
+      executionMode: "fast",
+      origin: "delegated",
+      owner: { kind: "frame", frame, scope: { spaceId: null } },
+    });
+
+    expect(authorization).toMatchObject({
+      authorized: true,
+      user: expect.objectContaining({ sId: member.sId }),
+    });
+  });
+
+  it("denies a public function that is not fast", async () => {
+    const { adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+
+    const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
+      userIdentity: "public",
+      executionMode: "durable",
+      origin: "delegated",
+      owner: { kind: "frame", frame },
+    });
+
+    expect(authorization.authorized).toBe(false);
+  });
+
+  it("denies a caller without a user on a public function", async () => {
+    const { workspace, adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
+    const userlessAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+
+    const authorization = await authorizeSandboxFunctionInvocation(
+      userlessAuth,
+      {
+        userIdentity: "public",
+        executionMode: "fast",
+        origin: "delegated",
         owner: { kind: "frame", frame },
       }
     );
@@ -294,6 +360,7 @@ describe("authorizeSandboxFunctionInvocation across server revisions", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
       userIdentity: persistedPolicy,
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });
@@ -320,6 +387,7 @@ describe("authorizeSandboxFunctionInvocation across server revisions", () => {
 
     const authorization = await authorizeSandboxFunctionInvocation(memberAuth, {
       userIdentity: retiredPolicy,
+      executionMode: "durable",
       origin: "interactive_session",
       owner: { kind: "frame", frame },
     });

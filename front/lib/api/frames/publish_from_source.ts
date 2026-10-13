@@ -44,7 +44,10 @@ import {
   normalizeMimeType,
 } from "@app/types/files";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
-import { isFramesV2FunctionsEnabled } from "@app/types/shared/feature_flags";
+import {
+  isFramesV2FunctionsEnabled,
+  isFramesV2PublicFunctionsEnabled,
+} from "@app/types/shared/feature_flags";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -495,6 +498,9 @@ async function replaceLegacyFrameFromSource(
     const contracts = buildFramePublicationContracts({
       functionArtifacts,
       manifest,
+      publicFunctionsEnabled: isFramesV2PublicFunctionsEnabled(
+        await getFeatureFlags(auth)
+      ),
       sourceFiles,
     });
     if (contracts.isErr()) {
