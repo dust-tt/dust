@@ -33,8 +33,24 @@ impl Errno {
  * - `INTERNAL`, `CAPACITY`, `UNAVAILABLE`: `EIO`
  */
 impl From<ErrorCode> for Errno {
-    fn from(_code: ErrorCode) -> Self {
-        todo!()
+    fn from(code: ErrorCode) -> Self {
+        Self(match code {
+            ErrorCode::NotFound => libc::ENOENT,
+            ErrorCode::Forbidden => libc::EACCES,
+            // An expired or revoked session: the process cannot reach the files anymore.
+            ErrorCode::Unauthenticated => libc::EACCES,
+            ErrorCode::InvalidInput => libc::EINVAL,
+            ErrorCode::AlreadyExists => libc::EEXIST,
+            ErrorCode::NotDirectory => libc::ENOTDIR,
+            ErrorCode::IsDirectory => libc::EISDIR,
+            ErrorCode::NotEmpty => libc::ENOTEMPTY,
+            ErrorCode::NameTooLong => libc::ENAMETOOLONG,
+            ErrorCode::Unsupported => libc::EOPNOTSUPP,
+            ErrorCode::Internal => libc::EIO,
+            // The mount sizes its requests to fit the server limits; hitting one is a mount bug.
+            ErrorCode::Capacity => libc::EIO,
+            ErrorCode::Unavailable => libc::EIO,
+        })
     }
 }
 
