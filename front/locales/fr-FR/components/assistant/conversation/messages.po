@@ -231,6 +231,14 @@ msgstr "Présentation"
 msgid "Frames"
 msgstr "Frames"
 
+#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
+msgid "More Frame actions"
+msgstr "Plus d’actions sur le Frame"
+
+#: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
+msgid "Open"
+msgstr "Ouvrir"
+
 #: front/components/assistant/conversation/CompactionMessage.tsx
 msgid "Context compaction failed"
 msgstr "Le compactage du contexte a échoué."

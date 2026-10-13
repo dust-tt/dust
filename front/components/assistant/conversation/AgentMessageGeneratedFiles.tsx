@@ -6,12 +6,17 @@ import {
 } from "@app/types/files";
 import {
   ActionFrame,
-  Citation,
-  CitationDescription,
+  Button,
+  Card,
   CitationGrid,
-  CitationTitle,
   cn,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
+  LayoutRight,
 } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -102,34 +107,70 @@ export function AgentMessageInteractiveContentGeneratedFiles({
           : null;
 
         return (
-          <Citation
+          <Card
             key={fileId}
-            //tooltip={file.title}
+            variant="secondary"
+            size="sm"
             onClick={disabled ? undefined : handleClick}
-            className={disabled ? "bg-background" : "bg-primary-50"}
             disabled={disabled}
+            className="flex-row items-stretch p-0"
           >
-            <div className="flex flex-row items-center">
-              <CitationTitle className={disabled ? "text-primary-muted" : ""}>
-                {file.title}
-              </CitationTitle>
+            <div
+              className={cn(
+                "flex w-14 shrink-0 items-center justify-center",
+                disabled
+                  ? "bg-muted-background text-primary-muted"
+                  : "bg-highlight-50 text-highlight"
+              )}
+            >
+              <Icon visual={ActionFrame} size="md" />
             </div>
-            <CitationDescription>
-              <div className="flow-row flex items-center gap-2">
-                {description && (
-                  <p
-                    className={cn(
-                      "flex items-center gap-1 text-sm",
-                      disabled ? "text-primary-muted" : "text-muted-foreground"
-                    )}
-                  >
-                    <Icon visual={ActionFrame} size="xs" />
-                    {description}
-                  </p>
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2.5">
+              <span
+                className={cn(
+                  "heading-sm truncate",
+                  disabled && "text-primary-muted"
                 )}
+              >
+                {file.title}
+              </span>
+              {description && (
+                <span
+                  className={cn(
+                    "truncate text-sm",
+                    disabled ? "text-primary-muted" : "text-muted-foreground"
+                  )}
+                >
+                  {description}
+                </span>
+              )}
+            </div>
+            {!disabled && (
+              <div
+                className="flex shrink-0 items-center pr-2"
+                // React events bubble through the dropdown portal: keep them off the card.
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost-secondary"
+                      size="xs"
+                      icon={DotsHorizontal}
+                      aria-label={t`More Frame actions`}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      label={t`Open`}
+                      icon={LayoutRight}
+                      onClick={handleClick}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
-            </CitationDescription>
-          </Citation>
+            )}
+          </Card>
         );
       })}
     </CitationGrid>
