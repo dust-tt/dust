@@ -1,0 +1,24 @@
+[package]
+name = "dfs-mount"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+dfs-protocol = { path = "../protocol" }
+libc = "0.2"
+prost = "0.14"
+tonic = "0.14"
+
+[dev-dependencies]
+anyhow = "1"
+dfs-api = { path = "../server" }
+foundationdb = { version = "=0.11.0", default-features = false, features = ["fdb-7_3", "embedded-fdb-include"] }
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+expect_used = "deny"
+unwrap_used = "deny"

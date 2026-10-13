@@ -1,0 +1,15 @@
+@cc [owner:fontanierh,label:security] server-decides-access
+The dfs server decides what the session can read and write. Everything the mount returns about a
+dfs object MUST come from a server reply to this mount's session. The mount MAY refuse an operation
+early, but MUST NOT allow one the server refused.
+
+@cc [owner:fontanierh,label:security] session-key-secret
+The session key MUST NOT appear in logs, error messages or `Debug` output.
+
+@cc [owner:fontanierh,label:architecture] portable-library
+This library MUST NOT depend on FUSE or on Linux-only APIs, so it builds and runs its unit tests on
+macOS. Only the FUSE adapter, kept outside this library, may use them.
+
+@cc [owner:fontanierh,label:architecture] remote-only
+In the library, only `remote.rs` sends requests to the dfs server. Other modules go through
+`Remote`.
