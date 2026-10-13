@@ -73,14 +73,7 @@ export abstract class PlatformService {
   abstract captureVisibleTab(): Promise<string>;
 
   async clearStoredData(): Promise<void> {
-    await Promise.all([
-      this.storage.delete("accessToken"),
-      this.storage.delete("expiresAt"),
-      this.storage.delete("refreshToken"),
-      this.storage.delete("cellInfo"),
-      this.storage.delete("regionInfo"),
-      this.storage.delete("selectedWorkspace"),
-    ]);
+    await this.auth.clearStoredData();
   }
 }
 
