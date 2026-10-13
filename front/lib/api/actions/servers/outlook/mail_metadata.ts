@@ -159,7 +159,7 @@ export const OUTLOOK_TOOLS_METADATA = [
   {
     name: "get_attachments",
     description:
-      "Get all attachments from an Outlook message at once. Only the first page of each attachment's text content is returned; use get_attachment with offset to read the rest. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
+      "Get all attachments from an Outlook message at once. Only the first page of each attachment's text content is returned; use get_attachment with offset to read the rest. Attachments larger than 4MB are skipped and must be read with get_attachment. For better control over large attachments, prefer list_attachments followed by individual get_attachment calls instead.",
     schema: {
       messageId: z
         .string()

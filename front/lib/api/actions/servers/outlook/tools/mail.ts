@@ -226,6 +226,10 @@ type OutlookFileAttachment = z.infer<typeof OutlookFileAttachmentSchema>;
 
 const ATTACHMENT_METADATA_SELECT = "$select=id,name,contentType,size,isInline";
 
+// Matches the inline `contentBytes` cutoff of the Graph list call that `get_attachments` used to
+// rely on, so returning every attachment at once holds no more memory than before.
+const GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES = 4 * 1024 * 1024;
+
 async function readFileAttachment({
   basePath,
   encodedMessageId,
@@ -874,6 +878,11 @@ function validateMailParams({
  * attachment content starting at `offset`, and `get_attachments` at most
  * `FILE_CONTENT_PAGE_LENGTH` characters per attachment.
  */
+/**
+ * @cc [owner:tdraier,label:mcp;performance] get-attachments-size-capped
+ * `get_attachments` MUST NOT download an attachment whose Graph `size` exceeds
+ * `GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES`.
+ */
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
     { search, folderName, top = 10, skip = 0, select, sharedMailboxAddress },
@@ -1357,6 +1366,13 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         error?: string;
       }> => {
         const filename = attachment.name || "unnamed";
+        if (attachment.size > GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES) {
+          return {
+            filename,
+            content: [],
+            error: `Attachment is larger than ${GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB, use get_attachment with attachmentId "${attachment.id}" to read it`,
+          };
+        }
         const result = await readFileAttachment({
           basePath,
           encodedMessageId,
