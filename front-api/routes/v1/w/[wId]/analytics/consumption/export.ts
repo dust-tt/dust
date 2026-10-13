@@ -141,8 +141,8 @@ const app = publicApiApp();
  *         description: Invalid request body (missing fields, invalid dates, range exceeds 30 days)
  *       403:
  *         description: |
- *           The workspace does not have access to the consumption export API, or the API key has no
- *           admin scope and the export is not restricted to groups whose analytics it can read.
+ *           The API key has no admin scope and the export is not restricted to groups whose
+ *           analytics it can read.
  *       429:
  *         description: Rate limit exceeded (60 requests per minute per workspace)
  *       500:
@@ -162,17 +162,6 @@ app.post(
           type: "workspace_auth_error",
           message:
             "Workspace analytics export requires API key authentication.",
-        },
-      });
-    }
-
-    if (!(await auth.hasFeatureFlag("consumption_export_api"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "feature_flag_not_found",
-          message:
-            "The workspace does not have access to the consumption export API.",
         },
       });
     }

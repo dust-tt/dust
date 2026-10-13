@@ -409,7 +409,7 @@
             "description": "Invalid request body (missing fields, invalid dates, range exceeds 30 days)"
           },
           "403": {
-            "description": "The workspace does not have access to the consumption export API, or the API key has no\nadmin scope and the export is not restricted to groups whose analytics it can read.\n"
+            "description": "The API key has no admin scope and the export is not restricted to groups whose\nanalytics it can read.\n"
           },
           "429": {
             "description": "Rate limit exceeded (60 requests per minute per workspace)"
