@@ -434,6 +434,14 @@ describe("DfsFileSystem", () => {
     expect(await readText(fs, at("data.bin"))).toBe("0123456789");
   });
 
+  it("rejects an invalid destination before resolving the source", async () => {
+    const { fs, at } = setup();
+
+    const res = await fs.copy(at("missing.txt"), "not-a-dfs-uri");
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+  });
+
   it("copies a file without MIME type, clearing the destination's", async () => {
     const { fs, at } = setup();
     await fs.write(at("src.bin"), "src", { mimeType: "" });
@@ -470,5 +478,11 @@ describe("DfsFileSystem", () => {
       expect.objectContaining({ value: false })
     );
     expect(await readText(fs, at("dir/renamed.txt"))).toBe("a");
+
+    const replaced = await fs.move(at("b.txt"), at("dir/renamed.txt"), {
+      replace: true,
+    });
+    expect(replaced.isOk()).toBe(true);
+    expect(await readText(fs, at("dir/renamed.txt"))).toBe("b");
   });
 });

@@ -851,6 +851,11 @@ export class DfsFileSystem {
     src: string,
     dest: string
   ): Promise<Result<DfsResolvedObject, DfsError>> {
+    // See `paths-stay-under-anchor`: `src` is parsed by `resolveFile`.
+    const parsedDest = parseDfsUri(dest);
+    if (parsedDest.isErr()) {
+      return parsedDest;
+    }
     const file = await this.resolveFile(src);
     if (file.isErr()) {
       return file;
