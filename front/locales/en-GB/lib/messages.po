@@ -874,6 +874,134 @@ msgid "Attachment not found."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
+msgid "This sandbox token can't access this endpoint."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't a Frame."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame isn't shareable, so it can't be exported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be moved to a Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't match the branding asset."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame text couldn't be updated."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file is used by a skill and can't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only files from a conversation can be saved to a Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame can't be shared this way."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame uses files that can't be verified."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame must be created or updated by a user signed in to Dust."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A file or folder with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only folders can be downloaded as a ZIP."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This folder is too large to download."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The archive is too large."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This archive is invalid or contains unsafe paths."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file changed since you opened it. Reload it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't support conditional updates."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This comment can't be saved as written."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Comments in this file changed. Reload the file before saving."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame's manifest is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only the user who started this function call can do this."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This domain isn't valid. Use a domain like api.github.com or *.github.com."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The environment variable name or value isn't valid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Environment variable not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An HTTPS secret can't be turned back into a config variable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "File names can't be empty or contain slashes."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file was already uploaded or its upload failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The upload has expired. Upload the file again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be downloaded from its URL."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This URL can't be used to download a file."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr ""
 

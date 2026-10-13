@@ -186,7 +186,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_name_invalid",
           message:
             "fileName is required and must be a non-empty string without path separators.",
         },

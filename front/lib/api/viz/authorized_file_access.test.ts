@@ -204,7 +204,7 @@ describe("computeAuthorizedFileAccess", () => {
     });
 
     assert(result.isErr());
-    expect(result.error.code).toBe("invalid_request_error");
+    expect(result.error.code).toBe("frame_user_required");
     expect(result.error.message).toBe(
       "Frame file access requires a user signed in to Dust. Create or update this Frame in the Dust app."
     );
@@ -963,7 +963,7 @@ describe("ensureAuthorizedFileAccessForShare", () => {
     );
 
     assert(result.isErr());
-    expect(result.error.code).toBe("invalid_request_error");
+    expect(result.error.code).toBe("frame_user_required");
     expect(result.error.message).toContain(
       "Create or update this Frame in the Dust app."
     );

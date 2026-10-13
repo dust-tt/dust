@@ -78,7 +78,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "file_not_frame",
         message: "Only Frame files support inline text editing.",
       },
     });
@@ -282,7 +282,7 @@ describe("POST /api/w/:wId/files/:fileId/edit-text", () => {
 
     expect(response.status).toBe(400);
     const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.type).toBe("frame_text_edit_failed");
     expect(body.error.message).toContain("no published bundle");
   });
 

@@ -639,7 +639,7 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "file_referenced_by_skill",
         message:
           "Files referenced by a skill or its version history cannot be deleted.",
       },

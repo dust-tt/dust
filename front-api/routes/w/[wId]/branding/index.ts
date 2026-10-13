@@ -129,7 +129,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "branding_asset_mismatch",
           message: "File does not match the requested branding asset.",
         },
       });

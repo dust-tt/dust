@@ -494,7 +494,11 @@ export type ProcessAndStoreFileError = Omit<DustError, "code"> & {
     | "invalid_request_error"
     | "file_too_large"
     | "file_type_not_supported"
-    | "file_is_empty";
+    | "file_is_empty"
+    | "file_already_uploaded"
+    | "file_upload_expired"
+    | "file_url_fetch_failed"
+    | "file_url_not_allowed";
 };
 
 /**
@@ -529,7 +533,7 @@ export async function processAndStoreFile(
   if (file.isReady || file.isFailed) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_already_uploaded",
       message: "The file has already been uploaded or the upload has failed.",
     });
   }
@@ -538,7 +542,7 @@ export async function processAndStoreFile(
     await file.markAsFailed();
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_upload_expired",
       message: "File upload has expired. Create a new file.",
     });
   }

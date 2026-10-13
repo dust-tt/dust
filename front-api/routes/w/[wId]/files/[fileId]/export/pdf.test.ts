@@ -89,7 +89,7 @@ describe("POST /api/w/:wId/files/:fileId/export/pdf", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "file_not_frame",
         message: "Only Frame files can be exported as PDF.",
       },
     });

@@ -232,7 +232,7 @@ app.post(
           return apiError(ctx, {
             status_code: 403,
             api_error: {
-              type: "invalid_request_error",
+              type: "sandbox_function_invocation_initiator_required",
               message: result.error.message,
             },
           });
@@ -300,7 +300,7 @@ app.post(
           return apiError(ctx, {
             status_code: 403,
             api_error: {
-              type: "invalid_request_error",
+              type: "sandbox_function_invocation_initiator_required",
               message: result.error.message,
             },
           });

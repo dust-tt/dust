@@ -65,7 +65,10 @@ app.post(
       return apiError(ctx, {
         status_code: result.error.code === "unauthorized" ? 403 : 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            result.error.code === "unauthorized"
+              ? "frame_sharing_not_allowed"
+              : "invalid_request_error",
           message: result.error.message,
         },
       });
@@ -219,7 +222,7 @@ async function fetchShareableFile(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "file_not_frame",
         message: "Only Frame files support sharing grants.",
       },
     });
