@@ -722,12 +722,6 @@ function buildMessageConsumptionAllocationForVersion<
  * status MUST NOT make the attribution incomplete: that completion happened in an execution that
  * was never billed. Without `hasUnbilledExecution`, it MUST make the attribution incomplete.
  */
-/**
- * @cc [owner:sfriquet,label:product;backend] unavailable-usage-carries-its-tools
- * `usages` MUST include the message's `unavailable` run usages. Such a usage MUST NOT be required
- * to have model items and MUST NOT count in the LLM bill, but every action its run emitted MUST
- * still be required to have a tool item.
- */
 export function buildLatestMessageConsumptionAllocation<
   TUsage extends RunUsageWithRunKeyType,
 >({
