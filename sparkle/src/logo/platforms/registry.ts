@@ -1,6 +1,7 @@
 import type { ComponentType, SVGProps } from "react";
 
 import AdomikLogo from "./Adomik";
+import AhrefsLogo from "./Ahrefs";
 import Ai21Logo from "./Ai21";
 import AirbyteLogo from "./Airbyte";
 import AirtableLogo from "./Airtable";
@@ -130,6 +131,7 @@ type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 // allowlists, which inevitably drift between apps.
 export const PLATFORM_LOGOS = {
   AdomikLogo,
+  AhrefsLogo,
   Ai21Logo,
   AirbyteLogo,
   AirtableLogo,
