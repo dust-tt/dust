@@ -6,6 +6,7 @@ import {
 } from "@app/components/editor/document/DocumentComments";
 import type { DocumentImageOptions } from "@app/components/editor/document/DocumentImage";
 import { DocumentImage } from "@app/components/editor/document/DocumentImage";
+import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import { cn } from "@dust-tt/sparkle";
 import type { MessageDescriptor } from "@lingui/core";
 import { msg } from "@lingui/core/macro";
@@ -74,6 +75,15 @@ const starterKitOptions: Partial<StarterKitOptions> = {
   },
 };
 
+// TipTap builds each editor's parser from the extension's options, which every editor built from
+// the same extensions shares: setting the instance right before it does gives each its own.
+const DocumentMarkdown = Markdown.extend({
+  onBeforeCreate(event) {
+    this.options.marked = createDocumentMarked();
+    this.parent?.(event);
+  },
+});
+
 /** The schema; a live document protects comment marks without a thread and drops StarterKit's undo. */
 const buildSchemaExtensions = ({
   live,
@@ -94,7 +104,7 @@ const buildSchemaExtensions = ({
   StarterKit.configure(
     live ? { ...starterKitOptions, undoRedo: false } : starterKitOptions
   ),
-  Markdown,
+  DocumentMarkdown,
 ];
 
 export const documentExtensions = buildSchemaExtensions({ live: false });
