@@ -36,6 +36,7 @@
     "@lingui/core": "6.4.0",
     "@lingui/react": "6.4.0",
     "@novu/framework": "^2.11.1",
+    "@tiptap/extension-paragraph": "^3.31.4",
     "@tiptap/extension-table": "^3.31.4",
     "@tiptap/extensions": "^3.31.4",
     "@tiptap/y-tiptap": "^3.0.9",
