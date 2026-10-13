@@ -150,6 +150,7 @@ function renderWithSidePanel(
           setVirtuosoMsg: vi.fn(),
           virtuosoMsg: null,
           data: undefined,
+          wasAutoOpenDismissedForFileId: () => false,
         }}
       >
         <FilePreviewProvider owner={mockOwner}>{ui}</FilePreviewProvider>
@@ -254,6 +255,7 @@ describe("getFilePreviewPlugin", () => {
           setVirtuosoMsg: vi.fn(),
           virtuosoMsg: null,
           data: undefined,
+          wasAutoOpenDismissedForFileId: () => false,
         }}
       >
         <FilePreviewProvider owner={mockOwner}>

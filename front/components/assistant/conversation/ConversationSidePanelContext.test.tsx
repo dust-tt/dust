@@ -178,6 +178,32 @@ describe("ConversationSidePanelProvider history", () => {
   });
 });
 
+describe("ConversationSidePanelProvider auto-open dismiss", () => {
+  it("remembers the closed Frame fileId until the conversation changes", () => {
+    const { result, rerender } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_frame",
+      })
+    );
+    expect(result.current.wasAutoOpenDismissedForFileId("fil_frame")).toBe(
+      false
+    );
+
+    act(() => result.current.closePanel());
+    expect(result.current.wasAutoOpenDismissedForFileId("fil_frame")).toBe(
+      true
+    );
+
+    activeConversation.id = "conv_2";
+    rerender();
+    expect(result.current.wasAutoOpenDismissedForFileId("fil_frame")).toBe(
+      false
+    );
+  });
+});
+
 describe("ConversationSidePanelProvider and the URL hash", () => {
   it("adopts a deep-linked panel as the bottom of the stack", () => {
     hash.set({ spid: "files", spt: "files" });
