@@ -117,9 +117,10 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
   `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
 
-## Slack bot (`connectors`)
+## Slack and Teams bots (`connectors`)
 
-The Slack bot (`connectors/src/connectors/slack`) has its own catalog in
+The Slack bot (`connectors/src/connectors/slack`) and the Teams bot
+(`connectors/src/api/webhooks/webhook_teams.ts` and `teams/`) share one catalog in
 `connectors/locales/{locale}/messages.po`, extracted by the same `lingui.config.ts`. Connectors
 runs under `tsx`, which cannot compile Lingui macros, so the rules differ from front:
 
@@ -135,7 +136,7 @@ runs under `tsx`, which cannot compile Lingui macros, so the rules differ from f
 - Same never-translate rules as front: text sent to the Dust API or to models (content fragments,
   message content), logs, agent-authored content.
 
-See `connectors/src/connectors/slack/CONTRACTS`.
+See `connectors/src/connectors/slack/CONTRACTS` and `connectors/src/api/webhooks/CONTRACTS`.
 
 ## Workflow
 

@@ -68,10 +68,15 @@ export default defineConfig({
       ],
       exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.test.tsx"],
     },
-    // The Slack bot has a single catalog of its own: see `connectors/src/connectors/slack/CONTRACTS`.
+    // The Slack and Teams bots share a single catalog: see `connectors/src/connectors/slack/CONTRACTS`
+    // and `connectors/src/api/webhooks/CONTRACTS`.
     {
       path: "<rootDir>/connectors/locales/{locale}/messages",
-      include: ["<rootDir>/connectors/src/connectors/slack"],
+      include: [
+        "<rootDir>/connectors/src/connectors/slack",
+        "<rootDir>/connectors/src/api/webhooks/teams",
+        "<rootDir>/connectors/src/api/webhooks/webhook_teams.ts",
+      ],
       exclude: ["**/node_modules/**", "**/*.test.ts"],
     },
   ],

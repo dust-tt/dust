@@ -3,6 +3,7 @@ import { convertUrlsToMarkdown } from "@connectors/lib/bot/citations";
 import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import type { MentionMatch } from "@connectors/lib/bot/mentions";
 import type { LightAgentConfigurationType } from "@dust-tt/client";
+import type { I18n } from "@lingui/core";
 import type { AdaptiveCard } from "@microsoft/teams-ai";
 import type { Activity } from "botbuilder";
 
@@ -12,6 +13,7 @@ const DUST_URL = "https://dust.tt/home";
  * Creates an Adaptive Card for Teams with the AI response, conversation link, and agent selector
  */
 export function createResponseAdaptiveCard({
+  i18n,
   response,
   mentionedAgent,
   conversationUrl,
@@ -21,6 +23,7 @@ export function createResponseAdaptiveCard({
   agentConfigurations,
   originalMessage,
 }: {
+  i18n: I18n;
   response: string;
   mentionedAgent: MentionMatch;
   conversationUrl: string | null;
@@ -120,6 +123,7 @@ export function createResponseAdaptiveCard({
       {
         type: "TextBlock",
         text: createFooterText({
+          i18n,
           agentName: mentionedAgent.agentName,
           conversationUrl,
           workspaceId,
@@ -149,7 +153,7 @@ export function createResponseAdaptiveCard({
               title: agent.name,
               value: agent.name,
             })),
-            placeholder: "Select an agent",
+            placeholder: i18n._("Select an agent"),
           },
           {
             type: "Input.Text",
@@ -168,7 +172,7 @@ export function createResponseAdaptiveCard({
             actions: [
               {
                 type: "Action.Submit",
-                title: "Resend",
+                title: i18n._("Resend"),
                 iconUrl: "icon:Bot",
                 data: {
                   verb: "ask_agent",
@@ -235,7 +239,7 @@ export function createStreamingAdaptiveCard({
 /**
  * Creates a simple adaptive card for thinking/loading state
  */
-export function createThinkingAdaptiveCard(): Partial<Activity> {
+export function createThinkingAdaptiveCard(i18n: I18n): Partial<Activity> {
   return {
     type: "message",
     attachments: [
@@ -248,7 +252,7 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
           body: [
             {
               type: "TextBlock",
-              text: `Thinking...`,
+              text: i18n._("Thinking..."),
               wrap: true,
               color: "Accent",
             },
@@ -260,9 +264,11 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
 }
 
 export function createPersonalAuthenticationAdaptiveCard({
+  i18n,
   conversationUrl,
   workspaceId,
 }: {
+  i18n: I18n;
   conversationUrl: string | null;
   workspaceId: string;
 }): Partial<Activity> {
@@ -278,11 +284,14 @@ export function createPersonalAuthenticationAdaptiveCard({
           body: [
             {
               type: "TextBlock",
-              text:
-                "The agent took an action that requires personal authentication. " +
-                (conversationUrl
-                  ? `Please go to [the conversation](${conversationUrl}) to authenticate.`
-                  : ""),
+              text: conversationUrl
+                ? i18n._(
+                    "The agent took an action that requires personal authentication. Please go to [the conversation]({conversationUrl}) to authenticate.",
+                    { conversationUrl }
+                  )
+                : i18n._(
+                    "The agent took an action that requires personal authentication."
+                  ),
               wrap: true,
             },
             {
@@ -293,6 +302,7 @@ export function createPersonalAuthenticationAdaptiveCard({
                 {
                   type: "TextBlock",
                   text: createFooterText({
+                    i18n,
                     workspaceId,
                     conversationUrl,
                     isError: true,
@@ -314,10 +324,12 @@ export function createPersonalAuthenticationAdaptiveCard({
  * Creates an error adaptive card
  */
 export function createErrorAdaptiveCard({
+  i18n,
   error,
   workspaceId,
   conversationUrl = null,
 }: {
+  i18n: I18n;
   error: string;
   workspaceId: string;
   conversationUrl?: string | null;
@@ -346,6 +358,7 @@ export function createErrorAdaptiveCard({
                 {
                   type: "TextBlock",
                   text: createFooterText({
+                    i18n,
                     workspaceId,
                     conversationUrl,
                     isError: true,
@@ -366,15 +379,18 @@ export function createErrorAdaptiveCard({
 /**
  * Creates the basic Adaptive Card for tool execution approval for everyone (read-only, no actions)
  */
-export function createBasicToolApprovalAdaptiveCard(data: {
-  toolName: string;
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-  workspaceId: string;
-  microsoftBotMessageId: number;
-  userAadObjectId: string;
-}): Partial<Activity> {
+export function createBasicToolApprovalAdaptiveCard(
+  i18n: I18n,
+  data: {
+    toolName: string;
+    conversationId: string;
+    messageId: string;
+    actionId: string;
+    workspaceId: string;
+    microsoftBotMessageId: number;
+    userAadObjectId: string;
+  }
+): Partial<Activity> {
   const basicCard: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -382,7 +398,7 @@ export function createBasicToolApprovalAdaptiveCard(data: {
     refresh: {
       action: {
         type: "Action.Execute",
-        title: "Tool execution approval",
+        title: i18n._("Tool execution approval"),
         verb: "toolExecutionApproval",
         data,
       },
@@ -391,7 +407,7 @@ export function createBasicToolApprovalAdaptiveCard(data: {
     body: [
       {
         type: "TextBlock",
-        text: "Tool validation Required",
+        text: i18n._("Tool validation required"),
         weight: "Bolder",
         size: "Large",
         spacing: "Medium",
@@ -402,13 +418,16 @@ export function createBasicToolApprovalAdaptiveCard(data: {
         items: [
           {
             type: "TextBlock",
-            text: `The agent is requesting permission to use tool **${data.toolName}**`,
+            text: i18n._(
+              "The agent is requesting permission to use tool **{toolName}**",
+              { toolName: data.toolName }
+            ),
             wrap: true,
             spacing: "Small",
           },
           {
             type: "TextBlock",
-            text: "_Waiting for user approval..._",
+            text: i18n._("_Waiting for user approval..._"),
             wrap: true,
             spacing: "Small",
             size: "Small",
@@ -436,15 +455,18 @@ export function createBasicToolApprovalAdaptiveCard(data: {
 /**
  * Creates an interactive Adaptive Card for tool execution approval for the original sender (with buttons)
  */
-export function createInteractiveToolApprovalAdaptiveCard(data: {
-  agentName: string;
-  toolName: string;
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-  workspaceId: string;
-  microsoftBotMessageId: number;
-}): AdaptiveCard {
+export function createInteractiveToolApprovalAdaptiveCard(
+  i18n: I18n,
+  data: {
+    agentName: string;
+    toolName: string;
+    conversationId: string;
+    messageId: string;
+    actionId: string;
+    workspaceId: string;
+    microsoftBotMessageId: number;
+  }
+): AdaptiveCard {
   return {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -452,7 +474,7 @@ export function createInteractiveToolApprovalAdaptiveCard(data: {
     body: [
       {
         type: "TextBlock",
-        text: "Tool validation Required",
+        text: i18n._("Tool validation required"),
         weight: "Bolder",
         size: "Large",
         spacing: "Medium",
@@ -463,7 +485,10 @@ export function createInteractiveToolApprovalAdaptiveCard(data: {
         items: [
           {
             type: "TextBlock",
-            text: `Agent **@${data.agentName}** is requesting permission to use tool **${data.toolName}**`,
+            text: i18n._(
+              "Agent **@{agentName}** is requesting permission to use tool **{toolName}**",
+              { agentName: data.agentName, toolName: data.toolName }
+            ),
             wrap: true,
             spacing: "Small",
           },
@@ -473,13 +498,13 @@ export function createInteractiveToolApprovalAdaptiveCard(data: {
     actions: [
       {
         type: "Action.Execute",
-        title: "Approve",
+        title: i18n._("Approve"),
         verb: "approve_tool",
         data,
       },
       {
         type: "Action.Execute",
-        title: "Reject",
+        title: i18n._("Reject"),
         verb: "reject_tool",
         data,
       },
@@ -490,7 +515,7 @@ export function createInteractiveToolApprovalAdaptiveCard(data: {
 /**
  * Creates a welcome adaptive card for new installations
  */
-export function createWelcomeAdaptiveCard(): Partial<Activity> {
+export function createWelcomeAdaptiveCard(i18n: I18n): Partial<Activity> {
   const card: AdaptiveCard = {
     type: "AdaptiveCard",
     $schema: "http://adaptivecards.io/schemas/adaptive-card.json",
@@ -501,7 +526,7 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
         items: [
           {
             type: "TextBlock",
-            text: "🎉 Welcome to Dust!",
+            text: i18n._("🎉 Welcome to Dust!"),
             weight: "Bolder",
             size: "Large",
             spacing: "Medium",
@@ -509,7 +534,7 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
           },
           {
             type: "TextBlock",
-            text: "Thank you for installing Dust in Microsoft Teams!",
+            text: i18n._("Thank you for installing Dust in Microsoft Teams!"),
             wrap: true,
             spacing: "Medium",
             horizontalAlignment: "Center",
@@ -523,31 +548,31 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
         items: [
           {
             type: "TextBlock",
-            text: "**Getting Started**",
+            text: i18n._("**Getting Started**"),
             weight: "Bolder",
             spacing: "Medium",
           },
           {
             type: "TextBlock",
-            text: "To start using Dust in Teams, make sure to:",
+            text: i18n._("To start using Dust in Teams, make sure to:"),
             wrap: true,
             spacing: "Small",
           },
           {
             type: "TextBlock",
-            text: "• Enable the integration in your Workspace settings",
+            text: i18n._("• Enable the integration in your Workspace settings"),
             wrap: true,
             spacing: "Small",
           },
           {
             type: "TextBlock",
-            text: "• Configure your agents to work with Teams",
+            text: i18n._("• Configure your agents to work with Teams"),
             wrap: true,
             spacing: "Small",
           },
           {
             type: "TextBlock",
-            text: "• Start chatting by mentioning an agent",
+            text: i18n._("• Start chatting by mentioning an agent"),
             wrap: true,
             spacing: "Small",
           },
@@ -560,14 +585,18 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
         items: [
           {
             type: "TextBlock",
-            text: "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams.",
+            text: i18n._(
+              "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams."
+            ),
             wrap: true,
             size: "Small",
             spacing: "Small",
           },
           {
             type: "TextBlock",
-            text: "Need help? Visit [dust.tt](https://dust.tt) for support.",
+            text: i18n._(
+              "Need help? Visit [dust.tt](https://dust.tt) for support."
+            ),
             wrap: true,
             size: "Small",
             spacing: "Small",
@@ -590,11 +619,13 @@ export function createWelcomeAdaptiveCard(): Partial<Activity> {
 }
 
 function createFooterText({
+  i18n,
   agentName,
   conversationUrl,
   workspaceId,
   isError = false,
 }: {
+  i18n: I18n;
   agentName?: string;
   conversationUrl?: string | null;
   workspaceId: string;
@@ -605,15 +636,15 @@ function createFooterText({
   let attribution = "";
   if (agentName) {
     if (isError) {
-      attribution = `**${agentName}** encountered an error | `;
+      attribution = `${i18n._("**{agentName}** encountered an error", { agentName })} | `;
     } else {
-      attribution = `Answered by **${agentName}** | `;
+      attribution = `${i18n._("Answered by **{agentName}**", { agentName })} | `;
     }
   }
 
-  const baseLinks = `[Browse agents](${agentsUrl}) | [Learn more](${DUST_URL})`;
+  const baseLinks = `[${i18n._("Browse agents")}](${agentsUrl}) | [${i18n._("Learn more")}](${DUST_URL})`;
 
   return conversationUrl
-    ? `${attribution}[Go to full conversation](${conversationUrl}) | ${baseLinks}`
+    ? `${attribution}[${i18n._("Go to full conversation")}](${conversationUrl}) | ${baseLinks}`
     : `${attribution}${baseLinks}`;
 }

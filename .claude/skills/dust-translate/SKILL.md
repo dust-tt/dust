@@ -1,6 +1,6 @@
 ---
 name: dust-translate
-description: Translate or fix Dust product UI, browser extension and Slack bot translations in the Lingui catalogs (`front/locales/*/**/messages.po`, `sparkle/src/locales/*/messages.po`, `extension/locales/*/messages.po` and `connectors/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
+description: Translate or fix Dust product UI, browser extension, Slack bot and Teams bot translations in the Lingui catalogs (`front/locales/*/**/messages.po`, `sparkle/src/locales/*/messages.po`, `extension/locales/*/messages.po` and `connectors/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
 ---
 
 # Translating the product UI
@@ -14,9 +14,10 @@ Lingui `context` in the code instead (see the `dust-i18n` skill).
 The browser extension has a single catalog per locale, `extension/locales/{locale}/messages.po`,
 with the same rules as front's catalogs.
 
-The Slack bot has a single catalog per locale, `connectors/locales/{locale}/messages.po`. Its
-`msgid` is the English text itself: keep the Slack `mrkdwn` (`*bold*`, `_italic_`, `` `code` ``,
-`<url|label>`) around the translated text.
+The Slack and Teams bots share a single catalog per locale,
+`connectors/locales/{locale}/messages.po`. Its `msgid` is the English text itself: keep the Slack
+`mrkdwn` (`*bold*`, `_italic_`, `` `code` ``, `<url|label>`) and the Teams Markdown (`**bold**`,
+`[label](url)`) around the translated text.
 
 `en-US` is the source locale: its catalogs are generated and never translated by hand. Every other
 catalog must have a non-empty `msgstr` for every message.
