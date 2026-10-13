@@ -275,7 +275,7 @@ export function FavoritePlatformsStep({
       <p className="text-muted-foreground">
         <Trans>
           Dust works at full potential when it can play with your knowledge and
-          help with your tools. Do you recognise some of these?
+          help with your tools. Do you recognize some of these?
         </Trans>
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">

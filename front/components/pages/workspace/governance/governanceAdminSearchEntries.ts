@@ -110,7 +110,7 @@ export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     G.features,
     [
       [msg`Default agent`, msg`workspace default agent picker`],
-      [msg`Language`, msg`locale localisation`],
+      [msg`Language`, msg`locale localization`],
       [msg`Voice transcription`, msg`dictation conversations`],
       [msg`Email and Slack notifications`, msg`conversation notifications`],
       [

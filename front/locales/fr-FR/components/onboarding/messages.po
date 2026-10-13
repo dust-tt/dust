@@ -152,5 +152,5 @@ msgid "What are your favorite platforms?"
 msgstr "Quelles sont vos plateformes préférées ?"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
-msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognise some of these?"
+msgid "Dust works at full potential when it can play with your knowledge and help with your tools. Do you recognize some of these?"
 msgstr "Dust donne le meilleur de lui-même lorsqu’il peut s’appuyer sur vos connaissances et vous aider dans vos outils. Lesquelles utilisez-vous ?"

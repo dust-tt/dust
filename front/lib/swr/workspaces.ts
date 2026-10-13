@@ -792,7 +792,7 @@ export function useCreateCheckoutSession({
           sendNotification({
             type: "error",
             title: t`Checkout failed`,
-            description: t`Could not initialise the payment form. Please try again.`,
+            description: t`Could not initialize the payment form. Please try again.`,
           });
           return null;
         }

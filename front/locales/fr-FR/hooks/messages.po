@@ -304,11 +304,11 @@ msgstr "Impossible de résilier votre abonnement."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
-msgid "Subscription cancelled"
+msgid "Subscription canceled"
 msgstr "Abonnement résilié"
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
-msgid "Your subscription has been cancelled."
+msgid "Your subscription has been canceled."
 msgstr "Votre abonnement a été résilié."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts

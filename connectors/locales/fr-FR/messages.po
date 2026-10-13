@@ -332,7 +332,7 @@ msgstr "Avis et choix de l’agent"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/stream_conversation_handler.ts
-msgid "Message generation was cancelled."
+msgid "Message generation was canceled."
 msgstr "La génération du message a été annulée."
 
 #. js-lingui-explicit-id

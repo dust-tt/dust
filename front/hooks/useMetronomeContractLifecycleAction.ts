@@ -92,8 +92,8 @@ export function useCancelMetronomeContract({
     action: "cancel",
     errorTitle: t`Cancellation failed`,
     errorDescription: t`Failed to cancel your subscription.`,
-    successTitle: t`Subscription cancelled`,
-    successDescription: t`Your subscription has been cancelled.`,
+    successTitle: t`Subscription canceled`,
+    successDescription: t`Your subscription has been canceled.`,
   });
 
   return {
