@@ -34,7 +34,7 @@ export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
 
   return (
     <>
-      <div className="heading-base text-foreground">
+      <div className="heading-base flex items-center gap-1 text-foreground">
         <Trans>Models tier</Trans>
         <ModelTiersInfoButton />
       </div>
