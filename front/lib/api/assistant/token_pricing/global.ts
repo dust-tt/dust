@@ -538,6 +538,14 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.75,
     cache_read_input_tokens: 0.075,
   },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-10-13): promotional
+  // pricing through 2026-11-30; changes to $4/$20/$0.20 on 2026-12-01. No
+  // long-context tier.
+  "gemini-4-argon": {
+    input: 2,
+    output: 10,
+    cache_read_input_tokens: 0.1,
+  },
   "gemini-2.5-flash": {
     input: 0.15,
     output: 0.6,

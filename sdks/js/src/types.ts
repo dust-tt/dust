@@ -117,6 +117,7 @@ export type KnownModelLLMId =
   | "gemini-3.6-flash"
   | "gemini-3.7-flash"
   | "gemini-3.8-flash"
+  | "gemini-4-argon"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks

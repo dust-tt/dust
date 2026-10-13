@@ -481,6 +481,11 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "premium",
   },
+  "gemini-4-argon": {
+    low: "premium",
+    medium: "premium",
+    high: "premium",
+  },
   "deepseek-chat": {
     none: "cost_efficient",
   },
