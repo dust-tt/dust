@@ -7,7 +7,7 @@ export function WithDustGoogleGeminiThreeDotOneProConfig<
   abstract class DustGoogleGeminiThreeDotOnePro extends Base {
     static readonly displayName = "Gemini 3.1 Pro (Preview)";
     static readonly description =
-      "Google's latest powerful model with enhanced reasoning (1m context).";
+      "Google's powerful model with enhanced reasoning (1m context).";
     static readonly byok = true;
 
     // Nest the legacy model config under a single `modelConfig` static (see
