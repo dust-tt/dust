@@ -5,6 +5,7 @@ export type DustErrorCode =
   | "limit_reached"
   | "connection_not_found"
   | "file_not_found"
+  | "audio_transcription_unavailable"
   | "unauthorized"
   | "agent_loop_already_running"
   | "compaction_already_running"

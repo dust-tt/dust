@@ -1926,10 +1926,7 @@ export async function postNewContentFragment(
   cf: ContentFragmentInputWithFileIdType | ContentFragmentInputWithContentNode,
   context: ContentFragmentContextType | null
 ): Promise<Result<ContentFragmentType, ContentFragmentError>> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Invalid auth for conversation.");
-  }
+  const owner = auth.getNonNullableWorkspace();
   if (
     (await ConversationResource.canAccess(auth, conversation.sId)) !== "allowed"
   ) {
@@ -2050,7 +2047,7 @@ export async function postNewContentFragment(
   if (upsertAttachmentRes.isErr()) {
     return new Err(
       new ContentFragmentError(
-        "attachment_failed",
+        "audio_transcription_unavailable",
         upsertAttachmentRes.error.message
       )
     );

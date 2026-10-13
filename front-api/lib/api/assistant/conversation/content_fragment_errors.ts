@@ -4,7 +4,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Maps a `ContentFragmentError` from `postNewContentFragment` to the API error returned by the
- * private conversation routes. Every failure is a 400, except a locked conversation (409).
+ * private conversation routes. Every failure is a 400, except a locked conversation (409) and a
+ * failed Core search (500).
  */
 export function contentFragmentErrorToApiError(
   error: ContentFragmentError
@@ -46,6 +47,11 @@ export function contentFragmentErrorToApiError(
         status_code: 400,
         api_error: { type: "content_node_not_found", message },
       };
+    case "content_node_search_failed":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message },
+      };
     case "content_node_type_not_supported":
       return {
         status_code: 400,
@@ -61,8 +67,11 @@ export function contentFragmentErrorToApiError(
         status_code: 400,
         api_error: { type: "content_fragment_not_found", message },
       };
-    // `maybeUpsertFileAttachment` returns untyped errors, so they can't be characterised here.
-    case "attachment_failed":
+    case "audio_transcription_unavailable":
+      return {
+        status_code: 400,
+        api_error: { type: "file_type_not_supported", message },
+      };
     case "invalid_content_fragment_input":
       return {
         status_code: 400,

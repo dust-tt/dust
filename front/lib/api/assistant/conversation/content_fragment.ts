@@ -55,17 +55,18 @@ export type ContentFragmentErrorCode =
   | "file_not_ready"
   | "data_source_view_not_found"
   | "content_node_not_found"
+  | "content_node_search_failed"
   | "content_node_type_not_supported"
   | "attachment_space_not_allowed"
   | "superseded_content_fragment_not_found"
-  | "attachment_failed"
+  | "audio_transcription_unavailable"
   | "invalid_content_fragment_input";
 
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling] content-fragment-error-has-code
  * `getContentFragmentBlob` and `postNewContentFragment` MUST report every failure as a
  * `ContentFragmentError` whose `code` names that failure, so routes can map it to a precise API
- * error type. `attachment_failed` only wraps the untyped errors of `maybeUpsertFileAttachment`.
+ * error type. Only invariant violations (e.g. an authenticator without a workspace) throw.
  */
 export class ContentFragmentError extends Error {
   constructor(
@@ -265,8 +266,8 @@ export async function getContentFragmentBlob(
       if (searchRes.isErr()) {
         return new Err(
           new ContentFragmentError(
-            "content_node_not_found",
-            `Content node not found for content fragment node id: ${cf.nodeId}`
+            "content_node_search_failed",
+            `Failed to search content node for content fragment node id: ${cf.nodeId}`
           )
         );
       }
