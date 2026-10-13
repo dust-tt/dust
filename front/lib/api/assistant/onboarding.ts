@@ -157,11 +157,12 @@ function toLanguageCode(language: string | null): string | null {
   return code && /^[a-z]{2,3}$/i.test(code) ? code : null;
 }
 
-// Onboarding prompts are written in English, so English needs no language instruction.
 function toLanguageName(language: string | null): string | null {
   const code = toLanguageCode(language);
-  return code && code.toLowerCase() !== "en" ? getLanguageName(code) : null;
+  return code ? getLanguageName(code) : null;
 }
+
+const PROMPT_LANGUAGE_NAME = "English";
 
 function buildLanguageInstruction(languageName: string): string {
   return `## LANGUAGE
@@ -225,7 +226,9 @@ function buildOnboardingPrompt(options: {
     .map((sId) => `:toolSetup[Connect ${asDisplayName(sId)}]{sId=${sId}}`)
     .join(" ");
 
-  const languageName = toLanguageName(options.language);
+  const name = toLanguageName(options.language);
+  // Onboarding prompts are written in English, so English needs no language instruction.
+  const languageName = name !== PROMPT_LANGUAGE_NAME ? name : null;
 
   const firstMessageSection = alreadyConfiguredTopTool
     ? buildFirstMessageWithConfiguredTool(alreadyConfiguredTopTool)
@@ -491,9 +494,10 @@ export function buildOnboardingFollowUpPrompt(
   const toolName = asDisplayName(toolId);
 
   const languageName = toLanguageName(language);
-  const languageInstruction = languageName
-    ? `\n${buildLanguageInstruction(languageName)}\n`
-    : "";
+  const languageInstruction =
+    languageName && languageName !== PROMPT_LANGUAGE_NAME
+      ? `\n${buildLanguageInstruction(languageName)}\n`
+      : "";
 
   return `<dust_system>
 The user just connected ${toolName}.
