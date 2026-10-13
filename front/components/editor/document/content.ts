@@ -10,6 +10,7 @@ import {
 import { COMMENT_MARK_NAME } from "@app/components/editor/document/DocumentComments";
 import { DOCUMENT_IMAGE_NODE_NAME } from "@app/components/editor/document/DocumentImage";
 import { documentExtensions } from "@app/components/editor/document/extensions";
+import { createDocumentMarked } from "@app/components/editor/document/marked_instance";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
@@ -25,6 +26,7 @@ import { Fragment } from "@tiptap/pm/model";
 export const documentSchema = getSchema(documentExtensions);
 const documentMarkdown = new MarkdownManager({
   extensions: documentExtensions,
+  marked: createDocumentMarked(),
 });
 
 /**
