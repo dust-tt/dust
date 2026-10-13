@@ -139,7 +139,7 @@ impl DirectoryResource {
         Ok(child)
     }
 
-    pub async fn lookup_child(
+    pub async fn lookup(
         &self,
         tx: &Transaction,
         name: &str,

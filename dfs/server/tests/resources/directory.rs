@@ -206,20 +206,20 @@ pub(crate) async fn child_lookup_resolves_names_within_each_directory() -> Resul
     let tx = fdb::database()?.create_trx()?;
     let root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
     let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
-    assert_eq!(root.lookup_child(&tx, "a.txt").await?, Some(root_file_id));
-    assert_eq!(root.lookup_child(&tx, "docs").await?, Some(docs_id));
-    assert_eq!(docs.lookup_child(&tx, "a.txt").await?, Some(docs_file_id));
-    assert_eq!(root.lookup_child(&tx, "missing").await?, None);
-    assert_eq!(docs.lookup_child(&tx, "docs").await?, None);
+    assert_eq!(root.lookup(&tx, "a.txt").await?, Some(root_file_id));
+    assert_eq!(root.lookup(&tx, "docs").await?, Some(docs_id));
+    assert_eq!(docs.lookup(&tx, "a.txt").await?, Some(docs_file_id));
+    assert_eq!(root.lookup(&tx, "missing").await?, None);
+    assert_eq!(docs.lookup(&tx, "docs").await?, None);
 
     for name in ["", ".", "..", "docs/a.txt", "a\0b"] {
         assert!(matches!(
-            root.lookup_child(&tx, name).await,
+            root.lookup(&tx, name).await,
             Err(storage::Error::Resource(directory::Error::InvalidName))
         ));
     }
     assert!(matches!(
-        root.lookup_child(&tx, &"é".repeat(128)).await,
+        root.lookup(&tx, &"é".repeat(128)).await,
         Err(storage::Error::Resource(directory::Error::NameTooLong))
     ));
     clear_tenant(&tenant).await
