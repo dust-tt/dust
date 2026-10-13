@@ -6,10 +6,10 @@ import {
 } from "@app/types/files";
 import {
   ActionFrame,
+  Avatar,
   Card,
   CitationGrid,
   cn,
-  Icon,
 } from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
@@ -106,19 +106,17 @@ export function AgentMessageInteractiveContentGeneratedFiles({
             size="sm"
             onClick={disabled ? undefined : handleClick}
             disabled={disabled}
-            className="flex-row items-stretch p-0"
+            className="flex-row items-center gap-3"
           >
-            <div
-              className={cn(
-                "flex w-14 shrink-0 items-center justify-center",
-                disabled
-                  ? "bg-muted-background text-primary-muted"
-                  : "bg-highlight-50 text-highlight"
-              )}
-            >
-              <Icon visual={ActionFrame} size="md" />
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-3 py-2.5">
+            <Avatar
+              size="md"
+              icon={ActionFrame}
+              backgroundColor={
+                disabled ? "bg-muted-background" : "bg-highlight-50"
+              }
+              iconColor={disabled ? "text-primary-muted" : "text-highlight"}
+            />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span
                 className={cn(
                   "heading-sm truncate",
