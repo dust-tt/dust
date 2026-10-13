@@ -4,10 +4,7 @@ use std::time::SystemTime;
 /// A FUSE inode number. dfs object IDs are 128 bits, so the mount gives each object a 64-bit number.
 pub type Ino = u64;
 
-/**
- * @cc [owner:fontanierh,label:coding] root-inode
- * Inode 1 MUST always be the mount root, as FUSE requires.
- */
+/// The inode number FUSE gives the mount root.
 pub const ROOT_INO: Ino = 1;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,10 +57,9 @@ impl Fs {
     }
 
     /**
-     * @cc [owner:fontanierh,label:product;security] anchor-lookup
+     * @cc [owner:fontanierh,label:product] anchor-lookup
      * At the root, a name that is not a link and reads as `<label>--<object-id>` or a bare object
-     * ID MUST resolve to that object, ignoring the label. The session's grants are the only access
-     * check: an object the session cannot read MUST look missing (`ENOENT`).
+     * ID MUST resolve to that object, ignoring the label.
      */
     /**
      * @cc [owner:fontanierh,label:coding] link-inodes
@@ -72,8 +68,7 @@ impl Fs {
      */
     /**
      * @cc [owner:fontanierh,label:coding] one-inode-per-object
-     * While the kernel remembers an object, every lookup of it MUST return the same inode number,
-     * and that number MUST NOT stand for anything else.
+     * While the kernel remembers an object, every lookup of it MUST return the same inode number.
      */
     /**
      * @cc [owner:fontanierh,label:coding] no-inode-reuse
@@ -91,8 +86,7 @@ impl Fs {
 
     /**
      * @cc [owner:fontanierh,label:product] synthetic-root
-     * The root MUST list only the configured links. It is read-only and stores nothing on the
-     * server. Anchors reached by `anchor-lookup` stay unlisted.
+     * The root MUST list only the configured links, and MUST be read-only.
      */
     pub async fn readdir(&self, _ino: Ino) -> Result<Vec<DirEntry>, Errno> {
         todo!()
@@ -100,9 +94,8 @@ impl Fs {
 
     /**
      * @cc [owner:fontanierh,label:coding] forget-counts
-     * Each successful `lookup` of an object adds one to its count and `forget` removes the count
-     * the kernel gives. The mount MUST drop the object when its count reaches zero, and not
-     * before. The root and the links are never dropped.
+     * The mount MUST keep an object until the kernel has forgotten every lookup of it, and MUST
+     * drop it then. The root and the links MUST never be dropped.
      */
     pub fn forget(&self, _ino: Ino, _count: u64) {
         todo!()

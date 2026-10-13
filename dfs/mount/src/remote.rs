@@ -56,8 +56,7 @@ impl Remote {
     /**
      * @cc [owner:fontanierh,label:api] stat-batch
      * `stat` MUST return exactly one result per reference, in the same order, however many
-     * references it gets. It MUST split them into requests the server accepts (256 references at
-     * most).
+     * references it gets.
      */
     pub async fn stat(&self, _references: &[ObjectRef]) -> Result<Vec<Result<Attr, Errno>>, Errno> {
         todo!()
