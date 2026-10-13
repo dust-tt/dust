@@ -98,23 +98,11 @@ export function FilePreviewDialog({
     processedContent: preview.processedContent,
   });
 
-  // The rich editor autosaves after a delay; leaving the file before that would drop the edit.
-  const { holdsNavigation } = markdown;
-  const handleOpenChange = (open: boolean) => {
-    if (!open && holdsNavigation) {
-      return;
-    }
-    onOpenChange(open);
-  };
-
   useEffect(() => {
     if (!isOpen) {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (holdsNavigation) {
-        return;
-      }
       const target = e.target as HTMLElement | null;
       if (
         target?.tagName === "INPUT" ||
@@ -133,10 +121,10 @@ export function FilePreviewDialog({
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onPrev, onNext, holdsNavigation]);
+  }, [isOpen, onPrev, onNext]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent
         size="2xl"
         height="2xl"
@@ -240,7 +228,7 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronLeft}
                 onClick={onPrev}
-                disabled={!onPrev || holdsNavigation}
+                disabled={!onPrev}
                 tooltip={t`Previous`}
               />
               <Button
@@ -248,7 +236,7 @@ export function FilePreviewDialog({
                 size="sm"
                 icon={ChevronRight}
                 onClick={onNext}
-                disabled={!onNext || holdsNavigation}
+                disabled={!onNext}
                 tooltip={t`Next`}
               />
             </div>

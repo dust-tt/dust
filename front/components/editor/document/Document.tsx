@@ -13,7 +13,6 @@ import {
   DocumentLiveAgent,
   DocumentLiveStatus,
   DocumentStatusIcon,
-  DocumentSaveError,
   DocumentStatus,
 } from "@app/components/editor/document/DocumentSaveStatus";
 import { DocumentSelectionToolbar } from "@app/components/editor/document/DocumentSelectionToolbar";
@@ -39,8 +38,6 @@ const LiveDocument = lazy(
   () => import("@app/components/editor/document/LiveDocument")
 );
 
-const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
-
 /**
  * @cc [owner:PopDaph,label:product] document-ui-fixed
  * Typography layout and formatting controls MUST remain fixed. Callers MUST NOT supply the
@@ -52,10 +49,9 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
  */
 /**
  * @cc [owner:PopDaph,label:product] document-read-only
- * When readOnly is true, or neither onSave nor live is given, Document MUST disable editing,
- * formatting controls, and save callbacks, including when these props change after mount.
- * Hosts MUST apply their permissions through readOnly. Losing editability MUST preserve unsaved
- * content and show that saving is unavailable, without offering a Retry action.
+ * When readOnly is true, or without live, Document MUST disable editing and formatting controls,
+ * including when these props change after mount. Hosts MUST apply their permissions through
+ * readOnly.
  */
 /**
  * @cc [owner:flvndvd;tdraier,label:product] document-comments-availability
@@ -70,7 +66,7 @@ const DEFAULT_AUTOSAVE_DEBOUNCE_MS = 3_000;
 /**
  * @cc [owner:tdraier,label:product] document-comments-button-placement
  * With headerControlsContainer, the comments button MUST show in it and not above the document.
- * The save and live statuses MUST show as one icon in statusContainer when given (see
+ * The live status MUST show as one icon in statusContainer when given (see
  * `document-status-icon`), and above the document otherwise. Without headerControlsContainer, the
  * comments button MUST show above the document.
  */
@@ -127,16 +123,15 @@ interface DocumentViewProps extends DocumentProps {
 
 interface DocumentShortcutTargets {
   editor: Editor | null;
-  save: () => Promise<void>;
   /** Returns whether a comment draft started. */
   startDraft: () => boolean;
   onBlockMenuKeyDown: (event: React.KeyboardEvent<HTMLElement>) => void;
 }
 
-/** Cmd/Ctrl+S saves and Cmd/Ctrl+Alt+M starts a comment; other keys go to the block menu. */
+/** Cmd/Ctrl+Alt+M starts a comment; other keys go to the block menu. */
 const handleDocumentShortcut = (
   event: React.KeyboardEvent<HTMLElement>,
-  { editor, save, startDraft, onBlockMenuKeyDown }: DocumentShortcutTargets
+  { editor, startDraft, onBlockMenuKeyDown }: DocumentShortcutTargets
 ) => {
   if (
     event.nativeEvent.isComposing ||
@@ -146,6 +141,7 @@ const handleDocumentShortcut = (
     return;
   }
 
+  // The session stores every edit; the browser's save dialog would only save the page.
   if (
     (event.metaKey || event.ctrlKey) &&
     !event.shiftKey &&
@@ -153,7 +149,6 @@ const handleDocumentShortcut = (
     event.key.toLowerCase() === "s"
   ) {
     event.preventDefault();
-    void save();
     return;
   }
 
@@ -237,7 +232,7 @@ const DocumentEditingControls = ({
     </>
   );
 
-/** The editor itself; `Document` picks the live or the file-saving mode around it. */
+/** The editor itself; `Document` binds it to the live session around it. */
 export const DocumentView = ({
   initialContent,
   className,
@@ -245,9 +240,6 @@ export const DocumentView = ({
   headerControlsContainer,
   statusContainer,
   readOnly = false,
-  autosaveDebounceMs = DEFAULT_AUTOSAVE_DEBOUNCE_MS,
-  onSave,
-  onStateChange,
   liveView,
   commentAuthor,
   renderCommentAuthorAvatar,
@@ -260,26 +252,12 @@ export const DocumentView = ({
   badge,
 }: DocumentViewProps) => {
   const live = liveEditorMode(liveView);
-  const {
-    editor,
-    editable,
-    unsupported,
-    dirty,
-    saving,
-    error,
-    save,
-    isSavable,
-  } = useDocumentEditor({
+  const { editor, editable, unsupported, isSavable } = useDocumentEditor({
     initialContent,
     readOnly: readOnly || live.waiting,
-    autosaveDebounceMs,
-    onSave,
-    onStateChange,
     live: live.binding,
     resolveImageSource,
   });
-  // Live documents are edited through the session: no file saves.
-  const canEditFile = editable && liveView === undefined;
   const blockMenu = useDocumentBlockMenu(editor, editable, embeddableFiles);
   const comments = useDocumentComments({
     editor,
@@ -297,7 +275,6 @@ export const DocumentView = ({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLElement>) =>
     handleDocumentShortcut(event, {
       editor,
-      save,
       startDraft: comments.startDraft,
       onBlockMenuKeyDown: blockMenu.onKeyDown,
     });
@@ -362,22 +339,10 @@ export const DocumentView = ({
                 syncing: liveView.syncing ?? false,
               }
             }
-            editable={canEditFile}
-            dirty={dirty}
-            saving={saving}
-            error={error}
-            onRetry={save}
           />,
           statusContainer
         )}
       <DocumentStatus
-        editable={canEditFile}
-        dirty={dirty}
-        saving={saving}
-        error={error}
-        withSaveStatus={!statusContainer}
-        autosaveDebounceMs={autosaveDebounceMs}
-        onRetry={save}
         controls={showControls && !headerControlsContainer && controls}
         badge={badge}
       >
@@ -411,12 +376,6 @@ export const DocumentView = ({
           comments.unresolved.length > 0 && "pr-10"
         )}
       >
-        <DocumentSaveError
-          editable={canEditFile}
-          dirty={dirty}
-          saving={saving}
-          error={error}
-        />
         {editable && (
           <DocumentEditingControls
             editor={editor}

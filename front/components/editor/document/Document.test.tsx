@@ -606,13 +606,13 @@ describe("Document comments", () => {
     ).toBeDefined();
   });
 
-  it("shows the save status as one icon in the host's status container", async () => {
+  it("shows the live status as one icon in the host's status container", async () => {
     const container = document.createElement("span");
     document.body.appendChild(container);
     render(
-      <Document
+      <DocumentView
         initialContent={SOURCE}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        liveView={{ status: "live", binding: null }}
         statusContainer={container}
         renderCommentBody={(body) => <p>{body}</p>}
         renderCommentAuthorAvatar={() => null}
@@ -654,13 +654,13 @@ describe("Document comments", () => {
     container.remove();
   });
 
-  it("keeps the save status above the document when the comments button shows in the host's container", async () => {
+  it("keeps the live status above the document when the comments button shows in the host's container", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const { container: documentRoot } = render(
-      <Document
+      <DocumentView
         initialContent={SOURCE}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        liveView={{ status: "live", binding: null }}
         headerControlsContainer={container}
         resolveImageSource={NO_IMAGE_SOURCE}
         renderCommentBody={(body) => <p>{body}</p>}
@@ -669,7 +669,7 @@ describe("Document comments", () => {
     );
 
     const status = await within(documentRoot).findByRole("status");
-    expect(status.textContent).toContain("Saved");
+    expect(status.textContent).toContain("Live");
     expect(isAbove(status, editorOf(documentRoot))).toBe(true);
     expect(within(container).queryByRole("status")).toBeNull();
     expect(
@@ -678,13 +678,13 @@ describe("Document comments", () => {
     container.remove();
   });
 
-  it("shows the host's badge above the document, before the save status", async () => {
+  it("shows the host's badge above the document, before the live status", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
     const { container: documentRoot } = render(
-      <Document
+      <DocumentView
         initialContent={SOURCE}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
+        liveView={{ status: "live", binding: null }}
         headerControlsContainer={container}
         badge={<span data-testid="badge" />}
         resolveImageSource={NO_IMAGE_SOURCE}
@@ -1006,7 +1006,6 @@ describe("Document for a file the editor cannot open", () => {
     render(
       <Document
         initialContent={initialContent}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
         commentAuthor={AUTHOR}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}

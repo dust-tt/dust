@@ -1,92 +1,48 @@
-import type {
-  DocumentDraftState,
-  DocumentSaveResult,
-} from "@app/components/editor/document";
-import { Err } from "@app/types/shared/result";
-import { msg } from "@lingui/core/macro";
-import { useLingui } from "@lingui/react/macro";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 /** The rich Document editor takes over the file; the host hides its own edit controls. */
 export interface MarkdownRichEditor {
   /** Changes when the editor must reopen on new content; use it as the component key. */
   mountKey: string;
-  /** Scoped path of the file the editor writes. */
+  /** Scoped path of the file the editor edits. */
   path: string;
-  /** The live session server the document is edited in, instead of saved by this editor. */
-  liveUrl: string | undefined;
+  /** The live session server the document is edited in. */
+  liveUrl: string;
   initialContent: string;
-  onSave: (content: string) => Promise<DocumentSaveResult>;
-  onStateChange: (state: DocumentDraftState) => void;
 }
 
 interface UseRichMarkdownEditorParams {
   /** The rich editor is wanted for this file: the flag is on and the file is editable. */
   enabled: boolean;
-  /** The live session server, when one is reachable: the editor joins it instead of saving. */
+  /** The live session server, when one is reachable; without one, the rich editor does not open. */
   liveUrl: string | undefined;
   entryPath: string | undefined;
   isActive: boolean;
   /** The file text as fetched, or null while it loads. */
   rawContent: string | null;
-  /** The fetched text was cut; an editor fed with it would save a truncated file. */
+  /** The fetched text was cut; the plain editor keeps such a file. */
   isTruncated: boolean;
-  /** Writes the file; resolves once stored, or with the reason it was not. */
-  writeFile: (content: string) => Promise<DocumentSaveResult>;
-  /** Makes written content the one the preview shows. */
-  adoptWritten: (content: string) => Promise<void>;
 }
 
 export interface RichMarkdownEditorState {
   richEditor: MarkdownRichEditor | null;
-  isDirty: boolean;
-  isSaving: boolean;
-  /** True while leaving the file would drop an edit the editor has not saved yet. */
-  holdsNavigation: boolean;
 }
 
-/** What the editor opened on, or last saved. Latched: later fetches do not rewrite it. */
+/** What the editor opened on. Latched: later fetches do not rewrite it. */
 interface Opened {
   content: string;
-  /** The file was over the preview limit at that moment; the plain editor keeps it. */
-  truncated: boolean;
-  /** The live session server at that moment: the editor never switches mode under the user. */
-  liveUrl: string | undefined;
-}
-
-interface Written {
-  path: string | undefined;
-  content: string;
-}
-
-const IDLE_DRAFT: DocumentDraftState = {
-  dirty: false,
-  saving: false,
-  error: null,
-};
-
-const CONFLICT_MESSAGE = msg`This file changed while you were editing. Copy your changes, then reopen the file.`;
-
-function isOwnWrite(
-  written: Written | null,
-  path: string | undefined,
-  content: string
-): boolean {
-  return (
-    written !== null && written.path === path && written.content === content
-  );
+  /** The live session server at that moment: the editor never moves under the user. */
+  liveUrl: string;
 }
 
 /**
- * Which content the rich editor is open on, and what happens when the file changes under it.
- * The decision to open depends only on the flag and the file as it was when it opened, never
- * on later content, so a change written by someone else cannot swap editors under a draft.
+ * Which content the rich editor is open on. It opens on the file as fetched, in the live session
+ * reachable then, and never reopens on later fetches: the session holds the document.
  */
 /**
  * @cc [owner:PopDaph,label:product] live-mode-latched
- * An open editor MUST keep the live session server it opened with, or none, until the file is
- * reopened: `liveUrl` appearing MUST NOT move an open local editor, or its draft, to a live session,
- * and `liveUrl` changing or disappearing MUST NOT move an open live editor.
+ * The rich editor MUST open only with a live session server, and an open editor MUST keep the one
+ * it opened with until the file is reopened: `liveUrl` changing or disappearing MUST NOT move it.
  */
 export function useRichMarkdownEditor({
   enabled,
@@ -95,109 +51,30 @@ export function useRichMarkdownEditor({
   isActive,
   rawContent,
   isTruncated,
-  writeFile,
-  adoptWritten,
 }: UseRichMarkdownEditorParams): RichMarkdownEditorState {
-  const { t } = useLingui();
-  const [draft, setDraft] = useState<DocumentDraftState>(IDLE_DRAFT);
   const [opened, setOpened] = useState<Opened | null>(null);
-  // How many times the editor reopened on foreign content; part of the mount key. Reopening
-  // loses the scroll position; the next step applies foreign changes in place instead.
-  const [version, setVersion] = useState(0);
   const [resetKey, setResetKey] = useState({ isActive, path: entryPath });
-  // The content this hook wrote last, so the fetch catching up with it is not a foreign change.
-  const writtenRef = useRef<Written | null>(null);
 
   if (isActive !== resetKey.isActive || entryPath !== resetKey.path) {
     setResetKey({ isActive, path: entryPath });
-    setDraft(IDLE_DRAFT);
     setOpened(null);
-    setVersion(0);
   }
 
-  const opens = enabled && !(opened?.truncated ?? isTruncated);
-  const source = rawContent ?? undefined;
-  const base = opened?.content ?? null;
-  const openedLiveUrl = opened ? opened.liveUrl : liveUrl;
-
-  // The file changed under the editor, by another writer or an agent. A clean editor reopens on
-  // the new content; a dirty one keeps its draft, and `save` refuses to write over the newer
-  // version until the editor is clean or the file reopened. The revision check on save will
-  // narrow the remaining race.
-  useEffect(() => {
-    if (!opens || source === undefined || source === base) {
-      return;
-    }
-    if (base === null) {
-      setOpened({ content: source, truncated: isTruncated, liveUrl });
-    } else if (openedLiveUrl !== undefined) {
-      // The live session holds the document; a newer fetch of the file must not reopen it.
-      return;
-    } else if (isOwnWrite(writtenRef.current, entryPath, source)) {
-      // Our own write came back from the cache; the version it raced is overwritten anyway.
-      setOpened({ content: source, truncated: false, liveUrl: undefined });
-    } else if (draft.dirty || draft.saving) {
-      return;
-    } else if (isTruncated) {
-      // Reopening on cut text would save a cut file; the plain editor takes over.
-      setOpened({ content: base, truncated: true, liveUrl: undefined });
-    } else {
-      setOpened({ content: source, truncated: false, liveUrl: undefined });
-      setVersion((current) => current + 1);
-    }
-  }, [
-    opens,
-    source,
-    base,
-    draft.dirty,
-    draft.saving,
-    isTruncated,
-    entryPath,
-    openedLiveUrl,
-    liveUrl,
-  ]);
-
-  const save = async (content: string): Promise<DocumentSaveResult> => {
-    // A foreign version arrived while the editor was dirty: the fetched content moved away from
-    // what the editor opened on, and it is not a write of ours catching up.
-    const conflict =
-      base !== null &&
-      source !== undefined &&
-      source !== base &&
-      !isOwnWrite(writtenRef.current, entryPath, source);
-    if (conflict) {
-      return new Err(t(CONFLICT_MESSAGE));
-    }
-    const result = await writeFile(content);
-    if (result.isErr()) {
-      return result;
-    }
-    // Recorded before the cache changes, so the refetch it triggers reads as our own write.
-    writtenRef.current = { path: entryPath, content };
-    await adoptWritten(content);
-    return result;
-  };
-
-  const richEditor =
-    opens && source !== undefined && entryPath !== undefined
-      ? {
-          mountKey: `${entryPath}:${version}`,
-          path: entryPath,
-          liveUrl: openedLiveUrl,
-          initialContent: base ?? source,
-          onSave: save,
-          onStateChange: setDraft,
-        }
-      : null;
+  const opens = enabled && (opened !== null || !isTruncated);
+  // Latched while rendering, not in an effect, so the editor shows in the same commit.
+  if (opens && opened === null && rawContent !== null && liveUrl) {
+    setOpened({ content: rawContent, liveUrl });
+  }
 
   return {
-    richEditor,
-    isDirty: draft.dirty,
-    isSaving: draft.saving,
-    // Once a save has failed the editor shows it with Retry; leaving then is the user's call.
-    holdsNavigation:
-      richEditor !== null &&
-      (draft.dirty || draft.saving) &&
-      draft.error === null,
+    richEditor:
+      opens && opened && entryPath !== undefined
+        ? {
+            mountKey: entryPath,
+            path: entryPath,
+            liveUrl: opened.liveUrl,
+            initialContent: opened.content,
+          }
+        : null,
   };
 }

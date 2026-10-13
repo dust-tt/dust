@@ -408,27 +408,24 @@ function RichMarkdownDocument({
   );
 
   const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
-  const live =
-    editor.liveUrl && user
-      ? {
-          url: editor.liveUrl,
-          documentName: toLiveDocumentName(owner.sId, editor.path),
-          getTicket: getLiveTicket,
-          user: {
-            id: user.sId,
-            name: user.fullName,
-            color: liveCaretColor(user.sId),
-          },
-        }
-      : undefined;
+  const live = user
+    ? {
+        url: editor.liveUrl,
+        documentName: toLiveDocumentName(owner.sId, editor.path),
+        getTicket: getLiveTicket,
+        user: {
+          id: user.sId,
+          name: user.fullName,
+          color: liveCaretColor(user.sId),
+        },
+      }
+    : undefined;
 
   return (
     <Document
       initialContent={editor.initialContent}
       headerControlsContainer={headerControlsContainer}
       statusContainer={statusContainer}
-      onSave={live ? undefined : editor.onSave}
-      onStateChange={live ? undefined : editor.onStateChange}
       live={live}
       commentAuthor={
         user ? { kind: "user", id: user.sId, name: user.fullName } : undefined

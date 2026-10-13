@@ -1,4 +1,3 @@
-import type { DocumentSaveResult } from "@app/components/editor/document";
 import { CUT_TEXT_SAVE_REFUSED } from "@app/components/file_explorer/FilePreviewContent";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useRichMarkdownEditor";
@@ -11,6 +10,7 @@ import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { writeFileContentByPath } from "@app/lib/swr/files";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { parseCanonicalScopedPath } from "@app/types/mount_path";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useLingui } from "@lingui/react/macro";
@@ -39,15 +39,16 @@ interface UseMarkdownFileEditorParams {
 export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
-  /** True while leaving the file would drop an edit the rich editor has not saved yet. */
-  holdsNavigation: boolean;
-  /** Unsaved edits in whichever editor is open. */
+  /** Unsaved edits in the plain editor. */
   isDirty: boolean;
   isSaving: boolean;
   /** The rich editor is set aside for the plain editor on the file's Markdown source. */
   isSourceMode: boolean;
   revert: () => void;
-  /** Set when the file opens in the rich editor: every Markdown file behind the co_edition flag. */
+  /**
+   * Set when the file opens in the rich editor: every Markdown file behind the co_edition flag,
+   * when a live session server is reachable.
+   */
   richEditor: MarkdownRichEditor | null;
   save: () => Promise<void>;
   setDraft: (content: string) => void;
@@ -60,11 +61,11 @@ export interface MarkdownFileEditor {
 /**
  * @cc [owner:tdraier,label:product] source-mode-toggle
  * `toggleSourceMode` MUST enter source mode only when debug tools are shown (`showDebugTools`), from
- * an open rich editor on a file the plain editor can edit, and MUST NOT switch while the open editor reports an unsaved or saving edit; a live
- * editor reports none. In source mode the rich editor MUST NOT be open and the plain editor MUST
+ * an open rich editor on a file the plain editor can edit, and MUST NOT leave it while the plain
+ * editor holds an unsaved or saving edit. In source mode the rich editor MUST NOT be open and the plain editor MUST
  * stay in edit mode on the file's text as fetched, unprocessed, savable even while a live session
- * holds the file, unless that session refuses outside writes (`collab-live-source-write`). Without a live session, leaving it MUST reopen the rich editor on the file as
- * fetched then, not on what it held before. Source mode MUST end when another file opens or the
+ * holds the file, unless that session refuses outside writes (`collab-live-source-write`). Leaving
+ * it MUST reopen the rich editor on the file as fetched then, not on what it held before. Source mode MUST end when another file opens or the
  * preview closes.
  */
 export function useMarkdownFileEditor({
@@ -149,7 +150,7 @@ export function useMarkdownFileEditor({
     initKeyRef.current = initKey;
   }, [canEdit, entryPath, isActive, isContentLoading, isPlainDirty, plainText]);
 
-  const writeFile = async (content: string): Promise<DocumentSaveResult> => {
+  const writeFile = async (content: string): Promise<Result<void, string>> => {
     if (!owner || !editablePath) {
       return new Err(t`This file cannot be edited.`);
     }
@@ -224,19 +225,10 @@ export function useMarkdownFileEditor({
     isActive: isActive && !isSourceMode,
     rawContent,
     isTruncated,
-    writeFile,
-    // The plain editor is not shown while the rich one is open, so its draft follows the file.
-    adoptWritten: async (content) => {
-      await adoptWritten(content);
-      setDraft(content);
-    },
   });
 
-  const isDirty = rich.richEditor ? rich.isDirty : isPlainDirty;
-  const isAnySaving = rich.richEditor ? rich.isSaving : isSaving;
-
   const toggleSourceMode = () => {
-    if (isDirty || isAnySaving) {
+    if (isPlainDirty || isSaving) {
       return;
     }
     if (
@@ -252,9 +244,8 @@ export function useMarkdownFileEditor({
     canEdit,
     content:
       canEdit && sourcePath === entryPath ? draft : (plainText ?? undefined),
-    holdsNavigation: rich.holdsNavigation,
-    isDirty,
-    isSaving: isAnySaving,
+    isDirty: isPlainDirty,
+    isSaving,
     isSourceMode,
     revert: () => setDraft(savedContent),
     richEditor: rich.richEditor,

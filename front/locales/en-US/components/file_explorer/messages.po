@@ -313,10 +313,6 @@ msgstr "File saved"
 msgid "Failed to save file"
 msgstr "Failed to save file"
 
-#: front/components/file_explorer/useRichMarkdownEditor.ts
-msgid "This file changed while you were editing. Copy your changes, then reopen the file."
-msgstr "This file changed while you were editing. Copy your changes, then reopen the file."
-
 #: front/components/file_explorer/utils.ts
 msgid "All files"
 msgstr "All files"

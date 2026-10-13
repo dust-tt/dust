@@ -195,7 +195,6 @@ export function FilePreviewPanel({
     <div className="flex h-panel min-h-0 flex-col">
       <ConversationSidePanelHeader
         onClose={closePanel}
-        closeDisabled={markdown.holdsNavigation}
         actions={
           <>
             {markdown.canEdit && !markdown.richEditor && (
