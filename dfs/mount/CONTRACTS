@@ -12,3 +12,8 @@ macOS. Only the FUSE adapter, kept outside this library, may use them.
 @cc [owner:fontanierh,label:architecture] remote-only
 In the library, only `remote.rs` sends requests to the dfs server. Other modules go through
 `Remote`.
+
+@cc [owner:fontanierh,label:security] hide-unreadable
+An object the session cannot read MUST look missing: operations on it fail with `ENOENT` and
+listings leave it out, the root's included. `EACCES` is only for an object the session can read
+but not use as asked, and for an expired session.

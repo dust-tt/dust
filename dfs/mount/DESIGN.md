@@ -37,25 +37,35 @@ TLS settings. Sessions expire one hour after their last refresh; the caller will
 
 ### A synthetic root
 
-As specified in [URI.md](../design-docs/URI.md#sandbox-paths), the mount root is not a dfs object.
-It lists the symlinks the caller configures, such as
-`conversation -> conv-<sId>--<folder-id>`. Looking up a `<label>--<object-id>` name at the root
-resolves that object, ignoring the label, so the symlinks work. These anchors are reachable but
-not listed. The root is read-only. The server's virtual `root` and `shared` references are not
-used.
+The mount root is not a dfs object. It lists the folders the caller configures, each under a name
+of its choice, such as `conversation`. Each entry is the folder itself: `/mnt/dfs/conversation/` is
+the conversation folder. The root is read-only. The server's virtual `root` and `shared` references
+are not used.
 
-### The server decides access
+[URI.md](../design-docs/URI.md#sandbox-paths) specifies root entries as symlinks to anchors
+(`conversation -> conv-<sId>--<folder-id>`), which make a sandbox path directly a URI. The first
+iteration has no symlinks (see [Future work](#future-work)), so the caller maps a root name back
+to its folder ID.
 
-The mount has no access rules of its own. Everything it returns about a dfs object comes from a
-server reply to its session. An object the session cannot read looks missing (`ENOENT`), as the
-server returns `NOT_FOUND` for it.
+### Missing or forbidden
+
+The mount has no access rules of its own: everything it returns about a dfs object comes from a
+server reply to its session. It hides what the session cannot read, as the server does:
+
+- `ENOENT`: the object does not exist, or the session cannot read it. The server answers
+  `NOT_FOUND` in both cases, so the mount cannot tell them apart, and neither can the process.
+- `EACCES`: the session can read the object but not do what was asked, such as writing without
+  `w` (`FORBIDDEN`), or the session has expired.
+
+The root follows the same rule: listing it checks the configured folders with one `Stat` and
+leaves out the ones the session cannot read.
 
 ### Inode numbers
 
 FUSE inode numbers are 64 bits and dfs object IDs are 128 bits, so the mount numbers objects
 itself:
 
-- Inode 1 is the root. Each link has its own inode, distinct from the object it points to.
+- Inode 1 is the root.
 - An object gets a number on its first lookup and keeps it while the kernel remembers it.
 - The kernel tells the mount when it forgets lookups. The mount drops the object when every lookup
   is forgotten.
@@ -79,4 +89,10 @@ at once and a slow request does not block the others.
 - Operations inside dfs directories (`lookup`, `readdir`): they need the `Lookup` and `List` RPCs.
 - Reads and writes: they need `Read` and `Apply`.
 - Executable files: the protocol has no mode on create or update.
-- Symlinks stored in dfs: `SYMLINK` is reserved by the protocol.
+
+## Future work
+
+- **Symlinks.** Two kinds: root entries as symlinks to anchors, as URI.md specifies, and symlinks
+  stored in dfs, for which the protocol reserves the `SYMLINK` kind (dust-tt/tasks#11118). Both
+  need `readlink`, a symlink kind in `Kind`, and their own inode numbers so a directory never has
+  two names.
