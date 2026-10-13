@@ -1061,4 +1061,70 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
       documents.reduce((total, document) => total + document.credit_micro, 0)
     ).toBe(billedCredits * 1_000_000);
   });
+
+  it("indexes a tool emitted by an unavailable call with its fee, and no document for that call", async () => {
+    vi.mocked(getLlmCredentials).mockResolvedValue({});
+    vi.mocked(tokenCountForTexts).mockImplementation(
+      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT))
+    );
+    const context = await setupSettledMessage();
+    const { run: unavailableRun } = await RunFactory.createWithUnavailableUsage(
+      context.auth
+    );
+    await AgentMessageModel.update(
+      { runIds: [context.run.dustRunId, unavailableRun.dustRunId] },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: unavailableRun.dustRunId,
+      status: "succeeded",
+    });
+
+    // Billing charges the tool fee, but nothing for the unavailable call.
+    const runUsages = await RunResource.listRunUsagesForRuns(context.auth, {
+      runs: [context.run, unavailableRun],
+    });
+    const billedCredits =
+      intelligenceAwuFromRunUsagesGroupedByRunKey(runUsages, "web") + 3;
+    await ConversationResource.updateAgentMessageCostCredits(context.auth, {
+      agentMessageModelId: context.agentMessageModelId,
+      costCredits: billedCredits,
+    });
+    await computeAndStoreAgentMessageConsumptionAttribution(context.auth, {
+      agentMessageId: context.agentMessage.sId,
+      conversationId: context.conversation.sId,
+    });
+
+    const documents = await buildDocuments(context);
+    if (!documents) {
+      throw new Error("Consumption documents were not built");
+    }
+
+    expect(
+      documents.filter((document) => document.consumption_type === "llm")
+    ).toEqual([
+      expect.objectContaining({
+        run_usage_id: context.runUsageModelId.toString(),
+      }),
+    ]);
+    // The unavailable call is the last one, so no billed call read the tool result either.
+    expect(
+      documents.find((document) => document.tool?.action_id === action.sId)
+    ).toMatchObject({
+      credit_micro: 3_000_000,
+      gross_credit_micro: { direct: 3_000_000 },
+      tokens: { output: 0, result_footprint: 0 },
+    });
+    expect(
+      documents.reduce((total, document) => total + document.credit_micro, 0)
+    ).toBe(billedCredits * 1_000_000);
+  });
 });

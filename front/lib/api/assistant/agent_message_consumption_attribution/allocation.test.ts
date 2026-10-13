@@ -27,6 +27,9 @@ type CallSpec = {
   runKey?: string;
 };
 
+// A call whose provider reported no usage: it has no tokens, no cost and no model items.
+type UnavailableCallSpec = { unavailable: true };
+
 type ToolSpec = {
   emittedByCall: number;
   resultTokens: number;
@@ -42,7 +45,7 @@ async function allocateMessage({
   tools,
 }: {
   billedCredits: number;
-  calls: CallSpec[];
+  calls: (CallSpec | UnavailableCallSpec)[];
   incompleteNewerVersion?: boolean;
   modelId?: ModelIdType;
   tools: ToolSpec[];
@@ -65,6 +68,10 @@ async function allocateMessage({
   const createdRuns: Awaited<ReturnType<typeof RunFactory.createWithUsage>>[] =
     [];
   for (const call of calls) {
+    if ("unavailable" in call) {
+      createdRuns.push(await RunFactory.createWithUnavailableUsage(auth));
+      continue;
+    }
     const createdRun = await RunFactory.createWithUsage(auth, {
       inputTokens: call.promptTokens,
       cachedTokens: call.cachedTokens ?? 0,
@@ -110,6 +117,9 @@ async function allocateMessage({
 
   const records = [
     ...calls.flatMap((call, callIndex) => {
+      if ("unavailable" in call) {
+        return [];
+      }
       const { runUsageModelId } = createdRuns[callIndex];
       const toolCallOutputTokens = tools
         .filter((tool) => tool.emittedByCall === callIndex)
@@ -180,7 +190,10 @@ async function allocateMessage({
     hasUnbilledExecution: false,
     items,
     runs,
-    usages: await RunResource.listRunUsagesForRuns(auth, { runs }),
+    usages: await RunResource.listRunUsagesForRuns(auth, {
+      includeUnavailable: true,
+      runs,
+    }),
   });
   const byItem = result.isOk()
     ? result.value.reconciledCreditAmounts.byItem
@@ -369,6 +382,54 @@ describe("buildLatestMessageConsumptionAllocation", () => {
     expect(allocation.toolCredits(0)).toBeCloseTo(3 + 0.5 + 2, 5);
     expect(allocation.callItemCredits(1, "input")).toBeCloseTo(1, 5);
     expect(allocation.callItemCredits(1, "output")).toBeCloseTo(1, 5);
+  });
+
+  it("gives a tool emitted by an unavailable call its fee and the input of the call that read it", async () => {
+    const allocation = await allocateMessage({
+      billedCredits: 7,
+      calls: [
+        { unavailable: true },
+        { promptTokens: 3 * INPUT, completionTokens: OUTPUT },
+      ],
+      tools: [
+        {
+          emittedByCall: 0,
+          resultTokens: 2 * INPUT,
+          callOutputTokens: 0,
+          directCreditAmountMicro: TOOL_DIRECT_CREDIT_AMOUNT_MICRO,
+        },
+      ],
+    });
+
+    expect(allocation.failure).toBeNull();
+    expect(allocation.toolCredits(0)).toBeCloseTo(3 + 2, 5);
+    expect(allocation.callItemCredits(1, "input")).toBeCloseTo(1, 5);
+    expect(allocation.callItemCredits(1, "output")).toBeCloseTo(1, 5);
+    expect(allocation.totalCredits).toBeCloseTo(7, 6);
+  });
+
+  it("gives no input to a tool result read by an unavailable call", async () => {
+    const allocation = await allocateMessage({
+      billedCredits: 5,
+      calls: [
+        { promptTokens: INPUT, completionTokens: OUTPUT },
+        { unavailable: true },
+      ],
+      tools: [
+        {
+          emittedByCall: 0,
+          resultTokens: INPUT,
+          callOutputTokens: OUTPUT / 2,
+          directCreditAmountMicro: TOOL_DIRECT_CREDIT_AMOUNT_MICRO,
+        },
+      ],
+    });
+
+    expect(allocation.failure).toBeNull();
+    expect(allocation.toolCredits(0)).toBeCloseTo(3 + 0.5, 5);
+    expect(allocation.callItemCredits(0, "input")).toBeCloseTo(1, 5);
+    expect(allocation.callItemCredits(0, "output")).toBeCloseTo(0.5, 5);
+    expect(allocation.totalCredits).toBeCloseTo(5, 6);
   });
 
   it("prices a tool result read from cache at the cached rate", async () => {

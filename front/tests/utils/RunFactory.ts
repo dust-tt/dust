@@ -94,4 +94,29 @@ export class RunFactory {
 
     return { run, runUsageModelId: runUsage.id };
   }
+
+  // A model call whose provider stream ended without reporting usage: its pending usage row is
+  // closed as unavailable, with no tokens and no cost.
+  static async createWithUnavailableUsage(auth: Authenticator) {
+    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+      {
+        appId: null,
+        dustRunId: generateRandomModelSId(),
+        runType: "deploy",
+        useWorkspaceCredentials: false,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      {
+        inferenceProvider: GPT_5_MINI_MODEL_CONFIG.providerId,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
+        region: null,
+        usageType: USAGE_TYPE_USER,
+        useWorkspaceCredentials: false,
+      }
+    );
+    await run.markPendingRunUsageUnavailable(auth, runUsageModelId);
+
+    return { run, runUsageModelId };
+  }
 }

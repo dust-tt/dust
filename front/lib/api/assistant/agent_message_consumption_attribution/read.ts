@@ -141,7 +141,11 @@ export async function getAgentMessageConsumptionWithModels(
   const runs = await RunResource.listByDustRunIds(auth, {
     dustRunIds: facts.dustRunIds,
   });
-  const usages = await RunResource.listRunUsagesForRuns(auth, { runs });
+  // Unavailable usages carry the tool items of the calls they emitted (see `isUnavailableRunUsage`).
+  const usages = await RunResource.listRunUsagesForRuns(auth, {
+    includeUnavailable: true,
+    runs,
+  });
   if (usages.length === 0) {
     return unavailableResponse;
   }

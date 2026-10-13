@@ -62,6 +62,7 @@ async function setupSettledMessageWithUsage({
   outputTokens = OUTPUT_TOKENS_COUNT,
   serviceTier,
   billedCredits,
+  withLeadingUnavailableRun = false,
 }: {
   runCount?: number;
   restrictedConversation?: boolean;
@@ -70,6 +71,8 @@ async function setupSettledMessageWithUsage({
   outputTokens?: number;
   serviceTier?: ServiceTier;
   billedCredits?: number;
+  // Runs a model call whose provider reported no usage before the reported runs.
+  withLeadingUnavailableRun?: boolean;
 } = {}) {
   const { authenticator, globalSpace, user, workspace } =
     await createResourceTest({ role: "admin" });
@@ -93,6 +96,9 @@ async function setupSettledMessageWithUsage({
     messagesCreatedAt: [],
     spaceId: conversationSpace?.id,
   });
+  const unavailableRun = withLeadingUnavailableRun
+    ? (await RunFactory.createWithUnavailableUsage(auth)).run
+    : null;
   const runs = [];
   for (let index = 0; index < runCount; index++) {
     const { run } = await RunFactory.createWithUsage(auth, {
@@ -114,7 +120,10 @@ async function setupSettledMessageWithUsage({
     workspace,
     conversation,
     agentConfig: agentConfiguration,
-    runIds: runs.map(({ dustRunId }) => dustRunId),
+    runIds: [
+      ...(unavailableRun ? [unavailableRun.dustRunId] : []),
+      ...runs.map(({ dustRunId }) => dustRunId),
+    ],
   });
   // Bill the runs as production does, unless a test overrides it.
   const llmBilledCredits = buildAgentMessageBillingPlan({
@@ -136,6 +145,7 @@ async function setupSettledMessageWithUsage({
     conversation,
     run,
     runs,
+    unavailableRun,
     conversationId: conversation.sId,
     agentMessageId: agentMessage.sId,
     agentMessageModelId: agentMessage.agentMessageId,
@@ -511,6 +521,73 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("writes a tool row for an action emitted by a run whose usage is unavailable", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      runs,
+      unavailableRun,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage({ withLeadingUnavailableRun: true });
+    if (!unavailableRun) {
+      throw new Error("Expected an unavailable run");
+    }
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: unavailableRun.dustRunId,
+    });
+    // Billing charges the tool fee and the reported runs only.
+    const billedCreditAmountMicro = await billMessageFromBillingPlan(auth, {
+      agentMessageModelId,
+      runs,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const [unavailableUsage] = await RunResource.listRunUsagesForRuns(auth, {
+      includeUnavailable: true,
+      runs: [unavailableRun],
+    });
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    const unavailableUsageItems = items.filter(
+      (item) => item.runUsageId === unavailableUsage?.runUsageModelId
+    );
+
+    expect(unavailableUsageItems).toHaveLength(1);
+    expect(unavailableUsageItems[0]).toMatchObject({
+      itemType: "tool",
+      agentMCPActionId: action.id,
+      outputTokensCount: 0,
+      inputTokensCount: TOKENS_PER_FOOTPRINT,
+    });
+    expect(unavailableUsageItems[0]?.directCreditAmountMicro).toBeGreaterThan(
+      0
+    );
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(billedCreditAmountMicro);
   });
 
   it("writes a tool row for a run on a retired model", async () => {
