@@ -1,13 +1,20 @@
 import { getUserFromSession } from "@app/lib/iam/session";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { SUPPORTED_LOCALES, USER_LOCALE_METADATA_KEY } from "@app/types/locale";
 import { ONBOARDING_PROFILE_PENDING_METADATA_KEY } from "@app/types/onboarding";
 import { sessionApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+import { z } from "zod";
 
 export type PostUserOnboardingCompleteResponseBody = {
   success: boolean;
 };
+
+const PostUserOnboardingCompleteBodySchema = z.object({
+  locale: z.enum(SUPPORTED_LOCALES).optional(),
+});
 
 // Mounted at /api/user/onboarding. sessionAuth is applied by the parent
 // `/api/user` sub-app.
@@ -16,9 +23,18 @@ const app = sessionApp();
 // Marks the profile onboarding as completed for the user, by clearing the
 // pending marker from the user metadata. Called when the user submits the
 // profile onboarding form (welcome page or in-app onboarding dialog).
+/**
+ * @cc [owner:ykmsd,label:product;api] complete-saves-onboarding-locale
+ * The body's `locale` is optional. A provided `locale` MUST be saved as the user's global locale
+ * (the `locale` user metadata) before responding, and a missing one MUST leave the user's locale
+ * unchanged. A request without a body MUST complete the onboarding (clients predating the locale
+ * step send one). A `locale` that is not one of `SUPPORTED_LOCALES` MUST be rejected with a 400
+ * without completing the onboarding.
+ */
 /** @ignoreswagger */
 app.post(
   "/complete",
+  validate("json", PostUserOnboardingCompleteBodySchema),
   async (ctx): HandlerResult<PostUserOnboardingCompleteResponseBody> => {
     const session = ctx.get("session");
     const user = await getUserFromSession(session);
@@ -43,6 +59,11 @@ app.post(
           message: "Could not find the user.",
         },
       });
+    }
+
+    const { locale } = ctx.req.valid("json");
+    if (locale !== undefined) {
+      await u.setMetadata(USER_LOCALE_METADATA_KEY, locale);
     }
 
     await u.setMetadata(ONBOARDING_PROFILE_PENDING_METADATA_KEY, "false");
