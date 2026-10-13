@@ -16,3 +16,9 @@ labels from the Dust API, Teams data) MUST be interpolated untranslated through 
 `message` of an `Error` is diagnostic: it MAY stay English and MUST only reach users through the
 placeholder of a translated sentence. Text sent to the Dust API or to models (message content,
 content fragments) MUST NOT be translated.
+
+@cc [owner:sfriquet,label:product] teams-text-in-workspace-locale
+Teams bot text MUST be rendered with the `I18n` that `getTeamsI18n` (`teams/i18n.ts`) returns for
+the connector of the Teams activity (`null` when the activity has none), whichever Teams user it is
+written to. Outside `getTeamsI18n`, Teams bot production code MUST NOT pick a locale with
+`getBotI18n` directly.

@@ -14,6 +14,7 @@ import {
   sendTextMessage,
   updateActivity,
 } from "@connectors/api/webhooks/teams/bot_messaging_utils";
+import { getTeamsI18n } from "@connectors/api/webhooks/teams/i18n";
 import {
   extractBearerToken,
   validateBotFrameworkToken,
@@ -23,13 +24,11 @@ import {
   validateToolApprovalData,
 } from "@connectors/api/webhooks/teams/utils";
 import { apiConfig } from "@connectors/lib/api/config";
-import { getBotI18n } from "@connectors/lib/bot/i18n";
 import { AgentMentionError } from "@connectors/lib/bot/mentions";
 import type { Logger } from "@connectors/logger/logger";
 import logger from "@connectors/logger/logger";
 import { apiError } from "@connectors/logger/withlogging";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { DEFAULT_LOCALE } from "@connectors/types/locale";
 import { assertNever } from "@dust-tt/client";
 import type { I18n } from "@lingui/core";
 import type { TurnContext } from "botbuilder";
@@ -63,7 +62,8 @@ adapter.onTurnError = async (context, error) => {
 
   // Try to send error message if context allows
   try {
-    const i18n = await getBotI18n(DEFAULT_LOCALE);
+    const { connector } = await getConnector(context);
+    const i18n = await getTeamsI18n(connector);
     await sendTextMessage(
       context,
       i18n._("❌ An error occurred processing your request.")
@@ -167,7 +167,7 @@ export async function webhookTeamsAPIHandler(req: Request, res: Response) {
         workspaceId: connector?.workspaceId,
       });
 
-      const i18n = await getBotI18n(DEFAULT_LOCALE);
+      const i18n = await getTeamsI18n(connector);
 
       // Handle different activity types
       switch (context.activity.type) {

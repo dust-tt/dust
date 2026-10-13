@@ -130,6 +130,9 @@ runs under `tsx`, which cannot compile Lingui macros, so the rules differ from f
   parameter. It resolves the locale chosen in Dust, then the Slack locale, then the workspace
   locale (`en-US` while the `localisation` flag is off). Never use the global `i18n` of
   `@lingui/core`: the bot answers users with different locales concurrently.
+- In the Teams bot, `i18n` comes from `getTeamsI18n` in
+  `connectors/src/api/webhooks/teams/i18n.ts`, passed down as a parameter. It always renders the
+  workspace locale (`en-US` while the `localisation` flag is off), never the member's own locale.
 - The locales are a copy of `front/types/locale.ts` in `connectors/src/types/locale.ts`: edit
   both (`i18n:check` fails when they differ).
 - Same never-translate rules as front: text sent to the Dust API or to models (content fragments,
