@@ -4,7 +4,10 @@ import type { AgentLoopMCPApproveExecutionEvent } from "@app/lib/actions/mcp_int
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval_events";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
+import {
+  getExecutionStatusFromConfig,
+  withToolCallStakeLevel,
+} from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -81,7 +84,7 @@ export async function createToolActionsActivity(
   const preparedActions: PreparedToolAction[] = [];
   for (const [
     index,
-    { action: actionConfiguration, functionCallId },
+    { action: configuredActionConfiguration, functionCallId },
   ] of actions.entries()) {
     const stepContentId = functionCallStepContentIds[functionCallId];
     const stepContent = stepContentsById.get(stepContentId);
@@ -95,6 +98,14 @@ export async function createToolActionsActivity(
     );
 
     const rawInputs = JSON.parse(stepContent.value.value.arguments);
+    const actionConfiguration = withToolCallStakeLevel(
+      configuredActionConfiguration,
+      {
+        toolInputs: rawInputs,
+        modelInfo: runAgentData.modelInfo,
+        stepContext: stepContexts[index],
+      }
+    );
     const { status } = await getExecutionStatusFromConfig(auth, {
       actionConfiguration,
       skipToolsValidation: agentMessage.skipToolsValidation,
