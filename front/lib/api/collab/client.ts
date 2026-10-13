@@ -21,19 +21,19 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { z } from "zod";
 
 // Long enough for the collab server to answer a write that waited its whole turn.
-const LIVE_SOURCE_TIMEOUT_MS = 2 * LIVE_SOURCE_WRITE_WAIT_MS;
+const COLLAB_SOURCE_TIMEOUT_MS = 2 * LIVE_SOURCE_WRITE_WAIT_MS;
 
 const apiErrorSchema = z.object({
   error: z.object({ type: z.string(), message: z.string() }),
 });
 
 /** Why a live document could not be read or written: refused, or the collab server failed. */
-export interface LiveSourceError {
+export interface CollabSourceError {
   code: "refused" | "unavailable";
   message: string;
 }
 
-const unavailable = (message: string): LiveSourceError => ({
+const unavailable = (message: string): CollabSourceError => ({
   code: "unavailable",
   message,
 });
@@ -54,7 +54,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
   path: string,
   body: LiveSourceReadRequest | LiveSourceWriteRequest,
   schema: S
-): Promise<Result<z.infer<S> | null, LiveSourceError>> {
+): Promise<Result<z.infer<S> | null, CollabSourceError>> {
   const url = config.getCollabServerInternalUrl();
   const secret = config.getCollabServerInternalSecret();
   if (!url || !secret) {
@@ -70,7 +70,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(LIVE_SOURCE_TIMEOUT_MS),
+      signal: AbortSignal.timeout(COLLAB_SOURCE_TIMEOUT_MS),
     });
   } catch (err) {
     if (isConnectionRefused(err)) {
@@ -97,7 +97,7 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
 }
 
 /**
- * @cc [owner:tdraier,label:product;concurrency] live-source-read
+ * @cc [owner:tdraier,label:product;concurrency] collab-client-read
  * A document MUST be reported closed without asking the collab server only when no collab server is
  * configured, and when nothing listens at its address: no session can be open then, since the
  * collab server refuses to start without its internal secret. It MUST be asked whatever the
@@ -107,11 +107,11 @@ async function postToCollabServer<S extends z.ZodTypeAny>(
  * closed, since the caller would write the file under an open session. With `agent`, the session
  * shows that agent reading the document to its editors.
  */
-export async function fetchLiveSource(
+export async function readCollabSource(
   auth: Authenticator,
   canonicalPath: string,
   agent?: LiveAgent
-): Promise<Result<LiveSourceReadResponse, LiveSourceError>> {
+): Promise<Result<LiveSourceReadResponse, CollabSourceError>> {
   const answer = await postToCollabServer(
     LIVE_SOURCE_READ_PATH,
     {
@@ -129,7 +129,7 @@ export async function fetchLiveSource(
 }
 
 /**
- * @cc [owner:tdraier,label:product;concurrency;security] live-source-write
+ * @cc [owner:tdraier,label:product;concurrency;security] collab-client-write
  * The write MUST be sent as `auth`'s user, conditional on `base`, and MUST be refused without
  * asking the collab server when `auth` has no user. Nothing listening at the collab server's
  * address MUST count as `closed`. A refusal of the access or of the source MUST be `refused`, any
@@ -137,7 +137,7 @@ export async function fetchLiveSource(
  * which only answers a wrong secret. With `agent`, the session's editors see the change as that
  * agent's edit.
  */
-export async function pushLiveSource(
+export async function writeCollabSource(
   auth: Authenticator,
   {
     canonicalPath,
@@ -150,7 +150,7 @@ export async function pushLiveSource(
     source: string;
     agent?: LiveAgent;
   }
-): Promise<Result<LiveSourceWriteResult, LiveSourceError>> {
+): Promise<Result<LiveSourceWriteResult, CollabSourceError>> {
   const user = auth.user();
   if (!user) {
     return new Err({

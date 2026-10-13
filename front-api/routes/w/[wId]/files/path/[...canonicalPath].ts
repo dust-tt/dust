@@ -1,7 +1,7 @@
 import {
-  isLiveSessionWriteError,
-  type LiveSessionWriteError,
-} from "@app/lib/api/collab/live_session_write";
+  isCollabSessionWriteError,
+  type CollabSessionWriteError,
+} from "@app/lib/api/collab/write_through_session";
 import config from "@app/lib/api/config";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
@@ -610,7 +610,7 @@ function mapMarkdownCheckError(
 }
 
 function mapLiveWriteError(
-  error: LiveSessionWriteError
+  error: CollabSessionWriteError
 ): APIErrorWithContentfulStatusCode {
   const { code } = error;
   switch (code) {
@@ -773,7 +773,7 @@ app.put(
     if (live.isErr()) {
       return apiError(
         ctx,
-        isLiveSessionWriteError(live.error)
+        isCollabSessionWriteError(live.error)
           ? mapLiveWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );

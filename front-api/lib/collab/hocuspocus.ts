@@ -7,15 +7,15 @@ import {
   recheckCollabAccess,
 } from "@app/lib/api/collab/access";
 import {
-  applyLiveCommentCommand,
-  dispatchLiveCommentMentions,
-} from "@app/lib/api/collab/live_comments";
+  applyCommentRequest,
+  dispatchSessionCommentMentions,
+} from "@app/lib/api/collab/comments";
 import type { CollabSave } from "@app/lib/api/collab/session_file";
 import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
-import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
+import { redeemCollabTicket } from "@app/lib/api/collab/tickets";
 import { replaceYDocContent, yDocToDfm } from "@app/lib/api/collab/ydoc";
 import { Authenticator } from "@app/lib/auth";
 import type { DfmComment } from "@app/lib/markdown/dfm";
@@ -103,7 +103,7 @@ const agentEditMessage = (agent: LiveAgent, inserted: LiveIdRange[]): string =>
 const refusedMessage = (requestId: string, error: LiveCommentErrorCode) =>
   serverMessage({ type: "refused", requestId, error });
 
-type CommandResult = Awaited<ReturnType<typeof applyLiveCommentCommand>>;
+type CommandResult = Awaited<ReturnType<typeof applyCommentRequest>>;
 
 const commandRequestSchema = z.object({
   type: z.literal("command"),
@@ -142,7 +142,7 @@ export async function authenticateConnection(
   parsed: { workspaceId: string; canonicalPath: string },
   token: string
 ): Promise<Result<CollabAccess, string>> {
-  const ticket = await redeemLiveTicket(token);
+  const ticket = await redeemCollabTicket(token);
   if (
     !ticket ||
     ticket.workspaceId !== parsed.workspaceId ||
@@ -183,11 +183,11 @@ export async function authenticateConnection(
 /**
  * @cc [owner:tdraier,label:security;product] collab-comment-threads
  * A connection MUST receive the session's threads when it asks. A comment command MUST be applied
- * with `applyLiveCommentCommand` for the connection's own file, one at a time per document, and
+ * with `applyCommentRequest` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
  * connection of the document and the document stored, so the checkpoint writes them, through the
  * connection that last changed its text, or through the commenter's when none did, and the
- * message it added handed to `dispatchLiveCommentMentions` without waiting for it. A command its
+ * message it added handed to `dispatchSessionCommentMentions` without waiting for it. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
  * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
  * did not finish within `COMMENT_COMMAND_TIMEOUT_MS`, and a failing or late command MUST NOT hold
@@ -373,7 +373,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       const apply = async (): Promise<CommandResult> => {
         try {
           const applied = await Promise.race([
-            applyLiveCommentCommand(file, session.comments, command),
+            applyCommentRequest(file, session.comments, command),
             setTimeoutAsync(COMMENT_COMMAND_TIMEOUT_MS),
           ]);
           if (applied === "timeout") {
@@ -435,7 +435,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         });
         if (result.value.added) {
           // Not awaited: the command is answered without waiting for its mentions to be posted.
-          void dispatchLiveCommentMentions(
+          void dispatchSessionCommentMentions(
             file,
             document,
             command,

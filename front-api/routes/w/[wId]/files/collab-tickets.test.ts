@@ -1,4 +1,4 @@
-import { redeemLiveTicket } from "@app/lib/api/collab/tickets";
+import { redeemCollabTicket } from "@app/lib/api/collab/tickets";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -31,7 +31,7 @@ describe("POST /api/w/:wId/files/collab-tickets", () => {
 
     expect(response.status).toBe(200);
     const { ticket } = await response.json();
-    expect(await redeemLiveTicket(ticket)).toEqual({
+    expect(await redeemCollabTicket(ticket)).toEqual({
       workspaceId: workspace.sId,
       userId: user.sId,
       canonicalPath: filePath,

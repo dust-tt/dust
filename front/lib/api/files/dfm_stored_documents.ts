@@ -1,10 +1,10 @@
-import type { LiveSessionWriteError } from "@app/lib/api/collab/live_session_write";
+import type { CollabSourceError } from "@app/lib/api/collab/client";
+import { readCollabSource } from "@app/lib/api/collab/client";
+import type { CollabSessionWriteError } from "@app/lib/api/collab/write_through_session";
 import {
-  isLiveSessionWriteError,
-  writeThroughLiveSession,
-} from "@app/lib/api/collab/live_session_write";
-import type { LiveSourceError } from "@app/lib/api/collab/live_source";
-import { fetchLiveSource } from "@app/lib/api/collab/live_source";
+  isCollabSessionWriteError,
+  writeThroughCollabSession,
+} from "@app/lib/api/collab/write_through_session";
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
@@ -46,20 +46,20 @@ function fileSystemError(error: {
   );
 }
 
-function liveSourceError({
+function collabSourceError({
   code,
   message,
-}: LiveSourceError): DfmStoredDocumentError {
+}: CollabSourceError): DfmStoredDocumentError {
   return new DfmStoredDocumentError(
     code === "refused" ? "refused" : "storage_failed",
     message
   );
 }
 
-function liveSessionWriteError({
+function collabSessionWriteError({
   code,
   message,
-}: LiveSessionWriteError): DfmStoredDocumentError {
+}: CollabSessionWriteError): DfmStoredDocumentError {
   switch (code) {
     case "read_only":
     case "refused":
@@ -217,9 +217,9 @@ export async function readCurrentDocumentSource(
   if (filePath.isErr()) {
     return filePath;
   }
-  const live = await fetchLiveSource(auth, filePath.value, agent);
+  const live = await readCollabSource(auth, filePath.value, agent);
   if (live.isErr()) {
-    return new Err(liveSourceError(live.error));
+    return new Err(collabSourceError(live.error));
   }
   if (live.value.open) {
     const found = await checkDocumentFound(dustFs, filePath.value);
@@ -245,8 +245,8 @@ export async function readCurrentDocumentSource(
  * `conflict` after `MAX_WRITE_ATTEMPTS`, never overwriting a concurrent write.
  *
  * While a live session holds the document, the file MUST NOT be read or written: after the name
- * check of `readStoredDocument`, the change MUST go through `writeThroughLiveSession` with `agent`
- * (`live-session-write`), and the file MUST exist before `change` receives the session's source,
+ * check of `readStoredDocument`, the change MUST go through `writeThroughCollabSession` with `agent`
+ * (`collab-session-write`), and the file MUST exist before `change` receives the session's source,
  * parsed; the session refuses a storage without revisions itself (`collab-live-source-write`).
  */
 export async function writeDocumentChange<T, E extends Error>(
@@ -262,7 +262,7 @@ export async function writeDocumentChange<T, E extends Error>(
   }
 
   for (let attempt = 0; attempt < MAX_WRITE_ATTEMPTS; attempt++) {
-    const live = await writeThroughLiveSession(auth, dustFs, {
+    const live = await writeThroughCollabSession(auth, dustFs, {
       filePath: filePath.value,
       agent,
       change: async (source) => {
@@ -290,8 +290,8 @@ export async function writeDocumentChange<T, E extends Error>(
     });
     if (live.isErr()) {
       return new Err(
-        isLiveSessionWriteError(live.error)
-          ? liveSessionWriteError(live.error)
+        isCollabSessionWriteError(live.error)
+          ? collabSessionWriteError(live.error)
           : live.error
       );
     }
