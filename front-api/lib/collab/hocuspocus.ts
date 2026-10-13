@@ -96,7 +96,7 @@ function logUnexpected(
  * with `applyCommentRequest` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
  * connection of the document and the document stored, so the save writes them, through the
- * connection that last changed its text, or through the commenter's when none did, and the
+ * connection that last changed its text, or through the latest commenter's when none did, and the
  * message it added handed to `dispatchSessionCommentMentions` without waiting for it. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
  * MUST be answered, refused as `unavailable` when it is invalid, failed, outlived its document or
@@ -148,6 +148,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         lastSave,
         saveFailed: false,
         lastChangedBy: undefined,
+        lastCommenter: undefined,
         graceTimer: undefined,
         pendingMutations: Promise.resolve(),
       });
@@ -169,7 +170,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       const session = getSession(document);
       // Not `lastContext`: a direct connection's disconnect stores the document with its own
       // context, even when it changed nothing.
-      const writer = session?.lastChangedBy;
+      const writer = session?.lastChangedBy ?? session?.lastCommenter;
       if (!session || !writer) {
         return;
       }
@@ -320,7 +321,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;
-        session.lastChangedBy ??= file;
+        session.lastCommenter = file;
         // TODO(co-edition): broadcast only the changed thread rather than every thread to every
         // connection.
         document.broadcastStateless(
