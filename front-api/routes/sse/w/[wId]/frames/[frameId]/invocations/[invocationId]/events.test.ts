@@ -2,6 +2,7 @@ import {
   getSandboxFunctionInvocationEvents,
   getSandboxFunctionInvocationEventsBatch,
 } from "@app/lib/api/sandbox_functions/events";
+import logger from "@app/logger/logger";
 import { makeTestFrameInvocation } from "@app/tests/utils/FrameFunctionFactory";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
 import { honoApp } from "@front-api/app";
@@ -20,9 +21,10 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
   };
 });
 
-describe.each(["", "/poll"])(
+describe.each(["", "?transport=sse", "/poll", "?transport=poll"])(
   "GET /api/sse/w/:wId/frames/:frameId/invocations/:invocationId/events%s",
   (suffix) => {
+    const polling = suffix.includes("poll");
     function getEvents({
       workspaceId,
       frameId,
@@ -50,6 +52,7 @@ describe.each(["", "/poll"])(
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(logger, "info").mockImplementation(() => undefined);
     });
 
     it("keeps an invocation streamable after the Frame republishes", async () => {
@@ -74,12 +77,16 @@ describe.each(["", "/poll"])(
       });
 
       expect(response.status).toBe(200);
-      const payload = suffix
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: !polling }),
+        "Processed request"
+      );
+      const payload = polling
         ? (await response.json()).events.join("\n")
         : await response.text();
       expect(payload).toContain('"result":{"ok":true}');
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).toHaveBeenCalledWith({
@@ -102,7 +109,7 @@ describe.each(["", "/poll"])(
 
       expect(response.status).toBe(404);
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).not.toHaveBeenCalled();
@@ -121,7 +128,7 @@ describe.each(["", "/poll"])(
 
       expect(response.status).toBe(403);
       expect(
-        suffix
+        polling
           ? getSandboxFunctionInvocationEventsBatch
           : getSandboxFunctionInvocationEvents
       ).not.toHaveBeenCalled();

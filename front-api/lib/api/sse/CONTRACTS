@@ -1,0 +1,10 @@
+@cc [owner:id13,label:api] private-event-transport
+Private event endpoints for conversations, messages, Frame invocations, and sandbox-function
+invocations MUST accept `transport=poll` on `/events` and return JSON event batches. Omitting
+`transport` or using `transport=sse` MUST preserve SSE responses. Both transports MUST preserve
+access checks and resume from `lastEventId`.
+
+@cc [owner:id13,label:api;logging] event-transport-streaming-tag
+Event polling responses MUST NOT set the request or trace `streaming` tag to true. SSE responses
+MUST set both tags to true when initializing SSE headers. This applies to private MCP requests
+and retained polling compatibility routes as well as event endpoints.

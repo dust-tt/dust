@@ -1,5 +1,4 @@
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { streamingTag } from "@front-api/middlewares/streaming";
 import { validate } from "@front-api/middlewares/validator";
 import {
   PostMCPRequestsRequestQuerySchema,
@@ -15,7 +14,6 @@ const BrowserMCPRequestsQuerySchema = PostMCPRequestsRequestQuerySchema.extend({
 
 const app = workspaceApp();
 
-app.use("*", streamingTag);
 /**
  * @ignoreswagger Internal browser endpoint: SSE by default; transport=poll returns JSON event batches.
  */

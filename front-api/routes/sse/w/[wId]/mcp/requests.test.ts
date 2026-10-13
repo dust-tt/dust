@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { honoApp } from "@front-api/app";
 import {
@@ -40,6 +41,7 @@ describe.each([undefined, "sse", "poll"])(
 
     beforeEach(() => {
       vi.clearAllMocks();
+      vi.spyOn(logger, "info").mockImplementation(() => undefined);
     });
 
     it("returns 400 when serverId query parameter is missing", async () => {
@@ -80,6 +82,11 @@ describe.each([undefined, "sse", "poll"])(
 
       const response = await getRequests(workspace.sId, "?serverId=srv_ok");
 
+      expect(logger.info).toHaveBeenCalledWith(
+        expect.objectContaining({ streaming: transport !== "poll" }),
+        "Processed request"
+      );
+
       if (transport === "poll") {
         expect(response.status).toBe(200);
         expect(await response.json()).toEqual({ events: [] });
@@ -93,6 +100,7 @@ describe.each([undefined, "sse", "poll"])(
 describe("browser MCP polling on the requests endpoint", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(logger, "info").mockImplementation(() => undefined);
   });
 
   it("rejects an unsupported transport", async () => {

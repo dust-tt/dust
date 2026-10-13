@@ -1,8 +1,6 @@
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 
-import poll from "./poll";
-
 const app = workspaceApp();
 
 /**
@@ -40,6 +38,14 @@ const app = workspaceApp();
  *         description: Redis stream ID of the last received message event. Omit or pass an empty value to start from the available history.
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: transport
+ *         required: false
+ *         description: Use poll for JSON event batches with a wait of up to 25 seconds.
+ *         schema:
+ *           type: string
+ *           enum: [sse, poll]
+ *           default: sse
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -50,11 +56,13 @@ const app = workspaceApp();
  *           text/event-stream:
  *             schema:
  *               $ref: '#/components/schemas/PrivateAgentMessageStreamEnvelope'
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PrivateAgentMessageEventsPollResponse'
  *       401:
  *         description: Unauthorized
  */
 
 app.get("/", redirectToSse);
-app.route("/poll", poll);
 
 export default app;

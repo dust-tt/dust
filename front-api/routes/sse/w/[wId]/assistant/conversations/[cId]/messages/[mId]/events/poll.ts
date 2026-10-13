@@ -9,7 +9,7 @@ import { validate } from "@front-api/middlewares/validator";
 
 const app = workspaceApp();
 
-/** @ignoreswagger */
+/** @ignoreswagger Deprecated on 2026-10-12; use the parent events endpoint with transport=poll. */
 app.get(
   "/",
   validate("param", MessageParamSchema),
