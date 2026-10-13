@@ -139,6 +139,7 @@ version = "0.1.0"
 dependencies = [
  "dfs-protocol",
  "libc",
+ "prost",
  "tonic",
 ]
 

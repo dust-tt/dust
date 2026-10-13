@@ -1,4 +1,5 @@
-use dfs_protocol::rpc::ErrorCode;
+use dfs_protocol::rpc::{ErrorCode, ErrorDetails};
+use prost::Message;
 use tonic::Status;
 
 /// A POSIX error number, as the kernel expects it in a FUSE reply.
@@ -60,7 +61,10 @@ impl From<ErrorCode> for Errno {
  * `EIO`.
  */
 impl From<Status> for Errno {
-    fn from(_status: Status) -> Self {
-        todo!()
+    fn from(status: Status) -> Self {
+        if status.details().is_empty() {
+            return Self::EIO;
+        }
+        ErrorDetails::decode(status.details()).map_or(Self::EIO, |details| details.code().into())
     }
 }

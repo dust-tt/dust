@@ -7,6 +7,7 @@ publish = false
 [dependencies]
 dfs-protocol = { path = "../protocol" }
 libc = "0.2"
+prost = "0.14"
 tonic = "0.14"
 
 [lints.rust]
