@@ -51,9 +51,7 @@ export function validateSkillsForImport<T extends DetectedSkill>({
   // Check for source conflicts with existing skills.
   for (const existing of existingSkills) {
     if (isConflicting(existing)) {
-      messages.push(
-        `A different skill named "${existing.name}" already exists.`
-      );
+      messages.push(`A skill named "${existing.name}" already exists.`);
     }
   }
 

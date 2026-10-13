@@ -82,6 +82,10 @@ app.post(
     const result = await importSkillsFromFiles(auth, {
       uploadedFiles,
       names: fieldNames,
+      // Re-uploading a skill previously imported from a local file updates it.
+      updateSameSource: true,
+      // but do not override files from other sources
+      onConflict: "skip",
     });
     if (result.isErr()) {
       const { code, message } = result.error;

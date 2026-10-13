@@ -75,9 +75,16 @@ type ImportSkillsResult = {
  * uploads their attachments, then creates or updates SkillResource objects.
  *
  * `onConflict` controls what happens when a skill name collides with an
- * existing skill from a different source:
+ * existing skill:
  *  - "skip": the conflicting skill is skipped and reported in `skipped`.
  *  - "error": the entire import is rejected upfront (no partial writes).
+ *  - "override": the existing skill is updated.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product;api] import-conflict-definition
+ * An existing skill with the same name as an imported skill MUST be handled by `onConflict`, unless
+ * `updateSameSource` is set and the existing skill's source equals `source`, in which case it MUST
+ * be updated.
  */
 /**
  * @cc [owner:philipperolet,label:security] api-key-import-editors-preflight
@@ -93,6 +100,7 @@ export async function importSkillsFromFiles(
     availability,
     source = "local_file",
     onConflict = "skip",
+    updateSameSource = false,
   }: {
     uploadedFiles: formidable.File[];
     names?: string[];
@@ -100,6 +108,7 @@ export async function importSkillsFromFiles(
     availability?: SkillAvailability;
     source?: FileImportSource;
     onConflict?: ImportConflictStrategyType;
+    updateSameSource?: boolean;
   }
 ): Promise<Result<ImportSkillsResult, SkillFilesImportError>> {
   const canCreateSkills = auth.hasWorkspacePermission("create", "skill");
@@ -170,6 +179,8 @@ export async function importSkillsFromFiles(
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+  const isConflicting = (existing: SkillResource) =>
+    !(updateSameSource && existing.source === source);
 
   if (onConflict === "error") {
     // Validate all skills upfront, fail as a unit on semantic problems.
@@ -177,7 +188,7 @@ export async function importSkillsFromFiles(
       selectedSkills,
       requestedNames: names ?? null,
       existingSkills,
-      isConflicting: (existing) => existing.source !== source,
+      isConflicting,
     });
     if (validationResult.isErr()) {
       return new Err(
@@ -201,11 +212,7 @@ export async function importSkillsFromFiles(
 
   const skillsToUpsert = selectedSkills.filter((skill) => {
     const existing = existingSkillsMap.get(skill.name);
-    return !(
-      existing &&
-      existing.source !== source &&
-      onConflict !== "override"
-    );
+    return !(existing && isConflicting(existing) && onConflict !== "override");
   });
 
   const nonWritableSkillNames = removeNulls(
@@ -302,10 +309,10 @@ export async function importSkillsFromFiles(
   for (const skill of selectedSkills) {
     const existing = existingSkillsMap.get(skill.name) ?? null;
 
-    if (existing && existing.source !== source && onConflict !== "override") {
+    if (existing && isConflicting(existing) && onConflict !== "override") {
       skipped.push({
         name: skill.name,
-        message: `A different skill named "${skill.name}" already exists.`,
+        message: `A skill named "${skill.name}" already exists.`,
       });
       continue;
     }
