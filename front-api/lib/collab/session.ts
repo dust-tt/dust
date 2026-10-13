@@ -278,9 +278,9 @@ export async function writeSessionSource(
     const threadsChanged =
       JSON.stringify(comments.value) !== JSON.stringify(session.comments);
     session.comments = comments.value;
-    // A change of the threads alone does not go through `onChange`.
-    session.lastCommenter = file;
     if (threadsChanged) {
+      // A change of the threads alone does not go through `onChange`.
+      session.lastCommenter = file;
       document.broadcastStateless(
         serverMessage({ type: "threads", comments: session.comments })
       );

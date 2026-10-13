@@ -43,6 +43,7 @@ import {
 } from "@front-api/lib/collab/session";
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import type { WebSocketLike } from "@hocuspocus/server";
+import { Connection } from "@hocuspocus/server";
 import type { Peer } from "crossws";
 import crossws from "crossws/adapters/node";
 
@@ -451,6 +452,63 @@ describe("comment threads in a live session", () => {
     const late = await mine.send({ type: "delete", commentId: "c2" });
     expect(late.isErr() && late.error).toBe("unavailable");
   }, 15_000);
+
+  it("saves comments through the latest commenter when nobody changed the text", async () => {
+    const first = await collabAccess(true);
+    const second: CollabAccess = {
+      ...first,
+      auth: (await collabAccess(true)).auth,
+    };
+    vi.mocked(loadCollabSession).mockImplementation(loadSource);
+    saveNextRevision();
+    vi.mocked(applyCommentRequest).mockImplementation(
+      async (_file, comments) =>
+        new Ok({
+          comments: [...comments, CREATED],
+          created: CREATED,
+          added: CREATED.messages[0],
+        })
+    );
+    const hocuspocus = createCollabHocuspocus();
+    const documentName = toSessionName(first.workspaceId, first.canonicalPath);
+    await hocuspocus.openDirectConnection(documentName, first);
+    const document = hocuspocus.documents.get(documentName);
+    if (!document) {
+      throw new Error("The document did not load.");
+    }
+
+    // Two browsers' connections, each sending a comment command.
+    const request = new Request("http://localhost/api/collab");
+    for (const [index, context] of [first, second].entries()) {
+      const socket = { send: vi.fn(), close: vi.fn(), readyState: 1 };
+      const connection = new Connection(
+        socket,
+        request,
+        document,
+        "socket",
+        context
+      );
+      const answered = vi.spyOn(connection, "sendStateless");
+      await hocuspocus.hooks("onStateless", {
+        connection,
+        document,
+        documentName,
+        payload: JSON.stringify({
+          type: "command",
+          requestId: `r${index}`,
+          command: { type: "add", commentId: `c${index + 2}`, body: "Hi." },
+        }),
+      });
+      await vi.waitFor(() => expect(answered).toHaveBeenCalled());
+    }
+
+    hocuspocus.flushPendingStores();
+    await vi.waitFor(() =>
+      expect(vi.mocked(saveCollabSession).mock.calls.at(-1)?.[0].auth).toBe(
+        second.auth
+      )
+    );
+  });
 
   it("saves a comment through the connection that last changed the text", async () => {
     const { writer, hocuspocus, url } = await start();

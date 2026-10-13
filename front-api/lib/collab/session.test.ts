@@ -2,6 +2,7 @@ import {
   loadCollabSession,
   saveCollabSession,
 } from "@app/lib/api/collab/session_file";
+import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import { toSessionName } from "@app/types/collab";
 import { Ok } from "@app/types/shared/result";
 import {
@@ -16,7 +17,6 @@ import {
   writeSessionSource,
 } from "@front-api/lib/collab/session";
 
-import { dfmToYDoc } from "@app/lib/api/collab/ydoc";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/collab/access", async (importActual) => {
@@ -199,7 +199,7 @@ describe("readSessionSource and writeSessionSource", () => {
     });
     const hocuspocus = createCollabHocuspocus();
     const { agent, reader, name } = await collabAccesses();
-    const other = { ...agent };
+    const other = { ...agent, auth: (await collabAccess(true)).auth };
     vi.useFakeTimers();
     await hocuspocus.openDirectConnection(name, reader);
 
