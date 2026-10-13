@@ -189,13 +189,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     github: "https://github.com/TrismoEd",
     linkedIn: "https://www.linkedin.com/in/edouard-villette",
   },
-  vince: {
-    name: "Vince Sarkisian",
-    title: "Solutions Engineer",
-    image: "https://avatars.githubusercontent.com/u/1455646?v=4",
-    github: "https://github.com/vincesarkisian",
-    linkedIn: "https://www.linkedin.com/in/vincesarkisian/",
-  },
   louis: {
     name: "Louis Caulet",
     title: "Enterprise Account Executive",
@@ -209,13 +202,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     image: "https://ca.slack-edge.com/T050RH73H9P-U093VA8B7E0-e078a8e04a44-512",
     github: "https://github.com/faateh-dust",
     linkedIn: "https://www.linkedin.com/in/faatehalidhillon",
-  },
-  nicole: {
-    name: "Nicole Kreider",
-    title: "Account Executive",
-    image: "https://avatars.githubusercontent.com/u/222190268?v=4",
-    github: "https://github.com/nkreider-dot",
-    linkedIn: "https://www.linkedin.com/in/nkreider",
   },
   lauriane: {
     name: "Lauriane Paour",
@@ -490,13 +476,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     linkedIn: "https://www.linkedin.com/in/sophie-palmer1/",
     github: "",
   },
-  lroussel: {
-    name: "Louni Roussel",
-    title: "Community Workshops",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U0AS98H83CP-b79e7a080116-512",
-    linkedIn: "https://www.linkedin.com/in/louisnicolas-roussel",
-    github: "",
-  },
   ewoodcock: {
     name: "Ellen Woodcock",
     title: "Marketing",
@@ -590,7 +569,7 @@ export const PEOPLE: Record<string, TeamMember> = {
   },
   arthurvervaet: {
     name: "Arthur Vervaet",
-    title: "Software engineer",
+    title: "Software Engineer",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0BJHCXK57V-859354745ab0-72",
     linkedIn: "https://www.linkedin.com/in/arthur-vervaet",
     github: "https://github.com/avervaet",
@@ -649,13 +628,6 @@ export const PEOPLE: Record<string, TeamMember> = {
     title: "Talent Operations",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0A9NU7M4N7-582536f88a8d-512",
     linkedIn: "https://www.linkedin.com/in/shannontse/",
-    github: "",
-  },
-  romaindillet: {
-    name: "Romain Dillet",
-    title: "Editorial & Comms",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U0B7V77CCC9-d3de9b675142-512",
-    linkedIn: "https://www.linkedin.com/in/romaindillet/",
     github: "",
   },
   reneepark: {
@@ -741,6 +713,48 @@ export const PEOPLE: Record<string, TeamMember> = {
     image: "https://ca.slack-edge.com/T050RH73H9P-U0C8RQFF89Y-b1efa577f0a9-512",
     linkedIn: "https://www.linkedin.com/in/jean-charles-louis/",
     github: "https://github.com/louisjc",
+  },
+  kristinphillips: {
+    name: "Kristin Phillips",
+    title: "Creative Director",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C5B8T3W04-09c3e1d406f4-512",
+    linkedIn: "https://www.linkedin.com/in/kristinphillipsdesign/",
+    github: "",
+  },
+  nataliedoandunnum: {
+    name: "Natalie Doan-Dunnum",
+    title: "Growth Marketing",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8RQF1D6W-5506d8f20eaa-512",
+    linkedIn: "https://www.linkedin.com/in/nddunnum/",
+    github: "",
+  },
+  christinehong: {
+    name: "Christine Hong",
+    title: "Founders Office, US",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q126R54-76d9613a544f-512",
+    linkedIn: "https://www.linkedin.com/in/christineluhong/",
+    github: "",
+  },
+  effyhasan: {
+    name: "Effy Hasan",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8KNNMHMH-0d379b31ecc5-512",
+    linkedIn: "https://www.linkedin.com/in/effy-hasan/",
+    github: "",
+  },
+  viktoriyakarpenko: {
+    name: "Viktoriya Karpenko",
+    title: "Account Executive",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8AJC0K2B-a0c798a1340f-512",
+    linkedIn: "https://www.linkedin.com/in/viktoriya-karpenko/",
+    github: "",
+  },
+  harryborovick: {
+    name: "Harry Borovick",
+    title: "General Counsel",
+    image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q11U59C-606871f967fc-512",
+    linkedIn: "https://www.linkedin.com/in/harry-borovick-73064b34/",
+    github: "",
   },
 };
 
