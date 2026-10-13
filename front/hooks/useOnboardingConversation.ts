@@ -24,13 +24,7 @@ export function useOnboardingConversation({
 
     const res = await clientFetch(
       `/api/w/${workspaceId}/assistant/conversations/send-onboarding`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      }
+      { method: "POST" }
     );
 
     if (res.ok) {
