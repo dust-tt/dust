@@ -1,9 +1,9 @@
 # dfs-mount
 
-`dfs-mount` is the library behind the sandbox FUSE client. It serves one dfs session as a
-filesystem: the kernel asks for inodes, attributes and directory entries, and the library answers
-from the dfs server. A separate FUSE adapter binary will translate kernel requests into calls to
-this library.
+`dfs-mount` is the library behind the dfs FUSE client, which mounts dfs as a filesystem on Linux.
+Sandboxes are its main consumer. The library serves one dfs session as a filesystem: the kernel
+asks for inodes, attributes and directory entries, and the library answers from the dfs server. A
+separate FUSE adapter binary will translate kernel requests into calls to this library.
 
 This crate only holds the API shape for now. Functions are `todo!()`; their doc comments and code
 contracts say what they must do. See [CONTRACTS](CONTRACTS) for the rules that apply to the whole

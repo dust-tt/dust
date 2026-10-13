@@ -50,4 +50,4 @@ applications and sandbox mounts address files.
 
 ## Mount
 
-The [mount design](../mount/DESIGN.md) describes the library behind the sandbox FUSE client.
+The [mount design](../mount/DESIGN.md) describes the library behind the dfs FUSE client for Linux.
