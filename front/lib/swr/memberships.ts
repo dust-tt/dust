@@ -669,7 +669,7 @@ function getSeatUpdateNotification({
     description: isDeferred
       ? msg`${memberName}'s seat will change to ${seatName} at the next credit refresh.`
       : isCancellingScheduledChange
-        ? msg`${memberName}'s scheduled seat change has been cancelled.`
+        ? msg`${memberName}'s scheduled seat change has been canceled.`
         : hasSeatPool
           ? msg`${memberName}'s seat has been updated to ${seatName}. The seat pool will be provisioned shortly.`
           : msg`${memberName}'s seat has been updated to ${seatName}.`,

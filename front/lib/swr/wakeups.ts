@@ -88,7 +88,7 @@ export function useCancelWakeUp({
         return false;
       }
 
-      sendNotification({ type: "success", title: t`Wake-up cancelled` });
+      sendNotification({ type: "success", title: t`Wake-up canceled` });
       void mutateWakeUps();
       void mutateConversations(
         (currentData: ConversationListItemType[] | undefined) =>

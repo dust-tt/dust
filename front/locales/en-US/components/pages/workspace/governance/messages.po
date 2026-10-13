@@ -303,8 +303,8 @@ msgid "Language"
 msgstr "Language"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "locale localisation"
-msgstr "locale localisation"
+msgid "locale localization"
+msgstr "locale localization"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "Voice transcription"

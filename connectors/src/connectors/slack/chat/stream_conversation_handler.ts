@@ -964,7 +964,7 @@ async function streamAgentAnswerToSlack(
         await planHandler.deletePlanMessage();
         await streamHandler.stop();
 
-        const cancelledMessage = `_${i18n._("Message generation was cancelled.")}_`;
+        const cancelledMessage = `_${i18n._("Message generation was canceled.")}_`;
         const {
           formattedContent: cancelledContent,
           footnotes: cancelledFootnotes,

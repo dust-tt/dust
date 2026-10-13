@@ -564,7 +564,7 @@ export function ChangeSeatModal({
               {isCancellingScheduledChange && (
                 <p className="mt-1 text-xs text-info-600">
                   <Trans>
-                    Scheduled change to {scheduledSeatName} will be cancelled.
+                    Scheduled change to {scheduledSeatName} will be canceled.
                   </Trans>
                 </p>
               )}

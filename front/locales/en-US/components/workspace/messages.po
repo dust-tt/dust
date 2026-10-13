@@ -643,8 +643,8 @@ msgid "The change will take effect at the next credit refresh."
 msgstr "The change will take effect at the next credit refresh."
 
 #: front/components/workspace/ChangeSeatModal.tsx
-msgid "Scheduled change to {scheduledSeatName} will be cancelled."
-msgstr "Scheduled change to {scheduledSeatName} will be cancelled."
+msgid "Scheduled change to {scheduledSeatName} will be canceled."
+msgstr "Scheduled change to {scheduledSeatName} will be canceled."
 
 #: front/components/workspace/ChangeSeatModal.tsx
 msgid "Estimating invoice impact…"

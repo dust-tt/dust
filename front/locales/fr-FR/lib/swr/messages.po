@@ -722,7 +722,7 @@ msgid "{memberName}'s seat will change to {seatName} at the next credit refresh.
 msgstr "{memberName} disposera d’un siège {seatName} au prochain renouvellement des crédits."
 
 #: front/lib/swr/memberships.ts
-msgid "{memberName}'s scheduled seat change has been cancelled."
+msgid "{memberName}'s scheduled seat change has been canceled."
 msgstr "Le changement de siège planifié de {memberName} a été annulé."
 
 #: front/lib/swr/memberships.ts
@@ -1537,7 +1537,7 @@ msgid "Failed to cancel wake-up"
 msgstr "Impossible d’annuler le réveil"
 
 #: front/lib/swr/wakeups.ts
-msgid "Wake-up cancelled"
+msgid "Wake-up canceled"
 msgstr "Réveil annulé"
 
 #: front/lib/swr/webhook_source.ts
@@ -1621,5 +1621,5 @@ msgid "Checkout failed"
 msgstr "Échec du paiement"
 
 #: front/lib/swr/workspaces.ts
-msgid "Could not initialise the payment form. Please try again."
+msgid "Could not initialize the payment form. Please try again."
 msgstr "Impossible d’initialiser le formulaire de paiement. Réessayez."

@@ -300,12 +300,12 @@ msgstr "Failed to cancel your subscription."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 #: front/hooks/useWorkspaceSubscriptionCancellation.ts
-msgid "Subscription cancelled"
-msgstr "Subscription cancelled"
+msgid "Subscription canceled"
+msgstr "Subscription canceled"
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
-msgid "Your subscription has been cancelled."
-msgstr "Your subscription has been cancelled."
+msgid "Your subscription has been canceled."
+msgstr "Your subscription has been canceled."
 
 #: front/hooks/useMetronomeContractLifecycleAction.ts
 msgid "Reactivation failed"
