@@ -32,16 +32,18 @@ import type {
   LiveCommentErrorCode,
   LiveCommentServerMessage,
   LiveIdRange,
-  LiveSourceReadResponse,
-  LiveSourceWriteResult,
 } from "@app/types/collab";
 import {
   BODY_FRAGMENT_NAME,
-  LIVE_SOURCE_WRITE_WAIT_MS,
   liveCommentClientMessageSchema,
   parseLiveDocumentName,
   toLiveDocumentName,
 } from "@app/types/collab";
+import type {
+  CollabSourceReadResponse,
+  CollabSourceWriteResult,
+} from "@app/types/collab_internal";
+import { COLLAB_SOURCE_WRITE_WAIT_MS } from "@app/types/collab_internal";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -530,7 +532,7 @@ async function openSession(
 export async function readLiveSource(
   hocuspocus: Hocuspocus<CollabAccess>,
   documentName: string
-): Promise<Result<LiveSourceReadResponse, string>> {
+): Promise<Result<CollabSourceReadResponse, string>> {
   const open = await openSession(hocuspocus, documentName);
   if (!open) {
     return new Ok({ open: false });
@@ -576,7 +578,7 @@ export function showLiveAgentActivity(
  * checkpoints could not be conditional; otherwise the write MUST fail and change nothing. It MUST
  * take its turn among the document's comment commands, answering `closed` if the document unloaded
  * meanwhile, and a write that fails MUST NOT hold the later ones. A write whose turn has not come
- * within `LIVE_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
+ * within `COLLAB_SOURCE_WRITE_WAIT_MS` MUST answer `busy` and never apply, so its caller never
  * retries a change that lands later; so MUST a write once `checkpointAllDocuments` was called.
  * Nothing may run between the comparison with `base` and the change, so no edit can slip between
  * them. With `agent`, a change of the source MUST be announced to every connection as that agent
@@ -593,7 +595,7 @@ export async function writeLiveSource(
     source,
     agent,
   }: { file: CollabAccess; base: string; source: string; agent?: LiveAgent }
-): Promise<Result<LiveSourceWriteResult, string>> {
+): Promise<Result<CollabSourceWriteResult, string>> {
   if (!file.canWrite) {
     return new Err("The file cannot be written.");
   }
@@ -613,7 +615,7 @@ export async function writeLiveSource(
   }
 
   let turn: "waiting" | "taken" | "expired" = "waiting";
-  const write = (): Result<LiveSourceWriteResult, string> => {
+  const write = (): Result<CollabSourceWriteResult, string> => {
     if (turn === "expired") {
       return new Ok("busy");
     }
@@ -713,7 +715,7 @@ export async function writeLiveSource(
 
   const answered = await Promise.race([
     written,
-    setTimeoutAsync(LIVE_SOURCE_WRITE_WAIT_MS),
+    setTimeoutAsync(COLLAB_SOURCE_WRITE_WAIT_MS),
   ]);
   // `write` runs at once when its turn comes: a turn already taken has finished.
   if (answered === "timeout" && turn === "waiting") {

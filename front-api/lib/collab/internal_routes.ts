@@ -7,17 +7,17 @@ import {
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
+import { toLiveDocumentName } from "@app/types/collab";
 import type {
-  LiveSourceReadResponse,
-  LiveSourceWriteResponse,
-} from "@app/types/collab";
+  CollabSourceReadResponse,
+  CollabSourceWriteResponse,
+} from "@app/types/collab_internal";
 import {
-  LIVE_SOURCE_READ_PATH,
-  LIVE_SOURCE_WRITE_PATH,
-  liveSourceReadRequestSchema,
-  liveSourceWriteRequestSchema,
-  toLiveDocumentName,
-} from "@app/types/collab";
+  COLLAB_SOURCE_READ_PATH,
+  COLLAB_SOURCE_WRITE_PATH,
+  collabSourceReadRequestSchema,
+  collabSourceWriteRequestSchema,
+} from "@app/types/collab_internal";
 import {
   readLiveSource,
   showLiveAgentActivity,
@@ -76,8 +76,8 @@ export function createInternalDocumentsApp(
 
   /** @ignoreswagger */
   app.post(
-    LIVE_SOURCE_READ_PATH,
-    validate("json", liveSourceReadRequestSchema),
+    COLLAB_SOURCE_READ_PATH,
+    validate("json", collabSourceReadRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, agent } =
         ctx.req.valid("json");
@@ -85,7 +85,7 @@ export function createInternalDocumentsApp(
 
       const read = await readLiveSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
-        return ctx.json<LiveSourceReadResponse>(read.value);
+        return ctx.json<CollabSourceReadResponse>(read.value);
       }
 
       // Open, readable or not: only a user who can open the file learns more of it.
@@ -125,14 +125,14 @@ export function createInternalDocumentsApp(
       if (agent) {
         showLiveAgentActivity(hocuspocus, documentName, agent, "reading");
       }
-      return ctx.json<LiveSourceReadResponse>(read.value);
+      return ctx.json<CollabSourceReadResponse>(read.value);
     }
   );
 
   /** @ignoreswagger */
   app.post(
-    LIVE_SOURCE_WRITE_PATH,
-    validate("json", liveSourceWriteRequestSchema),
+    COLLAB_SOURCE_WRITE_PATH,
+    validate("json", collabSourceWriteRequestSchema),
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, base, source, agent } =
         ctx.req.valid("json");
@@ -148,7 +148,7 @@ export function createInternalDocumentsApp(
         Buffer.byteLength(source, "utf8") >
         WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES
       ) {
-        return ctx.json<LiveSourceWriteResponse>({
+        return ctx.json<CollabSourceWriteResponse>({
           result: "refused",
           message: "This document would be too large to edit live.",
         });
@@ -160,7 +160,7 @@ export function createInternalDocumentsApp(
         source,
         agent,
       });
-      return ctx.json<LiveSourceWriteResponse>(
+      return ctx.json<CollabSourceWriteResponse>(
         written.isOk()
           ? { result: written.value }
           : { result: "refused", message: written.error }

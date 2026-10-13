@@ -101,16 +101,6 @@ export type LiveCommentServerMessage = z.infer<
   typeof liveCommentServerMessageSchema
 >;
 
-/**
- * Agents change a live document through the collab server's internal routes: they read the
- * session's source, change it, then write it back conditional on the source they read.
- */
-
-/** Where the collab server mounts the routes only reached from inside the cluster. */
-export const COLLAB_INTERNAL_ROUTES_PREFIX = "/internal";
-export const LIVE_SOURCE_READ_PATH = "/documents/read";
-export const LIVE_SOURCE_WRITE_PATH = "/documents/write";
-
 /** The agent reading or changing a live document, as its editors show it. */
 export const liveAgentSchema = z.object({
   agentId: z.string().min(1),
@@ -118,56 +108,6 @@ export const liveAgentSchema = z.object({
 });
 
 export type LiveAgent = z.infer<typeof liveAgentSchema>;
-
-export const liveSourceReadRequestSchema = z.object({
-  workspaceId: z.string().min(1),
-  userId: z.string().min(1).optional(),
-  canonicalPath: z.string().min(1),
-  agent: liveAgentSchema.optional(),
-});
-
-export type LiveSourceReadRequest = z.infer<typeof liveSourceReadRequestSchema>;
-
-/** What the collab server reports of a live document an agent wants to change. */
-export const liveSourceReadResponseSchema = z.discriminatedUnion("open", [
-  z.object({ open: z.literal(false) }),
-  z.object({ open: z.literal(true), source: z.string() }),
-]);
-
-export type LiveSourceReadResponse = z.infer<
-  typeof liveSourceReadResponseSchema
->;
-
-export const LIVE_SOURCE_WRITE_RESULTS = [
-  "written",
-  "changed",
-  "closed",
-  "busy",
-] as const;
-
-/** How long a write may wait for its turn on the collab server, kept below its caller's timeout. */
-export const LIVE_SOURCE_WRITE_WAIT_MS = 5 * 1000;
-
-export type LiveSourceWriteResult = (typeof LIVE_SOURCE_WRITE_RESULTS)[number];
-
-export const liveSourceWriteRequestSchema = liveSourceReadRequestSchema.extend({
-  userId: z.string().min(1),
-  base: z.string(),
-  source: z.string(),
-});
-
-export type LiveSourceWriteRequest = z.infer<
-  typeof liveSourceWriteRequestSchema
->;
-
-export const liveSourceWriteResponseSchema = z.discriminatedUnion("result", [
-  z.object({ result: z.enum(LIVE_SOURCE_WRITE_RESULTS) }),
-  z.object({ result: z.literal("refused"), message: z.string() }),
-]);
-
-export type LiveSourceWriteResponse = z.infer<
-  typeof liveSourceWriteResponseSchema
->;
 
 /**
  * What an agent is doing in a live document, pushed to its editors as a stateless message.

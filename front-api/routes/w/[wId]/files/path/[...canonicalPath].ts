@@ -609,7 +609,7 @@ function mapMarkdownCheckError(
   }
 }
 
-function mapLiveWriteError(
+function mapCollabWriteError(
   error: CollabSessionWriteError
 ): APIErrorWithContentfulStatusCode {
   const { code } = error;
@@ -624,7 +624,7 @@ function mapLiveWriteError(
       return {
         status_code: 400,
         api_error: {
-          type: "live_document_write_refused",
+          type: "collab_session_write_refused",
           message: error.message,
         },
       };
@@ -632,7 +632,7 @@ function mapLiveWriteError(
     case "conflict":
       return {
         status_code: 412,
-        api_error: { type: "live_document_conflict", message: error.message },
+        api_error: { type: "collab_session_conflict", message: error.message },
       };
 
     case "unavailable":
@@ -774,7 +774,7 @@ app.put(
       return apiError(
         ctx,
         isCollabSessionWriteError(live.error)
-          ? mapLiveWriteError(live.error)
+          ? mapCollabWriteError(live.error)
           : mapMarkdownCheckError(live.error)
       );
     }
