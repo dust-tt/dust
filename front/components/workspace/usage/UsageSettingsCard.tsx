@@ -90,10 +90,7 @@ export function UsageSettingsCard({
 
   return (
     <Page.Vertical gap="sm" align="stretch">
-      <span className="heading-base text-foreground">
-        <Trans>Spending policies</Trans>
-      </span>
-      <SettingsList>
+      <SettingsList title={<Trans>Spending policies</Trans>}>
         <LockedSection locked={!hasPool}>
           <SettingsList.Row
             title={t`Default per-user workspace credit pool monthly limit`}

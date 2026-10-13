@@ -3,6 +3,10 @@ import React, { type ReactNode } from "react";
 
 interface SettingsListProps {
   children: ReactNode;
+  /** Section heading rendered above the list. */
+  title?: ReactNode;
+  /** Secondary text rendered below the `title`. Requires `title`. */
+  description?: ReactNode;
   className?: string;
   /** Vertical row padding: comfortable (16px, default) or compact (12px). */
   density?: "comfortable" | "compact";
@@ -13,16 +17,19 @@ interface SettingsListProps {
  * and optional `description` with a trailing `action` control; the container handles
  * dividers and spacing. Use it for a settings or preferences panel where each row exposes
  * a single labelled control. For list rows that need a leading visual or hover-revealed
- * controls, use `ContextItem` instead.
+ * controls, use `ContextItem` instead. Pass `title` (and optionally `description`) to render
+ * a section heading above the list with consistent spacing.
  *
  * @summary Stacked list of settings rows.
  */
 export function SettingsList({
   children,
+  title,
+  description,
   className,
   density = "comfortable",
 }: SettingsListProps) {
-  return (
+  const list = (
     <div
       className={cn(
         "flex flex-col overflow-hidden rounded-2xl border border-border divide-y divide-border",
@@ -33,6 +40,24 @@ export function SettingsList({
       )}
     >
       {children}
+    </div>
+  );
+
+  if (!title) {
+    return list;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-0.5">
+        <div className="heading-base flex items-center gap-1 text-foreground">
+          {title}
+        </div>
+        {description && (
+          <div className="copy-sm text-muted-foreground">{description}</div>
+        )}
+      </div>
+      {list}
     </div>
   );
 }
