@@ -955,6 +955,10 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
                 <Trans>
                   Dust builds a personal memory from your conversations and uses
                   it to tailor future responses.
+                </Trans>{" "}
+                <Trans>
+                  To keep your memory private, agents won't rely on it in
+                  conversations with other people.
                 </Trans>
               </span>
             </div>
@@ -970,10 +974,6 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
               <Trans>
                 Agents use your memory when answering, so their responses,
                 including in Slack, can reflect what it contains.
-              </Trans>{" "}
-              <Trans>
-                They won't rely on it in conversations with other people, so it
-                isn't exposed to them by accident.
               </Trans>
             </ContentMessageInline>
           )}
