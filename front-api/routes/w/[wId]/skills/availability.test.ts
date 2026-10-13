@@ -180,7 +180,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_archived",
         message:
           "Archived skills cannot be updated: Archived Batch Skill. Restore them first.",
       },

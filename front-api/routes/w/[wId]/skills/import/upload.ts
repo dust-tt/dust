@@ -1,5 +1,6 @@
 import { importSkillsFromFiles } from "@app/lib/api/skills/detection/files/import_skills";
 import { MAX_ZIP_SIZE_BYTES } from "@app/lib/api/skills/detection/zip/detect_skills";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -83,13 +84,31 @@ app.post(
       names: fieldNames,
     });
     if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: result.error.message,
-        },
-      });
+      const { code, message } = result.error;
+      switch (code) {
+        case "unauthorized":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "skill_import_not_allowed", message },
+          });
+        case "invalid_archive":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "skill_archive_invalid", message },
+          });
+        case "invalid_skills":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "skill_import_invalid", message },
+          });
+        case "editors_not_found":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: { type: "user_not_found", message },
+          });
+        default:
+          assertNever(code);
+      }
     }
 
     return ctx.json({

@@ -7,7 +7,16 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { MAX_TAG_LENGTH, MAX_TAGS_PER_CHANGE } from "@app/types/tag";
 
-type AgentTagsChangeError = DustError<"unauthorized" | "invalid_request_error">;
+export type AgentTagsChangeError = DustError<
+  | "unauthorized"
+  | "active_custom_agent_required"
+  // The change itself is malformed: an empty or too long name, too many tags, an empty change, or
+  // a tag both added and removed.
+  | "invalid_request_error"
+  | "tag_not_on_agent"
+  | "tag_already_on_agent"
+  | "tag_change_not_allowed"
+>;
 
 export interface AgentTagsChange {
   tagsToAdd: TagResource[];
@@ -75,7 +84,7 @@ export async function validateAgentTagsChange(
   if (agent.scope === "global" || agent.status !== "active") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "active_custom_agent_required",
         "Only active custom agents can have their tags changed."
       )
     );
@@ -85,7 +94,7 @@ export async function validateAgentTagsChange(
   if (!agent.canViewContent) {
     return new Err(
       new DustError(
-        "unauthorized",
+        "tag_change_not_allowed",
         "You cannot change the tags of an agent whose content you cannot view."
       )
     );
@@ -152,7 +161,7 @@ export async function validateAgentTagsChange(
   if (notAgentTags.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "tag_not_on_agent",
         `Some tags are not tags of the agent: ${notAgentTags.join(", ")}.`
       )
     );
@@ -174,7 +183,7 @@ export async function validateAgentTagsChange(
   if (alreadyAgentTags.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "tag_already_on_agent",
         `Some tags are already tags of the agent: ${alreadyAgentTags.join(", ")}.`
       )
     );
@@ -183,7 +192,7 @@ export async function validateAgentTagsChange(
   if (tagNamesToCreate.length > 0 && !auth.isAdmin()) {
     return new Err(
       new DustError(
-        "unauthorized",
+        "tag_change_not_allowed",
         "Only workspace admins can create tags. These tags do not exist: " +
           `${tagNamesToCreate.join(", ")}.`
       )
@@ -199,7 +208,7 @@ export async function validateAgentTagsChange(
   ) {
     return new Err(
       new DustError(
-        "unauthorized",
+        "tag_change_not_allowed",
         "Only members who can publish agents can add or remove protected tags."
       )
     );

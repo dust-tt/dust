@@ -440,7 +440,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_archived",
         message: "An archived skill cannot be updated. Restore it first.",
       },
     });
@@ -490,7 +490,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_already_exists",
         message: 'A skill with the name "Other Skill" already exists.',
       },
     });
@@ -630,7 +630,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
     expect(response.status).toBe(404);
     const data = await response.json();
-    expect(data.error.type).toBe("invalid_request_error");
+    expect(data.error.type).toBe("mcp_server_view_not_found");
     expect(data.error.message).toContain("MCP server views not all found");
   });
 
@@ -1883,7 +1883,7 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "skill_archived",
         message: "An archived skill cannot be updated. Restore it first.",
       },
     });

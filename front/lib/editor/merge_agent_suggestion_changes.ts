@@ -31,6 +31,11 @@ export interface AgentEdits {
   subAgents?: SubAgentSuggestionType[];
 }
 
+export type AgentEditsError = DustError<"agent_suggestion_not_supported">;
+
+export type InstructionsEditsError =
+  DustError<"agent_suggestion_not_applicable">;
+
 type AgentSuggestionChangeInput = Pick<
   AgentSuggestionType,
   "kind" | "suggestion"
@@ -38,14 +43,17 @@ type AgentSuggestionChangeInput = Pick<
 
 function fieldEditsForSuggestion(
   suggestion: AgentSuggestionChangeInput
-): Result<AgentEdits, DustError<"invalid_request_error">> {
+): Result<AgentEdits, AgentEditsError> {
   const parsed = AgentSuggestionDataSchema.safeParse({
     kind: suggestion.kind,
     suggestion: suggestion.suggestion,
   });
   if (!parsed.success) {
     return new Err(
-      new DustError("invalid_request_error", "Unsupported agent suggestion.")
+      new DustError(
+        "agent_suggestion_not_supported",
+        "Unsupported agent suggestion."
+      )
     );
   }
 
@@ -92,7 +100,7 @@ function fieldEditsForSuggestion(
     case "knowledge":
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "agent_suggestion_not_supported",
           `Suggestions of kind "${data.kind}" cannot be applied server-side yet.`
         )
       );
@@ -100,7 +108,10 @@ function fieldEditsForSuggestion(
     default:
       assertNeverAndIgnore(data);
       return new Err(
-        new DustError("invalid_request_error", "Unsupported agent suggestion.")
+        new DustError(
+          "agent_suggestion_not_supported",
+          "Unsupported agent suggestion."
+        )
       );
   }
 }
@@ -156,7 +167,7 @@ function mergeFieldEdits(merged: AgentEdits, next: AgentEdits): AgentEdits {
 
 export function mergeAgentEdits(
   suggestions: AgentSuggestionChangeInput[]
-): Result<AgentEdits, DustError<"invalid_request_error">> {
+): Result<AgentEdits, AgentEditsError> {
   let merged: AgentEdits = {};
 
   for (const suggestion of suggestions) {
@@ -181,7 +192,7 @@ export function resolveInstructionsEdits(
   agent: AgentInstructions,
   edits: InstructionsSuggestionSchemaType[],
   getPipeline: () => MarkdownPipeline
-): Result<AgentInstructions, DustError<"invalid_request_error">> {
+): Result<AgentInstructions, InstructionsEditsError> {
   if (edits.length === 0) {
     return new Ok({
       instructions: agent.instructions,
@@ -192,15 +203,23 @@ export function resolveInstructionsEdits(
   if (!agent.instructionsHtml) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "agent_suggestion_not_applicable",
         "The agent this suggestion targets has no block-structured instructions."
       )
     );
   }
 
-  return applyInstructionEditsToHtml(
+  const applied = applyInstructionEditsToHtml(
     agent.instructionsHtml,
     edits.map(({ targetBlockId, content }) => ({ targetBlockId, content })),
     getPipeline()
   );
+  if (applied.isErr()) {
+    // The edits no longer match the agent's current instructions (e.g. a target block is gone).
+    return new Err(
+      new DustError("agent_suggestion_not_applicable", applied.error.message)
+    );
+  }
+
+  return new Ok(applied.value);
 }

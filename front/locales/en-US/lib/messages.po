@@ -874,6 +874,222 @@ msgid "Attachment not found."
 msgstr "Attachment not found."
 
 #: front/lib/api_error_messages.ts
+msgid "This agent is archived. Restore it first."
+msgstr "This agent is archived. Restore it first."
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for active custom agents."
+msgstr "This is only available for active custom agents."
+
+#: front/lib/api_error_messages.ts
+msgid "An active agent with this name already exists."
+msgstr "An active agent with this name already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent has already been created."
+msgstr "This agent has already been created."
+
+#: front/lib/api_error_messages.ts
+msgid "This agent was changed at the same time. Try again."
+msgstr "This agent was changed at the same time. Try again."
+
+#: front/lib/api_error_messages.ts
+msgid "An agent needs at least one editor."
+msgstr "An agent needs at least one editor."
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already an editor of the agent."
+msgstr "This user is already an editor of the agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This user isn't an editor of the agent."
+msgstr "This user isn't an editor of the agent."
+
+#: front/lib/api_error_messages.ts
+msgid "Editors must be active members of the workspace."
+msgstr "Editors must be active members of the workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions can't be applied together."
+msgstr "These suggestions can't be applied together."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer applies to the agent."
+msgstr "This suggestion no longer applies to the agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of suggestion can't be applied."
+msgstr "This kind of suggestion can't be applied."
+
+#: front/lib/api_error_messages.ts
+msgid "These suggestions have already been reviewed."
+msgstr "These suggestions have already been reviewed."
+
+#: front/lib/api_error_messages.ts
+msgid "Only Sidekick suggestions can be reviewed here."
+msgstr "Only Sidekick suggestions can be reviewed here."
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't available in your workspace."
+msgstr "This model isn't available in your workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "No model is available in your workspace."
+msgstr "No model is available in your workspace."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support the selected reasoning effort."
+msgstr "This model doesn't support the selected reasoning effort."
+
+#: front/lib/api_error_messages.ts
+msgid "This model doesn't support structured output."
+msgstr "This model doesn't support structured output."
+
+#: front/lib/api_error_messages.ts
+msgid "The structured output format is invalid."
+msgstr "The structured output format is invalid."
+
+#: front/lib/api_error_messages.ts
+msgid "Tag not found."
+msgstr "Tag not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag isn't on the agent."
+msgstr "This tag isn't on the agent."
+
+#: front/lib/api_error_messages.ts
+msgid "This tag is already on the agent."
+msgstr "This tag is already on the agent."
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to add or remove these tags."
+msgstr "You aren't allowed to add or remove these tags."
+
+#: front/lib/api_error_messages.ts
+msgid "Use case not found."
+msgstr "Use case not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This use case can't be dismissed."
+msgstr "This use case can't be dismissed."
+
+#: front/lib/api_error_messages.ts
+msgid "Agent or skill not found."
+msgstr "Agent or skill not found."
+
+#: front/lib/api_error_messages.ts
+msgid "This group doesn't have access to this agent or skill."
+msgstr "This group doesn't have access to this agent or skill."
+
+#: front/lib/api_error_messages.ts
+msgid "Items can't be pinned for this group."
+msgstr "Items can't be pinned for this group."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill is archived. Restore it to change it."
+msgstr "This skill is archived. Restore it to change it."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill isn't active."
+msgstr "This skill isn't active."
+
+#: front/lib/api_error_messages.ts
+msgid "Only custom skills can be changed."
+msgstr "Only custom skills can be changed."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill with this name already exists."
+msgstr "A skill with this name already exists."
+
+#: front/lib/api_error_messages.ts
+msgid "Enter a name for the skill."
+msgstr "Enter a name for the skill."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill name is too long. Use a shorter name."
+msgstr "This skill name is too long. Use a shorter name."
+
+#: front/lib/api_error_messages.ts
+msgid "Some editors don't have access to the spaces this skill uses. Add them to those spaces or remove them from the editors."
+msgstr "Some editors don't have access to the spaces this skill uses. Add them to those spaces or remove them from the editors."
+
+#: front/lib/api_error_messages.ts
+msgid "A skill needs at least one editor."
+msgstr "A skill needs at least one editor."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a skill."
+msgstr "This file can't be attached to a skill."
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't attached to the skill."
+msgstr "This file isn't attached to the skill."
+
+#: front/lib/api_error_messages.ts
+msgid "The skill already has a file with this name."
+msgstr "The skill already has a file with this name."
+
+#: front/lib/api_error_messages.ts
+msgid "The instructions use tools or knowledge you don't have access to."
+msgstr "The instructions use tools or knowledge you don't have access to."
+
+#: front/lib/api_error_messages.ts
+msgid "This skill has already been created."
+msgstr "This skill has already been created."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be applied to the skill."
+msgstr "This suggestion can't be applied to the skill."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion no longer matches the skill's instructions."
+msgstr "This suggestion no longer matches the skill's instructions."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to make this change to the skill."
+msgstr "You don't have permission to make this change to the skill."
+
+#: front/lib/api_error_messages.ts
+msgid "This suggestion can't be reviewed here."
+msgstr "This suggestion can't be reviewed here."
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions from the same batch must be reviewed together."
+msgstr "Suggestions from the same batch must be reviewed together."
+
+#: front/lib/api_error_messages.ts
+msgid "No skills found. A skill needs a SKILL.md file with valid frontmatter."
+msgstr "No skills found. A skill needs a SKILL.md file with valid frontmatter."
+
+#: front/lib/api_error_messages.ts
+msgid "This ZIP archive can't be read or is too large."
+msgstr "This ZIP archive can't be read or is too large."
+
+#: front/lib/api_error_messages.ts
+msgid "Some skills can't be imported. Check their names and whether they already exist."
+msgstr "Some skills can't be imported. Check their names and whether they already exist."
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to import these skills."
+msgstr "You don't have permission to import these skills."
+
+#: front/lib/api_error_messages.ts
+msgid "This GitHub repository URL isn't valid."
+msgstr "This GitHub repository URL isn't valid."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub denied access to this repository."
+msgstr "GitHub denied access to this repository."
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub returned an error. Try again later."
+msgstr "GitHub returned an error. Try again later."
+
+#: front/lib/api_error_messages.ts
+msgid "The GitHub connection is invalid. Connect GitHub again."
+msgstr "The GitHub connection is invalid. Connect GitHub again."
+
+#: front/lib/api_error_messages.ts
 msgid "This sandbox token can't access this endpoint."
 msgstr "This sandbox token can't access this endpoint."
 

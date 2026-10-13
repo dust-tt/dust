@@ -4,7 +4,7 @@ import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 export const ARCHIVED_AGENT_API_ERROR: APIErrorWithContentfulStatusCode = {
   status_code: 400,
   api_error: {
-    type: "invalid_request_error",
+    type: "agent_archived",
     message: "An archived agent cannot be updated. Restore it first.",
   },
 };

@@ -93,7 +93,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "tag_not_found",
           message: "Invalid tag ids",
         },
       });
@@ -107,7 +107,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "tag_change_not_allowed",
           message: "Protected tags cannot be added or removed.",
         },
       });

@@ -2,15 +2,22 @@ import {
   DustFileSystem,
   sanitizeFileSystemName,
 } from "@app/lib/api/file_system";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import {
   uploadReadableToFileStorage,
   validateFileUpload,
 } from "@app/lib/api/files/upload";
 import { buildEffectiveUseCaseMetadata } from "@app/lib/api/files/upload_metadata";
+import type { SkillAvailabilityChangeErrorCode } from "@app/lib/api/skills/availability_change";
 import { validateSkillAvailabilityChange } from "@app/lib/api/skills/availability_change";
+import type { SkillDeletionErrorCode } from "@app/lib/api/skills/deletion";
 import { validateSkillDeletion } from "@app/lib/api/skills/deletion";
-import type { SkillEditorsChange } from "@app/lib/api/skills/editors_change";
+import type {
+  SkillEditorsChange,
+  SkillEditorsChangeErrorCode,
+} from "@app/lib/api/skills/editors_change";
 import { validateSkillEditorsChange } from "@app/lib/api/skills/editors_change";
+import type { SkillNameChangeErrorCode } from "@app/lib/api/skills/name_change";
 import { validateSkillNameChange } from "@app/lib/api/skills/name_change";
 import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_requirements";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,6 +29,7 @@ import {
   applyInstructionEditsToHtml,
   convertMarkdownToBlockHtml,
 } from "@app/lib/editor/skill_instructions_html";
+import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
 import { extractKnowledgeTagReferences } from "@app/lib/knowledge/format";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -52,6 +60,136 @@ import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import path from "path";
 
+const APPLY_SKILL_SUGGESTIONS_ERROR_CODES = [
+  "skill_archived",
+  "skill_not_active",
+  "skill_change_not_authorized",
+  "skill_name_empty",
+  "skill_name_too_long",
+  "skill_already_exists",
+  "skill_editors_missing_space_access",
+  "skill_last_editor_removed",
+  "skill_instructions_reference_unavailable",
+  "skill_file_not_attached",
+  "skill_file_already_exists",
+  "skill_already_created",
+  "skill_suggestion_invalid",
+  "skill_suggestion_outdated",
+  "user_not_found",
+  "user_not_member",
+  "file_not_found",
+  "file_too_large",
+  "file_type_not_supported",
+  "file_is_empty",
+  "internal_error",
+] as const satisfies readonly DustErrorCode[];
+
+export type ApplySkillSuggestionsErrorCode =
+  (typeof APPLY_SKILL_SUGGESTIONS_ERROR_CODES)[number];
+
+export type ApplySkillSuggestionsError =
+  DustError<ApplySkillSuggestionsErrorCode>;
+
+function nameChangeErrorCode(
+  code: SkillNameChangeErrorCode
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "not_authorized":
+      return "skill_change_not_authorized";
+    case "archived":
+      return "skill_archived";
+    case "empty":
+      return "skill_name_empty";
+    case "too_long":
+      return "skill_name_too_long";
+    case "already_exists":
+      return "skill_already_exists";
+    default:
+      return assertNever(code);
+  }
+}
+
+function editorsChangeErrorCode(
+  code: SkillEditorsChangeErrorCode
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "not_authorized":
+      return "skill_change_not_authorized";
+    case "archived":
+      return "skill_archived";
+    case "user_not_found":
+      return "user_not_found";
+    // An editors suggestion listing a user in both lists is a malformed suggestion.
+    case "user_in_both_lists":
+      return "skill_suggestion_invalid";
+    case "user_not_member":
+      return "user_not_member";
+    case "space_access_denied":
+      return "skill_editors_missing_space_access";
+    case "last_editor_removed":
+      return "skill_last_editor_removed";
+    default:
+      return assertNever(code);
+  }
+}
+
+function availabilityChangeErrorCode(
+  code: SkillAvailabilityChangeErrorCode
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "not_authorized":
+    case "publish_denied":
+    case "make_discoverable_denied":
+      return "skill_change_not_authorized";
+    case "archived":
+      return "skill_archived";
+    default:
+      return assertNever(code);
+  }
+}
+
+function deletionErrorCode(
+  code: SkillDeletionErrorCode
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "not_authorized":
+      return "skill_change_not_authorized";
+    // `validateSkillDeletion` reports any non-active skill with this code.
+    case "archived":
+      return "skill_not_active";
+    default:
+      return assertNever(code);
+  }
+}
+
+function editorsWriteErrorCode(
+  code: "unauthorized" | "user_not_found"
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "unauthorized":
+      return "skill_change_not_authorized";
+    case "user_not_found":
+      return "user_not_found";
+    default:
+      return assertNever(code);
+  }
+}
+
+// The file upload codes a skill attachment can fail with; the remaining ones (an upload already
+// processed or expired, a storage failure) cannot come from the user's suggestion.
+function fileUploadErrorCode(
+  code: ProcessAndStoreFileError["code"]
+): ApplySkillSuggestionsErrorCode {
+  switch (code) {
+    case "file_too_large":
+    case "file_type_not_supported":
+    case "file_is_empty":
+      return code;
+    default:
+      return "internal_error";
+  }
+}
+
 function hasSkillFieldEdits({
   agentFacingDescription,
   userFacingDescription,
@@ -71,10 +209,7 @@ function hasSkillFieldEdits({
 function resolveInstructions(
   skill: SkillResource,
   instructionEdits: SkillInstructionEditItemType[] | undefined
-): Result<
-  AppliedSkillInstructions | undefined,
-  DustError<"invalid_request_error">
-> {
+): Result<AppliedSkillInstructions | undefined, ApplySkillSuggestionsError> {
   if (!instructionEdits?.length) {
     return new Ok(undefined);
   }
@@ -82,11 +217,18 @@ function resolveInstructions(
     skill.instructionsHtml ??
     convertMarkdownToBlockHtml("", getMarkdownPipeline("skill"));
 
-  return applyInstructionEditsToHtml(
+  const applied = applyInstructionEditsToHtml(
     instructionsHtml,
     instructionEdits,
     getMarkdownPipeline("skill")
   );
+  if (applied.isErr()) {
+    return new Err(
+      new DustError("skill_suggestion_outdated", applied.error.message)
+    );
+  }
+
+  return applied;
 }
 
 export function skillFileNameFromPath(filePath: string): string {
@@ -104,7 +246,7 @@ export async function resolveSkillFileAttachments(
   skill: SkillResource,
   files: SkillEdits["files"],
   { upload }: { upload: boolean }
-): Promise<Result<FileResource[], DustError<"invalid_request_error">>> {
+): Promise<Result<FileResource[], ApplySkillSuggestionsError>> {
   const currentAttachments = skill.getFileAttachments();
   if (!files) {
     return new Ok([...currentAttachments]);
@@ -114,7 +256,7 @@ export async function resolveSkillFileAttachments(
   if (skill.status === "archived") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_archived",
         "This skill is archived; its files cannot be changed."
       )
     );
@@ -127,7 +269,7 @@ export async function resolveSkillFileAttachments(
   if (notAttached.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_file_not_attached",
         `These files are not attached to the skill: ${notAttached.join(", ")}.`
       )
     );
@@ -144,7 +286,7 @@ export async function resolveSkillFileAttachments(
     if (fileNames.has(fileName)) {
       return new Err(
         new DustError(
-          "invalid_request_error",
+          "skill_file_already_exists",
           `The skill already has a file named "${fileName}".`
         )
       );
@@ -153,19 +295,15 @@ export async function resolveSkillFileAttachments(
 
     const fsRes = await DustFileSystem.fromScopedPath(auth, filePath);
     if (fsRes.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", fsRes.error.message)
-      );
+      return new Err(new DustError("file_not_found", fsRes.error.message));
     }
     const statRes = await fsRes.value.stat(filePath);
     if (statRes.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", statRes.error.message)
-      );
+      return new Err(new DustError("file_not_found", statRes.error.message));
     }
     if (!statRes.value) {
       return new Err(
-        new DustError("invalid_request_error", `File not found: ${filePath}.`)
+        new DustError("file_not_found", `File not found: ${filePath}.`)
       );
     }
     const { sizeBytes } = statRes.value;
@@ -178,7 +316,10 @@ export async function resolveSkillFileAttachments(
     });
     if (validation.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", validation.error.message)
+        new DustError(
+          fileUploadErrorCode(validation.error.code),
+          validation.error.message
+        )
       );
     }
 
@@ -188,13 +329,11 @@ export async function resolveSkillFileAttachments(
 
     const readRes = await fsRes.value.read(filePath);
     if (readRes.isErr()) {
-      return new Err(
-        new DustError("invalid_request_error", readRes.error.message)
-      );
+      return new Err(new DustError("file_not_found", readRes.error.message));
     }
     if (!readRes.value) {
       return new Err(
-        new DustError("invalid_request_error", `File not found: ${filePath}.`)
+        new DustError("file_not_found", `File not found: ${filePath}.`)
       );
     }
 
@@ -215,7 +354,10 @@ export async function resolveSkillFileAttachments(
     });
     if (uploaded.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", uploaded.error.message)
+        new DustError(
+          fileUploadErrorCode(uploaded.error.code),
+          uploaded.error.message
+        )
       );
     }
     fileAttachments.push(uploaded.value);
@@ -233,7 +375,7 @@ async function resolveInstructionAttachments(
       attachedKnowledge: SkillAttachedKnowledge[];
       mcpServerViews: MCPServerViewResource<"configuration">[];
     },
-    DustError<"invalid_request_error">
+    ApplySkillSuggestionsError
   >
 > {
   const toolReferences = extractToolTags(instructions);
@@ -284,7 +426,7 @@ async function resolveInstructionAttachments(
   if (unresolved.length > 0) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_instructions_reference_unavailable",
         `These instructions reference resources you cannot use: ` +
           `${unresolved.join(", ")}. ` +
           `They do not exist, or they live in a space you cannot read.`
@@ -327,13 +469,16 @@ async function resolveSkillFieldEdits(
     instructionEdits,
     files,
   }: SkillEdits
-): Promise<Result<SkillUpdate, DustError<"invalid_request_error">>> {
+): Promise<Result<SkillUpdate, ApplySkillSuggestionsError>> {
   let resolvedName = skill.name;
   if (name !== undefined) {
     const validation = await validateSkillNameChange(auth, skill, { name });
     if (validation.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", validation.error.message)
+        new DustError(
+          nameChangeErrorCode(validation.error.code),
+          validation.error.message
+        )
       );
     }
     resolvedName = validation.value.name;
@@ -406,11 +551,14 @@ async function writeEditorsChange(
   skill: SkillResource,
   { usersToAdd, usersToRemove }: SkillEditorsChange,
   { auditMetadata }: SkillAuditOptions
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+): Promise<Result<undefined, ApplySkillSuggestionsError>> {
   const addRes = await skill.addEditors(auth, usersToAdd, { auditMetadata });
   if (addRes.isErr()) {
     return new Err(
-      new DustError("invalid_request_error", addRes.error.message)
+      new DustError(
+        editorsWriteErrorCode(addRes.error.code),
+        addRes.error.message
+      )
     );
   }
 
@@ -419,7 +567,10 @@ async function writeEditorsChange(
   });
   if (removeRes.isErr()) {
     return new Err(
-      new DustError("invalid_request_error", removeRes.error.message)
+      new DustError(
+        editorsWriteErrorCode(removeRes.error.code),
+        removeRes.error.message
+      )
     );
   }
 
@@ -430,7 +581,7 @@ async function resolveSkillEdits(
   auth: Authenticator,
   skill: SkillResource,
   suggestions: SkillSuggestionResource[]
-): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+): Promise<Result<ResolvedSkillChange, ApplySkillSuggestionsError>> {
   const mergedEdits = mergeSkillSuggestionEdits(suggestions);
   if (mergedEdits.isErr()) {
     return mergedEdits;
@@ -458,7 +609,10 @@ async function resolveSkillEdits(
     });
     if (validation.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", validation.error.message)
+        new DustError(
+          availabilityChangeErrorCode(validation.error.code),
+          validation.error.message
+        )
       );
     }
     availability = validation.value?.availability ?? null;
@@ -473,7 +627,10 @@ async function resolveSkillEdits(
     );
     if (validation.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", validation.error.message)
+        new DustError(
+          editorsChangeErrorCode(validation.error.code),
+          validation.error.message
+        )
       );
     }
 
@@ -493,11 +650,11 @@ async function resolveSkillCreation(
   auth: Authenticator,
   skill: SkillResource,
   suggestions: SkillSuggestionResource[]
-): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+): Promise<Result<ResolvedSkillChange, ApplySkillSuggestionsError>> {
   if (skill.status !== "pending") {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_already_created",
         "The skill this suggestion targets has already been created."
       )
     );
@@ -515,7 +672,7 @@ async function resolveSkillCreation(
   ) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_suggestion_invalid",
         "A skill is created from a single valid create suggestion."
       )
     );
@@ -551,11 +708,14 @@ async function resolveSkillCreation(
 function resolveSkillDeletion(
   auth: Authenticator,
   skill: SkillResource
-): Result<ResolvedSkillChange, DustError<"invalid_request_error">> {
+): Result<ResolvedSkillChange, ApplySkillSuggestionsError> {
   const validation = validateSkillDeletion(auth, skill);
   if (validation.isErr()) {
     return new Err(
-      new DustError("invalid_request_error", validation.error.message)
+      new DustError(
+        deletionErrorCode(validation.error.code),
+        validation.error.message
+      )
     );
   }
 
@@ -568,7 +728,7 @@ export async function resolveSkillSuggestions(
     skill,
     suggestions,
   }: { skill: SkillResource; suggestions: SkillSuggestionResource[] }
-): Promise<Result<ResolvedSkillChange, DustError<"invalid_request_error">>> {
+): Promise<Result<ResolvedSkillChange, ApplySkillSuggestionsError>> {
   const actions = new Set(
     suggestions.map((suggestion) => getSkillSuggestionAction(suggestion.kind))
   );
@@ -576,7 +736,7 @@ export async function resolveSkillSuggestions(
   if (!action || actions.size > 1) {
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "skill_suggestion_invalid",
         "Suggestions applied together must all create, edit or delete the skill."
       )
     );
@@ -633,7 +793,7 @@ export async function writeSkillChange(
   skill: SkillResource,
   change: ResolvedSkillChange,
   { auditMetadata }: SkillAuditOptions = {}
-): Promise<Result<undefined, DustError<"invalid_request_error">>> {
+): Promise<Result<undefined, ApplySkillSuggestionsError>> {
   switch (change.type) {
     case "create": {
       const { update } = change;
@@ -678,7 +838,10 @@ export async function writeSkillChange(
         });
         if (editorsAccessError) {
           return new Err(
-            new DustError("invalid_request_error", editorsAccessError)
+            new DustError(
+              "skill_editors_missing_space_access",
+              editorsAccessError
+            )
           );
         }
       }

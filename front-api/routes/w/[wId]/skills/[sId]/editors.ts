@@ -112,14 +112,43 @@ app.patch(
             },
           });
         case "archived":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_archived",
+              message,
+            },
+          });
+        // The request lists the same user in both lists: it contradicts itself.
         case "user_in_both_lists":
-        case "user_not_member":
-        case "space_access_denied":
-        case "last_editor_removed":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
+              message,
+            },
+          });
+        case "user_not_member":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "workspace_user_not_found",
+              message,
+            },
+          });
+        case "space_access_denied":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_editors_missing_space_access",
+              message,
+            },
+          });
+        case "last_editor_removed":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "skill_last_editor_removed",
               message,
             },
           });

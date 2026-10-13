@@ -55,7 +55,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: result.error.code,
           message: result.error.message,
         },
       });

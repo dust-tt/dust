@@ -36,7 +36,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_not_custom",
           message: `Only custom skills can be archived: ${invalidSkillIds.join(", ")}.`,
         },
       });

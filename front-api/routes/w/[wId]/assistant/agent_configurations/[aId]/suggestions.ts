@@ -156,7 +156,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "agent_suggestion_not_found",
             message:
               "One or more agent suggestions do not belong to the specified agent configuration.",
           },
@@ -171,7 +171,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "sidekick_suggestion_required",
           message: `Only Sidekick suggestions can be reviewed here: ${nonSidekickSuggestionIds.join(", ")}.`,
         },
       });

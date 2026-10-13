@@ -19,8 +19,18 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 
-export type DiscoveryPinError = DustError<
+type DiscoveryPinListError = DustError<
   "group_not_found" | "invalid_id" | "invalid_request_error" | "unauthorized"
+>;
+
+export type DiscoveryPinError = DustError<
+  | "group_not_found"
+  | "invalid_id"
+  | "invalid_request_error"
+  | "discovery_pin_target_not_found"
+  | "discovery_pin_target_not_readable_by_group"
+  | "discovery_pin_group_not_supported"
+  | "unauthorized"
 >;
 
 /**
@@ -40,7 +50,7 @@ export async function listFeaturedDiscoveryItems(
 export async function listGroupDiscoveryPins(
   auth: Authenticator,
   { groupId }: { groupId: string }
-): Promise<Result<GetGroupDiscoveryPinsResponseBody, DiscoveryPinError>> {
+): Promise<Result<GetGroupDiscoveryPinsResponseBody, DiscoveryPinListError>> {
   const groupResult = await GroupResource.fetchById(auth, groupId);
   if (groupResult.isErr()) {
     return groupResult;
@@ -122,7 +132,7 @@ async function canManageGroupPins(
   return (await auth.listPrincipalGroupModelIds()).includes(groupModelId);
 }
 
-function unauthorizedGroupPins(): Err<DiscoveryPinError> {
+function unauthorizedGroupPins(): Err<DustError<"unauthorized">> {
   return new Err(
     new DustError(
       "unauthorized",

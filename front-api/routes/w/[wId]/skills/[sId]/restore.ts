@@ -52,7 +52,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "skill_already_exists",
           message: `A skill with the name "${skillResource.name}" already exists.`,
         },
       });
