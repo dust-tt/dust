@@ -137,7 +137,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/reactions"
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("message_not_found");
   });
 
   it("returns 400 when reacting to a content fragment", async () => {

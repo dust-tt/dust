@@ -638,6 +638,102 @@ msgid "Another user has an active wake-up in this conversation. Only they can po
 msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
 
 #: front/lib/api_error_messages.ts
+msgid "This isn't available for this type of message."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only the person who sent this message can do this."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Mention not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This person couldn't be added to the Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An agent or a compaction is running in this conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is being compacted. Try again once it's done."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation was just compacted. Send a new message before compacting again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is still being set up. Try again in a moment."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You can only mention one agent per message."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "There's no completed agent answer to branch from."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation can't be moved into or out of this Pod yet."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Spaces can't be selected in a Pod conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only regular spaces can be selected."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can only be used through skills."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to one of the selected tools."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "These action inputs can't be edited."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This agent message can't be resumed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook signature is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready. Upload it again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The attached content wasn't found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "In a Pod, you can only attach content from the Pod or from Company Data."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Attachment not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr ""
 

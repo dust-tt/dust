@@ -92,7 +92,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_type_not_supported",
           message: "Thumbnail is only supported for image files.",
         },
       });
@@ -131,7 +131,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "file_type_not_supported",
         message: "Thumbnail is only supported for image files.",
       },
     });

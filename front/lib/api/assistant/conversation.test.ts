@@ -21,7 +21,6 @@ import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/eve
 import * as attachmentsModule from "@app/lib/api/files/attachments";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
-import { isDustErrorWithCode } from "@app/lib/error";
 import { serializeMention } from "@app/lib/mentions/format";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
@@ -99,9 +98,15 @@ vi.mock("@app/lib/api/assistant/pubsub", () => ({
   gracefullyStopAgentLoop: vi.fn(),
 }));
 
-vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
-  getContentFragmentBlob: vi.fn(),
-}));
+vi.mock(
+  "@app/lib/api/assistant/conversation/content_fragment",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/assistant/conversation/content_fragment")
+    >()),
+    getContentFragmentBlob: vi.fn(),
+  })
+);
 
 import { runOnRedis } from "@app/lib/api/redis";
 // Mock rateLimiter from the utils module
@@ -465,7 +470,7 @@ describe("retryAgentMessage", () => {
     expect(secondRetry.isErr()).toBe(true);
     if (secondRetry.isErr()) {
       expect(secondRetry.error.status_code).toBe(400);
-      expect(secondRetry.error.api_error.type).toBe("invalid_request_error");
+      expect(secondRetry.error.api_error.type).toBe("message_outdated");
       expect(secondRetry.error.api_error.message).toContain("already retried");
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
@@ -591,7 +596,7 @@ describe("retryAgentMessage", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.status_code).toBe(400);
-      expect(result.error.api_error.type).toBe("invalid_request_error");
+      expect(result.error.api_error.type).toBe("message_not_found");
       expect(result.error.api_error.message).toContain("parent user message");
     }
     expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
@@ -763,7 +768,7 @@ describe("retryAgentMessage", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.status_code).toBe(400);
-      expect(result.error.api_error.type).toBe("invalid_request_error");
+      expect(result.error.api_error.type).toBe("agent_inaccessible");
       expect(result.error.api_error.message).toContain(
         "agent is no longer available"
       );
@@ -4813,9 +4818,7 @@ describe("postNewContentFragment", () => {
 
       expect(result.isErr()).toBe(true);
       if (result.isErr()) {
-        expect(isDustErrorWithCode(result.error, "conversation_locked")).toBe(
-          true
-        );
+        expect(result.error.code).toBe("conversation_locked");
       }
       expect(getContentFragmentBlob).not.toHaveBeenCalled();
     });

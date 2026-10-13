@@ -525,7 +525,7 @@ export async function createOnboardingConversationIfNeeded(
     return new Err({
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "internal_server_error",
         message:
           "Cannot create onboarding conversation without workspace, user and subscription.",
       },

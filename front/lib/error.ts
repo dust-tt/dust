@@ -5,6 +5,7 @@ export type DustErrorCode =
   | "limit_reached"
   | "connection_not_found"
   | "file_not_found"
+  | "audio_transcription_unavailable"
   | "unauthorized"
   | "agent_loop_already_running"
   | "compaction_already_running"
@@ -69,6 +70,7 @@ export type DustErrorCode =
   | "invalid_conversation"
   | "conversation_agent_running"
   | "conversation_locked"
+  | "fork_source_message_not_found"
   // Subscription / billing errors
   | "subscription_already_exists"
   | "workspace_not_found"
