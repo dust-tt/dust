@@ -730,7 +730,7 @@ export const PEOPLE: Record<string, TeamMember> = {
   },
   christinehong: {
     name: "Christine Hong",
-    title: "Founders Office",
+    title: "Founders Office, US",
     image: "https://ca.slack-edge.com/T050RH73H9P-U0C8Q126R54-76d9613a544f-512",
     linkedIn: "https://www.linkedin.com/in/christineluhong/",
     github: "",
