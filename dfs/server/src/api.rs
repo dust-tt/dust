@@ -20,6 +20,7 @@ use crate::{
     storage::{
         self, fdb,
         resources::{
+            directory::DirectoryResource,
             file::FileResource,
             object::{self, ObjectResource},
             session::SessionResource,
@@ -33,6 +34,8 @@ mod errors;
 
 // Reserve space for each result's attributes, error, and protobuf framing, without metadata.
 const READ_FILES_RESULT_OVERHEAD_BYTES: usize = 512;
+
+const LOOKUP_MAX_TARGETS: usize = 256;
 
 #[cfg(test)]
 #[path = "../tests/api/read_files_budget.rs"]
@@ -224,9 +227,34 @@ impl Dfs for API {
         Ok(Response::new(attr_batch(attributes)?))
     }
 
+    /**
+     * @cc [owner:pmilliotte,label:api;security] lookup-batch-results
+     * Lookup MUST accept 1-256 targets and preserve their order and duplicates. Missing or
+     * unreadable parents and children MUST return per-result NOT_FOUND without dropping other
+     * results; NOT_DIRECTORY MUST only reveal readable parents. Each result MUST contain exactly
+     * one of object or error. Responses larger than the encoded message budget MUST fail with
+     * CAPACITY.
+     */
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {
-        self.require_session(&request).await?;
-        Err(status(ErrorCode::Unsupported))
+        let session = self.require_session(&request).await?;
+        let LookupRequest {
+            targets,
+            include_metadata,
+        } = request.into_inner();
+        if targets.is_empty() || targets.len() > LOOKUP_MAX_TARGETS {
+            return Err(status(ErrorCode::InvalidInput));
+        }
+        let include_metadata = include_metadata.unwrap_or(false);
+        let attributes =
+            fdb::with_transaction(|tx| {
+                let session = session.as_ref();
+                let targets = &targets;
+                async move {
+                    DirectoryResource::lookup_attrs(&tx, session, targets, include_metadata).await
+                }
+            })
+            .await?;
+        Ok(Response::new(attr_batch(attributes)?))
     }
 
     async fn list(&self, request: Request<ListRequest>) -> Result<Response<EntryPage>, Status> {

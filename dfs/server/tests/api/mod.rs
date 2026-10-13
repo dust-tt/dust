@@ -2,6 +2,7 @@ pub(crate) mod auth;
 pub(crate) mod create_session;
 pub(crate) mod create_tenant;
 pub(crate) mod grants;
+pub(crate) mod lookup;
 pub(crate) mod read;
 pub(crate) mod read_files;
 pub(crate) mod session;
