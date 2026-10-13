@@ -4542,12 +4542,9 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     icon: "FigmaLogo",
     documentationUrl: "https://developers.figma.com/docs/figma-mcp-server/",
     connectionInstructions:
-      "Enter the client ID and secret of Dust's approved Figma OAuth app. Authorization endpoint https://www.figma.com/oauth/mcp, token endpoint https://api.figma.com/v1/oauth/token, scope mcp:connect, resource https://mcp.figma.com/mcp, auth method client_secret_basic. The MCP can only access the files and libraries you can already see in Figma.",
+      "Figma uses OAuth. You will be prompted to sign in with your Figma account. The MCP can only access the files and libraries you can already see in Figma.",
     featureFlag: "figma_mcp",
-    // TODO(2026-10-01 FIGMA_OAUTH): Figma rejects dynamic client registration and only
-    // accepts approved OAuth apps, so admins enter the credentials of Dust's app for now.
-    // Revisit once Dust's public Figma app is approved.
-    authMethod: "oauth-static",
+    authMethod: "oauth-dynamic",
     supportedOAuthUseCases: ["platform_actions", "personal_actions"],
     scope: "mcp:connect",
     toolStakes: {
@@ -4561,9 +4558,11 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_libraries: "never_ask",
       search_design_system: "never_ask",
       download_assets: "never_ask",
+      export_video: "never_ask",
       get_code_connect_map: "never_ask",
       get_code_connect_suggestions: "never_ask",
       get_context_for_code_connect: "never_ask",
+      list_file_components_for_code_connect: "never_ask",
       get_generative_plugin: "never_ask",
       list_generative_plugins: "never_ask",
       get_shader: "never_ask",
@@ -4572,6 +4571,8 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_list_tools: "never_ask",
       weave_get_tool_inputs: "never_ask",
       weave_get_tool_run_output: "never_ask",
+      weave_find_model: "never_ask",
+      weave_get_model_run_output: "never_ask",
 
       create_new_file: "low",
       generate_figma_design: "low",
@@ -4587,7 +4588,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       use_figma: "high",
       update_generative_plugin: "high",
       update_shader: "high",
+      // Image generation and Weave runs spend the user's Figma or Weave credits.
+      generate_image: "high",
       weave_run_tool: "high",
+      weave_run_model: "high",
     },
     toolDisplayLabels: {
       whoami: {
@@ -4630,6 +4634,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         running: "Downloading assets from Figma",
         done: "Downloaded assets from Figma",
       },
+      export_video: {
+        running: "Exporting a video from Figma",
+        done: "Exported a video from Figma",
+      },
       get_code_connect_map: {
         running: "Reading Code Connect mappings on Figma",
         done: "Read Code Connect mappings on Figma",
@@ -4641,6 +4649,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       get_context_for_code_connect: {
         running: "Reading Code Connect context on Figma",
         done: "Read Code Connect context on Figma",
+      },
+      list_file_components_for_code_connect: {
+        running: "Listing library components on Figma",
+        done: "Listed library components on Figma",
       },
       get_generative_plugin: {
         running: "Reading a generative plugin on Figma",
@@ -4673,6 +4685,14 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_get_tool_run_output: {
         running: "Reading a Weave run output on Figma",
         done: "Read a Weave run output on Figma",
+      },
+      weave_find_model: {
+        running: "Finding a Weave model on Figma",
+        done: "Found a Weave model on Figma",
+      },
+      weave_get_model_run_output: {
+        running: "Reading a Weave model output on Figma",
+        done: "Read a Weave model output on Figma",
       },
       create_new_file: {
         running: "Creating a file on Figma",
@@ -4729,6 +4749,14 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       weave_run_tool: {
         running: "Running a Weave tool on Figma",
         done: "Ran a Weave tool on Figma",
+      },
+      generate_image: {
+        running: "Generating an image on Figma",
+        done: "Generated an image on Figma",
+      },
+      weave_run_model: {
+        running: "Running a Weave model on Figma",
+        done: "Ran a Weave model on Figma",
       },
     },
   },
