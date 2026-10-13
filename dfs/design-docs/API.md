@@ -33,6 +33,7 @@ Attr {
   ctime?: Timestamp
   attr_version: uint64           // Version of attributes and metadata.
   content_version: uint64        // Version of bytes or directory entries.
+  grants_version: uint64         // Version of grants attached to the object itself.
   store_version: int64           // FDB read snapshot or successful mutation commit version.
   metadata?: ExtendedMetadata    // Present when extended metadata was requested.
 }
@@ -98,17 +99,19 @@ tenant root, the server assigns it when the object is created. It is read-only a
 across writes, metadata or grant changes, renames, and moves. Virtual projections return the
 synthetic value zero (the Unix epoch).
 
-**`attr_version` and `content_version` are monotonically increasing `uint64` values.** They are
-positive, may have gaps, and never wrap or reset during the object's lifetime. Compare each field
-only with the same field for the same tenant and object. Attribute versions and content versions of
-all directories, including virtual projections, are additionally scoped to the session's visible
-namespace; they are not comparable across different sessions.
+**`attr_version`, `content_version`, and `grants_version` are monotonically increasing `uint64`
+values.** They are positive, may have gaps, and never wrap or reset during the object's lifetime.
+Compare each field only with the same field for the same tenant and object. Attribute versions and
+content versions of all directories, including virtual projections, are additionally scoped to the
+session's visible namespace; they are not comparable across different sessions.
 
 `attr_version` covers an object's attributes and extended metadata. `content_version` covers a
 file's bytes, or a directory's mapping of stored entry names to object IDs, not the child attributes
-included in `List` responses. [VERSIONS.md](VERSIONS.md) lists which operations update each version
-and timestamp. Comparing versions requires a fresh authorization check; matching versions alone
-never grant access or confirm that grant-dependent attributes are unchanged.
+included in `List` responses. `grants_version` covers the grants attached to the object itself, not
+those inherited from its ancestors, so it does not track the effective `mode`.
+[VERSIONS.md](VERSIONS.md) lists which operations update each version and timestamp. Comparing
+versions requires a fresh authorization check; matching versions alone never grant access or confirm
+that grant-dependent attributes are unchanged.
 
 Virtual `root` returns the stored tenant root's real ID, attributes, and versions, with the mode
 described above. Clients must refresh the listing of virtual `shared` through `List`. No version
@@ -829,7 +832,7 @@ SearchAttr {
 Each hit carries simplified attributes in `object`, using the same name, size, timestamp, and
 metadata semantics as `Attr`. Extended metadata is optional. Neither search results nor individual
 hits expose a `store_version`: the search index's state is independent of the store's read snapshot.
-Search attributes also omit mode and attribute/content versions and cannot validate cached
+Search attributes also omit mode and attribute, content, and grants versions and cannot validate cached
 attributes or permissions. Use `Stat` to fetch full attributes and versions.
 
 An empty or whitespace-only query searches metadata only. Nonempty text matches any normalized

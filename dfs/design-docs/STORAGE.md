@@ -90,14 +90,14 @@ index entries are also removed. Authentication rejects expired sessions independ
 
 | Key | Value | Rationale |
 | --- | --- | --- |
-| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, and `content_version`. | Supports direct access and ancestry walks. |
+| `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` | Stored attributes, parent ID, basename, `attr_version`, `content_version`, and `grants_version`. | Supports direct access and ancestry walks. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>` | Creation time and optional MIME type. | Keeps optional metadata out of ordinary traversal. |
 | `dfs-v1-{env}/tenant/<tenantId>/metadata/<objectId>/xattr/<name>` | Xattr value bytes. | Supports reading and updating individual xattrs. |
 | `dfs-v1-{env}/tenant/<tenantId>/child/<parentId>/<name>` | Child ID. | Supports exact lookup, name uniqueness, ordered listing, and emptiness checks. |
 | `dfs-v1-{env}/tenant/<tenantId>/block/<objectId>/<blockIndex>` | Up to 64 KiB of content. | Supports range reads, sparse files, and suffix clearing on truncation. |
 
 Object values are FDB tuples `(parent_id_bytes, name, kind, size, atime_ms, mtime_ms, ctime_ms,
-attr_version, content_version)`, with null for absent parents or timestamps. Kind uses the protocol
+attr_version, content_version, grants_version)`, with null for absent parents or timestamps. Kind uses the protocol
 enum's integer value. Base metadata is `(created_at_ms, mime_type)`, with null for an absent MIME type.
 Tenant creation writes an empty root directory with no parent, MIME type, or xattrs, and an empty name.
 
@@ -125,7 +125,7 @@ zeroes within the logical size; truncation discards trailing data so extension c
 
 ### Directory state and versions
 
-Both versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters.
+All three versions live in `dfs-v1-{env}/tenant/<tenantId>/object/<objectId>` as `uint64` counters.
 Update them and the timestamps atomically as [VERSIONS.md](VERSIONS.md) lists, using checked
 increments that fail before commit on overflow. Directory entry changes read and update the parent
 record in the same transaction. Concurrent sibling changes may conflict and retry.

@@ -1,8 +1,8 @@
 # dfs:// versions and timestamps
 
 This document is the source of truth for which versions and timestamps of a file or directory each
-operation updates. [API.md](API.md#shared-types) defines the `attr_version` and `content_version`
-fields.
+operation updates. [API.md](API.md#shared-types) defines the `attr_version`, `content_version`, and
+`grants_version` fields.
 
 ## Choices
 
@@ -36,12 +36,15 @@ Every choice below has been agreed on. When discussing one, refer to it by its n
     child's bytes or attributes, or renaming or moving the directory itself, leaves it unchanged.
 12. **A rename or move** advances the object's `attr_version` and the `content_version` of each
     parent involved.
-13. **Grant changes never update versions or timestamps**, even when they change an object's mode
-    or which entries a session sees.
+13. **A grant change on an object advances only its `grants_version`.** It never updates
+    `attr_version`, `content_version`, or timestamps. A grant change on an ancestor updates nothing
+    on the object, even when it changes the object's mode or which entries a session sees.
 14. **Reads never update anything.** Reading, listing, stat'ing, looking up, or fetching metadata
     leaves every version and timestamp unchanged.
 15. **Virtual projections.** Virtual `root` reports the stored tenant root's versions and
-    timestamps. Virtual `shared` has no timestamps, and both its versions stay at 1.
+    timestamps. Virtual `shared` has no timestamps, and all its versions stay at 1.
+16. **One `grants_version` advance per `UpdateGrants` request**, however many grants it attaches or
+    detaches. Following choice 3, it advances even when every change is a no-op.
 
 ## Legend
 
@@ -49,25 +52,27 @@ Every choice below has been agreed on. When discussing one, refer to it by its n
 
 ## Directories
 
-| Operation | attr_version | content_version | atime | mtime | ctime |
-| --- | --- | --- | --- | --- | --- |
-| Created (empty or not) | ✅ | ✅ | ✅ | ✅ | ✅ |
-| A child is created, removed, renamed, moved in or out, or replaced | ✅ | ✅ | ❌ | ✅ | ✅ |
-| A child's contents, attributes, or descendants change | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Renamed or moved | ✅ | ❌ | ❌ | ❌ | ✅ |
-| Metadata update: xattrs, MIME type, `atime`, `mtime` | ✅ | ❌ | ✅ if set | ✅ if set | ✅ |
-| A grant on it or an ancestor changes | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Listed, stat'd, or looked up | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Operation | attr_version | content_version | grants_version | atime | mtime | ctime |
+| --- | --- | --- | --- | --- | --- | --- |
+| Created (empty or not) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| A child is created, removed, renamed, moved in or out, or replaced | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| A child's contents, attributes, grants, or descendants change | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Renamed or moved | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Metadata update: xattrs, MIME type, `atime`, `mtime` | ✅ | ❌ | ❌ | ✅ if set | ✅ if set | ✅ |
+| A grant on it changes | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| A grant on an ancestor changes | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Listed, stat'd, or looked up | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ## Files
 
-| Operation | attr_version | content_version | atime | mtime | ctime |
-| --- | --- | --- | --- | --- | --- |
-| Created | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Write: any offset or size, identical bytes, append, or zero-length | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Truncated or extended via `size` | ✅ | ✅ | ❌ | ✅ | ✅ |
-| Metadata update: xattrs, MIME type, `atime`, `mtime` | ✅ | ❌ | ✅ if set | ✅ if set | ✅ |
-| Read | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Renamed or moved | ✅ | ❌ | ❌ | ❌ | ✅ |
-| A grant on it or an ancestor changes | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Its parent or a sibling changes | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Operation | attr_version | content_version | grants_version | atime | mtime | ctime |
+| --- | --- | --- | --- | --- | --- | --- |
+| Created | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Write: any offset or size, identical bytes, append, or zero-length | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Truncated or extended via `size` | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Metadata update: xattrs, MIME type, `atime`, `mtime` | ✅ | ❌ | ❌ | ✅ if set | ✅ if set | ✅ |
+| Read | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Renamed or moved | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| A grant on it changes | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| A grant on an ancestor changes | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Its parent or a sibling changes | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
