@@ -481,7 +481,7 @@ export interface MarkdownCommentsCheck {
  * Validation MUST run on every content write through the file API's PUT of a file whose name,
  * request content type or stored content type is `text/markdown`, in a workspace with
  * `co_edition`, against the file as stored right before the write, or against the live session's
- * source when the write goes through one (`live-file-content-write`), and MUST NOT run anywhere else
+ * source when the write goes through one (`collab-file-api-write`), and MUST NOT run anywhere else
  * until the codec bounds its input before parsing. For a write it validates, it MUST return the
  * revision it validated against, when storage has one, so the write can be conditional on it. For
  * a write it does not validate, in a workspace with `co_edition` the write MUST be bound to the

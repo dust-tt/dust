@@ -3,11 +3,12 @@ import {
   type CollabSessionWriteError,
 } from "@app/lib/api/collab/write_through_session";
 import config from "@app/lib/api/config";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   type DfmCommentSignatureError,
   validateMarkdownCommentsForWrite,
-} from "@app/lib/api/files/dfm_comment_signatures";
+} from "@app/lib/api/documents/comment_signatures";
+import { writeFileContentThroughCollabSession } from "@app/lib/api/documents/file_api_write";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import {
   convertCanonicalFileToPdf,
   deleteCanonicalFile,
@@ -32,7 +33,6 @@ import {
   isFolderExtractError,
   MAX_ARCHIVE_UPLOAD_SIZE_BYTES,
 } from "@app/lib/api/files/folder_extract";
-import { writeFileContentThroughLiveSession } from "@app/lib/api/files/live_file_content";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
 import type { PostExtractArchiveResponseBody } from "@app/types/api/file_system/types";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -760,7 +760,7 @@ app.put(
     const content = new Uint8Array(contentBuffer);
     const ifRevisionMatch = ctx.req.valid("header")["x-dust-if-revision-match"];
 
-    const live = await writeFileContentThroughLiveSession(
+    const live = await writeFileContentThroughCollabSession(
       auth,
       dustFs,
       canonicalPath,

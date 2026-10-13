@@ -1,7 +1,7 @@
 import type { CollabAccess } from "@app/lib/api/collab/access";
 import type { SessionContent } from "@app/lib/api/collab/ydoc";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
-import { readStoredText } from "@app/lib/api/files/dfm_comment_signatures";
+import { readStoredText } from "@app/lib/api/documents/comment_signatures";
 import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";

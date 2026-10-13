@@ -1,8 +1,8 @@
 import type { CollabAccess } from "@app/lib/api/collab/access";
 import { yDocCommentedTexts } from "@app/lib/api/collab/ydoc";
-import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
-import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
-import type { DfmCommentSignatureError } from "@app/lib/api/files/dfm_comment_signatures";
+import { dispatchCommentMentions } from "@app/lib/api/documents/comment_mentions";
+import { signDfmCommentMessage } from "@app/lib/api/documents/comment_signatures";
+import type { DfmCommentSignatureError } from "@app/lib/api/documents/comment_signatures";
 import type { DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { extractFromString } from "@app/lib/mentions/format";
 import type {

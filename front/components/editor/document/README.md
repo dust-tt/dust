@@ -62,7 +62,7 @@ The host renders message bodies through `renderCommentBody`, and authors' avatar
 Message bodies are Markdown, and the file preview's `renderCommentBody` shows agent and user
 mention directives in them as mention chips. When a comment posted in the live session mentions
 agents or users, the collab server hands it to a Temporal job
-(`front/lib/api/files/dfm_comment_mentions.ts`, `mentions_queue`), keyed by the document and
+(`front/lib/api/documents/comment_mentions.ts`, `mentions_queue`), keyed by the document and
 the message so it is posted once. The job posts it as a user message in the document's
 conversation, waiting while an agent runs there: the file's own conversation, or for a pod file
 a conversation created in the pod on first use and found again by path. Mentioned agents then
@@ -79,9 +79,9 @@ The editor never signs anything. Comments are posted through the live session, w
 each message with the user's name, the server's time and a signature; a refusal keeps the typed
 text and shows the reason. A save through the file API refuses a new message the server did not
 sign for the saving user, or a verified one moved within its thread
-(`front/lib/api/files/dfm_comment_signatures.ts`), and never rewrites the file. Signatures bind the file's path and the message before each one, so a
+(`front/lib/api/documents/comment_signatures.ts`), and never rewrites the file. Signatures bind the file's path and the message before each one, so a
 renamed or moved file reads as unverified. A comment an agent posts with `documents.add_comment`
-is signed by the server for that agent (`front/lib/api/files/dfm_agent_comments.ts`). With
+is signed by the server for that agent (`front/lib/api/documents/agent_comments.ts`). With
 `verifyCommentMessage`, threads mark each message whose signature does not check out as
 Unverified, such as one written from a sandbox or by an agent editing the file directly; without
 it, no message is marked.
