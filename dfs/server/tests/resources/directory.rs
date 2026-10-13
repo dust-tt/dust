@@ -207,6 +207,12 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
             "AlreadyExists",
         ),
         (
+            ObjectId::new_v7(),
+            "shared",
+            ObjectKind::Directory,
+            "AlreadyExists",
+        ),
+        (
             existing_id,
             "other",
             ObjectKind::File,
@@ -237,6 +243,25 @@ pub(crate) async fn child_creation_rejections_leave_storage_unchanged() -> Resul
         assert_eq!(actual, expected);
         assert_eq!(tenant_records(&tx, &tenant).await?, before);
     }
+    clear_tenant(&tenant).await
+}
+
+pub(crate) async fn shared_name_is_only_reserved_under_the_tenant_root() -> Result<()> {
+    let tenant = create_tenant_root().await?;
+    let tx = fdb::database()?.create_trx()?;
+    let mut root = fetch_directory(&tx, &tenant, &tenant.root_id).await?;
+    let docs_id = create_child(&tx, &mut root, "docs", ObjectKind::Directory)
+        .await?
+        .object_id;
+    let mut docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    let shared_id = create_child(&tx, &mut docs, "shared", ObjectKind::Directory)
+        .await?
+        .object_id;
+    tx.commit().await?;
+
+    let tx = fdb::database()?.create_trx()?;
+    let docs = fetch_directory(&tx, &tenant, &docs_id).await?;
+    assert_eq!(docs.lookup(&tx, "shared").await?, Some(shared_id));
     clear_tenant(&tenant).await
 }
 

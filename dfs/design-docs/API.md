@@ -680,6 +680,8 @@ CreateOperation {
 
 **Successful result:** `mutation.object` contains the created object's final attributes, unless a
 later operation in the same request removes it. Name or ID collisions fail with `ALREADY_EXISTS`.
+The name `shared` is reserved directly under the tenant root, where virtual `shared` lives: creating
+it there fails with `ALREADY_EXISTS`. Deeper directories accept it.
 
 ### update operation
 
