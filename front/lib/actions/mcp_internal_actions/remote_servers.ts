@@ -7293,6 +7293,192 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10053,
+    name: "Webflow",
+    description:
+      "Webflow tools to build and edit pages, elements, styles and components, manage CMS collections, assets and forms, read site analytics, and publish sites.",
+    url: "https://mcp.webflow.com/mcp",
+    icon: "WebflowLogo",
+    documentationUrl: "https://developers.webflow.com/mcp/reference/overview",
+    connectionInstructions:
+      "Webflow uses OAuth with dynamic client registration. Sign in with your Webflow account to connect. Each connection grants access to a single Webflow workspace. Some tools require specific plans or add-ons: Enterprise for page branches and redirects, Webflow Analyze for analytics.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      ask_webflow_ai: "never_ask",
+      webflow_guide_tool: "never_ask",
+      get_more_tools: "never_ask",
+      data_analyze_tool: "never_ask",
+      get_asset_preview: "never_ask",
+      element_snapshot_tool: "never_ask",
+      data_sites_tool: "high",
+      data_pages_tool: "high",
+      data_cms_tool: "high",
+      data_localization_tool: "high",
+      data_scripts_tool: "high",
+      data_comments_tool: "high",
+      data_enterprise_tool: "high",
+      data_forms_tool: "high",
+      data_fonts_tool: "high",
+      data_webhook_tool: "high",
+      data_sitemap_tool: "high",
+      data_assets_tool: "high",
+      asset_tool: "high",
+      data_style_tool: "high",
+      data_variable_tool: "high",
+      data_component_tool: "high",
+      data_component_props_tool: "high",
+      data_component_variants_tool: "high",
+      data_interactions_tool: "high",
+      data_element_tool: "high",
+      data_element_settings_tool: "high",
+      data_element_builder: "high",
+      data_whtml_builder: "high",
+      data_component_builder: "high",
+      data_agent_instructions_tool: "high",
+      data_apps_tool: "high",
+      data_campaigns_tool: "high",
+      designer_tool: "high",
+    },
+    toolDisplayLabels: {
+      ask_webflow_ai: {
+        running: "Asking Webflow AI",
+        done: "Asked Webflow AI",
+      },
+      webflow_guide_tool: {
+        running: "Reading the Webflow guide",
+        done: "Read the Webflow guide",
+      },
+      get_more_tools: {
+        running: "Looking for more Webflow tools",
+        done: "Looked for more Webflow tools",
+      },
+      data_analyze_tool: {
+        running: "Fetching analytics from Webflow",
+        done: "Fetched analytics from Webflow",
+      },
+      get_asset_preview: {
+        running: "Fetching an asset preview from Webflow",
+        done: "Fetched an asset preview from Webflow",
+      },
+      element_snapshot_tool: {
+        running: "Taking an element snapshot on Webflow",
+        done: "Took an element snapshot on Webflow",
+      },
+      data_sites_tool: {
+        running: "Managing sites on Webflow",
+        done: "Managed sites on Webflow",
+      },
+      data_pages_tool: {
+        running: "Managing pages on Webflow",
+        done: "Managed pages on Webflow",
+      },
+      data_cms_tool: {
+        running: "Managing CMS content on Webflow",
+        done: "Managed CMS content on Webflow",
+      },
+      data_localization_tool: {
+        running: "Managing localized content on Webflow",
+        done: "Managed localized content on Webflow",
+      },
+      data_scripts_tool: {
+        running: "Managing custom code on Webflow",
+        done: "Managed custom code on Webflow",
+      },
+      data_comments_tool: {
+        running: "Managing comments on Webflow",
+        done: "Managed comments on Webflow",
+      },
+      data_enterprise_tool: {
+        running: "Managing site settings on Webflow",
+        done: "Managed site settings on Webflow",
+      },
+      data_forms_tool: {
+        running: "Managing forms on Webflow",
+        done: "Managed forms on Webflow",
+      },
+      data_fonts_tool: {
+        running: "Managing fonts on Webflow",
+        done: "Managed fonts on Webflow",
+      },
+      data_webhook_tool: {
+        running: "Managing webhooks on Webflow",
+        done: "Managed webhooks on Webflow",
+      },
+      data_sitemap_tool: {
+        running: "Managing the sitemap on Webflow",
+        done: "Managed the sitemap on Webflow",
+      },
+      data_assets_tool: {
+        running: "Managing assets on Webflow",
+        done: "Managed assets on Webflow",
+      },
+      asset_tool: {
+        running: "Uploading an asset to Webflow",
+        done: "Uploaded an asset to Webflow",
+      },
+      data_style_tool: {
+        running: "Managing styles on Webflow",
+        done: "Managed styles on Webflow",
+      },
+      data_variable_tool: {
+        running: "Managing variables on Webflow",
+        done: "Managed variables on Webflow",
+      },
+      data_component_tool: {
+        running: "Managing components on Webflow",
+        done: "Managed components on Webflow",
+      },
+      data_component_props_tool: {
+        running: "Managing component props on Webflow",
+        done: "Managed component props on Webflow",
+      },
+      data_component_variants_tool: {
+        running: "Managing component variants on Webflow",
+        done: "Managed component variants on Webflow",
+      },
+      data_interactions_tool: {
+        running: "Managing interactions on Webflow",
+        done: "Managed interactions on Webflow",
+      },
+      data_element_tool: {
+        running: "Editing elements on Webflow",
+        done: "Edited elements on Webflow",
+      },
+      data_element_settings_tool: {
+        running: "Managing element settings on Webflow",
+        done: "Managed element settings on Webflow",
+      },
+      data_element_builder: {
+        running: "Building elements on Webflow",
+        done: "Built elements on Webflow",
+      },
+      data_whtml_builder: {
+        running: "Inserting HTML on Webflow",
+        done: "Inserted HTML on Webflow",
+      },
+      data_component_builder: {
+        running: "Inserting components on Webflow",
+        done: "Inserted components on Webflow",
+      },
+      data_agent_instructions_tool: {
+        running: "Managing agent instructions on Webflow",
+        done: "Managed agent instructions on Webflow",
+      },
+      data_apps_tool: {
+        running: "Managing Webflow Cloud apps",
+        done: "Managed Webflow Cloud apps",
+      },
+      data_campaigns_tool: {
+        running: "Managing campaigns on Webflow",
+        done: "Managed campaigns on Webflow",
+      },
+      designer_tool: {
+        running: "Using the Webflow Designer",
+        done: "Used the Webflow Designer",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

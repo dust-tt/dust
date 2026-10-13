@@ -117,6 +117,7 @@ import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
 import VideoLogo from "./Video";
+import WebflowLogo from "./Webflow";
 import YoutrustLogo from "./Youtrust";
 import ZaiLogo from "./Zai";
 import ZapierLogo from "./Zapier";
@@ -247,6 +248,7 @@ export const PLATFORM_LOGOS = {
   ValTownLogo,
   VantaLogo,
   VideoLogo,
+  WebflowLogo,
   YoutrustLogo,
   ZaiLogo,
   ZapierLogo,
