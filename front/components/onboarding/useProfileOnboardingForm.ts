@@ -35,7 +35,7 @@ export function useProfileOnboardingForm({
   const { completeUserOnboarding } = useCompleteUserOnboarding();
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
-  // The language the UI is currently in. By default it's their workspace locale 
+  // The language the UI is currently in. By default it's their workspace locale
   const { userLocale: defaultLocale } = useUserLocale({ owner: workspace });
   const { mutateAuthContext } = useAuthContext({
     workspaceId: workspace.sId,
