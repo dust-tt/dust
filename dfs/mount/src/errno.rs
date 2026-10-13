@@ -19,20 +19,6 @@ impl Errno {
     pub const EOPNOTSUPP: Self = Self(libc::EOPNOTSUPP);
 }
 
-/**
- * @cc [owner:fontanierh,label:error-handling] errno-mapping
- * Each dfs `ErrorCode` MUST map to this errno:
- * - `NOT_FOUND`: `ENOENT`
- * - `FORBIDDEN`, `UNAUTHENTICATED`: `EACCES`
- * - `INVALID_INPUT`: `EINVAL`
- * - `ALREADY_EXISTS`: `EEXIST`
- * - `NOT_DIRECTORY`: `ENOTDIR`
- * - `IS_DIRECTORY`: `EISDIR`
- * - `NOT_EMPTY`: `ENOTEMPTY`
- * - `NAME_TOO_LONG`: `ENAMETOOLONG`
- * - `UNSUPPORTED`: `EOPNOTSUPP`
- * - `INTERNAL`, `CAPACITY`, `UNAVAILABLE`: `EIO`
- */
 impl From<ErrorCode> for Errno {
     fn from(code: ErrorCode) -> Self {
         Self(match code {
@@ -55,11 +41,6 @@ impl From<ErrorCode> for Errno {
     }
 }
 
-/**
- * @cc [owner:fontanierh,label:error-handling] status-without-details
- * A failed call without readable `ErrorDetails` (a transport or gRPC framework error) MUST map to
- * `EIO`.
- */
 impl From<Status> for Errno {
     fn from(status: Status) -> Self {
         if status.details().is_empty() {
