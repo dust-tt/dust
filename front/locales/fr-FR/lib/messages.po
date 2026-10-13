@@ -1439,7 +1439,7 @@ msgstr "Disponible uniquement dans l’espace de l’entreprise et les espaces s
 
 #: front/lib/api_error_messages.ts
 msgid "This can only be updated from the workspace settings."
-msgstr "Modifiable uniquement depuis les paramètres de l’espace de travail."
+msgstr "Modifiable uniquement depuis les paramètres du workspace."
 
 #: front/lib/api_error_messages.ts
 msgid "A tool with this name already exists."
@@ -1471,7 +1471,7 @@ msgstr "Impossible d’utiliser l’autorisation de l’outil. Reconnectez-le et
 
 #: front/lib/api_error_messages.ts
 msgid "This tool isn't available for your workspace."
-msgstr "Cet outil n’est pas disponible pour votre espace de travail."
+msgstr "Cet outil n’est pas disponible pour votre workspace."
 
 #: front/lib/api_error_messages.ts
 msgid "This tool is already added, and only one instance is allowed."

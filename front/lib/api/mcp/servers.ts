@@ -21,6 +21,7 @@ import type {
 } from "@app/lib/api/mcp";
 import { checkConnectionOwnership } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -52,14 +53,7 @@ export type CreateMCPServerErrorCode =
   | "server_already_installed"
   | "system_view_not_found";
 
-export class CreateMCPServerError extends Error {
-  constructor(
-    readonly code: CreateMCPServerErrorCode,
-    message: string
-  ) {
-    super(message);
-  }
-}
+export type CreateMCPServerError = DustError<CreateMCPServerErrorCode>;
 
 export async function listMCPServersWithViews(
   auth: Authenticator
@@ -130,11 +124,11 @@ export async function createRemoteMCPServer(
   const normalizedViewName = viewName?.trim();
 
   if (!url) {
-    return new Err(new CreateMCPServerError("missing_url", "URL is required"));
+    return new Err(new DustError("missing_url", "URL is required"));
   }
   if (url.length > MAX_URL_LENGTH) {
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         "url_too_long",
         `MCP server URL exceeds maximum length (${MAX_URL_LENGTH} characters).`
       )
@@ -146,7 +140,7 @@ export async function createRemoteMCPServer(
       normalizedViewName.length > MAX_VIEW_NAME_LENGTH
     ) {
       return new Err(
-        new CreateMCPServerError(
+        new DustError(
           "invalid_name",
           `viewName must be a non-empty string of at most ${MAX_VIEW_NAME_LENGTH} characters.`
         )
@@ -163,7 +157,7 @@ export async function createRemoteMCPServer(
     const ownershipRes = await checkConnectionOwnership(auth, connectionId);
     if (ownershipRes.isErr()) {
       return new Err(
-        new CreateMCPServerError(
+        new DustError(
           "oauth_connection_error",
           "Error fetching OAuth connection access token"
         )
@@ -174,7 +168,7 @@ export async function createRemoteMCPServer(
     });
     if (token.isErr()) {
       return new Err(
-        new CreateMCPServerError(
+        new DustError(
           "oauth_connection_error",
           "Error fetching OAuth connection access token"
         )
@@ -202,7 +196,7 @@ export async function createRemoteMCPServer(
     // The remote server rejected or failed the connection; any other error is
     // the URL failing to parse.
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         isRemoteMCPServerError(metadataRes.error)
           ? "remote_server_error"
           : "invalid_url",
@@ -223,7 +217,7 @@ export async function createRemoteMCPServer(
   const name = defaultConfig?.name ?? metadata.name;
   if (name.length > MAX_NAME_LENGTH) {
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         "invalid_name",
         `MCP server name exceeds maximum length (${MAX_NAME_LENGTH} characters).`
       )
@@ -323,7 +317,7 @@ export async function createInternalMCPServer(
 
   if (!isInternalMCPServerName(name)) {
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         "invalid_internal_server_name",
         "Invalid internal MCP server name"
       )
@@ -337,7 +331,7 @@ export async function createInternalMCPServer(
     );
   if (isRestricted) {
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         "server_not_available",
         "This tool is not available for this workspace."
       )
@@ -348,10 +342,7 @@ export async function createInternalMCPServer(
     const trimmed = viewName.trim();
     if (trimmed.length === 0 || trimmed.length > MAX_NAME_LENGTH) {
       return new Err(
-        new CreateMCPServerError(
-          "invalid_name",
-          "viewName must be a non-empty string."
-        )
+        new DustError("invalid_name", "viewName must be a non-empty string.")
       );
     }
   }
@@ -366,7 +357,7 @@ export async function createInternalMCPServer(
     );
     if (alreadyUsed) {
       return new Err(
-        new CreateMCPServerError(
+        new DustError(
           "server_already_installed",
           "This internal tool has already been added and only one instance is allowed."
         )
@@ -487,7 +478,7 @@ async function createGlobalSpaceView(
   );
   if (!systemView) {
     return new Err(
-      new CreateMCPServerError(
+      new DustError(
         "system_view_not_found",
         `Missing system view for ${serverType} MCP server, it should have been created when creating the ${serverType} server.`
       )

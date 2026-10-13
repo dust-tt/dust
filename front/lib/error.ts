@@ -53,6 +53,15 @@ export type DustErrorCode =
   | "action_not_editable"
   | "invalid_edited_arguments"
   | "mcp_access_token_error"
+  | "missing_url"
+  | "url_too_long"
+  | "invalid_name"
+  | "oauth_connection_error"
+  | "remote_server_error"
+  | "invalid_internal_server_name"
+  | "server_not_available"
+  | "server_already_installed"
+  | "system_view_not_found"
   // Triggers errors
   | "webhook_source_not_found"
   // Activation errors
