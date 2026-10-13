@@ -106,6 +106,9 @@ impl DirectoryResource {
         mime_type: Option<String>,
         xattrs: HashMap<String, Vec<u8>>,
     ) -> Result<ObjectResource, storage::Error<Error>> {
+        object_id
+            .validate()
+            .map_err(storage::Error::<Error>::InvalidObjectId)?;
         Self::validate_name(&name)?;
         if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());
