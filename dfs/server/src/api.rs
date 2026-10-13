@@ -4,11 +4,11 @@ use dfs_protocol::{
     READ_FILES_MAX_OBJECTS, STAT_MAX_REFERENCES,
     error::status,
     rpc::{
-        ApplyRequest, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest, Empty,
-        EntryPage, ErrorCode, FileResult, FilesBatch, GrantPage, ListGrantsRequest, ListRequest,
-        LookupRequest, OperationBatch, ReadData, ReadFilesRequest, ReadRequest,
-        RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest, Tenant,
-        UpdateGrantsRequest, dfs_server::Dfs,
+        ApplyRequest, Attr, AttrBatch, AttrResult, CreateSessionRequest, CreateTenantRequest,
+        Empty, EntryPage, ErrorCode, ErrorDetails, FileResult, FilesBatch, GrantPage,
+        ListGrantsRequest, ListRequest, LookupRequest, OperationBatch, ReadData, ReadFilesRequest,
+        ReadRequest, RevokeSessionRequest, SearchRequest, SearchResults, Session, StatRequest,
+        Tenant, UpdateGrantsRequest, dfs_server::Dfs,
     },
 };
 use prost::Message;
@@ -221,24 +221,7 @@ impl Dfs for API {
             async move { ObjectResource::stat(&tx, session, object_ids, include_metadata).await }
         })
         .await?;
-        let results = attributes
-            .into_iter()
-            .map(|result| match result {
-                Ok(object) => AttrResult {
-                    object: Some(object),
-                    error: None,
-                },
-                Err(error) => AttrResult {
-                    object: None,
-                    error: Some(error.into()),
-                },
-            })
-            .collect();
-        let response = AttrBatch { results };
-        if response.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
-            return Err(status(ErrorCode::Capacity));
-        }
-        Ok(Response::new(response))
+        Ok(Response::new(attr_batch(attributes)?))
     }
 
     async fn lookup(&self, request: Request<LookupRequest>) -> Result<Response<AttrBatch>, Status> {
@@ -354,6 +337,27 @@ impl Dfs for API {
         self.require_session(&request).await?;
         Err(status(ErrorCode::Unsupported))
     }
+}
+
+fn attr_batch<E: Into<ErrorDetails>>(results: Vec<Result<Attr, E>>) -> Result<AttrBatch, Status> {
+    let results = results
+        .into_iter()
+        .map(|result| match result {
+            Ok(object) => AttrResult {
+                object: Some(object),
+                error: None,
+            },
+            Err(error) => AttrResult {
+                object: None,
+                error: Some(error.into()),
+            },
+        })
+        .collect();
+    let batch = AttrBatch { results };
+    if batch.encoded_len() > crate::MAX_MESSAGE_SIZE_BYTES {
+        return Err(status(ErrorCode::Capacity));
+    }
+    Ok(batch)
 }
 
 /**
