@@ -348,4 +348,141 @@ describe("DfsFileSystem", () => {
       "text/plain"
     );
   });
+
+  it("returns canonical URIs that keep targeting the object after a move", async () => {
+    const { fs, at } = setup();
+
+    const created = await fs.write(at("drafts/plan.md"), "v1");
+    expect(created.isOk()).toBe(true);
+    if (!created.isOk()) {
+      return;
+    }
+    const { uri, attr } = created.value;
+    expect(uri).toBe(`dfs://plan.md--${attr.id}`);
+
+    await fs.mkdir(at("final"));
+    await fs.move(uri, at("final/renamed.md"));
+
+    // The stale name in the stored URI is ignored.
+    expect(await readText(fs, uri)).toBe("v1");
+    const overwritten = await fs.write(uri, "v2");
+    expect(overwritten.isOk() && overwritten.value.uri).toBe(
+      `dfs://renamed.md--${attr.id}`
+    );
+    expect(await readText(fs, at("final/renamed.md"))).toBe("v2");
+  });
+
+  it("removes directories recursively, children first", async () => {
+    const { dfs, fs, at } = setup();
+    await fs.write(at("a/b/one.txt"), "1");
+    await fs.write(at("a/b/c/two.txt"), "2");
+    await fs.write(at("a/three.txt"), "3");
+    await fs.write(at("keep.txt"), "k");
+
+    const notRecursive = await fs.remove(at("a"));
+    expect(notRecursive.isErr() && notRecursive.error.code).toBe("not_empty");
+
+    const res = await fs.remove(at("a"), { recursive: true });
+
+    expect(res.isOk()).toBe(true);
+    expect(dfs.paths()).toEqual(["/keep.txt"]);
+  });
+
+  it("removes the anchor itself through a URI without a path", async () => {
+    const { dfs, fs, at } = setup();
+    const file = await fs.write(at("tmp.txt"), "t");
+    expect(file.isOk()).toBe(true);
+    if (!file.isOk()) {
+      return;
+    }
+
+    const res = await fs.remove(file.value.uri);
+
+    expect(res.isOk()).toBe(true);
+    expect(dfs.paths()).toEqual([]);
+  });
+
+  it("copies a file with its MIME type, leaving the source untouched", async () => {
+    const { fs, at } = setup();
+    await fs.write(at("src.md"), "hello world", { mimeType: "text/markdown" });
+
+    const res = await fs.copy(at("src.md"), at("copies/dest.md"));
+
+    expect(res.isOk()).toBe(true);
+    expect(await readText(fs, at("copies/dest.md"))).toBe("hello world");
+    expect(await readText(fs, at("src.md"))).toBe("hello world");
+    const stat = await fs.stat(at("copies/dest.md"), { includeMetadata: true });
+    expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+      "text/markdown"
+    );
+  });
+
+  it("refuses to copy a file onto itself, even through another URI", async () => {
+    const { fs, at } = setup();
+    // More than one write chunk, so a self-copy would truncate it while reading it.
+    const file = await fs.write(at("data.bin"), "0123456789");
+    expect(file.isOk()).toBe(true);
+    if (!file.isOk()) {
+      return;
+    }
+
+    const byPath = await fs.copy(at("data.bin"), at("data.bin"));
+    const byId = await fs.copy(at("data.bin"), file.value.uri);
+
+    expect(byPath.isErr() && byPath.error.code).toBe("invalid_input");
+    expect(byId.isErr() && byId.error.code).toBe("invalid_input");
+    expect(await readText(fs, at("data.bin"))).toBe("0123456789");
+  });
+
+  it("rejects an invalid destination before resolving the source", async () => {
+    const { fs, at } = setup();
+
+    const res = await fs.copy(at("missing.txt"), "not-a-dfs-uri");
+
+    expect(res.isErr() && res.error.code).toBe("invalid_input");
+  });
+
+  it("copies a file without MIME type, clearing the destination's", async () => {
+    const { fs, at } = setup();
+    await fs.write(at("src.bin"), "src", { mimeType: "" });
+    await fs.write(at("existing.bin"), "old", { mimeType: "text/plain" });
+
+    await fs.copy(at("src.bin"), at("new.bin"));
+    await fs.copy(at("src.bin"), at("existing.bin"));
+
+    for (const name of ["new.bin", "existing.bin"]) {
+      const stat = await fs.stat(at(name), { includeMetadata: true });
+      expect(stat.isOk() && stat.value?.attr.metadata?.mimeType).toBe(
+        undefined
+      );
+      expect(await readText(fs, at(name))).toBe("src");
+    }
+  });
+
+  it("moves a file keeping its id and refuses to overwrite unless asked", async () => {
+    const { fs, at } = setup();
+    const original = await fs.write(at("a.txt"), "a");
+    await fs.write(at("b.txt"), "b");
+    await fs.mkdir(at("dir"));
+
+    const collision = await fs.move(at("a.txt"), at("b.txt"));
+    expect(collision.isErr() && collision.error.code).toBe("already_exists");
+    const missingParent = await fs.move(at("a.txt"), at("nope/a.txt"));
+    expect(missingParent.isErr() && missingParent.error.code).toBe("not_found");
+
+    const moved = await fs.move(at("a.txt"), at("dir/renamed.txt"));
+    expect(moved.isOk() && original.isOk() && moved.value.attr.id).toBe(
+      original.isOk() && original.value.attr.id
+    );
+    expect(await fs.exists(at("a.txt"))).toEqual(
+      expect.objectContaining({ value: false })
+    );
+    expect(await readText(fs, at("dir/renamed.txt"))).toBe("a");
+
+    const replaced = await fs.move(at("b.txt"), at("dir/renamed.txt"), {
+      replace: true,
+    });
+    expect(replaced.isOk()).toBe(true);
+    expect(await readText(fs, at("dir/renamed.txt"))).toBe("b");
+  });
 });
