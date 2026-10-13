@@ -150,7 +150,6 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   "stack one": "StackOne",
-  // Keys match the slugified form: slugify splits "n8n" into "n_8n", shown as "n 8n".
   "n 8n": "n8n",
   mcp: "MCP",
   webbrowser: "Web browsing",
