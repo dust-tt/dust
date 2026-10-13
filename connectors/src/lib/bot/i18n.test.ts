@@ -1,11 +1,11 @@
-import { getSlackI18n } from "@connectors/connectors/slack/lib/i18n";
+import { getBotI18n } from "@connectors/lib/bot/i18n";
 import { SUPPORTED_LOCALES } from "@connectors/types/locale";
 import { describe, expect, it } from "vitest";
 
-describe("getSlackI18n", () => {
+describe("getBotI18n", () => {
   it("loads every supported locale", async () => {
     for (const locale of SUPPORTED_LOCALES) {
-      const i18n = await getSlackI18n(locale);
+      const i18n = await getBotI18n(locale);
       expect(i18n.locale).toBe(locale);
     }
   });
@@ -13,21 +13,21 @@ describe("getSlackI18n", () => {
   // Instances are not named `i18n` here: `lingui extract` would collect the test messages in
   // checkouts whose path contains a dot directory, where the `*.test.ts` exclusion does not match.
   it("renders the English text with interpolated placeholders in en-US", async () => {
-    const en = await getSlackI18n("en-US");
+    const en = await getBotI18n("en-US");
     expect(
       en._("Answered by *{assistantName}*", { assistantName: "Dust" })
     ).toBe("Answered by *Dust*");
   });
 
   it("renders translations in fr-FR", async () => {
-    const fr = await getSlackI18n("fr-FR");
+    const fr = await getBotI18n("fr-FR");
     expect(
       fr._("Answered by *{assistantName}*", { assistantName: "Dust" })
     ).toBe("Réponse de *Dust*");
   });
 
   it("falls back to the English text for messages missing from the catalog", async () => {
-    const fr = await getSlackI18n("fr-FR");
+    const fr = await getBotI18n("fr-FR");
     expect(fr._("Not in any catalog, {name}", { name: "Ada" })).toBe(
       "Not in any catalog, Ada"
     );
@@ -35,10 +35,10 @@ describe("getSlackI18n", () => {
 
   it("keeps one instance per locale", async () => {
     const [en, fr] = await Promise.all([
-      getSlackI18n("en-US"),
-      getSlackI18n("fr-FR"),
+      getBotI18n("en-US"),
+      getBotI18n("fr-FR"),
     ]);
-    expect(await getSlackI18n("en-US")).toBe(en);
+    expect(await getBotI18n("en-US")).toBe(en);
     expect(en.locale).toBe("en-US");
     expect(fr.locale).toBe("fr-FR");
   });

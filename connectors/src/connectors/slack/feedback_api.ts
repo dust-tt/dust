@@ -5,8 +5,8 @@ import {
   getSlackClient,
   getSlackUserInfoMemoized,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { getSlackI18nForWorkspace } from "@connectors/connectors/slack/lib/workspace_locale";
 import { apiConfig } from "@connectors/lib/api/config";
+import { getBotI18nForWorkspace } from "@connectors/lib/bot/workspace_locale";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -128,7 +128,7 @@ export async function submitFeedbackToAPI({
     // Update the Slack message to show feedback has been submitted
     // Using response_url works for both regular and ephemeral messages
     try {
-      const i18n = await getSlackI18nForWorkspace(connector);
+      const i18n = await getBotI18nForWorkspace(connector);
       await fetch(responseUrl, {
         method: "POST",
         headers: {

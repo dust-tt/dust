@@ -17,7 +17,7 @@ import {
   getSlackConnectorForTeam,
   openFeedbackModal,
 } from "@connectors/connectors/slack/feedback_modal";
-import { getSlackI18nForWorkspace } from "@connectors/connectors/slack/lib/workspace_locale";
+import { getBotI18nForWorkspace } from "@connectors/lib/bot/workspace_locale";
 import logger from "@connectors/logger/logger";
 import { withLogging } from "@connectors/logger/withlogging";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -478,7 +478,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
             try {
               // Open the feedback modal
               await openFeedbackModal({
-                i18n: await getSlackI18nForWorkspace(connector),
+                i18n: await getBotI18nForWorkspace(connector),
                 slackClient,
                 triggerId: payload.trigger_id,
                 conversationId,
