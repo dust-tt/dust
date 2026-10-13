@@ -95,10 +95,9 @@ export class RunFactory {
     return { run, runUsageModelId: runUsage.id };
   }
 
-  // A model call whose provider stream ended without reporting usage: its pending usage row is
-  // closed as unavailable, with no tokens and no cost.
-  static async createWithUnavailableUsage(auth: Authenticator) {
-    const { run, runUsageModelId } = await RunResource.makeNewWithPendingUsage(
+  // A model call still in flight: its usage row is pending, with no tokens and no cost.
+  static async createWithPendingUsage(auth: Authenticator) {
+    return RunResource.makeNewWithPendingUsage(
       {
         appId: null,
         dustRunId: generateRandomModelSId(),
@@ -115,6 +114,12 @@ export class RunFactory {
         useWorkspaceCredentials: false,
       }
     );
+  }
+
+  // A model call whose provider stream ended without reporting usage: its pending usage row is
+  // closed as unavailable, with no tokens and no cost.
+  static async createWithUnavailableUsage(auth: Authenticator) {
+    const { run, runUsageModelId } = await this.createWithPendingUsage(auth);
     await run.markPendingRunUsageUnavailable(auth, runUsageModelId);
 
     return { run, runUsageModelId };

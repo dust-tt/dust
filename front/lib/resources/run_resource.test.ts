@@ -458,27 +458,11 @@ describe("RunResource inference location", () => {
 
 describe("RunResource.listRunUsagesForRuns", () => {
   it("returns unavailable usages only when asked, and never pending ones", async () => {
-    const { authenticator: auth, workspace } = await createResourceTest({});
+    const { authenticator: auth } = await createResourceTest({});
     const { run: reportedRun } = await RunFactory.createWithUsage(auth);
     const { run: unavailableRun } =
       await RunFactory.createWithUnavailableUsage(auth);
-    const { run: pendingRun } = await RunResource.makeNewWithPendingUsage(
-      {
-        appId: null,
-        dustRunId: generateRandomModelSId(),
-        runType: "deploy",
-        useWorkspaceCredentials: false,
-        workspaceId: workspace.id,
-      },
-      {
-        inferenceProvider: GPT_5_MINI_MODEL_CONFIG.providerId,
-        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
-        providerId: GPT_5_MINI_MODEL_CONFIG.providerId,
-        region: null,
-        usageType: USAGE_TYPE_USER,
-        useWorkspaceCredentials: false,
-      }
-    );
+    const { run: pendingRun } = await RunFactory.createWithPendingUsage(auth);
     const runs = [reportedRun, unavailableRun, pendingRun];
 
     const billableUsages = await RunResource.listRunUsagesForRuns(auth, {
