@@ -128,6 +128,10 @@ msgid "Last name"
 msgstr "Nom"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
+msgid "Your preferred language:"
+msgstr "Votre langue préférée :"
+
+#: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Your pronouns (optional):"
 msgstr "Vos pronoms (facultatif) :"
 
@@ -142,10 +146,6 @@ msgstr "Suggestions :"
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Pick your role to customize your experience:"
 msgstr "Choisissez votre rôle pour personnaliser votre expérience :"
-
-#: front/components/onboarding/ProfileOnboardingSteps.tsx
-msgid "Your preferred language:"
-msgstr "Votre langue préférée :"
 
 #: front/components/onboarding/ProfileOnboardingSteps.tsx
 msgid "Next"
