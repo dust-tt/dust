@@ -958,7 +958,7 @@ function MemorySection({ owner }: { owner: WorkspaceType }) {
                 </Trans>{" "}
                 <Trans>
                   To keep your memory private, agents won't rely on it in
-                  conversations with other people.
+                  conversations with other participants.
                 </Trans>
               </span>
             </div>
