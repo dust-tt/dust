@@ -292,6 +292,14 @@ export function toBaseMessages(
           content: { value: message.content },
         },
       ];
+    case "effort_change":
+      return [
+        {
+          role: "system",
+          type: "effort_change",
+          content: { effort: message.effort },
+        },
+      ];
     default:
       assertNever(message);
   }

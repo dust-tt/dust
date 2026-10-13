@@ -335,7 +335,8 @@ describe("runCompaction", () => {
     vi.mocked(runMultiActionsAgent).mockImplementationOnce(
       async (_auth, _config, input) => {
         const firstMessage = input.conversation.messages[0];
-        const firstContent = firstMessage?.content?.[0];
+        const firstContent =
+          firstMessage?.role === "user" ? firstMessage.content[0] : undefined;
 
         if (
           !firstContent ||
