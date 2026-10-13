@@ -44,6 +44,23 @@ export function getNextRaisedReasoningEffort(
   );
 }
 
+// The effort reached by raising `from` by up to `steps` steps for this run, stopping at the highest
+// one available (getNextRaisedReasoningEffort). Equals `from` when it cannot be raised.
+export function raiseReasoningEffort(
+  modelInfo: StreamModelInfo,
+  { from, steps }: { from: ReasoningEffort | null; steps: number }
+): ReasoningEffort | null {
+  let effort = from;
+  for (let step = 0; step < steps; step++) {
+    const next = getNextRaisedReasoningEffort(modelInfo, effort);
+    if (next === null) {
+      break;
+    }
+    effort = next;
+  }
+  return effort;
+}
+
 // Keeps the effort changes this run can apply: the ones that keep its model in the tier of its
 // top-level effort (raise-keeps-model-tier). Also returns the effort in effect once they apply,
 // following the filter the LLM layer applies before sending them (effort-messages-only-raise).
