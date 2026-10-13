@@ -104,6 +104,22 @@ fn transaction_errors_preserve_retries_and_resource_statuses() -> Result<(), pro
             storage::Error::<Status>::from(storage::Error::Resource(tenant::Error::InvalidId)),
             ErrorCode::InvalidInput,
         ),
+        (
+            storage::Error::<Status>::from(storage::Error::Resource(
+                directory::Error::NotDirectory,
+            )),
+            ErrorCode::NotDirectory,
+        ),
+        (
+            storage::Error::<Status>::from(storage::Error::Resource(directory::Error::NameTooLong)),
+            ErrorCode::NameTooLong,
+        ),
+        (
+            storage::Error::<Status>::from(storage::Error::Resource(directory::Error::Object(
+                object::Error::NotAuthorized,
+            ))),
+            ErrorCode::NotFound,
+        ),
     ] {
         // Follow the runner's boxing and unboxing before translating the final API response.
         let error = FdbBindingError::from(error);
