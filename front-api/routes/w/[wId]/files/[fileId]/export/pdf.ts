@@ -47,6 +47,14 @@ app.post(
               message: error.message,
             },
           });
+        case "not_shareable":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "frame_not_shareable",
+              message: error.message,
+            },
+          });
         case "render_failed":
           return apiError(ctx, {
             status_code: 500,

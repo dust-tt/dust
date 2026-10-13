@@ -234,6 +234,8 @@ export const API_ERROR_MESSAGES: Record<APIErrorType, MessageDescriptor> = {
   content_fragment_not_found: msg`Attachment not found.`,
   sandbox_token_not_allowed: msg`This sandbox token can't access this endpoint.`,
   file_not_frame: msg`This file isn't a Frame.`,
+  frame_not_shareable: msg`This Frame isn't shareable, so it can't be exported.`,
+  file_not_mounted: msg`This file can't be moved to a Pod.`,
   branding_asset_mismatch: msg`This file doesn't match the branding asset.`,
   frame_text_edit_failed: msg`The Frame text couldn't be updated.`,
   file_referenced_by_skill: msg`This file is used by a skill and can't be deleted.`,

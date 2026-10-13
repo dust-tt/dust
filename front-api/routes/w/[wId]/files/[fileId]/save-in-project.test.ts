@@ -372,7 +372,7 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
     expect(fileStorageMock.getObject(destinationManifestMountPath)).toBe("{}");
   });
 
-  it("should return 400 when a file with the same name already exists in the project", async () => {
+  it("should return 409 when a file with the same name already exists in the project", async () => {
     const { auth, user, workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "user",
@@ -401,10 +401,10 @@ describe("POST /api/w/:wId/files/:fileId/save-in-project", () => {
       projectId: project.sId,
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(409);
     expect(await response.json()).toEqual({
       error: {
-        type: "invalid_request_error",
+        type: "file_already_exists",
         message: "A file with this name already exists in the Pod.",
       },
     });

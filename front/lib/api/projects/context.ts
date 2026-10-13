@@ -345,7 +345,17 @@ export async function addFileToProject(
     space: SpaceResource;
     sourceConversationId?: string;
   }
-): Promise<Result<ContentFragmentResource, DustError>> {
+): Promise<
+  Result<
+    ContentFragmentResource,
+    DustError<
+      | "project_space_required"
+      | "file_not_mounted"
+      | "name_conflict"
+      | "internal_error"
+    >
+  >
+> {
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
@@ -454,7 +464,12 @@ export async function addFileToProject(
 export async function addFrameV2ToProject(
   auth: Authenticator,
   { frame, space }: { frame: FileResource; space: SpaceResource }
-): Promise<Result<FileResource, DustError>> {
+): Promise<
+  Result<
+    FileResource,
+    DustError<"file_not_found" | "name_conflict" | "internal_error">
+  >
+> {
   const sourceDirectoryPath = frame.getFrameV2SourceDirectoryPath(auth);
   if (!sourceDirectoryPath) {
     return new Err({

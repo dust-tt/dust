@@ -260,6 +260,8 @@ const API_ERROR_TYPES = [
   "content_fragment_not_found",
   "sandbox_token_not_allowed",
   "file_not_frame",
+  "frame_not_shareable",
+  "file_not_mounted",
   "branding_asset_mismatch",
   "frame_text_edit_failed",
   "file_referenced_by_skill",

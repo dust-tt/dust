@@ -53,7 +53,7 @@ export async function screenshotInteractiveContentFile(
   const shareInfo = await file.getShareInfo();
   if (!shareInfo) {
     return new Err({
-      type: "not_frame",
+      type: "not_shareable",
       message: "File is not shareable.",
     });
   }

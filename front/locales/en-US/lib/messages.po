@@ -882,6 +882,14 @@ msgid "This file isn't a Frame."
 msgstr "This file isn't a Frame."
 
 #: front/lib/api_error_messages.ts
+msgid "This Frame isn't shareable, so it can't be exported."
+msgstr "This Frame isn't shareable, so it can't be exported."
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be moved to a Pod."
+msgstr "This file can't be moved to a Pod."
+
+#: front/lib/api_error_messages.ts
 msgid "This file doesn't match the branding asset."
 msgstr "This file doesn't match the branding asset."
 
