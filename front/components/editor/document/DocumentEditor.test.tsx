@@ -133,10 +133,14 @@ async function renderDocument(
     verifyCommentMessage,
     commentInputExtensions,
     answer,
+    resolveImageSource = NO_IMAGE_SOURCE,
+    readOnly,
   }: {
     verifyCommentMessage?: DfmMessageVerifier;
     commentInputExtensions?: DocumentProps["commentInputExtensions"];
     answer?: SessionAnswer;
+    resolveImageSource?: DocumentProps["resolveImageSource"];
+    readOnly?: boolean;
   } = {}
 ) {
   const live = dfmToYDoc(initialContent);
@@ -152,7 +156,8 @@ async function renderDocument(
       renderCommentBody={(body) => <p>{body}</p>}
       verifyCommentMessage={verifyCommentMessage}
       commentInputExtensions={commentInputExtensions}
-      resolveImageSource={NO_IMAGE_SOURCE}
+      resolveImageSource={resolveImageSource}
+      readOnly={readOnly}
       collabView={{
         status: "live",
         binding: {
@@ -162,7 +167,7 @@ async function renderDocument(
             awareness: null,
             user: CollabUserFactory.build(),
             comments: session.channel,
-            resolveImageSource: NO_IMAGE_SOURCE,
+            resolveImageSource,
           }),
           connected: true,
           comments: session.channel,
@@ -1221,24 +1226,11 @@ describe("Document image menu", () => {
     readOnly = false,
     initialContent = SOURCE_WITH_IMAGES,
   } = {}) => {
-    const { container } = render(
-      <Document
-        initialContent={initialContent}
-        onSave={vi.fn().mockResolvedValue(new Ok(undefined))}
-        readOnly={readOnly}
-        autosaveDebounceMs={60_000}
-        renderCommentAuthorAvatar={() => null}
-        renderCommentBody={(body) => <p>{body}</p>}
-        resolveImageSource={(src) => `https://files.test/${src}`}
-      />
-    );
-    return waitFor(() => {
-      const element = container.querySelector(".tiptap");
-      if (!hasEditor(element)) {
-        throw new Error("Editor did not mount.");
-      }
-      return element;
+    const { dom } = await renderDocument(initialContent, {
+      readOnly,
+      resolveImageSource: (src) => `https://files.test/${src}`,
     });
+    return dom;
   };
 
   const hoverImage = (dom: HTMLElement, name: string) => {
