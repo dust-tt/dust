@@ -14,10 +14,11 @@ import type { DfmComment } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { FIXTURE, FIXTURES } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
 import { FILE_PREVIEW_NODE_TYPE } from "@app/lib/markdown/file_preview";
+import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { JSONContent } from "@tiptap/core";
 import { MarkdownManager } from "@tiptap/markdown";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 const AT = "2026-09-25T14:16:32.380Z";
 const THREAD = `:::annotations\n::comment{id=c1 status=resolved}\n\n::message{author=user:usr_daph name="Daph" at=${AT}}\n\nKept as is.\n:::\n`;
@@ -798,5 +799,81 @@ describe("isWritableThread", () => {
     };
 
     expect(isWritableThread(thread)).toBe(false);
+  });
+});
+
+type DfmPersistence =
+  typeof import("@app/components/editor/document/dfm_persistence");
+
+/** This module again, over a TipTap without its token parsing step, so it parses through `parse`. */
+async function importWithPublicParse(
+  onParse: () => void
+): Promise<DfmPersistence> {
+  vi.resetModules();
+  vi.doMock("@tiptap/markdown", async (importOriginal) => {
+    const original = await importOriginal<typeof import("@tiptap/markdown")>();
+    class PublicMarkdownManager extends original.MarkdownManager {
+      constructor(
+        ...args: ConstructorParameters<typeof original.MarkdownManager>
+      ) {
+        super(...args);
+        Reflect.deleteProperty(this, "activeParseLexer");
+      }
+
+      override parse(markdown: string): JSONContent {
+        onParse();
+        return super.parse(markdown);
+      }
+    }
+    return { ...original, MarkdownManager: PublicMarkdownManager };
+  });
+  try {
+    return await import("@app/components/editor/document/dfm_persistence");
+  } finally {
+    vi.doUnmock("@tiptap/markdown");
+  }
+}
+
+function loadAndSave(
+  { loadDfm, saveDfm }: Pick<DfmPersistence, "loadDfm" | "saveDfm">,
+  source: string
+) {
+  const outcome = <T>(result: Result<T, string>) =>
+    result.isOk() ? { value: result.value } : { error: result.error };
+  const loaded = loadDfm(source);
+  return {
+    loaded: outcome(loaded),
+    saved: loaded.isOk()
+      ? outcome(saveDfm(loaded.value.envelope, loaded.value.content))
+      : null,
+  };
+}
+
+describe("TipTap's token parsing step", () => {
+  const publicParse = vi.fn();
+  let withPublicParse: DfmPersistence;
+
+  beforeAll(async () => {
+    withPublicParse = await importWithPublicParse(publicParse);
+  });
+
+  it.each([
+    ...FIXTURES.map(({ source }) => source),
+    "# Title\n\nSome **bold**, *italic*, ~~struck~~ and ++underlined++ text.\n",
+    "One.\n\n\n\nTwo, after blank lines.\n",
+    "Line one  \nline two\\\nline three.\n",
+    "- a\n  - nested **b**\n- c\n\n3. three\n4. four\n",
+    '> Quoted [link](https://example.com "Title").\n>\n> - in a list\n',
+    "```ts\nconst a = 1;\n```\n\nText with `code`.\n\n---\n\nAfter a rule.\n",
+    "Before ![x](pod-abc/x.png) after.\n\n![Chart](pod-abc/chart.png)\n",
+    `Hi :comment-start{id=c1}there:comment-end{id=c1} now.\n\n${OPEN_THREAD}`,
+  ])("loads and saves as TipTap's public parse does: %j", (source) => {
+    publicParse.mockClear();
+
+    const expected = loadAndSave(withPublicParse, source);
+
+    expect(publicParse).toHaveBeenCalled();
+    expect(expected.loaded).toHaveProperty("value");
+    expect(loadAndSave({ loadDfm, saveDfm }, source)).toEqual(expected);
   });
 });
