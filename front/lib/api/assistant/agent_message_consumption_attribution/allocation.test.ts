@@ -37,11 +37,13 @@ type ToolSpec = {
 async function allocateMessage({
   billedCredits,
   calls,
+  incompleteNewerVersion = false,
   modelId,
   tools,
 }: {
   billedCredits: number;
   calls: CallSpec[];
+  incompleteNewerVersion?: boolean;
   modelId?: ModelIdType;
   tools: ToolSpec[];
 }) {
@@ -106,53 +108,65 @@ async function allocateMessage({
     actions.push(action);
   }
 
+  const records = [
+    ...calls.flatMap((call, callIndex) => {
+      const { runUsageModelId } = createdRuns[callIndex];
+      const toolCallOutputTokens = tools
+        .filter((tool) => tool.emittedByCall === callIndex)
+        .reduce((total, tool) => total + tool.callOutputTokens, 0);
+      return [
+        {
+          itemType: "input" as const,
+          runUsageModelId,
+          inputTokensCount: call.promptTokens,
+          grossAttributedCreditAmountMicro: 1,
+        },
+        {
+          itemType: "output" as const,
+          runUsageModelId,
+          outputTokensCount:
+            call.completionTokens -
+            (call.reasoningTokens ?? 0) -
+            toolCallOutputTokens,
+          grossAttributedCreditAmountMicro: 1,
+        },
+        {
+          itemType: "reasoning" as const,
+          runUsageModelId,
+          outputTokensCount: call.reasoningTokens ?? 0,
+          grossAttributedCreditAmountMicro: 1,
+        },
+      ];
+    }),
+    ...tools.map((tool, toolIndex) => ({
+      itemType: "tool" as const,
+      runUsageModelId: createdRuns[tool.emittedByCall].runUsageModelId,
+      action: actions[toolIndex],
+      attributedSkillIds: [],
+      inputTokensCount: tool.resultTokens,
+      outputTokensCount: tool.callOutputTokens,
+      grossAttributedCreditAmountMicro: tool.directCreditAmountMicro + 1,
+      directCreditAmountMicro: tool.directCreditAmountMicro,
+    })),
+  ];
   await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
     conversation,
     agentMessageModelId: agentMessage.agentMessageId,
-    attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-    records: [
-      ...calls.flatMap((call, callIndex) => {
-        const { runUsageModelId } = createdRuns[callIndex];
-        const toolCallOutputTokens = tools
-          .filter((tool) => tool.emittedByCall === callIndex)
-          .reduce((total, tool) => total + tool.callOutputTokens, 0);
-        return [
-          {
-            itemType: "input" as const,
-            runUsageModelId,
-            inputTokensCount: call.promptTokens,
-            grossAttributedCreditAmountMicro: 1,
-          },
-          {
-            itemType: "output" as const,
-            runUsageModelId,
-            outputTokensCount:
-              call.completionTokens -
-              (call.reasoningTokens ?? 0) -
-              toolCallOutputTokens,
-            grossAttributedCreditAmountMicro: 1,
-          },
-          {
-            itemType: "reasoning" as const,
-            runUsageModelId,
-            outputTokensCount: call.reasoningTokens ?? 0,
-            grossAttributedCreditAmountMicro: 1,
-          },
-        ];
-      }),
-      ...tools.map((tool, toolIndex) => ({
-        itemType: "tool" as const,
-        runUsageModelId: createdRuns[tool.emittedByCall].runUsageModelId,
-        action: actions[toolIndex],
-        attributedSkillIds: [],
-        inputTokensCount: tool.resultTokens,
-        outputTokensCount: tool.callOutputTokens,
-        grossAttributedCreditAmountMicro: tool.directCreditAmountMicro + 1,
-        directCreditAmountMicro: tool.directCreditAmountMicro,
-      })),
-    ],
+    attributionVersion: incompleteNewerVersion
+      ? AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION - 1
+      : AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+    records,
     pendingToolItems: [],
   });
+  if (incompleteNewerVersion) {
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: records.filter((record) => record.itemType === "input"),
+      pendingToolItems: [],
+    });
+  }
   const items =
     await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
       agentMessageModelIds: [agentMessage.agentMessageId],
@@ -178,6 +192,9 @@ async function allocateMessage({
 
   return {
     failure: result.isErr() ? result.error.code : null,
+    failureAttributionVersion: result.isErr()
+      ? result.error.context.attributionVersion
+      : null,
     totalCredits:
       [...byItem.values()].reduce((total, amount) => total + amount, 0) /
       1_000_000,
@@ -465,6 +482,27 @@ describe("buildLatestMessageConsumptionAllocation", () => {
     });
 
     expect(allocation.failure).toBe("direct_credits_exceed_bill");
+  });
+
+  it("reports the failure of the newest attribution version when no version allocates", async () => {
+    const allocation = await allocateMessage({
+      billedCredits: 2,
+      calls: [{ promptTokens: INPUT, completionTokens: OUTPUT }],
+      incompleteNewerVersion: true,
+      tools: [
+        {
+          emittedByCall: 0,
+          resultTokens: 0,
+          callOutputTokens: OUTPUT / 2,
+          directCreditAmountMicro: TOOL_DIRECT_CREDIT_AMOUNT_MICRO,
+        },
+      ],
+    });
+
+    expect(allocation.failure).toBe("incomplete_attribution");
+    expect(allocation.failureAttributionVersion).toBe(
+      AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION
+    );
   });
 
   it("fails when a call's output costs more than its recorded cost", async () => {
