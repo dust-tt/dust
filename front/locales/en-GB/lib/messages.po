@@ -1414,6 +1414,94 @@ msgid "Each redirect URI must be unique and include a scheme, such as https://."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
+msgid "This trigger's status is managed by Dust and can't be changed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Too many automations are selected. Select fewer and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The filter expression is invalid. Check its syntax."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A webhook source with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Select at least one event."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in the company space and regular spaces."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This can only be updated from the workspace settings."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A tool with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Auto tools can't be removed from the company space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool name is empty or too long."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is too long."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's URL is invalid or not allowed. Use a public HTTPS URL."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't connect to the tool's server. Check its URL and credentials."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool's authorization couldn't be used. Reconnect it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool isn't available for your workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool is already added, and only one instance is allowed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool's icon can't be changed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool doesn't support bearer token credentials."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can't be connected with stored credentials."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "These credentials are for a different service."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This BigQuery project is too large to check automatically. Contact support to connect it."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Couldn't list the BigQuery project's locations. Check the credentials and their permissions."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr ""
 
