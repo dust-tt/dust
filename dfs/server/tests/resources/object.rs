@@ -22,7 +22,8 @@ pub(crate) use grants::{
     grant_creation_and_update_validation_preserve_state,
     grant_listing_and_updates_preserve_indexes_and_attributes,
     grant_pagination_handles_full_pages_and_object_deletion,
-    grant_update_retry_succeeds_without_changes,
+    grant_update_retry_only_advances_grants_version,
+    grant_versions_advance_for_no_ops_and_reject_overflow,
 };
 pub(crate) use modes::{
     permission_reads_conflict_with_changes_and_retry,
@@ -44,6 +45,7 @@ type StoredObject = (
     Option<u64>,
     Option<u64>,
     Option<u64>,
+    u64,
     u64,
     u64,
 );
@@ -84,6 +86,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
             ctime_ms,
             attr_version,
             content_version,
+            grants_version,
         ): StoredObject = unpack(&value)?;
         let metadata = tx
             .get(&metadata_key, false)
@@ -94,7 +97,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert!(name.is_empty());
         assert_eq!(kind, i32::from(ObjectKind::Directory));
         assert_eq!(size, 0);
-        assert_eq!((attr_version, content_version), (1, 1));
+        assert_eq!((attr_version, content_version, grants_version), (1, 1, 1));
         assert!((before_ms..=after_ms).contains(&u128::from(created_at_ms)));
         assert_eq!(atime_ms, Some(created_at_ms));
         assert_eq!(mtime_ms, atime_ms);
@@ -111,6 +114,7 @@ pub(crate) async fn root_creation_persists_isolated_records() -> Result<()> {
         assert_eq!(fetched.kind, ObjectKind::Directory);
         assert_eq!(fetched.attr_version, root.attr_version);
         assert_eq!(fetched.content_version, root.content_version);
+        assert_eq!(fetched.grants_version, root.grants_version);
         assert_eq!(fetched.atime_ms, root.atime_ms);
         assert!(fetched.metadata.is_none());
         let xattrs =

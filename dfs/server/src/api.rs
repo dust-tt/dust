@@ -180,7 +180,7 @@ impl Dfs for API {
             let tenant = tenant.as_ref();
             let changes = &changes;
             async move {
-                let object = ObjectResource::fetch(&tx, tenant, &object_id)
+                let mut object = ObjectResource::fetch(&tx, tenant, &object_id)
                     .await?
                     .ok_or(object::Error::NotFound)?;
                 object.update_grants(&tx, changes)

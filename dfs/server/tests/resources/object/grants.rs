@@ -11,7 +11,12 @@ use dfs_protocol::{
     ObjectId,
     rpc::{AllowGrant, DenyGrant, Grant, GrantUpdate, grant},
 };
-use foundationdb::{RangeOption, Transaction};
+use foundationdb::{
+    RangeOption, Transaction,
+    tuple::{pack, unpack},
+};
+
+use super::StoredObject;
 
 pub(super) fn allow(subject: &str, mode: u32) -> Grant {
     Grant {
@@ -65,7 +70,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
     tx.commit().await?;
 
     let tx = fdb::database()?.create_trx()?;
-    let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
+    let mut root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
         .await?
         .context("missing root")?;
     assert!(root.metadata.is_none());
@@ -86,6 +91,8 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
         }
     }
     assert_eq!(grants, expected);
+    assert_eq!(records(&tx, &tenant.tenant_id).await?, before);
+    assert_eq!(root.grants_version, 1);
     let cursor = first_cursor.context("missing cursor")?;
     let (mut other, _) = TenantResource::new(format!("{}/other", tenant.tenant_id))?;
     other.root_id = tenant.root_id;
@@ -114,6 +121,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
         Err(storage::Error::Resource(object::Error::InvalidGrantCursor))
     ));
 
+    let before = records(&tx, &tenant.tenant_id).await?;
     root.update_grants(
         &tx,
         &[
@@ -139,6 +147,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
             },
         ],
     )?;
+    assert_eq!(root.grants_version, 2);
     let expected = vec![
         allow("a\0", 2),
         allow("new", 6),
@@ -154,7 +163,13 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
         expected
     );
     let subspace = tenant_subspace(&tenant.tenant_id);
-    for (key, value) in before {
+    let object_key = subspace.pack(&("object", root.object_id.as_bytes().as_slice()));
+    for (key, mut value) in before {
+        if key == object_key {
+            let mut attributes: StoredObject = unpack(&value)?;
+            attributes.9 = 2;
+            value = pack(&attributes);
+        }
         let forward = subspace.subspace(&("object-grant", root.object_id.as_bytes().as_slice()));
         let reverse = subspace.subspace(&"grant-object");
         if !forward.is_start_of(&key) && !reverse.is_start_of(&key) {
@@ -188,7 +203,7 @@ pub(crate) async fn grant_listing_and_updates_preserve_indexes_and_attributes() 
     Ok(())
 }
 
-pub(crate) async fn grant_update_retry_succeeds_without_changes() -> Result<()> {
+pub(crate) async fn grant_update_retry_only_advances_grants_version() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let root = ObjectResource::new_root(&tenant)?;
     let root_grants = [allow("kept", 4), allow("removed", 6)];
@@ -213,7 +228,7 @@ pub(crate) async fn grant_update_retry_succeeds_without_changes() -> Result<()> 
             let tenant = &tenant;
             let changes = &changes;
             async move {
-                let root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
+                let mut root = ObjectResource::fetch(&tx, tenant, &tenant.root_id)
                     .await?
                     .ok_or(object::Error::NotFound)?;
                 root.update_grants(&tx, changes)
@@ -222,12 +237,22 @@ pub(crate) async fn grant_update_retry_succeeds_without_changes() -> Result<()> 
     };
     update().await?;
     let tx = fdb::database()?.create_trx()?;
-    let committed = records(&tx, &tenant.tenant_id).await?;
+    let mut committed = records(&tx, &tenant.tenant_id).await?;
 
     // A retry after an unknown commit result runs `update_grants` again in a new transaction.
     update().await?;
 
     let tx = fdb::database()?.create_trx()?;
+    let object_key =
+        tenant_subspace(&tenant.tenant_id).pack(&("object", root.object_id.as_bytes().as_slice()));
+    let (_, value) = committed
+        .iter_mut()
+        .find(|(key, _)| key == &object_key)
+        .context("missing root attributes")?;
+    let mut attributes: StoredObject = unpack(value)?;
+    assert_eq!(attributes.9, 2);
+    attributes.9 = 3;
+    *value = pack(&attributes);
     assert_eq!(records(&tx, &tenant.tenant_id).await?, committed);
     let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
     tx.clear_range(&begin, &end);
@@ -237,7 +262,7 @@ pub(crate) async fn grant_update_retry_succeeds_without_changes() -> Result<()> 
 
 pub(crate) async fn grant_creation_and_update_validation_preserve_state() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
-    let root = ObjectResource::new_root(&tenant)?;
+    let mut root = ObjectResource::new_root(&tenant)?;
     let invalid = vec![
         Grant::default(),
         allow("", 4),
@@ -325,6 +350,66 @@ pub(crate) async fn grant_creation_and_update_validation_preserve_state() -> Res
     Ok(())
 }
 
+pub(crate) async fn grant_versions_advance_for_no_ops_and_reject_overflow() -> Result<()> {
+    let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
+    let mut root = ObjectResource::new_root(&tenant)?;
+    let tx = fdb::database()?.create_trx()?;
+    root.create(&tx, &[allow("existing", 6)]).await?;
+    let object_key =
+        tenant_subspace(&tenant.tenant_id).pack(&("object", root.object_id.as_bytes().as_slice()));
+    let mut expected = records(&tx, &tenant.tenant_id).await?;
+    for (version, changes) in [
+        (2, vec![]),
+        (
+            3,
+            vec![GrantUpdate {
+                grant: allow("existing", 6),
+                remove: false,
+            }],
+        ),
+        (
+            4,
+            vec![GrantUpdate {
+                grant: deny(4),
+                remove: true,
+            }],
+        ),
+    ] {
+        root.update_grants(&tx, &changes)?;
+        assert_eq!(root.grants_version, version);
+        let (_, value) = expected
+            .iter_mut()
+            .find(|(key, _)| key == &object_key)
+            .context("missing root attributes")?;
+        let mut attributes: StoredObject = unpack(value)?;
+        attributes.9 = version;
+        *value = pack(&attributes);
+        assert_eq!(records(&tx, &tenant.tenant_id).await?, expected);
+    }
+
+    let value = tx.get(&object_key, false).await?.context("missing root")?;
+    let mut attributes: StoredObject = unpack(&value)?;
+    attributes.9 = u64::MAX;
+    tx.set(&object_key, &pack(&attributes));
+    let mut root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
+        .await?
+        .context("missing root")?;
+    let before = records(&tx, &tenant.tenant_id).await?;
+    assert!(matches!(
+        root.update_grants(
+            &tx,
+            &[GrantUpdate {
+                grant: allow("new", 4),
+                remove: false,
+            }]
+        ),
+        Err(storage::Error::Resource(object::Error::VersionOverflow))
+    ));
+    assert_eq!(root.grants_version, u64::MAX);
+    assert_eq!(records(&tx, &tenant.tenant_id).await?, before);
+    Ok(())
+}
+
 pub(crate) async fn grant_pagination_handles_full_pages_and_object_deletion() -> Result<()> {
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let root = ObjectResource::new_root(&tenant)?;
@@ -335,7 +420,7 @@ pub(crate) async fn grant_pagination_handles_full_pages_and_object_deletion() ->
     root.create(&tx, &grants).await?;
     tx.commit().await?;
     let tx = fdb::database()?.create_trx()?;
-    let root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
+    let mut root = ObjectResource::fetch(&tx, &tenant, &tenant.root_id)
         .await?
         .context("missing root")?;
     let page = root.list_grants(&tx, None, 512).await?;

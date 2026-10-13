@@ -67,6 +67,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     file.ctime_ms = Some(7);
     file.attr_version = 4;
     file.content_version = 3;
+    file.grants_version = 5;
     file.create(&tx, &[]).await?;
     let mut write_only = ObjectResource::new_root(&resource)?;
     write_only.object_id = ObjectId::new_v7();
@@ -142,6 +143,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         (attributes.attr_version, attributes.content_version),
         (4, 3)
     );
+    assert_eq!(attributes.grants_version, 5);
     assert!(attributes.metadata.is_none());
     assert!(attributes.store_version > 0);
     assert_eq!(results[0], results[6]);
@@ -169,6 +171,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         (None, None, None)
     );
     assert_eq!((shared.attr_version, shared.content_version), (1, 1));
+    assert_eq!(shared.grants_version, 1);
     assert_eq!(shared.store_version, root.store_version);
     assert!(shared.metadata.is_none());
 
@@ -225,8 +228,8 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         include_metadata: Some(false),
     };
     // Reuse the same session and warm hints while changing the target's grants.
-    for (grant, expected_mode) in [
-        (deny_read, None),
+    for (grant, expected_mode, grants_version) in [
+        (deny_read, None, 6),
         (
             Grant {
                 kind: Some(grant::Kind::Allow(AllowGrant {
@@ -235,12 +238,14 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
                 })),
             },
             Some(0o600),
+            7,
         ),
         (
             Grant {
                 kind: Some(grant::Kind::Deny(DenyGrant { mode: 0o2 })),
             },
             Some(0o400),
+            8,
         ),
     ] {
         client
@@ -265,6 +270,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
             assert!(result.error.is_none());
             assert_eq!(object.mode, mode);
             assert_eq!((object.attr_version, object.content_version), (4, 3));
+            assert_eq!(object.grants_version, grants_version);
         } else {
             assert!(result.object.is_none());
             assert_eq!(

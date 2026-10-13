@@ -107,6 +107,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         let mut root = ObjectResource::new_root(&tenant)?;
         root.attr_version = 7;
         root.content_version = 9;
+        root.grants_version = 11;
         let grant = allow("reader", grant_mode);
         let tx = fdb::database()?.create_trx()?;
         root.create(&tx, std::slice::from_ref(&grant)).await?;
@@ -132,6 +133,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             (None, None, None)
         );
         assert_eq!((shared.attr_version, shared.content_version), (1, 1));
+        assert_eq!(shared.grants_version, 1);
         assert!(shared.metadata.is_none());
 
         let projected = results[1]
@@ -144,6 +146,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         assert_eq!(projected.size, 0);
         assert_eq!(projected.mode, root_mode);
         assert_eq!((projected.attr_version, projected.content_version), (7, 9));
+        assert_eq!(projected.grants_version, 11);
         assert_eq!(
             (projected.atime, projected.mtime, projected.ctime),
             (root.atime_ms, root.mtime_ms, root.ctime_ms)
@@ -191,6 +194,7 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             .ok()
             .context("expected successful Stat")?;
         assert_eq!(updated_root.mode, 0o500);
+        assert_eq!(updated_root.grants_version, 12);
         assert_eq!(
             (updated_root.attr_version, updated_root.content_version),
             (8, 10)
@@ -309,6 +313,9 @@ pub(crate) async fn metadata_reads_preserve_snapshot_and_tenant_scope() -> Resul
         Err(storage::Error::Resource(object::Error::MissingMetadata))
     ));
     fresh.set(&metadata_key, &[0xff]);
+    let mut root = ObjectResource::fetch(&fresh, &tenant, &root.object_id)
+        .await?
+        .context("missing root")?;
     root.update_grants(
         &fresh,
         &[GrantUpdate {

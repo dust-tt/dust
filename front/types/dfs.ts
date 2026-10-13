@@ -86,6 +86,7 @@ export interface DfsAttr {
   ctimeMs?: number;
   attrVersion: bigint;
   contentVersion: bigint;
+  grantsVersion: bigint;
   storeVersion: bigint;
   metadata?: DfsExtendedMetadata;
 }

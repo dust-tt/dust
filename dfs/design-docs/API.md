@@ -401,7 +401,7 @@ A grant's identity is its complete value: variant, subject for ALLOW, and mode. 
 repeat the same grant value, even with different `remove` flags. Multiple ALLOW modes for the same
 subject, or multiple DENY modes, are combined as described above. To change a mode, detach the old
 grant and attach the new one in the same request. Attaching an existing value or detaching an absent
-value is a no-op.
+value leaves the grant set unchanged.
 
 Attachments not included in `changes` remain unchanged. Detaching an ancestor grant does not remove
 independent attachments below it. Permission checks use their transaction's view of committed grants;

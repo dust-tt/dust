@@ -94,6 +94,7 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
     );
     assert_eq!(stored_root.attr_version, root.object().attr_version);
     assert_eq!(stored_root.content_version, root.object().content_version);
+    assert_eq!(stored_root.grants_version, 1);
     let last_child = created.last().context("missing created child")?;
     assert_eq!(stored_root.mtime_ms, last_child.ctime_ms);
     assert_eq!(stored_root.ctime_ms, last_child.ctime_ms);
@@ -116,6 +117,7 @@ pub(crate) async fn child_creation_records_the_entry_and_bumps_the_directory() -
         assert_eq!(stored.name, child.name);
         assert_eq!(stored.kind, child.kind);
         assert_eq!((stored.attr_version, stored.content_version), (1, 1));
+        assert_eq!(stored.grants_version, 1);
     }
     clear_tenant(&tenant).await
 }

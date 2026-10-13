@@ -151,6 +151,7 @@ export class InMemoryDfs implements DfsFileSystemClient {
       mode: 0o700,
       attrVersion: node.attrVersion,
       contentVersion: node.contentVersion,
+      grantsVersion: BigInt(1),
       storeVersion: BigInt(1),
       metadata: includeMetadata
         ? { createdMs: 0, mimeType: node.mimeType, xattrs: {} }

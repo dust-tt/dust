@@ -104,6 +104,7 @@ describe("DfsClient", () => {
             {
               object: wireAttr(FILE_ID, {
                 attrVersion: MAX_UINT64.toString(),
+                grantsVersion: MAX_UINT64.toString(),
                 storeVersion: "9223372036854775807",
                 metadata: {
                   created: "1600000000000",
@@ -150,6 +151,7 @@ describe("DfsClient", () => {
           mtimeMs: 1700000000000,
           attrVersion: MAX_UINT64,
           contentVersion: BigInt("2"),
+          grantsVersion: MAX_UINT64,
           storeVersion: BigInt("9223372036854775807"),
           metadata: { createdMs: 1600000000000, mimeType },
         },

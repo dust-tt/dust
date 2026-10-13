@@ -22,6 +22,7 @@ export class DfsWireFactory {
       mtime: "1700000000000",
       attrVersion: "3",
       contentVersion: "2",
+      grantsVersion: "1",
       storeVersion: "42",
       ...overrides,
     };

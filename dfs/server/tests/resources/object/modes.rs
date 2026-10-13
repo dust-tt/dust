@@ -70,7 +70,7 @@ pub(crate) async fn session_modes_evaluate_full_paths_and_all_grants() -> Result
     let (tenant, _) = TenantResource::new(ObjectId::new_v7().to_string())?;
     let (mut session, _) = SessionResource::new(&tenant, vec!["reader".to_owned()])?;
     session.tree_hints = Arc::new(TreeHints::new(32));
-    let root = ObjectResource::new_root(&tenant)?;
+    let mut root = ObjectResource::new_root(&tenant)?;
     let branch = child(&tenant, root.object_id)?;
     let leaf = child(&tenant, branch.object_id)?;
     let closed = child(&tenant, root.object_id)?;
@@ -184,7 +184,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
     assert_eq!(old.get_read_version().await?, old_version);
 
     let tx = fdb::database()?.create_trx()?;
-    let branch = ObjectResource::fetch(&tx, &tenant, &branch.object_id)
+    let mut branch = ObjectResource::fetch(&tx, &tenant, &branch.object_id)
         .await?
         .context("missing branch")?;
     branch.update_grants(
@@ -200,7 +200,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
         bits(ObjectResource::session_modes(&tx, &session, &[leaf.object_id]).await?),
         [Some(0)]
     );
-    let closed = ObjectResource::fetch(&tx, &tenant, &closed.object_id)
+    let mut closed = ObjectResource::fetch(&tx, &tenant, &closed.object_id)
         .await?
         .context("missing closed")?;
     closed.update_grants(
@@ -215,7 +215,7 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
         [Some(4)]
     );
 
-    let leaf = ObjectResource::fetch(&tx, &tenant, &leaf.object_id)
+    let mut leaf = ObjectResource::fetch(&tx, &tenant, &leaf.object_id)
         .await?
         .context("missing leaf")?;
     leaf.update_grants(
@@ -232,6 +232,9 @@ pub(crate) async fn tree_hints_follow_moves_and_recheck_grants() -> Result<()> {
 
     // A stale hint can point to a now-corrupt record which is no longer on the actual ancestry.
     set_parent(&tx, &tenant, leaf.object_id, Some(root.object_id)).await?;
+    let mut leaf = ObjectResource::fetch(&tx, &tenant, &leaf.object_id)
+        .await?
+        .context("missing moved leaf")?;
     tx.set(
         &tenant_subspace(&tenant.tenant_id)
             .pack(&("object", branch.object_id.as_bytes().as_slice())),
@@ -350,9 +353,10 @@ pub(crate) async fn permission_reads_conflict_with_changes_and_retry() -> Result
                     let concurrent = database.create_trx().map_err(FdbBindingError::from)?;
                     match change {
                         "revoke" => {
-                            let root = ObjectResource::fetch(&concurrent, tenant, &root.object_id)
-                                .await?
-                                .ok_or(object::Error::NotFound)?;
+                            let mut root =
+                                ObjectResource::fetch(&concurrent, tenant, &root.object_id)
+                                    .await?
+                                    .ok_or(object::Error::NotFound)?;
                             root.update_grants(
                                 &concurrent,
                                 &[GrantUpdate {
@@ -362,9 +366,10 @@ pub(crate) async fn permission_reads_conflict_with_changes_and_retry() -> Result
                             )?;
                         }
                         "deny" => {
-                            let leaf = ObjectResource::fetch(&concurrent, tenant, &leaf.object_id)
-                                .await?
-                                .ok_or(object::Error::NotFound)?;
+                            let mut leaf =
+                                ObjectResource::fetch(&concurrent, tenant, &leaf.object_id)
+                                    .await?
+                                    .ok_or(object::Error::NotFound)?;
                             leaf.update_grants(
                                 &concurrent,
                                 &[GrantUpdate {
