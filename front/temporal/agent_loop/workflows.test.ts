@@ -327,7 +327,9 @@ describe("never started tool activity rescheduling", () => {
     });
 
     expect(runToolActivity).toHaveBeenCalledTimes(2);
-    expect(patched).toHaveBeenCalledWith("retry-never-started-tool-activity");
+    expect(deprecatePatch).toHaveBeenCalledWith(
+      "retry-never-started-tool-activity"
+    );
     expect(claimToolActivityNeverStartedActivity).toHaveBeenCalledWith({
       workflowId: "workflow-id",
       runId: "run-id",
@@ -389,25 +391,6 @@ describe("never started tool activity rescheduling", () => {
     );
   });
 
-  it("does not reschedule when replaying without the patch marker", async () => {
-    patched.mockImplementation(
-      (patchId) => patchId !== "retry-never-started-tool-activity"
-    );
-    runToolActivity.mockRejectedValue(makeToolHeartbeatTimeout());
-
-    await runSandboxChildToolWorkflow({
-      actionModelId: 123,
-      agentLoopArgs,
-      authType,
-      retryPolicy: "no_retry",
-      step: 1,
-    });
-
-    expect(runToolActivity).toHaveBeenCalledOnce();
-    expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
-    expect(finalizeErroredSandboxChildToolActivity).toHaveBeenCalledOnce();
-  });
-
   it("does not claim for failures other than tool heartbeat timeouts", async () => {
     runToolActivity.mockRejectedValue(new Error("activity failed"));
 
@@ -421,7 +404,7 @@ describe("never started tool activity rescheduling", () => {
 
     expect(runToolActivity).toHaveBeenCalledOnce();
     expect(claimToolActivityNeverStartedActivity).not.toHaveBeenCalled();
-    expect(patched).not.toHaveBeenCalledWith(
+    expect(deprecatePatch).not.toHaveBeenCalledWith(
       "retry-never-started-tool-activity"
     );
   });
