@@ -10,7 +10,7 @@ import { useUserLocale } from "@app/hooks/useUserLocale";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useCompleteUserOnboarding, usePatchUser } from "@app/lib/swr/user";
-import { useAuthContext, useWelcomeData } from "@app/lib/swr/workspaces";
+import { useWelcomeData } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
@@ -36,10 +36,8 @@ export function useProfileOnboardingForm({
   const { hasFeature } = useFeatureFlags();
   const hasLocalisation = hasFeature("localisation");
   // The language the UI is currently in. By default it's their workspace locale
-  const { userLocale: defaultLocale } = useUserLocale({ owner: workspace });
-  const { mutateAuthContext } = useAuthContext({
-    workspaceId: workspace.sId,
-    disabled: true,
+  const { userLocale: defaultLocale, mutateAuthContext } = useUserLocale({
+    owner: workspace,
   });
 
   const { welcomeData, isFirstAdmin, emailProvider, isWelcomeDataLoading } =
