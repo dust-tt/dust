@@ -87,6 +87,38 @@ module without a matching SVG source is therefore destroyed by a build. Before r
 every export in `src/icons/v2-stroke/index.ts` has a source file — several icons have historically
 been hand-written TSX with no SVG, and they must be exported from Figma first.
 
+# Country flags
+
+The artwork is the free [Untitled UI flag set](https://www.untitledui.com/resources/flag-icons):
+261 countries and regions. Only the `circle` cut is imported; the set also comes as a square and a
+3:2 rectangle, which were deliberately left out because every flag module is pulled in by any
+consumer of `FlagIcon` (about 50 KB gzipped for one cut, three times that for all of them). Flags
+are consumed only through the `FlagIcon` component, which resolves a flag from a code at render
+time; nothing imports a flag module by name.
+
+```
+SVG source       src/icons/src/flags/circle/<CODE>.svg       e.g. GB-SCT.svg
+generated module src/icons/flags/circle/<Module>.tsx          e.g. GbSct.tsx
+generated index  src/icons/flags/circle/index.ts              exports one `FLAGS` record keyed by code
+hand-maintained  src/icons/flags/countries.ts, index.ts
+```
+
+Codes are the uppercase SVG filename stem: ISO 3166-1 alpha-2 where one exists, a
+subdivision-style code for regions (`GB-SCT`, `US-HI`, `PT-20`) and an `X` code for a few disputed
+or historical flags (`XC`, `XS`). `countries.ts` maps every code to its display name and defines
+`FlagCode`; the generated `FLAGS` record is typed against it, so adding or removing an SVG without
+updating `countries.ts` (or vice versa) fails the type check.
+
+Flags are coloured artwork, so like the platform logos they are generated with
+`--no-runtime-config` to escape the black-to-`currentColor` rewrite (52 of them have a black fill).
+`svgr-flag-template.js` is the index template; it needs the source path to recover the code because
+SVGR pascal-cases the module filename. `build_icons.sh` clears only the `circle` directory so the
+hand-maintained files survive.
+
+The Untitled UI SVGs ship with two Figma canvas artifacts on some flags, a full-size `#F5F5F5`
+rectangle and an oversized white one. Both were stripped from the committed sources; strip them
+again when re-importing or a flag grows light grey corners in dark mode.
+
 # Platform logos
 
 The design source of truth is the Figma file

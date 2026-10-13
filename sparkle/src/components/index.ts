@@ -173,6 +173,8 @@ export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FaviconIcon } from "./FaviconIcon";
+export type { FlagIconProps, FlagSize } from "./FlagIcon";
+export { FLAG_SIZES, FlagIcon } from "./FlagIcon";
 export {
   FILTER_CHIP_VARIANTS,
   FilterChip,
