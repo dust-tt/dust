@@ -1,6 +1,7 @@
 import { deleteConversationWindowCheckpoints } from "@app/lib/api/assistant/conversation_rendering/conversation_window_checkpoint";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deleteOwnerPolicy } from "@app/lib/api/sandbox/egress_policy";
+import { deleteConversationMemoryFile } from "@app/lib/api/user_memory";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -266,6 +267,13 @@ export async function destroyConversation(
       workspaceId: owner.sId,
       conversationId: conversation.sId,
     });
+    const deleteMemoryFileRes = await deleteConversationMemoryFile(
+      auth,
+      conversation
+    );
+    if (deleteMemoryFileRes.isErr()) {
+      return deleteMemoryFileRes;
+    }
 
     const messages = await MessageModel.findAll({
       attributes: [

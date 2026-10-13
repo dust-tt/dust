@@ -425,8 +425,8 @@ export class DustFileSystem {
 
   /**
    * Build a DustFileSystem mounting the conversation's metadata, stored at the conversation's GCS
-   * root outside its files, plus the authenticated user's own scope so user files can be copied
-   * into it server side. Returns `Err("unauthorized")` when there is no authenticated user.
+   * root outside its files, plus the authenticated user's own scope when there is one, so user
+   * files can be copied into it server side.
    */
   /**
    * @cc [owner:aubin-tchoi,label:performance] not-agent-facing
@@ -439,19 +439,10 @@ export class DustFileSystem {
     conversation: ConversationWithoutContentType
   ): Promise<Result<DustFileSystem, DustFileSystemError>> {
     const user = auth.user();
-    if (!user) {
-      return new Err(
-        new DustFileSystemError(
-          "unauthorized",
-          "No authenticated user for the user file system."
-        )
-      );
+    const mounts = [createConversationMetadataMount(conversation)];
+    if (user) {
+      mounts.push(createUserMount(user.sId));
     }
-
-    const mounts = [
-      createConversationMetadataMount(conversation),
-      createUserMount(user.sId),
-    ];
 
     return new Ok(
       new DustFileSystem(auth, mounts, DustFileSystem.createBackend(auth))

@@ -72,6 +72,16 @@ export async function ensureConversationMemoryFile(
     return new Ok(conversationResource.memoryFilePath);
   }
 
+  const user = auth.user();
+  if (!user) {
+    return new Err(
+      new DustFileSystemError(
+        "unauthorized",
+        "No authenticated user to copy the memory of."
+      )
+    );
+  }
+
   const fsResult = await DustFileSystem.forConversationMetadata(
     auth,
     conversation
@@ -80,8 +90,6 @@ export async function ensureConversationMemoryFile(
     return fsResult;
   }
 
-  // Having a user is guaranteed by DustFileSystem.forConversationMetadata.
-  const user = auth.getNonNullableUser();
   const memoryFilePath = conversationMetadataScopedPath({
     conversationId: conversation.sId,
     rel: MEMORY_FILE_NAME,
@@ -143,6 +151,32 @@ export async function readConversationMemoryFile(
   }
 
   return new Ok(readResult.value?.toString("utf-8") ?? null);
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:security] deleted-without-user
+ * The conversation's memory file MUST be deleted even when there is no authenticated user:
+ * conversations are destroyed by background workflows. A missing file is not an error.
+ */
+export async function deleteConversationMemoryFile(
+  auth: Authenticator,
+  conversation: ConversationResource
+): Promise<Result<void, DustFileSystemError>> {
+  if (conversation.memoryFilePath === null) {
+    return new Ok(undefined);
+  }
+
+  const fsResult = await DustFileSystem.forConversationMetadata(
+    auth,
+    conversation.toJSON()
+  );
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  return fsResult.value.delete(conversation.memoryFilePath, {
+    ignoreNotFound: true,
+  });
 }
 
 export async function setUserMemory(
