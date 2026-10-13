@@ -223,9 +223,9 @@ permissions. Tenant administration uses its tenant key and is not restricted by 
 Ordinary reads conceal inaccessible objects as `NOT_FOUND`. Mutation permission failures use
 `FORBIDDEN`.
 
-Every permission check reads the target, its ancestry, and their grants in the operation's FDB
-transaction. Local tree hints only schedule reads; they never authorize access. Search indexing has
-independent lag.
+Every permission check reads the target and its ancestry in the operation's FDB transaction.
+Local tree hints schedule reads and reuse grants only when the freshly read `grants_version`
+matches. Search indexing has independent lag.
 
 Keys are opaque 64-character bearer strings. A tenant key authorizes administration for that tenant;
 filesystem calls require a session key. Tenant IDs contain 1–256 UTF-8 bytes without NUL. Subject
