@@ -54,7 +54,7 @@ export async function loadSource() {
   });
 }
 
-export function checkpointNextRevision() {
+export function saveNextRevision() {
   vi.mocked(saveCollabSession).mockImplementation(
     async (_file, _live, last) =>
       new Ok({

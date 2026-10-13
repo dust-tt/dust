@@ -37,7 +37,7 @@ import { z } from "zod";
 export const UNLOAD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 const COMMENT_COMMAND_TIMEOUT_MS = 30 * 1000;
 // Each store serializes and uploads the whole `.md`, its only durable copy for now: a crash loses up
-// to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown checkpoints them first.
+// to `STORE_MAX_DEBOUNCE_MS` plus `STORE_DEBOUNCE_MS` of edits; a shutdown saves them first.
 const STORE_DEBOUNCE_MS = 5 * 1000;
 const STORE_MAX_DEBOUNCE_MS = 30 * 1000;
 
@@ -83,11 +83,11 @@ function logUnexpected(
 /**
  * @cc [owner:tdraier,label:product;concurrency] collab-document-lifecycle
  * Every load MUST read the file: no Yjs state outlives its Hocuspocus document. A store MUST
- * checkpoint the document with the session's threads and last checkpoint, through the connection
- * that last changed it, and MUST fail when that connection cannot write or the checkpoint fails, so
+ * save the document with the session's threads and last save, through the connection
+ * that last changed it, and MUST fail when that connection cannot write or the save fails, so
  * Hocuspocus keeps the document instead of unloading it. Once its last WebSocket client leaves,
  * the document MUST stay loaded for `UNLOAD_GRACE_PERIOD_MS` after that departure, then unload
- * unless a connection is open or its last checkpoint failed. A direct connection that leaves
+ * unless a connection is open or its last save failed. A direct connection that leaves
  * during that period does not extend it.
  */
 /**
@@ -95,7 +95,7 @@ function logUnexpected(
  * A connection MUST receive the session's threads when it asks. A comment command MUST be applied
  * with `applyCommentRequest` for the connection's own file, one at a time per document, and
  * answered to that connection only. Once accepted, the new threads MUST be sent to every
- * connection of the document and the document stored, so the checkpoint writes them, through the
+ * connection of the document and the document stored, so the save writes them, through the
  * connection that last changed its text, or through the commenter's when none did, and the
  * message it added handed to `dispatchSessionCommentMentions` without waiting for it. A command its
  * document unloaded before it finished MUST change nothing. Every command carrying a request id
@@ -145,11 +145,11 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
       const { content, lastSave } = loaded.value;
       startSession(document, {
         comments: content.comments,
-        checkpoint: lastSave,
-        checkpointFailed: false,
+        lastSave,
+        saveFailed: false,
         lastChangedBy: undefined,
         graceTimer: undefined,
-        commentCommands: Promise.resolve(),
+        pendingMutations: Promise.resolve(),
       });
       return content.doc;
     },
@@ -163,7 +163,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
 
     // TODO(co-edition): this writes the `.md` on every debounced store, about every 5 to 30 seconds
     // while people type. LIVE_SESSION.md keeps the Yjs state in a durable store between
-    // checkpoints instead, since each write is a new file revision that agents' conditional
+    // saves instead, since each write is a new file revision that agents' conditional
     // writes conflict with.
     async onStoreDocument({ document, documentName }) {
       const session = getSession(document);
@@ -174,7 +174,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         return;
       }
       if (writer.canWrite !== true) {
-        session.checkpointFailed = true;
+        session.saveFailed = true;
         logger.error(
           { documentName, workspaceId: writer.workspaceId },
           "Collab document changed without a writer"
@@ -182,37 +182,37 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         throw new Error("The document was changed without a writer.");
       }
 
-      let checkpoint: Result<CollabSave, string>;
+      let saved: Result<CollabSave, string>;
       try {
-        checkpoint = await saveCollabSession(
+        saved = await saveCollabSession(
           writer,
           { doc: document, comments: session.comments },
-          session.checkpoint
+          session.lastSave
         );
       } catch (err) {
-        session.checkpointFailed = true;
+        session.saveFailed = true;
         return logUnexpected(
           { documentName, workspaceId: writer.workspaceId },
-          "Collab checkpoint failed"
+          "Collab save failed"
         )(err);
       }
-      if (checkpoint.isErr()) {
-        // TODO(co-edition): a revision conflict never recovers. `session.checkpoint` only moves on
-        // success, so once another writer changes the file every later checkpoint conflicts too,
+      if (saved.isErr()) {
+        // TODO(co-edition): a revision conflict never recovers. `session.lastSave` only moves on
+        // success, so once another writer changes the file every later save conflicts too,
         // the document stays loaded and its edits never reach the file.
-        session.checkpointFailed = true;
+        session.saveFailed = true;
         logger.error(
           {
             documentName,
             workspaceId: writer.workspaceId,
-            reason: checkpoint.error,
+            reason: saved.error,
           },
-          "Collab checkpoint failed"
+          "Collab save failed"
         );
-        throw new Error(checkpoint.error);
+        throw new Error(saved.error);
       }
-      session.checkpoint = checkpoint.value;
-      session.checkpointFailed = false;
+      session.lastSave = saved.value;
+      session.saveFailed = false;
     },
 
     async onDisconnect({ instance, document }) {
@@ -233,9 +233,9 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
         session.graceTimer = undefined;
         document.removeDirectConnection();
         // Unloading would drop the edits the file does not have.
-        // TODO(co-edition): retry the failed checkpoint; until the next edit, its edits only live
+        // TODO(co-edition): retry the failed save; until the next edit, its edits only live
         // in memory.
-        if (!session.checkpointFailed) {
+        if (!session.saveFailed) {
           void instance.unloadDocument(document);
         }
       }, UNLOAD_GRACE_PERIOD_MS);
@@ -315,8 +315,8 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           return;
         }
 
-        // TODO(co-edition): refuse commands while `session.checkpointFailed`: an accepted comment
-        // only lives in memory until a checkpoint succeeds, and is lost if none ever does.
+        // TODO(co-edition): refuse commands while `session.saveFailed`: an accepted comment
+        // only lives in memory until a save succeeds, and is lost if none ever does.
         // TODO(co-edition): a command still applies after its sender left, whose channel already
         // answered it `unavailable`; a retried `add` then makes a second thread.
         session.comments = result.value.comments;
@@ -362,7 +362,7 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
           );
         }
       };
-      session.commentCommands = session.commentCommands
+      session.pendingMutations = session.pendingMutations
         .then(run)
         .catch(logFailure);
     },
@@ -372,14 +372,14 @@ export function createCollabHocuspocus(): Hocuspocus<CollabAccess> {
 }
 
 /**
- * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-checkpoint
- * Once no connection can send edits any more, every document MUST be checkpointed at once, in
+ * @cc [owner:PopDaph,label:product;concurrency] collab-shutdown-save
+ * Once no connection can send edits any more, every document MUST be saved at once, in
  * place of its pending debounced store, including documents still loading, which are waited for
  * first. From the call on, `writeSessionSource` MUST answer `busy`, and the writes and comment
- * commands already queued MUST finish before the checkpoints. The returned promise MUST resolve
- * only once each checkpoint has finished or failed.
+ * commands already queued MUST finish before the saves. The returned promise MUST resolve
+ * only once each save has finished or failed.
  */
-export async function checkpointAllDocuments(
+export async function saveAllSessions(
   hocuspocus: Hocuspocus<CollabAccess>
 ): Promise<void> {
   stopWrites(hocuspocus);
@@ -387,10 +387,10 @@ export async function checkpointAllDocuments(
   for (const loading of [...hocuspocus.loadingDocuments.values()]) {
     await loading.catch(() => undefined);
   }
-  // Their writes only reach the file through the checkpoints below.
+  // Their writes only reach the file through the saves below.
   await Promise.all(
     [...hocuspocus.documents.values()].map(
-      (document) => getSession(document)?.commentCommands
+      (document) => getSession(document)?.pendingMutations
     )
   );
   await concurrentExecutor(
@@ -403,7 +403,7 @@ export async function checkpointAllDocuments(
           document,
           documentName: document.name,
           instance: hocuspocus,
-          // The store hook checkpoints through the last writer it recorded, not this context.
+          // The store hook saves through the last writer it recorded, not this context.
           lastContext: undefined,
           lastTransactionOrigin: undefined,
         },
