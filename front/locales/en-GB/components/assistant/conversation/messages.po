@@ -228,7 +228,7 @@ msgid "Presentation"
 msgstr ""
 
 #: front/components/assistant/conversation/AgentMessageGeneratedFiles.tsx
-msgid "Frames"
+msgid "Frame"
 msgstr ""
 
 #: front/components/assistant/conversation/CompactionMessage.tsx

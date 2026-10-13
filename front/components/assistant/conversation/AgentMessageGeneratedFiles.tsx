@@ -28,7 +28,7 @@ function getDescriptionForContentType(
   }
 
   if (isFrameContentType(file.contentType)) {
-    return msg`Frames`;
+    return msg`Frame`;
   }
 
   return null;
