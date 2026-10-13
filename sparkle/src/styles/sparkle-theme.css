@@ -23,6 +23,8 @@
   --animate-loading-dot: loading-dot 1.2s infinite;
   --animate-collapse-down: collapse-down 150ms ease-out;
   --animate-collapse-up: collapse-up 150ms ease-out;
+  /* Reveals text left to right, from `--text-reveal-collapsed-width` to its full width. */
+  --animate-text-reveal: text-reveal 150ms var(--ease-enter);
 }
 
 /* Fixed heights (was theme.extend.height). Defined as `@utility` because v4's
@@ -135,6 +137,16 @@
   to {
     height: 0;
     opacity: 0;
+  }
+}
+@keyframes text-reveal {
+  from {
+    clip-path: inset(0 calc(100% - var(--text-reveal-collapsed-width)) 0 0);
+    z-index: 0;
+  }
+  to {
+    clip-path: inset(0);
+    z-index: 0;
   }
 }
 

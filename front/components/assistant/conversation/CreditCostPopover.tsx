@@ -69,7 +69,7 @@ function CreditDetailRow({
     }
 
     rowElement.style.setProperty(
-      "--credit-label-collapsed-width",
+      "--text-reveal-collapsed-width",
       `${labelElement.clientWidth}px`
     );
   }, [expandLabelOnHover]);
@@ -131,7 +131,7 @@ function CreditDetailRow({
             className={cn(
               "col-span-2 col-start-1 row-start-1 z-20",
               "break-all bg-overlay-background select-text",
-              "animate-credit-label-reveal motion-reduce:animate-none",
+              "animate-text-reveal motion-reduce:animate-none",
               icon && "ml-6"
             )}
           >
