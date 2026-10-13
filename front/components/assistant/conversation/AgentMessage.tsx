@@ -239,9 +239,8 @@ function PrunedContextChip() {
       <p>
         <Trans>
           Dust had to trim part of the tool output used to generate this message
-          to fit the model’s context window. This usually happens when a
-          search or other tool returns more data than the model can process at
-          once.
+          to fit the model’s context window. This usually happens when a search
+          or other tool returns more data than the model can process at once.
         </Trans>
       </p>
       <p>

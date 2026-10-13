@@ -102,8 +102,8 @@ export function UsageSettingsCard({
                 <Trans>
                   Define the workspace credit pool credit limit for users per
                   month in your workspace. This limit is added on top of each
-                  seat’s built-in allowance. Can be overridden per user in
-                  the members table.{" "}
+                  seat’s built-in allowance. Can be overridden per user in the
+                  members table.{" "}
                   <strong>Set to 0 to remove pool access.</strong>
                 </Trans>
               ) : (

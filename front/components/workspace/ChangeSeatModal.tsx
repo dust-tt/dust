@@ -548,8 +548,8 @@ export function ChangeSeatModal({
               {isSubscriptionCancelled ? (
                 <p className="mt-1 text-xs text-warning-600">
                   <Trans>
-                    Your subscription is scheduled to end and seats can’t
-                    be changed until it’s reactivated.
+                    Your subscription is scheduled to end and seats can’t be
+                    changed until it’s reactivated.
                   </Trans>
                 </p>
               ) : (
