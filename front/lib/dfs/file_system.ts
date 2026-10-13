@@ -186,9 +186,13 @@ export class DfsFileSystem {
         MAX_READ_CHUNK_BYTES
       )
     );
-    this.writeChunkBytes = Math.min(
-      options.writeChunkBytes ?? MAX_WRITE_CHUNK_BYTES,
-      MAX_WRITE_CHUNK_BYTES
+    // At least one byte, so that every write makes progress.
+    this.writeChunkBytes = Math.max(
+      1,
+      Math.min(
+        options.writeChunkBytes ?? MAX_WRITE_CHUNK_BYTES,
+        MAX_WRITE_CHUNK_BYTES
+      )
     );
   }
 
