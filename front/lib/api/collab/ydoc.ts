@@ -34,7 +34,7 @@ const envelopeSchema = z.object({
 }) satisfies z.ZodType<DfmEnvelope>;
 
 /** A file as the live session holds it: the shared document, and the threads kept beside it. */
-export interface LiveDocument {
+export interface SessionContent {
   doc: Y.Doc;
   comments: DfmComment[];
 }
@@ -49,7 +49,7 @@ export interface LiveDocument {
  * Comment threads MUST NOT be stored in the `Y.Doc`: they travel in `comments`, so a browser
  * update to the shared document can never write a thread or change its author.
  */
-export function dfmToYDoc(source: string): Result<LiveDocument, string> {
+export function dfmToYDoc(source: string): Result<SessionContent, string> {
   const loaded = loadDfm(source);
   if (loaded.isErr()) {
     return loaded;
@@ -117,7 +117,7 @@ export function replaceYDocContent(
 export function yDocToDfm({
   doc,
   comments,
-}: LiveDocument): Result<string, string> {
+}: SessionContent): Result<string, string> {
   const envelope = envelopeSchema.safeParse(
     doc.getMap(ENVELOPE_MAP_NAME).toJSON()
   );

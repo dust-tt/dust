@@ -1,4 +1,4 @@
-import type { LiveFile } from "@app/lib/api/collab/live_file";
+import type { CollabAccess } from "@app/lib/api/collab/access";
 import { yDocCommentedTexts } from "@app/lib/api/collab/ydoc";
 import { dispatchCommentMentions } from "@app/lib/api/files/dfm_comment_mentions";
 import { signDfmCommentMessage } from "@app/lib/api/files/dfm_comment_signatures";
@@ -35,7 +35,7 @@ const signatureRefusal = ({
  * left: the result is built from `comments` across an await, so overlapping calls would drop one.
  */
 export async function applyLiveCommentCommand(
-  file: LiveFile,
+  file: CollabAccess,
   comments: DfmComment[],
   command: LiveCommentCommand
 ): Promise<
@@ -141,7 +141,7 @@ export async function applyLiveCommentCommand(
  * mentions MUST NOT read `doc`, as that converts the whole document.
  */
 export async function dispatchLiveCommentMentions(
-  file: LiveFile,
+  file: CollabAccess,
   doc: Y.Doc,
   command: LiveCommentCommand,
   message: DfmMessage

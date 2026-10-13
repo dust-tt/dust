@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import type { LiveAccessError } from "@app/lib/api/collab/live_file";
-import { checkLiveAccess } from "@app/lib/api/collab/live_file";
+import type { CollabAccessError } from "@app/lib/api/collab/access";
+import { checkCollabAccess } from "@app/lib/api/collab/access";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -24,15 +24,15 @@ const ticketKey = (ticket: string) =>
 
 /**
  * @cc [owner:PopDaph,label:security] live-ticket-minting
- * A ticket MUST be minted only when `checkLiveAccess` lets the user open the file, and MUST grant
+ * A ticket MUST be minted only when `checkCollabAccess` lets the user open the file, and MUST grant
  * only that user, workspace and file. It MUST expire after `LIVE_TICKET_TTL_SECONDS` and be
  * unguessable.
  */
 export async function mintLiveTicket(
   auth: Authenticator,
   canonicalPath: string
-): Promise<Result<string, LiveAccessError>> {
-  const file = await checkLiveAccess(auth, canonicalPath);
+): Promise<Result<string, CollabAccessError>> {
+  const file = await checkCollabAccess(auth, canonicalPath);
   if (file.isErr()) {
     return new Err(file.error);
   }

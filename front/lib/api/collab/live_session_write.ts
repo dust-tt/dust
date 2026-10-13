@@ -46,7 +46,7 @@ export type LiveSessionWrite<T> =
  * answer `no_session`, so the caller writes the file. Failing to learn whether a session is open
  * MUST be an error, never `no_session`, since the caller would then write the file under an open
  * session. `filePath` MUST be the normalized path without a trailing slash, the only one a live
- * document is named after (`live-file-access`). With `agent`, the session's editors see the
+ * document is named after (`collab-access-open`). With `agent`, the session's editors see the
  * reads and the edit as that agent's.
  *
  * Known gap until the per-file lock of LIVE_SESSION.md: a session opening between the check and
