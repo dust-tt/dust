@@ -1,6 +1,7 @@
 import { getConnectorManager } from "@connectors/connectors";
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
+  getFilesAndFolders,
   getItem,
   getParentReferenceInternalId,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -17,6 +18,10 @@ import {
   launchMicrosoftIncrementalSyncWorkflow,
 } from "@connectors/connectors/microsoft/temporal/client";
 import { getParents } from "@connectors/connectors/microsoft/temporal/file";
+import {
+  getMimeTypesToSync,
+  resolveMicrosoftMimeType,
+} from "@connectors/connectors/microsoft/temporal/mime_types";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 // oxlint-disable-next-line import/no-cycle -- ignored using `--suppress`
 import { throwOnError } from "@connectors/lib/cli";
@@ -28,7 +33,10 @@ import {
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import {
+  MicrosoftConfigurationResource,
+  MicrosoftNodeResource,
+} from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
   AdminSuccessResponseType,
@@ -156,9 +164,8 @@ export const microsoft = async ({
       const driveItem = (await getItem(
         logger,
         client,
-        itemAPIPath + nodeType === "file"
-          ? `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
-          : ""
+        itemAPIPath +
+          (nodeType === "file" ? `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}` : "")
       )) as DriveItem;
 
       const columns = await getColumnsFromListItem(
@@ -173,12 +180,42 @@ export const microsoft = async ({
           connector.id,
           args.internalId
         );
+      // For folders and drives, list children the way `syncFiles` does, and
+      // flag those that would be filtered out by the mime type gate.
+      const children = [];
+      if (nodeType === "folder" || nodeType === "drive") {
+        const providerConfig =
+          await MicrosoftConfigurationResource.fetchByConnectorId(connector.id);
+        const mimeTypesToSync = await getMimeTypesToSync({
+          pdfEnabled: providerConfig?.pdfEnabled || false,
+          csvEnabled: providerConfig?.csvEnabled || false,
+        });
+        let nextLink: string | undefined = undefined;
+        do {
+          const res: Awaited<ReturnType<typeof getFilesAndFolders>> =
+            await getFilesAndFolders(logger, client, args.internalId, nextLink);
+          for (const item of res.results) {
+            const mimeType = resolveMicrosoftMimeType(item);
+            children.push({
+              name: item.name,
+              size: item.size,
+              isFolder: !!item.folder,
+              isFile: !!item.file,
+              mimeType,
+              wouldSync: !!mimeType && mimeTypesToSync.includes(mimeType),
+            });
+          }
+          nextLink = res.nextLink;
+        } while (nextLink);
+      }
+
       const content = {
         nodeType,
         itemAPIPath,
         microsoftNodeResource: microsoftNodeResource?.toJSON(),
         driveItem,
         columns,
+        children,
       };
 
       return { status: 200, content, type: typeof content };
