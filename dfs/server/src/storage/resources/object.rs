@@ -8,7 +8,7 @@ use dfs_protocol::{
     rpc::{AllowGrant, DenyGrant, Grant, GrantPage, GrantUpdate, ObjectKind, grant},
 };
 use foundationdb::{
-    FdbBindingError, Transaction,
+    FdbBindingError, RangeOption, Transaction,
     tuple::{Subspace, pack, unpack},
 };
 
