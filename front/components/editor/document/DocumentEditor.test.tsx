@@ -1425,7 +1425,7 @@ describe("Document Frame embeds", () => {
   });
   it("keeps a Frame mounted when the read-only preview re-renders", async () => {
     const renderPreview = () => (
-      <Document
+      <DocumentEditor
         initialContent={`${SOURCE_WITH_FRAME}\n| A |\n| --- |\n| 1 |\n`}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
@@ -1453,7 +1453,7 @@ describe("Document Frame embeds", () => {
       '   ::frame{path="pod-abc/e.tsx"}',
     ];
     render(
-      <Document
+      <DocumentEditor
         initialContent={`${SOURCE_WITH_FRAME}\n${rejected.join("\n\n")}\n\n> ::frame{path="pod-abc/quoted.tsx"}\n\n| A |\n| --- |\n| 1 |\n`}
         renderCommentAuthorAvatar={() => null}
         renderCommentBody={(body) => <p>{body}</p>}
