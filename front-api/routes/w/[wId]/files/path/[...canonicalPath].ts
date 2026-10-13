@@ -120,7 +120,7 @@ function putContentTooLargeError(ctx: Context) {
   return apiError(ctx, {
     status_code: 413,
     api_error: {
-      type: "invalid_request_error",
+      type: "file_too_large",
       message: `Content exceeds the ${WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES / 1024} KB limit.`,
     },
   });
@@ -179,14 +179,17 @@ function mapFolderArchiveError(
     case "not_directory":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "folder_required", message: error.message },
       };
 
     case "too_many_entries":
     case "too_large":
       return {
         status_code: 413,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: {
+          type: "folder_too_large_to_download",
+          message: error.message,
+        },
       };
 
     case "internal":
@@ -338,13 +341,13 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         case "too_large":
           return apiError(ctx, {
             status_code: 413,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_too_large", message: e.message },
           });
 
         case "unsupported_type":
           return apiError(ctx, {
             status_code: 400,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_type_not_supported", message: e.message },
           });
 
         case "conversion_failed":
@@ -390,7 +393,7 @@ app.get("/:canonicalPath{.+}", validate("param", ParamsSchema), async (ctx) => {
         case "not_image":
           return apiError(ctx, {
             status_code: 400,
-            api_error: { type: "invalid_request_error", message: e.message },
+            api_error: { type: "file_type_not_supported", message: e.message },
           });
         case "internal":
           return apiError(ctx, {
@@ -538,7 +541,7 @@ function archiveTooLargeError(ctx: Context) {
   return apiError(ctx, {
     status_code: 413,
     api_error: {
-      type: "invalid_request_error",
+      type: "archive_too_large",
       message: `Archive exceeds the ${MAX_ARCHIVE_UPLOAD_SIZE_BYTES / (1024 * 1024)} MB upload limit.`,
     },
   });
@@ -558,14 +561,14 @@ function mapFolderExtractError(
     case "unsafe_entry_path":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "archive_invalid", message: error.message },
       };
 
     case "too_many_entries":
     case "too_large":
       return {
         status_code: 413,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "archive_too_large", message: error.message },
       };
 
     default:
@@ -591,17 +594,42 @@ function mapMarkdownCheckError(
       };
 
     case "unsupported_content_type":
+      return {
+        status_code: 400,
+        api_error: { type: "file_type_not_supported", message: error.message },
+      };
+
     case "not_available":
+      return {
+        status_code: 400,
+        api_error: { type: "feature_not_enabled", message: error.message },
+      };
+
     case "unavailable_file":
+      return {
+        status_code: 400,
+        api_error: { type: "file_not_found", message: error.message },
+      };
+
     case "invalid_position":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
+
     case "unwritable_message":
+      return {
+        status_code: 400,
+        api_error: { type: "comment_unwritable", message: error.message },
+      };
+
     case "foreign_message":
     case "unsigned_message":
     case "altered_message":
     case "moved_message":
       return {
         status_code: 400,
-        api_error: { type: "invalid_request_error", message: error.message },
+        api_error: { type: "file_comments_changed", message: error.message },
       };
 
     default:
@@ -815,7 +843,7 @@ app.put(
             return apiError(ctx, {
               status_code: 413,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_too_large",
                 message: error.message,
               },
             });
@@ -823,16 +851,23 @@ app.put(
             return apiError(ctx, {
               status_code: 412,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_revision_conflict",
                 message: error.message,
               },
             });
           case "revision_not_supported":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: {
+                type: "file_revision_not_supported",
+                message: error.message,
+              },
+            });
           case "unsupported_content_type":
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "file_type_not_supported",
                 message: error.message,
               },
             });
@@ -901,7 +936,7 @@ function mapDustFsError(
     case "already_exists":
       return {
         status_code: 409,
-        api_error: { type: "invalid_request_error", message: err.message },
+        api_error: { type: "file_already_exists", message: err.message },
       };
 
     case "frame_manifest_move":

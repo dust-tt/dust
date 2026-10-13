@@ -18,6 +18,7 @@ import type {
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -440,13 +441,31 @@ app.patch(
     if (name) {
       const nameRes = await space.updateName(auth, name);
       if (nameRes.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: nameRes.error.message,
-          },
-        });
+        const { code, message } = nameRes.error;
+        switch (code) {
+          case "unauthorized":
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: { type: "workspace_auth_error", message },
+            });
+          case "global_space_not_renamable":
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: { type: "global_space_not_renamable", message },
+            });
+          case "space_already_exists":
+            return apiError(ctx, {
+              status_code: 409,
+              api_error: { type: "space_already_exists", message },
+            });
+          case "internal_error":
+            return apiError(ctx, {
+              status_code: 500,
+              api_error: { type: "internal_server_error", message },
+            });
+          default:
+            assertNever(code);
+        }
       }
     }
     return ctx.json({ space: space.toJSON() });
@@ -482,7 +501,7 @@ app.delete(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "space_in_use",
             message: deleteRes.error.message,
           },
         });

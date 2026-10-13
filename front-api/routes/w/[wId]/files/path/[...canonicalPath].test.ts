@@ -257,7 +257,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?thumbnail=1", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("file_type_not_supported");
   });
 });
 
@@ -450,7 +450,7 @@ describe("GET /api/w/:wId/files/path/:canonicalPath?archive=zip", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("folder_required");
   });
 });
 
@@ -617,7 +617,7 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(413);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("file_too_large");
   });
 
   it("returns 413 when Content-Length exceeds the size limit", async () => {
@@ -637,7 +637,7 @@ describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(413);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("file_too_large");
   });
 });
 
@@ -855,7 +855,7 @@ describe("POST /api/w/:wId/files/path/:canonicalPath?action=extract", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("archive_invalid");
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 

@@ -70,7 +70,7 @@ app.post(
             return apiError(ctx, {
               status_code: 400,
               api_error: {
-                type: "invalid_request_error",
+                type: "agent_message_not_resumable",
                 message: error.message,
               },
             });
@@ -78,7 +78,7 @@ app.post(
             return apiError(ctx, {
               status_code: 403,
               api_error: {
-                type: "invalid_request_error",
+                type: "message_author_required",
                 message: error.message,
               },
             });

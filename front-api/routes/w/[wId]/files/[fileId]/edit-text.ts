@@ -11,6 +11,7 @@ import {
   isConversationFileUseCase,
   isInteractiveContentType,
 } from "@app/types/files";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { frameSourceErrorStatus } from "@front-api/lib/api/frame_source_errors";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -126,17 +127,27 @@ app.post(
         })),
       });
       if (editResult.isErr()) {
+        const { message } = editResult.error;
         const status = frameSourceErrorStatus(editResult.error);
-        return apiError(ctx, {
-          status_code: status,
-          api_error: {
-            type:
-              status === 500
-                ? "internal_server_error"
-                : "invalid_request_error",
-            message: editResult.error.message,
-          },
-        });
+        switch (status) {
+          case 400:
+            return apiError(ctx, {
+              status_code: 400,
+              api_error: { type: "frame_text_edit_failed", message },
+            });
+          case 403:
+            return apiError(ctx, {
+              status_code: 403,
+              api_error: { type: "file_read_only", message },
+            });
+          case 500:
+            return apiError(ctx, {
+              status_code: 500,
+              api_error: { type: "internal_server_error", message },
+            });
+          default:
+            return assertNever(status);
+        }
       }
 
       return ctx.json({ success: true });
@@ -146,7 +157,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "file_not_frame",
           message: "Only Frame files support inline text editing.",
         },
       });
@@ -212,7 +223,7 @@ app.post(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "frame_text_edit_failed",
             message: editResult.error.message,
           },
         });
@@ -231,7 +242,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "frame_text_edit_failed",
           message: editResult.error.message,
         },
       });

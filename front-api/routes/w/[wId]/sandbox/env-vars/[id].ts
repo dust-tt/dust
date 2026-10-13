@@ -1,6 +1,7 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import type { PatchSandboxEnvVarResponseBody } from "@app/lib/resources/sandbox_env_var_resource";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
+import { EgressPolicyDomainError } from "@app/types/sandbox/egress_policy";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -50,7 +51,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "sandbox_env_var_not_found",
           message: "Sandbox environment variable not found.",
         },
       });
@@ -62,7 +63,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "sandbox_env_var_demotion_not_supported",
           message:
             "Demoting an HTTPS secret to a config environment variable is not supported.",
         },
@@ -89,7 +90,10 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type:
+              promoteResult.error instanceof EgressPolicyDomainError
+                ? "egress_domain_invalid"
+                : "invalid_request_error",
             message: promoteResult.error.message,
           },
         });
@@ -107,7 +111,10 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type:
+              updateResult.error instanceof EgressPolicyDomainError
+                ? "egress_domain_invalid"
+                : "invalid_request_error",
             message: updateResult.error.message,
           },
         });
@@ -137,7 +144,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 404,
         api_error: {
-          type: "invalid_request_error",
+          type: "sandbox_env_var_not_found",
           message: "Sandbox environment variable not found.",
         },
       });

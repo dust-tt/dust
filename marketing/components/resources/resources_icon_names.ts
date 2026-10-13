@@ -196,6 +196,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "AttioLogo",
   "AshbyLogo",
   "BigQueryLogo",
+  "BrightDataLogo",
   "ToolsIcon",
   "CanvaLogo",
   "ClariLogo",

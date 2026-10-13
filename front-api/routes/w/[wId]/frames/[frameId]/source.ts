@@ -32,7 +32,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       status_code: code === "invalid_file" ? 422 : 404,
       api_error: {
         type:
-          code === "invalid_file" ? "invalid_request_error" : "file_not_found",
+          code === "invalid_file" ? "frame_manifest_invalid" : "file_not_found",
         message,
       },
     });

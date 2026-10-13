@@ -32,7 +32,7 @@ function unverifiableFrameFileRefsShareError(
 ): AuthorizedFileAccessShareError {
   return {
     name: "dust_error",
-    code: "invalid_request_error",
+    code: "frame_files_unverifiable",
     message: `Frame references files that cannot be verified: ${unverifiableRefs.join(", ")}`,
     unverifiableRefs,
   };

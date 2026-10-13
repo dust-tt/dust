@@ -37,16 +37,16 @@ msgid "Analytics"
 msgstr "Statistiques"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Ask @analyst"
+msgstr "Demander à @analyst"
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"
 msgstr "Consommation"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Export"
 msgstr "Exporter"
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-msgid "Ask @analyst"
-msgstr "Demander à @analyst"
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Explore"
@@ -137,11 +137,6 @@ msgstr "Identifiants des apps"
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Settings"
 msgstr "Paramètres"
-
-#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Breakdown in analytics"
-msgstr "Détail dans les statistiques"
 
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx

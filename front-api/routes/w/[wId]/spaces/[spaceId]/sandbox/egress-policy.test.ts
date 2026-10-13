@@ -347,7 +347,9 @@ describe("GET/PUT /api/w/:wId/spaces/:spaceId/sandbox/egress-policy", () => {
 
     const getResponse = await getPolicy(workspace.sId, regularSpace.sId);
     expect(getResponse.status).toBe(400);
-    expect((await getResponse.json()).error.type).toBe("invalid_request_error");
+    expect((await getResponse.json()).error.type).toBe(
+      "project_space_required"
+    );
 
     const putResponse = await putPolicy(workspace.sId, regularSpace.sId, {
       allowedDomains: ["api.github.com"],

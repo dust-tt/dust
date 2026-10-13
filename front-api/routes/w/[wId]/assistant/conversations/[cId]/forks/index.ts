@@ -52,11 +52,11 @@ app.post(
               message: createRes.error.message,
             },
           });
-        case "invalid_request_error":
+        case "fork_source_message_not_found":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "fork_source_message_not_found",
               message: createRes.error.message,
             },
           });

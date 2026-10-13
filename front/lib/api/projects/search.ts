@@ -35,7 +35,7 @@ export async function searchProjectConversations(
 ): Promise<
   Result<
     ConversationSearchResult[],
-    DustError<"core_api_error" | "invalid_request_error">
+    DustError<"core_api_error" | "embedding_api_key_missing">
   >
 > {
   const { query, spaceIds, topK } = options;
@@ -88,7 +88,7 @@ export async function searchProjectConversations(
     );
     return new Err(
       new DustError(
-        "invalid_request_error",
+        "embedding_api_key_missing",
         MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE
       )
     );

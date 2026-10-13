@@ -147,7 +147,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/files/thumbnail", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("file_type_not_supported");
   });
 
   it("returns 400 for a GCS non-image file", async () => {
@@ -165,7 +165,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId/files/thumbnail", () => {
     );
 
     expect(response.status).toBe(400);
-    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect((await response.json()).error.type).toBe("file_type_not_supported");
   });
 
   it("returns 404 when no FileResource and GCS file not found", async () => {

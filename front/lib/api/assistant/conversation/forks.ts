@@ -44,8 +44,8 @@ import type { Transaction } from "sequelize";
 type CreateConversationForkErrorCode =
   | "conversation_not_found"
   | "failed_to_copy_files"
+  | "fork_source_message_not_found"
   | "internal_error"
-  | "invalid_request_error"
   | "unauthorized";
 
 type CarriedAttachment = {
@@ -509,7 +509,10 @@ export async function createConversationFork(
 
     if (sourceMessage.isErr()) {
       return new Err(
-        new DustError("invalid_request_error", sourceMessage.error.message)
+        new DustError(
+          "fork_source_message_not_found",
+          sourceMessage.error.message
+        )
       );
     }
 

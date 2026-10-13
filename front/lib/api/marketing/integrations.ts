@@ -183,6 +183,7 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   n8n: "productivity",
   ahrefs: "data",
   webflow: "development",
+  "bright data": "data",
 };
 
 // Category mapping for connectors

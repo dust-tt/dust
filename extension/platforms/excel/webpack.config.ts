@@ -64,6 +64,7 @@ export const getConfig = async ({
     devtool: isDevelopment ? "inline-source-map" : undefined,
     entry: {
       main: resolvePath("./main.tsx"),
+      auth: resolvePath("./dialog/auth.ts"),
     },
     output: {
       path: buildDirPath,
@@ -193,11 +194,24 @@ export const getConfig = async ({
         filename: "taskpane.html",
         chunks: ["main"],
       }),
+      new HtmlWebpackPlugin({
+        template: resolvePath("./dialog/auth.html"),
+        filename: "auth.html",
+        chunks: ["auth"],
+      }),
     ],
     devServer: {
       port: 3014,
       server: "https",
       hot: true,
+      client: {
+        overlay: {
+          // Virtuoso's ResizeObserver re-layouts while messages stream in,
+          // which the browser reports as a benign error on every token.
+          runtimeErrors: (error: Error) =>
+            !error.message.includes("ResizeObserver loop"),
+        },
+      },
       static: {
         directory: buildDirPath,
       },

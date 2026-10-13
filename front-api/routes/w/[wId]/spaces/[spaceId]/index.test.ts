@@ -172,6 +172,24 @@ describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
       name: "Not Company Data",
     });
     expect(globalResponse.status).toBe(400);
+    expect((await globalResponse.json()).error.type).toBe(
+      "global_space_not_renamable"
+    );
+  });
+
+  it("returns 409 when renaming a space to a name already used", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+    const otherSpace = await SpaceFactory.regular(workspace);
+
+    const response = await patchSpace(workspace, regularSpace.sId, {
+      name: otherSpace.name,
+    });
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("space_already_exists");
   });
 
   it("rejects renaming a space to a name longer than 256 characters", async () => {

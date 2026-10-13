@@ -268,6 +268,6 @@ describe("PUT /api/w/[wId]/groups/shared_usage_limit_priorities", () => {
     });
 
     expect(response.status).toBe(403);
-    expect((await response.json()).error.type).toBe("feature_flag_not_found");
+    expect((await response.json()).error.type).toBe("feature_not_enabled");
   });
 });

@@ -27,7 +27,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "search_query_too_short",
           message: `Query must be at least ${MIN_SEARCH_QUERY_SIZE} characters long.`,
         },
       });

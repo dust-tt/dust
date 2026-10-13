@@ -143,7 +143,7 @@ describe("GET/POST /api/w/:wId/sandbox/env-vars", () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({
       error: {
-        type: "invalid_request_error",
+        type: "egress_domain_invalid",
         message: expect.stringContaining("at least two DNS labels"),
       },
     });

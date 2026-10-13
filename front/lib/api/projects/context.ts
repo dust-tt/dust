@@ -345,11 +345,21 @@ export async function addFileToProject(
     space: SpaceResource;
     sourceConversationId?: string;
   }
-): Promise<Result<ContentFragmentResource, DustError>> {
+): Promise<
+  Result<
+    ContentFragmentResource,
+    DustError<
+      | "project_space_required"
+      | "file_not_mounted"
+      | "name_conflict"
+      | "internal_error"
+    >
+  >
+> {
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a Pod.",
     });
   }
@@ -368,7 +378,7 @@ export async function addFileToProject(
     if (!file.mountFilePath) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_not_mounted",
         message: "File has no mount path and cannot be moved to the Pod.",
       });
     }
@@ -399,7 +409,7 @@ export async function addFileToProject(
     if (destExistsRes.value) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "name_conflict",
         message: "A file with this name already exists in the Pod.",
       });
     }
@@ -454,12 +464,17 @@ export async function addFileToProject(
 export async function addFrameV2ToProject(
   auth: Authenticator,
   { frame, space }: { frame: FileResource; space: SpaceResource }
-): Promise<Result<FileResource, DustError>> {
+): Promise<
+  Result<
+    FileResource,
+    DustError<"file_not_found" | "name_conflict" | "internal_error">
+  >
+> {
   const sourceDirectoryPath = frame.getFrameV2SourceDirectoryPath(auth);
   if (!sourceDirectoryPath) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_not_found",
       message: "Frame source folder not found.",
     });
   }
@@ -486,9 +501,7 @@ export async function addFrameV2ToProject(
     return new Err({
       name: "dust_error",
       code:
-        moved.error.code === "conflict"
-          ? "invalid_request_error"
-          : "internal_error",
+        moved.error.code === "conflict" ? "name_conflict" : "internal_error",
       message: moved.error.message,
     });
   }
@@ -516,7 +529,7 @@ export async function addContentNodeToProject(
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a project.",
     });
   }
@@ -708,7 +721,7 @@ export async function moveProjectFile(
   if (!space.isProject()) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "project_space_required",
       message: "Space is not a project.",
     });
   }

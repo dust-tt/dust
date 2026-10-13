@@ -22,11 +22,11 @@ app.post(
     const result = await space.leavePod(auth);
     if (result.isErr()) {
       switch (result.error.code) {
-        case "invalid_request_error":
+        case "project_space_required":
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "project_space_required",
               message: result.error.message,
             },
           });

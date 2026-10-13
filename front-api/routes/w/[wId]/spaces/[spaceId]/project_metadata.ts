@@ -9,7 +9,9 @@ import type {
   PatchPodMetadataResponseBody,
 } from "@app/types/api/projects/metadata";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { resolveCanonicalScopedPath } from "@app/types/mount_path";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -19,6 +21,49 @@ import { withSpace } from "@front-api/middlewares/with_space";
 // Mounted under /api/w/:wId/spaces/:spaceId/project_metadata. All routes
 // require the space to be a project; this is checked inline per handler.
 const app = workspaceApp();
+
+function podFileValidationApiError({
+  code,
+  message,
+}: {
+  code:
+    | "invalid_request_error"
+    | "limit_reached"
+    | "internal_error"
+    | "file_not_found"
+    | "file_not_previewable";
+  message: string;
+}): APIErrorWithContentfulStatusCode {
+  switch (code) {
+    case "invalid_request_error":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message },
+      };
+    case "limit_reached":
+      return {
+        status_code: 400,
+        api_error: { type: "pod_file_tab_limit_exceeded", message },
+      };
+    case "file_not_found":
+      return {
+        status_code: 404,
+        api_error: { type: "file_not_found", message },
+      };
+    case "file_not_previewable":
+      return {
+        status_code: 400,
+        api_error: { type: "pod_file_tab_not_previewable", message },
+      };
+    case "internal_error":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message },
+      };
+    default:
+      assertNever(code);
+  }
+}
 
 /** @ignoreswagger */
 app.get(
@@ -32,7 +77,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Project metadata is only available for project spaces.",
         },
       });
@@ -73,7 +118,7 @@ app.patch(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Project metadata is only available for project spaces.",
         },
       });
@@ -98,13 +143,7 @@ app.patch(
         body.pinnedFramePath
       );
       if (validation.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: validation.error.message,
-          },
-        });
+        return apiError(ctx, podFileValidationApiError(validation.error));
       }
     }
 
@@ -146,13 +185,7 @@ app.patch(
         { existingFileTabPaths }
       );
       if (validation.isErr()) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: validation.error.message,
-          },
-        });
+        return apiError(ctx, podFileValidationApiError(validation.error));
       }
       resolvedFileTabs = validation.value;
     }
@@ -165,7 +198,7 @@ app.patch(
         return apiError(ctx, {
           status_code: 400,
           api_error: {
-            type: "invalid_request_error",
+            type: "agent_configuration_not_found",
             message: `Agent "${body.defaultAgentId}" was not found or is not usable by the authenticated user.`,
           },
         });
@@ -185,7 +218,7 @@ app.patch(
           return apiError(ctx, {
             status_code: 400,
             api_error: {
-              type: "invalid_request_error",
+              type: "skill_not_found",
               message: `Skill "${skillId}" was not found, is not active, or is not usable as a default skill.`,
             },
           });

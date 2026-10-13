@@ -12,6 +12,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { computeStepContexts } from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
+import { filterEffortChangesForRun } from "@app/lib/api/actions/servers/self_configuration/helpers";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
   constructPromptMultiActions,
@@ -241,6 +242,7 @@ function getReplayedToolNames(
       case "function":
       case "compaction":
       case "user":
+      case "effort_change":
         break;
       default:
         assertNever(message);
@@ -687,6 +689,15 @@ export async function runModel(
 
     return null;
   }
+
+  // Drop the effort changes that would move this run's model to another tier
+  // (raise-keeps-model-tier).
+  const effortChanges = filterEffortChangesForRun(
+    modelInfo,
+    modelConversationRes.value.modelConversation.messages
+  );
+  modelConversationRes.value.modelConversation.messages =
+    effortChanges.messages;
 
   if (disableToolUse) {
     // Tool choice "none" alone leaves the model with nothing to do; spell it out
@@ -1334,7 +1345,10 @@ export async function runModel(
     model: modelConfig,
     stepActions: actions.map((a) => a.action),
     citationsRefsOffset,
-  });
+  }).map((stepContext) => ({
+    ...stepContext,
+    reasoningEffortInEffect: effortChanges.effortInEffect,
+  }));
 
   return {
     actions,

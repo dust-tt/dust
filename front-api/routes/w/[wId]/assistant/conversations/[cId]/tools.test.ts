@@ -171,7 +171,7 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/tools", () => {
 
       expect(response.status).toBe(403);
       const body = await response.json();
-      expect(body.error.type).toBe("invalid_request_error");
+      expect(body.error.type).toBe("mcp_server_restricted_to_skills");
       expect(body.error.message).toBe(
         "This MCP server is restricted to skills and cannot be added directly to a conversation."
       );

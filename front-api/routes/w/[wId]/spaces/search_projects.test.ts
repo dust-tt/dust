@@ -29,7 +29,9 @@ describe("GET /api/w/:wId/spaces/search_projects", () => {
       const response = await searchProjects(workspace, { limit: "-1" });
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect((await response.json()).error.type).toBe(
+        "invalid_pagination_parameters"
+      );
     });
 
     it("returns 400 when limit > 2000", async () => {
@@ -40,7 +42,9 @@ describe("GET /api/w/:wId/spaces/search_projects", () => {
       const response = await searchProjects(workspace, { limit: "2001" });
 
       expect(response.status).toBe(400);
-      expect((await response.json()).error.type).toBe("invalid_request_error");
+      expect((await response.json()).error.type).toBe(
+        "invalid_pagination_parameters"
+      );
     });
   });
 

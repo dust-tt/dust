@@ -6843,6 +6843,78 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10054,
+    name: "Bright Data",
+    description:
+      "Bright Data tools to search the web, scrape any webpage (even behind bot detection or CAPTCHA), and run pre-built scrapers for 1,200+ sites.",
+    url: "https://mcp.brightdata.com/mcp",
+    icon: "BrightDataLogo",
+    documentationUrl:
+      "https://docs.brightdata.com/products/mcp-server/overview",
+    connectionInstructions:
+      "Bright Data uses OAuth with dynamic client registration. Sign in with your Bright Data account to connect. Requests consume credits from your Bright Data account (5,000 free requests per month, shared across the account), and scraper runs are billed per record.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      ask_brightdata_assistant: "never_ask",
+      search_engine: "never_ask",
+      search_engine_batch: "never_ask",
+      scrape_as_markdown: "never_ask",
+      scrape_batch: "never_ask",
+      search_scrapers: "never_ask",
+      get_scraper_details: "never_ask",
+      get_scraper_progress: "never_ask",
+      get_scraper_results: "never_ask",
+      run_scraper: "high",
+      refresh_scrapers: "high",
+    },
+    toolDisplayLabels: {
+      ask_brightdata_assistant: {
+        running: "Asking the Bright Data assistant",
+        done: "Asked the Bright Data assistant",
+      },
+      search_engine: {
+        running: "Searching the web with Bright Data",
+        done: "Searched the web with Bright Data",
+      },
+      search_engine_batch: {
+        running: "Running searches with Bright Data",
+        done: "Ran searches with Bright Data",
+      },
+      scrape_as_markdown: {
+        running: "Scraping a webpage with Bright Data",
+        done: "Scraped a webpage with Bright Data",
+      },
+      scrape_batch: {
+        running: "Scraping webpages with Bright Data",
+        done: "Scraped webpages with Bright Data",
+      },
+      search_scrapers: {
+        running: "Searching scrapers on Bright Data",
+        done: "Searched scrapers on Bright Data",
+      },
+      get_scraper_details: {
+        running: "Fetching scraper details from Bright Data",
+        done: "Fetched scraper details from Bright Data",
+      },
+      get_scraper_progress: {
+        running: "Checking scraper progress on Bright Data",
+        done: "Checked scraper progress on Bright Data",
+      },
+      get_scraper_results: {
+        running: "Fetching scraper results from Bright Data",
+        done: "Fetched scraper results from Bright Data",
+      },
+      run_scraper: {
+        running: "Running a scraper on Bright Data",
+        done: "Ran a scraper on Bright Data",
+      },
+      refresh_scrapers: {
+        running: "Refreshing scrapers on Bright Data",
+        done: "Refreshed scrapers on Bright Data",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

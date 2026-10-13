@@ -70,7 +70,7 @@ async function postPickerToken(
     return apiError(ctx, {
       status_code: 400,
       api_error: {
-        type: "invalid_request_error",
+        type: "mcp_server_not_found",
         message: "mcpServerId must be a Google Drive server in this workspace.",
       },
     });
@@ -87,7 +87,7 @@ async function postPickerToken(
     return apiError(ctx, {
       status_code: 404,
       api_error: {
-        type: "invalid_request_error",
+        type: "google_drive_connection_not_found",
         message:
           "No Google Drive connection found. Please connect your Google Drive account first.",
       },
@@ -113,7 +113,7 @@ async function postPickerToken(
     return apiError(ctx, {
       status_code: 404,
       api_error: {
-        type: "invalid_request_error",
+        type: "google_drive_connection_not_found",
         message:
           "No Google Drive connection found. Please connect your Google Drive account first.",
       },
@@ -125,7 +125,7 @@ async function postPickerToken(
     return apiError(ctx, {
       status_code: 404,
       api_error: {
-        type: "invalid_request_error",
+        type: "google_drive_connection_not_found",
         message:
           "No Google Drive connection found. Please connect your Google Drive account first.",
       },

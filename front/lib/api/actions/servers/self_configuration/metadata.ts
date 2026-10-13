@@ -18,7 +18,7 @@ export const SELF_CONFIGURATION_TOOLS_METADATA = [
       "Raise or lower your reasoning effort by one step for the rest of the conversation, e.g. " +
       "raise it when the user's requests need deeper reasoning than you currently give (hard " +
       "math, intricate debugging, long multi-step analysis). The change applies from the user's " +
-      "next message on: the answer you are writing keeps its current effort.",
+      "next message at the latest.",
     schema: ADJUST_REASONING_EFFORT_SCHEMA,
     stake: "never_ask",
     eager: true,

@@ -37,7 +37,7 @@ export async function seedDataSources(
 
     if (result.isErr()) {
       // Skip if already exists.
-      if (result.error.code === "invalid_request_error") {
+      if (result.error.code === "data_source_already_exists") {
         logger.info(
           { name: asset.name },
           "Data source already exists, skipping"

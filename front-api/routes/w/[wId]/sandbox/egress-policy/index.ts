@@ -12,7 +12,10 @@ import type {
   GetWorkspaceEgressPolicyResponseBody,
   PutWorkspaceEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
-import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
+import {
+  EgressPolicyDomainError,
+  parseEgressPolicy,
+} from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -70,7 +73,10 @@ app.put(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type:
+            parsedPolicy.error instanceof EgressPolicyDomainError
+              ? "egress_domain_invalid"
+              : "invalid_request_error",
           message: `Invalid sandbox egress policy: ${parsedPolicy.error.message}`,
         },
       });

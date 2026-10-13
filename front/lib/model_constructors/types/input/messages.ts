@@ -91,8 +91,8 @@ export type BaseAssistantMessage =
   | BaseAssistantToolCallRequestMessage
   | BaseAssistantProviderPassthroughMessage;
 
-// Switches the reasoning effort from the next user message on, without a top-level config change
-// (which would restart the prompt cache). Callers only send it to models that accept it; providers
+// Switches the reasoning effort from the next user turn with new input on (the next user message
+// at the latest), without a top-level config change (which would restart the prompt cache). Callers only send it to models that accept it; providers
 // without per-message effort skip it.
 export type BaseEffortChangeMessage = {
   role: "system";

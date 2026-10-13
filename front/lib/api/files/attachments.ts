@@ -1,5 +1,6 @@
 import { generateSnippet } from "@app/lib/api/files/snippet";
 import type { Authenticator } from "@app/lib/auth";
+import { DustError } from "@app/lib/error";
 import { isPastedFile } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -30,7 +31,7 @@ export async function maybeUpsertFileAttachment(
     )[];
     conversation: ConversationWithoutContentType;
   }
-): Promise<Result<undefined, Error>> {
+): Promise<Result<undefined, DustError<"audio_transcription_unavailable">>> {
   const filesIds = removeNulls(
     contentFragments.map((cf) => {
       if ("fileId" in cf) {
@@ -52,12 +53,17 @@ export async function maybeUpsertFileAttachment(
         plan: auth.getNonNullablePlan(),
       })
     ) {
-      return new Err(new Error(AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE));
+      return new Err(
+        new DustError(
+          "audio_transcription_unavailable",
+          AUDIO_TRANSCRIPTION_UNAVAILABLE_MESSAGE
+        )
+      );
     }
 
-    const results = await concurrentExecutor(
+    await concurrentExecutor(
       fileResources,
-      async (fileResource): Promise<Result<undefined, Error>> => {
+      async (fileResource): Promise<void> => {
         const isConversationFile = fileResource.useCase === "conversation";
         const isMissingConversationId =
           isConversationFile && !fileResource.useCaseMetadata?.conversationId;
@@ -86,26 +92,16 @@ export async function maybeUpsertFileAttachment(
               },
               "Failed to generate pasted file snippet."
             );
-            return new Ok(undefined);
+            return;
           }
 
           // Note from seb: this tell the system "you can do JIT actions on this file". (i know, it's not great)
           // So we ignore later when doing canDoJIT checks.
           await fileResource.setSnippet(snippetRes.value);
-          return new Ok(undefined);
         }
-
-        return new Ok(undefined);
       },
       { concurrency: 4 }
     );
-
-    const failures = removeNulls(
-      results.map((r) => (r.isErr() ? r.error : null))
-    );
-    if (failures.length > 0) {
-      return new Err(new Error(failures.map((e) => e.message).join("; ")));
-    }
   }
   return new Ok(undefined);
 }

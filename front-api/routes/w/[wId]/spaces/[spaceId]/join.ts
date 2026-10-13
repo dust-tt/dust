@@ -23,7 +23,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "You can only join Pods, not regular spaces.",
         },
       });
@@ -43,7 +43,7 @@ app.post(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "already_pod_member",
           message: "You are already a member of this Pod.",
         },
       });

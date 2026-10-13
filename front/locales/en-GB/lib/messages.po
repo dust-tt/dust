@@ -58,7 +58,7 @@ msgid "Something went wrong on our side."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
-msgid "The request is invalid."
+msgid "The request is malformed."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
@@ -311,6 +311,14 @@ msgstr ""
 
 #: front/lib/api_error_messages.ts
 msgid "The service is temporarily unavailable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This feature isn’t enabled for your workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available in Pods."
 msgstr ""
 
 #: front/lib/api_error_messages.ts
@@ -630,6 +638,370 @@ msgid "Another user has an active wake-up in this conversation. Only they can po
 msgstr "Another user has an active wake-up in this conversation. Only they can post until it fires or is cancelled."
 
 #: front/lib/api_error_messages.ts
+msgid "Open Pods are disabled in this workspace. Make the Pod private instead."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only provisioned and manual groups can be given access to a space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be restricted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The company space can't be renamed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This space has data sources or apps used by agents or skills."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a member of this Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This user is already a member of the space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Users can't be added to or removed from system or global groups."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This kind of space can't have members."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type can't be added to this space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An OpenAI API key is required. Configure it in your workspace settings or contact an admin."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A data source with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data source names can't be empty or start with \"managed-\"."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be created."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data sources managed by a connection can't be edited."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This data source can't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This data source is already in this space."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The search query is too short."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to any space to search."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "App names must be 1 to 64 characters long and use only letters, numbers, underscores and dashes."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A dataset with this name already exists in this app."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset names can only use letters, numbers and underscores."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The dataset data is invalid. Check that every entry matches the schema."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod has reached the maximum number of file tabs."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be opened in a tab."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The assignee must be a member of this Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Pod already has its starter tasks."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This is only available for Notion connections."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "No Google Drive connection found. Connect your Google Drive account first."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only tasks in \"Need to do\" can be started."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be added to a data source."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready yet. Try again in a moment."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file content can't be read as a table."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The title is too long."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This app is used by agents."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This isn't available for this type of message."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only the person who sent this message can do this."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Mention not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This person couldn't be added to the Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An agent or a compaction is running in this conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is being compacted. Try again once it's done."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation was just compacted. Send a new message before compacting again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation is still being set up. Try again in a moment."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You can only mention one agent per message."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This model isn't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "There's no completed agent answer to branch from."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation can't be moved into or out of this Pod yet."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Spaces can't be selected in a Pod conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only regular spaces can be selected."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This tool can only be used through skills."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to one of the selected tools."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "These action inputs can't be edited."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This agent message can't be resumed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook signature is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be attached to a conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file isn't ready. Upload it again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The attached content wasn't found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "In a Pod, you can only attach content from the Pod or from Company Data."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Attachment not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This sandbox token can't access this endpoint."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file isn't a Frame."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame isn't shareable, so it can't be exported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file can't be moved to a Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't match the branding asset."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame text couldn't be updated."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file is used by a skill and can't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be deleted."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only files from a conversation can be saved to a Pod."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame can't be shared this way."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame uses files that can't be verified."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Frame must be created or updated by a user signed in to Dust."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A file or folder with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only folders can be downloaded as a ZIP."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This folder is too large to download."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The archive is too large."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This archive is invalid or contains unsafe paths."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file changed since you opened it. Reload it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file doesn't support conditional updates."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This comment can't be saved as written."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Comments in this file changed. Reload the file before saving."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The Frame's manifest is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Only the user who started this function call can do this."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This domain isn't valid. Use a domain like api.github.com or *.github.com."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The environment variable name or value isn't valid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Environment variable not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An HTTPS secret can't be turned back into a config variable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "File names can't be empty or contain slashes."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file was already uploaded or its upload failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The upload has expired. Upload the file again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file couldn't be downloaded from its URL."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This URL can't be used to download a file."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
 msgid "Code: {code}"
 msgstr ""
 
@@ -852,6 +1224,10 @@ msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Run code, scripts, and shell commands in the conversation’s Computer (a sandboxed Linux environment)."
+msgstr ""
+
+#: front/lib/dust_provided_descriptions.ts
+msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1111,7 +1487,7 @@ msgid "Create and update reusable workspace Skills."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Create schedules and event triggers to automate recurring and event-driven tasks."
+msgid "Create durable agent automations that run on a recurring schedule or in response to external events."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1143,7 +1519,7 @@ msgid "Ask the user a question with multiple-choice options."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Schedule wake-ups that re-invoke the agent at a later time."
+msgid "Resume the current conversation later for reminders, follow-ups, and polling."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts

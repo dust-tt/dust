@@ -593,7 +593,7 @@ export async function createSpaceAndGroup(
       | "limit_reached"
       | "space_already_exists"
       | "internal_error"
-      | "invalid_request_error"
+      | "invalid_group_kind"
       | "unauthorized"
     >
   >
@@ -777,7 +777,7 @@ export async function createSpaceAndGroup(
       if (selectedGroups.some((g) => !isManageableGroupKind(g.kind))) {
         return new Err(
           new DustError(
-            "invalid_request_error",
+            "invalid_group_kind",
             "Only provisioned and manual groups can be given access to a space."
           )
         );

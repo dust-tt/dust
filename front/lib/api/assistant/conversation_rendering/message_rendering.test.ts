@@ -400,6 +400,7 @@ describe("renderAllMessages", () => {
                 content: "result",
               },
               enabledSkillMessages: [],
+              effortChangeMessage: null,
             },
           ],
         },
@@ -454,6 +455,7 @@ describe("renderAllMessages", () => {
                 content: "result",
               },
               enabledSkillMessages: [],
+              effortChangeMessage: null,
             },
           ],
         },
@@ -512,6 +514,7 @@ describe("renderAllMessages", () => {
                 ],
               },
             ],
+            effortChangeMessage: null,
             result: {
               role: "function",
               name: "skill_management__enable_skill",

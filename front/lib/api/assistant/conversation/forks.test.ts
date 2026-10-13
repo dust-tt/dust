@@ -677,7 +677,7 @@ describe("createConversationFork", () => {
     );
   });
 
-  it("returns invalid_request_error when the source message is not forkable", async () => {
+  it("returns fork_source_message_not_found when the source message is not forkable", async () => {
     const { auth } = await createPrivateApiMockRequest();
 
     const parentConversation = await createConversation(auth, {
@@ -705,7 +705,7 @@ describe("createConversationFork", () => {
 
     expect(result.isErr()).toBe(true);
     expect(result.isErr() ? result.error.code : "").toBe(
-      "invalid_request_error"
+      "fork_source_message_not_found"
     );
   });
 

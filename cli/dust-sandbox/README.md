@@ -72,6 +72,8 @@ export const schema = {
   API client acting on that member's behalf.
 - `frame_author_required`: for Frame v2 functions, require write access to the
   Frame's source files.
+- `public`: for Frame v2 functions, also callable by anonymous visitors of a
+  publicly shared Frame.
 
 Adding a policy requires a runner-first rollout. Publish a `dsbx` release that
 parses the policy, then update `DSBX_CLI_VERSION` and `DSBX_CLI_SHA256` (printed

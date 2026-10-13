@@ -1091,6 +1091,76 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
+  it("tells the function that a caller who can write the Frame source is its author", async () => {
+    const { authenticator, sandbox, space, workspace } =
+      await setupFrameExecutionTest();
+    const memberGroup = await space.fetchManualMemberGroup(authenticator);
+    if (!memberGroup) {
+      throw new Error("Expected the Pod member group to exist.");
+    }
+    const author = authenticator.getNonNullableUser();
+    await memberGroup.dangerouslyAddMember(authenticator, {
+      user: author.toJSON(),
+    });
+    const authorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      author.sId,
+      workspace.sId
+    );
+    const { sandboxFunction } = await createTestFrameFunction(authorAuth, {
+      space,
+      slug: "list-people",
+    });
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      authorAuth,
+      { sandboxFunction, input: { message: "hello" } }
+    );
+    const execSpy = vi
+      .spyOn(sandbox, "exec")
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+      );
+
+    const result = await invocation.execute(authorAuth);
+
+    expect(result.isOk()).toBe(true);
+    const identity = JSON.parse(
+      execSpy.mock.calls[0]?.[2]?.envVars?.DUST_POD_USER_IDENTITY ?? ""
+    );
+    expect(identity.isFrameAuthor).toBe(true);
+  });
+
+  it("tells the function that a caller who cannot write the Frame source is not its author", async () => {
+    const { authenticator, sandbox, space, workspace } =
+      await setupFrameExecutionTest();
+    const { sandboxFunction } = await createTestFrameFunction(authenticator, {
+      space,
+      slug: "list-people",
+    });
+    const member = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    const invocation = await SandboxFunctionInvocationResource.makeNew(
+      memberAuth,
+      { sandboxFunction, input: { message: "hello" } }
+    );
+    const execSpy = vi
+      .spyOn(sandbox, "exec")
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: SUCCEEDED_STDOUT, stderr: "" })
+      );
+
+    const result = await invocation.execute(memberAuth);
+
+    expect(result.isOk()).toBe(true);
+    const identity = JSON.parse(
+      execSpy.mock.calls[0]?.[2]?.envVars?.DUST_POD_USER_IDENTITY ?? ""
+    );
+    expect(identity.isFrameAuthor).toBe(false);
+  });
+
   it("fails closed when a newer application persisted an unknown policy", async () => {
     const { authenticator, sandbox, sandboxFunction, invocation } =
       await setupExecutionTest();

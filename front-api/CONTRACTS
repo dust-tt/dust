@@ -209,6 +209,9 @@ A new error path MUST NOT pair a generic type (`invalid_request_error`, `interna
 "A space with this name already exists."). It MUST use the existing type naming that failure
 (`space_already_exists`), or add one to `API_ERROR_TYPES` in `front/types/error.ts`.
 
+`invalid_request_error` is reserved for malformed requests, see
+`invalid-request-error-means-malformed` in `front/types/error.ts`.
+
 @cc [label:api] workspace-import-aliases
 Use `@front-api/*` for imports from `front-api/` itself (middleware, app, helpers) and `@app/*`
 for imports from `front/`. The path tree is deeply nested, so relative imports across the tree

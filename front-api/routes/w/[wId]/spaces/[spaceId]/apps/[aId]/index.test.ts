@@ -68,7 +68,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/apps/:aId", () => {
 
     expect(response.status).toBe(409);
     const body = await response.json();
-    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.type).toBe("app_in_use");
     expect(body.error.message).toContain("Cannot delete app in use by");
     expect(body.error.message).toContain(agent.name);
 

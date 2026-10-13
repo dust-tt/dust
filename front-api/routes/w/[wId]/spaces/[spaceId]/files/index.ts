@@ -6,10 +6,8 @@ import type {
   GetSpaceFilesResponseBody,
   PostSpaceFolderResponseBody,
 } from "@app/types/api/file_system/types";
-import {
-  isDustFileSystemError,
-  SCOPED_PREFIX_POD,
-} from "@app/types/file_system";
+import { SCOPED_PREFIX_POD } from "@app/types/file_system";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -33,7 +31,7 @@ app.get(
       return apiError(ctx, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Files are only available for Pod spaces.",
         },
       });
@@ -84,7 +82,7 @@ app.post(
       return apiError(c, {
         status_code: 400,
         api_error: {
-          type: "invalid_request_error",
+          type: "project_space_required",
           message: "Files are only available for Pod spaces.",
         },
       });
@@ -108,15 +106,40 @@ app.post(
       parentRelativePath,
     });
     if (createResult.isErr()) {
-      return apiError(c, {
-        status_code: isDustFileSystemError(createResult.error, "already_exists")
-          ? 409
-          : 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: createResult.error.message,
-        },
-      });
+      const { code, message } = createResult.error;
+      switch (code) {
+        case "already_exists":
+          return apiError(c, {
+            status_code: 409,
+            api_error: { type: "file_already_exists", message },
+          });
+        case "not_found":
+          return apiError(c, {
+            status_code: 404,
+            api_error: { type: "file_not_found", message },
+          });
+        case "unauthorized":
+          return apiError(c, {
+            status_code: 403,
+            api_error: { type: "workspace_auth_error", message },
+          });
+        // The folder name or parent path is malformed.
+        case "invalid_path":
+        case "legacy_path":
+          return apiError(c, {
+            status_code: 400,
+            api_error: { type: "invalid_request_error", message },
+          });
+        case "too_many_mounts":
+        case "frame_manifest_move":
+        case "internal":
+          return apiError(c, {
+            status_code: 500,
+            api_error: { type: "internal_server_error", message },
+          });
+        default:
+          assertNever(code);
+      }
     }
 
     return c.json({ folder: createResult.value }, 201);

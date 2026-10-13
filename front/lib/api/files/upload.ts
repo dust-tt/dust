@@ -117,7 +117,7 @@ export async function processAndStoreFromUrl(
   if (urlSafetyError) {
     return new Err({
       name: "dust_error",
-      code: "invalid_request_error",
+      code: "file_url_not_allowed",
       message: urlSafetyError,
     });
   }
@@ -129,7 +129,7 @@ export async function processAndStoreFromUrl(
     if (!response.ok) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_url_fetch_failed",
         message: `Failed to fetch URL: ${response.statusText}`,
       });
     }
@@ -137,7 +137,7 @@ export async function processAndStoreFromUrl(
     if (!response.body) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_url_fetch_failed",
         message: "Response body is null",
       });
     }
@@ -151,7 +151,7 @@ export async function processAndStoreFromUrl(
     if (!isSupportedFileContentType(finalContentType)) {
       return new Err({
         name: "dust_error",
-        code: "invalid_request_error",
+        code: "file_type_not_supported",
         message: "Unsupported content type",
       });
     }

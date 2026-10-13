@@ -10,7 +10,8 @@ export interface FunctionSchema {
     | "optional"
     | "workspace_user_required"
     | "interactive_workspace_user_required"
-    | "frame_author_required";
+    | "frame_author_required"
+    | "public";
   input_schema: Record<string, unknown> | null;
   output_schema: Record<string, unknown> | null;
 }
@@ -24,13 +25,14 @@ function parseUserIdentityPolicy(
   if (
     value === "workspace_user_required" ||
     value === "interactive_workspace_user_required" ||
-    value === "frame_author_required"
+    value === "frame_author_required" ||
+    value === "public"
   ) {
     return value;
   }
   throw new Error(
     "`schema.userIdentity` must be `optional`, `workspace_user_required`, " +
-      "`interactive_workspace_user_required`, or `frame_author_required`"
+      "`interactive_workspace_user_required`, `frame_author_required`, or `public`"
   );
 }
 
