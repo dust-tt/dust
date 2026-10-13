@@ -40,7 +40,7 @@ export function ConversationMemoryNotice({
 
   return (
     <Tooltip
-      label={t`Agents don't use your memory in this conversation because other people are in it.`}
+      label={t`Agents won't rely on your memory in this conversation, since other people are in it.`}
       trigger={
         <span className="flex items-center">
           <Icon

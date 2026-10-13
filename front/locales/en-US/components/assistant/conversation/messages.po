@@ -322,8 +322,8 @@ msgid "Still having trouble? Reach out at support@dust.tt"
 msgstr "Still having trouble? Reach out at support@dust.tt"
 
 #: front/components/assistant/conversation/ConversationMemoryNotice.tsx
-msgid "Agents don't use your memory in this conversation because other people are in it."
-msgstr "Agents don't use your memory in this conversation because other people are in it."
+msgid "Agents won't rely on your memory in this conversation, since other people are in it."
+msgstr "Agents won't rely on your memory in this conversation, since other people are in it."
 
 #: front/components/assistant/conversation/ConversationMemoryNotice.tsx
 msgid "Memory off"
