@@ -1,10 +1,10 @@
-import { Document } from "@app/components/editor/document";
+import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import { CoEditionBadge } from "@app/components/file_explorer/CoEditionBadge";
+import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { CommentAuthorAvatar } from "@app/components/file_explorer/CommentAuthorAvatar";
 import { CommentBodyMarkdown } from "@app/components/file_explorer/CommentBodyMarkdown";
-import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreview } from "@app/components/file_explorer/MarkdownFilePreview";
 import { PDFViewer } from "@app/components/file_explorer/PDFViewer";
@@ -410,7 +410,7 @@ function RichMarkdownDocument({
   const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
     ? {
-        url: editor.liveUrl,
+        url: editor.collabUrl,
         documentName: toSessionName(owner.sId, editor.path),
         getTicket: getCollabTicket,
         user: {
@@ -422,7 +422,7 @@ function RichMarkdownDocument({
     : undefined;
 
   return (
-    <Document
+    <DocumentEditor
       initialContent={editor.initialContent}
       headerControlsContainer={headerControlsContainer}
       statusContainer={statusContainer}
@@ -441,8 +441,8 @@ function RichMarkdownDocument({
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}
       badge={<CoEditionBadge />}
-      renderLiveParticipants={(participants) => (
-        <LiveParticipantsAvatars owner={owner} participants={participants} />
+      renderCollabParticipants={(participants) => (
+        <CollabParticipantsAvatars owner={owner} participants={participants} />
       )}
     />
   );

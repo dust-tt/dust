@@ -1,9 +1,9 @@
+import { buildCollabExtensions } from "@app/components/editor/document/collabExtensions";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
 import {
   documentCommentsPluginKey,
   getDocumentComments,
 } from "@app/components/editor/document/DocumentComments";
-import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
@@ -11,7 +11,7 @@ import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
-import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
+import { CollabUserFactory } from "@app/tests/utils/CollabUserFactory";
 import type {
   CommentRequest,
   CommentRequestErrorCode,
@@ -62,11 +62,11 @@ async function renderCommentedEditor(
   let currentEditor: Editor | null = null;
   const session =
     live === null ? undefined : (live ?? acceptingSession(() => currentEditor));
-  const extensions = buildLiveDocumentExtensions({
+  const extensions = buildCollabExtensions({
     t: (descriptor) => descriptor.id ?? "",
     document: shared.value.doc,
     awareness: null,
-    user: LiveUserFactory.build(),
+    user: CollabUserFactory.build(),
     comments: session ?? liveChannel(() => new Err("unavailable")).channel,
     resolveImageSource: () => null,
   });

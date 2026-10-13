@@ -1,4 +1,4 @@
-import type { DocumentLiveParticipant } from "@app/components/editor/document/types";
+import type { CollabParticipant } from "@app/components/editor/document/types";
 import isEqual from "lodash/isEqual";
 import { useEffect, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
@@ -9,7 +9,7 @@ const awarenessUserSchema = z.object({
   user: z.object({ id: z.string().min(1), name: z.string() }),
 });
 
-const NO_PARTICIPANTS: DocumentLiveParticipant[] = [];
+const NO_PARTICIPANTS: CollabParticipant[] = [];
 
 interface JoinOrder {
   /** Where each present user joined; a user is forgotten once their last editor left. */
@@ -21,12 +21,12 @@ interface JoinOrder {
 const readParticipants = (
   awareness: Awareness,
   joinOrder: JoinOrder
-): DocumentLiveParticipant[] => {
+): CollabParticipant[] => {
   const remoteStates = [...awareness.getStates()]
     .filter(([clientId]) => clientId !== awareness.clientID)
     .map(([, state]) => state);
   const local = awarenessUserSchema.safeParse(awareness.getLocalState());
-  const byUserId = new Map<string, DocumentLiveParticipant>();
+  const byUserId = new Map<string, CollabParticipant>();
   for (const state of [awareness.getLocalState(), ...remoteStates]) {
     const parsed = awarenessUserSchema.safeParse(state);
     if (parsed.success && !byUserId.has(parsed.data.user.id)) {
@@ -44,7 +44,7 @@ const readParticipants = (
       joinOrder.positions.set(userId, joinOrder.next++);
     }
   }
-  const rank = ({ id }: DocumentLiveParticipant) =>
+  const rank = ({ id }: CollabParticipant) =>
     local.success && local.data.user.id === id
       ? -1
       : (joinOrder.positions.get(id) ?? 0);
@@ -52,20 +52,20 @@ const readParticipants = (
 };
 
 /**
- * @cc [owner:tdraier,label:product] live-participants
+ * @cc [owner:tdraier,label:product] collab-participants
  * The participants MUST be the users whose editor is on `awareness`, once each, the local editor's
  * user first and then the others in the order they joined, kept current as they join and leave; a
  * user with several editors MUST keep their place until the last one leaves. A
  * state without a user id MUST be ignored. Without awareness, or with a new one until it reports,
  * there MUST be none.
  */
-export function useLiveParticipants(
+export function useCollabParticipants(
   awareness: Awareness | null
-): DocumentLiveParticipant[] {
+): CollabParticipant[] {
   // Kept with its awareness: until the effect's cleanup runs, a new one would see the old one's.
   const [shown, setShown] = useState<{
     awareness: Awareness;
-    participants: DocumentLiveParticipant[];
+    participants: CollabParticipant[];
   } | null>(null);
 
   useEffect(() => {

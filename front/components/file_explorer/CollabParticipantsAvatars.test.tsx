@@ -1,7 +1,7 @@
-import { LiveParticipantsAvatars } from "@app/components/file_explorer/LiveParticipantsAvatars";
+import { CollabParticipantsAvatars } from "@app/components/file_explorer/CollabParticipantsAvatars";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
+import { CollabParticipantFactory } from "@app/tests/utils/CollabParticipantFactory";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
-import { LiveParticipantFactory } from "@app/tests/utils/LiveParticipantFactory";
 import { render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { SWRConfig } from "swr";
@@ -9,10 +9,10 @@ import { describe, expect, it, vi } from "vitest";
 
 const owner = LightWorkspaceFactory.build();
 
-const ADA = LiveParticipantFactory.build({ id: "usr_ada", name: "Ada" });
-const BOB = LiveParticipantFactory.build({ id: "usr_bob", name: "Bob" });
-const CY = LiveParticipantFactory.build({ id: "usr_cy", name: "Cy" });
-const DAN = LiveParticipantFactory.build({ id: "usr_dan", name: "Dan" });
+const ADA = CollabParticipantFactory.build({ id: "usr_ada", name: "Ada" });
+const BOB = CollabParticipantFactory.build({ id: "usr_bob", name: "Bob" });
+const CY = CollabParticipantFactory.build({ id: "usr_cy", name: "Cy" });
+const DAN = CollabParticipantFactory.build({ id: "usr_dan", name: "Dan" });
 
 const memberResponse = (id: string, fullName: string) => ({
   member: {
@@ -49,18 +49,20 @@ const renderAvatars = (
     </SWRConfig>
   );
   const view = render(
-    wrap(<LiveParticipantsAvatars owner={owner} participants={participants} />)
+    wrap(
+      <CollabParticipantsAvatars owner={owner} participants={participants} />
+    )
   );
   return {
     ...view,
     rerenderWith: (next: typeof participants) =>
       view.rerender(
-        wrap(<LiveParticipantsAvatars owner={owner} participants={next} />)
+        wrap(<CollabParticipantsAvatars owner={owner} participants={next} />)
       ),
   };
 };
 
-describe("LiveParticipantsAvatars", () => {
+describe("CollabParticipantsAvatars", () => {
   it("shows every participant, with their picture or the session's name", async () => {
     renderAvatars(memberFetcher(), [ADA, BOB, CY, DAN]);
 

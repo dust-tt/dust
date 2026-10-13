@@ -1,27 +1,27 @@
-import type { DocumentLiveParticipant } from "@app/components/editor/document";
+import type { CollabParticipant } from "@app/components/editor/document";
 import type { MemberDisplayInfo } from "@app/lib/swr/assistants";
 import { useMemberDetails } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Avatar } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-interface LiveParticipantsAvatarsProps {
+interface CollabParticipantsAvatarsProps {
   owner: LightWorkspaceType;
-  participants: DocumentLiveParticipant[];
+  participants: CollabParticipant[];
 }
 
 /**
- * @cc [owner:tdraier,label:react] live-participants-avatars
+ * @cc [owner:tdraier,label:react] collab-participants-avatars
  * Every participant MUST show, none folded into a counter, with their workspace profile picture
  * and name, or with the name the session gave and their initials when the member cannot be
  * resolved. Each member MUST be looked up once while the avatars are shown: a later join or leave
  * MUST NOT look up again a member already resolved or failed. While a member's lookup is pending,
  * their avatar MUST show as busy.
  */
-export const LiveParticipantsAvatars = ({
+export const CollabParticipantsAvatars = ({
   owner,
   participants,
-}: LiveParticipantsAvatarsProps) => {
+}: CollabParticipantsAvatarsProps) => {
   // A member's details, or null once their lookup failed.
   const [lookedUp, setLookedUp] = useState<
     Record<string, MemberDisplayInfo | null>

@@ -1,4 +1,4 @@
-import { useLiveParticipants } from "@app/components/editor/document/useLiveParticipants";
+import { useCollabParticipants } from "@app/components/editor/document/useCollabParticipants";
 import { AwarenessFactory } from "@app/tests/utils/AwarenessFactory";
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
@@ -19,14 +19,14 @@ const receive = (local: Awareness, remote: Awareness) =>
     )
   );
 
-describe("useLiveParticipants", () => {
+describe("useCollabParticipants", () => {
   afterEach(() => {
     AwarenessFactory.destroyAll();
   });
 
   it("lists the current user first, then the others once each, in the order they joined", () => {
     const local = AwarenessFactory.build();
-    const { result } = renderHook(() => useLiveParticipants(local));
+    const { result } = renderHook(() => useCollabParticipants(local));
     expect(result.current).toEqual([]);
 
     receive(
@@ -67,7 +67,7 @@ describe("useLiveParticipants", () => {
     const bobFirstTab = AwarenessFactory.build({
       user: { id: "bob", name: "Bob", color: "#111" },
     });
-    const { result } = renderHook(() => useLiveParticipants(local));
+    const { result } = renderHook(() => useCollabParticipants(local));
     receive(local, bobFirstTab);
     receive(
       local,
@@ -92,7 +92,7 @@ describe("useLiveParticipants", () => {
 
   it("ignores states without a user id", () => {
     const local = AwarenessFactory.build();
-    const { result } = renderHook(() => useLiveParticipants(local));
+    const { result } = renderHook(() => useCollabParticipants(local));
 
     receive(
       local,
@@ -111,7 +111,7 @@ describe("useLiveParticipants", () => {
     const bob = AwarenessFactory.build({
       user: { id: "bob", name: "Bob", color: "#111" },
     });
-    const { result } = renderHook(() => useLiveParticipants(local));
+    const { result } = renderHook(() => useCollabParticipants(local));
     receive(local, bob);
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);
 
@@ -129,9 +129,9 @@ describe("useLiveParticipants", () => {
       })
     );
     const { result, rerender } = renderHook<
-      ReturnType<typeof useLiveParticipants>,
+      ReturnType<typeof useCollabParticipants>,
       { awareness: Awareness | null }
-    >(({ awareness }) => useLiveParticipants(awareness), {
+    >(({ awareness }) => useCollabParticipants(awareness), {
       initialProps: { awareness: first },
     });
     expect(result.current).toEqual([{ id: "bob", name: "Bob" }]);
