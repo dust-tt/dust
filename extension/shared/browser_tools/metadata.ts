@@ -40,7 +40,7 @@ export function getBrowserMCPServerInstructions({
   );
 }
 
-export const CHROME_TOOLS_METADATA = [
+export const BROWSER_TOOLS_METADATA = [
   {
     name: ATTACH_TABS_TEXT_TOOL_NAME,
     description:
