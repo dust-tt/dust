@@ -1,7 +1,3 @@
-import {
-  FILE_CONTENT_PAGE_LENGTH,
-  TOOL_FILE_DOWNLOAD_MAX_SIZE_BYTES,
-} from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -14,12 +10,7 @@ import {
   makeFileAuthorizationError,
   makePersonalAuthenticationError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
-import type { BinaryFileResourceBlock } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
-import {
-  buildBinaryFileResource,
-  buildPaginatedTextBlock,
-  extractTextFromBuffer,
-} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
   sanitizeFilename,
@@ -37,6 +28,8 @@ import {
   GOOGLE_DRIVE_SCOPES,
   GOOGLE_DRIVE_TOOLS_METADATA,
   GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+  MAX_CONTENT_SIZE,
+  MAX_FILE_SIZE,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { resolveDocOperations } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { resolveSpreadsheetOperations } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
@@ -50,6 +43,42 @@ import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import { Common } from "googleapis";
 import { Readable } from "stream";
+
+export type BinaryFileResourceBlock = {
+  type: "resource";
+  resource: {
+    blob: string;
+    _meta: { text: string };
+    mimeType: string;
+    uri: string;
+  };
+};
+
+/**
+ * Builds a resource block for a binary Google Drive file so downstream tools
+ * (sandbox upload, file viewer, etc.) can consume the raw bytes alongside any
+ * extracted text. Exported for unit testing.
+ */
+export function buildBinaryFileResource({
+  buffer,
+  fileName,
+  mimeType,
+}: {
+  buffer: Buffer;
+  fileName: string | null | undefined;
+  mimeType: string;
+}): BinaryFileResourceBlock {
+  const safeFileName = sanitizeFilename(fileName ?? "unknown");
+  return {
+    type: "resource",
+    resource: {
+      blob: buffer.toString("base64"),
+      _meta: { text: `File: ${safeFileName}` },
+      mimeType,
+      uri: safeFileName,
+    },
+  };
+}
 
 const EXTRACTION_FAILED_PLACEHOLDER =
   "[Text extraction failed — file attached as binary resource]";
@@ -588,7 +617,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   },
 
   get_file_content: async (
-    { fileId, offset = 0, limit = FILE_CONTENT_PAGE_LENGTH },
+    { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
     { authInfo, runContext }
   ) => {
     const drive = await getDriveClient(authInfo);
@@ -632,13 +661,10 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
           new MCPError("The file has no mime type.", { tracked: false })
         );
       }
-      if (
-        file.size &&
-        parseInt(file.size, 10) > TOOL_FILE_DOWNLOAD_MAX_SIZE_BYTES
-      ) {
+      if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
         return new Err(
           new MCPError(
-            `File size exceeds the maximum limit of ${TOOL_FILE_DOWNLOAD_MAX_SIZE_BYTES / (1024 * 1024)} MB.`,
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
             {
               tracked: false,
             }
@@ -745,28 +771,44 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       }
 
       // Apply offset and limit
+      const totalContentLength = content.length;
+      const startIndex = Math.max(0, offset);
+      const endIndex = Math.min(content.length, startIndex + limit);
+      const truncatedContent = content.slice(startIndex, endIndex);
+
+      const hasMore = endIndex < content.length;
+      const nextOffset = hasMore ? endIndex : undefined;
+
       const responseBlocks: (
         | { type: "text"; text: string }
         | BinaryFileResourceBlock
       )[] = [
-        buildPaginatedTextBlock({
-          metadata: {
-            // The resolved file (shortcuts are resolved to their target), so
-            // follow-up tool calls target the right id.
-            fileId: effectiveFileId,
-            fileName: file.name,
-            mimeType: file.mimeType,
-            capabilities: {
-              canEdit: file.capabilities?.canEdit ?? null,
-              canComment: file.capabilities?.canComment ?? null,
-              canShare: file.capabilities?.canShare ?? null,
-              canCopy: file.capabilities?.canCopy ?? null,
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              // The resolved file (shortcuts are resolved to their target), so
+              // follow-up tool calls target the right id.
+              fileId: effectiveFileId,
+              fileName: file.name,
+              mimeType: file.mimeType,
+              capabilities: {
+                canEdit: file.capabilities?.canEdit ?? null,
+                canComment: file.capabilities?.canComment ?? null,
+                canShare: file.capabilities?.canShare ?? null,
+                canCopy: file.capabilities?.canCopy ?? null,
+              },
+              content: truncatedContent,
+              returnedContentLength: truncatedContent.length,
+              totalContentLength,
+              offset: startIndex,
+              nextOffset,
+              hasMore,
             },
-          },
-          text: content,
-          offset,
-          limit,
-        }),
+            null,
+            2
+          ),
+        },
       ];
 
       if (binaryResource) {

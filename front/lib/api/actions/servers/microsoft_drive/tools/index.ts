@@ -2,9 +2,8 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  buildFileContentBlocks,
-  buildPaginatedTextBlock,
-  checkFileSizeBeforeDownload,
+  extractTextFromBuffer,
+  processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
@@ -46,15 +45,17 @@ const driveChildItemSchema = z.object({
   lastModifiedDateTime: z.string().optional(),
 });
 
+const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
+
 /**
  * @cc [owner:tdraier,label:mcp;performance] file-size-checked-before-download
- * `get_file_content` MUST NOT download the file when `checkFileSizeBeforeDownload` fails on its
- * Graph `size`.
+ * `get_file_content` MUST return an error without downloading the file when its Graph `size`
+ * exceeds `MAX_FILE_SIZE_BYTES`.
  */
 /**
- * @cc [owner:tdraier,label:mcp;performance] content-paginated
- * The text block returned by `get_file_content` MUST hold at most `limit` characters of the file
- * content, starting at `offset`, whether or not `getAsXml` is set.
+ * @cc [owner:tdraier,label:mcp;performance] extracted-text-paginated
+ * `get_file_content` MUST return at most `limit` characters of the file's extracted text,
+ * starting at `offset`, whether or not `getAsXml` is set.
  */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
@@ -420,21 +421,16 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
           )
         );
       }
+      if (response.size > MAX_FILE_SIZE_BYTES) {
+        return new Err(
+          new MCPError(
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`,
+            { tracked: false }
+          )
+        );
+      }
       const mimeType = response.file.mimeType;
       const fileName = response.name;
-      const { size } = driveChildItemSchema
-        .pick({ size: true })
-        .parse(response);
-      if (size !== undefined) {
-        const sizeCheck = checkFileSizeBeforeDownload({
-          byteLength: size,
-          mimeType,
-        });
-        if (sizeCheck.isErr()) {
-          return new Err(sizeCheck.error);
-        }
-      }
-      const metadata = { itemId, driveId, siteId, fileName, mimeType };
 
       // For XML extraction (e.g. reading Word document XML before updating it),
       // use the specialized path with pagination support.
@@ -457,8 +453,34 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
           );
         }
 
+        const totalContentLength = content.length;
+        const startIndex = Math.max(0, offset);
+        const endIndex = Math.min(content.length, startIndex + limit);
+        const truncatedContent = content.slice(startIndex, endIndex);
+        const hasMore = endIndex < content.length;
+        const nextOffset = hasMore ? endIndex : undefined;
+
         return new Ok([
-          buildPaginatedTextBlock({ metadata, text: content, offset, limit }),
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                itemId,
+                driveId,
+                siteId,
+                fileName,
+                mimeType,
+                content: truncatedContent,
+                returnedContentLength: truncatedContent.length,
+                totalContentLength,
+                offset: startIndex,
+                nextOffset,
+                hasMore,
+              },
+              null,
+              2
+            ),
+          },
         ]);
       }
 
@@ -475,15 +497,45 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
 
-      return await buildFileContentBlocks({
-        buffer,
-        fileName,
+      const result = await processAttachment({
         mimeType,
-        metadata,
-        offset,
-        limit,
-        workspaceId: auth.getNonNullableWorkspace().sId,
+        filename: fileName,
+        extractText: async () => {
+          const textResult = await extractTextFromBuffer(buffer, mimeType);
+          if (textResult.isErr()) {
+            return textResult;
+          }
+          const text = textResult.value;
+          const endIndex = Math.min(text.length, offset + limit);
+          const page = text.slice(offset, endIndex);
+          return new Ok(
+            endIndex < text.length
+              ? `${page}\n\n[Truncated: characters ${offset}-${endIndex} of ${text.length}. Call again with offset=${endIndex} to read more.]`
+              : page
+          );
+        },
+        downloadContent: async () => new Ok(buffer),
       });
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      // Ensure a resource block is included so the file can be used by other tools.
+      const hasResource = result.value.some((c) => c.type === "resource");
+      if (!hasResource) {
+        result.value.push({
+          type: "resource" as const,
+          resource: {
+            blob: buffer.toString("base64"),
+            _meta: { text: `File: ${sanitizeFilename(fileName)}` },
+            mimeType,
+            uri: sanitizeFilename(fileName),
+          },
+        });
+      }
+
+      return new Ok(result.value);
     } catch (err) {
       return new Err(
         new MCPError(

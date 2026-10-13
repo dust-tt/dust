@@ -1,4 +1,3 @@
-import { FILE_CONTENT_PAGE_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { OutlookMailFolderListResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -8,8 +7,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  buildFileContentBlocks,
-  checkFileSizeBeforeDownload,
+  extractTextFromBuffer,
+  processAttachment,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
@@ -28,6 +27,7 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline attachment limit
+const MAX_ATTACHMENT_READ_SIZE_BYTES = 64 * 1024 * 1024;
 
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
@@ -220,69 +220,8 @@ const OutlookFileAttachmentSchema = z.object({
   contentType: z.string(),
   size: z.number(),
   isInline: z.boolean().optional(),
+  contentBytes: z.string().optional(),
 });
-
-type OutlookFileAttachment = z.infer<typeof OutlookFileAttachmentSchema>;
-
-const ATTACHMENT_METADATA_SELECT = "$select=id,name,contentType,size,isInline";
-
-// Matches the inline `contentBytes` cutoff of the Graph list call that `get_attachments` used to
-// rely on, so returning every attachment at once holds no more memory than before.
-const GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES = 4 * 1024 * 1024;
-
-async function readFileAttachment({
-  basePath,
-  encodedMessageId,
-  attachment,
-  accessToken,
-  workspaceId,
-  offset,
-  limit,
-}: {
-  basePath: string;
-  encodedMessageId: string;
-  attachment: OutlookFileAttachment;
-  accessToken: string;
-  workspaceId: string;
-  offset: number;
-  limit: number;
-}): Promise<Result<CallToolResult["content"], MCPError>> {
-  const filename = attachment.name || "unnamed";
-  const mimeType = attachment.contentType || "application/octet-stream";
-
-  const sizeCheck = checkFileSizeBeforeDownload({
-    byteLength: attachment.size,
-    mimeType,
-  });
-  if (sizeCheck.isErr()) {
-    return new Err(sizeCheck.error);
-  }
-
-  const valueResponse = await fetchFromOutlook(
-    `${basePath}/messages/${encodedMessageId}/attachments/${encodeURIComponent(attachment.id)}/$value`,
-    accessToken,
-    { method: "GET" }
-  );
-  if (!valueResponse.ok) {
-    const errorText = await getErrorText(valueResponse);
-    return new Err(
-      new MCPError(
-        `Failed to download attachment content: ${valueResponse.status} ${valueResponse.statusText} - ${errorText}`
-      )
-    );
-  }
-  const buffer = Buffer.from(await valueResponse.arrayBuffer());
-
-  return buildFileContentBlocks({
-    buffer,
-    fileName: filename,
-    mimeType,
-    metadata: { attachmentId: attachment.id, name: filename, mimeType },
-    offset,
-    limit,
-    workspaceId,
-  });
-}
 
 const OutlookFolderSchema = z.object({
   id: z.string(),
@@ -869,19 +808,8 @@ function validateMailParams({
 
 /**
  * @cc [owner:tdraier,label:mcp;performance] attachment-size-checked-before-download
- * `get_attachment` and `get_attachments` MUST NOT download an attachment's content when
- * `checkFileSizeBeforeDownload` fails on its Graph `size`.
- */
-/**
- * @cc [owner:tdraier,label:mcp;performance] attachment-content-paginated
- * The text block returned by `get_attachment` MUST hold at most `limit` characters of the
- * attachment content starting at `offset`, and `get_attachments` at most
- * `FILE_CONTENT_PAGE_LENGTH` characters per attachment.
- */
-/**
- * @cc [owner:tdraier,label:mcp;performance] get-attachments-size-capped
- * `get_attachments` MUST NOT download an attachment whose Graph `size` exceeds
- * `GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES`.
+ * `get_attachment` MUST return an error before downloading the attachment's `$value` content when
+ * its Graph `size` exceeds `MAX_ATTACHMENT_READ_SIZE_BYTES`.
  */
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
@@ -1178,7 +1106,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const encodedMessageId = encodeURIComponent(messageId);
 
     const response = await fetchFromOutlook(
-      `${basePath}/messages/${encodedMessageId}/attachments?${ATTACHMENT_METADATA_SELECT}`,
+      `${basePath}/messages/${encodedMessageId}/attachments?$select=id,name,contentType,size,isInline`,
       accessToken,
       { method: "GET" }
     );
@@ -1234,8 +1162,8 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   },
 
   get_attachment: async (
-    { messageId, attachmentId, offset, limit, sharedMailboxAddress },
-    { auth, authInfo }
+    { messageId, attachmentId, sharedMailboxAddress },
+    { authInfo }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1246,8 +1174,9 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     const encodedMessageId = encodeURIComponent(messageId);
     const encodedAttachmentId = encodeURIComponent(attachmentId);
 
+    // Fetch attachment metadata (includes contentBytes for files ≤4MB).
     const metaResponse = await fetchFromOutlook(
-      `${basePath}/messages/${encodedMessageId}/attachments/${encodedAttachmentId}?${ATTACHMENT_METADATA_SELECT}`,
+      `${basePath}/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
       accessToken,
       { method: "GET" }
     );
@@ -1286,20 +1215,73 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
     }
 
-    return readFileAttachment({
-      basePath,
-      encodedMessageId,
-      attachment,
-      accessToken,
-      workspaceId: auth.getNonNullableWorkspace().sId,
-      offset,
-      limit,
+    if (attachment.size > MAX_ATTACHMENT_READ_SIZE_BYTES) {
+      return new Err(
+        new MCPError(
+          `Attachment size exceeds the maximum limit of ${MAX_ATTACHMENT_READ_SIZE_BYTES / (1024 * 1024)} MB.`,
+          { tracked: false }
+        )
+      );
+    }
+
+    const filename = attachment.name || "unnamed";
+    const mimeType = attachment.contentType || "application/octet-stream";
+    let buffer: Buffer;
+
+    if (attachment.contentBytes) {
+      buffer = Buffer.from(attachment.contentBytes, "base64");
+    } else {
+      // Large attachment (>4MB) — Graph API omits contentBytes; download via $value.
+      const valueResponse = await fetchFromOutlook(
+        `${basePath}/messages/${encodedMessageId}/attachments/${encodedAttachmentId}/$value`,
+        accessToken,
+        { method: "GET" }
+      );
+
+      if (!valueResponse.ok) {
+        const errorText = await getErrorText(valueResponse);
+        return new Err(
+          new MCPError(
+            `Failed to download attachment content: ${valueResponse.status} ${valueResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const arrayBuffer = await valueResponse.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+    }
+
+    const result = await processAttachment({
+      mimeType,
+      filename,
+      extractText: async () => extractTextFromBuffer(buffer, mimeType),
+      downloadContent: async () => new Ok(buffer),
     });
+
+    if (result.isErr()) {
+      return result;
+    }
+
+    // Add a resource block so the file can be referenced by other tools (e.g. upload to OneDrive).
+    const hasResource = result.value.some((c) => c.type === "resource");
+    if (!hasResource) {
+      result.value.push({
+        type: "resource" as const,
+        resource: {
+          blob: buffer.toString("base64"),
+          _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+          mimeType,
+          uri: sanitizeFilename(filename),
+        },
+      });
+    }
+
+    return new Ok(result.value);
   },
 
   get_attachments: async (
     { messageId, sharedMailboxAddress },
-    { auth, authInfo }
+    { authInfo }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
@@ -1311,7 +1293,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     // List all attachments for the message
     const listResponse = await fetchFromOutlook(
-      `${basePath}/messages/${encodedMessageId}/attachments?${ATTACHMENT_METADATA_SELECT}`,
+      `${basePath}/messages/${encodedMessageId}/attachments`,
       accessToken,
       { method: "GET" }
     );
@@ -1366,30 +1348,42 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
         error?: string;
       }> => {
         const filename = attachment.name || "unnamed";
-        if (attachment.size > GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES) {
-          return {
-            filename,
-            content: [],
-            error: `Attachment is larger than ${GET_ATTACHMENTS_MAX_ATTACHMENT_SIZE_BYTES / (1024 * 1024)}MB, use get_attachment with attachmentId "${attachment.id}" to read it`,
-          };
+        const mimeType = attachment.contentType || "application/octet-stream";
+
+        if (!attachment.contentBytes) {
+          return { filename, content: [], error: "No content available" };
         }
-        const result = await readFileAttachment({
-          basePath,
-          encodedMessageId,
-          attachment,
-          accessToken,
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          offset: 0,
-          limit: FILE_CONTENT_PAGE_LENGTH,
+
+        const buffer = Buffer.from(attachment.contentBytes, "base64");
+
+        const result = await processAttachment({
+          mimeType,
+          filename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
         });
 
         if (result.isErr()) {
           return { filename, content: [], error: result.error.message };
         }
 
+        // Ensure a resource block is included so the file can be used by other tools
+        const hasResource = result.value.some((c) => c.type === "resource");
+        if (!hasResource) {
+          result.value.push({
+            type: "resource" as const,
+            resource: {
+              blob: attachment.contentBytes,
+              _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
+              mimeType,
+              uri: sanitizeFilename(filename),
+            },
+          });
+        }
+
         return { filename, content: result.value };
       },
-      { concurrency: 2 }
+      { concurrency: 5 }
     );
 
     // Aggregate all content blocks
