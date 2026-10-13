@@ -1,5 +1,6 @@
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
+  FilePreviewHandlersProvider,
   FilePreviewProvider,
   useFilePreviewContext,
 } from "@app/components/assistant/conversation/FilePreviewContext";
@@ -112,6 +113,30 @@ describe("useFilePreviewContext", () => {
       },
       { keepCurrent: true }
     );
+  });
+
+  it("passes on the enclosing page's handlers when there is no conversation", () => {
+    const openFilePreview = vi.fn();
+    const { openPanel, ui } = withSidePanel(
+      <FilePreviewHandlersProvider
+        openFilePreview={openFilePreview}
+        openFramePreview={vi.fn()}
+      >
+        <FilePreviewProvider owner={mockOwner} keepCurrentPanel>
+          <Consumer />
+        </FilePreviewProvider>
+      </FilePreviewHandlersProvider>,
+      { hasConversation: false }
+    );
+    render(ui);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+
+    expect(openPanel).not.toHaveBeenCalled();
+    expect(openFilePreview).toHaveBeenCalledWith({
+      filePath: "conversation-c1/report.pdf",
+      contentType: "application/pdf",
+    });
   });
 
   it("downloads instead of previewing when there is no conversation", () => {
