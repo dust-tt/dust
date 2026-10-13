@@ -61,11 +61,6 @@ export class DfsTenantError extends Error {
   }
 }
 
-export interface DfsReadView {
-  storeVersion: bigint;
-  authVersion: bigint;
-}
-
 export interface DfsExtendedMetadata {
   createdMs: number;
   mimeType?: string;
@@ -89,7 +84,7 @@ export interface DfsAttr {
   ctimeMs?: number;
   attrVersion: bigint;
   contentVersion: bigint;
-  view: DfsReadView;
+  storeVersion: bigint;
   metadata?: DfsExtendedMetadata;
 }
 
@@ -133,7 +128,7 @@ export interface DfsGrantUpdate {
 // Filesystem reads.
 
 // One result per `stat` reference or `lookup` target, in request order. Each successful result
-// carries its read view in `object.view`.
+// carries its snapshot version in `object.storeVersion`.
 export type DfsAttrResult =
   | { status: "ok"; object: DfsAttr }
   | { status: "error"; errorCode: DfsErrorCode };
@@ -192,7 +187,7 @@ export interface DfsValidationResult {
 
 export interface DfsValidationBatch {
   results: DfsValidationResult[];
-  view: DfsReadView;
+  storeVersion: bigint;
 }
 
 // Filesystem mutations.
@@ -254,7 +249,7 @@ export type DfsOperation =
   | DfsRenameOperation
   | DfsRemoveOperation;
 
-// The commit's read view is in each returned `Attr.view`.
+// The commit version is in each returned `Attr.storeVersion`.
 export interface DfsMutation {
   object?: DfsAttr;
   related: DfsAttr[];

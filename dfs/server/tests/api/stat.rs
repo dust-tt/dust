@@ -143,8 +143,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         (4, 3)
     );
     assert!(attributes.metadata.is_none());
-    assert!(attributes.view.store_version > 0);
-    assert_eq!(attributes.view.store_version, attributes.view.auth_version);
+    assert!(attributes.store_version > 0);
     assert_eq!(results[0], results[6]);
     let root = results[4]
         .object
@@ -155,7 +154,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
     assert_eq!(root.kind(), ObjectKind::Directory);
     assert_eq!(root.size, 0);
     assert_eq!(root.mode, 0o700);
-    assert_eq!(root.view, attributes.view);
+    assert_eq!(root.store_version, attributes.store_version);
     assert!(root.metadata.is_none());
     let projected = results[1].object.as_ref().context("missing virtual root")?;
     assert_eq!(projected, root);
@@ -170,7 +169,7 @@ pub(crate) async fn stat_returns_authorized_attributes_and_rechecks_grants() -> 
         (None, None, None)
     );
     assert_eq!((shared.attr_version, shared.content_version), (1, 1));
-    assert_eq!(shared.view, root.view);
+    assert_eq!(shared.store_version, root.store_version);
     assert!(shared.metadata.is_none());
 
     let empty_session = client

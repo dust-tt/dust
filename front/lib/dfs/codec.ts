@@ -21,7 +21,6 @@ import type {
   DfsEntryPage,
   DfsFilesBatch,
   DfsReadData,
-  DfsReadView,
   DfsSearchField,
   DfsSearchAttr,
   DfsSearchRequest,
@@ -205,10 +204,6 @@ const WireObjectKindSchema = z
     }
   });
 
-const WireReadViewSchema = z
-  .object({ storeVersion: WireBigInt64Schema, authVersion: WireBigInt64Schema })
-  .transform((v): DfsReadView => v);
-
 const WireExtendedMetadataSchema = z
   .object({
     created: WireNumberUint64Schema,
@@ -233,7 +228,7 @@ export const WireAttrSchema = z
     ctime: WireNumberUint64Schema.optional(),
     attrVersion: WireBigUint64Schema,
     contentVersion: WireBigUint64Schema,
-    view: WireReadViewSchema,
+    storeVersion: WireBigInt64Schema,
     metadata: WireExtendedMetadataSchema.optional(),
   })
   .transform((a): DfsAttr => ({
@@ -247,7 +242,7 @@ export const WireAttrSchema = z
     ctimeMs: a.ctime,
     attrVersion: a.attrVersion,
     contentVersion: a.contentVersion,
-    view: a.view,
+    storeVersion: a.storeVersion,
     metadata: a.metadata,
   }));
 
@@ -404,14 +399,14 @@ export const WireValidationBatchSchema = z
         error: WireErrorDetailsSchema.optional(),
       })
     ),
-    view: WireReadViewSchema,
+    storeVersion: WireBigInt64Schema,
   })
   .transform((r): DfsValidationBatch => ({
     results: r.results.map(({ outcome, error }) => ({
       outcome: WIRE_VALIDATION_OUTCOMES[outcome],
       errorCode: error,
     })),
-    view: r.view,
+    storeVersion: r.storeVersion,
   }));
 
 export function encodeVersionCheck(check: DfsVersionCheck): DfsWireMessage {

@@ -104,6 +104,7 @@ describe("DfsClient", () => {
             {
               object: wireAttr(FILE_ID, {
                 attrVersion: MAX_UINT64.toString(),
+                storeVersion: "9223372036854775807",
                 metadata: {
                   created: "1600000000000",
                   mimeType,
@@ -149,7 +150,7 @@ describe("DfsClient", () => {
           mtimeMs: 1700000000000,
           attrVersion: MAX_UINT64,
           contentVersion: BigInt("2"),
-          view: { storeVersion: BigInt("42"), authVersion: BigInt("7") },
+          storeVersion: BigInt("9223372036854775807"),
           metadata: { createdMs: 1600000000000, mimeType },
         },
       });
@@ -260,7 +261,7 @@ describe("DfsClient", () => {
           { outcome: "CHANGED" },
           { outcome: "DENIED", error: { code: "FORBIDDEN" } },
         ],
-        view: DfsWireFactory.view(),
+        storeVersion: "42",
       }),
     });
 
@@ -292,6 +293,7 @@ describe("DfsClient", () => {
       { outcome: "changed", errorCode: undefined },
       { outcome: "denied", errorCode: "forbidden" },
     ]);
+    expect(res.isOk() && res.value.storeVersion).toBe(BigInt("42"));
   });
 
   it("applies operations in order and returns per-operation outcomes", async () => {
