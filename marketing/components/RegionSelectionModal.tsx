@@ -1,4 +1,5 @@
-import { LegacyButton as Button, Check, cn } from "@dust-tt/sparkle";
+import type { FlagCode } from "@dust-tt/sparkle";
+import { LegacyButton as Button, Check, cn, FlagIcon } from "@dust-tt/sparkle";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { appendUTMParams } from "@marketing/lib/utils/utm";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
@@ -11,16 +12,16 @@ const US_SIGNUP_URL = "/api/workos/login?screenHint=sign-up";
 
 const REGIONS: Record<
   Region,
-  { flagSrc: string; label: string; description: string; href: string }
+  { flagCode: FlagCode; label: string; description: string; href: string }
 > = {
   us: {
-    flagSrc: "/static/us-flag.svg",
+    flagCode: "US",
     label: "United States",
     description: "Data in the US + Global models",
     href: US_SIGNUP_URL,
   },
   eu: {
-    flagSrc: "/static/eu-flag.svg",
+    flagCode: "EU",
     label: "Europe",
     description: "Data + Models hosted in the EU",
     href: EU_SIGNUP_URL,
@@ -28,7 +29,7 @@ const REGIONS: Record<
 };
 
 interface RegionCardProps {
-  flagSrc: string;
+  flagCode: FlagCode;
   label: string;
   description: string;
   selected: boolean;
@@ -36,7 +37,7 @@ interface RegionCardProps {
 }
 
 function RegionCard({
-  flagSrc,
+  flagCode,
   label,
   description,
   selected,
@@ -52,12 +53,7 @@ function RegionCard({
         selected ? "border-blue-500" : "border-gray-200 hover:border-blue-500"
       )}
     >
-      <img
-        src={flagSrc}
-        alt=""
-        aria-hidden="true"
-        className="h-8 w-8 flex-shrink-0 rounded-full object-cover"
-      />
+      <FlagIcon code={flagCode} size="lg" label="" />
       <div>
         <p className="font-semibold text-gray-900">{label}</p>
         <p className="text-sm text-gray-500">{description}</p>
@@ -99,7 +95,7 @@ export function RegionSelectionModal() {
             {(Object.keys(REGIONS) as Region[]).map((key) => (
               <RegionCard
                 key={key}
-                flagSrc={REGIONS[key].flagSrc}
+                flagCode={REGIONS[key].flagCode}
                 label={REGIONS[key].label}
                 description={REGIONS[key].description}
                 selected={region === key}
