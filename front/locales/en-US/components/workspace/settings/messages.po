@@ -316,20 +316,16 @@ msgid "Enabled"
 msgstr "Enabled"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Currently Spent (credits)"
-msgstr "Currently Spent (credits)"
+msgid "Current Spend (credits)"
+msgstr "Current Spend (credits)"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Currently Spent ($)"
-msgstr "Currently Spent ($)"
+msgid "Current Spend ($)"
+msgstr "Current Spend ($)"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Cap (credits)"
-msgstr "Cap (credits)"
-
-#: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Cap ($)"
-msgstr "Cap ($)"
+msgid "Cap"
+msgstr "Cap"
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
 msgid "Lock State"

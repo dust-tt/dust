@@ -75,7 +75,7 @@ function getColumns(
     name: string;
     editors: string;
     enabled: string;
-    currentlySpent: string;
+    currentSpend: string;
     cap: string;
     lockState: string;
   }
@@ -132,7 +132,7 @@ function getColumns(
         const selected = pendingEnabled ?? enabled;
         const isLocked = pendingLock ?? lock;
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent className="justify-center">
             <SliderToggle
               selected={selected}
               disabled={isEnabledUpdating || isLocked}
@@ -141,10 +141,10 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-24" },
+      meta: { headerAlign: "center", className: "w-24" },
     },
     {
-      header: headers.currentlySpent,
+      header: headers.currentSpend,
       accessorKey: "currentSpent",
       cell: (info: CellContext<RowData, unknown>) => (
         <DataTable.BasicCellContent
@@ -183,7 +183,7 @@ function getColumns(
           info.row.original;
         const selected = pendingLock ?? lock;
         return (
-          <DataTable.CellContent>
+          <DataTable.CellContent className="justify-center">
             <SliderToggle
               selected={selected}
               disabled={isLockUpdating}
@@ -192,7 +192,7 @@ function getColumns(
           </DataTable.CellContent>
         );
       },
-      meta: { className: "w-32" },
+      meta: { headerAlign: "center", className: "w-32" },
     },
   ];
 }
@@ -394,11 +394,11 @@ export function SelfImprovingSkillsListSection({
         name: t`Name`,
         editors: t`Editors`,
         enabled: t`Enabled`,
-        currentlySpent:
+        currentSpend:
           unit === "awu_credits"
-            ? t`Currently Spent (credits)`
-            : t`Currently Spent ($)`,
-        cap: unit === "awu_credits" ? t`Cap (credits)` : t`Cap ($)`,
+            ? t`Current Spend (credits)`
+            : t`Current Spend ($)`,
+        cap: t`Cap`,
         lockState: t`Lock State`,
       }),
     [t, unit, capUnit]
