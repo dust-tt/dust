@@ -1,4 +1,4 @@
-import { isBinaryWithinFileOffloadLimit } from "@app/lib/actions/action_output_limits";
+import { FILE_CONTENT_PAGE_LENGTH } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { OutlookMailFolderListResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { OUTLOOK_MAIL_FOLDER_LIST_MIME_TYPE } from "@app/lib/actions/mcp_internal_actions/output_schemas";
@@ -8,9 +8,8 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  isTextReadableContentType,
-  paginateText,
-  readFileText,
+  buildFileContentBlocks,
+  checkFileSizeBeforeDownload,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
@@ -19,10 +18,7 @@ import {
 import type { AgentLoopRunContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { getAllowedLabelsForMCPServer } from "@app/lib/api/actions/servers/microsoft/utils";
-import {
-  MAX_ATTACHMENT_CONTENT_SIZE,
-  OUTLOOK_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/outlook/mail_metadata";
+import { OUTLOOK_TOOLS_METADATA } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -32,9 +28,6 @@ import sanitizeHtml from "sanitize-html";
 import { z } from "zod";
 
 const MAX_ATTACHMENT_SIZE_BYTES = 3 * 1024 * 1024; // 3MB — Graph API inline attachment limit
-const MAX_ATTACHMENT_READ_SIZE_BYTES = 64 * 1024 * 1024;
-const ATTACHMENT_TOO_LARGE_TO_ATTACH_ERROR =
-  "Attachment is too large to be attached to the conversation and has no readable text content.";
 
 async function fetchAttachment(
   auth: ToolHandlerExtra["auth"],
@@ -253,21 +246,12 @@ async function readFileAttachment({
   const filename = attachment.name || "unnamed";
   const mimeType = attachment.contentType || "application/octet-stream";
 
-  if (attachment.size > MAX_ATTACHMENT_READ_SIZE_BYTES) {
-    return new Err(
-      new MCPError(
-        `Attachment size exceeds the maximum limit of ${MAX_ATTACHMENT_READ_SIZE_BYTES / (1024 * 1024)} MB.`,
-        { tracked: false }
-      )
-    );
-  }
-  if (
-    !isTextReadableContentType(mimeType) &&
-    !isBinaryWithinFileOffloadLimit({ byteLength: attachment.size, mimeType })
-  ) {
-    return new Err(
-      new MCPError(ATTACHMENT_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
-    );
+  const sizeCheck = checkFileSizeBeforeDownload({
+    byteLength: attachment.size,
+    mimeType,
+  });
+  if (sizeCheck.isErr()) {
+    return new Err(sizeCheck.error);
   }
 
   const valueResponse = await fetchFromOutlook(
@@ -285,46 +269,15 @@ async function readFileAttachment({
   }
   const buffer = Buffer.from(await valueResponse.arrayBuffer());
 
-  const content = await readFileText({ buffer, mimeType, workspaceId });
-
-  const blocks: CallToolResult["content"] = [];
-  if (content !== null) {
-    blocks.push({
-      type: "text" as const,
-      text: JSON.stringify(
-        {
-          attachmentId: attachment.id,
-          name: filename,
-          mimeType,
-          ...paginateText({ text: content, offset, limit }),
-        },
-        null,
-        2
-      ),
-    });
-  }
-  // Add a resource block so the file can be referenced by other tools (e.g. upload to OneDrive).
-  if (
-    (content === null || offset === 0) &&
-    isBinaryWithinFileOffloadLimit({ byteLength: buffer.length, mimeType })
-  ) {
-    blocks.push({
-      type: "resource" as const,
-      resource: {
-        blob: buffer.toString("base64"),
-        _meta: { text: `Attachment: ${sanitizeFilename(filename)}` },
-        mimeType,
-        uri: sanitizeFilename(filename),
-      },
-    });
-  }
-  if (blocks.length === 0) {
-    return new Err(
-      new MCPError(ATTACHMENT_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
-    );
-  }
-
-  return new Ok(blocks);
+  return buildFileContentBlocks({
+    buffer,
+    fileName: filename,
+    mimeType,
+    metadata: { attachmentId: attachment.id, name: filename, mimeType },
+    offset,
+    limit,
+    workspaceId,
+  });
 }
 
 const OutlookFolderSchema = z.object({
@@ -912,17 +865,14 @@ function validateMailParams({
 
 /**
  * @cc [owner:tdraier,label:mcp;performance] attachment-size-checked-before-download
- * `get_attachment` and `get_attachments` MUST NOT download an attachment's content when its Graph
- * `size` exceeds `MAX_ATTACHMENT_READ_SIZE_BYTES`, or when it has no readable text and its `size`
- * exceeds the file offload limit.
+ * `get_attachment` and `get_attachments` MUST NOT download an attachment's content when
+ * `checkFileSizeBeforeDownload` fails on its Graph `size`.
  */
 /**
  * @cc [owner:tdraier,label:mcp;performance] attachment-content-paginated
  * The text block returned by `get_attachment` MUST hold at most `limit` characters of the
  * attachment content starting at `offset`, and `get_attachments` at most
- * `MAX_ATTACHMENT_CONTENT_SIZE` characters per attachment. The binary resource block MUST only be
- * returned when it fits the file offload limit and, for attachments with readable text, on the
- * first page (`offset` 0).
+ * `FILE_CONTENT_PAGE_LENGTH` characters per attachment.
  */
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
@@ -1414,7 +1364,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
           accessToken,
           workspaceId: auth.getNonNullableWorkspace().sId,
           offset: 0,
-          limit: MAX_ATTACHMENT_CONTENT_SIZE,
+          limit: FILE_CONTENT_PAGE_LENGTH,
         });
 
         if (result.isErr()) {

@@ -1,9 +1,8 @@
+import { FILE_CONTENT_PAGE_LENGTH } from "@app/lib/actions/action_output_limits";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { z } from "zod";
 
 export const MICROSOFT_DRIVE_SERVER_NAME = "microsoft_drive" as const;
-
-const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
 
 export const MICROSOFT_DRIVE_TOOLS_METADATA = [
   {
@@ -187,9 +186,9 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = [
         .number()
         .int()
         .min(1)
-        .default(MAX_CONTENT_SIZE)
+        .default(FILE_CONTENT_PAGE_LENGTH)
         .describe(
-          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
+          `Maximum number of characters to return. Defaults to ${FILE_CONTENT_PAGE_LENGTH}.`
         ),
       getAsXml: z
         .boolean()

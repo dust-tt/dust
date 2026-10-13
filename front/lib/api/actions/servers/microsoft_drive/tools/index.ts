@@ -1,11 +1,10 @@
-import { isBinaryWithinFileOffloadLimit } from "@app/lib/actions/action_output_limits";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  isTextReadableContentType,
-  paginateText,
-  readFileText,
+  buildFileContentBlocks,
+  buildPaginatedTextBlock,
+  checkFileSizeBeforeDownload,
 } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import {
   getFileFromConversationAttachment,
@@ -25,7 +24,6 @@ import {
 import { MICROSOFT_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type AdmZip from "adm-zip";
 import assert from "assert";
 import { z } from "zod";
@@ -48,61 +46,15 @@ const driveChildItemSchema = z.object({
   lastModifiedDateTime: z.string().optional(),
 });
 
-const MAX_FILE_SIZE_BYTES = 64 * 1024 * 1024;
-const FILE_TOO_LARGE_TO_ATTACH_ERROR =
-  "File is too large to be attached to the conversation and has no readable text content.";
-
-function buildFileContentBlock({
-  itemId,
-  driveId,
-  siteId,
-  fileName,
-  mimeType,
-  content,
-  offset,
-  limit,
-}: {
-  itemId: string;
-  driveId: string | undefined;
-  siteId: string | undefined;
-  fileName: string;
-  mimeType: string;
-  content: string;
-  offset: number;
-  limit: number;
-}) {
-  return {
-    type: "text" as const,
-    text: JSON.stringify(
-      {
-        itemId,
-        driveId,
-        siteId,
-        fileName,
-        mimeType,
-        ...paginateText({ text: content, offset, limit }),
-      },
-      null,
-      2
-    ),
-  };
-}
-
 /**
  * @cc [owner:tdraier,label:mcp;performance] file-size-checked-before-download
- * `get_file_content` MUST return an error without downloading the file when its Graph `size`
- * exceeds `MAX_FILE_SIZE_BYTES`, or when the file has no readable text and its `size` exceeds the
- * file offload limit.
+ * `get_file_content` MUST NOT download the file when `checkFileSizeBeforeDownload` fails on its
+ * Graph `size`.
  */
 /**
  * @cc [owner:tdraier,label:mcp;performance] content-paginated
  * The text block returned by `get_file_content` MUST hold at most `limit` characters of the file
  * content, starting at `offset`, whether or not `getAsXml` is set.
- */
-/**
- * @cc [owner:tdraier,label:mcp;performance] binary-attached-once-within-offload-limit
- * `get_file_content` MUST only return the file's binary resource block when it fits the file
- * offload limit, and, for files with readable text, only on the first page (`offset` 0).
  */
 const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   search_in_files: async (
@@ -468,16 +420,21 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
           )
         );
       }
-      if (response.size && response.size > MAX_FILE_SIZE_BYTES) {
-        return new Err(
-          new MCPError(
-            `File size exceeds the maximum limit of ${MAX_FILE_SIZE_BYTES / (1024 * 1024)} MB.`,
-            { tracked: false }
-          )
-        );
-      }
       const mimeType = response.file.mimeType;
       const fileName = response.name;
+      const { size } = driveChildItemSchema
+        .pick({ size: true })
+        .parse(response);
+      if (size !== undefined) {
+        const sizeCheck = checkFileSizeBeforeDownload({
+          byteLength: size,
+          mimeType,
+        });
+        if (sizeCheck.isErr()) {
+          return new Err(sizeCheck.error);
+        }
+      }
+      const metadata = { itemId, driveId, siteId, fileName, mimeType };
 
       // For XML extraction (e.g. reading Word document XML before updating it),
       // use the specialized path with pagination support.
@@ -501,27 +458,8 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         }
 
         return new Ok([
-          buildFileContentBlock({
-            itemId,
-            driveId,
-            siteId,
-            fileName,
-            mimeType,
-            content,
-            offset,
-            limit,
-          }),
+          buildPaginatedTextBlock({ metadata, text: content, offset, limit }),
         ]);
-      }
-
-      if (
-        !isTextReadableContentType(mimeType) &&
-        response.size &&
-        !isBinaryWithinFileOffloadLimit({ byteLength: response.size, mimeType })
-      ) {
-        return new Err(
-          new MCPError(FILE_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
-        );
       }
 
       // Download the file as a buffer and attach it to the conversation.
@@ -537,48 +475,15 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         );
       }
 
-      const content = await readFileText({
+      return await buildFileContentBlocks({
         buffer,
+        fileName,
         mimeType,
+        metadata,
+        offset,
+        limit,
         workspaceId: auth.getNonNullableWorkspace().sId,
       });
-
-      const blocks: CallToolResult["content"] = [];
-      if (content !== null) {
-        blocks.push(
-          buildFileContentBlock({
-            itemId,
-            driveId,
-            siteId,
-            fileName,
-            mimeType,
-            content,
-            offset,
-            limit,
-          })
-        );
-      }
-      if (
-        (content === null || offset === 0) &&
-        isBinaryWithinFileOffloadLimit({ byteLength: buffer.length, mimeType })
-      ) {
-        blocks.push({
-          type: "resource" as const,
-          resource: {
-            blob: buffer.toString("base64"),
-            _meta: { text: `File: ${sanitizeFilename(fileName)}` },
-            mimeType,
-            uri: sanitizeFilename(fileName),
-          },
-        });
-      }
-      if (blocks.length === 0) {
-        return new Err(
-          new MCPError(FILE_TOO_LARGE_TO_ATTACH_ERROR, { tracked: false })
-        );
-      }
-
-      return new Ok(blocks);
     } catch (err) {
       return new Err(
         new MCPError(

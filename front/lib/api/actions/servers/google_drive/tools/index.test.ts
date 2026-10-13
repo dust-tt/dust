@@ -1,4 +1,5 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { BinaryFileResourceBlock } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { getDriveClient } from "@app/lib/api/actions/servers/google_drive/helpers";
 import { Err, Ok } from "@app/types/shared/result";
@@ -7,13 +8,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { Common } from "googleapis";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { BinaryFileResourceBlock } from "./index";
-import {
-  buildBinaryFileResource,
-  handleFileAccessError,
-  resolveDriveIdParams,
-  TOOLS,
-} from "./index";
+import { handleFileAccessError, resolveDriveIdParams, TOOLS } from "./index";
 
 vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
   getDriveClient: vi.fn(),
@@ -24,7 +19,10 @@ vi.mock("@app/lib/api/actions/servers/google_drive/helpers", () => ({
 
 vi.mock(
   "@app/lib/actions/mcp_internal_actions/utils/attachment_processing",
-  () => ({
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/actions/mcp_internal_actions/utils/attachment_processing")
+    >()),
     extractTextFromBuffer: vi.fn(),
   })
 );
@@ -545,49 +543,6 @@ describe("parent folder permission checks", () => {
 
     expect(filesGet).not.toHaveBeenCalled();
     expect(result.isOk()).toBe(true);
-  });
-});
-
-describe("buildBinaryFileResource", () => {
-  it("should base64-encode the buffer and preserve the mime type", () => {
-    const buffer = Buffer.from("Hello PDF", "utf-8");
-
-    const block = buildBinaryFileResource({
-      buffer,
-      fileName: "report.pdf",
-      mimeType: "application/pdf",
-    });
-
-    expect(block.type).toBe("resource");
-    expect(block.resource.mimeType).toBe("application/pdf");
-    expect(block.resource.blob).toBe(buffer.toString("base64"));
-    expect(block.resource.uri).toBe("report.pdf");
-    expect(block.resource._meta).toEqual({ text: "File: report.pdf" });
-  });
-
-  it("should fall back to 'unknown' when the file name is missing", () => {
-    const block = buildBinaryFileResource({
-      buffer: Buffer.from(""),
-      fileName: null,
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    });
-
-    expect(block.resource.uri).toBe("unknown");
-    expect(block.resource._meta).toEqual({ text: "File: unknown" });
-  });
-
-  it("should sanitize file names with unsafe characters", () => {
-    const block = buildBinaryFileResource({
-      buffer: Buffer.from("x"),
-      fileName: "../../etc/passwd",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    });
-
-    expect(block.resource.uri).not.toContain("/");
-    expect(block.resource.uri).not.toContain("..");
-    expect(block.resource._meta.text).toBe(`File: ${block.resource.uri}`);
   });
 });
 

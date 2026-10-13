@@ -1,11 +1,9 @@
+import { FILE_CONTENT_PAGE_LENGTH } from "@app/lib/actions/action_output_limits";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { DocumentOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/docs_resolver";
 import { SpreadsheetOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/sheets_resolver";
 import { PresentationOperationsArraySchema } from "@app/lib/api/actions/servers/google_drive/resolution/slides_resolver";
 import { z } from "zod";
-
-export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
-export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
@@ -130,9 +128,9 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         ),
       limit: z
         .number()
-        .default(MAX_CONTENT_SIZE)
+        .default(FILE_CONTENT_PAGE_LENGTH)
         .describe(
-          `Maximum number of characters to return. Defaults to ${MAX_CONTENT_SIZE}.`
+          `Maximum number of characters to return. Defaults to ${FILE_CONTENT_PAGE_LENGTH}.`
         ),
     },
     stake: "never_ask",

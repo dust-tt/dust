@@ -30,6 +30,9 @@ export function isBinaryWithinFileOffloadLimit({
   );
 }
 
+export const TOOL_FILE_DOWNLOAD_MAX_SIZE_BYTES = 64 * 1024 * 1024;
+export const FILE_CONTENT_PAGE_LENGTH = 32_000;
+
 export const FILE_OFFLOAD_SNIPPET_LENGTH = 8_000; // Approximately 2K tokens.
 
 // Key of the machine-readable offload descriptor in a content block's `_meta`. Attached to every
