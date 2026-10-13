@@ -1,0 +1,433 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "No payment method on file"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Unknown"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "SEPA Direct Debit •••• {last4}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "IBAN"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Bank account {last4}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Bank account"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Payment method {last4}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Payment method"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Billing information"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Billing contact"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "Change"
+msgstr ""
+
+#: front/components/workspace/billing/BillingInformation.tsx
+msgid "No billing address on file."
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+msgid "Frequency: Monthly"
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+msgid "Frequency: Yearly"
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+msgid "Subscription end: {subscriptionEndLabel}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+msgid "Next billing date: {periodEndLabel}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+msgid "Amount: {amount}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingOverview.tsx
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "No billing information available for this period yet."
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{credits, plural, one {# credit per week} other {# credits per week}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{credits, plural, one {# credit per month} other {# credits per month}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{credits, plural, one {# credit per quarter} other {# credits per quarter}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{credits, plural, one {# credit per year} other {# credits per year}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{credits, plural, one {# credit lifetime} other {# credits lifetime}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{unassignedCount, plural, one {# available} other {# available}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingSeatsOverview.tsx
+msgid "{membersCount, plural, one {# seat assigned} other {# seats assigned}}"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Up to 100 users"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Mix Pro and Max seats"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Unlimited number of users"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Workspace-pooled credits & volume pricing"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Customer support"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Add seats"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Contact sales"
+msgstr ""
+
+#: front/components/workspace/billing/BillingUpgrade.tsx
+msgid "Upgrade your workspace"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Coupon"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Revoked"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Redeemed on"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Credits"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Remaining"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "No coupons have been redeemed on this workspace."
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Seat coupons"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Total"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "Credit top-ups"
+msgstr ""
+
+#: front/components/workspace/billing/CouponsList.tsx
+msgid "{amountCredits, plural, one {{credits} credit} other {{credits} credits}}"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanBilling.tsx
+msgid "Upgrade a member"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanSeatsSection.tsx
+msgid "{maxLifetimeSeats, plural, one {You've used your # free seat} other {You've used all # free seats}}"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanSeatsSection.tsx
+msgid "{maxLifetimeSeats, plural, one {{lifetimeCount} of # free seat used} other {{lifetimeCount} of # free seats used}}"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanSeatsSection.tsx
+msgid "Your workspace has reached its free seat limit. Upgrade a member to a Pro or Max seat on the Members page to add more, the cap lifts instantly."
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanSeatsSection.tsx
+msgid "{maxLifetimeSeats, plural, one {Free workspaces include # free seat. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.} other {Free workspaces include # free seats. Once used, free seats are permanent. Upgrade a member to a Pro or Max seat anytime to go beyond the cap.}}"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanUpgradeSection.tsx
+msgid "Invite members beyond the 5-seat cap"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanUpgradeSection.tsx
+msgid "Unlock Pro & Max seats"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanUpgradeSection.tsx
+msgid "Manage billing and roles in one place"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanUpgradeSection.tsx
+msgid "Unlock the full workspace"
+msgstr ""
+
+#: front/components/workspace/billing/FreePlanUpgradeSection.tsx
+msgid "One paid seat opens up the whole workspace"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "Yearly - Next billing date: {periodEndLabel}"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "Monthly - Next billing date: {periodEndLabel}"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "Your subscription ends on {subscriptionEndLabel}. Until then, everything works as normal. Resume anytime before that date to keep your plan with no interruption."
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "Your subscription ended on {subscriptionEndLabel}."
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "Next bill preview"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoiceOverview.tsx
+msgid "A preview of what your invoice will look like based on your recent usage."
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Credit overage"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Prorated · {period}"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "{quantity, plural, one {# credit} other {# credits}}"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "{unitPrice} / credit"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Subtotal"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Quantity"
+msgstr ""
+
+#: front/components/workspace/billing/NextInvoicePreview.tsx
+msgid "Cost ({currency})"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Invoice"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Date"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Amount"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "See invoice"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "Past invoices"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "See all"
+msgstr ""
+
+#: front/components/workspace/billing/RecentInvoices.tsx
+msgid "No invoices available."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Cancel your subscription"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your subscription will end immediately."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your plan will remain active until <0>{periodEndLabel}</0>."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your plan will remain active until the end of the current billing period."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "This ends your subscription right away and cannot be undone."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "You can resume your subscription any time before {periodEndLabel} with no interruption to your plan."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "What happens next"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Until {shortDate}"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Until your plan ends"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Everything works exactly as it does today. You keep full access to your workspace."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "After {shortDate}"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "After your plan ends"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your workspace becomes read-only. Members keep their accounts and can still sign in to view content."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your data"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Agents, conversations, and connected data sources are preserved for 30 days. Reactivate any time during that window."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Invoices"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Past invoices remain available indefinitely from this page."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Keep my subscription"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Cancel subscription"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Resume your subscription"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your plan is scheduled to end on <0>{subscriptionEndLabel}</0>. Resuming now keeps everything active without interruption."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Resuming your subscription will keep everything active without interruption."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Your billing cycle will continue as normal and you will not be charged again until the next billing date."
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionActionButtons.tsx
+msgid "Resume subscription"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionStatusChip.tsx
+#: front/components/workspace/billing/seatTypeUtils.ts
+msgid "Free"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionStatusChip.tsx
+msgid "Active"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionStatusChip.tsx
+msgid "Canceled"
+msgstr ""
+
+#: front/components/workspace/billing/SubscriptionStatusChip.tsx
+msgid "Ended"
+msgstr ""
+
+#: front/components/workspace/billing/seatTypeUtils.ts
+msgid "None"
+msgstr ""

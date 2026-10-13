@@ -2,7 +2,11 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { defineConfig } from "@lingui/cli";
 import { formatter } from "@lingui/format-po";
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "./front/types/locale";
+import {
+  CATALOG_FALLBACK_LOCALES,
+  CATALOG_LOCALES,
+  DEFAULT_LOCALE,
+} from "./front/types/locale";
 
 const SOURCE_DIRECTORIES = ["front/components", "front/hooks", "front/lib"];
 const EXCLUDED_DIRECTORIES = new Set(["front/components/poke", "node_modules"]);
@@ -46,7 +50,7 @@ function listTranslatedDirectories(directory: string): string[] {
 export default defineConfig({
   sourceLocale: DEFAULT_LOCALE,
   locales: [...CATALOG_LOCALES],
-  fallbackLocales: { default: DEFAULT_LOCALE },
+  fallbackLocales: { ...CATALOG_FALLBACK_LOCALES, default: DEFAULT_LOCALE },
   catalogs: [
     ...SOURCE_DIRECTORIES.flatMap(listTranslatedDirectories).map(
       (directory) => ({

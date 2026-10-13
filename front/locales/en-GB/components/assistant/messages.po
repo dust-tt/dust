@@ -1,0 +1,430 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/AgentEditBar.tsx
+msgid "Select all {totalCount, plural, one {# agent} other {# agents}}"
+msgstr ""
+
+#: front/components/assistant/AgentEditBar.tsx
+msgid "Change tag"
+msgstr ""
+
+#: front/components/assistant/AgentEditBar.tsx
+msgid "Search tags"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "Pick an agent"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "Search for agents"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgctxt "verb, button label"
+msgid "Create"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "Loading agents"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "Unable to load agents"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "View agent details"
+msgstr ""
+
+#: front/components/assistant/AgentPicker.tsx
+msgid "No results found"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "Configure"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "View details"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "Capabilities"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "Search capabilities"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "Could not load skills. Try again."
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "No capabilities found"
+msgstr ""
+
+#: front/components/assistant/CapabilitiesPicker.tsx
+msgid "No more capabilities to select"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "New agent"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "From conversation"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "From scratch"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "From template"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "Uploading..."
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "From YAML"
+msgstr ""
+
+#: front/components/assistant/CreateAgentDropdown.tsx
+msgid "Create agent"
+msgstr ""
+
+#: front/components/assistant/DeleteAgentDialog.tsx
+msgid "Archiving the agent"
+msgstr ""
+
+#: front/components/assistant/DeleteAgentDialog.tsx
+msgid "This will archive the agent for everyone."
+msgstr ""
+
+#: front/components/assistant/DeleteAgentDialog.tsx
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+#: front/components/assistant/RestoreAgentDialog.tsx
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "Are you sure you want to proceed?"
+msgstr ""
+
+#: front/components/assistant/DeleteAgentDialog.tsx
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+#: front/components/assistant/DeleteTagDialog.tsx
+#: front/components/assistant/RestoreAgentDialog.tsx
+#: front/components/assistant/SetModelAssistantsDialog.tsx
+#: front/components/assistant/TagCreationDialog.tsx
+#: front/components/assistant/TagUpdateDialog.tsx
+#: front/components/assistant/TagsSuggestDialog.tsx
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/assistant/DeleteAgentDialog.tsx
+msgid "Archive for everyone"
+msgstr ""
+
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+msgctxt "verb, button label"
+msgid "Archive"
+msgstr ""
+
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+msgid "{agentCount, plural, one {Archiving # agent} other {Archiving # agents}}"
+msgstr ""
+
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "{total, plural, one {These agents have been used # time in the last 30 days.} other {These agents have been used # times in the last 30 days.}}"
+msgstr ""
+
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+msgid "This will archive the agents for everyone."
+msgstr ""
+
+#: front/components/assistant/DeleteAssistantsDialog.tsx
+msgid "Archive the agents"
+msgstr ""
+
+#: front/components/assistant/DeleteTagDialog.tsx
+msgid "Are you absolutely sure?"
+msgstr ""
+
+#: front/components/assistant/DeleteTagDialog.tsx
+msgid "This action cannot be undone."
+msgstr ""
+
+#: front/components/assistant/DeleteTagDialog.tsx
+msgid "This will delete the tag \"{tagName}\" permanently."
+msgstr ""
+
+#: front/components/assistant/DeleteTagDialog.tsx
+#: front/components/assistant/TagsManager.tsx
+msgid "Delete tag"
+msgstr ""
+
+#: front/components/assistant/ManageDropdownMenu.tsx
+msgid "Manage agents"
+msgstr ""
+
+#: front/components/assistant/ManageDropdownMenu.tsx
+msgid "Manage skills"
+msgstr ""
+
+#: front/components/assistant/ManageDropdownMenu.tsx
+msgctxt "verb, button label"
+msgid "Manage"
+msgstr ""
+
+#: front/components/assistant/ManageDropdownMenu.tsx
+msgid "Agents"
+msgstr ""
+
+#: front/components/assistant/ManageDropdownMenu.tsx
+msgid "Skills"
+msgstr ""
+
+#: front/components/assistant/RestoreAgentDialog.tsx
+msgid "Restoring the agent"
+msgstr ""
+
+#: front/components/assistant/RestoreAgentDialog.tsx
+msgid "This will restore the agent for everyone."
+msgstr ""
+
+#: front/components/assistant/RestoreAgentDialog.tsx
+msgid "Restore the agent"
+msgstr ""
+
+#: front/components/assistant/SetModelAssistantsDialog.tsx
+msgid "Set model"
+msgstr ""
+
+#: front/components/assistant/SetModelAssistantsDialog.tsx
+msgid "{agentCount, plural, one {Set # agent to {modelLabel}?} other {Set # agents to {modelLabel}?}}"
+msgstr ""
+
+#: front/components/assistant/SetModelAssistantsDialog.tsx
+msgid "This will replace the current model and reasoning effort for every selected agent."
+msgstr ""
+
+#: front/components/assistant/SetModelAssistantsDialog.tsx
+msgid "All other settings will remain unchanged."
+msgstr ""
+
+#: front/components/assistant/TagCreationDialog.tsx
+msgid "Add tag"
+msgstr ""
+
+#: front/components/assistant/TagCreationDialog.tsx
+msgid "Create a new tag for your assistant"
+msgstr ""
+
+#: front/components/assistant/TagCreationDialog.tsx
+#: front/components/assistant/TagUpdateDialog.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/assistant/TagCreationDialog.tsx
+#: front/components/assistant/TagUpdateDialog.tsx
+msgid "Tag name"
+msgstr ""
+
+#: front/components/assistant/TagCreationDialog.tsx
+#: front/components/assistant/TagUpdateDialog.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/assistant/TagUpdateDialog.tsx
+#: front/components/assistant/TagsManager.tsx
+msgid "Edit tag"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Suggest tags"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Add tag manually"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "New tag"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Tag created"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Tag label"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Tag usage"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "Managing tags"
+msgstr ""
+
+#: front/components/assistant/TagsManager.tsx
+msgid "No tags have been created yet. Let AI suggest tags for your agents, or add manually."
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Tag suggestions applied"
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "All tags have been successfully created for your agents."
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Error getting suggestions"
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Please try again. If the problem persists, please contact support."
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Agent tag suggestions"
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Analyzing your agents to create tags..."
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Tag suggestions from your workspace agents:"
+msgstr ""
+
+#: front/components/assistant/TagsSuggestDialog.tsx
+msgid "Apply tag suggestions"
+msgstr ""
+
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "Unpublish"
+msgstr ""
+
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "{agentCount, plural, one {Unpublishing # agent} other {Unpublishing # agents}}"
+msgstr ""
+
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "Unpublished agents will no longer be accessible to everyone in the workspace."
+msgstr ""
+
+#: front/components/assistant/UnpublishAssistantsDialog.tsx
+msgid "Members will need to manually add them to use them."
+msgstr ""
+
+#: front/components/assistant/Usage.tsx
+msgid "Error loading usage data."
+msgstr ""
+
+#: front/components/assistant/Usage.tsx
+msgid "Loading usage data..."
+msgstr ""
+
+#: front/components/assistant/Usage.tsx
+msgid "<0>{nb, plural, one {# message} other {# messages}}</0> over the last {days, plural, one {# day} other {# days}}"
+msgstr ""
+
+#: front/components/assistant/Usage.tsx
+msgid "This agent has been used <0>{nb, plural, one {# time} other {# times}}</0> in the last {days, plural, one {# day} other {# days}}."
+msgstr ""
+
+#: front/components/assistant/Usage.tsx
+msgid "{assistantName} has been used <0>{nb, plural, one {# time} other {# times}}</0> in the last {days, plural, one {# day} other {# days}}."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Search data"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Table query"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Extract data"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Image generation"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Web search and browsing"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Reasoning"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Rise and shine, {firstName}! 🌅"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Welcome to the <0>{workspaceName}</0> workspace."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "{stepCount, plural, one {Discover the basics of Dust in # step.} other {Discover the basics of Dust in # steps.}}"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Use <0>@mentions</0> to call agents and start a conversation."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Make your agents smarter by adding <0>knowledge and tools</0>."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Set up your connections and your tools in the <0>spaces</0> tab."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Explore your workspace <0>knowledge and tools</0> in <1>spaces</1>."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Create new custom agents <0>designed for your needs</0>."
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Dismiss"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Start tour"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Done"
+msgstr ""
+
+#: front/components/assistant/WelcomeTourGuide.tsx
+msgid "Next"
+msgstr ""

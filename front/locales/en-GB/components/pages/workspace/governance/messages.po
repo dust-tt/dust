@@ -1,0 +1,355 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Agents"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Failed to load"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Governance settings could not be loaded."
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Groups assigned here are managed in <0>Members → Groups</0>"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Agents & Skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods & Frames"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Features"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Pods"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Frames"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePage.tsx
+msgid "Automations"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePageLayout.tsx
+msgid "Governance"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernancePageLayout.tsx
+msgid "Manage what members can do in your workspace"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Everyone"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Groups"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Admins only"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "Invalid configuration"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GovernanceSettingRow.tsx
+msgid "This setting references groups that have not been found. Please reload the page."
+msgstr ""
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Add a group"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Search groups"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "No groups found"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "All groups added"
+msgstr ""
+
+#: front/components/pages/workspace/governance/GroupSelector.tsx
+msgid "Create a group"
+msgstr ""
+
+#: front/components/pages/workspace/governance/RoleProvisioningSection.tsx
+msgid "Roles"
+msgstr ""
+
+#: front/components/pages/workspace/governance/SkillDiscoverabilityWarning.tsx
+msgid "Everyone can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable."
+msgstr ""
+
+#: front/components/pages/workspace/governance/SkillDiscoverabilityWarning.tsx
+msgid "{groupCount, plural, one {The group {groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable.} other {The groups {groupNames} can make skills discoverable, but only people who can manage skill availability can act on it. Consider granting them \"Manage skill availability\" to make this permission usable.}}"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Create agents"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can create agents in the Agent Builder"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "who can create agents agent builder permission"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Publish agents"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can publish agents to the whole workspace"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "publish to whole workspace permission"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Create skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can create custom skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "custom skills permission"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Manage skill availability"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can make skills available across the workspace"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "skills available across workspace"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Make skills discoverable to agents"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can make skills discoverable to @Dust and agents with Discover Skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "@dust discover skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Invite people by email"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can share frames by email with people outside your organization"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "frames external sharing"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Share by public link"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can create public links to frames"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "frames public links"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Access billing features"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can manage billing settings, invoices, and payment methods"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "billing settings invoices payment methods groups"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Access security features"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can manage user access, identities, and provisioning"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "user access identities provisioning groups"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Charge automations to the workspace"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "Who can run a trigger on the workspace credit pool instead of their own"
+msgstr ""
+
+#: front/components/pages/workspace/governance/capabilityMetadata.ts
+msgid "trigger workspace credit pool instead of their own"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Workspace Name"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "rename workspace organization name"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Allow self-improving skills"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "self improving skills reinforcement analyze conversations"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Enable batch processing"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "self improving skills zdr immediate data deletion batches"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "per skill editors enabled currently spent lock state"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Frame sharing"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "shareable outside workspace restriction"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Restricted and open Pods"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "members create open pods"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Pod files"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "manually add files to pods manual updates"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Default agent"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "workspace default agent picker"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Language"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "locale localization"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Voice transcription"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "dictation conversations"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Email and Slack notifications"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "conversation notifications"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Private conversation URLs by default"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "conversation privacy participants"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Workspace Analyst"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "analyst agent analytics tools admins"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Archive unused agents"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "archive them once auto"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "Inactivity threshold"
+msgstr ""
+
+#: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
+msgid "days unmentioned archived schedule wake-up excluded"
+msgstr ""

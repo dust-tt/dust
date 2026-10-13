@@ -2,6 +2,7 @@ import { defineConfig } from "@lingui/cli";
 import { formatter } from "@lingui/format-po";
 
 import {
+  SPARKLE_CATALOG_FALLBACK_LOCALES,
   SPARKLE_CATALOG_LOCALES,
   SPARKLE_SOURCE_LOCALE,
 } from "./src/lib/i18n/locales";
@@ -9,6 +10,7 @@ import {
 export default defineConfig({
   sourceLocale: SPARKLE_SOURCE_LOCALE,
   locales: [...SPARKLE_CATALOG_LOCALES],
+  fallbackLocales: { ...SPARKLE_CATALOG_FALLBACK_LOCALES },
   catalogs: [
     {
       path: "<rootDir>/src/locales/{locale}/messages",

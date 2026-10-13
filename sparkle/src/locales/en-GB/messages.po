@@ -1,0 +1,434 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 13:04+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: src/components/ActionCard.tsx
+#: src/components/Chip.tsx
+#: src/components/Citation.tsx
+#: src/components/ImagePreview.tsx
+msgid "Remove"
+msgstr ""
+
+#: src/components/ActionCard.tsx
+msgid "Added"
+msgstr ""
+
+#: src/components/ActionCard.tsx
+msgid "Add"
+msgstr ""
+
+#: src/components/AssistantCard.tsx
+#: src/components/DataTable/menu.tsx
+#: src/components/NavigationList.tsx
+msgid "More actions"
+msgstr ""
+
+#: src/components/Bar.tsx
+msgid "Back"
+msgstr ""
+
+#: src/components/Bar.tsx
+#: src/components/Dialog.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/Sheet.tsx
+#: src/components/Toolbar.tsx
+msgid "Close"
+msgstr ""
+
+#: src/components/Bar.tsx
+msgid "Delete"
+msgstr ""
+
+#: src/components/Bar.tsx
+msgid "Share"
+msgstr ""
+
+#: src/components/Breadcrumbs.tsx
+msgid "Breadcrumb"
+msgstr ""
+
+#: src/components/ComposerInput.tsx
+msgid "Get work done"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "{mentionCount, plural, one {{mentions} Mention} other {{mentions} Mentions}}"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgctxt "follows the mention count, e.g. 2 Mentions in 5 unreads"
+msgid "{unreadCount, plural, one {in {unreads} unread} other {in {unreads} unreads}}"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "{replyCount, plural, one {{replies} Reply} other {{replies} Replies}}"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "{unreadCount, plural, one {{unreads} Unread} other {{unreads} Unread}}"
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "({replyCount, plural, one {{replies} reply} other {{replies} replies}})."
+msgstr ""
+
+#: src/components/ConversationListItem.tsx
+msgid "Last by <0>{lastMessageBy}</0>."
+msgstr ""
+
+#: src/components/ConversationMessage.tsx
+msgid "Message actions"
+msgstr ""
+
+#: src/components/DataTable/ScrollableDataTable.tsx
+msgid "Loading more data…"
+msgstr ""
+
+#: src/components/DataTable/cells.tsx
+msgid "Copy to clipboard"
+msgstr ""
+
+#: src/components/DataTable/selection.tsx
+msgid "Select {label}"
+msgstr ""
+
+#: src/components/DataTable/selection.tsx
+msgid "Select row"
+msgstr ""
+
+#: src/components/DataTable/selection.tsx
+msgid "Select all rows"
+msgstr ""
+
+#: src/components/DataTableSkeleton.tsx
+msgid "Loading table"
+msgstr ""
+
+#: src/components/DiffBlock.tsx
+#: src/components/LoadMore.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show less"
+msgstr ""
+
+#: src/components/DiffBlock.tsx
+#: src/components/TruncatedContent.tsx
+msgid "Show more"
+msgstr ""
+
+#: src/components/FaviconIcon.tsx
+msgid "Website icon"
+msgstr ""
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Creating image"
+msgstr ""
+
+#: src/components/ImageGenerationPlaceholder.tsx
+msgid "Generated image"
+msgstr ""
+
+#: src/components/ImagePreview.tsx
+#: src/components/ImageZoomDialog.tsx
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgid "Download"
+msgstr ""
+
+#: src/components/ImageZoomDialog.tsx
+msgid "Previous image"
+msgstr ""
+
+#: src/components/ImageZoomDialog.tsx
+msgid "Next image"
+msgstr ""
+
+#: src/components/InputWithSave.tsx
+#: src/components/Toolbar.tsx
+msgid "Save"
+msgstr ""
+
+#: src/components/LoadMore.tsx
+#: src/components/Spinner.tsx
+msgid "Loading"
+msgstr ""
+
+#: src/components/LoadMore.tsx
+msgid "Load more"
+msgstr ""
+
+#: src/components/LoadMore.tsx
+#: src/components/Pagination.tsx
+msgid "{rowCount, plural, one {{formattedRowCount} item} other {{formattedRowCount} items}}"
+msgstr ""
+
+#: src/components/LoadMore.tsx
+msgid "Showing {formattedRowCount} of {totalRowCount, plural, one {{formattedTotalRowCount}+ item} other {{formattedTotalRowCount}+ items}}"
+msgstr ""
+
+#: src/components/LoadMore.tsx
+msgid "Showing {formattedRowCount} of {totalRowCount, plural, one {{formattedTotalRowCount} item} other {{formattedTotalRowCount} items}}"
+msgstr ""
+
+#: src/components/MessageCard.tsx
+msgid "New on Dust"
+msgstr ""
+
+#: src/components/MessageCard.tsx
+msgid "Learn more"
+msgstr ""
+
+#: src/components/MessageCard.tsx
+msgid "Dismiss"
+msgstr ""
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+#: src/components/Pagination.tsx
+msgid "Previous page"
+msgstr ""
+
+#: src/components/MultiPageDialog.tsx
+#: src/components/MultiPageSheet.tsx
+#: src/components/Pagination.tsx
+msgid "Next page"
+msgstr ""
+
+#: src/components/NavigationList.tsx
+msgid "Hide"
+msgstr ""
+
+#: src/components/NavigationList.tsx
+msgid "Show all"
+msgstr ""
+
+#: src/components/Notification.tsx
+msgid "Dismiss notification"
+msgstr ""
+
+#: src/components/Notification.tsx
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Details"
+msgstr ""
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItem}-{lastItem} of {rowCount, plural, one {{formattedRowCount}+ item} other {{formattedRowCount}+ items}}"
+msgstr ""
+
+#: src/components/Pagination.tsx
+msgid "Showing {firstItem}-{lastItem} of {rowCount, plural, one {{formattedRowCount} item} other {{formattedRowCount} items}}"
+msgstr ""
+
+#: src/components/ProgressBar.tsx
+msgid "Progress"
+msgstr ""
+
+#: src/components/SearchDropdownMenu.tsx
+#: src/components/SearchInput.tsx
+msgid "Search"
+msgstr ""
+
+#: src/components/SearchInput.tsx
+msgid "Clear search"
+msgstr ""
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {{formattedItemCount} search result} other {{formattedItemCount} search results}} (out of {formattedTotalItems})."
+msgstr ""
+
+#: src/components/SearchInput.tsx
+msgid "{itemCount, plural, one {{formattedItemCount} search result.} other {{formattedItemCount} search results.}}"
+msgstr ""
+
+#: src/components/SearchInput.tsx
+msgid "Select all"
+msgstr ""
+
+#: src/components/Toolbar.tsx
+msgid "Insert link"
+msgstr ""
+
+#: src/components/Toolbar.tsx
+msgid "Add a link to your message with custom text."
+msgstr ""
+
+#: src/components/Toolbar.tsx
+msgid "Text"
+msgstr ""
+
+#: src/components/Toolbar.tsx
+msgid "Link"
+msgstr ""
+
+#: src/components/Toolbar.tsx
+msgid "Cancel"
+msgstr ""
+
+#: src/components/Tree.tsx
+msgid "Collapse"
+msgstr ""
+
+#: src/components/Tree.tsx
+msgid "Expand"
+msgstr ""
+
+#: src/components/VoicePicker.tsx
+msgctxt "verb, stop recording"
+msgid "Stop"
+msgstr ""
+
+#: src/components/VoicePicker.tsx
+msgid "Transcribing…"
+msgstr ""
+
+#: src/components/VoicePicker.tsx
+msgid "Release to stop"
+msgstr ""
+
+#: src/components/VoicePicker.tsx
+msgid "Stop recording"
+msgstr ""
+
+#: src/components/VoicePicker.tsx
+msgid "Click, or press and hold to record"
+msgstr ""
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Apply"
+msgstr ""
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Reject"
+msgstr ""
+
+#: src/components/markdown/ActionCardBlock.tsx
+msgid "Always allow"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the diagram's raw source code"
+msgid "Markdown"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "button label, show the rendered diagram"
+msgid "Mermaid"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the diagram's raw source code"
+msgid "Switch to Markdown"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the rendered diagram"
+msgid "Switch to Mermaid"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Raw JSON"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgid "Pretty JSON"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON source text"
+msgid "Switch to Raw JSON"
+msgstr ""
+
+#: src/components/markdown/CodeBlockWithExtendedSupport.tsx
+msgctxt "tooltip, show the JSON as a formatted tree"
+msgid "Switch to Pretty View"
+msgstr ""
+
+#: src/components/markdown/ContentBlockWrapper.tsx
+msgctxt "verb, copy to clipboard"
+msgid "Copy"
+msgstr ""
+
+#: src/components/markdown/List.tsx
+msgid "Done"
+msgstr ""
+
+#: src/components/markdown/List.tsx
+msgid "Step {formattedNumber}"
+msgstr ""
+
+#: src/components/markdown/List.tsx
+msgid "To do"
+msgstr ""
+
+#: src/components/markdown/Markdown.tsx
+msgid "There was an error parsing this markdown content"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, show hidden JSON content"
+msgid "expand"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Maximum depth reached"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "a null JSON value"
+msgid "empty"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Yes"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "No"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "verb, hide JSON content"
+msgid "collapse"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "expand ({hiddenCharCount, plural, one {{hiddenChars} more character} other {{hiddenChars} more characters}})"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "empty list"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "Item {itemNumber}"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenItemCount, plural, one {{hiddenItems} more item} other {{hiddenItems} more items}}"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgctxt "an empty JSON object"
+msgid "empty"
+msgstr ""
+
+#: src/components/markdown/PrettyJsonViewer.tsx
+msgid "{hiddenPropertyCount, plural, one {{hiddenProperties} more property} other {{hiddenProperties} more properties}}"
+msgstr ""
+
+#: src/lib/SafeSuspense.tsx
+msgid "Failed to load. Please reload the page."
+msgstr ""

@@ -1,0 +1,100 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include transcript"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include meeting transcript with speaker attribution"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include summary"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include AI-generated meeting summary"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include action items"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include extracted action items"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include CRM matches"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Include linked CRM contacts and companies"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Configure Fathom webhook"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select which recordings should trigger webhooks and what content to include."
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Recording types"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of recording to receive"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Content options"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/CreateWebhookFathomConnection.tsx
+msgid "Select at least one type of content to include"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Webhook configuration"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "None configured"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Included content"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Transcript"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgctxt "meeting summary"
+msgid "Summary"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "Action items"
+msgstr ""
+
+#: front/lib/triggers/built-in-webhooks/fathom/components/WebhookSourceFathomDetails.tsx
+msgid "CRM matches"
+msgstr ""

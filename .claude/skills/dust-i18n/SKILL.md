@@ -9,9 +9,9 @@ The product UI is localised with [Lingui](https://lingui.dev). The English text 
 there are no hand-written ids. The supported locales are `SUPPORTED_LOCALES` in
 `front/types/locale.ts`. Each source directory using Lingui has its own catalog per `CATALOG_LOCALES`
 entry, at `front/locales/{locale}/<directory relative to front>/messages.po`, holding the messages of
-the files directly in that directory (`en-GB` uses the `en-US` messages with British date and number
-formatting). Code imports `front/locales/{locale}.catalog`, which compiles to all of the locale's
-catalogs merged together.
+the files directly in that directory (`en-GB` only translates the messages whose British spelling
+differs and falls back to `en-US` for the others). Code imports `front/locales/{locale}.catalog`,
+which compiles to all of the locale's catalogs merged together.
 
 A file that already uses Lingui MUST keep every user-visible string translated. New UI code SHOULD
 be written translated. After changing strings, follow [Workflow](#workflow) and translate with the
@@ -113,9 +113,10 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - The locale comes from `SparkleI18nProvider`. Without it, sparkle renders `en-US` (marketing,
   viz, the extension). Front mounts `SparkleLocaleProvider` (`front/components/app/`) at every app
   root that mounts `UserLocaleSync`, and front tests already wrap in it. Sparkle's locale is a
-  catalog locale (`en-GB` renders as `en-US`).
+  catalog locale (`en-GB` has its own catalog, falling back to `en-US`).
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
-  `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
+  `CATALOG_LOCALES` entry, and `SPARKLE_CATALOG_FALLBACK_LOCALES` the same entries as
+  `CATALOG_FALLBACK_LOCALES`: adding a catalog locale to front means adding it to sparkle too.
 
 ## Slack and Teams bots (`connectors`)
 
@@ -143,7 +144,8 @@ See `connectors/src/connectors/slack/CONTRACTS` and `connectors/src/api/webhooks
 1. Wrap the strings with the macros above.
 2. From the repository root (or `sparkle/` for sparkle code), run `npm run i18n:extract`: it
    updates every catalog and removes obsolete messages.
-3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
+3. Fill the new empty `msgstr` entries with the `dust-translate` skill (for `en-GB`, only those whose
+   British spelling differs).
 4. Run `npm run i18n:check` from the same directory (also run in CI): it fails on stale catalogs
    and missing translations.
 5. Commit the code and the catalogs together.

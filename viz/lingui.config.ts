@@ -1,11 +1,16 @@
 import { defineConfig } from "@lingui/cli";
 import { formatter } from "@lingui/format-po";
 
-import { VIZ_CATALOG_LOCALES, VIZ_SOURCE_LOCALE } from "./app/lib/i18n/locales";
+import {
+  VIZ_CATALOG_FALLBACK_LOCALES,
+  VIZ_CATALOG_LOCALES,
+  VIZ_SOURCE_LOCALE,
+} from "./app/lib/i18n/locales";
 
 export default defineConfig({
   sourceLocale: VIZ_SOURCE_LOCALE,
   locales: [...VIZ_CATALOG_LOCALES],
+  fallbackLocales: { ...VIZ_CATALOG_FALLBACK_LOCALES },
   catalogs: [
     {
       path: "<rootDir>/locales/{locale}/messages",

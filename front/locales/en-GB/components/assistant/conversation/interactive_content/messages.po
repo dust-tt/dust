@@ -1,0 +1,187 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Exporting..."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Export"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Source (.zip)"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Template"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Portrait"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/ExportContentDropdown.tsx
+msgid "Landscape"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Pod"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Save to <0>{podName}</0>?"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "The Frame will be part of the Pod knowledge, and be able to be edited by any Pod member."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "This action cannot be undone."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Failed to save to Pod"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Saved to Pod"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Frame saved to \"{podName}\"."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "An error occurred"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Error loading file: {errorMessage}"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "unknown Pod"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Switch to rendering"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Switch to code"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Saved"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Saved in \"{savePodName}\""
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Saving…"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Save to \"{savePodName}\""
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Publishing your changes..."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Error loading the Frame source."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Exit full screen mode"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Go to full screen mode"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Open in a new tab"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Revert the last change"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "No previous version"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/FrameRenderer.tsx
+msgid "Reload the file"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/InteractiveContentContainer.tsx
+#: front/components/assistant/conversation/interactive_content/PublicInteractiveContentContainer.tsx
+msgid "Loading Frame..."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/InteractiveContentContainer.tsx
+msgid "Error loading file metadata"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicFrameRenderer.tsx
+msgid "Loading the Frame..."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicFrameRenderer.tsx
+msgid "Error loading the Frame: {error}"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
+msgid "Workspace logo"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
+msgid "Try it yourself"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
+msgid "Go to conversation"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/PublicInteractiveContentHeader.tsx
+msgid "Go to Pod"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/UnsupportedContentRenderer.tsx
+msgid "Unsupported content type"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/UnsupportedContentRenderer.tsx
+msgid "This content type is not yet supported in the Frame drawer."
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/UnsupportedContentRenderer.tsx
+msgid "<0>Content type:</0> {contentType}"
+msgstr ""
+
+#: front/components/assistant/conversation/interactive_content/UnsupportedContentRenderer.tsx
+msgid "<0>File:</0> {fileName}"
+msgstr ""

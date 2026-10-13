@@ -1,0 +1,860 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/api_error_messages.ts
+msgid "An unexpected error occurred."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You are not signed in."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace requires you to sign in with SSO."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The request is missing its authorization header."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The request authorization header is malformed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The request basic authorization is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your session token is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your session has expired. Sign in again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The API key is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The sandbox token is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Something went wrong on our side."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The request is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The table rows are invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "User not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The content is too large."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The data source returned an error."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data source not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Data source view not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this data source."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The data source has reached its quota."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The workspace has reached its quota."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Document not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This data source isn't managed by a connection."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The run failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "App not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this app."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The model provider rejected the credentials."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Model provider not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The model provider endpoint is invalid or can't be reached."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Dataset not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Workspace not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This workspace is hosted in another region."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace can't use this product with its current plan."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "User not found in this workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This operation isn't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Personal workspace not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed with an unknown error."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The action failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Membership not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your membership to this workspace was revoked."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Invitation not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached a limit of your plan."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Template not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Message not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Connection not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection couldn't be updated."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to update this connection."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection's authorization wasn't found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account doesn't match this connection."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account is missing required permissions."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The authorized account must be an admin."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This connection type isn't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials are invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The connection credentials weren't found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Another operation is in progress on this connection."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Agent not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this agent."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have permission to edit this agent."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The agent message failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The request couldn't be processed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached the message limit of your plan."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your workspace has run out of credits."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You've reached your usage limit."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Your group has reached its shared usage limit."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have a seat in this workspace."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This model is disabled."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This Dust agent couldn't be updated."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The billing product is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Too many requests. Try again in a moment."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription payment failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Subscription not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The subscription is in an invalid state."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This isn't available during the trial."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The service is temporarily unavailable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The agent couldn't be saved."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected error."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The server returned an unexpected response."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A network error occurred."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The action returned an unexpected response."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Feature flag not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This feature flag already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The pagination parameters are invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Table not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An invitation was already sent recently."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Secret not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "API key not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The API key doesn't have the required scope."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Admin API keys already read the analytics of every group."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Analytics access can only be granted on manual or provisioned groups."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Transcripts configuration not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This transcripts configuration can't be the default."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A transcripts configuration already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "File not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file is too large."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file type isn't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The file is empty."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You can only read this file."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file is being edited live and changed before your edit could be saved. Reload it and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This file is being edited live and can't take this change."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Run not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A space with this name already exists."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Space not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Task not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Group not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The order sent does not list every group with a budget exactly once."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The order of group budgets changed since you opened it. Reopen the group to see the current order."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Coupon not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon can't be redeemed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This coupon was already redeemed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Plugin not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The plugin failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Recommendation not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Work area not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Trigger not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Webhook source not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this webhook source."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This webhook source is used by an agent trigger."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook source is misconfigured."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be processed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The webhook couldn't be stored."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Tool connection not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Tool not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Action not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This action isn't waiting for approval."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You don't have access to this conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "An agent is still running in this conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This conversation uses an agent that is no longer available."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You're already a participant in this conversation."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You aren't allowed to delete this message."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "This message has changed. Refresh the page and try again."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Conversation context usage not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool rejected the credentials."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The tool identifier is invalid."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Organization not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The authentication provider returned an error."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple SSO connections aren't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Multiple directories aren't supported."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "You need to sign in to continue."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Agent memory not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Search failed."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Skill not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "GitHub repository not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Sandbox function call not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "The frame runtime is unavailable."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A Frame's manifest can't be moved or renamed on its own. Move or rename the Frame's folder instead."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "A fast function can't call tools."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Project details not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestion not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Suggestions not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Wake-up not found."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Another user has an active wake-up in this conversation. Only they can post until it fires or is canceled."
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Code: {code}"
+msgstr ""
+
+#: front/lib/api_error_messages.ts
+msgid "Message: {rawMessage}"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust indexes pages in selected global spaces without any view restrictions. If a page, or its parent pages, have view restrictions, it won't be indexed."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Confluence Domain.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Domain."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select pages"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "External files and content behind links are not indexed."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Notion Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Synchronized content"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Files with empty text content or with more than 750KB of extracted text are ignored. By default, PDF files are not indexed. Email us at support@dust.tt to enable PDF indexing."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Google Drive Domain.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong shared Drive."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select folders and files"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Google Drive will be synced and processed by Dust."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Slack Team.\n"
+"Please contact us at support@dust.tt if you initially selected the wrong Team."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select channels"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "N/A"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust gathers data from issues, discussions, and pull-requests (top-level discussion, but not in-code comments). It synchronizes your code only if enabled. At this time, Dust cannot sync code repositories over 10GB, or individual files over 4MB. Please contact support@dust.tt if you need to sync larger repositories."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another GitHub Organization.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Organization or if you completely uninstalled the GitHub app."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Authorized content"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index only the conversations from the selected Teams that were initiated within the past 90 days and concluded (marked as closed). For the Help Center data, Dust will index every Article published within a selected Collection."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Intercom Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will only index documents accessible to the account used when making the connection. Only organizational accounts are supported (Sharepoint). At the time, OneDrive cannot be synced."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft account.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong account."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select the folder to enable file synchronization."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "When enabled, PDF documents from your Microsoft OneDrive and SharePoint will be synced and processed by Dust."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot must be enabled in organization settings."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Microsoft tenant.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong tenant."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Bot configuration"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the URL. Please add a new Public URL instead."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Snowflake account. Please add a new Snowflake connection instead."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Select tables"
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "Dust will index the content accessible to the authorized account only. Attachments are not indexed."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot select another Zendesk Workspace.\n"
+"Please contact us at support@dust.tt if you initially selected a wrong Workspace."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the BigQuery project. Please add a new BigQuery connection instead."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Salesforce instance URL. Please add a new Salesforce connection instead."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "OAuth requires Gong administrator access. All transcripts from the workspace will be synchronized with Dust, except those marked as private in Gong. A Permission Profile can be selected to restrict synced calls to participants from that profile."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Gong account. Please add a new Gong connection instead."
+msgstr ""
+
+#: front/lib/connector_providers_ui.ts
+msgid "You cannot change the Dust Pod. Please add a new Dust Pod connection instead."
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Revoke invitation"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Are you sure you want to revoke the invitation for {inviteEmail}?"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Yes, revoke"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Role update failed"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Revoke failed"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Role updated"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{newRole, select, admin {Invitation updated to admin for {inviteEmail}.} manager {Invitation updated to manager for {inviteEmail}.} user {Invitation updated to member for {inviteEmail}.} other {Invitation updated for {inviteEmail}.}}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Invitation revoked for {inviteEmail}."
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Invite failed} other {Invites failed}}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {This user has already been invited in the last 24 hours. Please wait before sending another invite.} other {These users have already been invited in the last 24 hours. Please wait before sending another invite.}}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Invite failed"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{email}: {error_message}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Some invites failed"
+msgstr ""
+
+#. placeholder {0}: failures.length
+#: front/lib/invitations.ts
+msgid "{0, plural, one {# invite could not be sent.} other {# invites could not be sent.}}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "Invites sent"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {# new invite sent.} other {# new invites sent.}}"
+msgstr ""
+
+#: front/lib/invitations.ts
+msgid "{emailCount, plural, one {Sent # invite again.} other {Sent # invites again.}}"
+msgstr ""

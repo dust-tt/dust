@@ -78,7 +78,7 @@ describe("UserLocaleSync", () => {
     expect(document.documentElement.lang).toBe("fr-FR");
   });
 
-  it("activates en-GB with the en-US messages", async () => {
+  it("activates en-GB with the en-GB catalog", async () => {
     state.hasLocalisation = true;
     state.userLocale = "en-GB";
 
@@ -86,7 +86,7 @@ describe("UserLocaleSync", () => {
 
     await waitFor(() => expect(i18n.locale).toBe("en-GB"));
     expect(document.documentElement.lang).toBe("en-GB");
-    expect(await loadCatalog("en-GB")).toBe(await loadCatalog("en-US"));
+    expect(i18n.messages).toEqual(await loadCatalog("en-GB"));
   });
 
   it("formats in the browser locale when the flag is disabled", async () => {
