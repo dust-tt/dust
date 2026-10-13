@@ -1,7 +1,6 @@
 import type {
   Model as HostModel,
   MessageCreateParamsNonStreaming,
-  MessageParam,
   TextBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { Client } from "@app/lib/model_constructors/client";
@@ -11,7 +10,10 @@ import {
   includesToolSearchTool,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
 import { stripUnreplayableToolSearchBlocks } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
-import type { MessageBlockConverters } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import type {
+  AnthropicMessageParam,
+  MessageBlockConverters,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
 import {
   assistantProviderPassthroughMessageToBlocks,
   assistantReasoningMessageToThinkingBlocks,
@@ -35,6 +37,13 @@ import type {
 import type { Model } from "@app/lib/model_constructors/types/models";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
+
+// The Messages API request, with messages that may carry a per-message `output_config`. Assignable
+// to `MessageCreateParamsNonStreaming` and to the beta request params.
+export type AnthropicRequestPayload = Omit<
+  MessageCreateParamsNonStreaming,
+  "messages"
+> & { messages: AnthropicMessageParam[] };
 
 // Turns our provider-agnostic conversation/config into the Anthropic Messages
 // API request shape. Leaf converters are bound as class fields and composites
@@ -62,7 +71,7 @@ export function WithAnthropicAIInputConverter<
 
     conversationToMessages(
       conversation: Payload["conversation"]
-    ): Promise<MessageParam[]> {
+    ): Promise<AnthropicMessageParam[]> {
       return conversationToMessages(conversation, this);
     }
 
@@ -73,7 +82,7 @@ export function WithAnthropicAIInputConverter<
     async buildRequestPayload(
       payload: Payload,
       config: AnthropicInputConfig
-    ): Promise<MessageCreateParamsNonStreaming> {
+    ): Promise<AnthropicRequestPayload> {
       const { conversation } = payload;
       const {
         tools = [],
