@@ -66,7 +66,7 @@ function capabilityEntries(): AdminSettingEntry[] {
 export const GOVERNANCE_SEARCH_ENTRIES: AdminSettingEntry[] = [
   // Always mounted above the tabs (no `?tab=`).
   ...adminSearchEntries(PAGE, G.workspaceName, [
-    [msg`Workspace Name`, msg`rename workspace organization name`],
+    [msg`Workspace name`, msg`rename workspace organization name`],
   ]),
   ...capabilityEntries(),
   ...adminSearchEntries(

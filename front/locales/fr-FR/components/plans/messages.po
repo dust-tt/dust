@@ -90,11 +90,11 @@ msgid "Enterprise (Seat-based)"
 msgstr "Enterprise (par siège)"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Monthly Billing"
+msgid "Monthly billing"
 msgstr "Facturation mensuelle"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Yearly Billing"
+msgid "Yearly billing"
 msgstr "Facturation annuelle"
 
 #: front/components/plans/SubscriptionPlanCards.tsx

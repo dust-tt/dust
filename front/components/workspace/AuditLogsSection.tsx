@@ -31,7 +31,7 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.auditLogs}>
       <div className="heading-base text-foreground">
-        <Trans>Audit Logs</Trans>
+        <Trans>Audit logs</Trans>
       </div>
       <div className="text-sm text-muted-foreground">
         <Trans>
@@ -42,14 +42,14 @@ export function AuditLogsSection({ owner }: AuditLogsSectionProps) {
 
       <div className="flex gap-2">
         <Button
-          label={t`View Logs`}
+          label={t`View logs`}
           size="sm"
           variant="outline"
           disabled={loadingPortal !== null}
           onClick={() => void handleClick("view_logs")}
         />
         <Button
-          label={t`Configure Export`}
+          label={t`Configure export`}
           size="sm"
           variant="outline"
           disabled={loadingPortal !== null}

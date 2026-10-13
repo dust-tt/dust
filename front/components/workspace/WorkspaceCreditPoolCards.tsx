@@ -349,7 +349,7 @@ export function WorkspaceCreditPoolSection({
     <Page.Vertical align="stretch" gap="xl">
       {cardsStatus === "error" ? (
         <ContentMessage
-          title={t`Failed to load Workspace Credits Pool`}
+          title={t`Failed to load workspace credits pool`}
           icon={AlertCircle}
           variant="warning"
         >

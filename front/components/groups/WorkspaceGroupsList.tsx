@@ -102,7 +102,7 @@ export function WorkspaceGroupsList({ owner }: WorkspaceGroupsListProps) {
       },
       {
         id: "managers",
-        header: t`Group Manager`,
+        header: t`Group manager`,
         meta: { className: "w-[240px]" },
         cell: ({ row }) => {
           const { managers } = row.original;

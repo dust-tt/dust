@@ -360,7 +360,7 @@ export function LegacyProgrammaticUsagePanel({
       <Page.Vertical gap="xl" align="stretch">
         {showHeader && (
           <Page.Header
-            title={t`Programmatic Usage`}
+            title={t`Programmatic usage`}
             description={
               <div>
                 <p>

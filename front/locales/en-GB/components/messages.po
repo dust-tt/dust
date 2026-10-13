@@ -253,11 +253,11 @@ msgid "Learn about Dust"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Guides & Documentation"
+msgid "Guides & documentation"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Join the Slack Community"
+msgid "Join the Slack community"
 msgstr ""
 
 #: front/components/UserMenu.tsx
@@ -297,7 +297,7 @@ msgid "Account"
 msgstr ""
 
 #: front/components/UserMenu.tsx
-msgid "Personal Settings"
+msgid "Personal settings"
 msgstr ""
 
 #: front/components/UserMenu.tsx
@@ -365,7 +365,7 @@ msgid "Pronouns must be at most {MAX_USER_PRONOUNS_LENGTH} characters."
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx
-msgid "Personal Information"
+msgid "Personal information"
 msgstr ""
 
 #: front/components/UserSettingsPopover.tsx

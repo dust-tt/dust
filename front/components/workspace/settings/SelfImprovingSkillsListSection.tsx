@@ -396,10 +396,10 @@ export function SelfImprovingSkillsListSection({
         enabled: t`Enabled`,
         currentSpend:
           unit === "awu_credits"
-            ? t`Current Spend (credits)`
-            : t`Current Spend ($)`,
+            ? t`Current spend (credits)`
+            : t`Current spend ($)`,
         cap: t`Cap`,
-        lockState: t`Lock State`,
+        lockState: t`Lock state`,
       }),
     [t, unit, capUnit]
   );

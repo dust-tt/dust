@@ -181,7 +181,7 @@ export function InvitationsList({
     sendNotification,
     sendApiErrorNotification,
     labels: {
-      invitationEmail: t`Invitation Email`,
+      invitationEmail: t`Invitation email`,
       role: t`Role`,
       resend: t`Resend`,
     },

@@ -93,7 +93,7 @@ export function AccessSection({
       : t`${plural(editorsCount, { one: "# editor", other: "# editors" })}`;
 
   return (
-    <SettingSectionContainer title={t`Editors & Access`}>
+    <SettingSectionContainer title={t`Editors & access`}>
       <div className="mt-2 flex w-full flex-row flex-wrap items-center gap-2">
         {isEditorGateVisible ? (
           <BecomeEditorButton

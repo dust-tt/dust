@@ -251,7 +251,7 @@ export const NewAPIKeyDialog = ({
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          label={t`Create API Key`}
+          label={t`Create API key`}
           icon={Plus}
           disabled={disabled || isGenerating || isRevoking}
         />
@@ -259,13 +259,13 @@ export const NewAPIKeyDialog = ({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            <Trans>New API Key</Trans>
+            <Trans>New API key</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <FormProvider {...form}>
             <div className="space-y-4">
-              <BaseFormFieldSection title={t`API Key Name`} fieldName="name">
+              <BaseFormFieldSection title={t`API key name`} fieldName="name">
                 {({ registerRef, registerProps, onChange, errorMessage }) => (
                   <Input
                     ref={registerRef}
@@ -349,7 +349,7 @@ export const NewAPIKeyDialog = ({
                       items={analyticsGroups}
                       selectedIds={selectedAnalyticsGroupIds}
                       onChange={setSelectedAnalyticsGroupIds}
-                      addLabel={t`Add Groups`}
+                      addLabel={t`Add groups`}
                       searchName="analyticsGroupSearch"
                       searchPlaceholder={t`Search groups`}
                       emptyLabel={t`No groups found`}

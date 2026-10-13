@@ -140,8 +140,8 @@ msgid "This group has no members."
 msgstr "This group has no members."
 
 #: front/components/groups/WorkspaceGroupsList.tsx
-msgid "Group Manager"
-msgstr "Group Manager"
+msgid "Group manager"
+msgstr "Group manager"
 
 #: front/components/groups/WorkspaceGroupsList.tsx
 msgid "More options"

@@ -216,7 +216,7 @@ function DisableWorkOSSSOConnectionModal({
       <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>
-            <Trans>Disable {connectionType} Single Sign On</Trans>
+            <Trans>Disable {connectionType} Single Sign-On</Trans>
           </DialogTitle>
         </DialogHeader>
         <DialogContainer>
@@ -231,7 +231,7 @@ function DisableWorkOSSSOConnectionModal({
             variant: "outline",
           }}
           rightButtonProps={{
-            label: t`Disable ${connectionType} Single Sign On`,
+            label: t`Disable ${connectionType} Single Sign-On`,
             variant: "warning",
             onClick: async () => {
               await doDisableWorkOSSSOConnection();

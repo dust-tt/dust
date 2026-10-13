@@ -90,12 +90,12 @@ msgid "Enterprise (Seat-based)"
 msgstr "Enterprise (Seat-based)"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Monthly Billing"
-msgstr "Monthly Billing"
+msgid "Monthly billing"
+msgstr "Monthly billing"
 
 #: front/components/plans/ProPlansTable.tsx
-msgid "Yearly Billing"
-msgstr "Yearly Billing"
+msgid "Yearly billing"
+msgstr "Yearly billing"
 
 #: front/components/plans/SubscriptionPlanCards.tsx
 msgid "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral, and more"

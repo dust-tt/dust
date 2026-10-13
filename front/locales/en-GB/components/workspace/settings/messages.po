@@ -316,11 +316,11 @@ msgid "Enabled"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Current Spend (credits)"
+msgid "Current spend (credits)"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Current Spend ($)"
+msgid "Current spend ($)"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
@@ -328,7 +328,7 @@ msgid "Cap"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
-msgid "Lock State"
+msgid "Lock state"
 msgstr ""
 
 #: front/components/workspace/settings/SelfImprovingSkillsListSection.tsx
@@ -432,7 +432,7 @@ msgid "Failed to update workspace."
 msgstr ""
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Workspace Name"
+msgid "Workspace name"
 msgstr ""
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
@@ -440,15 +440,11 @@ msgid "Edit"
 msgstr ""
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Edit Workspace Name"
+msgid "Edit workspace name"
 msgstr ""
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx
 msgid "Think GitHub repository names, short and memorable."
-msgstr ""
-
-#: front/components/workspace/settings/WorkspaceNameEditor.tsx
-msgid "Workspace name"
 msgstr ""
 
 #: front/components/workspace/settings/WorkspaceNameEditor.tsx

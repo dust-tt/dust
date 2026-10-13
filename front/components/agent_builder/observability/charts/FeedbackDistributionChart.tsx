@@ -173,7 +173,7 @@ export function FeedbackDistributionChart({
 
   return (
     <ChartContainer
-      title={t`Feedback Trends`}
+      title={t`Feedback trends`}
       description={t`Daily counts of positive and negative feedback.`}
       isLoading={isFeedbackDistributionLoading}
       errorMessage={

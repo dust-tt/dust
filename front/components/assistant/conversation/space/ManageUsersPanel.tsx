@@ -212,8 +212,8 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const spaceName = mode === "space-members" ? props.space.name : "";
   const sheetTitle =
     mode === "space-members"
-      ? t`Manage Members of ${spaceName}`
-      : (props.title ?? t`Manage Editors`);
+      ? t`Manage members of ${spaceName}`
+      : (props.title ?? t`Manage editors`);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>

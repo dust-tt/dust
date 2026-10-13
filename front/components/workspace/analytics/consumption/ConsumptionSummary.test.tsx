@@ -59,7 +59,7 @@ describe("ConsumptionSummary", () => {
         analyticsScope: agentAnalyticsScope,
       })
     );
-    expect(screen.getByText("Active Users")).toBeInTheDocument();
+    expect(screen.getByText("Active users")).toBeInTheDocument();
     expect(screen.getByText("Messages / active user")).toBeInTheDocument();
     expect(screen.getByText("283")).toBeInTheDocument();
     expect(screen.getByText("Total cost")).toBeInTheDocument();
@@ -67,7 +67,7 @@ describe("ConsumptionSummary", () => {
     expect(screen.getByText("Avg. cost/msg")).toBeInTheDocument();
     expect(screen.getByText("0.2 credits")).toBeInTheDocument();
     const activeUsersCard = screen
-      .getByText("Active Users")
+      .getByText("Active users")
       .closest(".bg-panel-background");
     expect(activeUsersCard).toHaveClass("h-20");
     expect(activeUsersCard).not.toHaveClass("h-24");
@@ -112,7 +112,7 @@ describe("ConsumptionSummary", () => {
       screen.getByText("Top agent").closest(".bg-panel-background")
     ).toHaveClass("h-24");
     expect(container.firstElementChild).toHaveClass("gap-4");
-    expect(screen.queryByText("Active Users")).not.toBeInTheDocument();
+    expect(screen.queryByText("Active users")).not.toBeInTheDocument();
     expect(screen.queryByText("Total cost")).not.toBeInTheDocument();
   });
 });

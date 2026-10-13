@@ -41,7 +41,7 @@ export const INTEGRATIONS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     I.clients,
     [
       [msg`MCP server`, msg`external mcp clients connect manage`],
-      [msg`Browser Extension Tools`, msg`list read browser tabs extension`],
+      [msg`Browser extension tools`, msg`list read browser tabs extension`],
     ],
     "clients"
   ),

@@ -255,7 +255,7 @@ export function ModelsPage() {
             <TabsTrigger value="members" label={t`Members`} />
             <TabsTrigger value="groups" label={t`Groups`} />
             {showApps && (
-              <TabsTrigger value="apps" label={t`App Credentials`} />
+              <TabsTrigger value="apps" label={t`App credentials`} />
             )}
             <TabsTrigger value="tiers" label={t`Settings`} />
           </TabsList>

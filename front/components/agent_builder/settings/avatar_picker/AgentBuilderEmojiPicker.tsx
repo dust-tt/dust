@@ -86,7 +86,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
             <Button
               variant="outline"
               icon={FaceSmile}
-              label={t`Pick an Emoji`}
+              label={t`Pick an emoji`}
             />
           </PopoverTrigger>
           <PopoverContent fullWidth>

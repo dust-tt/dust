@@ -52,7 +52,7 @@ export function SecretsPage() {
     <AdminPageContainer>
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title={t`Developer Secrets`}
+          title={t`Developer secrets`}
           description={t`Secrets usable in Dust apps or MCP servers to safely store sensitive data.`}
         />
         <SecretsPageContent />
@@ -204,9 +204,9 @@ export function SecretsPageContent() {
           <DialogHeader>
             <DialogTitle>
               {isInputNameDisabled ? (
-                <Trans>Update Developer Secret</Trans>
+                <Trans>Update developer secret</Trans>
               ) : (
-                <Trans>New Developer Secret</Trans>
+                <Trans>New developer secret</Trans>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -265,7 +265,7 @@ export function SecretsPageContent() {
               onChange={setSearchQuery}
             />
             <Button
-              label={t`API Reference`}
+              label={t`API reference`}
               size="sm"
               variant="outline"
               icon={BookOpen01}
@@ -278,7 +278,7 @@ export function SecretsPageContent() {
             />
             {isAdmin && (
               <Button
-                label={t`Create Secret`}
+                label={t`Create secret`}
                 variant="primary"
                 onClick={() => {
                   setNewDustAppSecret(defaultSecret);

@@ -17,7 +17,7 @@ export function ExtensionMcpToolsSection({
 
   return (
     <GovernanceSettingRowLayout
-      label={t`Browser Extension Tools`}
+      label={t`Browser extension tools`}
       description={t`Whether the Dust browser extension is allowed to list and read browser tabs.`}
       action={
         <SliderToggle

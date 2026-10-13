@@ -109,7 +109,7 @@ function DomainVerification({
   return (
     <AdminSectionAnchor sectionId={ADMIN_SECTION_IDS.identity.domain}>
       <span className="heading-base text-foreground">
-        <Trans>Domain Verification</Trans>
+        <Trans>Domain verification</Trans>
       </span>
       <Page.P variant="secondary">
         <Trans>
@@ -124,7 +124,7 @@ function DomainVerification({
         <EmptyCTA
           action={
             <Button
-              label={t`Add Domain`}
+              label={t`Add domain`}
               variant="primary"
               icon={Plus}
               href={addDomainLink}
@@ -171,7 +171,7 @@ function DomainVerificationTable({
   const handleDeleteDomain = React.useCallback(
     async (domain: string) => {
       const confirmed = await confirm({
-        title: t`Delete Domain`,
+        title: t`Delete domain`,
         message: (
           <div>
             <Trans>
@@ -261,7 +261,7 @@ function DomainVerificationTable({
       {addDomainLink && (
         <div>
           <Button
-            label={t`Add Domain`}
+            label={t`Add domain`}
             variant="primary"
             href={addDomainLink}
             icon={Plus}

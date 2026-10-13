@@ -54,12 +54,12 @@ type GroupByOption = { value: AnalyticsGroupBy | undefined; label: string };
 
 const GROUP_BY_OPTIONS: GroupByOption[] = [
   { value: undefined, label: "Total" },
-  { value: "usage_type", label: "By Usage Type" },
-  { value: "agent", label: "By Agent" },
-  { value: "user", label: "By User" },
-  { value: "origin", label: "By Source" },
-  { value: "api_key", label: "By API Key" },
-  { value: "model", label: "By Model" },
+  { value: "usage_type", label: "By usage type" },
+  { value: "agent", label: "By agent" },
+  { value: "user", label: "By user" },
+  { value: "origin", label: "By source" },
+  { value: "api_key", label: "By API key" },
+  { value: "model", label: "By model" },
 ];
 
 const GRANULARITY_OPTIONS: { value: Granularity; label: string }[] = [

@@ -93,9 +93,9 @@ const GROUP_BY_TYPE_OPTIONS: {
   value: GroupByType;
   label: MessageDescriptor;
 }[] = [
-  { value: "agent", label: msg`By Agent` },
-  { value: "origin", label: msg`By Source` },
-  { value: "apiKey", label: msg`By API Key` },
+  { value: "agent", label: msg`By agent` },
+  { value: "origin", label: msg`By source` },
+  { value: "apiKey", label: msg`By API key` },
 ];
 
 const GROUP_BY_OPTIONS: {

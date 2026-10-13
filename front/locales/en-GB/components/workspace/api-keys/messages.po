@@ -14,7 +14,7 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
-msgid "API Key Created"
+msgid "API key created"
 msgstr ""
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
@@ -39,7 +39,7 @@ msgid "Workspace ID"
 msgstr ""
 
 #: front/components/workspace/api-keys/APIKeyCreationSheet.tsx
-msgid "API Key"
+msgid "API key"
 msgstr ""
 
 #: front/components/workspace/api-keys/APIKeyDetailsSheet.tsx
@@ -180,7 +180,7 @@ msgid "Revoke API key"
 msgstr ""
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
-msgid "Search API Key"
+msgid "Search API key"
 msgstr ""
 
 #: front/components/workspace/api-keys/APIKeysTable.tsx
@@ -216,7 +216,7 @@ msgid "Next page"
 msgstr ""
 
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
-msgid "Edit Monthly Cap - {keyName}"
+msgid "Edit monthly cap - {keyName}"
 msgstr ""
 
 #: front/components/workspace/api-keys/EditKeyCapDialog.tsx
@@ -255,15 +255,15 @@ msgid "API key name is required"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Create API Key"
+msgid "Create API key"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "New API Key"
+msgid "New API key"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "API Key Name"
+msgid "API key name"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
@@ -287,7 +287,7 @@ msgid "No spaces found"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx
-msgid "Add Groups"
+msgid "Add groups"
 msgstr ""
 
 #: front/components/workspace/api-keys/NewAPIKeyDialog.tsx

@@ -577,12 +577,12 @@ msgstr "Visualisation"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+msgid "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join my workspace' to get started. For help, contact an administrator."
 msgstr "L’intégration Slack est accessible aux membres du workspace Dust de votre entreprise. Cliquez sur « Rejoindre mon workspace » pour commencer. Pour obtenir de l’aide, contactez un administrateur."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/lib/workspace_limits.ts
-msgid "Join My Workspace"
+msgid "Join my workspace"
 msgstr "Rejoindre mon workspace"
 
 #. js-lingui-explicit-id

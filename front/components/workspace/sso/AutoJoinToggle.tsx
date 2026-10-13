@@ -175,7 +175,7 @@ export function AutoJoinToggle({
       <Page.Vertical gap="sm" align="stretch">
         <SettingsList title={<Trans>Joining the workspace</Trans>}>
           <SettingsList.Row
-            title={t`Auto-join Workspace`}
+            title={t`Auto-join workspace`}
             description={
               domainCount > 0
                 ? t`${plural(domainCount, {

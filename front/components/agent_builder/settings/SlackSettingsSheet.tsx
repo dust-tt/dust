@@ -374,7 +374,7 @@ export function SlackSettingsSheet({
             <div className="flex items-center gap-2">
               <Icon visual={SlackLogo} />
               <span>
-                <Trans>Slack Channel Settings</Trans>
+                <Trans>Slack channel settings</Trans>
               </span>
             </div>
           </SheetTitle>
@@ -401,7 +401,7 @@ export function SlackSettingsSheet({
               <ContentMessage
                 size="md"
                 variant="warning"
-                title={t`Admin Access Required`}
+                title={t`Admin access required`}
                 icon={InfoCircle}
               >
                 <p>

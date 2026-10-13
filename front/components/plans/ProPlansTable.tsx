@@ -46,8 +46,8 @@ export function ProPlansTable({
         onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
       >
         <TabsList>
-          <TabsTrigger value="monthly" label={t`Monthly Billing`} />
-          <TabsTrigger value="yearly" label={t`Yearly Billing`} />
+          <TabsTrigger value="monthly" label={t`Monthly billing`} />
+          <TabsTrigger value="yearly" label={t`Yearly billing`} />
         </TabsList>
         <div className="mt-8">
           <TabsContent value="monthly">

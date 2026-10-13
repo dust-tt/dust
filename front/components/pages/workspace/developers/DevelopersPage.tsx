@@ -50,7 +50,7 @@ export function DevelopersPage() {
           <TabsContent value="keys" className="flex flex-col gap-4">
             <div className="flex w-full items-center justify-between gap-4">
               <Page.H variant="h4">
-                <Trans>Dust API Keys</Trans>
+                <Trans>Dust API keys</Trans>
               </Page.H>
               <ConsumptionPeriodSelector
                 period={period}

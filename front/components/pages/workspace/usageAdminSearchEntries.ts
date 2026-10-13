@@ -71,7 +71,7 @@ export const USAGE_SEARCH_ENTRIES: AdminSettingEntry[] = [
     U.programmatic,
     [
       // Legacy Programmatic Usage page keywords, retargeted here.
-      [msg`Programmatic Usage`, msg`credits usage api keys triggers`],
+      [msg`Programmatic usage`, msg`credits usage api keys triggers`],
       [
         msg`Programmatic monthly limit`,
         msg`api keys triggers block programmatic access`,

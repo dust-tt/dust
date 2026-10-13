@@ -17,7 +17,7 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     PAGE,
     M.providers,
     [
-      [msg`Model Providers`, msg`ai models llm openai anthropic google`],
+      [msg`Model providers`, msg`ai models llm openai anthropic google`],
       [msg`EU-hosted models only`, msg`regional data residency europe`],
       [msg`Make all providers available`, msg`enable all providers`],
       [msg`Provider list`, msg`toggle enable disable models`],
@@ -72,10 +72,10 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     A.modelProviders,
     [
       [
-        msg`App Credentials`,
+        msg`App credentials`,
         msg`dust apps providers api keys openai azure anthropic`,
       ],
-      [msg`Model Providers for Dust Apps`, msg`api key openai azure anthropic`],
+      [msg`Model providers for Dust Apps`, msg`api key openai azure anthropic`],
     ],
     "apps"
   ),
@@ -84,7 +84,7 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
     A.serviceProviders,
     [
       [
-        msg`Service Providers`,
+        msg`Service providers`,
         msg`serpapi serper browserless google search web scrape`,
       ],
     ],
@@ -94,7 +94,7 @@ export const MODEL_PROVIDERS_SEARCH_ENTRIES: AdminSettingEntry[] = [
   ...adminSearchEntries(
     PAGE,
     M.apps,
-    [[msg`App Credentials tab`, msg`legacy dust apps credentials`]],
+    [[msg`App credentials tab`, msg`legacy dust apps credentials`]],
     "apps"
   ),
 ];

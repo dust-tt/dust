@@ -344,7 +344,7 @@ function WorkspaceGroupButtonWithModal({
       <SheetContent size="lg">
         <SheetHeader>
           <SheetTitle>
-            <Trans>Workspace Groups</Trans>
+            <Trans>Workspace groups</Trans>
           </SheetTitle>
         </SheetHeader>
         <SheetContainer>

@@ -434,7 +434,7 @@ export function UserMenu({
               <DropdownMenuSubContent>
                 <DropdownMenuLabel label={t`Learn about Dust`} />
                 <DropdownMenuItem
-                  label={t`Guides & Documentation`}
+                  label={t`Guides & documentation`}
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
@@ -443,7 +443,7 @@ export function UserMenu({
                   }
                 />
                 <DropdownMenuItem
-                  label={t`Join the Slack Community`}
+                  label={t`Join the Slack community`}
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
@@ -527,7 +527,7 @@ export function UserMenu({
           {subscription?.plan.limits.canUseProduct && (
             <>
               <DropdownMenuItem
-                label={t`Personal Settings`}
+                label={t`Personal settings`}
                 icon={User01}
                 onSelect={() => {
                   trackUserMenuEvent("personal_settings");

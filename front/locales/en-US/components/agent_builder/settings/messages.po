@@ -30,8 +30,8 @@ msgid "{editorsCount, plural, one {# editor} other {# editors}}"
 msgstr "{editorsCount, plural, one {# editor} other {# editors}}"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
-msgid "Editors & Access"
-msgstr "Editors & Access"
+msgid "Editors & access"
+msgstr "Editors & access"
 
 #: front/components/agent_builder/settings/AccessSection.tsx
 msgid "You don’t have permission to publish agents."
@@ -147,8 +147,8 @@ msgid "Settings"
 msgstr "Settings"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
-msgid "Cost Management"
-msgstr "Cost Management"
+msgid "Cost management"
+msgstr "Cost management"
 
 #: front/components/agent_builder/settings/CostManagementSection.tsx
 msgid "Ignore credit spend threshold alert"
@@ -179,8 +179,8 @@ msgid "Open in Slack"
 msgstr "Open in Slack"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Slack Channel Settings"
-msgstr "Slack Channel Settings"
+msgid "Slack channel settings"
+msgstr "Slack channel settings"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "Select channels in which this agent replies by default."
@@ -191,8 +191,8 @@ msgid "Set this agent as the default agent on one or several of your Slack chann
 msgstr "Set this agent as the default agent on one or several of your Slack channels. It will answer by default when the <0>@Dust</0> Slack bot is mentioned in these channels. Private channels you belong to appear here after you add the Slack tool, connect your personal Slack account, and invite <1>@Dust</1> to the channel."
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
-msgid "Admin Access Required"
-msgstr "Admin Access Required"
+msgid "Admin access required"
+msgstr "Admin access required"
 
 #: front/components/agent_builder/settings/SlackSettingsSheet.tsx
 msgid "Only administrators can enable default agents for specific Slack channels."

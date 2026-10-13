@@ -95,7 +95,7 @@ function makeSlackMembershipAccessBlocksForConnector(
         text: {
           type: "mrkdwn",
           text: i18n._(
-            "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join My Workspace' to get started. For help, contact an administrator."
+            "The Slack integration is accessible to members of your company's Dust workspace. Click 'Join my workspace' to get started. For help, contact an administrator."
           ),
         },
       },
@@ -106,7 +106,7 @@ function makeSlackMembershipAccessBlocksForConnector(
             type: "button",
             text: {
               type: "plain_text",
-              text: i18n._("Join My Workspace"),
+              text: i18n._("Join my workspace"),
               emoji: true,
             },
             style: "primary",

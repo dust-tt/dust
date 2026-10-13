@@ -55,8 +55,8 @@ msgid "Update role"
 msgstr "Update role"
 
 #: front/components/members/InvitationsList.tsx
-msgid "Invitation Email"
-msgstr "Invitation Email"
+msgid "Invitation email"
+msgstr "Invitation email"
 
 #: front/components/members/InvitationsList.tsx
 #: front/components/members/MembersList.tsx

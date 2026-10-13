@@ -42,7 +42,7 @@ msgid "{revokedKeyCount, plural, one {{revokedKeyCountLabel} revoked} other {{re
 msgstr ""
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
-msgid "API Key Created"
+msgid "API key created"
 msgstr ""
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
@@ -72,13 +72,13 @@ msgstr ""
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "API Reference"
+msgid "API reference"
 msgstr ""
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
 #: front/components/pages/workspace/developers/DevelopersPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Dust API Keys"
+msgid "Dust API keys"
 msgstr ""
 
 #: front/components/pages/workspace/developers/APIKeysPage.tsx
@@ -138,7 +138,7 @@ msgid "Pay-as-you-go"
 msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
-msgid "Programmatic Usage"
+msgid "Programmatic usage"
 msgstr ""
 
 #: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
@@ -198,7 +198,7 @@ msgid "Active credits for programmatic usage. Credits invoices are sent by email
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "Model Providers"
+msgid "Model providers"
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
@@ -206,7 +206,7 @@ msgid "Model providers available to your Dust apps."
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "Service Providers"
+msgid "Service providers"
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
@@ -222,7 +222,7 @@ msgid "disabled"
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
-msgid "API Key:"
+msgid "API key:"
 msgstr ""
 
 #: front/components/pages/workspace/developers/ProvidersPage.tsx
@@ -236,7 +236,7 @@ msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Developer Secrets"
+msgid "Developer secrets"
 msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
@@ -280,11 +280,11 @@ msgid "Delete"
 msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "Update Developer Secret"
+msgid "Update developer secret"
 msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
-msgid "New Developer Secret"
+msgid "New developer secret"
 msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
@@ -313,7 +313,7 @@ msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Create Secret"
+msgid "Create secret"
 msgstr ""
 
 #: front/components/pages/workspace/developers/SecretsPage.tsx
@@ -345,7 +345,7 @@ msgid "keys active credits used programmatic"
 msgstr ""
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
-msgid "Create API Key"
+msgid "Create API key"
 msgstr ""
 
 #: front/components/pages/workspace/developers/developersAdminSearchEntries.ts

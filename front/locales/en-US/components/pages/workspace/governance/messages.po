@@ -235,8 +235,8 @@ msgid "trigger workspace credit pool instead of their own"
 msgstr "trigger workspace credit pool instead of their own"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
-msgid "Workspace Name"
-msgstr "Workspace Name"
+msgid "Workspace name"
+msgstr "Workspace name"
 
 #: front/components/pages/workspace/governance/governanceAdminSearchEntries.ts
 msgid "rename workspace organization name"

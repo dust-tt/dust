@@ -38,11 +38,11 @@ msgid "Set as editor"
 msgstr "Définir comme éditeur"
 
 #: front/components/assistant/conversation/space/ManageUsersPanel.tsx
-msgid "Manage Members of {spaceName}"
+msgid "Manage members of {spaceName}"
 msgstr "Gérer les membres de {spaceName}"
 
 #: front/components/assistant/conversation/space/ManageUsersPanel.tsx
-msgid "Manage Editors"
+msgid "Manage editors"
 msgstr "Gérer les éditeurs"
 
 #: front/components/assistant/conversation/space/ManageUsersPanel.tsx

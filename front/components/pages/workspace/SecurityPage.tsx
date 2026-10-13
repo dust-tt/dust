@@ -68,7 +68,7 @@ export function SecurityPage() {
           <TabsList className="mb-6">
             <TabsTrigger value="identity" label={t`Domains & SSO`} />
             <TabsTrigger value="network" label={t`Network`} />
-            <TabsTrigger value="audit" label={t`Audit Logs`} />
+            <TabsTrigger value="audit" label={t`Audit logs`} />
           </TabsList>
           <TabsContent value="identity" className="flex flex-col gap-4">
             <WorkspaceAccessPanel
