@@ -7,6 +7,7 @@ import {
 } from "@app/temporal/relocation/activities/destination_region/front/secrets";
 import { readSecretsFromSourceRegion } from "@app/temporal/relocation/activities/source_region/front/secrets";
 import type * as RelocationStorage from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { SecretsRelocationBlob } from "@app/temporal/relocation/lib/secrets";
 import { DustAppSecretFactory } from "@app/tests/utils/DustAppSecretFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { InternalMCPServerCredentialFactory } from "@app/tests/utils/InternalMCPServerCredentialFactory";
@@ -56,7 +57,11 @@ vi.mock(
   }
 );
 
-const CELLS = { destCell: "cell-00001", sourceCell: "cell-00000" } as const;
+const RELOCATION = {
+  destCell: "cell-00001",
+  sourceCell: "cell-00000",
+  workflowId: "workspaceRelocateFrontWorkflow-test",
+} as const;
 
 // Each cell encrypts with its own secrets; switching them simulates running in the other cell.
 function setCellSecrets(cell: "source" | "destination") {
@@ -140,14 +145,14 @@ describe("relocation secrets re-encryption", () => {
     } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
     expect(dataPath).not.toBeNull();
 
     setCellSecrets("destination");
     await reencryptSecretsInDestinationRegion({
-      ...CELLS,
+      ...RELOCATION,
       dataPath: dataPath!,
       workspaceId: workspace.sId,
     });
@@ -194,12 +199,12 @@ describe("relocation secrets re-encryption", () => {
     const { workspace } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
     setCellSecrets("destination");
     await reencryptSecretsInDestinationRegion({
-      ...CELLS,
+      ...RELOCATION,
       dataPath: dataPath!,
       workspaceId: workspace.sId,
     });
@@ -214,8 +219,8 @@ describe("relocation secrets re-encryption", () => {
         ],
         metadata: {
           secret_count: "4",
-          source_cell: CELLS.sourceCell,
-          destination_cell: CELLS.destCell,
+          source_cell: RELOCATION.sourceCell,
+          destination_cell: RELOCATION.destCell,
         },
       })
     );
@@ -231,7 +236,7 @@ describe("relocation secrets re-encryption", () => {
     } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
 
@@ -250,11 +255,51 @@ describe("relocation secrets re-encryption", () => {
     }
   });
 
+  it("rejects staged values decrypted under another relocation or moved onto another row", async () => {
+    const { workspace } = await seedSecrets();
+
+    const dataPath = await readSecretsFromSourceRegion({
+      ...RELOCATION,
+      workspaceId: workspace.sId,
+    });
+    setCellSecrets("destination");
+
+    await expect(
+      reencryptSecretsInDestinationRegion({
+        ...RELOCATION,
+        workflowId: "another-relocation",
+        dataPath: dataPath!,
+        workspaceId: workspace.sId,
+      })
+    ).rejects.toThrow();
+
+    const blob: SecretsRelocationBlob = JSON.parse(
+      stagedObjects.get(dataPath!)!
+    );
+    const [first, second] = blob.secrets;
+    stagedObjects.set(
+      dataPath!,
+      JSON.stringify({
+        secrets: [
+          { ...first, transportValue: second.transportValue },
+          { ...second, transportValue: first.transportValue },
+        ],
+      })
+    );
+    await expect(
+      reencryptSecretsInDestinationRegion({
+        ...RELOCATION,
+        dataPath: dataPath!,
+        workspaceId: workspace.sId,
+      })
+    ).rejects.toThrow();
+  });
+
   it("stages nothing and returns null when the workspace has no secrets", async () => {
     const { workspace } = await createResourceTest({ role: "admin" });
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
 
@@ -267,7 +312,7 @@ describe("relocation secrets re-encryption", () => {
     await dustAppSecret.update({ hash: "deadbeef" });
 
     const result = readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
     await expect(result).rejects.toThrow(
@@ -287,7 +332,7 @@ describe("relocation secrets re-encryption", () => {
     } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
     const sourceValues = {
@@ -302,7 +347,7 @@ describe("relocation secrets re-encryption", () => {
     setCellSecrets("destination");
     await expect(
       reencryptSecretsInDestinationRegion({
-        ...CELLS,
+        ...RELOCATION,
         dataPath: dataPath!,
         workspaceId: workspace.sId,
       })
@@ -327,11 +372,11 @@ describe("relocation secrets re-encryption", () => {
     const { workspace } = await seedSecrets();
 
     const first = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
     const second = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
 
@@ -343,13 +388,13 @@ describe("relocation secrets re-encryption", () => {
     const { workspace, dustAppSecret } = await seedSecrets();
 
     const dataPath = await readSecretsFromSourceRegion({
-      ...CELLS,
+      ...RELOCATION,
       workspaceId: workspace.sId,
     });
 
     setCellSecrets("destination");
     const params = {
-      ...CELLS,
+      ...RELOCATION,
       dataPath: dataPath!,
       workspaceId: workspace.sId,
     };

@@ -169,10 +169,12 @@ export async function workspaceRelocateFrontWorkflow({
 
   // 3) Re-encrypt secrets copied above, since each cell encrypts them with its own secrets. It
   // must run before anything in the destination cell reads them.
+  const { workflowId } = workflowInfo();
   const secretsDataPath =
     await sourceCellActivities.readSecretsFromSourceRegion({
       destCell,
       sourceCell,
+      workflowId,
       workspaceId,
     });
   if (secretsDataPath) {
@@ -181,6 +183,7 @@ export async function workspaceRelocateFrontWorkflow({
         dataPath: secretsDataPath,
         destCell,
         sourceCell,
+        workflowId,
         workspaceId,
       });
     } finally {

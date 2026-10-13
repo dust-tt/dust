@@ -10,10 +10,13 @@ import type {
   RelocatedSecretTableName,
   SecretsRelocationBlob,
 } from "@app/temporal/relocation/lib/secrets";
-import { RELOCATED_SECRET_COLUMNS } from "@app/temporal/relocation/lib/secrets";
+import {
+  encryptForRelocationTransport,
+  RELOCATED_SECRET_COLUMNS,
+} from "@app/temporal/relocation/lib/secrets";
 import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
-import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
+import { decrypt } from "@app/types/shared/utils/encryption";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 import { QueryTypes } from "sequelize";
@@ -27,8 +30,7 @@ interface EncryptedRow {
 
 /**
  * @cc [owner:avervaet,label:security] staged-secrets-never-plaintext
- * Secret values written to relocation storage MUST be encrypted with the relocation transport
- * secret. Plaintext values and values encrypted with the source cell's secrets MUST NOT be staged.
+ * Secret values written to relocation storage MUST be encrypted for relocation transport. Plaintext values and values encrypted with the source cell's secrets MUST NOT be staged.
  */
 /**
  * @cc [owner:avervaet,label:error-handling] undecryptable-source-secret-fails
@@ -42,10 +44,12 @@ interface EncryptedRow {
 export async function readSecretsFromSourceRegion({
   destCell,
   sourceCell,
+  workflowId,
   workspaceId,
 }: {
   destCell: CellType;
   sourceCell: CellType;
+  workflowId: string;
   workspaceId: string;
 }): Promise<string | null> {
   const localLogger = logger.child({ destCell, sourceCell, workspaceId });
@@ -138,10 +142,10 @@ export async function readSecretsFromSourceRegion({
       tableName,
       id,
       key,
-      transportValue: encrypt({
-        text: plaintext,
-        key,
-        useCase: "relocation_transport",
+      transportValue: encryptForRelocationTransport(plaintext, {
+        workflowId,
+        workspaceId,
+        secret: { tableName, id, key },
       }),
     });
   }

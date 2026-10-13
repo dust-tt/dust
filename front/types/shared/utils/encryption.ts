@@ -2,10 +2,7 @@ import config from "@app/lib/api/config";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import crypto from "crypto";
 
-export type EncryptionUseCase =
-  | "developer_secret"
-  | "mcp_server_credentials"
-  | "relocation_transport";
+export type EncryptionUseCase = "developer_secret" | "mcp_server_credentials";
 
 export function md5(str: string): string {
   return crypto.createHash("md5").update(str).digest("hex");
@@ -15,19 +12,12 @@ export function sha256(str: string): string {
   return crypto.createHash("sha256").update(str).digest("base64");
 }
 
-/**
- * @cc [owner:avervaet,label:security] relocation-transport-secret-is-dedicated
- * The `relocation_transport` use case MUST resolve to a secret that is identical in every cell
- * and used for nothing else: not as an auth token, and not for any other use case.
- */
 function getSecretForUseCase(useCase: EncryptionUseCase): string {
   switch (useCase) {
     case "developer_secret":
       return config.getDeveloperSecretsSecret();
     case "mcp_server_credentials":
       return config.getMCPServerCredentialsSecret();
-    case "relocation_transport":
-      return config.getRelocationTransportSecret();
     default:
       assertNever(useCase);
   }

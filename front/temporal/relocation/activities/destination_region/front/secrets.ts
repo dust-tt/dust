@@ -16,9 +16,12 @@ import type {
   RelocatedSecretTableName,
   SecretsRelocationBlob,
 } from "@app/temporal/relocation/lib/secrets";
-import { RELOCATED_SECRET_COLUMNS } from "@app/temporal/relocation/lib/secrets";
+import {
+  decryptForRelocationTransport,
+  RELOCATED_SECRET_COLUMNS,
+} from "@app/temporal/relocation/lib/secrets";
 import type { CellType } from "@app/types/cell";
-import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
+import { encrypt } from "@app/types/shared/utils/encryption";
 import assert from "assert";
 import { QueryTypes } from "sequelize";
 
@@ -41,11 +44,13 @@ export async function reencryptSecretsInDestinationRegion({
   dataPath,
   destCell,
   sourceCell,
+  workflowId,
   workspaceId,
 }: {
   dataPath: string;
   destCell: CellType;
   sourceCell: CellType;
+  workflowId: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({ destCell, sourceCell, workspaceId });
@@ -61,10 +66,10 @@ export async function reencryptSecretsInDestinationRegion({
     { ids: number[]; values: string[] }
   >();
   for (const { tableName, id, key, transportValue } of blob.secrets) {
-    const plaintext = decrypt({
-      encrypted: transportValue,
-      key,
-      useCase: "relocation_transport",
+    const plaintext = decryptForRelocationTransport(transportValue, {
+      workflowId,
+      workspaceId,
+      secret: { tableName, id, key },
     });
     const value = encrypt({
       text: plaintext,
