@@ -836,7 +836,7 @@ msgid "Enable comprehensive analysis across company data, databases, and web sou
 msgstr "Activer une analyse complète des données de l’entreprise, des bases de données et des sources web. Une analyse approfondie qui peut prendre plusieurs minutes."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Keep a Pod's job moving with the next evidence-backed action"
+msgid "Keep a Pod’s job moving with the next evidence-backed action"
 msgstr "Faites avancer la mission d’un Pod avec la prochaine action étayée par des faits"
 
 #: front/lib/dust_provided_descriptions.ts
@@ -860,7 +860,7 @@ msgid "Allow agents to create conversations & messages in Pods, leverage Pods kn
 msgstr "Permettre aux agents de créer des conversations et des messages dans les Pods, et d’exploiter leurs connaissances."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment)."
+msgid "Run code, scripts, and shell commands in the conversation’s Computer (a sandboxed Linux environment)."
 msgstr "Exécuter du code, des scripts et des commandes shell dans le Computer de la conversation (un environnement Linux isolé)."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -892,7 +892,7 @@ msgid "Automatically discover and activate workspace skills as needed."
 msgstr "Découvrir et activer automatiquement les compétences du workspace selon les besoins."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration."
+msgid "Automatically discover and activate specialized tools as needed. Extend your agent’s capabilities on-demand without manual configuration."
 msgstr "Découvrir et activer automatiquement des outils spécialisés selon les besoins. Étendez les capacités de votre agent à la demande, sans configuration manuelle."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -900,7 +900,7 @@ msgid "Let agents maintain a live plan.md the user can follow as work progresses
 msgstr "Permettre aux agents de tenir à jour un plan.md que le membre peut suivre au fil du travail."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Give agents a persistent memory of the user's preferences and context across conversations."
+msgid "Give agents a persistent memory of the user’s preferences and context across conversations."
 msgstr "Donner aux agents une mémoire persistante des préférences et du contexte du membre d’une conversation à l’autre."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -924,7 +924,7 @@ msgid "Tools with access to the agents of the workspace."
 msgstr "Outils ayant accès aux agents du workspace."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data."
+msgid "Load complete content for full context up to memory limits. Note: won’t include spreadsheet/table data."
 msgstr "Charger l’intégralité du contenu pour un contexte complet, dans la limite de la mémoire. Remarque : n’inclut pas les données des feuilles de calcul et des tables."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1048,7 +1048,7 @@ msgid "Search and read from your Slab knowledge base"
 msgstr "Rechercher et lire dans votre base de connaissances Slab"
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Review compliance posture powered by Vanta's security platform."
+msgid "Review compliance posture powered by Vanta’s security platform."
 msgstr "Examiner votre niveau de conformité grâce à la plateforme de sécurité Vanta."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1136,11 +1136,11 @@ msgid "Retrieve context about available models, skills, tools, and agent-specifi
 msgstr "Récupérer le contexte sur les modèles, compétences et outils disponibles, ainsi que les retours et analyses propres à l’agent. Créer et gérer des suggestions de modification de la configuration de l’agent."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools."
+msgid "Retrieve information about the current agent’s configuration, including name, description, instructions, model, and tools."
 msgstr "Récupérer la configuration de l’agent actuel, notamment son nom, sa description, ses instructions, son modèle et ses outils."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Execute code and commands in the conversation's Computer (an isolated Linux environment)."
+msgid "Execute code and commands in the conversation’s Computer (an isolated Linux environment)."
 msgstr "Exécuter du code et des commandes dans le Computer de la conversation (un environnement Linux isolé)."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1176,11 +1176,11 @@ msgid "Workspace usage analytics for admins and managers: credit consumption, me
 msgstr "Statistiques d’utilisation du workspace pour les administrateurs et les managers : consommation de crédits, volume de messages et d’exécutions par entité, chiffres clés et tendances dans le temps."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search the workspace's agents and skills, and inventory tools, tags and groups."
+msgid "Search the workspace’s agents and skills, and inventory tools, tags and groups."
 msgstr "Rechercher les agents et les compétences du workspace, et recenser les outils, les tags et les groupes."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search for people and companies using Exa's AI-powered search."
+msgid "Search for people and companies using Exa’s AI-powered search."
 msgstr "Rechercher des personnes et des entreprises avec la recherche IA d’Exa."
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1204,7 +1204,7 @@ msgid "Access catalog, customers and orders data from a Shopify store."
 msgstr "Accéder aux données du catalogue, des clients et des commandes d’une boutique Shopify."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
+msgid "Store and retrieve the current user’s personal memory, shared across the user’s agents."
 msgstr "Enregistrer et récupérer la mémoire personnelle du membre actuel, partagée entre ses agents."
 
 #: front/lib/dust_provided_descriptions.ts

@@ -9,7 +9,7 @@ export const discoverToolsSkill = {
   kind: "system",
   name: "Discover Tools",
   userFacingDescription:
-    "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration.",
+    "Automatically discover and activate specialized tools as needed. Extend your agent’s capabilities on-demand without manual configuration.",
   agentFacingDescription:
     "List available toolsets and enable them for the current conversation.",
   fetchInstructions: async (

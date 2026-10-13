@@ -70,7 +70,7 @@ export const INCLUDE_DATA_SERVER = {
     name: "include_data",
     version: "1.0.0",
     description:
-      "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data.",
+      "Load complete content for full context up to memory limits. Note: won’t include spreadsheet/table data.",
     icon: "ActionTimeIcon",
     authorization: null,
     documentationUrl: null,

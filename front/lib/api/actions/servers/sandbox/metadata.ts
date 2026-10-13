@@ -167,7 +167,7 @@ export const SANDBOX_SERVER = {
     name: "sandbox",
     version: "1.0.0",
     description:
-      "Execute code and commands in the conversation's Computer (an isolated Linux environment).",
+      "Execute code and commands in the conversation’s Computer (an isolated Linux environment).",
     authorization: null,
     icon: "TerminalSquareIcon",
     documentationUrl: null,

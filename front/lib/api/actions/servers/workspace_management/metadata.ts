@@ -513,7 +513,7 @@ export const WORKSPACE_MANAGEMENT_SERVER = {
     name: WORKSPACE_MANAGEMENT_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Search the workspace's agents and skills, and inventory tools, tags and groups.",
+      "Search the workspace’s agents and skills, and inventory tools, tags and groups.",
     icon: "ActionListCheckIcon",
     authorization: null,
     documentationUrl: null,

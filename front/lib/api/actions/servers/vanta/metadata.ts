@@ -354,7 +354,7 @@ export const VANTA_SERVER = {
     name: "vanta",
     version: "1.0.0",
     description:
-      "Review compliance posture powered by Vanta's security platform.",
+      "Review compliance posture powered by Vanta’s security platform.",
     authorization: {
       provider: "vanta" as const,
       supported_use_cases: ["platform_actions"] as const,

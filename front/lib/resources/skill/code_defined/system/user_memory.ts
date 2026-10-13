@@ -86,7 +86,7 @@ export const userMemorySkill = {
   kind: "system",
   name: "User Memory",
   userFacingDescription:
-    "Give agents a persistent memory of the user's preferences and context across conversations.",
+    "Give agents a persistent memory of the user’s preferences and context across conversations.",
   agentFacingDescription:
     "Use and update a persistent, user-scoped MEMORY.md, loaded at the start of " +
     "the conversation, to remember the user's preferences, facts, and context " +

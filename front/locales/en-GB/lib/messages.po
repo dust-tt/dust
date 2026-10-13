@@ -827,7 +827,7 @@ msgid "Enable comprehensive analysis across company data, databases, and web sou
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Keep a Pod's job moving with the next evidence-backed action"
+msgid "Keep a Pod’s job moving with the next evidence-backed action"
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -851,7 +851,7 @@ msgid "Allow agents to create conversations & messages in Pods, leverage Pods kn
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Run code, scripts, and shell commands in the conversation's Computer (a sandboxed Linux environment)."
+msgid "Run code, scripts, and shell commands in the conversation’s Computer (a sandboxed Linux environment)."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -883,7 +883,7 @@ msgid "Automatically discover and activate workspace skills as needed."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration."
+msgid "Automatically discover and activate specialized tools as needed. Extend your agent’s capabilities on-demand without manual configuration."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -891,7 +891,7 @@ msgid "Let agents maintain a live plan.md the user can follow as work progresses
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Give agents a persistent memory of the user's preferences and context across conversations."
+msgid "Give agents a persistent memory of the user’s preferences and context across conversations."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -915,7 +915,7 @@ msgid "Tools with access to the agents of the workspace."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Load complete content for full context up to memory limits. Note: won't include spreadsheet/table data."
+msgid "Load complete content for full context up to memory limits. Note: won’t include spreadsheet/table data."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1039,7 +1039,7 @@ msgid "Search and read from your Slab knowledge base"
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Review compliance posture powered by Vanta's security platform."
+msgid "Review compliance posture powered by Vanta’s security platform."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1127,11 +1127,11 @@ msgid "Retrieve context about available models, skills, tools, and agent-specifi
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Retrieve information about the current agent's configuration, including name, description, instructions, model, and tools."
+msgid "Retrieve information about the current agent’s configuration, including name, description, instructions, model, and tools."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Execute code and commands in the conversation's Computer (an isolated Linux environment)."
+msgid "Execute code and commands in the conversation’s Computer (an isolated Linux environment)."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1167,11 +1167,11 @@ msgid "Workspace usage analytics for admins and managers: credit consumption, me
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search the workspace's agents and skills, and inventory tools, tags and groups."
+msgid "Search the workspace’s agents and skills, and inventory tools, tags and groups."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Search for people and companies using Exa's AI-powered search."
+msgid "Search for people and companies using Exa’s AI-powered search."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1195,7 +1195,7 @@ msgid "Access catalog, customers and orders data from a Shopify store."
 msgstr "Access catalogue, customers and orders data from a Shopify store."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
+msgid "Store and retrieve the current user’s personal memory, shared across the user’s agents."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts

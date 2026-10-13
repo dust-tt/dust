@@ -42,7 +42,7 @@ export const USER_MEMORY_SERVER = {
     name: USER_MEMORY_SERVER_NAME,
     version: "1.0.0",
     description:
-      "Store and retrieve the current user's personal memory, shared across the user's agents.",
+      "Store and retrieve the current user’s personal memory, shared across the user’s agents.",
     authorization: null,
     icon: "ActionLightbulbIcon",
     documentationUrl: null,
