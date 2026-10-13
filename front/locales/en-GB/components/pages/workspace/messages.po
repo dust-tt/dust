@@ -37,15 +37,15 @@ msgid "Analytics"
 msgstr ""
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
+msgid "Ask @analyst"
+msgstr ""
+
+#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Consumption"
 msgstr ""
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
 msgid "Export"
-msgstr ""
-
-#: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
-msgid "Ask @analyst"
 msgstr ""
 
 #: front/components/pages/workspace/AnalyticsConsumptionPage.tsx
@@ -136,11 +136,6 @@ msgstr ""
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
 #: front/components/pages/workspace/UsagePage.tsx
 msgid "Settings"
-msgstr ""
-
-#: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
-#: front/components/pages/workspace/UsagePage.tsx
-msgid "Breakdown in analytics"
 msgstr ""
 
 #: front/components/pages/workspace/NonCreditPricedUsagePage.tsx
