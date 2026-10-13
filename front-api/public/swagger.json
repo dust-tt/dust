@@ -687,7 +687,8 @@
                 "type": "object",
                 "properties": {
                   "userFavorite": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "Favorites the agent for the calling user. Requires a user; rejected with 400 when authenticated with a workspace API key."
                   },
                   "agent": {
                     "type": "object",
@@ -856,7 +857,7 @@
             }
           },
           "400": {
-            "description": "Bad Request. Invalid or missing parameters."
+            "description": "Bad Request. Invalid or missing parameters, or userFavorite sent with a workspace API key."
           },
           "401": {
             "description": "Unauthorized. Invalid or missing authentication token."
