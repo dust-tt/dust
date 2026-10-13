@@ -999,7 +999,7 @@ msgid "Retrieve page information."
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Turn written text into spoken audio or dialog"
+msgid "Turn written text into spoken audio or dialogue"
 msgstr ""
 
 #: front/lib/dust_provided_descriptions.ts

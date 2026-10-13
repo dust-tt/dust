@@ -897,11 +897,11 @@ msgstr "Découvrir et activer automatiquement des outils spécialisés selon les
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Let agents maintain a live plan.md the user can follow as work progresses."
-msgstr "Permettre aux agents de tenir à jour un plan.md que l’utilisateur peut suivre au fil du travail."
+msgstr "Permettre aux agents de tenir à jour un plan.md que le membre peut suivre au fil du travail."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Give agents a persistent memory of the user's preferences and context across conversations."
-msgstr "Donner aux agents une mémoire persistante des préférences et du contexte de l’utilisateur d’une conversation à l’autre."
+msgstr "Donner aux agents une mémoire persistante des préférences et du contexte du membre d’une conversation à l’autre."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Manage issues, pull requests, and discussions."
@@ -973,7 +973,7 @@ msgstr "Interagir avec les tableaux, éléments et workflows Monday.com. Gérer 
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "User-scoped long-term memory tools for agents."
-msgstr "Outils de mémoire à long terme propre à chaque utilisateur, pour les agents."
+msgstr "Outils de mémoire à long terme propre à chaque membre, pour les agents."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Create, update and track project issues."
@@ -1008,7 +1008,7 @@ msgid "Retrieve page information."
 msgstr "Récupérer les informations des pages."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Turn written text into spoken audio or dialog"
+msgid "Turn written text into spoken audio or dialogue"
 msgstr "Transformer un texte écrit en audio parlé ou en dialogue"
 
 #: front/lib/dust_provided_descriptions.ts
@@ -1149,7 +1149,7 @@ msgstr "Outils pour mentionner des membres dans les conversations."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Ask the user a question with multiple-choice options."
-msgstr "Poser une question à choix multiples à l’utilisateur."
+msgstr "Poser une question à choix multiples au membre."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Schedule wake-ups that re-invoke the agent at a later time."
@@ -1161,11 +1161,11 @@ msgstr "Accéder aux transcriptions d’appels, résumés IA et actions de suivi
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Create and maintain a living `plan.md` that gives the user visibility on genuinely multi-step work. When you need explicit sign-off before proceeding, ask the user with the standard question flow."
-msgstr "Créer et tenir à jour un `plan.md` qui donne à l’utilisateur de la visibilité sur un travail réellement en plusieurs étapes. Pour obtenir une validation explicite avant de continuer, poser la question à l’utilisateur via le flux de questions standard."
+msgstr "Créer et tenir à jour un `plan.md` qui donne au membre de la visibilité sur un travail réellement en plusieurs étapes. Pour obtenir une validation explicite avant de continuer, poser la question au membre via le flux de questions standard."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "File system interface for the agent loop conversation and any accessible conversation or Pod. Defaults to the current conversation (and its Pod when applicable). Files include user uploads, sandbox outputs, and tool results. Scoped paths such as `conversation-<id>/chart.png` or `pod-<id>/spec.md` identify files and can be used to reference or display them in responses. Processed siblings (resized images, audio transcripts) are listed alongside their source with an annotation."
-msgstr "Interface de système de fichiers pour la conversation de l’agent et toute conversation ou tout Pod accessible. Par défaut, la conversation actuelle (et son Pod le cas échéant). Les fichiers comprennent les imports des utilisateurs, les sorties de la sandbox et les résultats d’outils. Des chemins comme `conversation-<id>/chart.png` ou `pod-<id>/spec.md` identifient les fichiers et permettent de les référencer ou de les afficher dans les réponses. Les versions traitées (images redimensionnées, transcriptions audio) sont listées à côté de leur source avec une annotation."
+msgstr "Interface de système de fichiers pour la conversation de l’agent et toute conversation ou tout Pod accessible. Par défaut, la conversation actuelle (et son Pod le cas échéant). Les fichiers comprennent les imports des membres, les sorties de la sandbox et les résultats d’outils. Des chemins comme `conversation-<id>/chart.png` ou `pod-<id>/spec.md` identifient les fichiers et permettent de les référencer ou de les afficher dans les réponses. Les versions traitées (images redimensionnées, transcriptions audio) sont listées à côté de leur source avec une annotation."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Collaborate on Markdown documents in the file system alongside their human editors."
@@ -1189,7 +1189,7 @@ msgstr "Récupérer des statistiques d’utilisation personnelles et des donnée
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Track activation recommendations and record user decisions on them."
-msgstr "Suivre les recommandations d’activation et enregistrer les décisions de l’utilisateur à leur sujet."
+msgstr "Suivre les recommandations d’activation et enregistrer les décisions du membre à leur sujet."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Search and retrieve agent templates."
@@ -1205,7 +1205,7 @@ msgstr "Accéder aux données du catalogue, des clients et des commandes d’une
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Store and retrieve the current user's personal memory, shared across the user's agents."
-msgstr "Enregistrer et récupérer la mémoire personnelle de l’utilisateur actuel, partagée entre ses agents."
+msgstr "Enregistrer et récupérer la mémoire personnelle du membre actuel, partagée entre ses agents."
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Run an accessible workspace agent by ID."

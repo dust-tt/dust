@@ -98,7 +98,7 @@ const INTERNAL_MCP_SERVER_DESCRIPTIONS: Record<
   google_drive: msg`Search, read, create, clone, edit, comment on, and manage permissions for files in Google Drive (Docs, Sheets, Presentations).`,
   slack_bot: msg`Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.`,
   confluence: msg`Retrieve page information.`,
-  speech_generator: msg`Turn written text into spoken audio or dialog`,
+  speech_generator: msg`Turn written text into spoken audio or dialogue`,
   microsoft_drive: msg`Search, read, and upload files in Microsoft OneDrive and SharePoint.`,
   microsoft_teams: msg`Microsoft Teams for searching and posting messages.`,
   sound_studio: msg`Create music tracks and sound effects`,

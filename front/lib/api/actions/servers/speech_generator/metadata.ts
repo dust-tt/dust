@@ -242,7 +242,7 @@ export const SPEECH_GENERATOR_SERVER = {
   serverInfo: {
     name: "speech_generator",
     version: "1.0.0",
-    description: "Turn written text into spoken audio or dialog",
+    description: "Turn written text into spoken audio or dialogue",
     authorization: null,
     icon: "ActionSpeakIcon",
     documentationUrl: null,

@@ -1008,8 +1008,8 @@ msgid "Retrieve page information."
 msgstr "Retrieve page information."
 
 #: front/lib/dust_provided_descriptions.ts
-msgid "Turn written text into spoken audio or dialog"
-msgstr "Turn written text into spoken audio or dialog"
+msgid "Turn written text into spoken audio or dialogue"
+msgstr "Turn written text into spoken audio or dialogue"
 
 #: front/lib/dust_provided_descriptions.ts
 msgid "Search, read, and upload files in Microsoft OneDrive and SharePoint."
