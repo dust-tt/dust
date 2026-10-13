@@ -216,6 +216,10 @@ export interface SidePanelLayout {
   panelSize: number;
 }
 
+interface OpenPanelOptions {
+  keepCurrent?: boolean;
+}
+
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
   // Preview affordances render nothing without a conversation to host the panel.
@@ -224,7 +228,7 @@ interface ConversationSidePanelContextType {
   // old value meanwhile so the panel content does not flicker; toggles read this to unselect
   // right away.
   isPanelClosing: boolean;
-  openPanel: (params: OpenPanelParams) => void;
+  openPanel: (params: OpenPanelParams, options?: OpenPanelOptions) => void;
   togglePanel: (params: OpenPanelParams) => void;
   // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
@@ -417,8 +421,17 @@ export function ConversationSidePanelProvider({
 
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
   // that is already closing reads as unselected, so re-selecting it reopens instead.
+  /**
+   * @cc [owner:tdraier,label:product;react] side-panel-keep-current
+   * Opening a panel MUST stack the shown one in the history when its type changes, or when the
+   * caller asks to keep it (`keepCurrent`), even for the same type, so closing returns to it; any
+   * other panel of the same type MUST replace the shown one.
+   */
   const applyPanel = useCallback(
-    (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
+    (
+      params: OpenPanelParams,
+      { toggle, keepCurrent }: { toggle: boolean; keepCurrent: boolean }
+    ) => {
       const current = isPanelClosing ? null : currentParamsRef.current;
       const isShown =
         current !== null &&
@@ -439,7 +452,7 @@ export function ConversationSidePanelProvider({
       let history = panelHistoryRef.current.filter(
         (entry) => panelIdentityKey(entry) !== targetKey
       );
-      if (current && current.type !== params.type) {
+      if (current && (keepCurrent || current.type !== params.type)) {
         const entry = panelHistoryEntry(current);
         const entryKey = panelIdentityKey(entry);
         history = [
@@ -456,13 +469,18 @@ export function ConversationSidePanelProvider({
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
   // transition where `currentPanel` still reads the old value.
   const openPanel = useCallback(
-    (params: OpenPanelParams) => applyPanel(params, { toggle: false }),
+    (params: OpenPanelParams, options?: OpenPanelOptions) =>
+      applyPanel(params, {
+        toggle: false,
+        keepCurrent: options?.keepCurrent ?? false,
+      }),
     [applyPanel]
   );
 
   // Toggle for user-controlled buttons: re-selecting the shown panel closes it.
   const togglePanel = useCallback(
-    (params: OpenPanelParams) => applyPanel(params, { toggle: true }),
+    (params: OpenPanelParams) =>
+      applyPanel(params, { toggle: true, keepCurrent: false }),
     [applyPanel]
   );
 
