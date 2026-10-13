@@ -1,0 +1,300 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/app/blocks/Block.tsx
+msgid "Block name must only contain uppercase letters, numbers, and the character `_`."
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "{successCount, plural, one {# success} other {# successes}} {errorCount, plural, one {# error} other {# errors}}"
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "Results are cached (faster)"
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "Results are computed at each run"
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "Move up"
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "Move down"
+msgstr ""
+
+#: front/components/app/blocks/Block.tsx
+msgid "Delete block"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "URL (with scheme)"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Setup Browserless API"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Browserless API not available"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "CSS selector"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+#: front/components/app/blocks/Chat.tsx
+#: front/components/app/blocks/LLM.tsx
+msgid "Advanced"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Error as output"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Timeout"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Wait until"
+msgstr ""
+
+#: front/components/app/blocks/Browser.tsx
+msgid "Wait for"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+#: front/components/app/blocks/LLM.tsx
+msgid "Model"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+#: front/components/app/blocks/LLM.tsx
+msgid "Temperature"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "Max tokens"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+#: front/components/app/blocks/LLM.tsx
+msgctxt "stop sequences, field label"
+msgid "Stop"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "add stop"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "Structured response format"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "Instructions"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "Messages"
+msgstr ""
+
+#: front/components/app/blocks/Chat.tsx
+msgid "Functions"
+msgstr ""
+
+#: front/components/app/blocks/Code.tsx
+msgid "Code"
+msgstr ""
+
+#: front/components/app/blocks/Curl.tsx
+msgid "Headers"
+msgstr ""
+
+#: front/components/app/blocks/Curl.tsx
+msgid "Body"
+msgstr ""
+
+#: front/components/app/blocks/Data.tsx
+#: front/components/app/blocks/Input.tsx
+msgid "Dataset"
+msgstr ""
+
+#: front/components/app/blocks/Data.tsx
+#: front/components/app/blocks/Input.tsx
+msgid "View"
+msgstr ""
+
+#: front/components/app/blocks/Data.tsx
+#: front/components/app/blocks/Input.tsx
+msgid "Edit"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+msgid "Data source"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+msgid "Top K"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+msgid "Full text"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+#: front/components/app/blocks/Database.tsx
+#: front/components/app/blocks/Search.tsx
+msgid "Query"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+msgid "Filters"
+msgstr ""
+
+#: front/components/app/blocks/DataSource.tsx
+msgid "add tag"
+msgstr ""
+
+#: front/components/app/blocks/Database.tsx
+msgid "Table"
+msgstr ""
+
+#: front/components/app/blocks/Database.tsx
+msgid "Remove table"
+msgstr ""
+
+#: front/components/app/blocks/Database.tsx
+msgid "Add table"
+msgstr ""
+
+#: front/components/app/blocks/Input.tsx
+msgid "Dataset updated"
+msgstr ""
+
+#: front/components/app/blocks/Input.tsx
+msgid "The data of {datasetName} was successfully updated."
+msgstr ""
+
+#: front/components/app/blocks/Input.tsx
+msgid "Edit schema"
+msgstr ""
+
+#: front/components/app/blocks/Input.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/app/blocks/Input.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "max tokens:"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgctxt "stop sequence, input placeholder"
+msgid "add"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "few-shot"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "introduction:"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "examples:"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "count:"
+msgstr ""
+
+#: front/components/app/blocks/LLM.tsx
+msgid "prompt:"
+msgstr ""
+
+#: front/components/app/blocks/MapReduce.tsx
+msgctxt "source block, field label"
+msgid "From"
+msgstr ""
+
+#: front/components/app/blocks/MapReduce.tsx
+msgid "Repeat"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "[ {itemCount, plural, one {# item} other {# items}} ]"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "show all"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "error"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "Copied!"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "Copy JSON to clipboard"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "{logs, plural, one {# log} other {# logs}}"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "{successes, plural, one {# success} other {# successes}}"
+msgstr ""
+
+#: front/components/app/blocks/Output.tsx
+msgid "{errors, plural, one {# error} other {# errors}}"
+msgstr ""
+
+#: front/components/app/blocks/Search.tsx
+msgid "provider:"
+msgstr ""
+
+#: front/components/app/blocks/Search.tsx
+msgid "Setup provider"
+msgstr ""
+
+#: front/components/app/blocks/Search.tsx
+msgid "Provider not available"
+msgstr ""
+
+#: front/components/app/blocks/Search.tsx
+msgid "Select provider"
+msgstr ""
+
+#: front/components/app/blocks/Search.tsx
+msgctxt "number of results, field label"
+msgid "Num"
+msgstr ""
+
+#: front/components/app/blocks/WhileEnd.tsx
+msgid "condition:"
+msgstr ""

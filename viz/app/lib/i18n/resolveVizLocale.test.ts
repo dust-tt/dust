@@ -10,7 +10,7 @@ describe("resolveVizLocale", () => {
 
   it("maps a supported locale without catalog to its language's catalog", () => {
     expect(
-      resolveVizLocale({ localeParam: "en-GB", acceptLanguage: "fr-FR" })
+      resolveVizLocale({ localeParam: "en-AU", acceptLanguage: "fr-FR" })
     ).toBe("en-US");
   });
 

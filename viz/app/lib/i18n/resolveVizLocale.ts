@@ -4,7 +4,7 @@ import {
   VIZ_SOURCE_LOCALE,
 } from "@viz/app/lib/i18n/locales";
 
-// Exact tag first (case-insensitive), then same language: `en-GB` and `en` read `en-US`, `fr-CA`
+// Exact tag first (case-insensitive), then same language: `en-AU` and `en` read `en-US`, `fr-CA`
 // reads `fr-FR`.
 function matchCatalogLocale(tag: string): VizCatalogLocale | undefined {
   const normalized = tag.trim().toLowerCase();
@@ -31,7 +31,7 @@ function parseAcceptLanguage(header: string): string[] {
  * The resolved locale MUST be, in order: the catalog locale matching `localeParam` (the `?locale=`
  * front passes), else the catalog locale matching the first `acceptLanguage` tag, in header order,
  * that has one, else `VIZ_SOURCE_LOCALE`. A tag matches its exact catalog locale, else the first catalog
- * locale of the same language (`en-GB` → `en-US`). Missing or unmatched inputs MUST fall through,
+ * locale of the same language (`en-AU` → `en-US`). Missing or unmatched inputs MUST fall through,
  * never fail.
  */
 export function resolveVizLocale({

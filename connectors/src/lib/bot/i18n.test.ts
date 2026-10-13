@@ -26,6 +26,13 @@ describe("getBotI18n", () => {
     ).toBe("Réponse de *Dust*");
   });
 
+  it("renders the English text in en-GB where the catalog has no translation", async () => {
+    const enGb = await getBotI18n("en-GB");
+    expect(
+      enGb._("Answered by *{assistantName}*", { assistantName: "Dust" })
+    ).toBe("Answered by *Dust*");
+  });
+
   it("falls back to the English text for messages missing from the catalog", async () => {
     const fr = await getBotI18n("fr-FR");
     expect(fr._("Not in any catalog, {name}", { name: "Ada" })).toBe(

@@ -42,6 +42,16 @@ describe("SparkleI18nProvider", () => {
     expect(html).toContain("2 éléments");
   });
 
+  it("renders the en-US message where the en-GB catalog has no translation", async () => {
+    await preloadSparkleLocale("en-GB");
+
+    const html = renderToStaticMarkup(
+      <SparkleI18nProvider locale="en-GB">{pagination}</SparkleI18nProvider>
+    );
+
+    expect(html).toContain("2 items");
+  });
+
   it("ignores the consumer's I18nProvider", () => {
     const i18n = setupI18n();
     i18n.loadAndActivate({ locale: "fr-FR", messages: {} });

@@ -1,0 +1,228 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "New conversation in pod"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open a new conversation in the active pod"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "New conversation"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open a new conversation"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Details"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "View description and settings"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Edit"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Change instructions and settings"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove from favorites"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add to favorites"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove this agent from your favorites"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this agent to your favorites"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "View profile"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Use skill"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this skill to your message"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Go"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Open this Pod"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove from starred"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add to starred"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Remove this Pod from your starred list"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Add this Pod to your starred list"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Navigate"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Select"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteActionPhase.tsx
+msgid "Back"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteItems.tsx
+msgid "More actions"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "All"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Conversations"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Pods"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Agents"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Members"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Skills"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Settings"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation in pod"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new conversation"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Create new Pod"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search conversations."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search pods."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search agents."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search members."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search skills."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Type to search settings."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Search…"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Suggestions"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "No results found."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More agents available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More skills available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More members available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More pods available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More conversations available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "More settings available. Type to filter."
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Actions"
+msgstr ""
+
+#: front/components/command_palette/CommandPaletteSearchPhase.tsx
+msgid "Close"
+msgstr ""

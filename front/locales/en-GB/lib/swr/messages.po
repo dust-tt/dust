@@ -1,0 +1,1625 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/lib/swr/agent_editors.ts
+#: front/lib/swr/skill_editors.ts
+msgid "Successfully updated editors"
+msgstr ""
+
+#: front/lib/swr/agent_editors.ts
+#: front/lib/swr/skill_editors.ts
+msgid "Successfully added and removed editors"
+msgstr ""
+
+#: front/lib/swr/agent_editors.ts
+#: front/lib/swr/skill_editors.ts
+msgid "{removedCount, plural, one {Successfully removed editor} other {Successfully removed editors}}"
+msgstr ""
+
+#: front/lib/swr/agent_editors.ts
+#: front/lib/swr/skill_editors.ts
+msgid "{addedCount, plural, one {Successfully added editor} other {Successfully added editors}}"
+msgstr ""
+
+#: front/lib/swr/agent_editors.ts
+#: front/lib/swr/skill_editors.ts
+msgid "Failed to update editors"
+msgstr ""
+
+#: front/lib/swr/agent_memories.ts
+msgid "Failed to delete memory"
+msgstr ""
+
+#: front/lib/swr/agent_memories.ts
+msgid "Memory deleted"
+msgstr ""
+
+#: front/lib/swr/agent_suggestions.ts
+msgid "Failed to update suggestion"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Trigger created"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "The trigger \"{triggerName}\" has been created."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Failed to create trigger"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+#: front/lib/swr/pods.ts
+#: front/lib/swr/sandbox.ts
+msgid "An unexpected error occurred. Please try again."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Trigger updated"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "The trigger \"{triggerName}\" has been updated."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Failed to update trigger"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Trigger enabled"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Trigger disabled"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "The trigger is now running."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "The trigger is no longer running."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Failed to update the trigger pool"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "Trigger pool updated"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "This trigger now runs on the workspace's credits."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "This trigger now runs on its editor's credits."
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "{updatedCount, plural, one {# automation now runs on the workspace's credits.} other {# automations now run on the workspace's credits.}}"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "{updatedCount, plural, one {# automation now runs on its editor's credits.} other {# automations now run on their editor's credits.}}"
+msgstr ""
+
+#: front/lib/swr/agent_triggers.ts
+msgid "{skippedCount, plural, one {# could not be changed.} other {# could not be changed.}}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Successfully deleted {agentName}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{agentName} was successfully archived."
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error archiving {agentName}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Successfully archived agents"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{agentCount, plural, one {# agent was successfully archived.} other {# agents were successfully archived.}}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error archiving agents"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Agent added to favorites"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Agent removed from favorites"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error adding agent to favorites"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error removing agent from favorites"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error updating agent list"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Successfully restored {agentName}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{agentName} was successfully restored."
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error restoring {agentName}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error updating model"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "An unknown error occurred."
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Model updated"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{updatedCount, plural, one {Model updated on # agent,} other {Model updated on # agents,}} {skippedCount, plural, one {# could not be updated.} other {# could not be updated.}}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{updatedCount, plural, one {Model updated on # agent.} other {Model updated on # agents.}}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error updating automatic archival"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Automatic archival enabled"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Automatic archival disabled"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{thresholdDays, plural, one {Agents unmentioned for # day will be archived.} other {Agents unmentioned for # days will be archived.}}"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "No agent will be archived automatically."
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error previewing inactive agents"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Error archiving inactive agents"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "Inactive agents archived"
+msgstr ""
+
+#: front/lib/swr/assistants.ts
+msgid "{archivedCount, plural, one {Archived # agent.} other {Archived # agents.}}"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "Failed to enable {botName}"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "Tried to enable {botName}, but no data source was found."
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "{botName} enabled successfully"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "{botName} disabled successfully"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "The {botName} is now active and ready to use."
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "The {botName} has been disabled."
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "Failed to update PDF sync setting"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "Tried to update PDF sync setting, but no data source was found."
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "PDF sync setting updated successfully"
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "PDF syncing is now enabled."
+msgstr ""
+
+#: front/lib/swr/connectors.ts
+msgid "PDF syncing has been disabled."
+msgstr ""
+
+#: front/lib/swr/conversation_selected_spaces.ts
+msgid "Could not select spaces"
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Failed to update document"
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Document updated"
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Document has been updated."
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Failed to create document"
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Document processing"
+msgstr ""
+
+#: front/lib/swr/data_source_view_documents.ts
+msgid "Your document is processing and will appear shortly."
+msgstr ""
+
+#: front/lib/swr/data_source_view_tables.ts
+msgid "Error updating table"
+msgstr ""
+
+#: front/lib/swr/data_source_view_tables.ts
+msgid "Table updated"
+msgstr ""
+
+#: front/lib/swr/data_source_view_tables.ts
+msgid "Table has been updated."
+msgstr ""
+
+#: front/lib/swr/discovery.ts
+msgid "Failed to pin to Featured"
+msgstr ""
+
+#: front/lib/swr/discovery.ts
+msgid "Pinned in position {displayedPosition}"
+msgstr ""
+
+#: front/lib/swr/discovery.ts
+msgid "{itemName} is now featured for {audienceName}."
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to delete file"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "File deleted"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to rename"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Renamed to \"{newFileName}\""
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to save file"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "File saved"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to upload the file"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "File processing"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Your file is processing and will appear shortly."
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to update frame sharing"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to add access"
+msgstr ""
+
+#: front/lib/swr/files.ts
+msgid "Failed to revoke access"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "Couldn't save edits"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "PDF export failed"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "PDF exported"
+msgstr ""
+
+#: front/lib/swr/frames.ts
+msgid "Your PDF has been downloaded."
+msgstr ""
+
+#: front/lib/swr/github_connection.ts
+msgid "GitHub disconnected"
+msgstr ""
+
+#: front/lib/swr/github_connection.ts
+msgid "Failed to disconnect GitHub"
+msgstr ""
+
+#: front/lib/swr/github_connection.ts
+msgid "Failed to connect GitHub"
+msgstr ""
+
+#: front/lib/swr/github_connection.ts
+msgid "GitHub connected"
+msgstr ""
+
+#: front/lib/swr/github_connection.ts
+msgid "All workspace members will share this connection."
+msgstr ""
+
+#: front/lib/swr/governance.ts
+msgid "Failed to update permission"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to add member to group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Member added to group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "The member has been added to {groupName}."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to remove member from group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Member removed from group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "The member has been removed from {groupName}."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to create group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group created"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{name} has been created."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to update group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group updated"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{updatedGroupName} has been updated."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to delete group"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group deleted"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{groupName} has been deleted."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to update group spend limit"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group spend limit status unknown"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "The update was submitted but the server response could not be read. The table has been refreshed with the current state."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{groupName}'s spend limit has been removed."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{groupName}'s spend limit has been set to {awuCredits} credits."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group spend limit updated"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to update group role"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Members of {groupName} are now admins."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Members of {groupName} are now managers."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{groupName} no longer grants a role."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group role updated"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Failed to update group seat"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Group seat updated"
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "Members of {groupName} now get a {seatName} seat."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+msgid "{groupName} no longer grants a seat."
+msgstr ""
+
+#: front/lib/swr/groups.ts
+#: front/lib/swr/memberships.ts
+msgid "Failed to prepare seat change"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to delete {serverName}"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Could not delete {serverName}. Please try again."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverName} deleted"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Successfully deleted {serverName}."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Error synchronizing server"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverName} synchronized"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverName} synchronized successfully."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Error updating server"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverViewName} updated"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverViewName} has been successfully updated."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to save changes"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{mcpServerDisplayName} connected"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Successfully connected to {mcpServerDisplayName}."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to connect {mcpServerDisplayName}"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Could not connect to {mcpServerDisplayName}. Please try again."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverName} disconnected"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Successfully disconnected from {serverName}."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to disconnect {serverName}"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Could not disconnect from {serverName}. Please try again."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "A workspace admin must first connect {mcpServerDisplayName} at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Unexpected error trying to connect to your provider. Please try again."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to add actions to space {spaceName}"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Actions added to space {spaceName}"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverName} has been added to the {spaceName} space successfully."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Action removed from workspace"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Action removed from space"
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "{serverViewName} has been removed from the {spaceName} space successfully."
+msgstr ""
+
+#: front/lib/swr/mcp_servers.ts
+msgid "Failed to remove action"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Failed to update spend limit"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberCount, plural, one {Applied a {awuCredits} credit limit to {formattedMemberCount} member.} other {Applied a {awuCredits} credit limit to {formattedMemberCount} members.}}"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberCount, plural, one {Removed the personal limit for {formattedMemberCount} member.} other {Removed the personal limit for {formattedMemberCount} members.}}"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Spend limit updated"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Failed to update seats"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Seats updated"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}. Downgrades take effect at the next credit refresh.} other {Changed {formattedMemberCount} members to {seatName}. Downgrades take effect at the next credit refresh.}}"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberCount, plural, one {Changed {formattedMemberCount} member to {seatName}.} other {Changed {formattedMemberCount} members to {seatName}.}}"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Failed to update seat"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Seat removal scheduled"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Seat removed"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s seat will be removed at the next billing period. They keep full access until then."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s seat has been removed."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Seat change scheduled"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "Seat updated"
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s seat will change to {seatName} at the next credit refresh."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s scheduled seat change has been canceled."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s seat has been updated to {seatName}. The seat pool will be provisioned shortly."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s seat has been updated to {seatName}."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s spend limit has been removed."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s spend limit has been set to {awuCredits} credits until the next billing cycle."
+msgstr ""
+
+#: front/lib/swr/memberships.ts
+msgid "{memberName}'s spend limit has been set to {awuCredits} credits."
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "Error dismissing mention"
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "Error approving mention"
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "Error rejecting mention"
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "Success"
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "{mentionLabel} will run in this conversation."
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "{mentionLabel} has been added to the Pod and to the conversation."
+msgstr ""
+
+#: front/lib/swr/mentions.tsx
+msgid "{mentionLabel} has been invited to the conversation."
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Failed to set model tier for user"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Model tier updated"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "The model tier for the user has been updated."
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Failed to clear model tier override for user"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Model tier override cleared"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "The user now inherits the model tier."
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Failed to set model tier for group"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "The model tier for the group has been updated."
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Failed to clear model tier for group"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Model tier cleared"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "The group now inherits the model tier."
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "Failed to set workspace model tier"
+msgstr ""
+
+#: front/lib/swr/model_tiers.ts
+msgid "The model tier for the workspace has been updated."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to add references to Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{addedCount, plural, one {Added to Pod files} other {Added # items to Pod files}}"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Some items could not be added"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{addedCount} added, {errorCount} failed."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to remove content nodes from Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{removedCount, plural, one {Removed from Pod files} other {Removed # items from Pod files}}"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to create folder"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Folder \"{folderName}\" created"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to move file"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "File moved"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to extract \"{archiveName}\""
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{filesWritten, plural, one {Extracted # file from \"{archiveName}\"} other {Extracted # files from \"{archiveName}\"}}"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to set up starter tasks"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to add task"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to update task"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to delete task"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to start task work"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{userName} joined Pod {podName}"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "You can now participate in conversations."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Could not join Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{userName} left Pod {podName}"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "You have successfully left the Pod."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Could not leave Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Error updating Pod metadata"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod tabs cleared"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod tabs updated"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Frame pinned as Pod banner"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Banner unpinned"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod archived"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod unarchived"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod updated"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Error updating Pod notification preference"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod notification preference updated"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Error starring Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Error unstarring Pod"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to update Pod network policy"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Pod network policy updated"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Sandbox egress policy changes will be applied by the proxy cache shortly."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+#: front/lib/swr/sandbox.ts
+msgid "Failed to reject domain request"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Failed to request domain"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Domain already allowed"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Domain already requested"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "Domain requested"
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "A workspace admin will review your request."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{domain} is already allowed for this Pod."
+msgstr ""
+
+#: front/lib/swr/pods.ts
+msgid "{domain} is already pending review for this Pod."
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "Failed to save API key"
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "API key saved"
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "Your API key has been configured successfully."
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "Failed to remove API key"
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "API key removed"
+msgstr ""
+
+#: front/lib/swr/provider_credentials.ts
+msgid "The API key has been removed successfully."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to add domain"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+#: front/lib/swr/workos.ts
+msgid "Failed to remove domain"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Workspace"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{scopeName}: {errorMessage}"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Domain partially added"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Domain partially removed"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{scopeCount, plural, one {{domain} was added to {okCount} of # scope. Failed: {failedScopeNames}.} other {{domain} was added to {okCount} of # scopes. Failed: {failedScopeNames}.}}"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{scopeCount, plural, one {{domain} was removed from {okCount} of # scope. Failed: {failedScopeNames}.} other {{domain} was removed from {okCount} of # scopes. Failed: {failedScopeNames}.}}"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{domain} was added to the workspace, which applies to all Pods. Computer egress policy changes will be applied by the proxy cache shortly."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{scopeCount, plural, one {{domain} was added to # scope. Computer egress policy changes will be applied by the proxy cache shortly.} other {{domain} was added to # scopes. Computer egress policy changes will be applied by the proxy cache shortly.}}"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{scopeCount, plural, one {{domain} was removed from # scope. Computer egress policy changes will be applied by the proxy cache shortly.} other {{domain} was removed from # scopes. Computer egress policy changes will be applied by the proxy cache shortly.}}"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Domain added"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+#: front/lib/swr/workos.ts
+msgid "Domain removed"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to save environment variable"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Environment variable created"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Environment variable replaced"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{name} has been saved for future Computers in this Pod."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{name} has been saved for future Computers."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to update environment variable"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Environment variable secured"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Environment variable updated"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{envVarName} has been updated for future Computers in this Pod."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{envVarName} has been updated for future Computers."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to delete environment variable"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Environment variable deleted"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{envVarName} has been removed for future Computers in this Pod."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "{envVarName} has been removed for future Computers."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Computer network setting updated"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Agent-requested Computer domains setting has been updated."
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to update Computer network setting"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Failed to update network policy"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Network policy updated"
+msgstr ""
+
+#: front/lib/swr/sandbox.ts
+msgid "Computer egress policy changes will be applied by the proxy cache shortly."
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Skills updated"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{skillCount, plural, one {Successfully updated # skill.} other {Successfully updated # skills.}}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Error updating skills"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Successfully archived {skillName}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{skillName} was successfully archived."
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Error archiving {skillName}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Successfully archived skills"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{skillCount, plural, one {# skill was successfully archived.} other {# skills were successfully archived.}}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Error archiving skills"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Added to favorites"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "View"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Failed to add {skillName} to favorites"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Failed to remove {skillName} from favorites"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Failed to update reinforcement settings"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Successfully restored {skillName}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{skillName} was successfully restored."
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Error restoring {skillName}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{importedCount, plural, one {# skill imported.} other {# skills imported.}}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{updatedCount, plural, one {# skill updated.} other {# skills updated.}}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "{skippedCount, plural, one {# skill skipped.} other {# skills skipped.}}"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Import successful"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Import failed"
+msgstr ""
+
+#: front/lib/swr/skill_configurations.ts
+msgid "Failed to import skills."
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "Failed to allow Slack workflow"
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "Slack workflow allowed"
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "\"{botName}\" can now summon agents in Slack."
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "Failed to revoke Slack workflow"
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "Slack workflow revoked"
+msgstr ""
+
+#: front/lib/swr/slack_workflows.ts
+msgid "\"{botName}\" can no longer summon agents in Slack."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully created folder"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Folder was successfully created."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Error creating folder"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully updated folder"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Folder was successfully updated."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Error updating folder"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "{category, select, folder {Successfully deleted folder} website {Successfully deleted website} other {Successfully deleted data source}}"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "{dataSourceName} was successfully deleted."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "{category, select, folder {Error deleting folder} website {Error deleting website} other {Error deleting data source}}"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Error creating space"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully created space"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Space was successfully created."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Error updating space"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully updated space"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Space was successfully updated."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Failed to add members to {spaceName}"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully added members"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Members were added to {spaceName}."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Successfully deleted {spaceName}"
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "{spaceName} was successfully deleted."
+msgstr ""
+
+#: front/lib/swr/spaces.ts
+msgid "Error deleting {spaceName}"
+msgstr ""
+
+#: front/lib/swr/tags.ts
+msgid "Failed to create tag"
+msgstr ""
+
+#: front/lib/swr/tags.ts
+msgid "Failed to delete tag"
+msgstr ""
+
+#: front/lib/swr/tags.ts
+msgid "Tag deleted"
+msgstr ""
+
+#: front/lib/swr/tags.ts
+msgid "Failed to update tag"
+msgstr ""
+
+#: front/lib/swr/tags.ts
+msgid "Tag updated"
+msgstr ""
+
+#: front/lib/swr/tool_actions.ts
+msgid "Failed to complete authentication"
+msgstr ""
+
+#: front/lib/swr/tool_actions.ts
+msgid "The tool could not resume after authentication. Please try again."
+msgstr ""
+
+#: front/lib/swr/tool_actions.ts
+msgid "Failed to complete file authorization"
+msgstr ""
+
+#: front/lib/swr/tool_actions.ts
+msgid "The tool could not resume after file authorization. Please try again."
+msgstr ""
+
+#: front/lib/swr/tool_actions.ts
+msgid "Failed to record your decision. Please try again."
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Failed to request an upgrade"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Upgrade requested"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Your workspace admins have been notified."
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Changes saved, but approval failed"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Failed to resolve upgrade request"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Upgrade request approved"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "{requesterName}'s upgrade request has been approved."
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "Upgrade request denied"
+msgstr ""
+
+#: front/lib/swr/upgrade_requests.ts
+msgid "{requesterName}'s upgrade request has been denied."
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Failed to update usage settings"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Usage settings updated"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Failed to update notification settings"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Notification settings updated"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Failed to update default spend limit"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Default spend limit updated"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "The default per-user spend limit has been set to {amount} credits."
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Failed to update programmatic usage limit"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Programmatic access disabled"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Programmatic usage limit updated"
+msgstr ""
+
+#: front/lib/swr/usage_settings.ts
+msgid "Monthly limit set to {amount} credits."
+msgstr ""
+
+#: front/lib/swr/useSelfImprovingSkillsSettings.ts
+msgid "Failed to update agent reinforcement setting"
+msgstr ""
+
+#: front/lib/swr/useSelfImprovingSkillsSettings.ts
+msgid "Failed to update reinforcement batch mode setting"
+msgstr ""
+
+#: front/lib/swr/useSelfImprovingSkillsSettings.ts
+msgid "Failed to update reinforcement spending cap"
+msgstr ""
+
+#: front/lib/swr/useSelfImprovingSkillsSettings.ts
+msgid "Failed to update self-improvement cost cap per skill"
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Could not dismiss the email tip"
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Please try again."
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Profile updated"
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Successfully updated your profile."
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Error updating profile"
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Memory saved"
+msgstr ""
+
+#: front/lib/swr/user.ts
+msgid "Error saving memory"
+msgstr ""
+
+#: front/lib/swr/wakeups.ts
+msgid "Failed to cancel wake-up"
+msgstr ""
+
+#: front/lib/swr/wakeups.ts
+msgid "Wake-up canceled"
+msgstr ""
+
+#: front/lib/swr/webhook_source.ts
+msgid "Failed to create webhook source"
+msgstr ""
+
+#: front/lib/swr/webhook_source.ts
+msgid "Successfully created webhook source"
+msgstr ""
+
+#: front/lib/swr/webhook_source.ts
+msgid "Successfully deleted webhook source"
+msgstr ""
+
+#: front/lib/swr/webhook_source.ts
+msgid "Failed to delete webhook source"
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "The domain has been removed from the workspace."
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "Failed to disable WorkOS SSO"
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "WorkOS SSO disabled"
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "WorkOS SSO has been disabled for the workspace."
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "Failed to disable WorkOS Directory Sync"
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "WorkOS Directory Sync disabled"
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "WorkOS Directory Sync has been disabled for the workspace."
+msgstr ""
+
+#: front/lib/swr/workos.ts
+msgid "Failed to open audit logs portal"
+msgstr ""
+
+#: front/lib/swr/workspace_branding.ts
+msgid "Failed to update branding"
+msgstr ""
+
+#: front/lib/swr/workspace_branding.ts
+msgid "An error occurred while saving the branding asset."
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Update failed"
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Some active agents may not be eligible for regional models."
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Regional models setting updated"
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Only regional models are now available in this workspace."
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "All models are now available in this workspace."
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Checkout failed"
+msgstr ""
+
+#: front/lib/swr/workspaces.ts
+msgid "Could not initialize the payment form. Please try again."
+msgstr ""

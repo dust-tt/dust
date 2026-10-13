@@ -1,0 +1,123 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "{provider} API key"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use OpenAI models you must provide your API key. It can be found <0>here</0>."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "We'll never use your API key for anything other than to run your apps."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Azure OpenAI models you must provide your API key and endpoint. They can be found in the left menu of your OpenAI Azure Resource portal (menu item `Keys and Endpoint`)."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Anthropic models you must provide your API key. It can be found <0>here</0> (you can create a new key specifically for Dust)."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Mistral AI models you must provide your API key. It can be found <0>here</0> (you can create a new key specifically for Dust)."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Google AI Studio models you must provide your API key. It can be found <0>here</0> (you can create a new key specifically for Dust)."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Deepseek models you must provide your API key."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use Fireworks models you must provide your API key."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "To use xAI's Grok models you must provide your API key. It can be found <0>here</0>."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "SerpAPI lets you search Google (and other search engines). To use SerpAPI you must provide your API key. It can be found <0>here</0>."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Serper lets you search Google (and other search engines). To use Serper you must provide your API key. It can be found <0>here</0>."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Browserless lets you use headless browsers to scrape web content. To use Browserless, you must provide your API key. It can be found <0>here</0>."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Note that it generally takes <0>5 mins</0> for the API key to become active (an email is sent when it's ready)."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Azure OpenAI endpoint"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Unknown error"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Updating..."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Update"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Enabling..."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Enable"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Testing..."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgctxt "verb, button label"
+msgid "Test"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Provide the necessary configuration for {title}."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Error: {errorDetails}"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Test succeeded! You can now enable {title}."
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Disable"
+msgstr ""
+
+#: front/components/providers/ProviderSetup.tsx
+msgid "Cancel"
+msgstr ""

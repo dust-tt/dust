@@ -7,6 +7,17 @@ export const VIZ_SOURCE_LOCALE = "en-US";
  * that viz has a catalog for each language front can request. Each entry MUST have a catalog under
  * `viz/locales/{locale}/`.
  */
-export const VIZ_CATALOG_LOCALES = [VIZ_SOURCE_LOCALE, "fr-FR"] as const;
+export const VIZ_CATALOG_LOCALES = [
+  VIZ_SOURCE_LOCALE,
+  "en-GB",
+  "fr-FR",
+] as const;
 
 export type VizCatalogLocale = (typeof VIZ_CATALOG_LOCALES)[number];
+
+// Mirrors front's `CATALOG_FALLBACK_LOCALES`: an empty `msgstr` renders the fallback's message.
+export const VIZ_CATALOG_FALLBACK_LOCALES: Partial<
+  Record<VizCatalogLocale, VizCatalogLocale>
+> = {
+  "en-GB": VIZ_SOURCE_LOCALE,
+};

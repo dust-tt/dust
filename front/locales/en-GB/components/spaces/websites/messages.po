@@ -1,0 +1,211 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Advanced settings"
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Custom headers"
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add custom request headers for the web crawler."
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header name"
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Header value"
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Remove header"
+msgstr ""
+
+#: front/components/spaces/websites/AdvancedSettingsSection.tsx
+msgid "Add header"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgctxt "website refresh schedule"
+msgid "Never"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every day"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every week"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Every month"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "{depth, plural, one {# level} other {# levels}}"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website entry point"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Enter the address of the website you'd like to index."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Ensure the website is public"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only public websites accessible without authentication will work."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Indexing settings"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Adjust the settings to only index the data you are interested in."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Crawling strategy"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Do you want to limit to child pages or not?"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Only child pages of the provided URL"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Follow all the links within the domain"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Refresh schedule"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How often would you like to check for updates?"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Depth of search"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "How far from the initial page would you like to go?"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Page limit"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "What is the maximum number of pages you'd like to index?"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Maximum pages must be between 1 and {WEBCRAWLER_MAX_PAGES}"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Website name cannot be changed."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Give a name to this data source."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteForm.tsx
+msgid "Articles"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a name."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The name cannot be blank or start with \"managed-\"."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "A website with this name already exists"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Please provide a valid URL (e.g. https://example.com or https://example.com/a/b/c)."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website updated"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Website created"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully updated."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "The website has been successfully created."
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error updating website"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error creating website"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Error deleting website"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Edit {dataSourceName}"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Create a website"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/spaces/websites/SpaceWebsiteModal.tsx
+msgid "Delete this website"
+msgstr ""

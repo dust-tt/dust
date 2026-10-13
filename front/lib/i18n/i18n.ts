@@ -22,6 +22,7 @@ export const defaultLocaleI18n = setupI18n({
 const CATALOG_LOADERS: Record<CatalogLocale, () => Promise<Messages>> = {
   "en-US": async () => defaultLocaleMessages,
   // Non-default catalogs are loaded on demand to keep them out of the main bundle.
+  "en-GB": async () => (await import("@app/locales/en-GB.catalog")).messages,
   "fr-FR": async () => (await import("@app/locales/fr-FR.catalog")).messages,
 };
 

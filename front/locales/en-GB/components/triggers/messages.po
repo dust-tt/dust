@@ -1,0 +1,409 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Add source"
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "{presetName} (Preview)"
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Add a trigger"
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Search trigger sources..."
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Custom webhook"
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "No trigger source matches your search"
+msgstr ""
+
+#: front/components/triggers/AddTriggerDialog.tsx
+msgid "Try a different search term."
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Provider"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgctxt "webhook source provider"
+msgid "Custom"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Used by"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Access"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Workspace"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgctxt "table header, user who last edited"
+msgid "By"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "Last updated"
+msgstr ""
+
+#: front/components/triggers/AdminTriggersList.tsx
+msgid "You don’t have any triggers yet."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Name is required"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Subscribed events must not be empty."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Secret is required"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Name..."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Description (optional)"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Help your team understand when to use this trigger."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Select events"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "All events ({selectedCount}) selected"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "{selectedCount, plural, one {# event selected} other {# events selected}}"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Events to watch"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Choose which events will activate this trigger"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Select all"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Unselect all"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Advanced settings"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Secret"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Note: You will be able to see and copy this secret for the first 10 minutes after creating the webhook."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Auto-generate"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Secret for validation..."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Signature header"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+msgid "Signature header..."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceForm.tsx
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Signature algorithm"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Failed to connect to {presetName}"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Connected to {presetName}"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Fetching additional data for configuration..."
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Edit connection"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Connected"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "Connect"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "{presetName} connection"
+msgstr ""
+
+#: front/components/triggers/CreateWebhookSourceWithProviderForm.tsx
+msgid "{presetName} connection is required"
+msgstr ""
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
+msgid "Enabled"
+msgstr ""
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgctxt "trigger status"
+msgid "Disabled"
+msgstr ""
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Disabled by manager"
+msgstr ""
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Relocating"
+msgstr ""
+
+#: front/components/triggers/TriggerStatusChip.tsx
+msgid "Downgraded"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "How to use this webhook"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Authentication"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "To authenticate your webhook requests, you need to sign the payload using the configured secret and algorithm:"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Hash the entire request payload using <0>{signatureAlgorithm}</0> with the secret shown above"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Include the resulting hash in the <0>{signatureHeader}</0> header of your HTTP request, prefixed with <1>{signatureAlgorithm}=</1>"
+msgstr ""
+
+#: front/components/triggers/WebhookEndpointUsageInfo.tsx
+msgid "Send a POST request to the webhook URL with your payload as JSON"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited by {editorName}"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited on {editedAtDateString}"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Edited by {editorName}, {editedAtDateString}"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Name & icon"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Description"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook source details"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook URL"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Copy to clipboard"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Webhook URL copied to clipboard"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Subscribed events"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Hide secret"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Show secret"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsInfo.tsx
+msgid "Secret copied to clipboard"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "Available to all workspace members"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "These tools are only available to the users of the selected spaces:"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "These tools are accessible to everyone in the workspace."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceDetailsSharing.tsx
+msgid "Search a space"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Unsaved changes"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "You have unsaved changes. Are you sure you want to close without saving?"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Discard changes"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "{providerName} source"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "{webhookSourceName} updated"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Your changes have been saved."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Failed to save changes"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Invalid form data"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Are you sure you want to remove {webhookSourceName}?"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "<0>{agentName}</0> is using this webhook source.<1/>The associated triggers will be automatically removed from it."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "<0>{agentNames}</0> are using this webhook source.<1/>The associated triggers will be automatically removed from them."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "This action cannot be undone."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Remove"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Saving..."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "New {providerPresetName} trigger"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "New custom trigger"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Webhook source"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Webhook source for triggering assistants."
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Info"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Sharing"
+msgstr ""
+
+#: front/components/triggers/WebhookSourceSheet.tsx
+msgid "Remove webhook source"
+msgstr ""

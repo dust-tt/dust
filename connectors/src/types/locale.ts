@@ -12,6 +12,7 @@ export const DEFAULT_LOCALE: SupportedLocale = "en-US";
 
 export const CATALOG_LOCALES = [
   "en-US",
+  "en-GB",
   "fr-FR",
 ] as const satisfies readonly SupportedLocale[];
 
@@ -20,7 +21,7 @@ export type CatalogLocale = (typeof CATALOG_LOCALES)[number];
 export const CATALOG_LOCALE_BY_LOCALE: Record<SupportedLocale, CatalogLocale> =
   {
     "en-US": "en-US",
-    "en-GB": "en-US",
+    "en-GB": "en-GB",
     "fr-FR": "fr-FR",
   };
 

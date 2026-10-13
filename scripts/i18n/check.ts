@@ -10,7 +10,11 @@ import { formatter } from "@lingui/format-po";
 import * as connectorsLocales from "../../connectors/src/types/locale";
 import logger from "../../front/logger/logger";
 import * as frontLocales from "../../front/types/locale";
-import { CATALOG_LOCALES, DEFAULT_LOCALE } from "../../front/types/locale";
+import {
+  CATALOG_FALLBACK_LOCALES,
+  CATALOG_LOCALES,
+  DEFAULT_LOCALE,
+} from "../../front/types/locale";
 
 const ROOT_DIR = path.resolve(__dirname, "../..");
 // The `locales/` directories of every catalog in `lingui.config.ts`, relative to the repository root.
@@ -139,7 +143,7 @@ function listDriftedConnectorsLocales(): string[] {
  * The check MUST exit non-zero when running `npm run i18n:extract` leaves any file under one of
  * `LOCALES_DIRS` modified or untracked, when a `.po` file under one of `LOCALES_DIRS` belongs to no
  * catalog of `lingui.config.ts`, or when any non-obsolete message of any catalog of a `CATALOG_LOCALES` entry
- * other than `DEFAULT_LOCALE` has an empty translation.
+ * other than `DEFAULT_LOCALE` and without a `CATALOG_FALLBACK_LOCALES` entry has an empty translation.
  */
 /**
  * @cc [owner:sfriquet,label:testing] i18n-check-fails-on-conflicting-translations
@@ -173,7 +177,7 @@ async function main() {
 
   let hasMissingTranslations = false;
   for (const locale of CATALOG_LOCALES) {
-    if (locale === DEFAULT_LOCALE) {
+    if (locale === DEFAULT_LOCALE || CATALOG_FALLBACK_LOCALES[locale]) {
       continue;
     }
     const untranslated = await listUntranslatedMessages(locale);

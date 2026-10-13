@@ -30,6 +30,8 @@ async function importCatalog(locale: SparkleCatalogLocale): Promise<Messages> {
     case "en-US":
       return sourceLocaleMessages;
     // Non-source catalogs are loaded on demand to keep them out of the consumers' main bundles.
+    case "en-GB":
+      return (await import("@sparkle/locales/en-GB/messages")).messages;
     case "fr-FR":
       return (await import("@sparkle/locales/fr-FR/messages")).messages;
     default:

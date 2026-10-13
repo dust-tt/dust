@@ -1533,14 +1533,13 @@ export const ColumnTypes = () => {
   );
 };
 
-// Mirrors front's `CATALOG_LOCALE_BY_LOCALE`: `en-GB` formats the UK way but renders the `en-US`
-// catalog.
+// Mirrors front's `CATALOG_LOCALE_BY_LOCALE`: each format locale renders its own catalog.
 const CATALOG_LOCALE_BY_FORMAT_LOCALE: Record<
   SparkleFormatLocale,
   SparkleCatalogLocale
 > = {
   "en-US": "en-US",
-  "en-GB": "en-US",
+  "en-GB": "en-GB",
   "fr-FR": "fr-FR",
 };
 
@@ -1593,8 +1592,8 @@ const localizedUsageColumns: ColumnDef<UsageRow>[] = [
 /**
  * Without a `locale` prop, `NumericCellContent` formats in the format locale of the closest
  * `SparkleI18nProvider`: `en-US` groups with commas (`1,234.50`), `en-GB` the same way, and `fr-FR`
- * with narrow no-break spaces and a decimal comma (`1 234,50`). `en-GB` keeps the `en-US` catalog,
- * so the pagination text stays English. The last column passes `locale="en-US"`, which wins over
+ * with narrow no-break spaces and a decimal comma (`1 234,50`). `en-GB` renders its own catalog, which
+ * falls back to `en-US`, so the pagination text stays English. The last column passes `locale="en-US"`, which wins over
  * the provider.
  * @summary Numeric cells formatted in each format locale of `SparkleI18nProvider`.
  */
