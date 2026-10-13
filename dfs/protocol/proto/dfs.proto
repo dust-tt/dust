@@ -130,7 +130,7 @@ message Attr {
   required uint64 attr_version = 9;
   // Real directories and virtual root track topology changes, not grants. Shared stays fixed at 1.
   required uint64 content_version = 10;
-  // Tracks grants attached to this object, not inherited grants or effective mode. Shared stays at 1.
+  // Tracks grant updates made to this object. Shared stays at 1.
   required uint64 grants_version = 14;
   // The FDB read snapshot or successful mutation commit version.
   required int64 store_version = 11;
