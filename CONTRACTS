@@ -522,3 +522,14 @@ count.
 
 Reviewer: For each added or changed test, name a code change that breaks the titled behavior. Report
 the test if it would still pass or if a title claim is not asserted.
+
+@cc [owner:sfriquet,label:product] source-copy-follows-en-us-style-guide
+English text passed to a Lingui macro or to the Slack bot's `i18n._` (the `en-US` messages) MUST
+follow `.claude/skills/dust-translate/references/en-US.md`: American spelling (`-ize`, `-yze`,
+`-or`, `-er`, `canceled`, `labeled`, `catalog`, `enrollment`), except for the names and labels
+that guide lists as exceptions. "Cancelled", "organise" or "colour" in a message is a violation.
+
+@cc [owner:sfriquet,label:product] catalog-translations-follow-style-guide
+Every `msgstr` of a Lingui catalog of `{locale}` (any `messages.po` under a `locales/{locale}/`
+directory) MUST follow the style guide of its locale,
+`.claude/skills/dust-translate/references/{locale}.md`.

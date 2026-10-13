@@ -35,6 +35,7 @@ Our neutral is warm-but-efficient. That is the baseline the whole scale moves ar
 - Use the words "agents" or "skills", never "assistant" or "bot".
 - Refer to Dust as a "platform", not as a "tool".
 - Refer to Dust product documentation and existing product copy to find feature names and terminology.
+- Use American spelling ("canceled", "organize", "color", "favorite"), as defined in the `en-US` style guide of the `dust-translate` skill (`references/en-US.md`).
 
 ## 1. Identify the component when the user hasn't specified it
 

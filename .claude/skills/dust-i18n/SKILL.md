@@ -41,6 +41,8 @@ Rules:
 - Translate descriptors with `t(descriptor)`, not `i18n._(descriptor)`: `i18n` keeps the same
   reference when the locale changes, so memos depending on it would not recompute.
 - Write English in sentence case. Do not apply CSS `uppercase`/`capitalize` to translated text.
+- Write American English, following the `en-US` style guide of the `dust-translate` skill
+  (`references/en-US.md`): "canceled", "organize", "color".
 - Format dates and numbers with the active locale (`i18n.locale`), never a hardcoded `"en-US"`.
 
 ## Zod schemas
