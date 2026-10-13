@@ -125,7 +125,9 @@ impl From<directory::Error> for ErrorCode {
             directory::Error::NameTooLong => ErrorCode::NameTooLong,
             directory::Error::NotDirectory => ErrorCode::NotDirectory,
             directory::Error::AlreadyExists => ErrorCode::AlreadyExists,
-            directory::Error::UnsupportedKind => ErrorCode::Unsupported,
+            directory::Error::UnsupportedKind | directory::Error::SharedUnsupported => {
+                ErrorCode::Unsupported
+            }
             directory::Error::Object(error) => error.into(),
             directory::Error::TimestampGeneration => {
                 tracing::error!(%error, "directory operation failed");

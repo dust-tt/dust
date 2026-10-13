@@ -14,6 +14,9 @@ use dfs_api::storage::{
 use dfs_protocol::{ObjectId, rpc::ObjectKind};
 use foundationdb::{RangeOption, Transaction, options::StreamingMode, tuple::unpack};
 
+mod lookup;
+pub(crate) use lookup::lookup_attrs_require_readable_parents_and_children;
+
 async fn create_child(
     tx: &Transaction,
     directory: &mut DirectoryResource,

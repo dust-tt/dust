@@ -18,6 +18,8 @@ use crate::{
     },
 };
 
+mod lookup;
+
 const FAMILY: &str = "child";
 const PAGE_MAX_ENTRIES: usize = 4_096;
 pub const VIRTUAL_SHARED_NAME: &str = "shared";
@@ -32,6 +34,7 @@ pub enum Error {
     TimestampGeneration,
     InvalidPageLimit,
     InvalidCursor,
+    SharedUnsupported,
     Object(object::Error),
 }
 
@@ -46,6 +49,7 @@ impl fmt::Display for Error {
             Self::TimestampGeneration => f.write_str("child timestamp generation failed"),
             Self::InvalidPageLimit => f.write_str("invalid child page limit"),
             Self::InvalidCursor => f.write_str("invalid child cursor"),
+            Self::SharedUnsupported => f.write_str("virtual shared children are not supported"),
             Self::Object(error) => error.fmt(f),
         }
     }

@@ -28,6 +28,7 @@ fn resources() -> Result<()> {
         directory::child_creation_rejections_leave_storage_unchanged().await?;
         directory::shared_name_is_only_reserved_under_the_tenant_root().await?;
         directory::child_lookup_resolves_names_within_each_directory().await?;
+        directory::lookup_attrs_require_readable_parents_and_children().await?;
         directory::child_listing_pages_through_entries_in_name_order().await?;
         directory::child_listing_rejects_invalid_limits_and_cursors().await?;
         object::root_creation_persists_isolated_records().await?;
