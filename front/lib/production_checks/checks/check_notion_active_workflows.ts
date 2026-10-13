@@ -15,8 +15,12 @@ import type { Client, WorkflowExecutionDescription } from "@temporalio/client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import { QueryTypes } from "sequelize";
 
-// Must exceed the Notion GC sleep between runs (INTERVAL_BETWEEN_GC_SYNCS_MS in connectors, 12h),
-// otherwise a check running just before the GC wakes up reports it as stalled.
+/**
+ * @cc [owner:philipperolet,label:performance] above-notion-gc-sleep
+ * MUST stay above `INTERVAL_BETWEEN_GC_SYNCS_MS` in
+ * `connectors/src/connectors/notion/temporal/config.ts` (the GC sleep between runs), otherwise a
+ * check running just before the GC wakes up reports it as stalled.
+ */
 const TEMPORAL_WORKFLOW_STALLED_THRESHOLD_MS = 13 * 60 * 60 * 1000; // 13 hours.
 
 const NOTION_WORKFLOW_TYPES = [
