@@ -195,7 +195,7 @@ describe("useMarkdownFileEditor", () => {
       { initialProps: params }
     );
     const firstKey = result.current.richEditor?.mountKey;
-    expect(result.current.richEditor?.liveUrl).toBe(COLLAB_URL);
+    expect(result.current.richEditor?.collabUrl).toBe(COLLAB_URL);
 
     rerender(revised);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
@@ -214,7 +214,7 @@ describe("useMarkdownFileEditor", () => {
 
     collabUrl = undefined;
     rerender(revised);
-    expect(result.current.richEditor?.liveUrl).toBe(COLLAB_URL);
+    expect(result.current.richEditor?.collabUrl).toBe(COLLAB_URL);
     expect(result.current.richEditor?.mountKey).toBe(firstKey);
   });
 

@@ -60,7 +60,7 @@ const logRefusal = (reason: string, source: string) => {
 };
 
 /**
- * @cc [owner:PopDaph,label:product] document-live-editing
+ * @cc [owner:PopDaph,label:product] collab-editor-editing
  * The editor MUST be editable only when live and connected, and never on a file it cannot open.
  * A live editor MUST edit the shared document only, never save the file. It shows the file's
  * comment threads until the live extensions replace them with the session's; keeping comment marks

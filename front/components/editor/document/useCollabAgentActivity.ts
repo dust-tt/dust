@@ -10,12 +10,12 @@ const READING_SHOWN_MS = 20_000;
 const EDITING_SHOWN_MS = 4_000;
 
 /**
- * @cc [owner:PopDaph,label:product] live-agent-activity-shown
+ * @cc [owner:PopDaph,label:product] collab-agent-activity-shown
  * The activity MUST be the last one the session announced on `provider`, for
  * `READING_SHOWN_MS` after a read and `EDITING_SHOWN_MS` after an edit, then none. A new provider
  * MUST start with none.
  */
-export function useLiveAgentActivity(
+export function useCollabAgentActivity(
   provider: HocuspocusProvider | null
 ): AgentEvent | null {
   // Kept with its provider: until the effect's cleanup runs, a new provider would see the old one's.

@@ -10,7 +10,7 @@ copy persists DFM only. Suggestions and named visual blocks are not here yet.
 ## Usage
 
 ```tsx
-<Document initialContent={dfmSource} live={liveSession} />
+<DocumentEditor initialContent={dfmSource} live={liveSession} />
 ```
 
 `initialContent` is the file's DFM source and is captured at mount: remount with a new key to
@@ -121,7 +121,7 @@ picked.
 
 | File | Owns |
 | --- | --- |
-| `Document.tsx` | The component: layout, shortcuts, read-only and unsupported states. |
+| `DocumentEditor.tsx` | The component: layout, shortcuts, read-only and unsupported states. |
 | `index.ts` | The public surface: `Document` and its types. |
 | `useDocumentEditor.ts` | The TipTap editor, read-only or bound to the live session. |
 | `dfm_persistence.ts` | `loadDfm` and `saveDfm`, between DFM source and the editor's document. |

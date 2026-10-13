@@ -201,7 +201,7 @@ export interface CommentsFocusRequest {
  * Markdown, so applying it unchanged leaves the text as it is.
  */
 /**
- * @cc [owner:tdraier,label:product] document-live-comment-commands
+ * @cc [owner:tdraier,label:product] collab-editor-comment-requests
  * With `live`, posting, replying to, resolving and deleting comments MUST go through the session
  * and MUST NOT change the threads in the document, which only the session sends, with two
  * exceptions: a new thread MUST be anchored to the draft once the session created it, and deleting

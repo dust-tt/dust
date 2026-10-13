@@ -1,3 +1,4 @@
+import { buildCollabExtensions } from "@app/components/editor/document/collabExtensions";
 import { documentSchema } from "@app/components/editor/document/content";
 import { loadDfm } from "@app/components/editor/document/dfm_persistence";
 import { getMarkedCommentIds } from "@app/components/editor/document/DocumentCommentAnchor";
@@ -6,12 +7,11 @@ import {
   getDocumentJSONComments,
   withoutDocumentJSONComments,
 } from "@app/components/editor/document/DocumentComments";
-import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmComment } from "@app/lib/markdown/dfm";
 import { FIXTURE } from "@app/lib/markdown/dfm/tests/dfm.test_utils";
-import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
+import { CollabUserFactory } from "@app/tests/utils/CollabUserFactory";
 import { BODY_FRAGMENT_NAME } from "@app/types/collab";
 import { Err } from "@app/types/shared/result";
 import { act, renderHook, waitFor } from "@testing-library/react";
@@ -77,7 +77,7 @@ function fakeCommentChannel() {
   return { channel, push };
 }
 
-function renderLiveEditor(
+function renderCollabEditor(
   document: Y.Doc,
   { initialContent = FIXTURE, comments = fakeCommentChannel().channel } = {}
 ) {
@@ -87,7 +87,7 @@ function renderLiveEditor(
       readOnly: false,
       resolveImageSource: () => null,
       live: {
-        extensions: buildLiveDocumentExtensions({
+        extensions: buildCollabExtensions({
           t: (descriptor) => descriptor.id ?? "",
           document,
           awareness: null,
@@ -128,7 +128,7 @@ describe("useDocumentEditor in a live session", () => {
     const { document, commentIds } = sharedDocumentFor(FIXTURE);
     expect(commentIds.size).toBeGreaterThan(0);
 
-    const { result } = renderLiveEditor(document);
+    const { result } = renderCollabEditor(document);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -143,7 +143,7 @@ describe("useDocumentEditor in a live session", () => {
     const { document, fileThreads } = sharedDocumentFor(FIXTURE);
     expect(fileThreads.length).toBeGreaterThan(0);
 
-    const { result } = renderLiveEditor(document);
+    const { result } = renderCollabEditor(document);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -161,7 +161,7 @@ describe("useDocumentEditor in a live session", () => {
     push(SESSION_THREADS);
 
     const editor = new Editor({
-      extensions: buildLiveDocumentExtensions({
+      extensions: buildCollabExtensions({
         t: (descriptor) => descriptor.id ?? "",
         document,
         awareness: null,
@@ -181,7 +181,7 @@ describe("useDocumentEditor in a live session", () => {
   it("shows the threads the session sends, without touching the shared document", async () => {
     const { document } = sharedDocumentFor(FIXTURE);
     const { channel, push } = fakeCommentChannel();
-    const { result } = renderLiveEditor(document, { comments: channel });
+    const { result } = renderCollabEditor(document, { comments: channel });
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -198,7 +198,7 @@ describe("useDocumentEditor in a live session", () => {
   it("shows the session's last threads in an editor mounted once the channel has closed", () => {
     const { document } = sharedDocumentFor(FIXTURE);
     const { channel, push } = fakeCommentChannel();
-    const extensions = buildLiveDocumentExtensions({
+    const extensions = buildCollabExtensions({
       t: (descriptor) => descriptor.id ?? "",
       document,
       awareness: null,
@@ -224,7 +224,7 @@ describe("useDocumentEditor in a live session", () => {
   it("leaves the document untouched when the session sends the threads it shows", async () => {
     const { document, fileThreads } = sharedDocumentFor(FIXTURE);
     const { channel, push } = fakeCommentChannel();
-    const { result } = renderLiveEditor(document, { comments: channel });
+    const { result } = renderCollabEditor(document, { comments: channel });
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -243,7 +243,7 @@ describe("useDocumentEditor in a live session", () => {
 
   it("keeps the anchors through a remote edit, in the editor and the shared document", async () => {
     const { document, commentIds } = sharedDocumentFor(FIXTURE);
-    const { result } = renderLiveEditor(document);
+    const { result } = renderCollabEditor(document);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -264,7 +264,7 @@ describe("useDocumentEditor in a live session", () => {
   it("keeps anchors whose thread the fetched file does not have", async () => {
     // A stale fetch: the file had no comments yet when it was read.
     const { document, commentIds } = sharedDocumentFor(FIXTURE);
-    const { result } = renderLiveEditor(document, {
+    const { result } = renderCollabEditor(document, {
       initialContent: "# Pencil case manifesto\n",
     });
     await waitFor(() => expect(result.current.editor).not.toBeNull());
@@ -291,7 +291,7 @@ describe("useDocumentEditor in a live session", () => {
 
     async function renderStaleEditor() {
       const { document } = sharedDocumentFor(TAGGED);
-      const { result } = renderLiveEditor(document, {
+      const { result } = renderCollabEditor(document, {
         initialContent: "Hi run all tests now\n",
       });
       await waitFor(() => expect(result.current.editor).not.toBeNull());
@@ -329,7 +329,7 @@ describe("useDocumentEditor in a live session", () => {
 
     it("loses its marks, in the shared document too, when they are removed", async () => {
       const { document } = sharedDocumentFor(TAGGED);
-      const { result } = renderLiveEditor(document, {
+      const { result } = renderCollabEditor(document, {
         initialContent: "Hi run all tests now\n",
       });
       await waitFor(() => expect(result.current.editor).not.toBeNull());
@@ -352,7 +352,7 @@ describe("useDocumentEditor in a live session", () => {
       const { document } = sharedDocumentFor(TAGGED);
       const editors = [0, 1].map(
         () =>
-          renderLiveEditor(document, {
+          renderCollabEditor(document, {
             initialContent: "Hi run all tests now\n",
           }).result
       );
@@ -392,7 +392,7 @@ describe("useDocumentEditor in a live session", () => {
   it("does not write its empty paragraph into an empty shared document", async () => {
     const { document } = sharedDocumentFor("");
     for (const _ of [1, 2]) {
-      const { result } = renderLiveEditor(document, { initialContent: "" });
+      const { result } = renderCollabEditor(document, { initialContent: "" });
       await waitFor(() => expect(result.current.editor).not.toBeNull());
     }
 
@@ -401,7 +401,7 @@ describe("useDocumentEditor in a live session", () => {
 
   it("undoes only the local edit", async () => {
     const { document } = sharedDocumentFor(FIXTURE);
-    const { result } = renderLiveEditor(document);
+    const { result } = renderCollabEditor(document);
     await waitFor(() => expect(result.current.editor).not.toBeNull());
     const editor = result.current.editor;
     if (!editor) {
@@ -422,11 +422,11 @@ describe("useDocumentEditor in a live session", () => {
 
   it("neither re-renders nor reapplies the editor's options on remote edits or renders", async () => {
     const { document } = sharedDocumentFor(FIXTURE);
-    const extensions = buildLiveDocumentExtensions({
+    const extensions = buildCollabExtensions({
       t: (descriptor) => descriptor.id ?? "",
       document,
       awareness: null,
-      user: LiveUserFactory.build(),
+      user: CollabUserFactory.build(),
       comments: fakeCommentChannel().channel,
       resolveImageSource: () => null,
     });

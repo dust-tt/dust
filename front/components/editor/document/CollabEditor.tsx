@@ -1,34 +1,34 @@
-import { DocumentView } from "@app/components/editor/document/Document";
-import { buildLiveDocumentExtensions } from "@app/components/editor/document/liveExtensions";
+import { buildCollabExtensions } from "@app/components/editor/document/collabExtensions";
+import { DocumentView } from "@app/components/editor/document/DocumentEditor";
 import type {
-  DocumentLiveSession,
+  CollabConnectionSettings,
   DocumentProps,
 } from "@app/components/editor/document/types";
+import { useCollabAgentActivity } from "@app/components/editor/document/useCollabAgentActivity";
+import { useCollabParticipants } from "@app/components/editor/document/useCollabParticipants";
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
-import { useLiveAgentActivity } from "@app/components/editor/document/useLiveAgentActivity";
-import { useLiveParticipants } from "@app/components/editor/document/useLiveParticipants";
 import { useCollabConnection } from "@app/hooks/useCollabConnection";
 import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
-interface LiveDocumentProps extends DocumentProps {
-  live: DocumentLiveSession;
+interface CollabEditorProps extends DocumentProps {
+  live: CollabConnectionSettings;
 }
 
 /** A Document in a live session: the file read-only until the shared document has synced. */
-export default function LiveDocument(props: LiveDocumentProps) {
+export default function CollabEditor(props: CollabEditorProps) {
   const { t } = useLingui();
   const { connection, status, syncing } = useCollabConnection(props.live);
-  const agent = useLiveAgentActivity(connection?.provider ?? null);
+  const agent = useCollabAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
-  const participants = useLiveParticipants(
+  const participants = useCollabParticipants(
     connection?.provider.awareness ?? null
   );
   const resolveImageSource = useImageSourceResolver(props.resolveImageSource);
   const extensions = useMemo(
     () =>
       connection
-        ? buildLiveDocumentExtensions({
+        ? buildCollabExtensions({
             t,
             document: connection.document,
             awareness: connection.provider.awareness,
@@ -46,7 +46,7 @@ export default function LiveDocument(props: LiveDocumentProps) {
     <DocumentView
       key={connection.id}
       {...props}
-      liveView={{
+      collabView={{
         status,
         syncing,
         agent,
@@ -59,6 +59,6 @@ export default function LiveDocument(props: LiveDocumentProps) {
       }}
     />
   ) : (
-    <DocumentView {...props} liveView={{ status, binding: null }} />
+    <DocumentView {...props} collabView={{ status, binding: null }} />
   );
 }
