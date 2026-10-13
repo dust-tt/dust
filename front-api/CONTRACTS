@@ -94,7 +94,7 @@ to the collab server (`collab_server.ts`), so such a route would never reach fro
 @cc [owner:tdraier,label:api] collab-server-internal-routes
 The collab server (`collab_server.ts`) serves its own HTTP routes, apart from front-api's route
 tree: its internal routes need the Hocuspocus instance it creates, so they MUST be built by
-`createInternalDocumentsApp` in `lib/collab/internal_routes.ts` and mounted under `/internal` by
+`createInternalRoutes` in `lib/collab/internal_routes.ts` and mounted under `/internal` by
 `collab_server.ts` only. They are an exception to `url-aligned-route-files`,
 `directory-route-mounts` and `route-mounting-is-source-of-truth`, limited to them; every other rule
 of this file applies to them.

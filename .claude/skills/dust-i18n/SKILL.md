@@ -9,9 +9,9 @@ The product UI is localised with [Lingui](https://lingui.dev). The English text 
 there are no hand-written ids. The supported locales are `SUPPORTED_LOCALES` in
 `front/types/locale.ts`. Each source directory using Lingui has its own catalog per `CATALOG_LOCALES`
 entry, at `front/locales/{locale}/<directory relative to front>/messages.po`, holding the messages of
-the files directly in that directory (`en-GB` uses the `en-US` messages with British date and number
-formatting). Code imports `front/locales/{locale}.catalog`, which compiles to all of the locale's
-catalogs merged together.
+the files directly in that directory (`en-GB` only translates the messages whose British spelling
+differs and falls back to `en-US` for the others). Code imports `front/locales/{locale}.catalog`,
+which compiles to all of the locale's catalogs merged together.
 
 A file that already uses Lingui MUST keep every user-visible string translated. New UI code SHOULD
 be written translated. After changing strings, follow [Workflow](#workflow) and translate with the
@@ -69,7 +69,9 @@ the factory directly with `(descriptor) => i18n._(descriptor)`.
 ## Never translate
 
 - Text sent to models: `front/lib/actions/**`, MCP tool and server descriptions, skill and agent
-  definitions, zod `.describe()`.
+  definitions, zod `.describe()`. The UI shows the descriptions of global agents, code-defined
+  skills and internal MCP servers translated through `front/lib/dust_provided_descriptions.ts`:
+  render them with its functions, and add the `msg` of a new one there.
 - Server code (`front-api/**`, `front/lib/api/**`, `front/temporal/**`): Lingui imports there fail
   lint (`noClientImportsInServer`). Servers return error codes; the UI translates them.
 - Poke (`front/components/poke/**`), logs, analytics event names, keyboard symbols (`⌘`, `↵`),
@@ -113,37 +115,39 @@ setup, independent of front's (contracts in `sparkle/src/CONTRACTS`):
 - The locale comes from `SparkleI18nProvider`. Without it, sparkle renders `en-US` (marketing,
   viz, the extension). Front mounts `SparkleLocaleProvider` (`front/components/app/`) at every app
   root that mounts `UserLocaleSync`, and front tests already wrap in it. Sparkle's locale is a
-  catalog locale (`en-GB` renders as `en-US`).
+  catalog locale (`en-GB` has its own catalog, falling back to `en-US`).
 - `SPARKLE_CATALOG_LOCALES` (`sparkle/src/lib/i18n/locales.ts`) must contain every front
-  `CATALOG_LOCALES` entry: adding a catalog locale to front means adding it to sparkle too.
+  `CATALOG_LOCALES` entry, and `SPARKLE_CATALOG_FALLBACK_LOCALES` the same entries as
+  `CATALOG_FALLBACK_LOCALES`: adding a catalog locale to front means adding it to sparkle too.
 
-## Slack bot (`connectors`)
+## Slack and Teams bots (`connectors`)
 
-The Slack bot (`connectors/src/connectors/slack`) has its own catalog in
+The Slack bot (`connectors/src/connectors/slack`) and the Teams bot
+(`connectors/src/api/webhooks/webhook_teams.ts` and `teams/`) share one catalog in
 `connectors/locales/{locale}/messages.po`, extracted by the same `lingui.config.ts`. Connectors
 runs under `tsx`, which cannot compile Lingui macros, so the rules differ from front:
 
 - Never import `@lingui/*/macro`. Write `i18n._("Answered by *{agentName}*", { agentName })`: the
   English text is the message id, and `lingui extract` only collects a string literal passed to a
   callee named `i18n._`.
-- `i18n` is the `I18n` of the recipient, from `getSlackI18nForUser` (or `…ForUserId`,
-  `…ForTeamUser`) in `connectors/src/connectors/slack/lib/user_locale.ts`, passed down as a
-  parameter. It resolves the locale chosen in Dust, then the Slack locale, then the workspace
-  locale (`en-US` while the `localisation` flag is off). Never use the global `i18n` of
-  `@lingui/core`: the bot answers users with different locales concurrently.
+- `i18n` comes from `getBotI18nForWorkspace` in `connectors/src/lib/bot/workspace_locale.ts`,
+  passed down as a parameter. It renders the locale set in the Dust workspace settings for every
+  recipient (`en-US` while the `localisation` flag is off). Never use the global `i18n` of
+  `@lingui/core`: the bot answers several workspaces with different locales concurrently.
 - The locales are a copy of `front/types/locale.ts` in `connectors/src/types/locale.ts`: edit
   both (`i18n:check` fails when they differ).
 - Same never-translate rules as front: text sent to the Dust API or to models (content fragments,
   message content), logs, agent-authored content.
 
-See `connectors/src/connectors/slack/CONTRACTS`.
+See `connectors/src/connectors/slack/CONTRACTS` and `connectors/src/api/webhooks/CONTRACTS`.
 
 ## Workflow
 
 1. Wrap the strings with the macros above.
 2. From the repository root (or `sparkle/` for sparkle code), run `npm run i18n:extract`: it
    updates every catalog and removes obsolete messages.
-3. Fill the new empty `msgstr` entries with the `dust-translate` skill.
+3. Fill the new empty `msgstr` entries with the `dust-translate` skill (for `en-GB`, only those whose
+   British spelling differs).
 4. Run `npm run i18n:check` from the same directory (also run in CI): it fails on stale catalogs
    and missing translations.
 5. Commit the code and the catalogs together.

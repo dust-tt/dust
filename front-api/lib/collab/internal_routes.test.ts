@@ -3,11 +3,11 @@ import { ENVELOPE_MAP_NAME } from "@app/lib/api/collab/ydoc";
 import config from "@app/lib/api/config";
 import { DustFileSystem, DustFileSystemError } from "@app/lib/api/file_system";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
+import { CollabAgentFactory } from "@app/tests/utils/CollabAgentFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { LiveAgentFactory } from "@app/tests/utils/LiveAgentFactory";
 import { writeUserFile } from "@app/tests/utils/user_files";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import {
   COLLAB_INTERNAL_ROUTES_PREFIX,
   COLLAB_SOURCE_READ_PATH,
@@ -15,7 +15,7 @@ import {
 } from "@app/types/collab_internal";
 import { Err } from "@app/types/shared/result";
 import { createCollabHocuspocus } from "@front-api/lib/collab/hocuspocus";
-import { createInternalDocumentsApp } from "@front-api/lib/collab/internal_routes";
+import { createInternalRoutes } from "@front-api/lib/collab/internal_routes";
 import { createHono } from "@front-api/lib/hono";
 import { unhandledErrorHandler } from "@front-api/middlewares/utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -30,10 +30,7 @@ function postRaw(
 ) {
   // Mounted as the collab server mounts it.
   const app = createHono()
-    .route(
-      COLLAB_INTERNAL_ROUTES_PREFIX,
-      createInternalDocumentsApp(hocuspocus)
-    )
+    .route(COLLAB_INTERNAL_ROUTES_PREFIX, createInternalRoutes(hocuspocus))
     .onError(unhandledErrorHandler);
   return app.request(`${COLLAB_INTERNAL_ROUTES_PREFIX}${path}`, {
     method: "POST",
@@ -54,7 +51,7 @@ function post(
   return postRaw(path, JSON.stringify(body), authorization, hocuspocus);
 }
 
-describe("createInternalDocumentsApp", () => {
+describe("createInternalRoutes", () => {
   const read = { workspaceId: "w1", canonicalPath: "user-u1/notes.md" };
 
   beforeEach(() => {
@@ -134,7 +131,7 @@ describe("createInternalDocumentsApp", () => {
       throw new Error(file.error.message);
     }
     const hocuspocus = createCollabHocuspocus();
-    const name = toLiveDocumentName(workspace.sId, canonicalPath);
+    const name = toSessionName(workspace.sId, canonicalPath);
     await hocuspocus.openDirectConnection(name, file.value);
     return {
       hocuspocus,
@@ -173,7 +170,7 @@ describe("createInternalDocumentsApp", () => {
       throw new Error("The document is not open.");
     }
     const broadcast = vi.spyOn(document, "broadcastStateless");
-    const agent = LiveAgentFactory.build();
+    const agent = CollabAgentFactory.build();
     const readAs = (userId: string) =>
       post(
         COLLAB_SOURCE_READ_PATH,
@@ -256,7 +253,7 @@ describe("createInternalDocumentsApp", () => {
     });
   });
 
-  it("refuses a source too large for a checkpoint to write", async () => {
+  it("refuses a source too large for a save to write", async () => {
     const { hocuspocus, request } = await openNotes();
 
     const response = await post(

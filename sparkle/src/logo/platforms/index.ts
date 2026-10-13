@@ -1,4 +1,5 @@
 export { default as AdomikLogo } from "./Adomik";
+export { default as AhrefsLogo } from "./Ahrefs";
 export { default as Ai21Logo } from "./Ai21";
 export { default as AirbyteLogo } from "./Airbyte";
 export { default as AirtableLogo } from "./Airtable";
@@ -116,6 +117,7 @@ export { default as UkgLogo } from "./Ukg";
 export { default as ValTownLogo } from "./ValTown";
 export { default as VantaLogo } from "./Vanta";
 export { default as VideoLogo } from "./Video";
+export { default as WebflowLogo } from "./Webflow";
 export { default as YoutrustLogo } from "./Youtrust";
 export { default as ZaiLogo } from "./Zai";
 export { default as ZapierLogo } from "./Zapier";

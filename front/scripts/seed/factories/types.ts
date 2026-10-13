@@ -8,6 +8,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import type { TemplateTagCodeType } from "@app/types/assistant/templates";
+import type { FileShareScope } from "@app/types/files";
 import type { AgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 import type {
   SkillAvailabilitySuggestionType,
@@ -219,4 +220,13 @@ export interface TemplateAsset {
   tags: TemplateTagCodeType[];
   presetInstructions?: string;
   sidekickInstructions?: string;
+}
+
+export interface FrameAsset {
+  // Name of the Frame, used as its folder name in the conversation files.
+  name: string;
+  // Local folder holding the Frame source: manifest.json, index.tsx, functions, databases.
+  sourceDir: string;
+  conversationId: string;
+  shareScope?: FileShareScope;
 }

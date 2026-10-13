@@ -1,6 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import {
@@ -118,7 +119,8 @@ export function ChildAgentSection() {
                 {row.original.name}
               </div>
               <div className="truncate text-xs text-muted-foreground">
-                {row.original.description || t`No description available`}
+                {getAgentDisplayDescription(t, row.original) ||
+                  t`No description available`}
               </div>
             </div>
           </DataTable.CellContent>
@@ -193,7 +195,8 @@ export function ChildAgentSection() {
                 <div className="text-md font-medium">{selectedAgent.name}</div>
               </div>
               <div className="max-h-24 overflow-y-auto text-sm text-muted-foreground">
-                {selectedAgent.description || t`No description available`}
+                {getAgentDisplayDescription(t, selectedAgent) ||
+                  t`No description available`}
               </div>
             </div>
             <div className="ml-4 self-start">

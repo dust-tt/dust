@@ -11,7 +11,7 @@ import { writeCanonicalFileContent } from "@app/lib/api/files/file_system_ops";
 import type { Authenticator } from "@app/lib/auth";
 import type { DfmDocument } from "@app/lib/markdown/dfm";
 import { parseDfm, serializeDfm } from "@app/lib/markdown/dfm";
-import type { LiveAgent } from "@app/types/collab";
+import type { CollabAgent } from "@app/types/collab";
 import { contentTypeFromFileName } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -211,7 +211,7 @@ export async function readCurrentDocumentSource(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
-  agent?: LiveAgent
+  agent?: CollabAgent
 ): Promise<Result<{ source: string }, DfmStoredDocumentError>> {
   const filePath = resolveDocumentPath(scopedPath);
   if (filePath.isErr()) {
@@ -247,14 +247,14 @@ export async function readCurrentDocumentSource(
  * While a live session holds the document, the file MUST NOT be read or written: after the name
  * check of `readStoredDocument`, the change MUST go through `writeThroughCollabSession` with `agent`
  * (`collab-session-write`), and the file MUST exist before `change` receives the session's source,
- * parsed; the session refuses a storage without revisions itself (`collab-live-source-write`).
+ * parsed; the session refuses a storage without revisions itself (`collab-session-source-write`).
  */
 export async function writeDocumentChange<T, E extends Error>(
   auth: Authenticator,
   dustFs: DustFileSystem,
   scopedPath: string,
   change: DocumentChange<T, E>,
-  agent?: LiveAgent
+  agent?: CollabAgent
 ): Promise<Result<T, DfmStoredDocumentError | E>> {
   const filePath = resolveDocumentPath(scopedPath);
   if (filePath.isErr()) {

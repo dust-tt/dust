@@ -16,14 +16,14 @@ import {
   editAgentDocument,
   readAgentDocument,
 } from "@app/lib/api/documents/agent_edits";
-import type { LiveAgent } from "@app/types/collab";
+import type { CollabAgent } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
 /** The agent as the editors of a live document show it reading or editing. */
-const liveAgentOf = ({
+const collabAgentOf = ({
   agentConfiguration,
-}: AgentLoopRunContext): LiveAgent => ({
+}: AgentLoopRunContext): CollabAgent => ({
   agentId: agentConfiguration.sId,
   name: agentConfiguration.name,
 });
@@ -130,7 +130,7 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       auth,
       dustFs.value,
       path,
-      liveAgentOf(runContext)
+      collabAgentOf(runContext)
     );
     if (read.isErr()) {
       return new Err(
@@ -176,7 +176,7 @@ const handlers: ToolHandlers<typeof DOCUMENTS_TOOLS_METADATA> = {
       oldString: old_string,
       newString: new_string,
       expectedReplacements: expected_replacements ?? 1,
-      agent: liveAgentOf(runContext),
+      agent: collabAgentOf(runContext),
     });
     if (edited.isErr()) {
       return new Err(

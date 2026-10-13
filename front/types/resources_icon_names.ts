@@ -190,6 +190,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ActionTableIcon",
   "ActionTimeIcon",
   "AdomikLogo",
+  "AhrefsLogo",
   "AirbyteLogo",
   "AirtableLogo",
   "AmplitudeLogo",
@@ -270,6 +271,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "UkgLogo",
   "ValTownLogo",
   "VantaLogo",
+  "WebflowLogo",
   "YoutrustLogo",
   "ZendeskLogo",
 ] as const;

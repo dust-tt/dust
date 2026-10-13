@@ -7,14 +7,14 @@ import { buildLiveDocumentExtensions } from "@app/components/editor/document/liv
 import { useDocumentComments } from "@app/components/editor/document/useDocumentComments";
 import { useDocumentEditor } from "@app/components/editor/document/useDocumentEditor";
 import { dfmToYDoc, yDocToDfm } from "@app/lib/api/collab/ydoc";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { parseDfm } from "@app/lib/markdown/dfm";
 import { LiveUserFactory } from "@app/tests/utils/LiveUserFactory";
 import type {
-  LiveCommentCommand,
-  LiveCommentErrorCode,
+  CommentRequest,
+  CommentRequestErrorCode,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -50,7 +50,7 @@ async function renderCommentedEditor(
     live,
   }: {
     /** The session's comment side; an accepting one by default, none with null. */
-    live?: LiveCommentChannel | null;
+    live?: CommentChannel | null;
     verify?: DfmMessageVerifier;
     isSavable?: (document: JSONContent) => boolean;
   } = {}
@@ -130,11 +130,11 @@ const SIGNED_AT = "2026-10-05T12:00:00.000Z";
 /** A live session's comment side whose answers the test gives. */
 function liveChannel(
   answer: (
-    command: LiveCommentCommand
-  ) => Result<DfmComment | null, LiveCommentErrorCode>
+    command: CommentRequest
+  ) => Result<DfmComment | null, CommentRequestErrorCode>
 ) {
-  const send = vi.fn(async (command: LiveCommentCommand) => answer(command));
-  const channel: LiveCommentChannel = {
+  const send = vi.fn(async (command: CommentRequest) => answer(command));
+  const channel: CommentChannel = {
     getThreads: () => null,
     onThreads: () => () => undefined,
     send,

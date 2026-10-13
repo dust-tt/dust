@@ -1,0 +1,240 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/shared/filter_panel/FilterAvailabilityStatus.tsx
+msgid "No activity<0> for the selected period and filters</0>"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterCategoryNav.tsx
+msgctxt "noun, filter panel heading"
+msgid "Filter"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterFooter.tsx
+msgid "Clear filters"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterFooter.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterFooter.tsx
+msgid "Apply"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "All options"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "Updating…"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterOptionCheckboxList.tsx
+msgid "No results"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+msgid "Filters"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgctxt "clear a filter"
+msgid "Clear"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+msgid "Failed to load filters."
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterPanel.tsx
+msgid "Select all"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "{selectionCount, plural, one {# filter selected} other {# filters selected}}"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "{categoryLabel} ({selectedCount})"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Collapse"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Expand"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSelectionSummary.tsx
+msgid "Remove filter"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "{previousNames} or {optionName}"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "<0>{categoryLabel}</0> is {optionNames}"
+msgstr ""
+
+#: front/components/shared/filter_panel/FilterSummaryChips.tsx
+msgid "Clear all"
+msgstr ""
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Not enough usage data to filter on."
+msgstr ""
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "{high, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+msgstr ""
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Minimum active users"
+msgstr ""
+
+#: front/components/shared/filter_panel/UsageRangeFilter.tsx
+msgid "Maximum active users"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Access"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Availability"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Editors"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Models"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Skills"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Spaces"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tags"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tools"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Usage"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search access"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search availability"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search editors"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search models"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search skills"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search spaces"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tags"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search tools"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Search usage"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Editor"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Model"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Skill"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Space"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tag"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgctxt "filter category"
+msgid "Tool"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Published"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "Not published"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "{fullName} (You)"
+msgstr ""
+
+#: front/components/shared/filter_panel/searchFilter.ts
+msgid "{max, plural, one {{usageRange} active user} other {{usageRange} active users}}"
+msgstr ""

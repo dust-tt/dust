@@ -16,14 +16,14 @@ import {
   scrollToCommentHighlight,
   withoutOrphanCommentMarks,
 } from "@app/components/editor/document/DocumentComments";
+import type { CommentChannel } from "@app/lib/client/collab/comments";
 import type { DfmMessageVerifier } from "@app/lib/client/dfm_signatures";
-import type { LiveCommentChannel } from "@app/lib/client/live_comments";
 import type { DfmAuthor, DfmComment, DfmMessage } from "@app/lib/markdown/dfm";
 import { suggestionBlock } from "@app/lib/markdown/dfm";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
-  LiveCommentCommand,
-  LiveCommentErrorCode,
+  CommentRequest,
+  CommentRequestErrorCode,
 } from "@app/types/collab";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -44,7 +44,7 @@ interface UseDocumentCommentsProps {
   /** Whether the document, as TipTap JSON, would save. */
   isSavable: (document: JSONContent) => boolean;
   verify?: DfmMessageVerifier;
-  live?: LiveCommentChannel;
+  live?: CommentChannel;
 }
 
 interface Verification {
@@ -358,7 +358,7 @@ export const useDocumentComments = ({
     requestFocus(id);
   };
 
-  const liveErrorMessage = (code: LiveCommentErrorCode): string => {
+  const liveErrorMessage = (code: CommentRequestErrorCode): string => {
     switch (code) {
       case "unavailable":
         return t(UNAVAILABLE_MESSAGE);
@@ -416,10 +416,10 @@ export const useDocumentComments = ({
 
   const sessionCommands = (
     editor: Editor,
-    channel: LiveCommentChannel
+    channel: CommentChannel
   ): CommentCommands => {
     const sendForReason = async (
-      command: LiveCommentCommand
+      command: CommentRequest
     ): Promise<Result<void, string>> => {
       const sent = await channel.send(command);
       return sent.isOk()

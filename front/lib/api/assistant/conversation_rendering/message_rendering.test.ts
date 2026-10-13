@@ -17,7 +17,7 @@ vi.mock(
   () => ({
     getAttachmentCapabilityContext: vi
       .fn()
-      .mockResolvedValue({ isNewFileExplorer: false, hasSandboxTools: false }),
+      .mockReturnValue({ isNewFileExplorer: false, hasSandboxTools: false }),
   })
 );
 

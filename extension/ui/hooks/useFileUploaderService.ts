@@ -39,7 +39,7 @@ export function useFileUploaderService(
     getFileBlobs,
     isProcessingFiles,
   } = useFrontFileUploaderService({
-    hasSandboxTools: false,
+    hasSandboxTools: true,
     owner: workspace,
     useCase: "conversation",
     useCaseMetadata,

@@ -139,11 +139,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "spolu",
   },
-  disable_computer_feature: {
-    description: "Disable all Computer sandbox features for this workspace",
-    stage: "self_serve",
-    owner: "fontanierh",
-  },
   google_sheets_tool: {
     description: "Google Sheets MCP tool",
     stage: "ask_owner",
@@ -510,15 +505,6 @@ export type WhitelistableFeature = keyof typeof WHITELISTABLE_FEATURES_CONFIG;
 export const WHITELISTABLE_FEATURES = Object.keys(
   WHITELISTABLE_FEATURES_CONFIG
 ) as WhitelistableFeature[];
-
-const DISABLE_COMPUTER_FEATURE =
-  "disable_computer_feature" as const satisfies WhitelistableFeature;
-
-export function isComputerFeatureEnabled(
-  featureFlags: WhitelistableFeature[]
-): boolean {
-  return !featureFlags.includes(DISABLE_COMPUTER_FEATURE);
-}
 
 const FRAMES_V2_FEATURE = "frames_v2" as const satisfies WhitelistableFeature;
 const FRAMES_V2_FUNCTIONS_FEATURE =

@@ -92,4 +92,4 @@ export interface DocumentLiveParticipant {
 }
 
 /** Where a live document's connection stands. */
-export type LiveStatus = "connecting" | "live" | "offline" | "refused";
+export type CollabStatus = "connecting" | "live" | "offline" | "refused";

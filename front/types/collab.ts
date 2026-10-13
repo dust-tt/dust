@@ -9,14 +9,14 @@ const DOCUMENT_NAME_SEPARATOR = ":";
 // TODO(co-edition step 8): key on a stable file id. A rename during a session leaves editors on
 // the old path, and saving there (step 9) would recreate the file.
 /** The name a live document goes by on the WebSocket: workspace and file path. */
-export function toLiveDocumentName(
+export function toSessionName(
   workspaceId: string,
   canonicalPath: string
 ): string {
   return `${workspaceId}${DOCUMENT_NAME_SEPARATOR}${canonicalPath}`;
 }
 
-export function parseLiveDocumentName(
+export function parseSessionName(
   documentName: string
 ): { workspaceId: string; canonicalPath: string } | null {
   const index = documentName.indexOf(DOCUMENT_NAME_SEPARATOR);
@@ -37,7 +37,7 @@ export function parseLiveDocumentName(
 
 const commentIdSchema = z.string().min(1);
 
-export const liveCommentCommandSchema = z.discriminatedUnion("type", [
+export const commentRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("add"),
     commentId: commentIdSchema,
@@ -59,31 +59,30 @@ export const liveCommentCommandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("delete"), commentId: commentIdSchema }),
 ]);
 
-export type LiveCommentCommand = z.infer<typeof liveCommentCommandSchema>;
+export type CommentRequest = z.infer<typeof commentRequestSchema>;
 
-export const liveCommentClientMessageSchema = z.discriminatedUnion("type", [
+export const commentClientMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("threads") }),
   z.object({
     type: z.literal("command"),
     requestId: z.string().min(1),
-    command: liveCommentCommandSchema,
+    command: commentRequestSchema,
   }),
 ]);
 
-export type LiveCommentClientMessage = z.infer<
-  typeof liveCommentClientMessageSchema
->;
+export type CommentClientMessage = z.infer<typeof commentClientMessageSchema>;
 
-export const LIVE_COMMENT_ERROR_CODES = [
+export const COMMENT_REQUEST_ERROR_CODES = [
   "unavailable",
   "not_found",
   "thread_changed",
   "unwritable",
 ] as const;
 
-export type LiveCommentErrorCode = (typeof LIVE_COMMENT_ERROR_CODES)[number];
+export type CommentRequestErrorCode =
+  (typeof COMMENT_REQUEST_ERROR_CODES)[number];
 
-export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
+export const commentServerMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("threads"), comments: dfmCommentsSchema }),
   z.object({
     type: z.literal("accepted"),
@@ -93,61 +92,57 @@ export const liveCommentServerMessageSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("refused"),
     requestId: z.string(),
-    error: z.enum(LIVE_COMMENT_ERROR_CODES),
+    error: z.enum(COMMENT_REQUEST_ERROR_CODES),
   }),
 ]);
 
-export type LiveCommentServerMessage = z.infer<
-  typeof liveCommentServerMessageSchema
->;
+export type CommentServerMessage = z.infer<typeof commentServerMessageSchema>;
 
 /** The agent reading or changing a live document, as its editors show it. */
-export const liveAgentSchema = z.object({
+export const collabAgentSchema = z.object({
   agentId: z.string().min(1),
   name: z.string().min(1),
 });
 
-export type LiveAgent = z.infer<typeof liveAgentSchema>;
+export type CollabAgent = z.infer<typeof collabAgentSchema>;
 
 /**
  * What an agent is doing in a live document, pushed to its editors as a stateless message.
  * `editing` goes out just before the agent's change is applied: Hocuspocus may batch document
  * updates but sends stateless messages at once, so an editor receives it first.
  */
-export const LIVE_AGENT_ACTIVITIES = ["reading", "editing"] as const;
+export const AGENT_ACTIVITIES = ["reading", "editing"] as const;
 
-export type LiveAgentActivity = (typeof LIVE_AGENT_ACTIVITIES)[number];
+export type AgentActivity = (typeof AGENT_ACTIVITIES)[number];
 
-export const liveAgentServerMessageSchema = z.object({
+export const agentActivityMessageSchema = z.object({
   type: z.literal("agent_activity"),
-  agent: liveAgentSchema,
-  activity: z.enum(LIVE_AGENT_ACTIVITIES),
+  agent: collabAgentSchema,
+  activity: z.enum(AGENT_ACTIVITIES),
 });
 
-export type LiveAgentServerMessage = z.infer<
-  typeof liveAgentServerMessageSchema
->;
+export type AgentActivityMessage = z.infer<typeof agentActivityMessageSchema>;
 
 /** Yjs items by id: `length` consecutive clocks of `client`, from `clock`. */
-const liveIdRangeSchema = z.object({
+const insertedIdRangeSchema = z.object({
   client: z.number().int().nonnegative(),
   clock: z.number().int().nonnegative(),
   length: z.number().int().positive(),
 });
 
-export type LiveIdRange = z.infer<typeof liveIdRangeSchema>;
+export type InsertedIdRange = z.infer<typeof insertedIdRangeSchema>;
 
 /** One range per client a change advances: an agent's change holds one, other ranges are noise. */
-const LIVE_AGENT_EDIT_MAX_RANGES = 16;
+const AGENT_EDIT_MAX_RANGES = 16;
 
 /**
  * The text an agent's change inserted in a live document, by Yjs item ids, so editors highlight
  * exactly that text and no one else's. Sent right after the change's update.
  */
-export const liveAgentEditMessageSchema = z.object({
+export const agentEditMessageSchema = z.object({
   type: z.literal("agent_edit"),
-  agent: liveAgentSchema,
-  inserted: z.array(liveIdRangeSchema).max(LIVE_AGENT_EDIT_MAX_RANGES),
+  agent: collabAgentSchema,
+  inserted: z.array(insertedIdRangeSchema).max(AGENT_EDIT_MAX_RANGES),
 });
 
-export type LiveAgentEditMessage = z.infer<typeof liveAgentEditMessageSchema>;
+export type AgentEditMessage = z.infer<typeof agentEditMessageSchema>;

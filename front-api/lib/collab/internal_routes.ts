@@ -7,7 +7,7 @@ import {
 import config from "@app/lib/api/config";
 import { WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES } from "@app/lib/api/files/file_system_ops";
 import { Authenticator } from "@app/lib/auth";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import type {
   CollabSourceReadResponse,
   CollabSourceWriteResponse,
@@ -20,10 +20,10 @@ import {
 } from "@app/types/collab_internal";
 import { collabAccessErrorToApiError } from "@front-api/lib/collab/collab_access_errors";
 import {
-  readLiveSource,
-  showLiveAgentActivity,
-  writeLiveSource,
-} from "@front-api/lib/collab/hocuspocus";
+  readSessionSource,
+  showAgentActivity,
+  writeSessionSource,
+} from "@front-api/lib/collab/session";
 import { createHono } from "@front-api/lib/hono";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -54,11 +54,9 @@ function isAuthorized(authorization: string | undefined): boolean {
  * for them, both answering as the collab ticket route does when they refuse. A read of an open
  * document, readable or not, MUST answer 403 when the request has no user, and a write MUST carry
  * one. A write whose source is larger than `WRITE_CANONICAL_FILE_CONTENT_MAX_BYTES` MUST be refused
- * before it reaches the session, since no checkpoint could write it.
+ * before it reaches the session, since no save could write it.
  */
-export function createInternalDocumentsApp(
-  hocuspocus: Hocuspocus<CollabAccess>
-) {
+export function createInternalRoutes(hocuspocus: Hocuspocus<CollabAccess>) {
   const app = createHono();
 
   app.use("*", async (ctx, next) => {
@@ -81,9 +79,9 @@ export function createInternalDocumentsApp(
     async (ctx) => {
       const { workspaceId, userId, canonicalPath, agent } =
         ctx.req.valid("json");
-      const documentName = toLiveDocumentName(workspaceId, canonicalPath);
+      const documentName = toSessionName(workspaceId, canonicalPath);
 
-      const read = await readLiveSource(hocuspocus, documentName);
+      const read = await readSessionSource(hocuspocus, documentName);
       if (read.isOk() && !read.value.open) {
         return ctx.json<CollabSourceReadResponse>(read.value);
       }
@@ -123,7 +121,7 @@ export function createInternalDocumentsApp(
       }
       // Only once the reader may open the file: its editors then see the agent at work.
       if (agent) {
-        showLiveAgentActivity(hocuspocus, documentName, agent, "reading");
+        showAgentActivity(hocuspocus, documentName, agent, "reading");
       }
       return ctx.json<CollabSourceReadResponse>(read.value);
     }
@@ -154,7 +152,7 @@ export function createInternalDocumentsApp(
         });
       }
 
-      const written = await writeLiveSource(hocuspocus, {
+      const written = await writeSessionSource(hocuspocus, {
         file: file.value,
         base,
         source,

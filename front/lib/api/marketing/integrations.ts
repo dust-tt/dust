@@ -181,6 +181,8 @@ const REMOTE_MCP_CATEGORY_MAP: Record<string, IntegrationCategory> = {
   "pandadoc (europe)": "productivity",
   airbyte: "data",
   n8n: "productivity",
+  ahrefs: "data",
+  webflow: "development",
 };
 
 // Category mapping for connectors

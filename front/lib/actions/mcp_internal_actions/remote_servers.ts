@@ -6602,6 +6602,883 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10052,
+    name: "Ahrefs",
+    description:
+      "Ahrefs tools to analyze backlinks, organic keywords, competitors, rankings, site audits, Search Console data and AI brand visibility.",
+    url: "https://api.ahrefs.com/mcp/mcp",
+    icon: "AhrefsLogo",
+    documentationUrl: "https://docs.ahrefs.com/en/mcp/docs/introduction",
+    connectionInstructions:
+      "Ahrefs uses OAuth with dynamic client registration. Sign in with your Ahrefs account to connect. Requires a paid Ahrefs plan (Lite or higher). Tool calls consume API units from your Ahrefs monthly allowance.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      doc: "never_ask",
+      "subscription-info-limits-and-usage": "never_ask",
+      "management-projects": "never_ask",
+      "management-project-keywords": "never_ask",
+      "management-project-competitors": "never_ask",
+      "management-keyword-list-keywords": "never_ask",
+      "management-locations": "never_ask",
+      "management-brand-radar-reports": "never_ask",
+      "management-brand-radar-prompts": "never_ask",
+      "public-domain-rating-free": "never_ask",
+      "public-domain-rating-top-domains": "never_ask",
+      "public-crawler-ips": "never_ask",
+      "public-crawler-ip-ranges": "never_ask",
+      "batch-analysis": "never_ask",
+      "site-explorer-metrics": "never_ask",
+      "site-explorer-metrics-history": "never_ask",
+      "site-explorer-metrics-by-country": "never_ask",
+      "site-explorer-domain-rating": "never_ask",
+      "site-explorer-domain-rating-history": "never_ask",
+      "site-explorer-url-rating-history": "never_ask",
+      "site-explorer-backlinks-stats": "never_ask",
+      "site-explorer-all-backlinks": "never_ask",
+      "site-explorer-broken-backlinks": "never_ask",
+      "site-explorer-referring-domains": "never_ask",
+      "site-explorer-refdomains-history": "never_ask",
+      "site-explorer-anchors": "never_ask",
+      "site-explorer-linked-anchors-external": "never_ask",
+      "site-explorer-linked-anchors-internal": "never_ask",
+      "site-explorer-linked-domains": "never_ask",
+      "site-explorer-outlinks-stats": "never_ask",
+      "site-explorer-organic-keywords": "never_ask",
+      "site-explorer-organic-competitors": "never_ask",
+      "site-explorer-keywords-history": "never_ask",
+      "site-explorer-total-search-volume-history": "never_ask",
+      "site-explorer-top-pages": "never_ask",
+      "site-explorer-paid-pages": "never_ask",
+      "site-explorer-pages-by-backlinks": "never_ask",
+      "site-explorer-pages-by-internal-links": "never_ask",
+      "site-explorer-pages-by-traffic": "never_ask",
+      "site-explorer-pages-history": "never_ask",
+      "site-explorer-crawled-pages": "never_ask",
+      "site-explorer-ai-responses-count": "never_ask",
+      "keywords-explorer-overview": "never_ask",
+      "keywords-explorer-volume-history": "never_ask",
+      "keywords-explorer-volume-by-country": "never_ask",
+      "keywords-explorer-matching-terms": "never_ask",
+      "keywords-explorer-related-terms": "never_ask",
+      "keywords-explorer-search-suggestions": "never_ask",
+      "serp-overview": "never_ask",
+      "content-helper-topics": "never_ask",
+      "rank-tracker-overview": "never_ask",
+      "rank-tracker-serp-overview": "never_ask",
+      "rank-tracker-competitors-overview": "never_ask",
+      "rank-tracker-competitors-domains": "never_ask",
+      "rank-tracker-competitors-pages": "never_ask",
+      "rank-tracker-competitors-stats": "never_ask",
+      "site-audit-projects": "never_ask",
+      "site-audit-issues": "never_ask",
+      "site-audit-page-explorer": "never_ask",
+      "site-audit-page-content": "never_ask",
+      "gsc-keywords": "never_ask",
+      "gsc-keyword-history": "never_ask",
+      "gsc-pages": "never_ask",
+      "gsc-page-history": "never_ask",
+      "gsc-pages-history": "never_ask",
+      "gsc-performance-history": "never_ask",
+      "gsc-performance-by-device": "never_ask",
+      "gsc-performance-by-position": "never_ask",
+      "gsc-positions-history": "never_ask",
+      "gsc-ctr-by-position": "never_ask",
+      "gsc-metrics-by-country": "never_ask",
+      "gsc-anonymous-queries": "never_ask",
+      "brand-radar-ai-responses": "never_ask",
+      "brand-radar-ai-responses-entities": "never_ask",
+      "brand-radar-cited-domains": "never_ask",
+      "brand-radar-cited-domains-entities": "never_ask",
+      "brand-radar-cited-pages": "never_ask",
+      "brand-radar-cited-pages-entities": "never_ask",
+      "brand-radar-citations-overview-entities": "never_ask",
+      "brand-radar-citations-history-entities": "never_ask",
+      "brand-radar-impressions-overview": "never_ask",
+      "brand-radar-impressions-overview-entities": "never_ask",
+      "brand-radar-impressions-history": "never_ask",
+      "brand-radar-impressions-history-entities": "never_ask",
+      "brand-radar-mentions-overview": "never_ask",
+      "brand-radar-mentions-overview-entities": "never_ask",
+      "brand-radar-mentions-history": "never_ask",
+      "brand-radar-mentions-history-entities": "never_ask",
+      "brand-radar-sov-overview": "never_ask",
+      "brand-radar-sov-overview-entities": "never_ask",
+      "brand-radar-sov-history": "never_ask",
+      "brand-radar-sov-history-entities": "never_ask",
+      "web-analytics-stats": "never_ask",
+      "web-analytics-chart": "never_ask",
+      "web-analytics-top-pages": "never_ask",
+      "web-analytics-top-pages-chart": "never_ask",
+      "web-analytics-entry-pages": "never_ask",
+      "web-analytics-entry-pages-chart": "never_ask",
+      "web-analytics-exit-pages": "never_ask",
+      "web-analytics-exit-pages-chart": "never_ask",
+      "web-analytics-sources": "never_ask",
+      "web-analytics-sources-chart": "never_ask",
+      "web-analytics-source-channels": "never_ask",
+      "web-analytics-source-channels-chart": "never_ask",
+      "web-analytics-referrers": "never_ask",
+      "web-analytics-referrers-chart": "never_ask",
+      "web-analytics-utm-params": "never_ask",
+      "web-analytics-utm-params-chart": "never_ask",
+      "web-analytics-countries": "never_ask",
+      "web-analytics-countries-chart": "never_ask",
+      "web-analytics-cities": "never_ask",
+      "web-analytics-cities-chart": "never_ask",
+      "web-analytics-continents": "never_ask",
+      "web-analytics-continents-chart": "never_ask",
+      "web-analytics-languages": "never_ask",
+      "web-analytics-languages-chart": "never_ask",
+      "web-analytics-devices": "never_ask",
+      "web-analytics-devices-chart": "never_ask",
+      "web-analytics-browsers": "never_ask",
+      "web-analytics-browsers-chart": "never_ask",
+      "web-analytics-browser-versions": "never_ask",
+      "web-analytics-browser-versions-chart": "never_ask",
+      "web-analytics-operating-systems": "never_ask",
+      "web-analytics-operating-systems-chart": "never_ask",
+      "web-analytics-operating-systems-versions": "never_ask",
+      "web-analytics-operating-systems-versions-chart": "never_ask",
+      "social-media-channels": "never_ask",
+      "social-media-channel-metrics": "never_ask",
+      "social-media-posts": "never_ask",
+      "social-media-post-metrics": "never_ask",
+      "social-media-activity-history": "never_ask",
+      "social-media-authors": "never_ask",
+      "render-scorecard": "never_ask",
+      "render-time-series-chart": "never_ask",
+      "render-data-table": "never_ask",
+    },
+    toolDisplayLabels: {
+      doc: {
+        running: "Checking Ahrefs docs",
+        done: "Checked Ahrefs docs",
+      },
+      "subscription-info-limits-and-usage": {
+        running: "Fetching subscription usage from Ahrefs",
+        done: "Fetched subscription usage from Ahrefs",
+      },
+      "management-projects": {
+        running: "Fetching projects from Ahrefs",
+        done: "Fetched projects from Ahrefs",
+      },
+      "management-project-keywords": {
+        running: "Fetching project keywords from Ahrefs",
+        done: "Fetched project keywords from Ahrefs",
+      },
+      "management-project-competitors": {
+        running: "Fetching project competitors from Ahrefs",
+        done: "Fetched project competitors from Ahrefs",
+      },
+      "management-keyword-list-keywords": {
+        running: "Fetching keyword list keywords from Ahrefs",
+        done: "Fetched keyword list keywords from Ahrefs",
+      },
+      "management-locations": {
+        running: "Fetching locations from Ahrefs",
+        done: "Fetched locations from Ahrefs",
+      },
+      "management-brand-radar-reports": {
+        running: "Fetching Brand Radar reports from Ahrefs",
+        done: "Fetched Brand Radar reports from Ahrefs",
+      },
+      "management-brand-radar-prompts": {
+        running: "Fetching Brand Radar prompts from Ahrefs",
+        done: "Fetched Brand Radar prompts from Ahrefs",
+      },
+      "public-domain-rating-free": {
+        running: "Fetching domain rating from Ahrefs",
+        done: "Fetched domain rating from Ahrefs",
+      },
+      "public-domain-rating-top-domains": {
+        running: "Fetching top domains by rating from Ahrefs",
+        done: "Fetched top domains by rating from Ahrefs",
+      },
+      "public-crawler-ips": {
+        running: "Fetching crawler IPs from Ahrefs",
+        done: "Fetched crawler IPs from Ahrefs",
+      },
+      "public-crawler-ip-ranges": {
+        running: "Fetching crawler IP ranges from Ahrefs",
+        done: "Fetched crawler IP ranges from Ahrefs",
+      },
+      "batch-analysis": {
+        running: "Running a batch analysis on Ahrefs",
+        done: "Ran a batch analysis on Ahrefs",
+      },
+      "site-explorer-metrics": {
+        running: "Fetching site metrics from Ahrefs",
+        done: "Fetched site metrics from Ahrefs",
+      },
+      "site-explorer-metrics-history": {
+        running: "Fetching site metrics history from Ahrefs",
+        done: "Fetched site metrics history from Ahrefs",
+      },
+      "site-explorer-metrics-by-country": {
+        running: "Fetching site metrics by country from Ahrefs",
+        done: "Fetched site metrics by country from Ahrefs",
+      },
+      "site-explorer-domain-rating": {
+        running: "Fetching domain rating from Ahrefs",
+        done: "Fetched domain rating from Ahrefs",
+      },
+      "site-explorer-domain-rating-history": {
+        running: "Fetching domain rating history from Ahrefs",
+        done: "Fetched domain rating history from Ahrefs",
+      },
+      "site-explorer-url-rating-history": {
+        running: "Fetching URL rating history from Ahrefs",
+        done: "Fetched URL rating history from Ahrefs",
+      },
+      "site-explorer-backlinks-stats": {
+        running: "Fetching backlinks stats from Ahrefs",
+        done: "Fetched backlinks stats from Ahrefs",
+      },
+      "site-explorer-all-backlinks": {
+        running: "Fetching backlinks from Ahrefs",
+        done: "Fetched backlinks from Ahrefs",
+      },
+      "site-explorer-broken-backlinks": {
+        running: "Fetching broken backlinks from Ahrefs",
+        done: "Fetched broken backlinks from Ahrefs",
+      },
+      "site-explorer-referring-domains": {
+        running: "Fetching referring domains from Ahrefs",
+        done: "Fetched referring domains from Ahrefs",
+      },
+      "site-explorer-refdomains-history": {
+        running: "Fetching referring domains history from Ahrefs",
+        done: "Fetched referring domains history from Ahrefs",
+      },
+      "site-explorer-anchors": {
+        running: "Fetching anchors from Ahrefs",
+        done: "Fetched anchors from Ahrefs",
+      },
+      "site-explorer-linked-anchors-external": {
+        running: "Fetching external linked anchors from Ahrefs",
+        done: "Fetched external linked anchors from Ahrefs",
+      },
+      "site-explorer-linked-anchors-internal": {
+        running: "Fetching internal linked anchors from Ahrefs",
+        done: "Fetched internal linked anchors from Ahrefs",
+      },
+      "site-explorer-linked-domains": {
+        running: "Fetching linked domains from Ahrefs",
+        done: "Fetched linked domains from Ahrefs",
+      },
+      "site-explorer-outlinks-stats": {
+        running: "Fetching outlinks stats from Ahrefs",
+        done: "Fetched outlinks stats from Ahrefs",
+      },
+      "site-explorer-organic-keywords": {
+        running: "Fetching organic keywords from Ahrefs",
+        done: "Fetched organic keywords from Ahrefs",
+      },
+      "site-explorer-organic-competitors": {
+        running: "Fetching organic competitors from Ahrefs",
+        done: "Fetched organic competitors from Ahrefs",
+      },
+      "site-explorer-keywords-history": {
+        running: "Fetching keywords history from Ahrefs",
+        done: "Fetched keywords history from Ahrefs",
+      },
+      "site-explorer-total-search-volume-history": {
+        running: "Fetching search volume history from Ahrefs",
+        done: "Fetched search volume history from Ahrefs",
+      },
+      "site-explorer-top-pages": {
+        running: "Fetching top pages from Ahrefs",
+        done: "Fetched top pages from Ahrefs",
+      },
+      "site-explorer-paid-pages": {
+        running: "Fetching paid pages from Ahrefs",
+        done: "Fetched paid pages from Ahrefs",
+      },
+      "site-explorer-pages-by-backlinks": {
+        running: "Fetching pages by backlinks from Ahrefs",
+        done: "Fetched pages by backlinks from Ahrefs",
+      },
+      "site-explorer-pages-by-internal-links": {
+        running: "Fetching pages by internal links from Ahrefs",
+        done: "Fetched pages by internal links from Ahrefs",
+      },
+      "site-explorer-pages-by-traffic": {
+        running: "Fetching pages by traffic from Ahrefs",
+        done: "Fetched pages by traffic from Ahrefs",
+      },
+      "site-explorer-pages-history": {
+        running: "Fetching pages history from Ahrefs",
+        done: "Fetched pages history from Ahrefs",
+      },
+      "site-explorer-crawled-pages": {
+        running: "Fetching crawled pages from Ahrefs",
+        done: "Fetched crawled pages from Ahrefs",
+      },
+      "site-explorer-ai-responses-count": {
+        running: "Fetching AI citations count from Ahrefs",
+        done: "Fetched AI citations count from Ahrefs",
+      },
+      "keywords-explorer-overview": {
+        running: "Fetching keywords overview from Ahrefs",
+        done: "Fetched keywords overview from Ahrefs",
+      },
+      "keywords-explorer-volume-history": {
+        running: "Fetching keyword volume history from Ahrefs",
+        done: "Fetched keyword volume history from Ahrefs",
+      },
+      "keywords-explorer-volume-by-country": {
+        running: "Fetching keyword volume by country from Ahrefs",
+        done: "Fetched keyword volume by country from Ahrefs",
+      },
+      "keywords-explorer-matching-terms": {
+        running: "Fetching matching terms from Ahrefs",
+        done: "Fetched matching terms from Ahrefs",
+      },
+      "keywords-explorer-related-terms": {
+        running: "Fetching related terms from Ahrefs",
+        done: "Fetched related terms from Ahrefs",
+      },
+      "keywords-explorer-search-suggestions": {
+        running: "Fetching search suggestions from Ahrefs",
+        done: "Fetched search suggestions from Ahrefs",
+      },
+      "serp-overview": {
+        running: "Fetching SERP overview from Ahrefs",
+        done: "Fetched SERP overview from Ahrefs",
+      },
+      "content-helper-topics": {
+        running: "Analyzing content topics on Ahrefs",
+        done: "Analyzed content topics on Ahrefs",
+      },
+      "rank-tracker-overview": {
+        running: "Fetching Rank Tracker overview from Ahrefs",
+        done: "Fetched Rank Tracker overview from Ahrefs",
+      },
+      "rank-tracker-serp-overview": {
+        running: "Fetching Rank Tracker SERP overview from Ahrefs",
+        done: "Fetched Rank Tracker SERP overview from Ahrefs",
+      },
+      "rank-tracker-competitors-overview": {
+        running: "Fetching competitors overview from Ahrefs",
+        done: "Fetched competitors overview from Ahrefs",
+      },
+      "rank-tracker-competitors-domains": {
+        running: "Fetching competitor domains from Ahrefs",
+        done: "Fetched competitor domains from Ahrefs",
+      },
+      "rank-tracker-competitors-pages": {
+        running: "Fetching competitor pages from Ahrefs",
+        done: "Fetched competitor pages from Ahrefs",
+      },
+      "rank-tracker-competitors-stats": {
+        running: "Fetching competitor stats from Ahrefs",
+        done: "Fetched competitor stats from Ahrefs",
+      },
+      "site-audit-projects": {
+        running: "Fetching Site Audit projects from Ahrefs",
+        done: "Fetched Site Audit projects from Ahrefs",
+      },
+      "site-audit-issues": {
+        running: "Fetching Site Audit issues from Ahrefs",
+        done: "Fetched Site Audit issues from Ahrefs",
+      },
+      "site-audit-page-explorer": {
+        running: "Fetching Site Audit pages from Ahrefs",
+        done: "Fetched Site Audit pages from Ahrefs",
+      },
+      "site-audit-page-content": {
+        running: "Fetching Site Audit page content from Ahrefs",
+        done: "Fetched Site Audit page content from Ahrefs",
+      },
+      "gsc-keywords": {
+        running: "Fetching Search Console keywords from Ahrefs",
+        done: "Fetched Search Console keywords from Ahrefs",
+      },
+      "gsc-keyword-history": {
+        running: "Fetching Search Console keyword history from Ahrefs",
+        done: "Fetched Search Console keyword history from Ahrefs",
+      },
+      "gsc-pages": {
+        running: "Fetching Search Console pages from Ahrefs",
+        done: "Fetched Search Console pages from Ahrefs",
+      },
+      "gsc-page-history": {
+        running: "Fetching Search Console page history from Ahrefs",
+        done: "Fetched Search Console page history from Ahrefs",
+      },
+      "gsc-pages-history": {
+        running: "Fetching Search Console pages history from Ahrefs",
+        done: "Fetched Search Console pages history from Ahrefs",
+      },
+      "gsc-performance-history": {
+        running: "Fetching Search Console performance history from Ahrefs",
+        done: "Fetched Search Console performance history from Ahrefs",
+      },
+      "gsc-performance-by-device": {
+        running: "Fetching Search Console performance by device from Ahrefs",
+        done: "Fetched Search Console performance by device from Ahrefs",
+      },
+      "gsc-performance-by-position": {
+        running: "Fetching Search Console performance by position from Ahrefs",
+        done: "Fetched Search Console performance by position from Ahrefs",
+      },
+      "gsc-positions-history": {
+        running: "Fetching Search Console positions history from Ahrefs",
+        done: "Fetched Search Console positions history from Ahrefs",
+      },
+      "gsc-ctr-by-position": {
+        running: "Fetching Search Console CTR by position from Ahrefs",
+        done: "Fetched Search Console CTR by position from Ahrefs",
+      },
+      "gsc-metrics-by-country": {
+        running: "Fetching Search Console metrics by country from Ahrefs",
+        done: "Fetched Search Console metrics by country from Ahrefs",
+      },
+      "gsc-anonymous-queries": {
+        running: "Fetching Search Console anonymous queries from Ahrefs",
+        done: "Fetched Search Console anonymous queries from Ahrefs",
+      },
+      "brand-radar-ai-responses": {
+        running: "Fetching AI responses from Ahrefs",
+        done: "Fetched AI responses from Ahrefs",
+      },
+      "brand-radar-ai-responses-entities": {
+        running: "Fetching AI responses from Ahrefs",
+        done: "Fetched AI responses from Ahrefs",
+      },
+      "brand-radar-cited-domains": {
+        running: "Fetching cited domains from Ahrefs",
+        done: "Fetched cited domains from Ahrefs",
+      },
+      "brand-radar-cited-domains-entities": {
+        running: "Fetching cited domains from Ahrefs",
+        done: "Fetched cited domains from Ahrefs",
+      },
+      "brand-radar-cited-pages": {
+        running: "Fetching cited pages from Ahrefs",
+        done: "Fetched cited pages from Ahrefs",
+      },
+      "brand-radar-cited-pages-entities": {
+        running: "Fetching cited pages from Ahrefs",
+        done: "Fetched cited pages from Ahrefs",
+      },
+      "brand-radar-citations-overview-entities": {
+        running: "Fetching citations overview from Ahrefs",
+        done: "Fetched citations overview from Ahrefs",
+      },
+      "brand-radar-citations-history-entities": {
+        running: "Fetching citations history from Ahrefs",
+        done: "Fetched citations history from Ahrefs",
+      },
+      "brand-radar-impressions-overview": {
+        running: "Fetching impressions overview from Ahrefs",
+        done: "Fetched impressions overview from Ahrefs",
+      },
+      "brand-radar-impressions-overview-entities": {
+        running: "Fetching impressions overview from Ahrefs",
+        done: "Fetched impressions overview from Ahrefs",
+      },
+      "brand-radar-impressions-history": {
+        running: "Fetching impressions history from Ahrefs",
+        done: "Fetched impressions history from Ahrefs",
+      },
+      "brand-radar-impressions-history-entities": {
+        running: "Fetching impressions history from Ahrefs",
+        done: "Fetched impressions history from Ahrefs",
+      },
+      "brand-radar-mentions-overview": {
+        running: "Fetching mentions overview from Ahrefs",
+        done: "Fetched mentions overview from Ahrefs",
+      },
+      "brand-radar-mentions-overview-entities": {
+        running: "Fetching mentions overview from Ahrefs",
+        done: "Fetched mentions overview from Ahrefs",
+      },
+      "brand-radar-mentions-history": {
+        running: "Fetching mentions history from Ahrefs",
+        done: "Fetched mentions history from Ahrefs",
+      },
+      "brand-radar-mentions-history-entities": {
+        running: "Fetching mentions history from Ahrefs",
+        done: "Fetched mentions history from Ahrefs",
+      },
+      "brand-radar-sov-overview": {
+        running: "Fetching share of voice from Ahrefs",
+        done: "Fetched share of voice from Ahrefs",
+      },
+      "brand-radar-sov-overview-entities": {
+        running: "Fetching share of voice from Ahrefs",
+        done: "Fetched share of voice from Ahrefs",
+      },
+      "brand-radar-sov-history": {
+        running: "Fetching share of voice history from Ahrefs",
+        done: "Fetched share of voice history from Ahrefs",
+      },
+      "brand-radar-sov-history-entities": {
+        running: "Fetching share of voice history from Ahrefs",
+        done: "Fetched share of voice history from Ahrefs",
+      },
+      "web-analytics-stats": {
+        running: "Fetching web analytics stats from Ahrefs",
+        done: "Fetched web analytics stats from Ahrefs",
+      },
+      "web-analytics-chart": {
+        running: "Fetching web analytics chart from Ahrefs",
+        done: "Fetched web analytics chart from Ahrefs",
+      },
+      "web-analytics-top-pages": {
+        running: "Fetching top visited pages from Ahrefs",
+        done: "Fetched top visited pages from Ahrefs",
+      },
+      "web-analytics-top-pages-chart": {
+        running: "Fetching top visited pages chart from Ahrefs",
+        done: "Fetched top visited pages chart from Ahrefs",
+      },
+      "web-analytics-entry-pages": {
+        running: "Fetching entry pages from Ahrefs",
+        done: "Fetched entry pages from Ahrefs",
+      },
+      "web-analytics-entry-pages-chart": {
+        running: "Fetching entry pages chart from Ahrefs",
+        done: "Fetched entry pages chart from Ahrefs",
+      },
+      "web-analytics-exit-pages": {
+        running: "Fetching exit pages from Ahrefs",
+        done: "Fetched exit pages from Ahrefs",
+      },
+      "web-analytics-exit-pages-chart": {
+        running: "Fetching exit pages chart from Ahrefs",
+        done: "Fetched exit pages chart from Ahrefs",
+      },
+      "web-analytics-sources": {
+        running: "Fetching traffic sources from Ahrefs",
+        done: "Fetched traffic sources from Ahrefs",
+      },
+      "web-analytics-sources-chart": {
+        running: "Fetching traffic sources chart from Ahrefs",
+        done: "Fetched traffic sources chart from Ahrefs",
+      },
+      "web-analytics-source-channels": {
+        running: "Fetching source channels from Ahrefs",
+        done: "Fetched source channels from Ahrefs",
+      },
+      "web-analytics-source-channels-chart": {
+        running: "Fetching source channels chart from Ahrefs",
+        done: "Fetched source channels chart from Ahrefs",
+      },
+      "web-analytics-referrers": {
+        running: "Fetching referrers from Ahrefs",
+        done: "Fetched referrers from Ahrefs",
+      },
+      "web-analytics-referrers-chart": {
+        running: "Fetching referrers chart from Ahrefs",
+        done: "Fetched referrers chart from Ahrefs",
+      },
+      "web-analytics-utm-params": {
+        running: "Fetching UTM params from Ahrefs",
+        done: "Fetched UTM params from Ahrefs",
+      },
+      "web-analytics-utm-params-chart": {
+        running: "Fetching UTM params chart from Ahrefs",
+        done: "Fetched UTM params chart from Ahrefs",
+      },
+      "web-analytics-countries": {
+        running: "Fetching visitor countries from Ahrefs",
+        done: "Fetched visitor countries from Ahrefs",
+      },
+      "web-analytics-countries-chart": {
+        running: "Fetching visitor countries chart from Ahrefs",
+        done: "Fetched visitor countries chart from Ahrefs",
+      },
+      "web-analytics-cities": {
+        running: "Fetching visitor cities from Ahrefs",
+        done: "Fetched visitor cities from Ahrefs",
+      },
+      "web-analytics-cities-chart": {
+        running: "Fetching visitor cities chart from Ahrefs",
+        done: "Fetched visitor cities chart from Ahrefs",
+      },
+      "web-analytics-continents": {
+        running: "Fetching visitor continents from Ahrefs",
+        done: "Fetched visitor continents from Ahrefs",
+      },
+      "web-analytics-continents-chart": {
+        running: "Fetching visitor continents chart from Ahrefs",
+        done: "Fetched visitor continents chart from Ahrefs",
+      },
+      "web-analytics-languages": {
+        running: "Fetching visitor languages from Ahrefs",
+        done: "Fetched visitor languages from Ahrefs",
+      },
+      "web-analytics-languages-chart": {
+        running: "Fetching visitor languages chart from Ahrefs",
+        done: "Fetched visitor languages chart from Ahrefs",
+      },
+      "web-analytics-devices": {
+        running: "Fetching visitor devices from Ahrefs",
+        done: "Fetched visitor devices from Ahrefs",
+      },
+      "web-analytics-devices-chart": {
+        running: "Fetching visitor devices chart from Ahrefs",
+        done: "Fetched visitor devices chart from Ahrefs",
+      },
+      "web-analytics-browsers": {
+        running: "Fetching visitor browsers from Ahrefs",
+        done: "Fetched visitor browsers from Ahrefs",
+      },
+      "web-analytics-browsers-chart": {
+        running: "Fetching visitor browsers chart from Ahrefs",
+        done: "Fetched visitor browsers chart from Ahrefs",
+      },
+      "web-analytics-browser-versions": {
+        running: "Fetching browser versions from Ahrefs",
+        done: "Fetched browser versions from Ahrefs",
+      },
+      "web-analytics-browser-versions-chart": {
+        running: "Fetching browser versions chart from Ahrefs",
+        done: "Fetched browser versions chart from Ahrefs",
+      },
+      "web-analytics-operating-systems": {
+        running: "Fetching operating systems from Ahrefs",
+        done: "Fetched operating systems from Ahrefs",
+      },
+      "web-analytics-operating-systems-chart": {
+        running: "Fetching operating systems chart from Ahrefs",
+        done: "Fetched operating systems chart from Ahrefs",
+      },
+      "web-analytics-operating-systems-versions": {
+        running: "Fetching OS versions from Ahrefs",
+        done: "Fetched OS versions from Ahrefs",
+      },
+      "web-analytics-operating-systems-versions-chart": {
+        running: "Fetching OS versions chart from Ahrefs",
+        done: "Fetched OS versions chart from Ahrefs",
+      },
+      "social-media-channels": {
+        running: "Fetching social media channels from Ahrefs",
+        done: "Fetched social media channels from Ahrefs",
+      },
+      "social-media-channel-metrics": {
+        running: "Fetching channel metrics from Ahrefs",
+        done: "Fetched channel metrics from Ahrefs",
+      },
+      "social-media-posts": {
+        running: "Fetching social media posts from Ahrefs",
+        done: "Fetched social media posts from Ahrefs",
+      },
+      "social-media-post-metrics": {
+        running: "Fetching post metrics from Ahrefs",
+        done: "Fetched post metrics from Ahrefs",
+      },
+      "social-media-activity-history": {
+        running: "Fetching post activity history from Ahrefs",
+        done: "Fetched post activity history from Ahrefs",
+      },
+      "social-media-authors": {
+        running: "Fetching post authors from Ahrefs",
+        done: "Fetched post authors from Ahrefs",
+      },
+      "render-scorecard": {
+        running: "Rendering a scorecard with Ahrefs",
+        done: "Rendered a scorecard with Ahrefs",
+      },
+      "render-time-series-chart": {
+        running: "Rendering a chart with Ahrefs",
+        done: "Rendered a chart with Ahrefs",
+      },
+      "render-data-table": {
+        running: "Rendering a table with Ahrefs",
+        done: "Rendered a table with Ahrefs",
+      },
+    },
+  },
+  {
+    id: 10053,
+    name: "Webflow",
+    description:
+      "Webflow tools to build and edit pages, elements, styles and components, manage CMS collections, assets and forms, read site analytics, and publish sites.",
+    url: "https://mcp.webflow.com/mcp",
+    icon: "WebflowLogo",
+    documentationUrl: "https://developers.webflow.com/mcp/reference/overview",
+    connectionInstructions:
+      "Webflow uses OAuth with dynamic client registration. Sign in with your Webflow account to connect. Each connection grants access to a single Webflow workspace. Some tools require specific plans or add-ons: Enterprise for page branches and redirects, Webflow Analyze for analytics.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      ask_webflow_ai: "never_ask",
+      webflow_guide_tool: "never_ask",
+      get_more_tools: "never_ask",
+      data_analyze_tool: "never_ask",
+      get_asset_preview: "never_ask",
+      element_snapshot_tool: "never_ask",
+      data_sites_tool: "high",
+      data_pages_tool: "high",
+      data_cms_tool: "high",
+      data_localization_tool: "high",
+      data_scripts_tool: "high",
+      data_comments_tool: "high",
+      data_enterprise_tool: "high",
+      data_forms_tool: "high",
+      data_fonts_tool: "high",
+      data_webhook_tool: "high",
+      data_sitemap_tool: "high",
+      data_assets_tool: "high",
+      asset_tool: "high",
+      data_style_tool: "high",
+      data_variable_tool: "high",
+      data_component_tool: "high",
+      data_component_props_tool: "high",
+      data_component_variants_tool: "high",
+      data_interactions_tool: "high",
+      data_element_tool: "high",
+      data_element_settings_tool: "high",
+      data_element_builder: "high",
+      data_whtml_builder: "high",
+      data_component_builder: "high",
+      data_agent_instructions_tool: "high",
+      data_apps_tool: "high",
+      data_campaigns_tool: "high",
+      designer_tool: "high",
+    },
+    toolDisplayLabels: {
+      ask_webflow_ai: {
+        running: "Asking Webflow AI",
+        done: "Asked Webflow AI",
+      },
+      webflow_guide_tool: {
+        running: "Reading the Webflow guide",
+        done: "Read the Webflow guide",
+      },
+      get_more_tools: {
+        running: "Looking for more Webflow tools",
+        done: "Looked for more Webflow tools",
+      },
+      data_analyze_tool: {
+        running: "Fetching analytics from Webflow",
+        done: "Fetched analytics from Webflow",
+      },
+      get_asset_preview: {
+        running: "Fetching an asset preview from Webflow",
+        done: "Fetched an asset preview from Webflow",
+      },
+      element_snapshot_tool: {
+        running: "Taking an element snapshot on Webflow",
+        done: "Took an element snapshot on Webflow",
+      },
+      data_sites_tool: {
+        running: "Managing sites on Webflow",
+        done: "Managed sites on Webflow",
+      },
+      data_pages_tool: {
+        running: "Managing pages on Webflow",
+        done: "Managed pages on Webflow",
+      },
+      data_cms_tool: {
+        running: "Managing CMS content on Webflow",
+        done: "Managed CMS content on Webflow",
+      },
+      data_localization_tool: {
+        running: "Managing localized content on Webflow",
+        done: "Managed localized content on Webflow",
+      },
+      data_scripts_tool: {
+        running: "Managing custom code on Webflow",
+        done: "Managed custom code on Webflow",
+      },
+      data_comments_tool: {
+        running: "Managing comments on Webflow",
+        done: "Managed comments on Webflow",
+      },
+      data_enterprise_tool: {
+        running: "Managing site settings on Webflow",
+        done: "Managed site settings on Webflow",
+      },
+      data_forms_tool: {
+        running: "Managing forms on Webflow",
+        done: "Managed forms on Webflow",
+      },
+      data_fonts_tool: {
+        running: "Managing fonts on Webflow",
+        done: "Managed fonts on Webflow",
+      },
+      data_webhook_tool: {
+        running: "Managing webhooks on Webflow",
+        done: "Managed webhooks on Webflow",
+      },
+      data_sitemap_tool: {
+        running: "Managing the sitemap on Webflow",
+        done: "Managed the sitemap on Webflow",
+      },
+      data_assets_tool: {
+        running: "Managing assets on Webflow",
+        done: "Managed assets on Webflow",
+      },
+      asset_tool: {
+        running: "Uploading an asset to Webflow",
+        done: "Uploaded an asset to Webflow",
+      },
+      data_style_tool: {
+        running: "Managing styles on Webflow",
+        done: "Managed styles on Webflow",
+      },
+      data_variable_tool: {
+        running: "Managing variables on Webflow",
+        done: "Managed variables on Webflow",
+      },
+      data_component_tool: {
+        running: "Managing components on Webflow",
+        done: "Managed components on Webflow",
+      },
+      data_component_props_tool: {
+        running: "Managing component props on Webflow",
+        done: "Managed component props on Webflow",
+      },
+      data_component_variants_tool: {
+        running: "Managing component variants on Webflow",
+        done: "Managed component variants on Webflow",
+      },
+      data_interactions_tool: {
+        running: "Managing interactions on Webflow",
+        done: "Managed interactions on Webflow",
+      },
+      data_element_tool: {
+        running: "Editing elements on Webflow",
+        done: "Edited elements on Webflow",
+      },
+      data_element_settings_tool: {
+        running: "Managing element settings on Webflow",
+        done: "Managed element settings on Webflow",
+      },
+      data_element_builder: {
+        running: "Building elements on Webflow",
+        done: "Built elements on Webflow",
+      },
+      data_whtml_builder: {
+        running: "Inserting HTML on Webflow",
+        done: "Inserted HTML on Webflow",
+      },
+      data_component_builder: {
+        running: "Inserting components on Webflow",
+        done: "Inserted components on Webflow",
+      },
+      data_agent_instructions_tool: {
+        running: "Managing agent instructions on Webflow",
+        done: "Managed agent instructions on Webflow",
+      },
+      data_apps_tool: {
+        running: "Managing Webflow Cloud apps",
+        done: "Managed Webflow Cloud apps",
+      },
+      data_campaigns_tool: {
+        running: "Managing campaigns on Webflow",
+        done: "Managed campaigns on Webflow",
+      },
+      designer_tool: {
+        running: "Using the Webflow Designer",
+        done: "Used the Webflow Designer",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (

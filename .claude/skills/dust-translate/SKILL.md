@@ -1,6 +1,6 @@
 ---
 name: dust-translate
-description: Translate or fix Dust product UI, browser extension and Slack bot translations in the Lingui catalogs (`front/locales/*/**/messages.po`, `sparkle/src/locales/*/messages.po`, `extension/locales/*/messages.po` and `connectors/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
+description: Translate or fix Dust product UI, browser extension, Slack bot and Teams bot translations in the Lingui catalogs (`front/locales/*/**/messages.po`, `sparkle/src/locales/*/messages.po`, `extension/locales/*/messages.po` and `connectors/locales/*/messages.po`). Use after `npm run i18n:extract` leaves empty `msgstr` entries, when `npm run i18n:check` reports missing translations, or when asked to fix a translation.
 ---
 
 # Translating the product UI
@@ -14,16 +14,18 @@ Lingui `context` in the code instead (see the `dust-i18n` skill).
 The browser extension has a single catalog per locale, `extension/locales/{locale}/messages.po`,
 with the same rules as front's catalogs.
 
-The Slack bot has a single catalog per locale, `connectors/locales/{locale}/messages.po`. Its
-`msgid` is the English text itself: keep the Slack `mrkdwn` (`*bold*`, `_italic_`, `` `code` ``,
-`<url|label>`) around the translated text.
+The Slack and Teams bots share a single catalog per locale,
+`connectors/locales/{locale}/messages.po`. Its `msgid` is the English text itself: keep the Slack
+`mrkdwn` (`*bold*`, `_italic_`, `` `code` ``, `<url|label>`) and the Teams Markdown (`**bold**`,
+`[label](url)`) around the translated text.
 
 `en-US` is the source locale: its catalogs are generated and never translated by hand. Every other
-catalog must have a non-empty `msgstr` for every message.
+catalog must have a non-empty `msgstr` for every message, except the catalogs of a locale with a
+`CATALOG_FALLBACK_LOCALES` entry.
 
-Some supported locales reuse another locale's catalog (`CATALOG_LOCALE_BY_LOCALE`): `en-GB` renders
-the `en-US` messages and only changes date and number formatting. Never create a catalog or write
-translations for them.
+`en-GB` falls back to `en-US`: an empty `msgstr` renders the `en-US` message. Only translate the
+messages whose British text differs, as listed in [references/en-GB.md](references/en-GB.md), and
+leave the others empty.
 
 Sparkle components have their own catalogs, one per locale entry of `SPARKLE_CATALOG_LOCALES`, at
 `sparkle/src/locales/{locale}/messages.po`, with the same `en-US` source-locale rule. Run the
@@ -33,7 +35,8 @@ translate a message they share (`Cancel`, `Loading`) the same way in both by han
 ## Procedure
 
 1. Run `npm run i18n:extract` from the repository root (or `sparkle/`) so the catalogs match the code.
-2. For each entry with an empty `msgstr`:
+2. For each entry with an empty `msgstr` (for `en-GB`, only the entries the `en-GB` guide asks to
+   change):
    - Read the `#:` file reference and the code around the string: know whether it is a button,
      a title, a description or a toast, and what it refers to.
    - Honour the `msgctxt` line when present (for example `verb, button label`).
@@ -60,4 +63,5 @@ and every translation MUST follow the guide of its locale (`catalog-translations
 in the root `CONTRACTS`).
 
 - `en-US` (source locale, written in the code): [references/en-US.md](references/en-US.md)
+- `en-GB`: [references/en-GB.md](references/en-GB.md)
 - `fr-FR`: [references/fr-FR.md](references/fr-FR.md)

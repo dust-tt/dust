@@ -3,6 +3,7 @@ import {
   ActionFrame,
   ActionIcons,
   AdomikLogo,
+  AhrefsLogo,
   AirbyteLogo,
   AirtableLogo,
   AmplitudeLogo,
@@ -110,6 +111,7 @@ import {
   ValTownLogo,
   VantaLogo,
   VolumeMax,
+  WebflowLogo,
   YoutrustLogo,
   ZendeskLogo,
 } from "@dust-tt/sparkle";
@@ -232,6 +234,7 @@ export const InternalActionIcons = {
   ActionTableIcon: Table,
   ActionTimeIcon: Clock,
   AdomikLogo,
+  AhrefsLogo,
   AirbyteLogo,
   AirtableLogo,
   AmplitudeLogo,
@@ -312,6 +315,7 @@ export const InternalActionIcons = {
   UkgLogo,
   ValTownLogo,
   VantaLogo,
+  WebflowLogo,
   YoutrustLogo,
   ZendeskLogo,
 };

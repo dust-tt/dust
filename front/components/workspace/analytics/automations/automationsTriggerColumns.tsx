@@ -11,6 +11,7 @@ import {
 } from "@app/components/workspace/analytics/creditsTableCells";
 import { useTriggerExecutionModes } from "@app/hooks/useTriggerExecutionModes";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
+import { getAgentDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { normalizeWebhookIcon } from "@app/lib/webhook_source";
 import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
@@ -118,6 +119,7 @@ interface AgentCellProps {
  * When onClick is provided, activating the agent must invoke it without activating the table row.
  */
 function AgentCell({ agent, onClick }: AgentCellProps) {
+  const { t } = useLingui();
   const content = (
     <div className="min-w-0">
       <AvatarNameCell
@@ -164,7 +166,10 @@ function AgentCell({ agent, onClick }: AgentCellProps) {
             />
           }
           name={agent.name}
-          description={agent.description}
+          description={getAgentDisplayDescription(t, {
+            sId: agent.agentId,
+            description: agent.description,
+          })}
           modelId={agent.modelId}
           modelDisplayName={agent.modelDisplayName}
         />

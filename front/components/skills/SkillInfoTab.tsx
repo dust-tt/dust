@@ -14,12 +14,13 @@ import { DiscoverableSkillsList } from "@app/components/skills/DiscoverableSkill
 import { RedactedSkillMessage } from "@app/components/skills/RedactedSkillMessage";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import { RequestedSpacesSection } from "@app/components/spaces/RequestedSpacesSection";
-import {
-  getMcpServerViewDescription,
-  getMcpServerViewDisplayName,
-} from "@app/lib/actions/mcp_helper";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  getMcpServerViewDisplayDescription,
+  getSkillDisplayDescription,
+} from "@app/lib/dust_provided_descriptions";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type {
   SkillRelations,
@@ -29,6 +30,7 @@ import type { EnrichedSpaceType } from "@app/types/space";
 import { isFilesSkillSuggestion } from "@app/types/suggestions/skill_suggestion";
 import type { LightWorkspaceType } from "@app/types/user";
 import { AttachmentChip, File02, Separator, Tooltip } from "@dust-tt/sparkle";
+import type { MessageDescriptor } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
@@ -55,8 +57,12 @@ export function SkillInfoTab({
   const hasRequestedSpaces = skill.requestedSpaceIds.length > 0;
 
   const sortedMCPServerViews = useMemo(
-    () => sortBy(skill.tools.map(renderMCPServerView), "title"),
-    [skill.tools]
+    () =>
+      sortBy(
+        skill.tools.map((view) => renderMCPServerView(t, view)),
+        "title"
+      ),
+    [skill.tools, t]
   );
 
   const childSkills = useMemo(
@@ -98,7 +104,7 @@ export function SkillInfoTab({
       {showDescription && skill.userFacingDescription ? (
         <div className="relative text-sm text-foreground">
           {editedSections.has("description") && <EditedSectionBar />}
-          {skill.userFacingDescription}
+          {getSkillDisplayDescription(t, skill)}
         </div>
       ) : null}
 
@@ -194,7 +200,9 @@ export function SkillInfoTab({
               return (
                 <Tooltip
                   key={childSkill.sId}
-                  label={childSkill.userFacingDescription || childSkill.name}
+                  label={
+                    getSkillDisplayDescription(t, childSkill) || childSkill.name
+                  }
                   trigger={
                     <div className="flex min-w-0 flex-row items-center gap-2">
                       <SkillAvatar size="xs" />
@@ -246,8 +254,11 @@ export function SkillInfoTab({
   );
 }
 
-const renderMCPServerView = (view: MCPServerViewType) => ({
+const renderMCPServerView = (
+  t: (descriptor: MessageDescriptor) => string,
+  view: MCPServerViewType
+) => ({
   title: getMcpServerViewDisplayName(view),
-  description: getMcpServerViewDescription(view),
+  description: getMcpServerViewDisplayDescription(t, view),
   avatar: getAvatar(view.server, "xs"),
 });

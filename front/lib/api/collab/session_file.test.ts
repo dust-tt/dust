@@ -14,8 +14,8 @@ import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { writeUserFile } from "@app/tests/utils/user_files";
 import {
   BODY_FRAGMENT_NAME,
-  parseLiveDocumentName,
-  toLiveDocumentName,
+  parseSessionName,
+  toSessionName,
 } from "@app/types/collab";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -36,17 +36,17 @@ afterEach(() => {
 
 describe("live document names", () => {
   it("round trip a workspace and a path containing the separator", () => {
-    const name = toLiveDocumentName("w1", "user-u1/notes:draft.md");
-    expect(parseLiveDocumentName(name)).toEqual({
+    const name = toSessionName("w1", "user-u1/notes:draft.md");
+    expect(parseSessionName(name)).toEqual({
       workspaceId: "w1",
       canonicalPath: "user-u1/notes:draft.md",
     });
   });
 
   it("refuse a name without a workspace or a path", () => {
-    expect(parseLiveDocumentName("user-u1/notes.md")).toBeNull();
-    expect(parseLiveDocumentName(":user-u1/notes.md")).toBeNull();
-    expect(parseLiveDocumentName("w1:")).toBeNull();
+    expect(parseSessionName("user-u1/notes.md")).toBeNull();
+    expect(parseSessionName(":user-u1/notes.md")).toBeNull();
+    expect(parseSessionName("w1:")).toBeNull();
   });
 });
 

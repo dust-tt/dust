@@ -380,6 +380,11 @@ Important properties:
 - `INTERNAL_MCP_SERVERS` is wrapped by `ensureUniqueToolNames`; preserving the metadata tuple lets
   it reject duplicate tool names within a server at compile time
 
+Add the server's description to `INTERNAL_MCP_SERVER_DESCRIPTIONS` in
+`front/lib/dust_provided_descriptions.ts` (the UI translation of `serverInfo.description`, same
+English text), then run `npm run i18n:extract` from the repo root and translate the new catalog
+entries with the `dust-translate` skill.
+
 ### 5. Register in `servers/index.ts`
 
 Edit `front/lib/actions/mcp_internal_actions/servers/index.ts`:
@@ -568,6 +573,7 @@ Before marking implementation complete:
 - the server is in `AVAILABLE_INTERNAL_MCP_SERVER_NAMES`
 - the server config is in `INTERNAL_MCP_SERVERS`
 - the server is registered in `servers/index.ts`
+- the server description is in `INTERNAL_MCP_SERVER_DESCRIPTIONS` and translated in the catalogs
 - response rendering is implemented
 - a temporary icon is set
 - the icon is present in `PLATFORM_LOGOS` in `sparkle/src/logo/platforms/registry.ts`

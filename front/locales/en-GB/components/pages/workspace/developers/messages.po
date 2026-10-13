@@ -1,0 +1,425 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Credit consumption is temporarily unavailable"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "{consumingKeyCount, plural, one {{consumingKeyCountLabel} API key used this period} other {{consumingKeyCountLabel} API keys used this period}}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "No API key consumption this period"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Keys active"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "{cappedKeyCount, plural, one {{cappedKeyCountLabel} at the monthly cap} other {{cappedKeyCountLabel} at the monthly cap}}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "{revokedKeyCount, plural, one {{revokedKeyCountLabel} revoked} other {{revokedKeyCountLabel} revoked}}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "API Key Created"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Your API key will remain visible for 10 minutes only. You can use it to authenticate with the Dust API."
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Error creating API key"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Monthly cap updated"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Error updating monthly cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Credit cap updated"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Error updating credit cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "API Reference"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Dust API Keys"
+msgstr ""
+
+#: front/components/pages/workspace/developers/APIKeysPage.tsx
+msgid "Create and manage keys to access the Dust API, track their usage, and control their monthly spend."
+msgstr ""
+
+#: front/components/pages/workspace/developers/ConsumptionProgressBar.tsx
+msgid "Total consumed"
+msgstr ""
+
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+msgid "Developers"
+msgstr ""
+
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+msgid "API keys"
+msgstr ""
+
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+msgid "Secrets"
+msgstr ""
+
+#: front/components/pages/workspace/developers/DevelopersPage.tsx
+msgid "Computer environment"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "/ {totalFormatted} cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Expires {date}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Renews {date}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Available credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Free credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Purchased credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Buy credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Pay-as-you-go"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Programmatic Usage"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Monitor usage and credits for programmatic usage (API keys, automated workflows, etc.). Learn more in the <0>usage documentation</0>."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "You're almost out of credits."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "You're out of credits."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Add credits to ensure uninterrupted usage."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Available after trial"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Credit purchases are available once you upgrade to a paid plan. If you would like to purchase credits before upgrading, please contact support."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Subscription issue"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Credit purchases require an active subscription. Please ensure your payment method is up to date."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totaling {totalPending} awaiting payment.}}"
+msgstr "{pendingCount, plural, one {You have a pending {totalPending} credit purchase awaiting payment.} other {You have # pending credit purchases totalling {totalPending} awaiting payment.}}"
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Complete your payment to activate your credits."
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Complete payment"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Manage invoices"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Current credits"
+msgstr ""
+
+#: front/components/pages/workspace/developers/LegacyProgrammaticUsagePanel.tsx
+msgid "Active credits for programmatic usage. Credits invoices are sent by email at time of purchase."
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Model Providers"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Model providers available to your Dust apps."
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Service Providers"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Service providers enable your Dust Apps to query external data or write to external services."
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "enabled"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "disabled"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "API Key:"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Edit"
+msgstr ""
+
+#: front/components/pages/workspace/developers/ProvidersPage.tsx
+msgid "Set up"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Developer Secrets"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Secrets usable in Dust apps or MCP servers to safely store sensitive data."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Secret saved"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Successfully saved the secret value securely."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Error saving secret"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Secret deleted"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Successfully deleted {secretName}."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Delete {secretToRevokeName}"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Are you sure you want to delete the secret <0>{secretToRevokeName}</0>?"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Cancel"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Delete"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Update Developer Secret"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "New Developer Secret"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Secret names must be alphanumeric and underscore characters only."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Secret values are encrypted and stored securely in our database."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Type the secret value"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Update"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Create"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Search secrets"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Create Secret"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "Failed to load secrets."
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "No matching secrets found"
+msgstr ""
+
+#: front/components/pages/workspace/developers/SecretsPage.tsx
+msgid "No secrets created yet."
+msgstr ""
+
+#: front/components/pages/workspace/developers/computerAdminSearchEntries.ts
+msgid "Network"
+msgstr ""
+
+#: front/components/pages/workspace/developers/computerAdminSearchEntries.ts
+msgid "Allowed domains"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "keys active credits used programmatic"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Create API Key"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "new key scope spaces monthly cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "API key list"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "name scope key spaces credits last used status"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Revoke API key"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "revoke"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Edit monthly cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "per key credits cap"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "docs documentation api reference"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "env.secrets dust apps mcp servers"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "secret name value"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "docs documentation secrets api reference"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Environment variables"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer env vars secrets config workspace"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "HTTPS secrets (DSEC_)"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer encrypted outbound https allowlisted domains env"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Config ({SANDBOX_ENV_VAR_PREFIX})"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "computer plain environment variables"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "Write-only values"
+msgstr ""
+
+#: front/components/pages/workspace/developers/developersAdminSearchEntries.ts
+msgid "snapshotted at computer start"
+msgstr ""

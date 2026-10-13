@@ -12,14 +12,14 @@ import type { FileEntry } from "@app/components/file_explorer/types";
 import { useDocumentEmbeddableFiles } from "@app/components/file_explorer/useDocumentEmbeddableFiles";
 import type { MarkdownRichEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { resolveDocumentImageSource } from "@app/components/file_explorer/utils";
+import { useCollabTicket } from "@app/hooks/useCollabTicket";
 import { useDfmMessageVerifier } from "@app/hooks/useDfmCommentSignatures";
-import { useLiveTicket } from "@app/hooks/useLiveTicket";
 import { AuthContext } from "@app/lib/auth/AuthContext";
-import { liveCaretColor } from "@app/lib/client/live_session";
+import { caretColor } from "@app/lib/client/collab/messages";
 import type { ProcessedContent } from "@app/lib/file_content_utils";
 import { processFileContent } from "@app/lib/file_content_utils";
 import { getFileProcessedUrl, useFileContentByUrl } from "@app/lib/swr/files";
-import { toLiveDocumentName } from "@app/types/collab";
+import { toSessionName } from "@app/types/collab";
 import type { FilePreviewCategory } from "@app/types/file_preview";
 import { getFilePreviewConfig } from "@app/types/file_preview";
 import { stripMimeParameters } from "@app/types/files";
@@ -407,16 +407,16 @@ function RichMarkdownDocument({
     [owner]
   );
 
-  const getLiveTicket = useLiveTicket({ owner, filePath: editor.path });
+  const getCollabTicket = useCollabTicket({ owner, filePath: editor.path });
   const live = user
     ? {
         url: editor.liveUrl,
-        documentName: toLiveDocumentName(owner.sId, editor.path),
-        getTicket: getLiveTicket,
+        documentName: toSessionName(owner.sId, editor.path),
+        getTicket: getCollabTicket,
         user: {
           id: user.sId,
           name: user.fullName,
-          color: liveCaretColor(user.sId),
+          color: caretColor(user.sId),
         },
       }
     : undefined;

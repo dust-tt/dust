@@ -408,6 +408,7 @@ interface FeaturedCardProps {
 }
 
 function FeaturedCard({ item, onClick }: FeaturedCardProps) {
+  const { t } = useLingui();
   return (
     <button
       type="button"
@@ -450,7 +451,7 @@ function FeaturedCard({ item, onClick }: FeaturedCardProps) {
           <ItemAuthor item={item} />
         </span>
         <span className="copy-sm line-clamp-2 text-muted-foreground">
-          {getItemDescription(item)}
+          {getItemDescription(t, item)}
         </span>
       </div>
     </button>

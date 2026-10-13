@@ -1,0 +1,279 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-10-13 10:02+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en-GB\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Published"
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Unpublished"
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Add editors"
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "{editorsCount, plural, one {# editor} other {# editors}}"
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Editors & Access"
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "You don’t have permission to publish agents."
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Visible & usable by all members of the workspace."
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Visible & usable by editors only."
+msgstr ""
+
+#: front/components/agent_builder/settings/AccessSection.tsx
+msgid "Slack preferences"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Only editors can view and use this agent."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Only editors with access to all of the following can view and use this agent: {spaceLinks}."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Only editors with access to {spaceLinks} can view and use this agent."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "All members can view and use this agent."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Only members of all of the following can view and use this agent: {spaceLinks}."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Only members of {spaceLinks} can view and use this agent."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvailabilityMessage.tsx
+msgid "Who is this agent available for?"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderAvatarSection.tsx
+msgid "Change avatar"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Failed to generate description"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "No description suggestions available"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Try adding more details to your instructions to get better suggestions."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Description"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Enter agent description"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Generating description..."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Add at least {MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to the instructions to get suggestions"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderDescriptionSection.tsx
+msgid "Generate description"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Failed to generate name suggestions"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "No suggestions available"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Name"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Enter agent name"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Generating name..."
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Add at least {MIN_INSTRUCTIONS_LENGTH_SUGGESTIONS} characters to instructions to get suggestions"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderNameSection.tsx
+msgid "Get name suggestions"
+msgstr ""
+
+#: front/components/agent_builder/settings/AgentBuilderSettingsBlock.tsx
+msgid "Settings"
+msgstr ""
+
+#: front/components/agent_builder/settings/CostManagementSection.tsx
+msgid "Cost Management"
+msgstr ""
+
+#: front/components/agent_builder/settings/CostManagementSection.tsx
+msgid "Ignore credit spend threshold alert"
+msgstr ""
+
+#: front/components/agent_builder/settings/CostManagementSection.tsx
+msgid "Conversations with this agent will not pause to ask for confirmation when they cross the workspace's credit spend checkpoint."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Failed to retrieve Slack channels. Please check your Slack integration."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Search channels..."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "No channels available"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "No channels match \"{searchQuery}\""
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Open in Slack"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Slack Channel Settings"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Select channels in which this agent replies by default."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Set this agent as the default agent on one or several of your Slack channels. It will answer by default when the <0>@Dust</0> Slack bot is mentioned in these channels. Private channels you belong to appear here after you add the Slack tool, connect your personal Slack account, and invite <1>@Dust</1> to the channel."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Admin Access Required"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Only administrators can enable default agents for specific Slack channels."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Close"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Save"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Respond to all messages in channel"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Private channels only reply to @mentions. Auto-respond applies to public channels."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Agent will automatically respond to messages in selected channels (not just @mentions)"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Top-level posts only"
+msgstr ""
+
+#: front/components/agent_builder/settings/SlackSettingsSheet.tsx
+msgid "Only respond to new channel messages, not replies within threads"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSection.tsx
+msgid "Could not get tag suggestions."
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSection.tsx
+msgid "An error occurred while generating tag suggestions. Please contact us if the error persists."
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSection.tsx
+msgid "No tag suggestions available"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSection.tsx
+msgid "We couldn't find any relevant tags to suggest for this agent."
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSection.tsx
+msgid "Tags"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Add"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Select a tag"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Choose an option"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Create \"{newTagName}\""
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Generating suggestions..."
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Suggested tags"
+msgstr ""
+
+#: front/components/agent_builder/settings/TagsSelector.tsx
+msgid "Other tags"
+msgstr ""

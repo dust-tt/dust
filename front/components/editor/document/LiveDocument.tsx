@@ -7,7 +7,7 @@ import type {
 import { useImageSourceResolver } from "@app/components/editor/document/useImageSourceResolver";
 import { useLiveAgentActivity } from "@app/components/editor/document/useLiveAgentActivity";
 import { useLiveParticipants } from "@app/components/editor/document/useLiveParticipants";
-import { useLiveSession } from "@app/hooks/useLiveSession";
+import { useCollabConnection } from "@app/hooks/useCollabConnection";
 import { useLingui } from "@lingui/react/macro";
 import { useMemo } from "react";
 
@@ -18,7 +18,7 @@ interface LiveDocumentProps extends DocumentProps {
 /** A Document in a live session: the file read-only until the shared document has synced. */
 export default function LiveDocument(props: LiveDocumentProps) {
   const { t } = useLingui();
-  const { connection, status, syncing } = useLiveSession(props.live);
+  const { connection, status, syncing } = useCollabConnection(props.live);
   const agent = useLiveAgentActivity(connection?.provider ?? null);
   const { id, name, color } = props.live.user;
   const participants = useLiveParticipants(

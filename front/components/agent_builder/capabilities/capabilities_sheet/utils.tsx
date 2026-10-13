@@ -23,6 +23,7 @@ import { getDefaultFormValues } from "@app/components/shared/tools_picker/formDe
 import { SkillLoadError } from "@app/components/skills/SkillDetailsBody";
 import { nameToStorageFormat } from "@app/lib/actions/default_mcp_action";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import { getSkillDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import { getSkillIcon } from "@app/lib/skill";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -219,7 +220,9 @@ export function useCapabilitiesPageAndFooter({
         return {
           page: {
             title: skill?.name ?? "",
-            description: skill?.userFacingDescription,
+            description: skill
+              ? getSkillDisplayDescription(t, skill)
+              : undefined,
             id: sheetState.state,
             icon: skill ? getSkillIcon(skill.icon) : undefined,
             content: skill ? (

@@ -64,7 +64,7 @@ export interface MarkdownFileEditor {
  * an open rich editor on a file the plain editor can edit, and MUST NOT leave it while the plain
  * editor holds an unsaved or saving edit. In source mode the rich editor MUST NOT be open and the plain editor MUST
  * stay in edit mode on the file's text as fetched, unprocessed, savable even while a live session
- * holds the file, unless that session refuses outside writes (`collab-live-source-write`). Leaving
+ * holds the file, unless that session refuses outside writes (`collab-session-source-write`). Leaving
  * it MUST reopen the rich editor on the file as fetched then, not on what it held before. Source mode MUST end when another file opens or the
  * preview closes.
  */

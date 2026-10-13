@@ -88,8 +88,9 @@ export const userMemorySkill = {
   userFacingDescription:
     "Give agents a persistent memory of the user's preferences and context across conversations.",
   agentFacingDescription:
-    "Read and update a persistent, user-scoped MEMORY.md to remember the " +
-    "user's preferences, facts, and context across conversations.",
+    "Use and update a persistent, user-scoped MEMORY.md, loaded at the start of " +
+    "the conversation, to remember the user's preferences, facts, and context " +
+    "across conversations.",
   instructions: USER_MEMORY_INSTRUCTIONS,
   mcpServers: [{ name: USER_MEMORY_SERVER_NAME }],
   version: 4,

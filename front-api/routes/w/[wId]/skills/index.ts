@@ -4,22 +4,15 @@ import {
   SkillNameSchema,
 } from "@app/lib/api/skills/schemas";
 import { resolveAdditionalRequestedSpaceModelIds } from "@app/lib/api/skills/space_requirements";
-import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import tracer from "@app/logger/tracer";
-import type {
-  GetSkillsResponseBody,
-  GetSkillsWithRelationsResponseBody,
-  PostSkillResponseBody,
-} from "@app/types/api/skills";
+import type { PostSkillResponseBody } from "@app/types/api/skills";
 import {
   availabilityFromIsDefault,
   DEFAULT_SKILL_AVAILABILITY,
-  isSkillVisibleToViewer,
   SKILL_AVAILABILITIES,
   SKILL_REINFORCEMENT_MODES,
   type SkillAvailability,
@@ -41,14 +34,6 @@ import reinforcementSettings from "./reinforcement_settings";
 import reinforcementSpend from "./reinforcement_spend";
 import search from "./search";
 import similar from "./similar";
-
-const SkillStatusSchema = z
-  .enum(["active", "archived", "suggested"])
-  .optional();
-
-const SkillAvailabilitiesSchema = z
-  .array(z.enum(SKILL_AVAILABILITIES))
-  .optional();
 
 // Request body schema for POST.
 const PostSkillRequestBodySchema = z.intersection(
@@ -124,233 +109,6 @@ app.route("/search", search);
 app.route("/similar", similar);
 
 /** @ignoreswagger */
-app.get(
-  "/",
-  async (
-    ctx
-  ): HandlerResult<
-    GetSkillsResponseBody | GetSkillsWithRelationsResponseBody
-  > => {
-    const auth = ctx.get("auth");
-
-    // @deprecated viewType query param is ignored — instructions and tools
-    // are never returned from the list endpoint. Use GET /skills/:sId for full details.
-    const withRelations = ctx.req.query("withRelations");
-    const withUsage = ctx.req.query("withUsage") === "true";
-    const status = ctx.req.query("status");
-    const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
-    const onlyCustom = ctx.req.query("onlyCustom");
-    // @deprecated Use availability instead. Kept while old clients still send it.
-    const isDefault = ctx.req.query("isDefault");
-    const bypassEditorVisibility =
-      ctx.req.query("bypassEditorVisibility") === "true";
-    // Repeatable: ?availability=workspace_users&availability=users_and_agents.
-    const availabilityParams = ctx.req.queries("availability");
-
-    const statusValidation = SkillStatusSchema.safeParse(status);
-    if (!statusValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid status: ${status}. Expected "active", "archived", or "suggested".`,
-        },
-      });
-    }
-    const skillStatus = statusValidation.data;
-
-    const availabilityValidation =
-      SkillAvailabilitiesSchema.safeParse(availabilityParams);
-    if (!availabilityValidation.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: `Invalid availability: ${availabilityParams}. Expected "editors", "workspace_users", or "users_and_agents".`,
-        },
-      });
-    }
-    // An explicit availability takes priority over the deprecated isDefault alias.
-    const availability =
-      availabilityValidation.data && availabilityValidation.data.length > 0
-        ? availabilityValidation.data
-        : isDefault === "true"
-          ? ["users_and_agents" as const]
-          : undefined;
-
-    // Only admins may list unpublished skills they don't edit (e.g. for governance views).
-    if (bypassEditorVisibility && !auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "app_auth_error",
-          message: "Only admins can bypass editor visibility.",
-        },
-      });
-    }
-
-    const traceTags = {
-      "skills.status": skillStatus ?? "all",
-      "skills.with_relations": withRelations === "true",
-      "skills.with_usage": withUsage,
-      "skills.bypass_editor_visibility": bypassEditorVisibility,
-    };
-    const allSkills = await tracer.trace(
-      "skills.list.list_by_workspace",
-      { tags: traceTags },
-      async (span) => {
-        const skills = await SkillResource.listByWorkspace(auth, {
-          status: skillStatus,
-          globalSpaceOnly: globalSpaceOnly === "true",
-          onlyCustom: onlyCustom === "true",
-          availability,
-          withInstructions: false,
-          withTools: false,
-          withFileAttachments: false,
-          permissionFiltering: bypassEditorVisibility
-            ? "redact_unreadable"
-            : "strict",
-        });
-        span?.setTag("skills.count", skills.length);
-        return skills;
-      }
-    );
-    const favoriteSkills =
-      await SkillResource.listFavoritesForCurrentUser(auth);
-    const favoriteSkillIds = new Set(favoriteSkills.map((skill) => skill.sId));
-
-    const canCreateSkill = auth.hasWorkspacePermission("create", "skill");
-
-    // Skills with editors-only availability (unpublished) are only listed for members of
-    // their editor group. Suggestions are the exception: they are created with an empty
-    // editor group, so nobody can write them and the rule would hide them from everyone.
-    // They are listed instead to the skill administrators allowed to create skills.
-    const skills = bypassEditorVisibility
-      ? allSkills
-      : allSkills.filter(
-          (skill) =>
-            isSkillVisibleToViewer({
-              availability: skill.availability,
-              viewerCanWrite: auth.can("write", skill),
-            }) ||
-            (skill.status === "suggested" &&
-              canCreateSkill &&
-              auth.can("admin", skill))
-        );
-
-    if (withRelations === "true") {
-      return tracer.trace(
-        "skills.list.with_relations",
-        { tags: { ...traceTags, "skills.count": skills.length } },
-        async () => {
-          const usageMap = await SkillResource.batchFetchUsage(auth, skills);
-          let usageCountMap: Map<string, number> | null = null;
-          if (withUsage) {
-            const usageCountsResult = await fetchSkillUsageCounts(auth, {
-              skillIds: skills
-                .filter((skill) => !skill.isSystemSkill)
-                .map((skill) => skill.sId),
-              period: { startDate: "now-30d", endDate: "now" },
-            });
-            if (usageCountsResult.isErr()) {
-              logger.error(
-                {
-                  err: usageCountsResult.error,
-                  workspaceId: auth.getNonNullableWorkspace().sId,
-                },
-                "Failed to fetch skill usage counts"
-              );
-            } else {
-              usageCountMap = usageCountsResult.value;
-            }
-          }
-          const editorsMap = await SkillResource.batchListEditors(auth, skills);
-          const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
-            auth,
-            skills
-          );
-          const childSkillsMap = await SkillResource.batchFetchChildSkills(
-            auth,
-            skills
-          );
-          const usedBySkillsMap = await SkillResource.batchFetchUsedBySkills(
-            auth,
-            skills
-          );
-
-          const skillsWithRelations = skills.map((sc) => {
-            const {
-              instructions,
-              instructionsHtml,
-              tools,
-              ...skillWithoutInstructionsAndTools
-            } = sc.toJSON(auth);
-
-            const usage = usageMap.get(sc.sId) ?? { count: 0, agents: [] };
-            const editors = editorsMap.get(sc.sId) ?? null;
-            const editedByUser = editedByUsersMap.get(sc.sId) ?? null;
-            const usedBySkills = usedBySkillsMap.get(sc.sId) ?? [];
-            const usageWithSkills = {
-              ...usage,
-              count: usage.count + usedBySkills.length,
-              skills: usedBySkills,
-            };
-
-            return {
-              ...skillWithoutInstructionsAndTools,
-              messageCount: null,
-              ...(withUsage
-                ? {
-                    usage:
-                      sc.isSystemSkill || usageCountMap === null
-                        ? null
-                        : (usageCountMap.get(sc.sId) ?? 0),
-                  }
-                : {}),
-              relations: {
-                usage: usageWithSkills,
-                editors: editors ? editors.map((e) => e.toJSON()) : null,
-                editedByUser: editedByUser ? editedByUser.toJSON() : null,
-                childSkills: (childSkillsMap.get(sc.sId) ?? []).map(
-                  (childSkill) => {
-                    const {
-                      instructions,
-                      instructionsHtml,
-                      tools,
-                      ...childSkillWithoutInstructionsAndTools
-                    } = childSkill.toJSON(auth);
-
-                    return childSkillWithoutInstructionsAndTools;
-                  }
-                ),
-              },
-              isFavorite: favoriteSkillIds.has(sc.sId),
-            } satisfies GetSkillsWithRelationsResponseBody["skills"][number];
-          });
-
-          return ctx.json({ skills: skillsWithRelations });
-        }
-      );
-    }
-
-    return ctx.json({
-      skills: skills.map((sc) => {
-        const {
-          instructions,
-          instructionsHtml,
-          tools,
-          ...skillWithoutInstructionsAndTools
-        } = sc.toJSON(auth);
-
-        return {
-          ...skillWithoutInstructionsAndTools,
-          isFavorite: favoriteSkillIds.has(sc.sId),
-        } satisfies GetSkillsResponseBody["skills"][number];
-      }),
-    });
-  }
-);
-
 app.post(
   "/",
   validate("json", PostSkillRequestBodySchema),

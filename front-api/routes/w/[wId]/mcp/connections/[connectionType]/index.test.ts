@@ -1,3 +1,4 @@
+import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
@@ -196,5 +197,51 @@ describe("GET /api/w/:wId/mcp/connections/:connectionType", () => {
     expect(data.connections).toHaveLength(1);
     expect(data.connections[0].sId).toBe(connection2.sId);
     expect(data.connections[0].sId).not.toBe(connection1.sId);
+  });
+});
+
+describe("POST /api/w/:wId/mcp/connections/:connectionType", () => {
+  function postConnection(wId: string, mcpServerId: string) {
+    return honoApp.request(connectionsUrl(wId, "personal"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ connectionId: "con_123", mcpServerId }),
+    });
+  }
+
+  it("should return 404 for a remote server that does not exist", async () => {
+    const { workspace } = await createPrivateApiMockRequest();
+
+    const response = await postConnection(
+      workspace.sId,
+      remoteMCPServerNameToSId({
+        remoteMCPServerId: 999_999_999,
+        workspaceId: workspace.id,
+      })
+    );
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("mcp_server_not_found");
+  });
+
+  it("should return 404 for a remote server from another workspace", async () => {
+    const { workspace: otherWorkspace } = await createPrivateApiMockRequest();
+    const otherServer = await RemoteMCPServerFactory.create(otherWorkspace);
+
+    const { workspace } = await createPrivateApiMockRequest();
+
+    const response = await postConnection(workspace.sId, otherServer.sId);
+
+    expect(response.status).toBe(404);
+    expect((await response.json()).error.type).toBe("mcp_server_not_found");
+  });
+
+  it("should return 400 for an invalid MCP server ID", async () => {
+    const { workspace } = await createPrivateApiMockRequest();
+
+    const response = await postConnection(workspace.sId, "not_an_sid");
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_mcp_server_id");
   });
 });

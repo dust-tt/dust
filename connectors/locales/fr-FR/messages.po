@@ -14,6 +14,202 @@ msgstr ""
 "Plural-Forms: \n"
 
 #. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Select an agent"
+msgstr "Sélectionner un agent"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Resend"
+msgstr "Renvoyer"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+#: connectors/src/connectors/slack/chat/blocks.ts
+#: connectors/src/connectors/slack/chat/slack_stream_handler.ts
+msgid "Thinking..."
+msgstr "Réflexion…"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "The agent took an action that requires personal authentication. Please go to [the conversation]({conversationUrl}) to authenticate."
+msgstr "L’agent a effectué une action qui nécessite une authentification personnelle. Rendez-vous dans [la conversation]({conversationUrl}) pour vous authentifier."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "The agent took an action that requires personal authentication."
+msgstr "L’agent a effectué une action qui nécessite une authentification personnelle."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Tool execution approval"
+msgstr "Approbation de l’exécution de l’outil"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Tool validation required"
+msgstr "Approbation de l’outil requise"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "The agent is requesting permission to use tool **{toolName}**"
+msgstr "L’agent demande l’autorisation d’utiliser l’outil **{toolName}**"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "_Waiting for user approval..._"
+msgstr "_En attente d’approbation…_"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Agent **@{agentName}** is requesting permission to use tool **{toolName}**"
+msgstr "L’agent **@{agentName}** demande l’autorisation d’utiliser l’outil **{toolName}**"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Approve"
+msgstr "Approuver"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+#: connectors/src/connectors/slack/chat/blocks.ts
+msgid "Reject"
+msgstr "Refuser"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "🎉 Welcome to Dust!"
+msgstr "🎉 Bienvenue sur Dust !"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Thank you for installing Dust in Microsoft Teams!"
+msgstr "Merci d’avoir installé Dust dans Microsoft Teams !"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "**Getting Started**"
+msgstr "**Premiers pas**"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "To start using Dust in Teams, make sure to:"
+msgstr "Pour commencer à utiliser Dust dans Teams, pensez à :"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "• Enable the integration in your Workspace settings"
+msgstr "• Activer l’intégration dans les paramètres de votre workspace"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "• Configure your agents to work with Teams"
+msgstr "• Configurer vos agents pour Teams"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "• Start chatting by mentioning an agent"
+msgstr "• Mentionner un agent pour commencer à discuter"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "📚 [Read the full documentation](https://docs.dust.tt/docs/dust-in-teams) to learn more about using Dust in Teams."
+msgstr "📚 [Consultez la documentation complète](https://docs.dust.tt/docs/dust-in-teams) pour en savoir plus sur l’utilisation de Dust dans Teams."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Need help? Visit [dust.tt](https://dust.tt) for support."
+msgstr "Besoin d’aide ? Rendez-vous sur [dust.tt](https://dust.tt)."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "**{agentName}** encountered an error"
+msgstr "**{agentName}** a rencontré une erreur"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Answered by **{agentName}**"
+msgstr "Réponse de **{agentName}**"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Browse agents"
+msgstr "Parcourir les agents"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Learn more"
+msgstr "En savoir plus"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/adaptive_cards.ts
+msgid "Go to full conversation"
+msgstr "Voir toute la conversation"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/bot.ts
+msgid "Running a tool"
+msgstr "Exécution d’un outil"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/user_validation.ts
+msgid "❌ Unable to identify user for this Teams message"
+msgstr "❌ Impossible d’identifier l’auteur de ce message Teams."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/user_validation.ts
+msgid "❌ Unable to retrieve user information"
+msgstr "❌ Impossible de récupérer les informations du membre."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/user_validation.ts
+msgid "❌ Unable to retrieve your email address. Please ensure your Microsoft profile has an email configured."
+msgstr "❌ Impossible de récupérer votre adresse e-mail. Vérifiez qu’une adresse e-mail est configurée dans votre profil Microsoft."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/teams/user_validation.ts
+msgid "❌ You are not a member of this Dust workspace. Please contact your workspace administrator to get access."
+msgstr "❌ Vous n’êtes pas membre de ce workspace Dust. Contactez l’administrateur de votre workspace pour obtenir l’accès."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+msgid "❌ An error occurred processing your request."
+msgstr "❌ Une erreur s’est produite lors du traitement de votre demande."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+msgid "❌ Failed to validate tool execution. Please try again."
+msgstr "❌ Impossible de valider l’exécution de l’outil. Réessayez."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ✅ approved"
+msgstr "La demande de l’agent **@{agentName}** d’utiliser l’outil **{toolName}** a été ✅ approuvée"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+msgid "Agent **@{agentName}**'s request to use tool **{toolName}** was ❌ rejected"
+msgstr "La demande de l’agent **@{agentName}** d’utiliser l’outil **{toolName}** a été ❌ refusée"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+msgid "An error occurred: {errorMessage}"
+msgstr "Une erreur s’est produite : {errorMessage}"
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+#: connectors/src/connectors/slack/bot.ts
+msgid "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access."
+msgstr "L’agent {mentionCandidate} ne vous est pas accessible. Vérifiez le nom ou demandez l’accès à l’administrateur de votre workspace."
+
+#. js-lingui-explicit-id
+#: connectors/src/api/webhooks/webhook_teams.ts
+#: connectors/src/connectors/slack/bot.ts
+msgid "Agent {mentionCandidate} has not been found."
+msgstr "L’agent {mentionCandidate} est introuvable."
+
+#. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
 msgid "You have reached a rate limit enforced by Slack. Please try again later (or contact Slack to increase your rate limit on the <{marketplaceUrl}|Dust App for Slack>)."
 msgstr "Vous avez atteint une limite de débit imposée par Slack. Réessayez plus tard (ou contactez Slack pour augmenter votre limite sur l’<{marketplaceUrl}|application Dust pour Slack>)."
@@ -27,16 +223,6 @@ msgstr "Une erreur inattendue s’est produite en répondant à votre message. V
 #: connectors/src/connectors/slack/bot.ts
 msgid "Dust doesn't have permission to post in this channel. The agent answered, but Slack rejected the reply. Ask a workspace admin to allow the Dust app to post here, then retry."
 msgstr "Dust n’a pas l’autorisation de publier dans ce canal. L’agent a répondu, mais Slack a refusé la réponse. Demandez à un administrateur du workspace d’autoriser l’application Dust à publier ici, puis réessayez."
-
-#. js-lingui-explicit-id
-#: connectors/src/connectors/slack/bot.ts
-msgid "Agent {mentionCandidate} is not available to you. Check the name or ask your workspace administrator for access."
-msgstr "L’agent {mentionCandidate} ne vous est pas accessible. Vérifiez le nom ou demandez l’accès à l’administrateur de votre workspace."
-
-#. js-lingui-explicit-id
-#: connectors/src/connectors/slack/bot.ts
-msgid "Agent {mentionCandidate} has not been found."
-msgstr "L’agent {mentionCandidate} est introuvable."
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/bot.ts
@@ -175,12 +361,6 @@ msgstr "Réponse de *{assistantName}*"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/blocks.ts
-#: connectors/src/connectors/slack/chat/slack_stream_handler.ts
-msgid "Thinking..."
-msgstr "Réflexion…"
-
-#. js-lingui-explicit-id
-#: connectors/src/connectors/slack/chat/blocks.ts
 msgid "Error"
 msgstr "Erreur"
 
@@ -208,16 +388,6 @@ msgstr "L’agent réfléchit… ({thinkingAction})"
 #: connectors/src/connectors/slack/chat/blocks.ts
 msgid "The agent is requesting permission to use tool `{toolName}`"
 msgstr "L’agent demande l’autorisation d’utiliser l’outil `{toolName}`"
-
-#. js-lingui-explicit-id
-#: connectors/src/connectors/slack/chat/blocks.ts
-msgid "Approve"
-msgstr "Approuver"
-
-#. js-lingui-explicit-id
-#: connectors/src/connectors/slack/chat/blocks.ts
-msgid "Reject"
-msgstr "Refuser"
 
 #. js-lingui-explicit-id
 #: connectors/src/connectors/slack/chat/blocks.ts

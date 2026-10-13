@@ -8,7 +8,7 @@ import { createContext, useContext } from "react";
 
 interface SparkleI18nContextValue extends I18nContext {
   // Kept out of `i18n`: Lingui picks plural forms with the locales it formats with, which must stay
-  // the catalog's (e.g. `en-GB` renders the `en-US` catalog with English plural rules).
+  // the catalog's (e.g. the `en-US` catalog formatted in `fr-FR` keeps English plural rules).
   formatLocale: SparkleFormatLocale | undefined;
 }
 

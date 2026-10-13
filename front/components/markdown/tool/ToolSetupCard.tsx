@@ -9,6 +9,7 @@ import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/Create
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getMCPServerDisplayDescription } from "@app/lib/dust_provided_descriptions";
 import {
   useAddMCPServerToSpace,
   useAvailableMCPServers,
@@ -184,7 +185,7 @@ export function ToolSetupCard({
       >
         <div className="flex flex-col gap-3">
           <span className="text-sm text-muted-foreground">
-            {matchingMCPServer.description}
+            {getMCPServerDisplayDescription(t, matchingMCPServer)}
           </span>
           <div className="flex justify-between gap-2">
             <div>

@@ -132,7 +132,6 @@ import {
 } from "@app/types/assistant/assistant";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
-import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
 function getGlobalAgent({
@@ -143,7 +142,6 @@ function getGlobalAgent({
   mcpServerViews,
   sidekickContext,
   hasDeepDive,
-  hasSandbox,
   globalAgentContext,
   autoDefaultModelConfig,
   preferSonnet5DefaultModel,
@@ -156,7 +154,6 @@ function getGlobalAgent({
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
-  hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
   autoDefaultModelConfig: ModelConfigurationType | null;
   preferSonnet5DefaultModel: boolean;
@@ -888,7 +885,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        hasSandbox,
         featureFlags,
       });
       break;
@@ -1218,7 +1214,6 @@ export async function getGlobalAgents(
       mcpServerViews,
       sidekickContext,
       hasDeepDive: !isDeepDiveDisabled,
-      hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
       autoDefaultModelConfig,
       preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),

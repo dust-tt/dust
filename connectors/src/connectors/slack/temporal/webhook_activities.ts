@@ -11,7 +11,6 @@ import {
   getSlackChannelSourceUrl,
   slackChannelInternalIdFromSlackChannelId,
 } from "@connectors/connectors/slack/lib/utils";
-import { getSlackI18nForWorkspace } from "@connectors/connectors/slack/lib/workspace_locale";
 import {
   launchSlackGarbageCollectWorkflow,
   launchSlackSyncOneMessageWorkflow,
@@ -22,6 +21,7 @@ import { SlackWebhookEventPayloadSchema } from "@connectors/connectors/slack/tem
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import { getBotI18nForWorkspace } from "@connectors/lib/bot/workspace_locale";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { SlackChannelModel } from "@connectors/lib/models/slack";
 import type { Logger } from "@connectors/logger/logger";
@@ -391,7 +391,7 @@ async function announceBotJoinedPrivateChannel(
   );
 
   if (channelInfo?.channel?.is_private) {
-    const i18n = await getSlackI18nForWorkspace(connector);
+    const i18n = await getBotI18nForWorkspace(connector);
     reportSlackUsage({
       connectorId: connector.id,
       method: "chat.postMessage",

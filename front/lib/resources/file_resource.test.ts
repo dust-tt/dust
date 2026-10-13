@@ -1161,7 +1161,7 @@ describe("FileResource", () => {
       expect(path).toContain("/original");
     });
 
-    it("should resolve to 'original' version for PDF files (no pre-processing; lazy via extract_text tool)", async () => {
+    it("should resolve to 'original' version for PDF files (no pre-processing)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
@@ -1179,7 +1179,7 @@ describe("FileResource", () => {
       expect(path).toContain("/original");
     });
 
-    it("should resolve to 'original' version for Word documents (no pre-processing; lazy via extract_text tool)", async () => {
+    it("should resolve to 'original' version for Word documents (no pre-processing)", async () => {
       const { authenticator: auth } = await createResourceTest({
         role: "admin",
       });
