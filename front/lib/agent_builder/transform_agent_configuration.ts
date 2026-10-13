@@ -1,12 +1,10 @@
 import type { AgentBuilderFormData } from "@app/components/agent_builder/agentBuilderFormSchema";
-import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
 import { getNewAgentModelDefaults } from "@app/lib/agent_builder/helpers";
 import type { FetchAgentTemplateResponse } from "@app/lib/resources/template_resource";
 import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 import type { UserType } from "@app/types/user";
-import uniqueId from "lodash/uniqueId";
 
 /**
  * Transforms a light agent configuration (server-side) into agent builder form data (client-side).
@@ -139,24 +137,6 @@ export function transformTemplateToFormData(
     triggersToUpdate: [],
     triggersToDelete: [],
   };
-}
-
-/**
- * Converts AgentBuilderMCPConfiguration actions to AgentBuilderFormData actions format.
- * Used for YAML export to include actions that are normally loaded client-side.
- * Generates unique IDs since they're only needed for UI purposes.
- */
-export function convertActionsForFormData(
-  actions: AgentBuilderMCPConfiguration[]
-): AgentBuilderFormData["actions"] {
-  return actions.map((action) => ({
-    id: uniqueId(),
-    name: action.name,
-    description: action.description,
-    type: "MCP",
-    configuration: action.configuration,
-    secretName: action.configuration.secretName,
-  }));
 }
 
 /**

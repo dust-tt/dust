@@ -1,13 +1,6 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
-import {
-  buildInitialActions,
-  getAccessibleSourcesAndAppsForActions,
-} from "@app/lib/agent_builder/server_side_props_helpers";
-import {
-  convertActionsForFormData,
-  transformAgentConfigurationToFormData,
-} from "@app/lib/agent_builder/transform_agent_configuration";
+import { transformAgentConfigurationToFormData } from "@app/lib/agent_builder/transform_agent_configuration";
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
@@ -28,13 +21,14 @@ import type { UserType } from "@app/types/user";
 const AGENT_NAME_SANITATION_REGEX = /[^a-zA-Z0-9-_]/g;
 
 /**
- * Fetches the data source views used by `actions` that the caller can read, or all of them for an
- * admin seeing private entities.
+ * Checks that the caller can read every data source view used by `actions` (any existing view
+ * passes for an admin seeing private entities). Fails with a 404 when a view does not exist and a
+ * 403 when the caller cannot read its space.
  */
-async function fetchActionsDataSourceViews(
+async function checkActionsDataSourceViewsAccess(
   auth: Authenticator,
   actions: MCPServerConfigurationType[]
-): Promise<DataSourceViewResource[]> {
+): Promise<Result<void, APIErrorWithContentfulStatusCode>> {
   const dataSourceViewIds = actions
     .filter(isServerSideMCPServerConfiguration)
     .flatMap((action) => [
@@ -47,10 +41,33 @@ async function fetchActionsDataSourceViews(
     auth,
     dataSourceViewIds
   );
-  if (await canAdminSeePrivateEntities(auth)) {
-    return dataSourceViews;
+  const foundIds = new Set(dataSourceViews.map((view) => view.sId));
+  const missingId = dataSourceViewIds.find((id) => !foundIds.has(id));
+  if (missingId) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "data_source_view_not_found",
+        message: `Could not find DataSourceView with id ${missingId}`,
+      },
+    });
   }
-  return dataSourceViews.filter((view) => auth.can("read", view));
+
+  if (
+    !(await canAdminSeePrivateEntities(auth)) &&
+    dataSourceViews.some((view) => !auth.can("read", view))
+  ) {
+    return new Err({
+      status_code: 403,
+      api_error: {
+        type: "data_source_auth_error",
+        message:
+          "This agent uses knowledge from a space you don't have access to, so it can't be exported.",
+      },
+    });
+  }
+
+  return new Ok(undefined);
 }
 
 /**
@@ -88,7 +105,6 @@ export async function getAgentConfigurationAsYAMLConfig(
   }
   const [agentConfiguration] = await toAgentConfigurations(auth, [agent]);
 
-  const { mcpServerViews } = await getAccessibleSourcesAndAppsForActions(auth);
   const spaceResources = await SpaceResource.fetchByModelIds(auth, [
     ...agent.requestedSpaceModelIds(),
   ]);
@@ -98,18 +114,13 @@ export async function getAgentConfigurationAsYAMLConfig(
     name: space.name,
   }));
 
-  const mcpServerViewsJSON = mcpServerViews.map((v) => v.toJSON());
-
-  const dataSourceViews = await fetchActionsDataSourceViews(
+  const accessResult = await checkActionsDataSourceViewsAccess(
     auth,
     agentConfiguration.actions
   );
-
-  const actions = await buildInitialActions({
-    dataSourceViews,
-    actions: agentConfiguration.actions,
-    mcpServerViews: mcpServerViewsJSON,
-  });
+  if (accessResult.isErr()) {
+    return accessResult;
+  }
 
   const editors: UserType[] = editorUsers.map((m) => m.toJSON());
 
@@ -169,7 +180,6 @@ export async function getAgentConfigurationAsYAMLConfig(
     transformAgentConfigurationToFormData(agentConfiguration);
   const formData = {
     ...baseFormData,
-    actions: convertActionsForFormData(actions),
     skills: skills.map((s) => {
       const json = s.toJSON(auth);
       return {
@@ -193,6 +203,7 @@ export async function getAgentConfigurationAsYAMLConfig(
   const yamlConfigResult = await AgentYAMLConverter.fromBuilderFormData(
     auth,
     formData,
+    agentConfiguration.actions,
     spaces
   );
 
