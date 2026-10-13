@@ -466,7 +466,11 @@ export async function getOnboardingLanguage(
   { acceptLanguage }: { acceptLanguage: string | undefined }
 ): Promise<string | null> {
   // The browser's preferred language, even if Dust does not support it.
-  const browserLanguage = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
+  // Strip the quality parameter (`fr;q=1.0`) and region (`fr-FR`), then normalize anything that
+  // is not a bare language code to null so the workspace fallback still applies.
+  const browserLanguage = toLanguageCode(
+    acceptLanguage?.split(",")[0]?.split(";")[0]?.split("-")[0] ?? null
+  );
 
   const user = auth.user();
   if (!user || !(await hasFeatureFlag(auth, "localisation"))) {
