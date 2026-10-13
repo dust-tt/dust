@@ -24,6 +24,7 @@ const VIRTUAL_DIRECTORY_MIME_TYPE: &str = "inode/directory";
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] object-stat-authorized-snapshot
+     * Callers MUST call Stat before staging writes and MUST NOT stage writes concurrently with it.
      * Stat MUST evaluate session modes and fetch attributes in the caller's transaction. Results
      * MUST preserve input order and duplicates, returning NotFound for missing objects and
      * NotAuthorized for unreadable real objects as per-object errors. FDB failures MUST propagate

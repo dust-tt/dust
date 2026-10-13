@@ -1,10 +1,10 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     num::NonZeroUsize,
     sync::{Arc, OnceLock},
 };
 
-use dfs_protocol::ObjectId;
+use dfs_protocol::{ObjectId, rpc::Grant};
 use lru::LruCache;
 use tokio::sync::Mutex;
 
@@ -17,14 +17,18 @@ mod tests;
 
 type Key = (String, ObjectId);
 
-// TODO(spolu): Hints only avoid sequential parent discovery; each mode check still reads all grants
-// along the ancestry. Explore a dirty index to invalidate cached objects across servers when their
-// grants or parents change, without maintaining a full in-memory tree.
+pub(super) struct Hint {
+    pub parent_id: Option<ObjectId>,
+    pub grants_version: u64,
+    pub grants: Arc<[Grant]>,
+}
 
 /**
  * @cc [owner:spolu,label:security] tree-hints-are-advisory
- * Hints MUST be tenant-scoped parent links used only to schedule reads. They MUST NOT authorize
- * access or replace transaction reads. No hint guard may be held during an FDB read.
+ * Parent hints MUST be tenant-scoped and only schedule reads; every object and actual ancestor
+ * MUST still be read in the caller's transaction. Cached grants MUST contain the complete grant
+ * set, independent of session subjects, and may be reused only when the freshly read grants_version
+ * matches. Uncommitted grants MUST NOT enter the cache. No hint guard may be held during an FDB read.
  */
 /**
  * @cc [owner:spolu,label:performance] tree-hints-capacity
@@ -33,7 +37,7 @@ type Key = (String, ObjectId);
  * A zero capacity MUST retain no entries.
  */
 pub struct TreeHints {
-    parents: Mutex<Option<LruCache<Key, Option<ObjectId>>>>,
+    entries: Mutex<Option<LruCache<Key, Hint>>>,
 }
 
 impl TreeHints {
@@ -44,7 +48,7 @@ impl TreeHints {
     /// A zero capacity disables hints.
     pub fn new(capacity_entries: usize) -> Self {
         Self {
-            parents: Mutex::new(NonZeroUsize::new(capacity_entries).map(LruCache::sparse)),
+            entries: Mutex::new(NonZeroUsize::new(capacity_entries).map(LruCache::sparse)),
         }
     }
 
@@ -53,7 +57,7 @@ impl TreeHints {
         tenant_id: &str,
         object_ids: &[ObjectId],
     ) -> HashSet<ObjectId> {
-        let mut cache = self.parents.lock().await;
+        let mut cache = self.entries.lock().await;
         let Some(cache) = cache.as_mut() else {
             return object_ids.iter().copied().collect();
         };
@@ -65,27 +69,47 @@ impl TreeHints {
                 if !predicted.insert(id) {
                     break;
                 }
-                next = cache.get(&(tenant_id.to_owned(), id)).copied().flatten();
+                next = cache
+                    .get(&(tenant_id.to_owned(), id))
+                    .and_then(|hint| hint.parent_id);
             }
         }
         predicted
     }
 
+    pub(super) async fn cached_grants(
+        &self,
+        tenant_id: &str,
+        versions: impl IntoIterator<Item = (ObjectId, u64)>,
+    ) -> HashMap<ObjectId, Arc<[Grant]>> {
+        let mut cache = self.entries.lock().await;
+        let Some(cache) = cache.as_mut() else {
+            return HashMap::new();
+        };
+        versions
+            .into_iter()
+            .filter_map(|(id, version)| {
+                let hint = cache.get(&(tenant_id.to_owned(), id))?;
+                (hint.grants_version == version).then(|| (id, Arc::clone(&hint.grants)))
+            })
+            .collect()
+    }
+
     pub(super) async fn remember(
         &self,
         tenant_id: &str,
-        parents: impl IntoIterator<Item = (ObjectId, Option<ObjectId>)>,
+        hints: impl IntoIterator<Item = (ObjectId, Hint)>,
         missing: impl IntoIterator<Item = ObjectId>,
     ) {
-        let mut cache = self.parents.lock().await;
+        let mut cache = self.entries.lock().await;
         let Some(cache) = cache.as_mut() else {
             return;
         };
         for id in missing {
             cache.pop(&(tenant_id.to_owned(), id));
         }
-        for (id, parent_id) in parents {
-            cache.put((tenant_id.to_owned(), id), parent_id);
+        for (id, hint) in hints {
+            cache.put((tenant_id.to_owned(), id), hint);
         }
     }
 }

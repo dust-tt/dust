@@ -1,13 +1,16 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use dfs_protocol::{
     ObjectId,
-    rpc::{ObjectKind, grant},
+    rpc::{Grant, ObjectKind, grant},
 };
 use foundationdb::{FdbBindingError, RangeOption, Transaction};
 use futures::{StreamExt, TryStreamExt, stream};
 
-use super::{Error, GRANT_READ_MODE, GRANT_WRITE_MODE, ObjectResource};
+use super::{Error, GRANT_READ_MODE, GRANT_WRITE_MODE, ObjectResource, hints::Hint};
 use crate::storage::{self, resources::session::SessionResource};
 
 const CONCURRENT_READS: usize = 32;
@@ -39,11 +42,18 @@ struct ObjectMode {
 impl ObjectResource {
     /**
      * @cc [owner:spolu,label:backend;security] object-granted-modes
-     * Every call MUST read each target and its full ancestry through the session's tenant root,
-     * including every explicit grant, in the caller's transaction with conflict tracking. Hints
-     * MUST affect only read scheduling; changed parents MUST be followed from fresh records.
+     * Every call MUST read each target and its full ancestry through the session's tenant root in
+     * the caller's transaction with conflict tracking. Changed parents MUST be followed from fresh
+     * records. Complete cached grants MUST replace grant reads only when grants_version matches;
+     * cache misses MUST read every explicit grant in that transaction with conflict tracking.
      * Results MUST preserve input order and duplicates, with None for missing targets and zero
      * mode for existing targets without access. Broken or cyclic ancestry MUST fail closed.
+     */
+    /**
+     * @cc [owner:spolu,label:backend;security] grant-cache-committed-state
+     * Callers MUST call session_modes before staging any writes in the transaction and MUST NOT
+     * stage writes concurrently with it. Cached grant sets and their versions MUST come from the
+     * same committed transaction view; staged grants MUST NOT enter the shared cache.
      */
     /**
      * @cc [owner:spolu,label:backend;security] inherited-grant-evaluation
@@ -107,17 +117,27 @@ impl ObjectResource {
             pending.extend(next);
         }
 
+        let mut grants_by_object = hints
+            .cached_grants(
+                &tenant.tenant_id,
+                objects
+                    .values()
+                    .map(|object| (object.object_id, object.grants_version)),
+            )
+            .await;
         let reads: Vec<_> = objects
             .values()
+            .filter(|object| !grants_by_object.contains_key(&object.object_id))
             .map(|object| async move {
-                let mode = object.object_mode(tx, session).await?;
-                Ok::<_, storage::Error<Error>>((object.object_id, mode))
+                let grants = object.load_grants(tx).await?;
+                Ok::<_, storage::Error<Error>>((object.object_id, Arc::from(grants)))
             })
             .collect();
-        let modes_by_object: HashMap<_, _> = stream::iter(reads)
+        let grants: Vec<_> = stream::iter(reads)
             .buffer_unordered(CONCURRENT_READS)
             .try_collect()
             .await?;
+        grants_by_object.extend(grants);
 
         let mut resolved = HashMap::new();
         let mut results = Vec::with_capacity(object_ids.len());
@@ -152,7 +172,8 @@ impl ObjectResource {
                 current = parent_id;
             };
             for id in path.into_iter().rev() {
-                let object_mode = modes_by_object.get(&id).ok_or(Error::InvalidAncestry)?;
+                let grants = grants_by_object.get(&id).ok_or(Error::InvalidAncestry)?;
+                let object_mode = Self::object_mode(session, grants)?;
                 mode = Mode((mode.0 & !object_mode.deny) | object_mode.allow);
                 resolved.insert(id, mode);
             }
@@ -161,21 +182,25 @@ impl ObjectResource {
         hints
             .remember(
                 &tenant.tenant_id,
-                objects
-                    .values()
-                    .map(|object| (object.object_id, object.parent_id)),
+                objects.values().filter_map(|object| {
+                    let grants = grants_by_object.remove(&object.object_id)?;
+                    Some((
+                        object.object_id,
+                        Hint {
+                            parent_id: object.parent_id,
+                            grants_version: object.grants_version,
+                            grants,
+                        },
+                    ))
+                }),
                 missing,
             )
             .await;
         Ok(results)
     }
 
-    async fn object_mode(
-        &self,
-        tx: &Transaction,
-        session: &SessionResource,
-    ) -> Result<ObjectMode, storage::Error<Error>> {
-        let mut mode = ObjectMode::default();
+    async fn load_grants(&self, tx: &Transaction) -> Result<Vec<Grant>, storage::Error<Error>> {
+        let mut grants = Vec::new();
         let mut next_range = Some(RangeOption::from(self.grant_subspace().range()));
         let mut iteration = 1;
         while let Some(range) = next_range {
@@ -185,17 +210,25 @@ impl ObjectResource {
                 .map_err(FdbBindingError::from)?;
             next_range = range.next_range(&batch);
             for entry in &batch {
-                match self.grant_from_key(entry.key())?.kind {
-                    Some(grant::Kind::Allow(allow)) => {
-                        if session.subjects.contains(&allow.subject) {
-                            mode.allow |= allow.mode;
-                        }
-                    }
-                    Some(grant::Kind::Deny(deny)) => mode.deny |= deny.mode,
-                    None => return Err(Error::InvalidStoredGrant.into()),
-                }
+                grants.push(self.grant_from_key(entry.key())?);
             }
             iteration += 1;
+        }
+        Ok(grants)
+    }
+
+    fn object_mode(session: &SessionResource, grants: &[Grant]) -> Result<ObjectMode, Error> {
+        let mut mode = ObjectMode::default();
+        for grant in grants {
+            match &grant.kind {
+                Some(grant::Kind::Allow(allow)) => {
+                    if session.subjects.contains(&allow.subject) {
+                        mode.allow |= allow.mode;
+                    }
+                }
+                Some(grant::Kind::Deny(deny)) => mode.deny |= deny.mode,
+                None => return Err(Error::InvalidStoredGrant),
+            }
         }
         Ok(mode)
     }

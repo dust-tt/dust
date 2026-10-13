@@ -38,6 +38,8 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
     root.create(&tx, &[allow("reader", 4)]).await?;
     hidden.create(&tx, &[deny(4)]).await?;
     symlink.create(&tx, &[]).await?;
+    tx.commit().await?;
+    let tx = fdb::database()?.create_trx()?;
     let version = tx.get_read_version().await?;
     let missing = ObjectId::new_v7();
     let results = ObjectResource::stat(
@@ -97,6 +99,9 @@ pub(crate) async fn stat_distinguishes_object_errors_and_preserves_transaction_f
         anyhow::bail!("FDB failures must escape the batch unchanged");
     };
     assert_eq!(error.get_fdb_error().map(|error| error.code()), Some(1007));
+    let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+    tx.clear_range(&begin, &end);
+    tx.commit().await?;
     Ok(())
 }
 
@@ -111,6 +116,8 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         let grant = allow("reader", grant_mode);
         let tx = fdb::database()?.create_trx()?;
         root.create(&tx, std::slice::from_ref(&grant)).await?;
+        tx.commit().await?;
+        let tx = fdb::database()?.create_trx()?;
         let refs = [
             ObjectRef::Shared,
             ObjectRef::Root,
@@ -173,6 +180,9 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             );
         }
 
+        let mut root = ObjectResource::fetch(&tx, &tenant, &root.object_id)
+            .await?
+            .context("missing root")?;
         root.update_grants(
             &tx,
             &[GrantUpdate {
@@ -188,6 +198,8 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
         attributes.7 += 1;
         attributes.8 += 1;
         tx.set(&key, &pack(&attributes));
+        tx.commit().await?;
+        let tx = fdb::database()?.create_trx()?;
         let updated = ObjectResource::stat(&tx, &session, &refs, false).await?;
         let updated_root = updated[1]
             .as_ref()
@@ -199,14 +211,19 @@ pub(crate) async fn virtual_stat_projects_root_and_keeps_shared_versions_fixed()
             (updated_root.attr_version, updated_root.content_version),
             (8, 10)
         );
+        let mut expected_shared = shared.clone();
+        expected_shared.store_version = updated_root.store_version;
         assert_eq!(
             updated[0]
                 .as_ref()
                 .ok()
                 .context("expected successful Stat")?,
-            shared
+            &expected_shared
         );
         assert!(matches!(updated[2], Err(object::Error::NotAuthorized)));
+        let (begin, end) = tenant_subspace(&tenant.tenant_id).range();
+        tx.clear_range(&begin, &end);
+        tx.commit().await?;
     }
     Ok(())
 }
@@ -292,6 +309,8 @@ pub(crate) async fn metadata_reads_preserve_snapshot_and_tenant_scope() -> Resul
 
     // Corrupt metadata cannot affect unrequested reads or reveal an unreadable object.
     fresh.set(&metadata_key, &[0xff]);
+    fresh.commit().await?;
+    let fresh = fdb::database()?.create_trx()?;
     let result = ObjectResource::stat(&fresh, &session, &refs, false).await?;
     assert!(
         result[0]
@@ -308,6 +327,8 @@ pub(crate) async fn metadata_reads_preserve_snapshot_and_tenant_scope() -> Resul
         ))
     ));
     fresh.clear(&metadata_key);
+    fresh.commit().await?;
+    let fresh = fdb::database()?.create_trx()?;
     assert!(matches!(
         ObjectResource::stat(&fresh, &session, &refs, true).await,
         Err(storage::Error::Resource(object::Error::MissingMetadata))
@@ -323,6 +344,8 @@ pub(crate) async fn metadata_reads_preserve_snapshot_and_tenant_scope() -> Resul
             remove: true,
         }],
     )?;
+    fresh.commit().await?;
+    let fresh = fdb::database()?.create_trx()?;
     let result = ObjectResource::stat(&fresh, &session, &refs, true).await?;
     assert!(matches!(result[0], Err(object::Error::NotAuthorized)));
     let projected = ObjectResource::stat(

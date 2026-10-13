@@ -26,6 +26,7 @@ pub(crate) use grants::{
     grant_versions_advance_for_no_ops_and_reject_overflow,
 };
 pub(crate) use modes::{
+    grant_cache_skips_matching_versions_and_preserves_session_snapshots,
     permission_reads_conflict_with_changes_and_retry,
     session_modes_evaluate_full_paths_and_all_grants,
     session_modes_isolate_tenants_and_reject_invalid_ancestry,
