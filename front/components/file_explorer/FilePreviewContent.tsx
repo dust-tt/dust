@@ -1,3 +1,4 @@
+import type { DocumentFilePreview } from "@app/components/editor/document";
 import { DocumentEditor } from "@app/components/editor/document";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -373,6 +374,14 @@ interface RichMarkdownDocumentProps {
   statusContainer?: HTMLElement | null;
 }
 
+const renderFilePreview = (preview: DocumentFilePreview) => (
+  <FilePreviewBlock
+    path={preview.path}
+    title={preview.title ?? undefined}
+    contentType={preview.contentType ?? undefined}
+  />
+);
+
 /**
  * @cc [owner:tdraier,label:react] rich-document-in-file-preview-provider
  * The document MUST render inside a `FilePreviewProvider`: its file references render as
@@ -446,13 +455,7 @@ function RichMarkdownDocument({
       resolveImageSource={resolveImageSource}
       embeddableFiles={embeddableFiles}
       renderFrame={renderFrame}
-      renderFilePreview={(preview) => (
-        <FilePreviewBlock
-          path={preview.path}
-          title={preview.title ?? undefined}
-          contentType={preview.contentType ?? undefined}
-        />
-      )}
+      renderFilePreview={renderFilePreview}
       renderCommentAuthorAvatar={(author, size) => (
         <CommentAuthorAvatar owner={owner} author={author} size={size} />
       )}

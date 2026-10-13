@@ -296,7 +296,6 @@ export const DocumentView = ({
           className={className}
           source={unsupported.source}
           resolveImageSource={resolveImageSource}
-          renderFilePreview={renderFilePreview}
         />
       </DocumentEmbedsContext.Provider>
     );

@@ -2,11 +2,8 @@ import type { UnsupportedElement } from "@app/components/editor/document/content
 import { findUnsupportedElement } from "@app/components/editor/document/content";
 import type { DocumentFramePathProps } from "@app/components/editor/document/DocumentFrame";
 import { DocumentFrameDisplay } from "@app/components/editor/document/DocumentFrame";
-import { DocumentFilePreviewFallback } from "@app/components/editor/document/DocumentFilePreview";
-import type {
-  DocumentFilePreview,
-  DocumentProps,
-} from "@app/components/editor/document/types";
+import { DocumentFilePreviewDisplay } from "@app/components/editor/document/DocumentFilePreview";
+import type { DocumentProps } from "@app/components/editor/document/types";
 import { filePreviewDirective } from "@app/components/markdown/FilePreviewBlock";
 import { getMarkdownImagePlugin } from "@app/components/markdown/MarkdownImage";
 import {
@@ -30,7 +27,6 @@ interface DocumentMarkdownPreviewProps {
   source: string;
   className?: string;
   resolveImageSource: DocumentProps["resolveImageSource"];
-  renderFilePreview?: DocumentProps["renderFilePreview"];
 }
 
 interface MarkdownNode {
@@ -115,6 +111,16 @@ interface FilePreviewDirectiveProps {
   contentType?: string;
 }
 
+const FilePreviewEmbed = ({
+  path,
+  title,
+  contentType,
+}: FilePreviewDirectiveProps) => (
+  <DocumentFilePreviewDisplay
+    preview={{ path, title: title ?? null, contentType: contentType ?? null }}
+  />
+);
+
 const UNSUPPORTED_ELEMENT_NOTES: Record<UnsupportedElement, MessageDescriptor> =
   {
     table_extra_cells: msg`This document can't be edited here because a table row has more cells than its header.`,
@@ -151,7 +157,6 @@ export const DocumentMarkdownPreview = ({
   source,
   className,
   resolveImageSource,
-  renderFilePreview,
 }: DocumentMarkdownPreviewProps) => {
   const { t } = useLingui();
   const preview = useMemo(() => {
@@ -169,24 +174,9 @@ export const DocumentMarkdownPreview = ({
     () => ({
       img: getMarkdownImagePlugin(resolveImageSource),
       [FRAME_EMBED_COMPONENT_NAME]: FrameEmbed,
-      [FILE_PREVIEW_COMPONENT_NAME]: ({
-        path,
-        title,
-        contentType,
-      }: FilePreviewDirectiveProps) => {
-        const preview: DocumentFilePreview = {
-          path,
-          title: title ?? null,
-          contentType: contentType ?? null,
-        };
-        return renderFilePreview ? (
-          renderFilePreview(preview)
-        ) : (
-          <DocumentFilePreviewFallback preview={preview} />
-        );
-      },
+      [FILE_PREVIEW_COMPONENT_NAME]: FilePreviewEmbed,
     }),
-    [resolveImageSource, renderFilePreview]
+    [resolveImageSource]
   );
 
   return (

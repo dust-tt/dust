@@ -34,7 +34,7 @@ interface DocumentFilePreviewFallbackProps {
   preview: FilePreview;
 }
 
-export const DocumentFilePreviewFallback = ({
+const DocumentFilePreviewFallback = ({
   preview,
 }: DocumentFilePreviewFallbackProps) => (
   <span className="rounded border border-dashed border-border px-1.5 py-0.5 text-sm text-muted-foreground">
@@ -42,18 +42,28 @@ export const DocumentFilePreviewFallback = ({
   </span>
 );
 
-const DocumentFilePreviewView = ({ node }: NodeViewProps) => {
+interface DocumentFilePreviewDisplayProps {
+  preview: FilePreview;
+}
+
+export const DocumentFilePreviewDisplay = ({
+  preview,
+}: DocumentFilePreviewDisplayProps) => {
   const { renderFilePreview } = useContext(DocumentEmbedsContext);
+
+  return renderFilePreview ? (
+    <>{renderFilePreview(preview)}</>
+  ) : (
+    <DocumentFilePreviewFallback preview={preview} />
+  );
+};
+
+const DocumentFilePreviewView = ({ node }: NodeViewProps) => {
   const preview = filePreviewOf(node.attrs);
 
   return (
     <NodeViewWrapper as="span" contentEditable={false}>
-      {preview &&
-        (renderFilePreview ? (
-          renderFilePreview(preview)
-        ) : (
-          <DocumentFilePreviewFallback preview={preview} />
-        ))}
+      {preview && <DocumentFilePreviewDisplay preview={preview} />}
     </NodeViewWrapper>
   );
 };

@@ -1739,4 +1739,28 @@ describe("Document file previews", () => {
         )
     ).toHaveLength(2);
   });
+
+  it("keeps a file preview mounted when the read-only preview re-renders", async () => {
+    const renderPreview = () => (
+      <DocumentEditor
+        initialContent={`${SOURCE_WITH_PREVIEWS}\n| A |\n| --- |\n| 1 |\n`}
+        renderCommentAuthorAvatar={() => null}
+        renderCommentBody={(body) => <p>{body}</p>}
+        resolveImageSource={NO_IMAGE_SOURCE}
+        renderFilePreview={(preview) => (
+          <button type="button">{preview.path}</button>
+        )}
+      />
+    );
+    const { rerender } = render(renderPreview());
+    const chip = await screen.findByRole("button", {
+      name: "pod-abc/report.pdf",
+    });
+
+    rerender(renderPreview());
+
+    expect(screen.getByRole("button", { name: "pod-abc/report.pdf" })).toBe(
+      chip
+    );
+  });
 });
