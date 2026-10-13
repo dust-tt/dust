@@ -12,7 +12,7 @@ import {
   getManageSkillsRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
-import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
+import type { GetSkillWithRelationsResponseBody } from "@app/types/api/skills";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -32,12 +32,12 @@ import { useLingui } from "@lingui/react/macro";
 import { useState } from "react";
 
 interface SkillDetailsButtonBarProps {
-  skill: GetSkillsWithRelationsResponseBody["skills"][number];
+  skill: GetSkillWithRelationsResponseBody["skill"];
   owner: WorkspaceType;
   onClose: () => void;
   replaceOnEdit?: boolean;
   onFavoriteChange?: (
-    skill: GetSkillsWithRelationsResponseBody["skills"][number],
+    skill: GetSkillWithRelationsResponseBody["skill"],
     isFavorite: boolean
   ) => Promise<void>;
 }
@@ -75,7 +75,7 @@ export function SkillDetailsButtonBar({
       <div className="flex flex-row items-center gap-2 px-1.5">
         {onFavoriteChange && !isRedactedForAdmin && (
           <SkillFavoriteButton
-            isFavorite={skill.isFavorite ?? false}
+            isFavorite={skill.isFavorite}
             variant="outline"
             onFavoriteChange={(isFavorite) =>
               onFavoriteChange(skill, isFavorite)
