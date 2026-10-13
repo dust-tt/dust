@@ -18,16 +18,16 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { launchDocumentCommentMentionWorkflow } from "@app/temporal/mentions_queue/client";
-import type { MentionType } from "@app/types/assistant/mentions";
+import type { AgentMention } from "@app/types/assistant/mentions";
 import { isAgentMention } from "@app/types/assistant/mentions";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
- * Comments that mention agents or users reach them the way a conversation message does: each
- * one is posted as a user message in the document's conversation, which runs the mentioned
- * agents and notifies the mentioned users.
+ * Comments that mention an agent reach it the way a conversation message does: each one is
+ * posted as a user message in the document's conversation, which runs the agent. Mentioned users
+ * are notified apart, never through the conversation.
  */
 
 /**
@@ -93,30 +93,22 @@ async function getDocumentConversation(
 }
 
 /**
- * A comment's mentions, each once. A conversation message runs at most one agent, so only the
- * first agent mentioned is kept.
+ * The agent a comment runs. A conversation message runs at most one agent, so only the first agent
+ * mentioned is kept; users are notified apart from the conversation.
  */
-function commentMentions(body: string): {
-  mentions: MentionType[];
+function commentAgentMention(body: string): {
+  agent: AgentMention | undefined;
   skippedAgents: number;
 } {
-  const seen = new Set<string>();
-  const unique = extractFromString(body).filter((mention) => {
-    const key = isAgentMention(mention)
-      ? `agent:${mention.configurationId}`
-      : `user:${mention.userId}`;
-    if (seen.has(key)) {
-      return false;
-    }
-    seen.add(key);
-    return true;
-  });
-  const agents = unique.filter(isAgentMention);
+  const agentIds = new Set(
+    extractFromString(body)
+      .filter(isAgentMention)
+      .map((mention) => mention.configurationId)
+  );
+  const [first] = agentIds;
   return {
-    mentions: unique.filter(
-      (mention) => !isAgentMention(mention) || mention === agents[0]
-    ),
-    skippedAgents: Math.max(agents.length - 1, 0),
+    agent: first ? { configurationId: first } : undefined,
+    skippedAgents: Math.max(agentIds.size - 1, 0),
   };
 }
 
@@ -199,11 +191,12 @@ export class DocumentConversationBusyError extends Error {
 
 /**
  * @cc [owner:tdraier,label:product] document-comment-mention-post
- * A dispatched message MUST be posted as the saving user, as a user message with the
- * `document_comment` origin in the document's conversation carrying each mention once, so the
- * mentioned agent runs and mentioned users are notified as in a conversation. As in a
- * conversation, a message runs at most one agent: only the first agent mentioned is kept, and the
- * others are logged. It MUST be posted with `onlyWhenIdle`, and while an agent or a compaction runs in that conversation, or the document's
+ * A dispatched message that mentions an agent MUST be posted as the saving user, as a user
+ * message with the `document_comment` origin in the document's conversation, so the mentioned
+ * agent runs as in a conversation. As in a conversation, a message runs at most one agent: only
+ * the first agent mentioned is kept, and the others are logged. The message MUST NOT carry any
+ * user mention, and a message mentioning no agent MUST NOT be posted, nor its conversation
+ * created. It MUST be posted with `onlyWhenIdle`, and while an agent or a compaction runs in that conversation, or the document's
  * lock cannot be taken, it MUST return a `DocumentConversationBusyError` having posted nothing, so
  * each comment gets its own turn instead of steering a running agent. A pod document's
  * conversation MUST notify the pod when its first message is posted, never before. Any other
@@ -222,7 +215,7 @@ export async function postCommentMention(
     return new Ok(undefined);
   }
 
-  const { mentions, skippedAgents } = commentMentions(newMessage.message.body);
+  const { agent, skippedAgents } = commentAgentMention(newMessage.message.body);
   if (skippedAgents > 0) {
     logger.warn(
       {
@@ -233,6 +226,9 @@ export async function postCommentMention(
       },
       "Document comment mentions more than one agent; only the first runs."
     );
+  }
+  if (!agent) {
+    return new Ok(undefined);
   }
 
   const locked = await executeWithLockResult(
@@ -251,7 +247,7 @@ export async function postCommentMention(
       const posted = await postUserMessage(auth, {
         conversationResource: conversation,
         content: commentMessageContent({ documentPath, location }, newMessage),
-        mentions,
+        mentions: [agent],
         context: {
           timezone: "UTC",
           username: user.username,
