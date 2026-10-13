@@ -402,6 +402,8 @@ the logic back into the handlers and accept the duplication.
 
 @cc [label:audit-logging;security] audit-security-sensitive-mutations
 Every state-changing operation on a security-sensitive resource must emit an audit log event.
+Seed scripts under `scripts/seed/` are exempt: they only write mock data into local development
+workspaces.
 
 - Use `void emitAuditLogEvent({ auth, action, targets, context?, metadata? })` for user-initiated actions where an `Authenticator` is available
 - Use `void emitAuditLogEventDirect({ workspace, action, actor, targets, context, metadata? })` for system-initiated actions (Temporal activities, webhooks, login/logout) where no `Authenticator` exists
