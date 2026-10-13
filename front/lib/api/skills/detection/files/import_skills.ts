@@ -84,7 +84,8 @@ type ImportSkillsResult = {
  * @cc [owner:fabiencelier,label:product;api] import-conflict-definition
  * An existing skill with the same name as an imported skill MUST be handled by `onConflict`, unless
  * `updateSameSource` is set and the existing skill's source equals `source`, in which case it MUST
- * be updated.
+ * be updated. If the caller cannot read the existing skill, it MUST NOT be updated or recreated:
+ * "error" and "override" reject the import, "skip" skips it.
  */
 /**
  * @cc [owner:philipperolet,label:security] api-key-import-editors-preflight
@@ -179,8 +180,24 @@ export async function importSkillsFromFiles(
 
   const uniqueNames = [...new Set(selectedSkills.map((s) => s.name))];
   const existingSkills = await SkillResource.fetchByNames(auth, uniqueNames);
+  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
   const isConflicting = (existing: SkillResource) =>
     !(updateSameSource && existing.source === source);
+
+  // Names held by skills the caller cannot read. They can never be updated, so "override" rejects
+  // the import like a skill the caller cannot write.
+  const takenNames = await SkillResource.areNamesTaken(auth, uniqueNames);
+  const hiddenTakenNames = new Set(
+    [...takenNames].filter((name) => !existingSkillsMap.has(name))
+  );
+  // True when the name collides with an existing skill and `onConflict` says not to write it.
+  const isSkippedOnConflict = (name: string) => {
+    if (hiddenTakenNames.has(name)) {
+      return onConflict !== "override";
+    }
+    const existing = existingSkillsMap.get(name);
+    return !!existing && isConflicting(existing) && onConflict !== "override";
+  };
 
   if (onConflict === "error") {
     // Validate all skills upfront, fail as a unit on semantic problems.
@@ -198,6 +215,16 @@ export async function importSkillsFromFiles(
         )
       );
     }
+    if (hiddenTakenNames.size > 0) {
+      return new Err(
+        new SkillFilesImportError(
+          "invalid_skills",
+          [...hiddenTakenNames]
+            .map((name) => `A skill named "${name}" already exists.`)
+            .join(" ")
+        )
+      );
+    }
   }
   if (selectedSkills.length === 0) {
     return new Err(
@@ -208,18 +235,20 @@ export async function importSkillsFromFiles(
     );
   }
 
-  const existingSkillsMap = new Map(existingSkills.map((s) => [s.name, s]));
+  const skillsToUpsert = selectedSkills.filter(
+    (skill) => !isSkippedOnConflict(skill.name)
+  );
 
-  const skillsToUpsert = selectedSkills.filter((skill) => {
-    const existing = existingSkillsMap.get(skill.name);
-    return !(existing && isConflicting(existing) && onConflict !== "override");
-  });
-
-  const nonWritableSkillNames = removeNulls(
-    skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
-  )
-    .filter((existing) => !auth.can("write", existing))
-    .map((existing) => existing.name);
+  const nonWritableSkillNames = [
+    ...removeNulls(
+      skillsToUpsert.map((skill) => existingSkillsMap.get(skill.name) ?? null)
+    )
+      .filter((existing) => !auth.can("write", existing))
+      .map((existing) => existing.name),
+    ...skillsToUpsert
+      .map((skill) => skill.name)
+      .filter((name) => hiddenTakenNames.has(name)),
+  ];
   if (nonWritableSkillNames.length > 0) {
     return new Err(
       new SkillFilesImportError(
@@ -283,7 +312,7 @@ export async function importSkillsFromFiles(
     return editorUsersResult;
   }
   const editorUsers = editorUsersResult.value;
-  const createsSkill = selectedSkills.some(
+  const createsSkill = skillsToUpsert.some(
     (skill) => !existingSkillsMap.has(skill.name)
   );
   if (
@@ -309,7 +338,7 @@ export async function importSkillsFromFiles(
   for (const skill of selectedSkills) {
     const existing = existingSkillsMap.get(skill.name) ?? null;
 
-    if (existing && isConflicting(existing) && onConflict !== "override") {
+    if (isSkippedOnConflict(skill.name)) {
       skipped.push({
         name: skill.name,
         message: `A skill named "${skill.name}" already exists.`,

@@ -1400,6 +1400,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return count > 0;
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:security;backend] names-only-without-permission-filtering
+   * Returns the subset of `names` used by an active skill in the workspace, including skills the
+   * caller cannot read. It MUST return only names, never data from those skills.
+   */
+  static async areNamesTaken(
+    auth: Authenticator,
+    names: string[]
+  ): Promise<Set<string>> {
+    if (names.length === 0) {
+      return new Set();
+    }
+
+    const skills = await this.model.findAll({
+      attributes: ["name"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        name: names,
+        status: "active",
+      },
+    });
+
+    return new Set(skills.map((skill) => skill.name));
+  }
+
   static async fetchByNames(
     auth: Authenticator,
     names: string[]
