@@ -4,7 +4,15 @@ import {
   frameSlideshowContentType,
   isFrameContentType,
 } from "@app/types/files";
-import { ActionFrame, Avatar, Card, CitationGrid, cn } from "@dust-tt/sparkle";
+import {
+  ActionFrame,
+  Avatar,
+  Card,
+  ChevronRight,
+  CitationGrid,
+  cn,
+  Icon,
+} from "@dust-tt/sparkle";
 import { msg } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
@@ -130,6 +138,13 @@ export function AgentMessageInteractiveContentGeneratedFiles({
                 </span>
               )}
             </div>
+            {!disabled && (
+              <Icon
+                visual={ChevronRight}
+                size="sm"
+                className="shrink-0 text-muted-foreground"
+              />
+            )}
           </Card>
         );
       })}
