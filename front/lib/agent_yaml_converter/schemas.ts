@@ -41,12 +41,27 @@ const agentYAMLTagsFilterSchema = z.object({
   mode: z.enum(["custom", "auto"]),
 });
 
-export const agentYAMLDataSourceConfigurationSchema = z.object({
-  view_id: z.string().min(1, "View ID is required"),
-  selected_resources: z.array(z.string()),
-  is_select_all: z.boolean(),
-  tags_filter: agentYAMLTagsFilterSchema.nullable(),
-});
+/**
+ * @cc [owner:fabiencelier,label:security;product] restricted-selection-not-empty
+ * A data source configuration with `is_select_all: false` MUST list at least one entry in
+ * `selected_resources`, and fails validation otherwise. Core treats an empty parents filter as no
+ * restriction, so accepting it would widen the agent's knowledge to the whole data source view.
+ */
+export const agentYAMLDataSourceConfigurationSchema = z
+  .object({
+    view_id: z.string().min(1, "View ID is required"),
+    selected_resources: z.array(z.string()),
+    is_select_all: z.boolean(),
+    tags_filter: agentYAMLTagsFilterSchema.nullable(),
+  })
+  .refine(
+    (config) => config.is_select_all || config.selected_resources.length > 0,
+    {
+      message:
+        "selected_resources must not be empty when is_select_all is false",
+      path: ["selected_resources"],
+    }
+  );
 
 export const agentYAMLTableConfigurationSchema = z.object({
   view_id: z.string().min(1, "View ID is required"),
