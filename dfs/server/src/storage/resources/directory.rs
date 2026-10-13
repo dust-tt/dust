@@ -106,7 +106,7 @@ impl DirectoryResource {
         mime_type: Option<String>,
         xattrs: HashMap<String, Vec<u8>>,
     ) -> Result<ObjectResource, storage::Error<Error>> {
-        validate_name(&name)?;
+        Self::validate_name(&name)?;
         if kind == ObjectKind::Symlink {
             return Err(Error::UnsupportedKind.into());
         }
@@ -144,7 +144,7 @@ impl DirectoryResource {
         tx: &Transaction,
         name: &str,
     ) -> Result<Option<ObjectId>, storage::Error<Error>> {
-        validate_name(name)?;
+        Self::validate_name(name)?;
         let Some(entry) = tx
             .get(&self.child_key(name), false)
             .await
@@ -152,7 +152,7 @@ impl DirectoryResource {
         else {
             return Ok(None);
         };
-        Ok(Some(decode_child_id(&entry)?))
+        Ok(Some(Self::decode_child_id(&entry)?))
     }
 
     pub async fn list_children(
@@ -179,7 +179,7 @@ impl DirectoryResource {
         for (key, value) in &page.entries {
             entries.push(ChildEntry {
                 name: children.unpack(key).map_err(FdbBindingError::PackError)?,
-                object_id: decode_child_id(value)?,
+                object_id: Self::decode_child_id(value)?,
             });
         }
         Ok(ChildPage {
@@ -196,6 +196,22 @@ impl DirectoryResource {
     fn child_key(&self, name: &str) -> Vec<u8> {
         self.children_subspace().pack(&name)
     }
+
+    fn decode_child_id(value: &[u8]) -> Result<ObjectId, storage::Error<Error>> {
+        let child_id: Vec<u8> = unpack(value).map_err(FdbBindingError::PackError)?;
+        ObjectId::try_from(child_id.as_slice()).map_err(storage::Error::InvalidObjectId)
+    }
+
+    fn validate_name(name: &str) -> Result<(), Error> {
+        if name.len() > NAME_MAX_BYTES {
+            return Err(Error::NameTooLong);
+        }
+        let invalid = name.is_empty() || name == "." || name == ".." || name.contains(['/', '\0']);
+        if invalid {
+            return Err(Error::InvalidName);
+        }
+        Ok(())
+    }
 }
 
 impl TryFrom<ObjectResource> for DirectoryResource {
@@ -207,20 +223,4 @@ impl TryFrom<ObjectResource> for DirectoryResource {
         }
         Ok(Self { object })
     }
-}
-
-fn decode_child_id(value: &[u8]) -> Result<ObjectId, storage::Error<Error>> {
-    let child_id: Vec<u8> = unpack(value).map_err(FdbBindingError::PackError)?;
-    ObjectId::try_from(child_id.as_slice()).map_err(storage::Error::InvalidObjectId)
-}
-
-fn validate_name(name: &str) -> Result<(), Error> {
-    if name.len() > NAME_MAX_BYTES {
-        return Err(Error::NameTooLong);
-    }
-    let invalid = name.is_empty() || name == "." || name == ".." || name.contains(['/', '\0']);
-    if invalid {
-        return Err(Error::InvalidName);
-    }
-    Ok(())
 }
